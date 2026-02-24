@@ -766,6 +766,21 @@ class SkillsService {
 
     try {
       this.backupThenDeleteFileSync(wrapperFilePath, backupDir)
+
+      // Remove the parent directory if it's now empty.
+      // Skills live at .agents/skills/<id>/skill.md — leaving the empty <id>/
+      // directory behind would cause initializeBundledSkills() to think the
+      // skill still exists (it checks directory existence).
+      const parentDir = path.dirname(wrapperFilePath)
+      try {
+        const remaining = fs.readdirSync(parentDir)
+        if (remaining.length === 0) {
+          fs.rmdirSync(parentDir)
+        }
+      } catch {
+        // best-effort — directory may already be gone
+      }
+
       this.skills.splice(index, 1)
       this.originById.delete(id)
       return true
