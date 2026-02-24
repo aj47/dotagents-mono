@@ -8,6 +8,7 @@
     "dev:mobile": "pnpm --filter @dotagents/mobile start",
     "build": "pnpm --filter @dotagents/shared build && pnpm --filter @dotagents/desktop build",
     "build:shared": "pnpm --filter @dotagents/shared build",
+    "build:ldi": "pnpm --filter @dotagents/ldi build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
