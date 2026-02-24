@@ -205,11 +205,11 @@ export function Component() {
 
               {configQuery.data?.mainAgentName && (
                 <div className="px-3 py-2 text-sm text-muted-foreground bg-muted/30 rounded-md mx-3 mb-2">
-                  <span className="font-medium">Note:</span> When using ACP mode, the agent will use its own MCP tools and LLM, not SpeakMCP's configured providers and tools.
+                  <span className="font-medium">Note:</span> When using ACP mode, the agent will use its own MCP tools and LLM, not DotAgents's configured providers and tools.
                 </div>
               )}
 
-              <Control label={<ControlLabel label="Inject SpeakMCP Tools" tooltip="When enabled, SpeakMCP's builtin tools (delegation, settings management) are injected into ACP agent sessions. This allows the ACP agent to delegate tasks to other agents. Requires Remote Server to be enabled." />} className="px-3">
+              <Control label={<ControlLabel label="Inject DotAgents Tools" tooltip="When enabled, DotAgents's builtin tools (delegation, settings management) are injected into ACP agent sessions. This allows the ACP agent to delegate tasks to other agents. Requires Remote Server to be enabled." />} className="px-3">
                 <Switch
                   checked={configQuery.data?.acpInjectBuiltinTools !== false}
                   disabled={!configQuery.data?.remoteServerEnabled}
@@ -391,7 +391,7 @@ export function Component() {
           endDescription={
             <div>
               Workspace overlay is enabled when a <span className="font-mono">.agents</span> folder exists in your workspace
-              (or when <span className="font-mono">SPEAKMCP_WORKSPACE_DIR</span> is set).
+              (or when <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set).
             </div>
           }
         >
@@ -1019,7 +1019,7 @@ export function Component() {
             />
           </Control>
 
-          <Control label={<ControlLabel label="Hide Panel When Main App Focused" tooltip="When enabled, the floating panel automatically hides when the main SpeakMCP window is focused. The panel reappears when the main window loses focus." />} className="px-3">
+          <Control label={<ControlLabel label="Hide Panel When Main App Focused" tooltip="When enabled, the floating panel automatically hides when the main DotAgents window is focused. The panel reappears when the main window loses focus." />} className="px-3">
             <Switch
               checked={configQuery.data?.hidePanelWhenMainFocused !== false}
               onCheckedChange={(value) => {
@@ -1039,12 +1039,12 @@ export function Component() {
           title="WhatsApp Integration"
           endDescription={(
             <div className="break-words whitespace-normal">
-              Enable WhatsApp messaging through SpeakMCP.{" "}
+              Enable WhatsApp messaging through DotAgents.{" "}
               <a href="/settings/whatsapp" className="underline">Configure WhatsApp settings</a>.
             </div>
           )}
         >
-          <Control label={<ControlLabel label="Enable WhatsApp" tooltip="When enabled, allows sending and receiving WhatsApp messages through SpeakMCP" />} className="px-3">
+          <Control label={<ControlLabel label="Enable WhatsApp" tooltip="When enabled, allows sending and receiving WhatsApp messages through DotAgents" />} className="px-3">
             <Switch
               checked={configQuery.data?.whatsappEnabled ?? false}
               onCheckedChange={(value) => saveConfig({ whatsappEnabled: value })}

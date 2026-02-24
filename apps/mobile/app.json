@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "SpeakMCP",
-    "slug": "speakmcp-mobile",
-    "scheme": "speakmcp",
+    "name": "DotAgents",
+    "slug": "dotagents-mobile",
+    "scheme": "dotagents",
     "version": "1.4.0",
     "orientation": "portrait",
-    "icon": "./assets/speakmcp-icon.png",
+    "icon": "./assets/dotagents-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/speakmcp-icon.png",
+      "image": "./assets/dotagents-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aj47.speakmcp",
+      "bundleIdentifier": "com.aj47.dotagents",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses the microphone for voice input.",
         "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to transcribe your voice.",
@@ -26,7 +26,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/speakmcp-icon.png",
+        "foregroundImage": "./assets/dotagents-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -35,10 +35,10 @@
         "RECORD_AUDIO",
         "CAMERA"
       ],
-      "package": "com.aj47.speakmcp"
+      "package": "com.aj47.dotagents"
     },
     "web": {
-      "favicon": "./assets/speakmcp-icon.png"
+      "favicon": "./assets/dotagents-icon.png"
     },
     "plugins": [
       "expo-speech-recognition",
@@ -51,7 +51,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/speakmcp-icon.png",
+          "icon": "./assets/dotagents-icon.png",
           "color": "#ffffff",
           "sounds": [],
           "defaultChannel": "default"

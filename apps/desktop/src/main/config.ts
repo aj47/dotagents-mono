@@ -78,7 +78,7 @@ function migrateGroqTtsConfig(config: Partial<Config>): Partial<Config> {
 export function resolveWorkspaceAgentsFolder(): string | null {
   const globalResolved = path.resolve(globalAgentsFolder)
 
-  const envWorkspaceRoot = process.env.SPEAKMCP_WORKSPACE_DIR
+  const envWorkspaceRoot = process.env.DOTAGENTS_WORKSPACE_DIR
   if (envWorkspaceRoot && envWorkspaceRoot.trim()) {
     const resolvedRoot = path.isAbsolute(envWorkspaceRoot)
       ? envWorkspaceRoot
@@ -117,7 +117,7 @@ function migrateAgentsFolderToHome(): void {
   }
 
   // Top-level config files
-  for (const file of ["speakmcp-settings.json", "mcp.json", "models.json", "system-prompt.md", "agents.md"]) {
+  for (const file of ["dotagents-settings.json", "mcp.json", "models.json", "system-prompt.md", "agents.md"]) {
     copyIfMissing(
       path.join(legacyAppDataAgentsFolder, file),
       path.join(globalAgentsFolder, file),
@@ -308,7 +308,7 @@ const getConfig = (): LoadedConfig => {
     dualModelSummarizationFrequency: "every_response",
     dualModelSummaryDetailLevel: "compact",
 
-    // ACP Tool Injection - when true, injects SpeakMCP builtin tools into ACP agent sessions
+    // ACP Tool Injection - when true, injects DotAgents builtin tools into ACP agent sessions
     // This allows ACP agents to use delegation, settings management, etc.
     acpInjectBuiltinTools: true,
 

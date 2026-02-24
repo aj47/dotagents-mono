@@ -1,15 +1,15 @@
 #!/bin/bash
 set -e
 
-# Post-installation script for SpeakMCP Debian package
+# Post-installation script for DotAgents Debian package
 # This script sets up desktop integration, permissions, and PATH symlinks
 
-echo "Setting up SpeakMCP..."
+echo "Setting up DotAgents..."
 
 # Define installation paths
-INSTALL_DIR="/opt/SpeakMCP"
-BIN_NAME="speakmcp"
-DESKTOP_FILE="/usr/share/applications/speakmcp.desktop"
+INSTALL_DIR="/opt/DotAgents"
+BIN_NAME="dotagents"
+DESKTOP_FILE="/usr/share/applications/dotagents.desktop"
 ICON_DIR="/usr/share/icons/hicolor"
 
 # 1. Make binary executable
@@ -80,11 +80,11 @@ if [ -n "$CURRENT_USER" ] && [ "$CURRENT_USER" != "root" ]; then
     fi
 fi
 
-echo "SpeakMCP installation complete!"
+echo "DotAgents installation complete!"
 echo ""
 echo "You can now:"
-echo "  • Launch SpeakMCP from your application menu"
-echo "  • Run 'speakmcp' from the terminal"
+echo "  • Launch DotAgents from your application menu"
+echo "  • Run 'dotagents' from the terminal"
 echo ""
 
 exit 0

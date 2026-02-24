@@ -342,7 +342,7 @@ describe("conversation-history-utils", () => {
         {
           role: "user",
           content:
-            "If all requested work is complete, use speakmcp-settings:respond_to_user to tell the user the result, then call speakmcp-settings:mark_work_complete with a concise summary. Otherwise continue working and call more tools.",
+            "If all requested work is complete, use respond_to_user to tell the user the result, then call mark_work_complete with a concise summary. Otherwise continue working and call more tools.",
           timestamp: 3000,
           ephemeral: true,
         },

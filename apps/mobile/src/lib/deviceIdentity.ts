@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 
-const DEVICE_ID_KEY = 'speakmcp_device_id_v1';
+const DEVICE_ID_KEY = 'dotagents_device_id_v1';
 
 /**
  * Device identity for stable tunnel identification.

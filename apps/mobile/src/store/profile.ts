@@ -1,5 +1,5 @@
 /**
- * Profile context for tracking the current profile from the SpeakMCP server.
+ * Profile context for tracking the current profile from the DotAgents server.
  * 
  * This provides app-wide access to the current profile name so it can be
  * displayed prominently in chat sessions (issue #837).
@@ -68,7 +68,7 @@ export function useProfileProvider(baseUrl: string, apiKey: string): ProfileCont
     } catch (err: any) {
       console.warn('[Profile] Failed to fetch current profile:', err);
       // Don't set error for network issues - just leave profile null
-      // This prevents showing errors when not connected to a SpeakMCP server
+      // This prevents showing errors when not connected to a DotAgents server
       if (err?.message?.toLowerCase().includes('not found') || err?.message?.includes('404')) {
         // Server doesn't support profile endpoint - that's okay
         setCurrentProfile(null);

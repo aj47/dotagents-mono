@@ -61,9 +61,9 @@ export function AgentCapabilitiesSidebar() {
   })
 
   const enabledAgents = agents.filter(a => a.enabled)
-  const builtinTools = allTools.filter(t => t.serverName === "speakmcp-settings")
-  const externalTools = allTools.filter(t => t.serverName !== "speakmcp-settings")
-  const serverNames = Object.keys(serverStatus).filter(n => n !== "speakmcp-settings")
+  const builtinTools = allTools.filter(t => t.serverName === "dotagents-internal")
+  const externalTools = allTools.filter(t => t.serverName !== "dotagents-internal")
+  const serverNames = Object.keys(serverStatus).filter(n => n !== "dotagents-internal")
 
   const updateAgent = useCallback(async (id: string, updates: Partial<AgentProfile>) => {
     await tipcClient.updateAgentProfile({ id, updates })
@@ -242,7 +242,7 @@ export function AgentCapabilitiesSidebar() {
             {builtinTools.length === 0 ? (
               <p className="text-[10px] text-muted-foreground py-1">No built-in tools available</p>
             ) : builtinTools.map(tool => {
-              const isEssential = tool.name === "speakmcp-settings:mark_work_complete"
+              const isEssential = tool.name === "mark_work_complete"
               return (
                 <div key={tool.name} className="flex items-center gap-2 py-0.5">
                   <Switch
@@ -252,7 +252,7 @@ export function AgentCapabilitiesSidebar() {
                     onCheckedChange={() => toggleBuiltinTool(agent, tool.name)}
                   />
                   <span className="text-[10px] truncate" title={tool.description}>
-                    {tool.name.replace("speakmcp-settings:", "")}
+                    {tool.name}
                     {isEssential && " ★"}
                   </span>
                 </div>

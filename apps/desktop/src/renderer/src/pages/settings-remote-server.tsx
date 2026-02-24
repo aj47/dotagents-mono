@@ -122,14 +122,14 @@ export function Component() {
           title="Remote Server"
           endDescription={(
             <div className="break-words whitespace-normal">
-              Exposes your SpeakMCP agent over an OpenAI BaseURL-compatible /v1 HTTP endpoint so other clients (e.g., mobile or other apps) can connect to this desktop app and use the agent remotely. Recommended: use with the{" "}
+              Exposes your DotAgents agent over an OpenAI BaseURL-compatible /v1 HTTP endpoint so other clients (e.g., mobile or other apps) can connect to this desktop app and use the agent remotely. Recommended: use with the{" "}
               <a
-                href="https://github.com/aj47/SpeakMCPMobile"
+                href="https://github.com/aj47/DotAgentsMobile"
                 target="_blank"
                 rel="noreferrer noopener"
                 className="underline"
               >
-                SpeakMCP Mobile app
+                DotAgents Mobile app
               </a>.
             </div>
           )}
@@ -286,7 +286,7 @@ export function Component() {
                   </Control>
 
                   {cfg?.remoteServerApiKey && (
-                    <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the SpeakMCP mobile app to connect (local network only)" />} className="px-3">
+                    <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect (local network only)" />} className="px-3">
                       <div className="flex flex-col items-start gap-3">
                         {streamerMode ? (
                           <div className="p-3 bg-muted/50 rounded-lg flex flex-col items-center justify-center" style={{ width: 160, height: 160 }}>
@@ -296,7 +296,7 @@ export function Component() {
                         ) : (
                           <div className="p-3 bg-white rounded-lg">
                             <QRCodeSVG
-                              value={`speakmcp://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey)}`}
+                              value={`dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey)}`}
                               size={160}
                               level="M"
                             />
@@ -310,7 +310,7 @@ export function Component() {
                             title={streamerMode ? "Disabled in Streamer Mode" : undefined}
                             onClick={() => {
                               if (streamerMode) return
-                              const deepLink = `speakmcp://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
+                              const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
                               navigator.clipboard.writeText(deepLink)
                             }}
                           >
@@ -332,7 +332,7 @@ export function Component() {
                         <div className="text-xs text-muted-foreground">
                           {streamerMode
                             ? "QR code and deep link hidden in Streamer Mode"
-                            : "Scan with the SpeakMCP mobile app to auto-configure. Works on local network only. Use 'Print to Terminal' for SSH/headless access. For internet access, use Cloudflare Tunnel below."}
+                            : "Scan with the DotAgents mobile app to auto-configure. Works on local network only. Use 'Print to Terminal' for SSH/headless access. For internet access, use Cloudflare Tunnel below."}
                         </div>
                       </div>
                     </Control>
@@ -587,7 +587,7 @@ export function Component() {
                     </Control>
 
                     {cfg?.remoteServerApiKey && (
-                      <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the SpeakMCP mobile app to connect" />} className="px-3">
+                      <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect" />} className="px-3">
                         <div className="flex flex-col items-start gap-3">
                           {streamerMode ? (
                             <div className="p-3 bg-muted/50 rounded-lg flex flex-col items-center justify-center" style={{ width: 160, height: 160 }}>
@@ -597,7 +597,7 @@ export function Component() {
                           ) : (
                             <div className="p-3 bg-white rounded-lg">
                               <QRCodeSVG
-                                value={`speakmcp://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey)}`}
+                                value={`dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey)}`}
                                 size={160}
                                 level="M"
                               />
@@ -611,7 +611,7 @@ export function Component() {
                               title={streamerMode ? "Disabled in Streamer Mode" : undefined}
                               onClick={() => {
                                 if (streamerMode) return
-                                const deepLink = `speakmcp://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
+                                const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
                                 navigator.clipboard.writeText(deepLink)
                               }}
                             >
@@ -621,7 +621,7 @@ export function Component() {
                           <div className="text-xs text-muted-foreground">
                             {streamerMode
                               ? "QR code and deep link hidden in Streamer Mode"
-                              : "Scan with the SpeakMCP mobile app to auto-configure the connection."}
+                              : "Scan with the DotAgents mobile app to auto-configure the connection."}
                           </div>
                         </div>
                       </Control>

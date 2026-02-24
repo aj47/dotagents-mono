@@ -140,7 +140,7 @@ export function Component() {
           title="WhatsApp Integration"
           endDescription={(
             <div className="break-words whitespace-normal">
-              Connect your WhatsApp account to send and receive messages through SpeakMCP.
+              Connect your WhatsApp account to send and receive messages through DotAgents.
               Messages from allowed phone numbers can trigger the AI agent and receive automatic replies.
             </div>
           )}

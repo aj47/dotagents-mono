@@ -46,25 +46,25 @@ export const AGENT_MODE_ADDITIONS = `
 AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up.
 
 RESPONDING TO USER:
-- Use speakmcp-settings:respond_to_user whenever you want to communicate directly with the user
+- Use respond_to_user whenever you want to communicate directly with the user
 - On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
 - Write respond_to_user text naturally and conversationally (no markdown, code blocks, or formatting)
 - If respond_to_user is unavailable, provide your final user-facing answer in normal assistant text
 
 SKILLS:
 - Skills are optional instruction modules listed below.
-- Before using a skill, ALWAYS call speakmcp-settings:load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
+- Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
 
 COMPLETION SIGNAL:
 - When all requested work is fully complete:
-  1. ALWAYS call speakmcp-settings:respond_to_user with the final user-facing response FIRST
-  2. Then call speakmcp-settings:mark_work_complete with a concise completion summary
+  1. ALWAYS call respond_to_user with the final user-facing response FIRST
+  2. Then call mark_work_complete with a concise completion summary
 - IMPORTANT: Never put the final user-facing answer in plain assistant text — always use respond_to_user
 - If mark_work_complete is not available, provide a complete final user-facing answer directly
 - Do not call mark_work_complete while work is still in progress or partially done
 
 AGENT FILE & COMMAND EXECUTION:
-- Use speakmcp-settings:execute_command as your primary tool for shell commands, file I/O, and automation
+- Use execute_command as your primary tool for shell commands, file I/O, and automation
 - Read files: execute_command with "cat path/to/file"
 - Write files: execute_command with "cat > path/to/file << 'EOF'\\n...content...\\nEOF" or "echo 'content' > file"
 - List directories: execute_command with "ls -la path/"
@@ -73,7 +73,7 @@ AGENT FILE & COMMAND EXECUTION:
 - For skills: pass skillId to run commands in the skill's directory automatically
 
 MEMORIES (optional):
-- Use speakmcp-settings:save_memory(content, importance) to store durable preferences/patterns (single line, ~80 chars).`
+- Use save_memory(content, importance) to store durable preferences/patterns (single line, ~80 chars).`
 
 /**
  * Group tools by server and generate a brief description for each server
@@ -287,7 +287,7 @@ export function constructSystemPrompt(
     // Use lightweight format for ALL tools to reduce token usage
     // Full schemas are still available via native function calling
     prompt += `\n\nAVAILABLE MCP SERVERS (${availableTools.length} tools total):\n${formatLightweightToolInfo(availableTools)}`
-    prompt += `\n\nTo discover tools: use speakmcp-settings:list_server_tools(serverName) to see all tools in a server, or speakmcp-settings:get_tool_schema(toolName) for full parameter details.`
+    prompt += `\n\nTo discover tools: use list_server_tools(serverName) to see all tools in a server, or get_tool_schema(toolName) for full parameter details.`
 
     // If relevant tools are identified, show them with full details
     if (
@@ -351,7 +351,7 @@ export function constructMinimalSystemPrompt(
 
   // Preserve skills policy + IDs under Tier-3 shrinking.
   prompt +=
-    " Skills are optional instruction modules. Before using a skill, call speakmcp-settings:load_skill_instructions with { skillId }."
+    " Skills are optional instruction modules. Before using a skill, call load_skill_instructions with { skillId }."
 
   if (skillsIndex?.trim()) {
     prompt += `\n\nAVAILABLE AGENT SKILLS (IDs):\n${skillsIndex.trim()}`

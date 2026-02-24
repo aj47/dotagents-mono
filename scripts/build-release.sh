@@ -1,5 +1,5 @@
 #!/bin/bash
-# SpeakMCP Release Build Script
+# DotAgents Release Build Script
 # Builds signed DMG (macOS), IPA (iOS), and APK (Android) for distribution
 #
 # For detailed instructions, see BUILDING.md
@@ -26,7 +26,7 @@
 # Android APK signing:
 #   ANDROID_KEYSTORE_FILE     - Path to release keystore file
 #   ANDROID_KEYSTORE_PASSWORD - Keystore password
-#   ANDROID_KEY_ALIAS         - Key alias (default: speakmcp)
+#   ANDROID_KEY_ALIAS         - Key alias (default: dotagents)
 #   ANDROID_KEY_PASSWORD      - Key password
 #
 # Optional:
@@ -40,7 +40,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RELEASE_DIR="$ROOT_DIR/release"
 
-echo "🚀 SpeakMCP Release Build Script"
+echo "🚀 DotAgents Release Build Script"
 echo "================================"
 echo "Root directory: $ROOT_DIR"
 echo ""
@@ -125,10 +125,10 @@ build_ios() {
     
     # Build archive
     echo "🔨 Building iOS archive..."
-    xcodebuild -workspace ios/SpeakMCP.xcworkspace \
-        -scheme SpeakMCP \
+    xcodebuild -workspace ios/DotAgents.xcworkspace \
+        -scheme DotAgents \
         -configuration Release \
-        -archivePath "$RELEASE_DIR/SpeakMCP.xcarchive" \
+        -archivePath "$RELEASE_DIR/DotAgents.xcarchive" \
         archive \
         CODE_SIGN_IDENTITY="${IOS_CODE_SIGN_IDENTITY:-iPhone Distribution}" \
         DEVELOPMENT_TEAM="${APPLE_TEAM_ID:-}" \
@@ -137,7 +137,7 @@ build_ios() {
     # Export IPA
     echo "📤 Exporting IPA..."
     xcodebuild -exportArchive \
-        -archivePath "$RELEASE_DIR/SpeakMCP.xcarchive" \
+        -archivePath "$RELEASE_DIR/DotAgents.xcarchive" \
         -exportPath "$RELEASE_DIR" \
         -exportOptionsPlist "$EXPORT_OPTIONS" \
         -allowProvisioningUpdates
@@ -147,8 +147,8 @@ build_ios() {
     
     # Rename IPA with version
     VERSION=$(grep '"version"' "$ROOT_DIR/apps/mobile/app.json" | sed 's/.*"version": "\(.*\)".*/\1/')
-    if [ -f "$RELEASE_DIR/SpeakMCP.ipa" ]; then
-        mv "$RELEASE_DIR/SpeakMCP.ipa" "$RELEASE_DIR/SpeakMCP-${VERSION:-1.0.0}.ipa"
+    if [ -f "$RELEASE_DIR/DotAgents.ipa" ]; then
+        mv "$RELEASE_DIR/DotAgents.ipa" "$RELEASE_DIR/DotAgents-${VERSION:-1.0.0}.ipa"
     fi
     
     echo "✅ iOS build complete!"
@@ -188,7 +188,7 @@ build_android() {
     APK_PATH="app/build/outputs/apk/release/app-release.apk"
     
     if [ -f "$APK_PATH" ]; then
-        cp "$APK_PATH" "$RELEASE_DIR/SpeakMCP-${VERSION:-1.0.0}.apk"
+        cp "$APK_PATH" "$RELEASE_DIR/DotAgents-${VERSION:-1.0.0}.apk"
         echo "✅ Android build complete!"
     else
         echo "⚠️ APK not found at expected path: $APK_PATH"

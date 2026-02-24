@@ -84,8 +84,8 @@ try {
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
-  appId: "app.speakmcp",
-  productName: "SpeakMCP",
+  appId: "app.dotagents",
+  productName: "DotAgents",
   icon: "build/icon.png",
   directories: {
     buildResources: "build",
@@ -101,12 +101,12 @@ module.exports = {
     "!*.{js,cjs,mjs,ts}",
     "!components.json",
     "!.prettierrc",
-    "!speakmcp-rs/*",
+    "!dotagents-rs/*",
   ],
   asar: false,
   win: {
     icon: "build/icon.ico",
-    executableName: "speakmcp",
+    executableName: "dotagents",
     target: [
       {
         target: "nsis",
@@ -124,8 +124,8 @@ module.exports = {
     signDlls: false,
     extraResources: [
       {
-        from: "resources/bin/speakmcp-rs.exe",
-        to: "bin/speakmcp-rs.exe",
+        from: "resources/bin/dotagents-rs.exe",
+        to: "bin/dotagents-rs.exe",
         filter: ["**/*"]
       },
       {
@@ -157,7 +157,7 @@ module.exports = {
   },
   mac: {
     binaries: [
-      "resources/bin/speakmcp-rs",
+      "resources/bin/dotagents-rs",
     ],
     extraResources: [
       {
@@ -203,18 +203,18 @@ module.exports = {
     ],
     extendInfo: {
       NSCameraUsageDescription:
-        "SpeakMCP may request camera access for enhanced AI features.",
+        "DotAgents may request camera access for enhanced AI features.",
       NSMicrophoneUsageDescription:
-        "SpeakMCP requires microphone access for voice dictation and transcription.",
+        "DotAgents requires microphone access for voice dictation and transcription.",
       NSDocumentsFolderUsageDescription:
-        "SpeakMCP may access your Documents folder to save transcriptions and settings.",
+        "DotAgents may access your Documents folder to save transcriptions and settings.",
       NSDownloadsFolderUsageDescription:
-        "SpeakMCP may access your Downloads folder to save exported files.",
+        "DotAgents may access your Downloads folder to save exported files.",
       LSMinimumSystemVersion: "12.0.0",
       CFBundleURLTypes: [
         {
-          CFBundleURLName: "SpeakMCP Protocol",
-          CFBundleURLSchemes: ["speakmcp"],
+          CFBundleURLName: "DotAgents Protocol",
+          CFBundleURLSchemes: ["dotagents"],
         },
       ],
     },
@@ -240,18 +240,18 @@ module.exports = {
     cscInstallerLink: process.env.CSC_INSTALLER_LINK,
     extendInfo: {
       NSCameraUsageDescription:
-        "SpeakMCP may request camera access for enhanced AI features.",
+        "DotAgents may request camera access for enhanced AI features.",
       NSMicrophoneUsageDescription:
-        "SpeakMCP requires microphone access for voice dictation and transcription.",
+        "DotAgents requires microphone access for voice dictation and transcription.",
       NSDocumentsFolderUsageDescription:
-        "SpeakMCP may access your Documents folder to save transcriptions and settings.",
+        "DotAgents may access your Documents folder to save transcriptions and settings.",
       NSDownloadsFolderUsageDescription:
-        "SpeakMCP may access your Downloads folder to save exported files.",
+        "DotAgents may access your Downloads folder to save exported files.",
       LSMinimumSystemVersion: "12.0.0",
       CFBundleURLTypes: [
         {
-          CFBundleURLName: "SpeakMCP Protocol",
-          CFBundleURLSchemes: ["speakmcp"],
+          CFBundleURLName: "DotAgents Protocol",
+          CFBundleURLSchemes: ["dotagents"],
         },
       ],
     },
@@ -266,18 +266,18 @@ module.exports = {
     category: "public.app-category.productivity",
     extendInfo: {
       NSCameraUsageDescription:
-        "SpeakMCP may request camera access for enhanced AI features.",
+        "DotAgents may request camera access for enhanced AI features.",
       NSMicrophoneUsageDescription:
-        "SpeakMCP requires microphone access for voice dictation and transcription.",
+        "DotAgents requires microphone access for voice dictation and transcription.",
       NSDocumentsFolderUsageDescription:
-        "SpeakMCP may access your Documents folder to save transcriptions and settings.",
+        "DotAgents may access your Documents folder to save transcriptions and settings.",
       NSDownloadsFolderUsageDescription:
-        "SpeakMCP may access your Downloads folder to save exported files.",
+        "DotAgents may access your Downloads folder to save exported files.",
       LSMinimumSystemVersion: "10.15.0",
       CFBundleURLTypes: [
         {
-          CFBundleURLName: "SpeakMCP Protocol",
-          CFBundleURLSchemes: ["speakmcp"],
+          CFBundleURLName: "DotAgents Protocol",
+          CFBundleURLSchemes: ["dotagents"],
         },
       ],
     },
@@ -299,27 +299,27 @@ module.exports = {
   },
   linux: {
     target: ["AppImage", "deb"],
-    maintainer: "SpeakMCP <hi@techfren.net>",
-    vendor: "SpeakMCP",
+    maintainer: "DotAgents <hi@techfren.net>",
+    vendor: "DotAgents",
     category: "Utility",
-    synopsis: "AI-powered voice assistant with MCP integration",
-    description: "SpeakMCP is an AI-powered dictation and voice assistant tool with Model Context Protocol (MCP) integration for enhanced productivity.",
+    synopsis: "AI-powered agents with MCP integration",
+    description: "DotAgents is an AI-powered agent tool with Model Context Protocol (MCP) integration for enhanced productivity.",
     desktop: {
-      Name: "SpeakMCP",
-      Comment: "AI-powered voice assistant with MCP integration",
-      GenericName: "Voice Assistant",
-      Keywords: "voice;dictation;ai;assistant;mcp;transcription;",
-      Categories: "Utility;Audio;Development;",
-      StartupWMClass: "speakmcp",
+      Name: "DotAgents",
+      Comment: "AI-powered agents with MCP integration",
+      GenericName: "AI Agent",
+      Keywords: "ai;agent;assistant;mcp;automation;",
+      Categories: "Utility;Development;",
+      StartupWMClass: "dotagents",
       StartupNotify: false,
       Terminal: false,
       Type: "Application",
     },
-    executableName: "speakmcp",
+    executableName: "dotagents",
     extraResources: [
       {
-        from: "resources/bin/speakmcp-rs",
-        to: "bin/speakmcp-rs",
+        from: "resources/bin/dotagents-rs",
+        to: "bin/dotagents-rs",
         filter: ["**/*"]
       },
       {
@@ -394,7 +394,7 @@ module.exports = {
   publish: {
     provider: "github",
     owner: "aj47",
-    repo: "SpeakMCP",
+    repo: "dotagents-mono",
   },
   removePackageScripts: true,
 }

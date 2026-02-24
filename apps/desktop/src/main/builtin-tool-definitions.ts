@@ -26,10 +26,10 @@ export interface BuiltinToolDefinition {
   }
 }
 
-// Tool definitions
+// Tool definitions — built-in tools use plain names (no server prefix)
 export const builtinToolDefinitions: BuiltinToolDefinition[] = [
   {
-    name: `${BUILTIN_SERVER_NAME}:list_mcp_servers`,
+    name: "list_mcp_servers",
     description: "List all configured MCP servers and their status (enabled/disabled, connected/disconnected)",
     inputSchema: {
       type: "object",
@@ -38,7 +38,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:toggle_mcp_server`,
+    name: "toggle_mcp_server",
     description: "Enable or disable an MCP server by name. Disabled servers will not be initialized on next startup.",
     inputSchema: {
       type: "object",
@@ -57,7 +57,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
   },
 
   {
-    name: `${BUILTIN_SERVER_NAME}:list_running_agents`,
+    name: "list_running_agents",
     description: "List all currently running agent sessions with their status, iteration count, and activity. Useful for monitoring active agents before terminating them.",
     inputSchema: {
       type: "object",
@@ -66,7 +66,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:send_agent_message`,
+    name: "send_agent_message",
     description: "Send a message to another running agent session. The message will be queued and processed by the target agent's conversation. Use list_running_agents first to get session IDs. This enables agent coordination and task delegation.",
     inputSchema: {
       type: "object",
@@ -84,7 +84,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:kill_agent`,
+    name: "kill_agent",
     description: "Terminate a specific agent session by its session ID. This will abort any in-flight LLM requests, kill spawned processes, and stop the agent immediately.",
     inputSchema: {
       type: "object",
@@ -98,7 +98,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:kill_all_agents`,
+    name: "kill_all_agents",
     description: "Emergency stop ALL running agent sessions. This will abort all in-flight LLM requests, kill all spawned processes, and stop all agents immediately. Use with caution.",
     inputSchema: {
       type: "object",
@@ -107,8 +107,8 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:get_settings`,
-    description: "Get the current status of SpeakMCP feature toggles including post-processing, TTS (text-to-speech), tool approval, verification, message queue, and parallel tool execution settings.",
+    name: "get_settings",
+    description: "Get the current status of DotAgents feature toggles including post-processing, TTS (text-to-speech), tool approval, verification, message queue, and parallel tool execution settings.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -116,7 +116,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:toggle_post_processing`,
+    name: "toggle_post_processing",
     description: "Enable or disable transcript post-processing. When enabled, transcripts are cleaned up and improved using AI.",
     inputSchema: {
       type: "object",
@@ -130,7 +130,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:toggle_tts`,
+    name: "toggle_tts",
     description: "Enable or disable text-to-speech (TTS). When enabled, assistant responses are read aloud.",
     inputSchema: {
       type: "object",
@@ -144,7 +144,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:toggle_tool_approval`,
+    name: "toggle_tool_approval",
     description: "Enable or disable tool approval. When enabled, a confirmation dialog appears before any tool executes. Recommended for safety.",
     inputSchema: {
       type: "object",
@@ -158,14 +158,11 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   // ACP router tools for agent delegation
-  // NOTE: These tools use a different prefix (speakmcp-builtin:) than the settings tools
-  // above (speakmcp-settings:). This is intentional - agent delegation tools are logically
-  // distinct from settings management. Both are treated as built-in tools for execution
-  // purposes (see isBuiltinTool in builtin-tools.ts). For UI grouping, all tools in this
-  // array are shown under the "speakmcp-settings" virtual server.
+  // These tools are logically distinct from settings management but are all treated as
+  // built-in tools for execution purposes (see isBuiltinTool in builtin-tools.ts).
   ...acpRouterToolDefinitions,
   {
-    name: `${BUILTIN_SERVER_NAME}:toggle_verification`,
+    name: "toggle_verification",
     description: "Enable or disable task completion verification. When enabled (default), the agent verifies whether the user's task has been completed before finishing. Disable for faster responses without verification.",
     inputSchema: {
       type: "object",
@@ -179,7 +176,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:respond_to_user`,
+    name: "respond_to_user",
     description:
       "Send a response directly to the user. On voice interfaces this will be spoken aloud via TTS; on messaging channels (mobile, WhatsApp, etc.) it will be sent as a message. Regular assistant text is internal and not guaranteed to reach the user; use this tool to explicitly communicate with them.",
     inputSchema: {
@@ -195,7 +192,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:speak_to_user`,
+    name: "speak_to_user",
     description:
       "[DEPRECATED] Use respond_to_user instead. This is a backward compatibility alias for existing prompts/clients.",
     inputSchema: {
@@ -212,7 +209,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
   },
 
   {
-    name: `${BUILTIN_SERVER_NAME}:mark_work_complete`,
+    name: "mark_work_complete",
     description: "Signal explicit completion for the current task. Call this only when all requested work is actually finished and ready for final delivery.",
     inputSchema: {
       type: "object",
@@ -230,8 +227,8 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:toggle_whatsapp`,
-    description: "Enable or disable WhatsApp integration. When enabled, allows sending and receiving WhatsApp messages through SpeakMCP.",
+    name: "toggle_whatsapp",
+    description: "Enable or disable WhatsApp integration. When enabled, allows sending and receiving WhatsApp messages through DotAgents.",
     inputSchema: {
       type: "object",
       properties: {
@@ -244,7 +241,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:execute_command`,
+    name: "execute_command",
     description: "Execute any shell command. This is the primary tool for file operations, running scripts, and automation. Use for: reading files (cat), writing files (cat/echo with redirection), listing directories (ls), creating directories (mkdir -p), git operations, npm/python/node commands, and any shell command. If skillId is provided, the command runs in that skill's directory.",
     inputSchema: {
       type: "object",
@@ -267,7 +264,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
   },
 
   {
-    name: `${BUILTIN_SERVER_NAME}:save_memory`,
+    name: "save_memory",
     description: "Save a single-line memory note. Memories persist across sessions. Keep content ultra-compact (max 80 chars), skip grammar.",
     inputSchema: {
       type: "object",
@@ -286,7 +283,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:list_memories`,
+    name: "list_memories",
     description: "List all saved memories for the current profile. Use this to check what's already remembered before saving duplicates, or to find memories to delete.",
     inputSchema: {
       type: "object",
@@ -295,7 +292,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:delete_memory`,
+    name: "delete_memory",
     description: "Delete a memory by ID. Use this to remove redundant or outdated memories. Call list_memories first to get IDs.",
     inputSchema: {
       type: "object",
@@ -309,7 +306,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:delete_multiple_memories`,
+    name: "delete_multiple_memories",
     description: "Delete multiple memories by their IDs in a single operation. More efficient than calling delete_memory repeatedly. Call list_memories first to get IDs.",
     inputSchema: {
       type: "object",
@@ -324,7 +321,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:delete_all_memories`,
+    name: "delete_all_memories",
     description: "Delete ALL memories for the current profile. Use with caution - this cannot be undone. Consider using delete_multiple_memories for selective deletion.",
     inputSchema: {
       type: "object",
@@ -338,7 +335,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:list_server_tools`,
+    name: "list_server_tools",
     description: "List all tools available from a specific MCP server. Use this to discover what tools a server provides before calling them.",
     inputSchema: {
       type: "object",
@@ -352,7 +349,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:get_tool_schema`,
+    name: "get_tool_schema",
     description: "Get the full JSON schema for a specific tool, including all parameter details. Use this when you need to know the exact parameters to pass to a tool.",
     inputSchema: {
       type: "object",
@@ -366,7 +363,7 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
     },
   },
   {
-    name: `${BUILTIN_SERVER_NAME}:load_skill_instructions`,
+    name: "load_skill_instructions",
     description: "Load the full instructions for an agent skill. Skills are listed in the system prompt with just name and description. Call this tool to get the complete instructions when you need to use a skill.",
     inputSchema: {
       type: "object",

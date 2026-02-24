@@ -28,7 +28,7 @@ export interface SessionStore {
   setMessages: (messages: ChatMessage[]) => Promise<void>;
   setMessagesForSession: (sessionId: string, messages: ChatMessage[]) => Promise<void>;
 
-  // Server conversation ID management (for continuing conversations with SpeakMCP server)
+  // Server conversation ID management (for continuing conversations with DotAgents server)
   setServerConversationId: (serverConversationId: string) => Promise<void>;
   setServerConversationIdForSession: (sessionId: string, serverConversationId: string) => Promise<void>;
   getServerConversationId: () => string | undefined;

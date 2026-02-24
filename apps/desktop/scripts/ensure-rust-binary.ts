@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const isWindows = process.platform === "win32"
-const binaryName = isWindows ? "speakmcp-rs.exe" : "speakmcp-rs"
+const binaryName = isWindows ? "dotagents-rs.exe" : "dotagents-rs"
 const desktopDir = join(__dirname, "..")
 const binaryPath = join(desktopDir, "resources", "bin", binaryName)
 

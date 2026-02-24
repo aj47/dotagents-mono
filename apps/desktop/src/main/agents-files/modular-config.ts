@@ -12,7 +12,7 @@ import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmat
 export const AGENTS_DIR_NAME = ".agents"
 export const AGENTS_BACKUPS_DIR_NAME = ".backups"
 
-export const AGENTS_SETTINGS_JSON = "speakmcp-settings.json"
+export const AGENTS_SETTINGS_JSON = "dotagents-settings.json"
 export const AGENTS_MCP_JSON = "mcp.json"
 export const AGENTS_MODELS_JSON = "models.json"
 

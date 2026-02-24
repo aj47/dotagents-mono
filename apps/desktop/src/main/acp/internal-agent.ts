@@ -1,7 +1,7 @@
 /**
  * Internal Sub-Session Service
  *
- * Allows SpeakMCP to spawn internal sub-sessions of itself as ACP-style agents.
+ * Allows DotAgents to spawn internal sub-sessions of itself as ACP-style agents.
  * Unlike external ACP agents, these run within the same process with isolated state.
  *
  * Key features:
@@ -751,7 +751,7 @@ export function getInternalAgentInfo() {
   return {
     name: 'internal',
     displayName: 'Internal Sub-Agent',
-    description: 'An internal sub-session of SpeakMCP itself. Can perform any task the main agent can, with access to all configured MCP tools. Useful for parallel task execution or isolating complex sub-tasks.',
+    description: 'An internal sub-session of DotAgents itself. Can perform any task the main agent can, with access to all configured MCP tools. Useful for parallel task execution or isolating complex sub-tasks.',
     isInternal: true,
     maxRecursionDepth: MAX_RECURSION_DEPTH,
     maxConcurrent: MAX_CONCURRENT_SUB_SESSIONS,

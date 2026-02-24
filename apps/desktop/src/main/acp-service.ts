@@ -18,7 +18,7 @@ import { toolApprovalManager } from "./state"
 import { agentProfileService } from "./agent-profile-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { logACP } from "./debug"
-import { getSpeakMcpSessionForAcpSession } from "./acp-session-state"
+import { getAppSessionForAcpSession } from "./acp-session-state"
 
 // JSON-RPC types
 interface JsonRpcRequest {
@@ -896,16 +896,16 @@ class ACPService extends EventEmitter {
   ): Promise<ACPRequestPermissionResponse> {
     const { sessionId: acpSessionId, toolCall, options } = params
 
-    // Map ACP session ID to SpeakMCP session ID for UI routing
-    // The ACP agent uses its own session IDs, but SpeakMCP's UI tracks progress
+    // Map ACP session ID to DotAgents session ID for UI routing
+    // The ACP agent uses its own session IDs, but DotAgents' UI tracks progress
     // using its own session IDs from agentSessionTracker
-    const speakMcpSessionId = getSpeakMcpSessionForAcpSession(acpSessionId) || acpSessionId
-    logACP("NOTIFICATION", agentName, "session/request_permission", { acpSessionId, speakMcpSessionId })
+    const appSessionId = getAppSessionForAcpSession(acpSessionId) || acpSessionId
+    logACP("NOTIFICATION", agentName, "session/request_permission", { acpSessionId, appSessionId })
 
     // Emit tool call status update for UI visibility
     this.emit("toolCallUpdate", {
       agentName,
-      sessionId: speakMcpSessionId,
+      sessionId: appSessionId,
       toolCall: {
         ...toolCall,
         status: "pending" as ACPToolCallStatus,
@@ -914,16 +914,16 @@ class ACPService extends EventEmitter {
     })
 
     // Use the existing tool approval manager to request approval
-    // This integrates with SpeakMCP's existing UI approval flow
+    // This integrates with DotAgents' existing UI approval flow
     const { approvalId, promise } = toolApprovalManager.requestApproval(
-      speakMcpSessionId,
+      appSessionId,
       toolCall.title,
       toolCall.rawInput
     )
 
     // Emit progress update to show pending approval in UI
     await emitAgentProgress({
-      sessionId: speakMcpSessionId,
+      sessionId: appSessionId,
       currentIteration: 0,
       maxIterations: 1,
       steps: [
@@ -955,7 +955,7 @@ class ACPService extends EventEmitter {
     // Emit status update
     this.emit("toolCallUpdate", {
       agentName,
-      sessionId: speakMcpSessionId,
+      sessionId: appSessionId,
       toolCall: {
         ...toolCall,
         status: approved ? "running" : "failed",
@@ -965,7 +965,7 @@ class ACPService extends EventEmitter {
 
     // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
     await emitAgentProgress({
-      sessionId: speakMcpSessionId,
+      sessionId: appSessionId,
       currentIteration: 0,
       maxIterations: 1,
       steps: [
@@ -1069,8 +1069,8 @@ class ACPService extends EventEmitter {
   ): Promise<{ content: string }> {
     const { sessionId: acpSessionId, path: filePath, line, limit } = params
 
-    // Map ACP session ID to SpeakMCP session ID for UI routing
-    const speakMcpSessionId = getSpeakMcpSessionForAcpSession(acpSessionId) || acpSessionId
+    // Map ACP session ID to DotAgents session ID for UI routing
+    const appSessionId = getAppSessionForAcpSession(acpSessionId) || acpSessionId
 
     try {
       // Security check: Ensure path is absolute
@@ -1093,14 +1093,14 @@ class ACPService extends EventEmitter {
       const config = configStore.get()
       if (config.mcpRequireApprovalBeforeToolCall) {
         const { approvalId, promise } = toolApprovalManager.requestApproval(
-          speakMcpSessionId,
+          appSessionId,
           `fs/read_text_file`,
           { path: filePath, line, limit }
         )
 
         // Emit progress update to show pending approval in UI
         await emitAgentProgress({
-          sessionId: speakMcpSessionId,
+          sessionId: appSessionId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1131,7 +1131,7 @@ class ACPService extends EventEmitter {
 
         // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
         await emitAgentProgress({
-          sessionId: speakMcpSessionId,
+          sessionId: appSessionId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1190,8 +1190,8 @@ class ACPService extends EventEmitter {
   ): Promise<Record<string, never>> {
     const { sessionId: acpSessionId, path: filePath, content } = params
 
-    // Map ACP session ID to SpeakMCP session ID for UI routing
-    const speakMcpSessionId = getSpeakMcpSessionForAcpSession(acpSessionId) || acpSessionId
+    // Map ACP session ID to DotAgents session ID for UI routing
+    const appSessionId = getAppSessionForAcpSession(acpSessionId) || acpSessionId
 
     try {
       // Security check: Ensure path is absolute
@@ -1223,14 +1223,14 @@ class ACPService extends EventEmitter {
       const config = configStore.get()
       if (config.mcpRequireApprovalBeforeToolCall) {
         const { approvalId, promise } = toolApprovalManager.requestApproval(
-          speakMcpSessionId,
+          appSessionId,
           `fs/write_text_file`,
           { path: filePath, contentLength: content.length }
         )
 
         // Emit progress update to show pending approval in UI
         await emitAgentProgress({
-          sessionId: speakMcpSessionId,
+          sessionId: appSessionId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1261,7 +1261,7 @@ class ACPService extends EventEmitter {
 
         // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
         await emitAgentProgress({
-          sessionId: speakMcpSessionId,
+          sessionId: appSessionId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1322,8 +1322,8 @@ class ACPService extends EventEmitter {
           // terminal: true,
         },
         clientInfo: {
-          name: "speakmcp",
-          title: "SpeakMCP",
+          name: "dotagents",
+          title: "DotAgents",
           version: "1.2.0",
         },
       }) as {
@@ -1369,7 +1369,7 @@ class ACPService extends EventEmitter {
     }
 
     try {
-      // Build MCP servers list - optionally inject SpeakMCP builtin tools
+      // Build MCP servers list - optionally inject DotAgents builtin tools
       const mcpServers: Array<{
         type?: string
         name: string
@@ -1377,23 +1377,23 @@ class ACPService extends EventEmitter {
         headers?: Array<{ name: string; value: string }>
       }> = []
 
-      // Check if we should inject SpeakMCP builtin tools
+      // Check if we should inject DotAgents builtin tools
       const config = configStore.get()
       if (config.acpInjectBuiltinTools !== false && config.remoteServerEnabled) {
         const port = config.remoteServerPort || 3210
         const apiKey = config.remoteServerApiKey
 
         if (apiKey) {
-          // Add SpeakMCP's MCP server as an HTTP endpoint
+          // Add DotAgents' MCP server as an HTTP endpoint
           mcpServers.push({
             type: "http",
-            name: "speakmcp-builtin",
+            name: "dotagents-builtin",
             url: `http://127.0.0.1:${port}/mcp`,
             headers: [
               { name: "Authorization", value: `Bearer ${apiKey}` },
             ],
           })
-          logACP("REQUEST", agentName, "session/new", `Injecting SpeakMCP builtin tools on port ${port}`)
+          logACP("REQUEST", agentName, "session/new", `Injecting DotAgents builtin tools on port ${port}`)
         }
       }
 

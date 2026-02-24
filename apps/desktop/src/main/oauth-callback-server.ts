@@ -89,7 +89,7 @@ export class OAuthCallbackServer {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>OAuth Error - SpeakMCP</title>
+          <title>OAuth Error - DotAgents</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; text-align: center; }
             .error { color: #dc3545; }
@@ -111,7 +111,7 @@ export class OAuthCallbackServer {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>OAuth Success - SpeakMCP</title>
+          <title>OAuth Success - DotAgents</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; text-align: center; }
             .success { color: #28a745; }
@@ -121,7 +121,7 @@ export class OAuthCallbackServer {
         <body>
           <div class="container">
             <h1>Authorization Successful!</h1>
-            <p class="success">✓ SpeakMCP has been authorized to access the MCP server.</p>
+            <p class="success">✓ DotAgents has been authorized to access the MCP server.</p>
             <p>You can close this window and return to the application.</p>
           </div>
         </body>
@@ -132,7 +132,7 @@ export class OAuthCallbackServer {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>OAuth Error - SpeakMCP</title>
+          <title>OAuth Error - DotAgents</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; text-align: center; }
             .error { color: #dc3545; }
@@ -178,7 +178,7 @@ export class OAuthCallbackServer {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>SpeakMCP OAuth Callback Server</title>
+        <title>DotAgents OAuth Callback Server</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; text-align: center; }
           .container { max-width: 500px; margin: 0 auto; }
@@ -186,7 +186,7 @@ export class OAuthCallbackServer {
       </head>
       <body>
         <div class="container">
-          <h1>SpeakMCP OAuth Callback Server</h1>
+          <h1>DotAgents OAuth Callback Server</h1>
           <p>This server is running to handle OAuth callbacks.</p>
           <p>Waiting for authorization...</p>
         </div>

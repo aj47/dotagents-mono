@@ -101,7 +101,7 @@ interface ServerDialogProps {
 }
 
 // Reserved server names that cannot be used by users (used for built-in functionality)
-const RESERVED_SERVER_NAMES = ["speakmcp-settings"]
+const RESERVED_SERVER_NAMES = ["dotagents-internal"]
 
 function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFromText, isOpen }: ServerDialogProps) {
   const [name, setName] = useState(server?.name || "")
@@ -915,7 +915,7 @@ export function MCPConfigManager({
     // - undefined: never persisted before (first time) → all collapsed by default
     // - []: explicitly persisted as "no servers collapsed" (e.g., user clicked "expand all") → all expanded
     // - [...names]: specific servers are collapsed → expand all except those
-    const allServerNames = [...Object.keys(config.mcpServers || {}), "speakmcp-settings"]
+    const allServerNames = [...Object.keys(config.mcpServers || {}), "dotagents-internal"]
 
     // If collapsedServers is undefined, we haven't persisted yet - default to all collapsed
     if (collapsedServers === undefined) {
@@ -1643,7 +1643,7 @@ export function MCPConfigManager({
   // Build combined servers list (config servers + builtin server)
   // Filter out any user servers with reserved names to prevent collisions
   // Defined before toggleServerExpansion so it can use allServers for persistence
-  const BUILTIN_SERVER_NAME = "speakmcp-settings"
+  const BUILTIN_SERVER_NAME = "dotagents-internal"
   const filteredUserServers = Object.fromEntries(
     Object.entries(servers).filter(
       ([name]) => !RESERVED_SERVER_NAMES.some(
@@ -2324,7 +2324,7 @@ export function MCPConfigManager({
                               <div className="text-sm">
                                 <span className="font-medium text-muted-foreground">Type:</span>{" "}
                                 <span className="text-xs text-muted-foreground">
-                                  Built-in SpeakMCP settings tools (always available)
+                                  Built-in tools (always available)
                                 </span>
                               </div>
                             ) : serverConfig && (

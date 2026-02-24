@@ -7,7 +7,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { QueuedMessage } from '@speakmcp/shared';
+import { QueuedMessage } from '@dotagents/shared';
 
 // Generate unique message ID
 function generateMessageId(): string {

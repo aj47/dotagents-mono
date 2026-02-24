@@ -77,7 +77,7 @@ Body`
   })
 
   it("loads a layer and uses filename as fallback id", () => {
-    const dir = mkTempDir("speakmcp-memories-")
+    const dir = mkTempDir("dotagents-memories-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
     const memoriesDir = getAgentsMemoriesDir(layer)
@@ -102,7 +102,7 @@ notes`,
   })
 
   it("keeps the newest duplicate by updatedAt", () => {
-    const dir = mkTempDir("speakmcp-memories-dupes-")
+    const dir = mkTempDir("dotagents-memories-dupes-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
     const memoriesDir = getAgentsMemoriesDir(layer)
@@ -140,7 +140,7 @@ importance: medium
   })
 
   it("writes memory files with backups on overwrite", () => {
-    const dir = mkTempDir("speakmcp-memories-write-")
+    const dir = mkTempDir("dotagents-memories-write-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
 

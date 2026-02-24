@@ -58,7 +58,7 @@ describe("agents-files/skills", () => {
   })
 
   it("loads a layer and uses directory path as fallback id", () => {
-    const dir = mkTempDir("speakmcp-skills-")
+    const dir = mkTempDir("dotagents-skills-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
     const skillsDir = getAgentsSkillsDir(layer)
@@ -84,7 +84,7 @@ Body`,
   })
 
   it("keeps the newest duplicate by updatedAt", () => {
-    const dir = mkTempDir("speakmcp-skills-dupes-")
+    const dir = mkTempDir("dotagents-skills-dupes-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
     const skillsDir = getAgentsSkillsDir(layer)
@@ -127,7 +127,7 @@ Body`,
   })
 
   it("defaults missing timestamps to file mtime (stable)", () => {
-    const dir = mkTempDir("speakmcp-skills-mtime-")
+    const dir = mkTempDir("dotagents-skills-mtime-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
     const skillsDir = getAgentsSkillsDir(layer)
@@ -155,7 +155,7 @@ Body`,
   })
 
   it("parses and stringifies filePath override relative to the skill file", () => {
-    const dir = mkTempDir("speakmcp-skills-filepath-")
+    const dir = mkTempDir("dotagents-skills-filepath-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
     const skillsDir = getAgentsSkillsDir(layer)
@@ -190,7 +190,7 @@ Body`,
   })
 
   it("writes skill files with backups on overwrite", () => {
-    const dir = mkTempDir("speakmcp-skills-write-")
+    const dir = mkTempDir("dotagents-skills-write-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
 

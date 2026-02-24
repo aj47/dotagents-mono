@@ -482,7 +482,7 @@ import { summarizationService } from "./summarization-service"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText, writeTextWithFocusRestore } from "./keyboard"
-import { preprocessTextForTTS, validateTTSText } from "@speakmcp/shared"
+import { preprocessTextForTTS, validateTTSText } from "@dotagents/shared"
 import { preprocessTextForTTSWithLLM } from "./tts-llm-preprocessing"
 
 
@@ -1941,7 +1941,7 @@ export const router = {
     const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
 
     const workspaceSource = workspaceLayer
-      ? (process.env.SPEAKMCP_WORKSPACE_DIR && process.env.SPEAKMCP_WORKSPACE_DIR.trim() ? "env" : "upward")
+      ? (process.env.DOTAGENTS_WORKSPACE_DIR && process.env.DOTAGENTS_WORKSPACE_DIR.trim() ? "env" : "upward")
       : null
 
     return {
@@ -3542,7 +3542,7 @@ export const router = {
         // We include displayName to satisfy the ACPAgentConfig contract and avoid undefined issues
         agents.push({
           name: input.agentName,
-          displayName: input.agentName === 'internal' ? 'SpeakMCP Internal' : input.agentName,
+          displayName: input.agentName === 'internal' ? 'DotAgents Internal' : input.agentName,
           enabled: input.enabled,
           isInternal: input.agentName === 'internal',
           connection: { type: 'internal' as const }

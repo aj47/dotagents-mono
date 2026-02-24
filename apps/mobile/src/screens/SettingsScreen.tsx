@@ -45,8 +45,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingRemote, setIsLoadingRemote] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Track if the server is a SpeakMCP desktop server (supports our settings API)
-  const [isSpeakMCPServer, setIsSpeakMCPServer] = useState(false);
+  // Track if the server is a DotAgents desktop server (supports our settings API)
+  const [isDotAgentsServer, setIsDotAgentsServer] = useState(false);
 
   // Skills, Memories, Personas, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -125,7 +125,7 @@ export default function SettingsScreen({ navigation }: any) {
       setProfiles([]);
       setMcpServers([]);
       setRemoteSettings(null);
-      setIsSpeakMCPServer(false);
+      setIsDotAgentsServer(false);
       return;
     }
 
@@ -167,21 +167,21 @@ export default function SettingsScreen({ navigation }: any) {
         successCount++;
       }
 
-      // Consider it a SpeakMCP server if at least one endpoint succeeded
-      // This gates the Desktop Settings section for non-SpeakMCP endpoints (e.g., OpenAI)
-      setIsSpeakMCPServer(successCount > 0);
+      // Consider it a DotAgents server if at least one endpoint succeeded
+      // This gates the Desktop Settings section for non-DotAgents endpoints (e.g., OpenAI)
+      setIsDotAgentsServer(successCount > 0);
 
       // Show error if any endpoint failed but at least one succeeded
       if (errors.length > 0 && successCount > 0) {
         setRemoteError(`Failed to load: ${errors.join(', ')}`);
       } else if (successCount === 0) {
-        // All endpoints failed - not a SpeakMCP server
-        setIsSpeakMCPServer(false);
+        // All endpoints failed - not a DotAgents server
+        setIsDotAgentsServer(false);
       }
     } catch (error: any) {
       console.error('[Settings] Failed to fetch remote settings:', error);
       setRemoteError(error.message || 'Failed to load remote settings');
-      setIsSpeakMCPServer(false);
+      setIsDotAgentsServer(false);
     } finally {
       setIsLoadingRemote(false);
     }
@@ -250,26 +250,26 @@ export default function SettingsScreen({ navigation }: any) {
     }
   }, [settingsClient, fetchRemoteSettings]);
 
-  // Fetch SpeakMCP-specific data only after confirming it's a SpeakMCP server
+  // Fetch DotAgents-specific data only after confirming it's a DotAgents server
   useEffect(() => {
-    if (settingsClient && isSpeakMCPServer) {
+    if (settingsClient && isDotAgentsServer) {
       fetchSkills();
       fetchMemories();
       fetchAgentProfiles();
       fetchLoops();
     }
-  }, [settingsClient, isSpeakMCPServer, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
+  }, [settingsClient, isDotAgentsServer, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     const fetches: Promise<void>[] = [fetchRemoteSettings()];
-    if (isSpeakMCPServer) {
+    if (isDotAgentsServer) {
       fetches.push(fetchSkills(), fetchMemories(), fetchAgentProfiles(), fetchLoops());
     }
     await Promise.all(fetches);
     setIsRefreshing(false);
-  }, [isSpeakMCPServer, fetchRemoteSettings, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
+  }, [isDotAgentsServer, fetchRemoteSettings, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
 
   // Handle profile switch
   const handleProfileSwitch = async (profileId: string) => {
@@ -287,7 +287,7 @@ export default function SettingsScreen({ navigation }: any) {
       const serversRes = await settingsClient.getMCPServers();
       setMcpServers(serversRes.servers);
       // Skills enabledForProfile is profile-specific, so refetch after switch
-      if (isSpeakMCPServer) {
+      if (isDotAgentsServer) {
         fetchSkills();
       }
     } catch (error: any) {
@@ -885,8 +885,8 @@ export default function SettingsScreen({ navigation }: any) {
           Receive notifications when new messages arrive from your AI assistant
         </Text>
 
-        {/* Remote Settings Section - only show when connected to a SpeakMCP desktop server */}
-        {settingsClient && (isLoadingRemote || isSpeakMCPServer) && (
+        {/* Remote Settings Section - only show when connected to a DotAgents desktop server */}
+        {settingsClient && (isLoadingRemote || isDotAgentsServer) && (
           <>
             <Text style={styles.sectionTitle}>Desktop Settings</Text>
 
@@ -1598,7 +1598,7 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4k. Skills */}
-            {isSpeakMCPServer && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="skills" title="Skills">
                 {isLoadingSkills ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -1630,7 +1630,7 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4l. Memories */}
-            {isSpeakMCPServer && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="memories" title="Memories">
                 {isLoadingMemories ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -1674,7 +1674,7 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4m. Agent Personas */}
-            {isSpeakMCPServer && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="agentPersonas" title="Agent Personas">
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -1715,7 +1715,7 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4n. Agent Loops */}
-            {isSpeakMCPServer && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="agentLoops" title="Agent Loops">
                 {isLoadingLoops ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />

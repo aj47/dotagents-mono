@@ -1,5 +1,5 @@
 /**
- * Shared types for SpeakMCP apps (desktop and mobile)
+ * Shared types for DotAgents apps (desktop and mobile)
  * These types are used for communication between the mobile app and the remote server,
  * as well as for consistent data structures across both platforms.
  */

@@ -12,8 +12,8 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
   try {
     const parsed = Linking.parse(data);
-    // Handle speakmcp://config?baseUrl=...&apiKey=...&model=...
-    if (parsed.scheme === 'speakmcp' && (parsed.path === 'config' || parsed.hostname === 'config')) {
+    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
+    if (parsed.scheme === 'dotagents' && (parsed.path === 'config' || parsed.hostname === 'config')) {
       const { baseUrl, apiKey, model } = parsed.queryParams || {};
       if (baseUrl || apiKey || model) {
         return {
@@ -211,7 +211,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           <Text style={styles.scanButtonText}>📷 Scan QR Code</Text>
         </TouchableOpacity>
         <Text style={styles.helperText}>
-          Scan the QR code from your SpeakMCP desktop app to connect
+          Scan the QR code from your DotAgents desktop app to connect
         </Text>
 
         <View style={styles.labelRow}>
@@ -274,7 +274,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           <View style={styles.scannerOverlay}>
             <View style={styles.scannerFrame} />
             <Text style={styles.scannerText}>
-              {scanned ? 'Invalid QR code format' : 'Scan a SpeakMCP QR code'}
+              {scanned ? 'Invalid QR code format' : 'Scan a DotAgents QR code'}
             </Text>
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={() => setShowScanner(false)}>

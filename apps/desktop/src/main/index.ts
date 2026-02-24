@@ -59,7 +59,7 @@ registerServeSchema()
 
 app.whenReady().then(async () => {
   initDebugFlags(process.argv)
-  logApp("SpeakMCP starting up...")
+  logApp("DotAgents starting up...")
 
   // Handle --qr mode: start remote server, start tunnel, print QR code, run headlessly
   if (isQRMode) {

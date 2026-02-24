@@ -2,7 +2,7 @@
  * ACP Main Agent Handler
  *
  * Routes transcripts to an ACP agent instead of the LLM API when ACP mode is enabled.
- * This allows using agents like Claude Code as the "brain" for SpeakMCP.
+ * This allows using agents like Claude Code as the "brain" for DotAgents.
  */
 
 import { acpService, ACPContentBlock } from "./acp-service"
@@ -21,7 +21,7 @@ import { conversationService } from "./conversation-service"
 export interface ACPMainAgentOptions {
   /** Name of the ACP agent to use */
   agentName: string
-  /** SpeakMCP conversation ID */
+  /** DotAgents conversation ID */
   conversationId: string
   /** Force creating a new session even if one exists */
   forceNewSession?: boolean
@@ -165,7 +165,7 @@ export async function processTranscriptWithACPAgent(
       logApp(`[ACP Main] Created new session ${acpSessionId}`)
     }
 
-    // Register the ACP session → SpeakMCP session mapping
+    // Register the ACP session → DotAgents session mapping
     // This is critical for routing tool approval requests to the correct UI session
     setAcpToSpeakMcpSessionMapping(acpSessionId, sessionId)
 

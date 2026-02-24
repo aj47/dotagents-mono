@@ -2,10 +2,12 @@
 // main and renderer code.
 
 // The virtual server name for built-in tools (single source of truth; imported by main + renderer)
-export const BUILTIN_SERVER_NAME = "speakmcp-settings"
+// Built-in tools no longer use a prefix — they are registered as plain tool names.
+// This constant is kept for backward compatibility (e.g., UI grouping, reserved name checks).
+export const BUILTIN_SERVER_NAME = "dotagents-internal"
 
-export const RESPOND_TO_USER_TOOL = `${BUILTIN_SERVER_NAME}:respond_to_user`
-export const MARK_WORK_COMPLETE_TOOL = `${BUILTIN_SERVER_NAME}:mark_work_complete`
+export const RESPOND_TO_USER_TOOL = "respond_to_user"
+export const MARK_WORK_COMPLETE_TOOL = "mark_work_complete"
 
 // Internal completion nudge message: include in the LLM context, but hide from the progress UI.
 // Keep this as a single canonical string so we can filter it via exact match (no false positives).

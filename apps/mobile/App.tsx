@@ -21,7 +21,7 @@ import * as Linking from 'expo-linking';
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 
 
-const speakMCPIcon = require('./assets/speakmcp-icon.png');
+const speakMCPIcon = require('./assets/dotagents-icon.png');
 const darkSpinner = require('./assets/loading-spinner.gif');
 const lightSpinner = require('./assets/light-spinner.gif');
 const SESSION_SYNC_POLL_INTERVAL_MS = 15000;
@@ -32,7 +32,7 @@ function parseDeepLink(url: string | null) {
   if (!url) return null;
   try {
     const parsed = Linking.parse(url);
-    // Handle speakmcp://config?baseUrl=...&apiKey=...&model=...
+    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
     if (parsed.path === 'config' || parsed.hostname === 'config') {
       const { baseUrl, apiKey, model } = parsed.queryParams || {};
       if (baseUrl || apiKey || model) {
@@ -322,7 +322,7 @@ function Navigation() {
                     <Stack.Screen
                       name="Settings"
                       component={SettingsScreen}
-                      options={{ title: 'SpeakMCP' }}
+                      options={{ title: 'DotAgents' }}
                     />
                     <Stack.Screen
                       name="ConnectionSettings"

@@ -6,7 +6,7 @@ import {
   radius,
   typography as sharedTypography,
   hexToRgba,
-} from '@speakmcp/shared';
+} from '@dotagents/shared';
 
 // Re-export shared tokens
 export { spacing, radius, hexToRgba };
@@ -83,7 +83,7 @@ function createTheme(colorScheme: 'light' | 'dark') {
       color: colors.foreground,
       fontSize: 16,
     },
-    // Modern panel style matching SpeakMCP's .modern-panel
+    // Modern panel style matching DotAgents's .modern-panel
     modernPanel: {
       backgroundColor: colors.card,
       borderWidth: 1,

@@ -1,5 +1,5 @@
 /**
- * Simplified Push Notification Service for SpeakMCP mobile app.
+ * Simplified Push Notification Service for DotAgents mobile app.
  * 
  * Consolidated module that handles:
  * - Permission requests

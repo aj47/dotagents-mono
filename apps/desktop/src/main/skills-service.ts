@@ -183,7 +183,7 @@ async function fetchGitHubDefaultBranch(owner: string, repo: string): Promise<st
     const response = await fetch(url, {
       headers: {
         Accept: "application/vnd.github.v3+json",
-        "User-Agent": "SpeakMCP-SkillInstaller",
+        "User-Agent": "DotAgents-SkillInstaller",
       },
     })
     if (!response.ok) {
@@ -239,7 +239,7 @@ async function resolveRefAndPath(
       const response = await fetch(refUrl, {
         headers: {
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "SpeakMCP-SkillInstaller",
+          "User-Agent": "DotAgents-SkillInstaller",
         },
       })
       
@@ -253,7 +253,7 @@ async function resolveRefAndPath(
       const tagResponse = await fetch(tagUrl, {
         headers: {
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "SpeakMCP-SkillInstaller",
+          "User-Agent": "DotAgents-SkillInstaller",
         },
       })
       
@@ -307,7 +307,7 @@ async function listGitHubDirectory(owner: string, repo: string, ref: string, dir
     const response = await fetch(url, {
       headers: {
         Accept: "application/vnd.github.v3+json",
-        "User-Agent": "SpeakMCP-SkillInstaller",
+        "User-Agent": "DotAgents-SkillInstaller",
       },
     })
     if (!response.ok) {
@@ -332,9 +332,9 @@ export const skillsPath = path.join(
 
 // Skills folder for SKILL.md files in App Data (user-writable location)
 // This is the single canonical location for all skills across all platforms:
-// - macOS: ~/Library/Application Support/app.speakmcp/skills/
-// - Windows: %APPDATA%/app.speakmcp/skills/
-// - Linux: ~/.config/app.speakmcp/skills/
+// - macOS: ~/Library/Application Support/app.dotagents/skills/
+// - Windows: %APPDATA%/app.dotagents/skills/
+// - Linux: ~/.config/app.dotagents/skills/
 export const skillsFolder = path.join(
   app.getPath("appData"),
   process.env.APP_ID,
@@ -935,7 +935,7 @@ class SkillsService {
 # Available Agent Skills
 
 To use a skill:
-1) Call \`speakmcp-settings:load_skill_instructions\` with its ID
+1) Call \`load_skill_instructions\` with its ID
 2) Follow the loaded instructions exactly (do not guess from name/description)
 
 ${skillsContent}
@@ -943,7 +943,7 @@ ${skillsContent}
 ## Skills Folders
 - Active layer: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsDir ? `\n- Global fallback: \`${globalSkillsDir}\`` : ""}
 
-Tip: Use \`speakmcp-settings:execute_command\` with \`skillId\` to run commands in that skill's directory.
+Tip: Use \`execute_command\` with \`skillId\` to run commands in that skill's directory.
 `
   }
 
@@ -1264,7 +1264,7 @@ Tip: Use \`speakmcp-settings:execute_command\` with \`skillId\` to run commands 
 
   /**
    * Reload skills from the canonical .agents/skills/ directories.
-   * Previously this also scanned the legacy ~/Library/Application Support/app.speakmcp/skills/
+   * Previously this also scanned the legacy ~/Library/Application Support/app.dotagents/skills/
    * folder and re-imported SKILL.md files with new UUIDs, which caused duplicate skills
    * when ~/.augment/skills was symlinked to ~/.agents/skills.
    * Now it only reloads from .agents layers (global + workspace).

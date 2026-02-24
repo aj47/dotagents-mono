@@ -40,7 +40,7 @@ import {
   shouldCollapseMessage,
   formatToolArguments,
   getToolResultsSummary,
-} from '@speakmcp/shared';
+} from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';

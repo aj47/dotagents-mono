@@ -155,7 +155,7 @@ function isHeadlessEnvironment(): boolean {
     }
   }
   // Check for explicit terminal mode flag
-  if (process.env.SPEAKMCP_TERMINAL_MODE === "1") {
+  if (process.env.DOTAGENTS_TERMINAL_MODE === "1") {
     return true
   }
   return false
@@ -168,7 +168,7 @@ function isHeadlessEnvironment(): boolean {
  * @returns true if QR code was printed successfully, false on error
  */
 async function printTerminalQRCode(url: string, apiKey: string): Promise<boolean> {
-  const qrValue = `speakmcp://config?baseUrl=${encodeURIComponent(url)}&apiKey=${encodeURIComponent(apiKey)}`
+  const qrValue = `dotagents://config?baseUrl=${encodeURIComponent(url)}&apiKey=${encodeURIComponent(apiKey)}`
 
   try {
     // Generate QR code as terminal-friendly ASCII art
@@ -181,7 +181,7 @@ async function printTerminalQRCode(url: string, apiKey: string): Promise<boolean
     console.log("\n" + "=".repeat(60))
     console.log("📱 Mobile App Connection QR Code")
     console.log("=".repeat(60))
-    console.log("\nScan this QR code with the SpeakMCP mobile app to connect:\n")
+    console.log("\nScan this QR code with the DotAgents mobile app to connect:\n")
     console.log(qrString)
     console.log("Server URL:", url)
     console.log("API Key:", redact(apiKey))
@@ -948,8 +948,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     try {
       const serverStatus = mcpService.getServerStatus()
       const servers = Object.entries(serverStatus)
-        // Filter out the built-in speakmcp-settings pseudo-server as it's not user-toggleable
-        .filter(([name]) => name !== "speakmcp-settings")
+        // Filter out the built-in dotagents-internal pseudo-server as it's not user-toggleable
+        .filter(([name]) => name !== "dotagents-internal")
         .map(([name, status]) => ({
           name,
           connected: status.connected,
@@ -1690,7 +1690,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
-  // MCP Protocol Endpoints - Expose SpeakMCP builtin tools to external agents
+  // MCP Protocol Endpoints - Expose DotAgents builtin tools to external agents
   // These endpoints implement a simplified MCP-over-HTTP protocol
 
   // POST /mcp/tools/list - List all available builtin tools

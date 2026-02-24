@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TUNNEL_METADATA_KEY = 'speakmcp_tunnel_metadata_v1';
+const TUNNEL_METADATA_KEY = 'dotagents_tunnel_metadata_v1';
 
 /**
  * Tunnel metadata for connection persistence.

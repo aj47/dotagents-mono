@@ -30,7 +30,7 @@ function writeJson(filePath: string, value: unknown): void {
 
 describe("modular-config", () => {
   it("loads layer config and normalizes default system prompt", () => {
-    const dir = mkTempDir("speakmcp-modular-config-")
+    const dir = mkTempDir("dotagents-modular-config-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
 
@@ -46,7 +46,7 @@ describe("modular-config", () => {
   })
 
   it("merges workspace layer over global layer", () => {
-    const dir = mkTempDir("speakmcp-modular-merge-")
+    const dir = mkTempDir("dotagents-modular-merge-")
     const globalAgentsDir = path.join(dir, "global", ".agents")
     const workspaceAgentsDir = path.join(dir, "workspace", ".agents")
 
@@ -65,7 +65,7 @@ describe("modular-config", () => {
   })
 
   it("writes expected files and splits config into buckets", () => {
-    const dir = mkTempDir("speakmcp-modular-write-")
+    const dir = mkTempDir("dotagents-modular-write-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
 
@@ -101,7 +101,7 @@ describe("modular-config", () => {
   })
 
   it("finds .agents directory upward", () => {
-    const dir = mkTempDir("speakmcp-find-agents-")
+    const dir = mkTempDir("dotagents-find-agents-")
     const rootAgents = path.join(dir, ".agents")
     fs.mkdirSync(rootAgents, { recursive: true })
 

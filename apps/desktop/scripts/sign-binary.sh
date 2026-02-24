@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Sign the Rust binary for macOS
-# This script signs the speakmcp-rs binary for distribution
+# This script signs the dotagents-rs binary for distribution
 
-BINARY_PATH="resources/bin/speakmcp-rs"
+BINARY_PATH="resources/bin/dotagents-rs"
 
 if [ ! -f "$BINARY_PATH" ]; then
     echo "❌ Binary not found at $BINARY_PATH"

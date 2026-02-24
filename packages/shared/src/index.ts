@@ -1,7 +1,7 @@
 /**
- * @speakmcp/shared
+ * @dotagents/shared
  *
- * Shared design tokens, types, and utilities for SpeakMCP apps
+ * Shared design tokens, types, and utilities for DotAgents apps
  */
 
 export * from './colors';

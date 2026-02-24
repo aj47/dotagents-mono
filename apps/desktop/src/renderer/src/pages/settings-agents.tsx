@@ -190,9 +190,9 @@ export function SettingsAgents() {
   const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue("") }
 
   // Derived tool data
-  const builtinTools = allTools.filter(t => t.serverName === "speakmcp-settings")
-  const externalTools = allTools.filter(t => t.serverName !== "speakmcp-settings")
-  const serverNames = Object.keys(serverStatus).filter(n => n !== "speakmcp-settings")
+  const builtinTools = allTools.filter(t => t.serverName === "dotagents-internal")
+  const externalTools = allTools.filter(t => t.serverName !== "dotagents-internal")
+  const serverNames = Object.keys(serverStatus).filter(n => n !== "dotagents-internal")
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.serverName === serverName)
 
   // Tool config helpers
@@ -699,14 +699,14 @@ export function SettingsAgents() {
                     {builtinTools.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No built-in tools available.</p>
                     ) : builtinTools.map(tool => {
-                      const isEssential = tool.name === "speakmcp-settings:mark_work_complete"
+                      const isEssential = tool.name === "mark_work_complete"
                       const enabled = isEssential || isBuiltinToolEnabled(tool.name)
                       return (
                         <div key={tool.name} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/30">
                           <Switch checked={enabled} disabled={isEssential} onCheckedChange={() => toggleBuiltinTool(tool.name)} />
                           <div className="min-w-0">
                             <span className={`text-sm truncate flex items-center gap-2 ${!enabled ? "text-muted-foreground" : ""}`}>
-                              {tool.name.replace("speakmcp-settings:", "")}
+                              {tool.name}
                               {isEssential && <Badge variant="outline" className="text-[10px] px-1.5">essential</Badge>}
                             </span>
                             {tool.description && <span className="text-xs text-muted-foreground truncate block">{tool.description}</span>}

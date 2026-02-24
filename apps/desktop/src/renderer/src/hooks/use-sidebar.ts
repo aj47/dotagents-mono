@@ -10,7 +10,7 @@ export const SIDEBAR_DIMENSIONS = {
   },
 } as const
 
-const STORAGE_KEY = "speakmcp-sidebar"
+const STORAGE_KEY = "dotagents-sidebar"
 
 interface SidebarState {
   isCollapsed: boolean

@@ -91,14 +91,14 @@ export class OAuthClient {
     const redirectUri = this.getRedirectUri()
 
     const clientMetadata: OAuthClientMetadata = {
-      client_name: 'SpeakMCP',
+      client_name: 'DotAgents',
       redirect_uris: [redirectUri],
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       scope: this.config.scope || 'user',
       token_endpoint_auth_method: 'none',
       ...(this.config.clientMetadata && {
-        client_name: this.config.clientMetadata.client_name || 'SpeakMCP',
+        client_name: this.config.clientMetadata.client_name || 'DotAgents',
         grant_types: this.config.clientMetadata.grant_types || ['authorization_code', 'refresh_token'],
         response_types: this.config.clientMetadata.response_types || ['code'],
         scope: this.config.clientMetadata.scope || this.config.scope || 'user',
@@ -163,7 +163,7 @@ export class OAuthClient {
     }
 
     const isDevelopment = process.env.NODE_ENV === 'development' || !!process.env.ELECTRON_RENDERER_URL
-    return isDevelopment ? 'http://localhost:3000/callback' : 'speakmcp://oauth/callback'
+    return isDevelopment ? 'http://localhost:3000/callback' : 'dotagents://oauth/callback'
   }
 
   /**

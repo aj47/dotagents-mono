@@ -47,7 +47,7 @@ export class OAuthDeepLinkHandler {
     if (process.platform === 'win32' || process.platform === 'linux') {
       const args = process.argv
       for (const arg of args) {
-        if (arg.startsWith('speakmcp://')) {
+        if (arg.startsWith('dotagents://')) {
           this.handleDeepLink(null as any, arg)
           break
         }
@@ -55,7 +55,7 @@ export class OAuthDeepLinkHandler {
 
       this.secondInstanceHandler = (_event: Electron.Event, commandLine: string[]) => {
         for (const arg of commandLine) {
-          if (arg.startsWith('speakmcp://')) {
+          if (arg.startsWith('dotagents://')) {
             this.handleDeepLink(null as any, arg)
             break
           }
@@ -79,7 +79,7 @@ export class OAuthDeepLinkHandler {
       }
       const pathname = fullPath.replace(/^\/+/, '/')
 
-      const isOAuthProtocol = parsedUrl.protocol.toLowerCase() === 'speakmcp:'
+      const isOAuthProtocol = parsedUrl.protocol.toLowerCase() === 'dotagents:'
       const isOAuthPath = pathname === '/oauth/callback'
 
       if (isOAuthProtocol && isOAuthPath) {
@@ -209,8 +209,8 @@ export function initializeDeepLinkHandling(): void {
   // In development, deep links won't work but we'll provide fallback
   if (process.env.NODE_ENV === 'production' || !process.env.ELECTRON_RENDERER_URL) {
     try {
-      if (!app.isDefaultProtocolClient('speakmcp')) {
-        app.setAsDefaultProtocolClient('speakmcp')
+      if (!app.isDefaultProtocolClient('dotagents')) {
+        app.setAsDefaultProtocolClient('dotagents')
       }
     } catch (error) {
       // Silently fail - protocol registration is not critical

@@ -54,7 +54,7 @@ const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
 // Validation Helpers (ported from profile-service.ts)
 // ============================================================================
 
-const RESERVED_SERVER_NAMES = ["speakmcp-settings"]
+const RESERVED_SERVER_NAMES = ["dotagents-internal"]
 const VALID_PROVIDER_IDS = ["openai", "groq", "gemini"]
 const VALID_STT_PROVIDER_IDS = ["openai", "groq", "parakeet"]
 const VALID_TTS_PROVIDER_IDS = ["openai", "groq", "gemini", "kitten", "supertonic"]

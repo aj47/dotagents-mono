@@ -98,7 +98,7 @@ export interface ACPRunRequest {
   mode: 'sync' | 'async' | 'stream';
   /** Session ID for this run */
   sessionId?: string;
-  /** Parent session ID - links to main SpeakMCP session */
+  /** Parent session ID - links to main DotAgents session */
   parentSessionId?: string;
   /** Timeout in milliseconds for this specific run */
   timeout?: number;
@@ -140,7 +140,7 @@ export interface ACPSubAgentState {
   runId: string;
   /** Name of the sub-agent */
   agentName: string;
-  /** Parent session ID linking to the main SpeakMCP session */
+  /** Parent session ID linking to the main DotAgents session */
   parentSessionId: string;
   /** Description of the task delegated to this sub-agent */
   task: string;

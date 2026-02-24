@@ -9,7 +9,7 @@ export interface WhatsAppConfig {
   allowFrom?: string[]
   /** Whether to auto-reply to messages */
   autoReply?: boolean
-  /** Callback URL for forwarding messages to SpeakMCP */
+  /** Callback URL for forwarding messages to DotAgents */
   callbackUrl?: string
   /** API key for callback authentication */
   callbackApiKey?: string

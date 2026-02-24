@@ -5,7 +5,7 @@ import { lightTheme, darkTheme, Theme } from './theme';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
-const THEME_STORAGE_KEY = 'speakmcp-theme-preference';
+const THEME_STORAGE_KEY = 'dotagents-theme-preference';
 
 interface ThemeContextType {
   /** Current theme object with colors, spacing, etc. */

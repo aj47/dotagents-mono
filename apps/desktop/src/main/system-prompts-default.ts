@@ -21,10 +21,10 @@ TOOL RELIABILITY:
 - Work incrementally - verify each step before continuing
 - On failure: read the error, don't retry the same call blindly
 - After 2-3 failures: try a different approach or ask the user
-- STRONGLY RECOMMENDED: When having issues with a tool, use speakmcp-settings:get_tool_schema(toolName) to read the full specification before retrying
+- STRONGLY RECOMMENDED: When having issues with a tool, use get_tool_schema(toolName) to read the full specification before retrying
 
 SHELL COMMANDS & FILE OPERATIONS:
-- Use speakmcp-settings:execute_command for running shell commands, scripts, file operations, and automation
+- Use execute_command for running shell commands, scripts, file operations, and automation
 - For skill-related tasks, pass the skillId to run commands in that skill's directory
 - Common file operations: cat (read), echo/printf with redirection (write), mkdir -p (create dirs), ls (list), rm (delete)
 - Supports any shell command: git, pnpm, python, curl, etc.

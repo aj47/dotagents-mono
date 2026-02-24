@@ -59,7 +59,7 @@ $requiredDirs = @(
     "resources/bin",
     "dist",
     "dist-installer",
-    "dist-installer@speakmcp"
+    "dist-installer@dotagents"
 )
 
 foreach ($dir in $requiredDirs) {
@@ -73,12 +73,12 @@ foreach ($dir in $requiredDirs) {
 
 # Change to Rust project directory
 Write-Host "[INFO] Entering Rust project directory..." -ForegroundColor Yellow
-if (!(Test-Path "speakmcp-rs")) {
-    Write-Host "[ERROR] speakmcp-rs directory not found!" -ForegroundColor Red
+if (!(Test-Path "dotagents-rs")) {
+    Write-Host "[ERROR] dotagents-rs directory not found!" -ForegroundColor Red
     exit 1
 }
 
-Set-Location "speakmcp-rs"
+Set-Location "dotagents-rs"
 
 # Clean previous builds
 Write-Host "[CLEAN] Cleaning previous builds..." -ForegroundColor Yellow
@@ -100,7 +100,7 @@ try {
         Write-Host "[OK] Rust binary built successfully!" -ForegroundColor Green
 
         # Verify the binary exists
-        $binaryPath = "target/release/speakmcp-rs.exe"
+        $binaryPath = "target/release/dotagents-rs.exe"
         if (Test-Path $binaryPath) {
             $binarySize = (Get-Item $binaryPath).Length
             $sizeKB = [math]::Round($binarySize/1024, 2)
@@ -108,8 +108,8 @@ try {
 
             # Copy the binary to resources/bin with .exe extension
             Write-Host "[INFO] Copying binary to resources/bin..." -ForegroundColor Yellow
-            Copy-Item $binaryPath "../resources/bin/speakmcp-rs.exe" -Force
-            Write-Host "[OK] Binary copied to resources/bin/speakmcp-rs.exe" -ForegroundColor Green
+            Copy-Item $binaryPath "../resources/bin/dotagents-rs.exe" -Force
+            Write-Host "[OK] Binary copied to resources/bin/dotagents-rs.exe" -ForegroundColor Green
         } else {
             Write-Host "[ERROR] Binary not found at expected location: $binaryPath" -ForegroundColor Red
             Set-Location ".."
@@ -134,7 +134,7 @@ try {
 Set-Location ".."
 
 # Final verification
-$finalBinaryPath = "resources/bin/speakmcp-rs.exe"
+$finalBinaryPath = "resources/bin/dotagents-rs.exe"
 if (Test-Path $finalBinaryPath) {
     $finalSize = (Get-Item $finalBinaryPath).Length
     Write-Host "[SUCCESS] Windows Rust binary build completed successfully!" -ForegroundColor Green

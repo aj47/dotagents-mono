@@ -1,19 +1,19 @@
 /**
- * WhatsApp MCP Server for SpeakMCP
+ * WhatsApp MCP Server for DotAgents
  *
  * This MCP server enables WhatsApp messaging capabilities through the
  * Model Context Protocol. It allows AI agents to send and receive
  * WhatsApp messages.
  *
  * Usage:
- *   npx @speakmcp/mcp-whatsapp
+ *   npx @dotagents/mcp-whatsapp
  *
- * Or add to SpeakMCP MCP config:
+ * Or add to DotAgents MCP config:
  *   {
  *     "mcpServers": {
  *       "whatsapp": {
  *         "command": "npx",
- *         "args": ["@speakmcp/mcp-whatsapp"]
+ *         "args": ["@dotagents/mcp-whatsapp"]
  *       }
  *     }
  *   }
@@ -33,7 +33,7 @@ import type { WhatsAppConfig, WhatsAppMessage } from "./types.js"
 
 // Configuration from environment variables
 const config: WhatsAppConfig = {
-  authDir: process.env.WHATSAPP_AUTH_DIR || path.join(os.homedir(), ".speakmcp", "whatsapp-auth"),
+  authDir: process.env.WHATSAPP_AUTH_DIR || path.join(os.homedir(), ".dotagents", "whatsapp-auth"),
   allowFrom: process.env.WHATSAPP_ALLOW_FROM?.split(",").map((s) => s.trim()) || [],
   autoReply: process.env.WHATSAPP_AUTO_REPLY === "true",
   callbackUrl: process.env.WHATSAPP_CALLBACK_URL,

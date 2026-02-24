@@ -8,7 +8,7 @@ import { makeTextCompletionWithFetch } from "./llm-fetch"
 import { configStore } from "./config"
 import { Config } from "@shared/types"
 import { diagnosticsService } from "./diagnostics"
-import { preprocessTextForTTS as regexPreprocessTextForTTS } from "@speakmcp/shared"
+import { preprocessTextForTTS as regexPreprocessTextForTTS } from "@dotagents/shared"
 
 /**
  * Builds a dynamic TTS preprocessing prompt based on user config settings.

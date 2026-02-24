@@ -1,7 +1,7 @@
 import type { CHAT_PROVIDER_ID, STT_PROVIDER_ID, TTS_PROVIDER_ID, OPENAI_COMPATIBLE_PRESET_ID } from "."
-import type { ToolCall, ToolResult } from '@speakmcp/shared'
+import type { ToolCall, ToolResult } from '@dotagents/shared'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse } from '@speakmcp/shared'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse } from '@dotagents/shared'
 
 export type RecordingHistoryItem = {
   id: string
@@ -533,13 +533,13 @@ export type PersonaSkillsConfig = {
  * Defines how to connect to the agent's underlying implementation.
  *
  * Two main modes:
- * 1. Built-in agent (type: "internal") - Uses SpeakMCP's internal agent with agent's model config
+ * 1. Built-in agent (type: "internal") - Uses DotAgents' internal agent with agent's model config
  * 2. External ACP agent (type: "acp-agent") - Delegates to a configured ACP agent by name
  */
 export type PersonaConnectionConfig = {
   /**
    * Connection type:
-   * - "internal": Uses built-in SpeakMCP agent (model config from agent)
+   * - "internal": Uses built-in DotAgents agent (model config from agent)
    * - "acp-agent": Uses an external ACP agent (model config from agent settings)
    * - "stdio": Direct stdio process (legacy, for advanced use)
    * - "remote": Remote HTTP endpoint (legacy, for advanced use)
@@ -635,7 +635,7 @@ export type PersonasData = {
 
 /**
  * Connection type for an agent profile.
- * - "internal": Uses built-in SpeakMCP agent (model config from profile)
+ * - "internal": Uses built-in DotAgents agent (model config from profile)
  * - "acp": External ACP-compatible agent (stdio spawn)
  * - "stdio": Direct stdio process spawn
  * - "remote": Remote HTTP endpoint
@@ -1340,7 +1340,7 @@ export type Config = {
   floatingPanelAutoShow?: boolean
 
   // Hide Floating Panel When Main App is Focused
-  // When true (default), the floating panel will automatically hide when the main SpeakMCP window is focused
+  // When true (default), the floating panel will automatically hide when the main DotAgents window is focused
   // The panel will reappear when the main window loses focus (if auto-show conditions are met)
   hidePanelWhenMainFocused?: boolean
 
@@ -1423,7 +1423,7 @@ export type Config = {
   // Name of the ACP agent to use when mainAgentMode is "acp"
   mainAgentName?: string
 
-  // ACP Tool Injection: When true (default), SpeakMCP's builtin tools are injected
+  // ACP Tool Injection: When true (default), DotAgents' builtin tools are injected
   // into ACP agent sessions so they can use delegation, settings management, etc.
   // Set to false for "pure" ACP mode where the agent only uses its own tools.
   acpInjectBuiltinTools?: boolean

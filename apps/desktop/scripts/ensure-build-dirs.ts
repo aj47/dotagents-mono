@@ -21,7 +21,7 @@ const desktopDir = join(__dirname, "..")
 const requiredDirs = [
   "dist",
   "dist-installer",
-  "dist-installer@speakmcp",
+  "dist-installer@dotagents",
   "resources/bin",
 ]
 

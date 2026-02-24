@@ -11,9 +11,9 @@ import { URL } from 'url';
 const testCases = [
   {
     name: 'Standard OAuth callback (double slash - with authority)',
-    url: 'speakmcp://oauth/callback?code=test123&state=abc456',
+    url: 'dotagents://oauth/callback?code=test123&state=abc456',
     expected: {
-      protocol: 'speakmcp:',
+      protocol: 'dotagents:',
       host: 'oauth',
       pathname: '/callback',
       code: 'test123',
@@ -22,9 +22,9 @@ const testCases = [
   },
   {
     name: 'OAuth callback with single slash (no authority)',
-    url: 'speakmcp:/oauth/callback?code=test456&state=xyz789',
+    url: 'dotagents:/oauth/callback?code=test456&state=xyz789',
     expected: {
-      protocol: 'speakmcp:',
+      protocol: 'dotagents:',
       pathname: '/oauth/callback',
       code: 'test456',
       state: 'xyz789'
@@ -32,9 +32,9 @@ const testCases = [
   },
   {
     name: 'OAuth callback with error',
-    url: 'speakmcp://oauth/callback?error=access_denied&error_description=User%20denied',
+    url: 'dotagents://oauth/callback?error=access_denied&error_description=User%20denied',
     expected: {
-      protocol: 'speakmcp:',
+      protocol: 'dotagents:',
       pathname: '/oauth/callback',
       error: 'access_denied',
       error_description: 'User denied'
@@ -42,18 +42,18 @@ const testCases = [
   },
   {
     name: 'OAuth callback with triple slash',
-    url: 'speakmcp:///oauth/callback?code=test789',
+    url: 'dotagents:///oauth/callback?code=test789',
     expected: {
-      protocol: 'speakmcp:',
+      protocol: 'dotagents:',
       pathname: '/oauth/callback',
       code: 'test789'
     }
   },
   {
     name: 'OAuth callback with uppercase protocol (Windows compatibility)',
-    url: 'SPEAKMCP://oauth/callback?code=test999&state=upper',
+    url: 'dotagents://oauth/callback?code=test999&state=upper',
     expected: {
-      protocol: 'speakmcp:', // URL constructor normalizes to lowercase
+      protocol: 'dotagents:', // URL constructor normalizes to lowercase
       host: 'oauth',
       pathname: '/callback',
       code: 'test999',
@@ -90,7 +90,7 @@ testCases.forEach((testCase, index) => {
     console.log(`  Normalized Pathname: ${normalizedPathname}`);
 
     // Check protocol (case-insensitive for cross-platform compatibility)
-    const isOAuthProtocol = parsedUrl.protocol.toLowerCase() === 'speakmcp:';
+    const isOAuthProtocol = parsedUrl.protocol.toLowerCase() === 'dotagents:';
     const isOAuthPath = normalizedPathname === '/oauth/callback';
 
     console.log(`\nValidation:`);

@@ -1,4 +1,4 @@
-import type { ToolCall, ToolResult } from '@speakmcp/shared';
+import type { ToolCall, ToolResult } from '@dotagents/shared';
 
 export interface ChatMessage {
   id: string;
@@ -10,7 +10,7 @@ export interface ChatMessage {
 }
 
 // Re-export shared types for convenience
-export type { ToolCall, ToolResult } from '@speakmcp/shared';
+export type { ToolCall, ToolResult } from '@dotagents/shared';
 
 export interface Session {
   id: string;
@@ -18,7 +18,7 @@ export interface Session {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
-  /** Server-side conversation ID for continuing conversations on the SpeakMCP server */
+  /** Server-side conversation ID for continuing conversations on the DotAgents server */
   serverConversationId?: string;
   /** Optional metadata about the session */
   metadata?: {

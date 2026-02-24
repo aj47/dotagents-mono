@@ -8,14 +8,14 @@ param(
 Write-Host "[BUILD] Starting Windows build with cleanup..." -ForegroundColor Green
 
 # Function to kill processes safely
-function Stop-SpeakMCPProcesses {
-    Write-Host "[CLEANUP] Stopping SpeakMCP processes..." -ForegroundColor Yellow
+function Stop-DotAgentsProcesses {
+    Write-Host "[CLEANUP] Stopping DotAgents processes..." -ForegroundColor Yellow
     
     try {
-        # Kill speakmcp.exe processes
-        $processes = Get-Process -Name "speakmcp" -ErrorAction SilentlyContinue
+        # Kill dotagents.exe processes
+        $processes = Get-Process -Name "dotagents" -ErrorAction SilentlyContinue
         if ($processes) {
-            Write-Host "[CLEANUP] Found $($processes.Count) speakmcp.exe processes" -ForegroundColor Yellow
+            Write-Host "[CLEANUP] Found $($processes.Count) dotagents.exe processes" -ForegroundColor Yellow
             $processes | ForEach-Object {
                 try {
                     $_.Kill()
@@ -27,10 +27,10 @@ function Stop-SpeakMCPProcesses {
             Start-Sleep -Seconds 2
         }
         
-        # Kill speakmcp-rs.exe processes
-        $rsProcesses = Get-Process -Name "speakmcp-rs" -ErrorAction SilentlyContinue
+        # Kill dotagents-rs.exe processes
+        $rsProcesses = Get-Process -Name "dotagents-rs" -ErrorAction SilentlyContinue
         if ($rsProcesses) {
-            Write-Host "[CLEANUP] Found $($rsProcesses.Count) speakmcp-rs.exe processes" -ForegroundColor Yellow
+            Write-Host "[CLEANUP] Found $($rsProcesses.Count) dotagents-rs.exe processes" -ForegroundColor Yellow
             $rsProcesses | ForEach-Object {
                 try {
                     $_.Kill()
@@ -43,7 +43,7 @@ function Stop-SpeakMCPProcesses {
         }
         
         if (-not $processes -and -not $rsProcesses) {
-            Write-Host "[CLEANUP] No SpeakMCP processes found" -ForegroundColor Green
+            Write-Host "[CLEANUP] No DotAgents processes found" -ForegroundColor Green
         }
     } catch {
         Write-Host "[WARNING] Error during process cleanup: $($_.Exception.Message)" -ForegroundColor Yellow
@@ -76,11 +76,11 @@ function Remove-DistDirectory {
                 Start-Sleep -Seconds 3
                 
                 # Try to kill processes again
-                Stop-SpeakMCPProcesses
+                Stop-DotAgentsProcesses
             } else {
                 Write-Host "[ERROR] Failed to clean dist directory after $maxRetries attempts" -ForegroundColor Red
                 Write-Host "[INFO] You may need to:" -ForegroundColor Cyan
-                Write-Host "  1. Close any running SpeakMCP instances" -ForegroundColor Cyan
+                Write-Host "  1. Close any running DotAgents instances" -ForegroundColor Cyan
                 Write-Host "  2. Disable antivirus temporarily" -ForegroundColor Cyan
                 Write-Host "  3. Run PowerShell as Administrator" -ForegroundColor Cyan
                 return $false
@@ -97,7 +97,7 @@ function Ensure-BuildDirectories {
     $directories = @(
         "dist",
         "dist-installer",
-        "dist-installer@speakmcp",
+        "dist-installer@dotagents",
         "resources/bin"
     )
 
@@ -114,7 +114,7 @@ function Ensure-BuildDirectories {
 # Main build process
 try {
     # Step 1: Stop any running processes
-    Stop-SpeakMCPProcesses
+    Stop-DotAgentsProcesses
 
     # Step 2: Clean dist directory
     $cleanSuccess = Remove-DistDirectory

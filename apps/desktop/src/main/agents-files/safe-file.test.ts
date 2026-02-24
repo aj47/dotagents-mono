@@ -6,7 +6,7 @@ import { safeReadJsonFileSync, safeWriteFileSync, safeWriteJsonFileSync } from "
 
 describe("safe-file", () => {
   it("writes atomically and creates backups on overwrite", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "speakmcp-safe-file-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-safe-file-"))
     const filePath = path.join(dir, "settings.json")
     const backupDir = path.join(dir, "backups")
 
@@ -22,7 +22,7 @@ describe("safe-file", () => {
   })
 
   it("rotates backups", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "speakmcp-safe-file-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-safe-file-"))
     const filePath = path.join(dir, "settings.json")
     const backupDir = path.join(dir, "backups")
 
@@ -35,7 +35,7 @@ describe("safe-file", () => {
   })
 
   it("recovers corrupted JSON from latest backup", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "speakmcp-safe-file-"))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-safe-file-"))
     const filePath = path.join(dir, "data.json")
     const backupDir = path.join(dir, "backups")
 

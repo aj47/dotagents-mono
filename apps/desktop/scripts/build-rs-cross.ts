@@ -5,7 +5,7 @@
  * It automatically detects the platform and runs the appropriate
  * build command.
  * 
- * Issue: https://github.com/aj47/SpeakMCP/issues/595
+ * Issue: https://github.com/aj47/dotagents-mono/issues/595
  */
 
 import { execSync, spawn } from "child_process"
@@ -16,7 +16,7 @@ import { fileURLToPath } from "url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const desktopDir = join(__dirname, "..")
-const rustDir = join(desktopDir, "speakmcp-rs")
+const rustDir = join(desktopDir, "dotagents-rs")
 const resourcesBinDir = join(desktopDir, "resources", "bin")
 
 const isWindows = process.platform === "win32"
@@ -29,7 +29,7 @@ const requiredDirs = [
   resourcesBinDir,
   join(desktopDir, "dist"),
   join(desktopDir, "dist-installer"),
-  join(desktopDir, "dist-installer@speakmcp"),
+  join(desktopDir, "dist-installer@dotagents"),
 ]
 
 for (const dir of requiredDirs) {
@@ -53,12 +53,12 @@ try {
 
 // Copy the binary to resources/bin
 const srcBinary = isWindows
-  ? join(rustDir, "target", "release", "speakmcp-rs.exe")
-  : join(rustDir, "target", "release", "speakmcp-rs")
+  ? join(rustDir, "target", "release", "dotagents-rs.exe")
+  : join(rustDir, "target", "release", "dotagents-rs")
 
 const destBinary = isWindows
-  ? join(resourcesBinDir, "speakmcp-rs.exe")
-  : join(resourcesBinDir, "speakmcp-rs")
+  ? join(resourcesBinDir, "dotagents-rs.exe")
+  : join(resourcesBinDir, "dotagents-rs")
 
 if (!existsSync(srcBinary)) {
   console.error(`❌ Built binary not found at: ${srcBinary}`)

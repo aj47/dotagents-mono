@@ -7,7 +7,7 @@ import { logApp } from "./debug"
 import { configStore } from "./config"
 import { getBuiltinToolNames } from "./builtin-tool-definitions"
 
-const RESERVED_SERVER_NAMES = ["speakmcp-settings"]
+const RESERVED_SERVER_NAMES = ["dotagents-internal"]
 
 // Valid provider IDs that are supported by the application
 const VALID_PROVIDER_IDS = ["openai", "groq", "gemini"]
