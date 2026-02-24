@@ -5,14 +5,13 @@
  * Supported:
  * - Linux/X11: LinuxX11Backend (uses bundled bash script)
  * - macOS: MacOSBackend (uses osascript + Chrome --app mode)
- *
- * Planned:
- * - Windows: WindowsBackend (PR #3)
+ * - Windows: WindowsBackend (uses PowerShell + Chrome --app mode)
  */
 
 import type { LdiBackend } from "../types"
 import { LinuxX11Backend } from "./linux-x11"
 import { MacOSBackend } from "./macos"
+import { WindowsBackend } from "./windows"
 
 export interface BackendOptions {
   scriptPath?: string
@@ -33,8 +32,8 @@ export function createBackend(options?: BackendOptions): LdiBackend | null {
     case "darwin":
       return new MacOSBackend()
 
-    // case "win32":
-    //   return new WindowsBackend()  // PR #3
+    case "win32":
+      return new WindowsBackend()
 
     default:
       return null
@@ -43,3 +42,4 @@ export function createBackend(options?: BackendOptions): LdiBackend | null {
 
 export { LinuxX11Backend }
 export { MacOSBackend }
+export { WindowsBackend }

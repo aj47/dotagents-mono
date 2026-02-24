@@ -10,12 +10,13 @@
 
 export { LdiClient } from "./ldi-client"
 export { checkPlatform } from "./platform"
-export { createBackend, LinuxX11Backend, MacOSBackend } from "./backends"
+export { createBackend, LinuxX11Backend, MacOSBackend, WindowsBackend } from "./backends"
 export {
   getScriptPath,
   DEFAULT_SLOT,
   SUPPORTED_BROWSERS,
   MACOS_BROWSER_PATHS,
+  WINDOWS_BROWSER_PATHS,
   REQUIRED_LINUX_DEPS,
 } from "./constants"
 export type {

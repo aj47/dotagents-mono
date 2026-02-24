@@ -44,7 +44,9 @@
     "x11",
     "linux",
     "macos",
-    "darwin"
+    "darwin",
+    "windows",
+    "win32"
   ],
   "private": true
 }

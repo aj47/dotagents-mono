@@ -25,6 +25,17 @@ export const MACOS_BROWSER_PATHS = [
   "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
 ] as const
 
+/** Windows browser paths (with %env% placeholders expanded at runtime) */
+export const WINDOWS_BROWSER_PATHS = [
+  "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe",
+  "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe",
+  "%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe",
+  "%ProgramFiles%\\Chromium\\Application\\chrome.exe",
+  "%LOCALAPPDATA%\\Chromium\\Application\\chrome.exe",
+  "%ProgramFiles%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+  "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+] as const
+
 /** X11 tools required by the Linux backend */
 export const REQUIRED_LINUX_DEPS = ["wmctrl", "xprop", "xdpyinfo"] as const
 

@@ -7,7 +7,7 @@ vi.mock("electron", () => ({
   },
 }))
 
-// Mock child_process (execFile for Linux, spawn + execFile for macOS)
+// Mock child_process (execFile for Linux, spawn + execFile for macOS/Windows)
 const mockExecFile = vi.fn()
 const mockSpawn = vi.fn()
 vi.mock("child_process", () => ({
@@ -20,7 +20,7 @@ vi.mock("fs/promises", () => ({
   access: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock fs used by MacOSBackend
+// Mock fs used by MacOSBackend and WindowsBackend
 const mockExistsSync = vi.fn(() => false)
 const mockMkdirSync = vi.fn()
 const mockWriteFileSync = vi.fn()
@@ -282,6 +282,71 @@ describe("LdiService", () => {
     })
   })
 
+  describe("WindowsBackend", () => {
+    it("should report unsupported on non-win32", async () => {
+      const { WindowsBackend } = await import("@dotagents/ldi")
+      const backend = new WindowsBackend()
+      const check = await backend.checkDependencies()
+
+      expect(check.supported).toBe(false)
+      expect(check.reason).toContain("win32")
+    })
+
+    it("should report missing browser when none found on win32", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "win32" })
+      mockExistsSync.mockReturnValue(false)
+
+      const { WindowsBackend } = await import("@dotagents/ldi")
+      const backend = new WindowsBackend()
+      const check = await backend.checkDependencies()
+
+      expect(check.supported).toBe(false)
+      expect(check.reason).toContain("No supported browser")
+      expect(check.missingDeps).toContain("chrome/chromium (no supported browser found)")
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should report supported when browser found on win32", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "win32" })
+      mockExistsSync.mockImplementation((p: unknown) => {
+        return String(p).includes("chrome.exe")
+      })
+
+      const { WindowsBackend } = await import("@dotagents/ldi")
+      const backend = new WindowsBackend()
+      const check = await backend.checkDependencies()
+
+      expect(check.supported).toBe(true)
+      expect(check.platform).toBe("win32")
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should return error when no browser for start", async () => {
+      mockExistsSync.mockReturnValue(false)
+
+      const { WindowsBackend } = await import("@dotagents/ldi")
+      const backend = new WindowsBackend()
+      const result = await backend.start("http://example.com")
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("No supported browser")
+    })
+
+    it("should list empty when no slots directory", async () => {
+      mockExistsSync.mockReturnValue(false)
+
+      const { WindowsBackend } = await import("@dotagents/ldi")
+      const backend = new WindowsBackend()
+      const slots = await backend.list()
+
+      expect(slots).toHaveLength(0)
+    })
+  })
+
   describe("LdiClient facade", () => {
     it("should return graceful failure when no backend available", async () => {
       const originalPlatform = process.platform
@@ -344,6 +409,19 @@ describe("LdiService", () => {
 
       expect(backend).not.toBeNull()
       expect(backend?.name).toBe("macos")
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should create WindowsBackend on win32", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "win32" })
+
+      const { createBackend } = await import("@dotagents/ldi")
+      const backend = createBackend()
+
+      expect(backend).not.toBeNull()
+      expect(backend?.name).toBe("windows")
 
       Object.defineProperty(process, "platform", { value: originalPlatform })
     })

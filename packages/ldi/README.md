@@ -10,7 +10,7 @@ Cross-platform design with pluggable backends:
 |----------|---------|--------|
 | Linux/X11 | `LinuxX11Backend` | Available |
 | macOS | `MacOSBackend` | Available |
-| Windows | `WindowsBackend` | Planned |
+| Windows | `WindowsBackend` | Available |
 
 The `LdiClient` auto-selects the appropriate backend for the current platform.
 
@@ -23,6 +23,10 @@ The `LdiClient` auto-selects the appropriate backend for the current platform.
 ### macOS
 - One of: Google Chrome, Chromium, or Brave Browser (in /Applications)
 - Accessibility permissions may be needed for window positioning
+
+### Windows
+- One of: Google Chrome, Chromium, or Brave Browser (in Program Files or LocalAppData)
+- PowerShell (included with Windows 10+)
 
 ## Usage
 
