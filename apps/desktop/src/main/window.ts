@@ -11,7 +11,7 @@ import { RendererHandlers } from "./renderer-handlers"
 import { logApp, logUI } from "./debug"
 import { configStore } from "./config"
 import { getFocusedAppInfo } from "./keyboard"
-import { state, agentProcessManager, suppressPanelAutoShow } from "./state"
+import { state, agentProcessManager, suppressPanelAutoShow, isHeadlessMode } from "./state"
 import { calculatePanelPosition } from "./panel-position"
 import { setupConsoleLogger } from "./console-logger"
 import { emergencyStopAll } from "./emergency-stop"
@@ -174,7 +174,13 @@ function setPanelOpenedWithMain() {
   }
 }
 
-export function createMainWindow({ url }: { url?: string } = {}) {
+export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow | undefined {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) {
+    logApp("Skipping main window creation in headless mode")
+    return undefined
+  }
+
   logApp("Creating main window...")
   const win = createBaseWindow({
     id: "main",
@@ -272,7 +278,13 @@ export function createMainWindow({ url }: { url?: string } = {}) {
   return win
 }
 
-export function createSetupWindow() {
+export function createSetupWindow(): BrowserWindow | undefined {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) {
+    logApp("Skipping setup window creation in headless mode")
+    return undefined
+  }
+
   const win = createBaseWindow({
     id: "setup",
     url: "/setup",
@@ -290,6 +302,9 @@ export function createSetupWindow() {
 }
 
 export function showMainWindow(url?: string) {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) return
+
   const win = WINDOWS.get("main")
 
   if (win) {
@@ -570,7 +585,13 @@ export function getCurrentPanelMode(): "normal" | "agent" | "textInput" {
 }
 
 
-export function createPanelWindow() {
+export function createPanelWindow(): BrowserWindow | undefined {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) {
+    logApp("Skipping panel window creation in headless mode")
+    return undefined
+  }
+
   logApp("Creating panel window...")
   logApp("[window.ts] createPanelWindow - MIN_WAVEFORM_WIDTH:", MIN_WAVEFORM_WIDTH)
 
@@ -652,6 +673,9 @@ export function createPanelWindow() {
 }
 
 export function showPanelWindow() {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) return
+
   const win = WINDOWS.get("panel")
   if (win) {
     logApp(`[showPanelWindow] Called. Current visibility: ${win.isVisible()}`)
@@ -680,6 +704,9 @@ export function showPanelWindow() {
 }
 
 export async function showPanelWindowAndStartRecording(fromButtonClick?: boolean) {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) return
+
   // Capture focus before showing panel
   try {
     const focusedApp = await getFocusedAppInfo()
@@ -710,6 +737,9 @@ export async function showPanelWindowAndStartRecording(fromButtonClick?: boolean
 }
 
 export async function showPanelWindowAndStartMcpRecording(conversationId?: string, sessionId?: string, fromTile?: boolean, fromButtonClick?: boolean, conversationTitle?: string, isStillHeld?: () => boolean) {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) return
+
   // Capture focus before showing panel
   try {
     const focusedApp = await getFocusedAppInfo()
@@ -740,6 +770,9 @@ export async function showPanelWindowAndStartMcpRecording(conversationId?: strin
 }
 
 export async function showPanelWindowAndShowTextInput(initialText?: string, conversationId?: string, conversationTitle?: string) {
+  // In headless mode, skip all window operations
+  if (isHeadlessMode) return
+
   // Capture focus before showing panel
   try {
     const focusedApp = await getFocusedAppInfo()
