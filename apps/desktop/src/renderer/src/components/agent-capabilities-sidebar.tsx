@@ -27,7 +27,7 @@ export function AgentCapabilitiesSidebar() {
   const queryClient = useQueryClient()
 
   const handleHeaderClick = () => {
-    navigate('/settings/agents')
+    navigate('/settings/agents?view=list')
     if (!isExpanded) {
       setIsExpanded(true)
     }

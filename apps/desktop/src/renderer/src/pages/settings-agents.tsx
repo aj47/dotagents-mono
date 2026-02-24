@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/ui/tabs"
-import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench } from "lucide-react"
+import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw } from "lucide-react"
 import { Facehash } from "facehash"
 
 // Curated palette of vivid colors to pick from deterministically
@@ -101,9 +101,18 @@ export function SettingsAgents() {
   }, [])
   useEffect(() => { if (editing) { loadServers(); loadSkills(); loadAllTools() } }, [!!editing])
 
-  // Auto-open edit form when navigated with ?edit=<agentId>
+  // Handle URL-driven navigation: ?edit=<agentId> opens edit, ?view=list returns to list
   useEffect(() => {
     const editId = searchParams.get("edit")
+    const viewMode = searchParams.get("view")
+
+    if (viewMode === "list") {
+      setEditing(null)
+      setIsCreating(false)
+      setSearchParams({}, { replace: true })
+      return
+    }
+
     if (editId && agents.length > 0 && editing?.id !== editId) {
       const agent = agents.find(a => a.id === editId)
       if (agent) {
@@ -317,7 +326,10 @@ export function SettingsAgents() {
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       {!editing && (
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-end gap-2 mb-4">
+          <Button variant="outline" className="gap-2" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
+            <RefreshCw className="h-4 w-4" />Rescan Files
+          </Button>
           <Button className="gap-2" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
         </div>
       )}
@@ -330,14 +342,14 @@ export function SettingsAgents() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
         {agents.map(agent => (
           <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
-            <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none relative">
+            <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none">
               <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden shrink-0 bg-muted">
                 {agent.avatarDataUrl
                   ? <img src={agent.avatarDataUrl} alt={agent.displayName} className="w-full h-full object-cover" />
                   : <Facehash name={agent.id} size={40} colors={agentColors(agent.id)} />
                 }
               </div>
-              <div className="flex flex-col min-w-0 flex-1 pr-14">
+              <div className="flex flex-col min-w-0 flex-1">
                 <CardTitle className="text-sm font-semibold truncate leading-none mt-0.5">
                   {agent.displayName}
                 </CardTitle>
@@ -345,14 +357,12 @@ export function SettingsAgents() {
                   {agent.description || agent.guidelines?.slice(0, 100) || "No description provided."}
                 </CardDescription>
               </div>
-              <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                {agent.isBuiltIn && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
-                {agent.isDefault && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
-                {!agent.enabled && <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
-              </div>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
               <div className="flex gap-1 flex-wrap mb-2.5">
+                {agent.isBuiltIn && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
+                {agent.isDefault && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
+                {!agent.enabled && <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted/30 font-normal">{agent.connection.type}</Badge>
                 {agent.modelConfig?.mcpToolsProviderId && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 truncate max-w-[80px] bg-muted/30 font-normal" title={agent.modelConfig.mcpToolsProviderId}>{agent.modelConfig.mcpToolsProviderId}</Badge>
