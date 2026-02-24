@@ -1,7 +1,7 @@
 {
   "name": "@dotagents/ldi",
   "version": "0.0.1",
-  "description": "Live Desktop Integrator — render any URL as a desktop background layer (Linux/X11)",
+  "description": "Live Desktop Integrator — render any URL as a desktop background layer",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -40,6 +40,7 @@
     "desktop",
     "background",
     "dotagents",
+    "cross-platform",
     "x11",
     "linux"
   ],

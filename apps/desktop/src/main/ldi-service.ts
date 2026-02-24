@@ -2,7 +2,8 @@
  * LDI Service — Desktop integration for Live Desktop Integrator
  *
  * Singleton service that manages LDI backdrops from the main process.
- * Gracefully no-ops on unsupported platforms (macOS, Windows).
+ * Auto-selects the appropriate backend for the current platform.
+ * Gracefully no-ops on unsupported platforms.
  */
 
 import { LdiClient } from "@dotagents/ldi"
@@ -42,13 +43,14 @@ class LdiService {
     if (this.initialized) return
 
     this.platformCheck = await this.client.checkPlatform()
+    const backend = this.client.backendName
 
     if (this.platformCheck.supported) {
       const scriptOk = await this.client.verifyScript()
       if (scriptOk) {
-        logApp("[LDI] Service initialized — platform supported, script verified")
+        logApp(`[LDI] Service ready — backend: ${backend}`)
       } else {
-        logApp("[LDI] Service initialized — platform supported, but script not found")
+        logApp(`[LDI] Backend ${backend} available but script not found`)
         this.platformCheck = {
           ...this.platformCheck,
           supported: false,
@@ -56,7 +58,7 @@ class LdiService {
         }
       }
     } else {
-      logApp(`[LDI] Service initialized — not supported: ${this.platformCheck.reason}`)
+      logApp(`[LDI] Not available: ${this.platformCheck.reason}`)
     }
 
     this.initialized = true

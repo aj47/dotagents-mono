@@ -7,7 +7,7 @@ vi.mock("electron", () => ({
   },
 }))
 
-// Mock child_process.execFile used by LdiClient
+// Mock child_process.execFile used by LinuxX11Backend
 const mockExecFile = vi.fn()
 vi.mock("child_process", () => ({
   execFile: (...args: unknown[]) => mockExecFile(...args),
@@ -27,7 +27,7 @@ describe("LdiService", () => {
     vi.resetModules()
   })
 
-  describe("LdiClient", () => {
+  describe("LinuxX11Backend", () => {
     it("should parse a successful start result", async () => {
       mockExecFile.mockImplementation(
         (_cmd: string, _args: string[], _opts: unknown, cb: Function) => {
@@ -46,9 +46,9 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const result = await client.start("http://localhost:5173")
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const result = await backend.start("http://localhost:5173")
 
       expect(result.success).toBe(true)
       expect(result.slot).toBe("default")
@@ -63,9 +63,9 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const result = await client.start("http://localhost:5173")
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const result = await backend.start("http://localhost:5173")
 
       expect(result.success).toBe(false)
       expect(result.error).toContain("No Chrome/Chromium browser found")
@@ -73,14 +73,14 @@ describe("LdiService", () => {
 
     it("should pass correct args for start with options", async () => {
       mockExecFile.mockImplementation(
-        (cmd: string, args: string[], _opts: unknown, cb: Function) => {
+        (_cmd: string, _args: string[], _opts: unknown, cb: Function) => {
           cb(null, "[ldi:myslot] Launched (PID 99)", "")
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      await client.start("http://example.com", {
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      await backend.start("http://example.com", {
         slot: "myslot",
         settle: 2,
         browser: "chromium",
@@ -101,9 +101,9 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const result = await client.stop()
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const result = await backend.stop()
 
       expect(result.success).toBe(true)
       expect(result.slot).toBe("default")
@@ -124,9 +124,9 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const status = await client.status()
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const status = await backend.status()
 
       expect(status.running).toBe(true)
       expect(status.pid).toBe(12345)
@@ -141,9 +141,9 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const status = await client.status()
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const status = await backend.status()
 
       expect(status.running).toBe(false)
       expect(status.slot).toBe("default")
@@ -163,9 +163,9 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const slots = await client.list()
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const slots = await backend.list()
 
       expect(slots).toHaveLength(2)
       expect(slots[0]).toEqual({
@@ -187,11 +187,62 @@ describe("LdiService", () => {
         },
       )
 
-      const { LdiClient } = await import("@dotagents/ldi")
-      const client = new LdiClient({ scriptPath: "/usr/bin/ldi" })
-      const slots = await client.list()
+      const { LinuxX11Backend } = await import("@dotagents/ldi")
+      const backend = new LinuxX11Backend({ scriptPath: "/usr/bin/ldi" })
+      const slots = await backend.list()
 
       expect(slots).toHaveLength(0)
+    })
+  })
+
+  describe("LdiClient facade", () => {
+    it("should return graceful failure when no backend available", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "darwin" })
+
+      const { LdiClient } = await import("@dotagents/ldi")
+      const client = new LdiClient()
+
+      const startResult = await client.start("http://example.com")
+      expect(startResult.success).toBe(false)
+      expect(startResult.error).toContain("No LDI backend")
+
+      const stopResult = await client.stop()
+      expect(stopResult.success).toBe(false)
+
+      const status = await client.status()
+      expect(status.running).toBe(false)
+
+      const list = await client.list()
+      expect(list).toHaveLength(0)
+
+      const platform = await client.checkPlatform()
+      expect(platform.supported).toBe(false)
+
+      expect(client.backendName).toBeNull()
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should accept a custom backend", async () => {
+      const mockBackend = {
+        name: "mock",
+        checkDependencies: vi.fn().mockResolvedValue({ supported: true, platform: "mock" }),
+        start: vi.fn().mockResolvedValue({ success: true, slot: "default", pid: 1 }),
+        stop: vi.fn().mockResolvedValue({ success: true, slot: "default" }),
+        status: vi.fn().mockResolvedValue({ slot: "default", running: true }),
+        list: vi.fn().mockResolvedValue([]),
+        restart: vi.fn().mockResolvedValue({ success: true, slot: "default" }),
+      }
+
+      const { LdiClient } = await import("@dotagents/ldi")
+      const client = new LdiClient({ backend: mockBackend })
+
+      expect(client.backendName).toBe("mock")
+
+      const result = await client.start("http://example.com")
+      expect(result.success).toBe(true)
+      expect(mockBackend.start).toHaveBeenCalledWith("http://example.com", undefined)
     })
   })
 
@@ -204,7 +255,7 @@ describe("LdiService", () => {
       const result = await checkPlatform()
 
       expect(result.supported).toBe(false)
-      expect(result.reason).toContain("Linux")
+      expect(result.reason).toContain("No LDI backend")
 
       Object.defineProperty(process, "platform", { value: originalPlatform })
     })
@@ -212,7 +263,6 @@ describe("LdiService", () => {
 
   describe("service singleton", () => {
     it("should initialize idempotently", async () => {
-      // Mock platform check (execFile for `which` calls)
       let callCount = 0
       mockExecFile.mockImplementation(
         (_cmd: string, _args: string[], _opts: unknown, cb?: Function) => {

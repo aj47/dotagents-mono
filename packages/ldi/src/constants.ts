@@ -17,11 +17,12 @@ export const SUPPORTED_BROWSERS = [
   "brave-browser",
 ] as const
 
-export const REQUIRED_DEPS = ["wmctrl", "xprop", "xdpyinfo"] as const
+/** X11 tools required by the Linux backend */
+export const REQUIRED_LINUX_DEPS = ["wmctrl", "xprop", "xdpyinfo"] as const
 
 /**
  * Resolve the path to the bundled LDI bash script.
- * Uses __dirname which tsup shims for ESM output.
+ * Used by the Linux/X11 backend.
  */
 export function getScriptPath(): string {
   return resolve(__dirname, "..", "scripts", "ldi")

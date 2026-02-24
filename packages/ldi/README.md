@@ -2,9 +2,20 @@
 
 Live Desktop Integrator — render any URL as a desktop background layer.
 
-## Requirements
+## Architecture
 
-- **Linux with X11** (Wayland not yet supported)
+Cross-platform design with pluggable backends:
+
+| Platform | Backend | Status |
+|----------|---------|--------|
+| Linux/X11 | `LinuxX11Backend` | Available |
+| macOS | `MacOSBackend` | Planned |
+| Windows | `WindowsBackend` | Planned |
+
+The `LdiClient` auto-selects the appropriate backend for the current platform.
+
+## Requirements (Linux/X11)
+
 - One of: `google-chrome`, `chromium-browser`, `chromium`, `brave-browser`
 - X11 tools: `wmctrl`, `xprop`, `xdpyinfo`
 
@@ -37,17 +48,14 @@ const slots = await ldi.list()
 await ldi.stop("dashboard")
 ```
 
-## API
+## Custom Backend
 
-| Method | Description |
-|--------|-------------|
-| `checkPlatform()` | Check if the current system supports LDI |
-| `verifyScript()` | Verify the bundled bash script is accessible |
-| `start(url, options?)` | Launch a URL as a desktop background |
-| `stop(slot?)` | Stop a running backdrop |
-| `status(slot?)` | Get status of a slot |
-| `list()` | List all configured slots |
-| `restart(url, options?)` | Stop and restart a backdrop |
+```typescript
+import { LdiClient, type LdiBackend } from "@dotagents/ldi"
+
+const customBackend: LdiBackend = { /* ... */ }
+const ldi = new LdiClient({ backend: customBackend })
+```
 
 ## Build
 
