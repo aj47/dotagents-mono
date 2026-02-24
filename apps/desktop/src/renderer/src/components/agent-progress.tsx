@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
-import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../../../shared/builtin-tool-names"
+import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, ExternalLink, Bot, OctagonX, Expand, Shrink, MessageSquare, Brain, Volume2 } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
@@ -2004,11 +2004,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           (step.title?.includes(toolCallNames[0]) || toolCallNames.some(name => step.title?.includes(name)))
       )
 
+      // Suppress the LLM's inline thought text when respond_to_user already
+      // provided the user-facing response. The LLM often emits filler like
+      // "(No further action needed — work is already complete)" alongside
+      // completion tool calls, which is redundant noise for both UI and TTS.
+      const hasCompletionTool = m.toolCalls.some(
+        c => c.name === RESPOND_TO_USER_TOOL || c.name === MARK_WORK_COMPLETE_TOOL
+      )
+      const suppressThought = hasCompletionTool && !!progress.userResponse
+
       displayItems.push({
         kind: "assistant_with_tools",
         id: `assistant-tools-${aIndex}-${toolExecId}`,
         data: {
-          thought: m.content || "",
+          thought: suppressThought ? "" : (m.content || ""),
           timestamp: m.timestamp,
           isComplete: m.isComplete,
           calls: m.toolCalls,
