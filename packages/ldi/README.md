@@ -9,15 +9,20 @@ Cross-platform design with pluggable backends:
 | Platform | Backend | Status |
 |----------|---------|--------|
 | Linux/X11 | `LinuxX11Backend` | Available |
-| macOS | `MacOSBackend` | Planned |
+| macOS | `MacOSBackend` | Available |
 | Windows | `WindowsBackend` | Planned |
 
 The `LdiClient` auto-selects the appropriate backend for the current platform.
 
-## Requirements (Linux/X11)
+## Requirements
 
+### Linux/X11
 - One of: `google-chrome`, `chromium-browser`, `chromium`, `brave-browser`
 - X11 tools: `wmctrl`, `xprop`, `xdpyinfo`
+
+### macOS
+- One of: Google Chrome, Chromium, or Brave Browser (in /Applications)
+- Accessibility permissions may be needed for window positioning
 
 ## Usage
 

@@ -7,15 +7,37 @@ vi.mock("electron", () => ({
   },
 }))
 
-// Mock child_process.execFile used by LinuxX11Backend
+// Mock child_process (execFile for Linux, spawn + execFile for macOS)
 const mockExecFile = vi.fn()
+const mockSpawn = vi.fn()
 vi.mock("child_process", () => ({
   execFile: (...args: unknown[]) => mockExecFile(...args),
+  spawn: (...args: unknown[]) => mockSpawn(...args),
 }))
 
 // Mock fs/promises.access used by LdiClient.verifyScript
 vi.mock("fs/promises", () => ({
   access: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock fs used by MacOSBackend
+const mockExistsSync = vi.fn(() => false)
+const mockMkdirSync = vi.fn()
+const mockWriteFileSync = vi.fn()
+const mockReadFileSync = vi.fn(() => "")
+const mockUnlinkSync = vi.fn()
+const mockReaddirSync = vi.fn(() => [])
+const mockOpenSync = vi.fn(() => 99)
+const mockCloseSync = vi.fn()
+vi.mock("fs", () => ({
+  existsSync: (...args: unknown[]) => mockExistsSync(...args),
+  mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
+  writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
+  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+  unlinkSync: (...args: unknown[]) => mockUnlinkSync(...args),
+  readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
+  openSync: (...args: unknown[]) => mockOpenSync(...args),
+  closeSync: (...args: unknown[]) => mockCloseSync(...args),
 }))
 
 describe("LdiService", () => {
@@ -195,10 +217,76 @@ describe("LdiService", () => {
     })
   })
 
+  describe("MacOSBackend", () => {
+    it("should report unsupported on non-darwin", async () => {
+      const { MacOSBackend } = await import("@dotagents/ldi")
+      const backend = new MacOSBackend()
+      const check = await backend.checkDependencies()
+
+      expect(check.supported).toBe(false)
+      expect(check.reason).toContain("darwin")
+    })
+
+    it("should report missing browser when none found on darwin", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "darwin" })
+      mockExistsSync.mockReturnValue(false)
+
+      const { MacOSBackend } = await import("@dotagents/ldi")
+      const backend = new MacOSBackend()
+      const check = await backend.checkDependencies()
+
+      expect(check.supported).toBe(false)
+      expect(check.reason).toContain("No supported browser")
+      expect(check.missingDeps).toContain("chrome/chromium (no supported browser found)")
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should report supported when browser found on darwin", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "darwin" })
+      mockExistsSync.mockImplementation((p: unknown) => {
+        return String(p).includes("Google Chrome")
+      })
+
+      const { MacOSBackend } = await import("@dotagents/ldi")
+      const backend = new MacOSBackend()
+      const check = await backend.checkDependencies()
+
+      expect(check.supported).toBe(true)
+      expect(check.platform).toBe("darwin")
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should return error when no browser for start", async () => {
+      mockExistsSync.mockReturnValue(false)
+
+      const { MacOSBackend } = await import("@dotagents/ldi")
+      const backend = new MacOSBackend()
+      const result = await backend.start("http://example.com")
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("No supported browser")
+    })
+
+    it("should list empty when no slots directory", async () => {
+      mockExistsSync.mockReturnValue(false)
+
+      const { MacOSBackend } = await import("@dotagents/ldi")
+      const backend = new MacOSBackend()
+      const slots = await backend.list()
+
+      expect(slots).toHaveLength(0)
+    })
+  })
+
   describe("LdiClient facade", () => {
     it("should return graceful failure when no backend available", async () => {
       const originalPlatform = process.platform
-      Object.defineProperty(process, "platform", { value: "darwin" })
+      // Use a platform with no backend
+      Object.defineProperty(process, "platform", { value: "freebsd" })
 
       const { LdiClient } = await import("@dotagents/ldi")
       const client = new LdiClient()
@@ -246,10 +334,37 @@ describe("LdiService", () => {
     })
   })
 
-  describe("platform detection", () => {
-    it("should report unsupported on non-linux", async () => {
+  describe("backend factory", () => {
+    it("should create MacOSBackend on darwin", async () => {
       const originalPlatform = process.platform
       Object.defineProperty(process, "platform", { value: "darwin" })
+
+      const { createBackend } = await import("@dotagents/ldi")
+      const backend = createBackend()
+
+      expect(backend).not.toBeNull()
+      expect(backend?.name).toBe("macos")
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+
+    it("should return null on unsupported platform", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "freebsd" })
+
+      const { createBackend } = await import("@dotagents/ldi")
+      const backend = createBackend()
+
+      expect(backend).toBeNull()
+
+      Object.defineProperty(process, "platform", { value: originalPlatform })
+    })
+  })
+
+  describe("platform detection", () => {
+    it("should report unsupported on unsupported platform", async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, "platform", { value: "freebsd" })
 
       const { checkPlatform } = await import("@dotagents/ldi")
       const result = await checkPlatform()

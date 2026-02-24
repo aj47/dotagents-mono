@@ -41,9 +41,14 @@ export class LdiClient {
   }
 
   /**
-   * Verify the bundled script exists and is executable (Linux backend).
+   * Verify the backend's installation is complete.
+   * For Linux: checks that the bundled bash script exists and is executable.
+   * For other backends: returns true (no external script needed).
    */
   async verifyScript(): Promise<boolean> {
+    if (!this.backend || this.backend.name !== "linux-x11") {
+      return true
+    }
     try {
       await access(getScriptPath(), constants.X_OK)
       return true

@@ -2,16 +2,17 @@
  * Backend factory — auto-selects the appropriate LDI backend
  * based on the current platform.
  *
- * Currently supported:
+ * Supported:
  * - Linux/X11: LinuxX11Backend (uses bundled bash script)
+ * - macOS: MacOSBackend (uses osascript + Chrome --app mode)
  *
  * Planned:
- * - macOS: MacOSBackend (PR #2)
  * - Windows: WindowsBackend (PR #3)
  */
 
 import type { LdiBackend } from "../types"
 import { LinuxX11Backend } from "./linux-x11"
+import { MacOSBackend } from "./macos"
 
 export interface BackendOptions {
   scriptPath?: string
@@ -29,8 +30,8 @@ export function createBackend(options?: BackendOptions): LdiBackend | null {
       }
       return null
 
-    // case "darwin":
-    //   return new MacOSBackend()  // PR #2
+    case "darwin":
+      return new MacOSBackend()
 
     // case "win32":
     //   return new WindowsBackend()  // PR #3
@@ -41,3 +42,4 @@ export function createBackend(options?: BackendOptions): LdiBackend | null {
 }
 
 export { LinuxX11Backend }
+export { MacOSBackend }
