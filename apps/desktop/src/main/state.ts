@@ -46,7 +46,6 @@ export const state = {
   isRecordingFromButtonClick: false,
   isRecordingMcpMode: false,
   isAgentModeActive: false,
-  isHeadlessMode: false,
   agentProcesses: new Set<ChildProcess>(),
   shouldStopAgent: false,
   agentIterationCount: 0,
@@ -54,14 +53,6 @@ export const state = {
   agentSessions: new Map<string, AgentSessionState>(),
   panelAutoShowSuppressedUntil: 0,
   pendingToolApprovals: new Map<string, PendingToolApproval>(),
-}
-
-export function setHeadlessMode(value: boolean): void {
-  state.isHeadlessMode = value
-}
-
-export function isHeadlessMode(): boolean {
-  return state.isHeadlessMode
 }
 
 export const agentProcessManager = {
