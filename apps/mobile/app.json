@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "SpeakMCP",
+    "slug": "speakmcp-mobile",
+    "scheme": "speakmcp",
+    "version": "1.4.0",
+    "orientation": "portrait",
+    "icon": "./assets/speakmcp-icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/speakmcp-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aj47.speakmcp",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app uses the microphone for voice input.",
+        "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to transcribe your voice.",
+        "NSCameraUsageDescription": "This app uses the camera to scan QR codes for configuration.",
+        "NSUserNotificationsUsageDescription": "This app sends notifications when new messages arrive from your AI assistant.",
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/speakmcp-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA"
+      ],
+      "package": "com.aj47.speakmcp"
+    },
+    "web": {
+      "favicon": "./assets/speakmcp-icon.png"
+    },
+    "plugins": [
+      "expo-speech-recognition",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/speakmcp-icon.png",
+          "color": "#ffffff",
+          "sounds": [],
+          "defaultChannel": "default"
+        }
+      ]
+    ]
+  }
+}

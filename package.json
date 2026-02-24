@@ -1,0 +1,23 @@
+{
+  "name": "speakmcp-monorepo",
+  "version": "1.4.0",
+  "private": true,
+  "description": "SpeakMCP monorepo - AI-powered dictation with MCP integration",
+  "scripts": {
+    "dev": "pnpm --filter @speakmcp/desktop dev",
+    "dev:mobile": "pnpm --filter @speakmcp/mobile start",
+    "build": "pnpm --filter @speakmcp/shared build && pnpm --filter @speakmcp/desktop build",
+    "build:shared": "pnpm --filter @speakmcp/shared build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format"
+  },
+  "packageManager": "pnpm@9.12.1",
+  "pnpm": {
+    "overrides": {
+      "dotenv-expand": "11.0.6"
+    }
+  }
+}
+
