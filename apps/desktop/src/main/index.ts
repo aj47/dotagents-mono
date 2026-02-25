@@ -161,6 +161,22 @@ app.whenReady().then(async () => {
     registerServeProtocol()
     logApp("Serve protocol registered (headless)")
 
+    let isHeadlessShuttingDown = false
+    const gracefulShutdown = async (exitCode: number) => {
+      if (isHeadlessShuttingDown) return
+      isHeadlessShuttingDown = true
+      console.log("\n[Headless] Shutting down...")
+      loopService.stopAllLoops()
+      await acpService.shutdown().catch(() => {})
+      await mcpService.cleanup().catch(() => {})
+      await stopRemoteServer().catch(() => {})
+      process.exit(exitCode)
+    }
+
+    process.on("SIGTERM", () => {
+      void gracefulShutdown(0)
+    })
+
     try {
       // Initialize MCP service
       await mcpService.initialize()
@@ -195,42 +211,27 @@ app.whenReady().then(async () => {
       initModelsDevService()
       logApp("Models.dev service initialized (headless)")
 
-      // Force-start remote server bound to 0.0.0.0 for external access
-      const cfg = configStore.get()
-      const originalBindAddress = cfg.remoteServerBindAddress
-      // Temporarily override bind address to 0.0.0.0 if not already configured differently
-      if (!originalBindAddress || originalBindAddress === "127.0.0.1") {
-        configStore.save({ ...cfg, remoteServerBindAddress: "0.0.0.0" })
-        logApp("Temporarily set remote server bind address to 0.0.0.0 for headless mode")
-      }
-
-      const serverResult = await startRemoteServerForced()
+      // Force-start remote server bound to 0.0.0.0 for external access.
+      // Use a runtime override to avoid mutating persisted user config.
+      const serverResult = await startRemoteServerForced({ bindAddressOverride: "0.0.0.0" })
       if (!serverResult.running) {
         console.error("[Headless] Failed to start remote server:", serverResult.error || "Unknown error")
-        process.exit(1)
+        await gracefulShutdown(1)
+        return
       }
       logApp("Remote server started on 0.0.0.0 (headless)")
 
       // Start headless CLI
       const { startHeadlessCLI } = await import("./headless-cli")
-      await startHeadlessCLI()
+      await startHeadlessCLI(async () => {
+        await gracefulShutdown(0)
+      })
 
     } catch (err) {
       console.error("[Headless] Failed to initialize:", err instanceof Error ? err.message : String(err))
-      process.exit(1)
+      await gracefulShutdown(1)
+      return
     }
-
-    // Graceful shutdown handlers
-    const gracefulShutdown = async () => {
-      console.log("\n[Headless] Shutting down...")
-      loopService.stopAllLoops()
-      await acpService.shutdown().catch(() => {})
-      await mcpService.cleanup().catch(() => {})
-      await stopRemoteServer().catch(() => {})
-      process.exit(0)
-    }
-    process.on("SIGINT", gracefulShutdown)
-    process.on("SIGTERM", gracefulShutdown)
 
     // Keep the process running - don't create any windows
     return

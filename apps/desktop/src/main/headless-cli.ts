@@ -27,6 +27,20 @@ const colors = {
 let currentConversationId: string | undefined
 let isProcessing = false
 let rl: readline.Interface | null = null
+let shutdownRequested = false
+let onShutdown: () => Promise<void> = async () => {
+  process.exit(0)
+}
+
+async function requestShutdown(message?: string) {
+  if (shutdownRequested) return
+  shutdownRequested = true
+  if (message) {
+    printColored(colors.dim, message)
+  }
+  rl?.close()
+  await onShutdown()
+}
 
 function printColored(color: string, message: string) {
   console.log(`${color}${message}${colors.reset}`)
@@ -128,9 +142,7 @@ async function handleSlashCommand(input: string): Promise<boolean> {
       return true
     case "/quit":
     case "/exit":
-      printColored(colors.dim, "Shutting down gracefully...")
-      rl?.close()
-      process.kill(process.pid, "SIGINT")
+      await requestShutdown("Shutting down gracefully...")
       return true
     case "/stop":
       await handleStop()
@@ -299,25 +311,20 @@ async function runAgentCLI(prompt: string): Promise<void> {
   }
 }
 
-export async function startHeadlessCLI(): Promise<void> {
+export async function startHeadlessCLI(shutdownHandler?: () => Promise<void>): Promise<void> {
+  onShutdown = shutdownHandler ?? (async () => process.exit(0))
   console.log(`
 ${colors.bold}${colors.cyan}═══════════════════════════════════════════════════${colors.reset}
-${colors.bold}  SpeakMCP Headless CLI${colors.reset}
+${colors.bold}  DotAgents Headless CLI${colors.reset}
 ${colors.bold}${colors.cyan}═══════════════════════════════════════════════════${colors.reset}
 
 ${colors.dim}Type /help for available commands.${colors.reset}
 `)
 
-  // Initialize MCP
-  try {
-    await mcpService.initialize()
-    const serverStatus = mcpService.getServerStatus()
-    const connectedCount = Object.values(serverStatus).filter(s => s.connected).length
-    const totalCount = Object.keys(serverStatus).length
-    printColored(colors.green, `MCP initialized: ${connectedCount}/${totalCount} servers connected`)
-  } catch (error) {
-    printColored(colors.yellow, `MCP initialization warning: ${error instanceof Error ? error.message : String(error)}`)
-  }
+  const serverStatus = mcpService.getServerStatus()
+  const connectedCount = Object.values(serverStatus).filter(s => s.connected).length
+  const totalCount = Object.keys(serverStatus).length
+  printColored(colors.green, `MCP initialized: ${connectedCount}/${totalCount} servers connected`)
 
   console.log()
 
@@ -348,8 +355,9 @@ ${colors.dim}Type /help for available commands.${colors.reset}
   })
 
   rl.on("close", () => {
-    printColored(colors.dim, "\nGoodbye!")
-    process.kill(process.pid, "SIGINT")
+    if (!shutdownRequested) {
+      void requestShutdown("Shutting down gracefully...")
+    }
   })
 
   // Handle SIGINT gracefully
@@ -360,10 +368,7 @@ ${colors.dim}Type /help for available commands.${colors.reset}
       isProcessing = false
       rl?.prompt()
     } else {
-      printColored(colors.dim, "\nGoodbye!")
-      rl?.close()
-      process.exit(0)
+      await requestShutdown("Shutting down gracefully...")
     }
   })
 }
-

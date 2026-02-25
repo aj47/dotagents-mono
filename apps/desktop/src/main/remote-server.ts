@@ -582,8 +582,12 @@ function recordHistory(transcript: string) {
  * Used by --qr mode to ensure the server starts even if remoteServerEnabled is false.
  * Also skips the auto-print of QR codes since --qr mode handles that separately.
  */
-export async function startRemoteServerForced() {
-  return startRemoteServerInternal({ forceEnabled: true, skipAutoPrintQR: true })
+export async function startRemoteServerForced(options: { bindAddressOverride?: string } = {}) {
+  return startRemoteServerInternal({
+    forceEnabled: true,
+    skipAutoPrintQR: true,
+    bindAddressOverride: options.bindAddressOverride,
+  })
 }
 
 export async function startRemoteServer() {
@@ -593,10 +597,11 @@ export async function startRemoteServer() {
 interface StartRemoteServerOptions {
   forceEnabled?: boolean
   skipAutoPrintQR?: boolean
+  bindAddressOverride?: string
 }
 
 async function startRemoteServerInternal(options: StartRemoteServerOptions = {}) {
-  const { forceEnabled = false, skipAutoPrintQR = false } = options
+  const { forceEnabled = false, skipAutoPrintQR = false, bindAddressOverride } = options
   const cfg = configStore.get()
   if (!forceEnabled && !cfg.remoteServerEnabled) {
     diagnosticsService.logInfo(
@@ -622,7 +627,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   lastError = undefined
   const logLevel = cfg.remoteServerLogLevel || "info"
-  const bind = cfg.remoteServerBindAddress || "127.0.0.1"
+  const bind = bindAddressOverride || cfg.remoteServerBindAddress || "127.0.0.1"
   const port = cfg.remoteServerPort || 3210
 
   const fastify = Fastify({ logger: { level: logLevel } })
