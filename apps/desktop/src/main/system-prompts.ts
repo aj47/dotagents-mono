@@ -70,7 +70,6 @@ AGENT FILE & COMMAND EXECUTION:
 - List directories: execute_command with "ls -la path/"
 - Create directories: execute_command with "mkdir -p path/to/dir"
 - Run scripts: execute_command with "./script.sh" or "python script.py" etc.
-- For skills: pass skillId to run commands in the skill's directory automatically
 
 MEMORIES (optional):
 - Use save_memory(content, importance) to store durable preferences/patterns (single line, ~80 chars).`

@@ -2137,13 +2137,27 @@ Return ONLY JSON per schema.`,
         break
       }
     } else {
-      // Reset no-op counter when tools are called
-      noOpCount = 0
-      // Reset nudge count when tools are actually being used - this allows
-      // nudging to work per "stuck segment" rather than globally across the run.
-      // If the agent gets stuck again later, it should have a fresh nudge budget.
-      totalNudgeCount = 0
-      completionSignalHintCount = 0
+      // Check if the only tools called are communication-only (respond_to_user / speak_to_user).
+      // These don't represent real work progress — they're just the agent talking to the user.
+      // If respond_to_user is called without mark_work_complete, don't reset the completion
+      // counters; otherwise the agent can loop indefinitely: text → nudge → respond_to_user
+      // (resets counters) → text → nudge → respond_to_user → … (#respond-to-user-spam)
+      const COMMUNICATION_ONLY_TOOLS = new Set([RESPOND_TO_USER_TOOL, "speak_to_user"])
+      const onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
+
+      if (onlyCommunicationTools) {
+        // Communication-only batch: reset noOpCount (a tool was called) but preserve
+        // nudge/hint counters so the safety valves still fire if the agent keeps looping.
+        noOpCount = 0
+      } else {
+        // Real work tools: full counter reset
+        noOpCount = 0
+        // Reset nudge count when tools are actually being used - this allows
+        // nudging to work per "stuck segment" rather than globally across the run.
+        // If the agent gets stuck again later, it should have a fresh nudge budget.
+        totalNudgeCount = 0
+        completionSignalHintCount = 0
+      }
     }
 
     // Execute tool calls with enhanced error handling
