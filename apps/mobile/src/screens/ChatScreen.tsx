@@ -1015,6 +1015,8 @@ export default function ChatScreen({ route, navigation }: any) {
       // Track userResponse from progress updates for TTS
       // This is set via the respond_to_user tool and takes priority over finalText
       let lastUserResponse: string | undefined;
+      // Track if we've already played TTS mid-turn to avoid double playback
+      let midTurnTTSPlayed = false;
 
       const serverConversationId = sessionStore.getServerConversationId();
       console.log('[ChatScreen] Starting chat request with', messages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
@@ -1036,6 +1038,22 @@ export default function ChatScreen({ route, navigation }: any) {
         // Capture userResponse from progress updates for TTS
         if (update.userResponse || update.spokenContent) {
           lastUserResponse = update.userResponse || update.spokenContent;
+        }
+        // Mid-turn TTS: play immediately when userResponse is first set
+        if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
+          midTurnTTSPlayed = true;
+          const processedText = preprocessTextForTTS(lastUserResponse);
+          if (processedText) {
+            const speechOptions: Speech.SpeechOptions = {
+              language: 'en-US',
+              rate: config.ttsRate ?? 1.0,
+              pitch: config.ttsPitch ?? 1.0,
+            };
+            if (config.ttsVoiceId) {
+              speechOptions.voice = config.ttsVoiceId;
+            }
+            Speech.speak(processedText, speechOptions);
+          }
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
@@ -1260,8 +1278,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // userResponse is explicitly set by the agent for user communication
+      // Skip TTS if we already played the same text mid-turn
       const ttsText = lastUserResponse || finalText;
-      if (!sessionChanged && ttsText && config.ttsEnabled !== false) {
+      const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
+      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
         const processedText = preprocessTextForTTS(ttsText);
         const speechOptions: Speech.SpeechOptions = {
           language: 'en-US',
@@ -1430,6 +1450,8 @@ export default function ChatScreen({ route, navigation }: any) {
       let streamingText = '';
       // Track userResponse from progress updates for TTS
       let lastUserResponse: string | undefined;
+      // Track if we've already played TTS mid-turn to avoid double playback
+      let midTurnTTSPlayed = false;
 
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
@@ -1437,6 +1459,22 @@ export default function ChatScreen({ route, navigation }: any) {
         // Capture userResponse from progress updates for TTS
         if (update.userResponse || update.spokenContent) {
           lastUserResponse = update.userResponse || update.spokenContent;
+        }
+        // Mid-turn TTS: play immediately when userResponse is first set
+        if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
+          midTurnTTSPlayed = true;
+          const processedText = preprocessTextForTTS(lastUserResponse);
+          if (processedText) {
+            const speechOptions: Speech.SpeechOptions = {
+              language: 'en-US',
+              rate: config.ttsRate ?? 1.0,
+              pitch: config.ttsPitch ?? 1.0,
+            };
+            if (config.ttsVoiceId) {
+              speechOptions.voice = config.ttsVoiceId;
+            }
+            Speech.speak(processedText, speechOptions);
+          }
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
@@ -1528,8 +1566,10 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
+      // Skip TTS if we already played the same text mid-turn
       const ttsText = lastUserResponse || finalText;
-      if (ttsText && config.ttsEnabled !== false) {
+      const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
+      if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
         const processedText = preprocessTextForTTS(ttsText);
         const speechOptions: Speech.SpeechOptions = {
           language: 'en-US',
