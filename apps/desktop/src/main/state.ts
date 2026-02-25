@@ -2,6 +2,21 @@ import { ChildProcess } from "child_process"
 import type { SessionProfileSnapshot } from "../shared/types"
 import { clearSessionUserResponse } from "./session-user-response-store"
 
+/**
+ * Headless mode flag.
+ * When true, the app is running without any GUI windows (e.g., SSH/API-only mode).
+ * Services should check this flag and skip window-related operations.
+ */
+export let isHeadlessMode = false
+
+/**
+ * Set the headless mode flag.
+ * Call this during app initialization when running in headless/SSH mode.
+ */
+export function setHeadlessMode(value: boolean): void {
+  isHeadlessMode = value
+}
+
 export interface AgentSessionState {
   sessionId: string
   shouldStop: boolean
