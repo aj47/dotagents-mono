@@ -1091,13 +1091,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        remoteSettings.sttProviderId === provider.value && styles.providerOptionActive,
+                        (remoteSettings.sttProviderId || 'openai') === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('sttProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.sttProviderId === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.sttProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -1113,13 +1113,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        remoteSettings.transcriptPostProcessingProviderId === provider.value && styles.providerOptionActive,
+                        (remoteSettings.transcriptPostProcessingProviderId || 'openai') === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('transcriptPostProcessingProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.transcriptPostProcessingProviderId === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.transcriptPostProcessingProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -1135,13 +1135,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        remoteSettings.mcpToolsProviderId === provider.value && styles.providerOptionActive,
+                        (remoteSettings.mcpToolsProviderId || 'openai') === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleProviderChange(provider.value as 'openai' | 'groq' | 'gemini')}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.mcpToolsProviderId === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.mcpToolsProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -1157,13 +1157,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        remoteSettings.ttsProviderId === provider.value && styles.providerOptionActive,
+                        (remoteSettings.ttsProviderId || 'openai') === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.ttsProviderId === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.ttsProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -2871,6 +2871,30 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     statusDisconnected: {
       backgroundColor: theme.colors.muted,
+    },
+    // Agent management styles
+    agentActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    agentDeleteButton: {
+      padding: spacing.xs,
+    },
+    createAgentButton: {
+      marginTop: spacing.md,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+    },
+    createAgentButtonText: {
+      fontSize: 14,
+      color: theme.colors.primary,
+      fontWeight: '500',
     },
     // Model picker styles
     modelLabelRow: {
