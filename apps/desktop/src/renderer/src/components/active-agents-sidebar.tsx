@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
-import { ChevronDown, ChevronRight, X, Minimize2, Maximize2, Clock } from "lucide-react"
+import { ChevronDown, ChevronRight, X, Minimize2, Maximize2, Clock, Archive } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
@@ -25,6 +25,8 @@ interface AgentSessionsResponse {
   activeSessions: AgentSession[]
   recentSessions: AgentSession[]
 }
+
+const MAX_SIDEBAR_SESSIONS = 5
 
 const STORAGE_KEY = 'active-agents-sidebar-expanded'
 
@@ -63,8 +65,29 @@ export function ActiveAgentsSidebar({
 
   const activeSessions = data?.activeSessions || []
   const recentSessions = data?.recentSessions || []
-  const hasAnySessions = activeSessions.length > 0 || recentSessions.length > 0
-  const hasRecentSessions = recentSessions.length > 0
+
+  // Build a unified list of up to MAX_SIDEBAR_SESSIONS items.
+  // Active sessions first, then fill remaining slots with recent (past) sessions.
+  const sidebarSessions = useMemo(() => {
+    const items: Array<{ session: AgentSession; isPast: boolean }> = []
+
+    // Add all active sessions first
+    for (const session of activeSessions) {
+      items.push({ session, isPast: false })
+    }
+
+    // Fill remaining slots with recent (completed/stopped) sessions
+    const remainingSlots = MAX_SIDEBAR_SESSIONS - items.length
+    if (remainingSlots > 0) {
+      for (const session of recentSessions.slice(0, remainingSlots)) {
+        items.push({ session, isPast: true })
+      }
+    }
+
+    return items
+  }, [activeSessions, recentSessions])
+
+  const hasAnySessions = sidebarSessions.length > 0
 
   useEffect(() => {
     logStateChange('ActiveAgentsSidebar', 'isExpanded', !isExpanded, isExpanded)
@@ -254,14 +277,44 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && (
         <div className="mt-1 space-y-0.5 pl-2">
-          {activeSessions.map((session) => {
+          {sidebarSessions.map(({ session, isPast }) => {
             const isFocused = focusedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
-            const hasPendingApproval = !!sessionProgress?.pendingToolApproval
+            const hasPendingApproval = !isPast && !!sessionProgress?.pendingToolApproval
+            // Use store's isSnoozed for active sessions (matches main view), backend for past
+            const isSnoozed = isPast ? false : (sessionProgress?.isSnoozed ?? session.isSnoozed ?? false)
+
+            if (isPast) {
+              // Past agent row — archive icon, no action buttons
+              const statusDotColor = session.status === "error" || session.status === "stopped"
+                ? "bg-red-500"
+                : "bg-muted-foreground"
+              return (
+                <div
+                  key={session.id}
+                  onClick={() => {
+                    if (session.conversationId) {
+                      logUI('[ActiveAgentsSidebar] Navigating to sessions view for completed session:', session.conversationId)
+                      navigate(`/${session.conversationId}`)
+                    }
+                  }}
+                  className={cn(
+                    "rounded px-1.5 py-1 text-xs text-muted-foreground transition-all flex items-center gap-1.5",
+                    session.conversationId && "cursor-pointer hover:bg-accent/50"
+                  )}
+                >
+                  {/* Archive icon for past agents */}
+                  <Archive className="shrink-0 h-3 w-3 opacity-50" />
+                  <p className="flex-1 truncate">{session.conversationTitle}</p>
+                </div>
+              )
+            }
+
+            // Active session row
             // Status colors: amber for pending approval, blue for active, gray for snoozed
             const statusDotColor = hasPendingApproval
               ? "bg-amber-500"
-              : session.isSnoozed
+              : isSnoozed
               ? "bg-muted-foreground"
               : "bg-blue-500"
             return (
@@ -281,24 +334,24 @@ export function ActiveAgentsSidebar({
                 <span className={cn(
                   "shrink-0 h-1.5 w-1.5 rounded-full",
                   statusDotColor,
-                  !session.isSnoozed && !hasPendingApproval && "animate-pulse"
+                  !isSnoozed && !hasPendingApproval && "animate-pulse"
                 )} />
                 <p className={cn(
                   "flex-1 truncate",
                   hasPendingApproval ? "text-amber-700 dark:text-amber-300" :
-                  session.isSnoozed ? "text-muted-foreground" : "text-foreground"
+                  isSnoozed ? "text-muted-foreground" : "text-foreground"
                 )}>
                   {hasPendingApproval ? `⚠ ${session.conversationTitle}` : session.conversationTitle}
                 </p>
                 <button
-                  onClick={(e) => handleToggleSnooze(session.id, session.isSnoozed ?? false, e)}
+                  onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
                   className={cn(
                     "shrink-0 rounded p-0.5 opacity-0 transition-all hover:bg-accent hover:text-foreground group-hover:opacity-100",
                     isFocused && "opacity-100"
                   )}
-                  title={session.isSnoozed ? "Restore - show progress UI" : "Minimize - run in background"}
+                  title={isSnoozed ? "Restore - show progress UI" : "Minimize - run in background"}
                 >
-                  {session.isSnoozed ? (
+                  {isSnoozed ? (
                     <Maximize2 className="h-3 w-3" />
                   ) : (
                     <Minimize2 className="h-3 w-3" />
@@ -314,37 +367,6 @@ export function ActiveAgentsSidebar({
                 >
                   <X className="h-3 w-3" />
                 </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {isExpanded && hasRecentSessions && (
-        <div className="mt-1 space-y-0.5 pl-2">
-          {recentSessions.map((session) => {
-            // Status colors: red for error/stopped, gray for completed
-            const statusDotColor = session.status === "error" || session.status === "stopped"
-              ? "bg-red-500"
-              : "bg-muted-foreground"
-            return (
-              <div
-                key={session.id}
-                onClick={() => {
-                  if (session.conversationId) {
-                    logUI('[ActiveAgentsSidebar] Navigating to sessions view for completed session:', session.conversationId)
-                    // Navigate to sessions page with the conversation ID - will show in Past Sessions
-                    navigate(`/${session.conversationId}`)
-                  }
-                }}
-                className={cn(
-                  "rounded px-1.5 py-1 text-xs text-muted-foreground transition-all flex items-center gap-1.5",
-                  session.conversationId && "cursor-pointer hover:bg-accent/50"
-                )}
-              >
-                {/* Status dot */}
-                <span className={cn("shrink-0 h-1.5 w-1.5 rounded-full", statusDotColor)} />
-                <p className="flex-1 truncate">{session.conversationTitle}</p>
               </div>
             )
           })}
