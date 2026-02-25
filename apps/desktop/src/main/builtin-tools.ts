@@ -583,6 +583,25 @@ const toolHandlers: Record<string, ToolHandler> = {
 
       const { stdout, stderr } = await execAsync(command, execOptions)
 
+      // Truncate large outputs to prevent context bloat
+      // Keep first 5K + last 5K chars so agent sees both beginning and end
+      const MAX_OUTPUT_CHARS = 10000
+      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
+      let truncatedStdout = stdout || ""
+      let outputTruncated = false
+      if (truncatedStdout.length > MAX_OUTPUT_CHARS) {
+        const totalLines = truncatedStdout.split("\n").length
+        const totalBytes = truncatedStdout.length
+        const head = truncatedStdout.substring(0, HALF)
+        const tail = truncatedStdout.substring(truncatedStdout.length - HALF)
+        truncatedStdout = head +
+          `\n\n... [OUTPUT TRUNCATED: ${totalBytes} bytes, ~${totalLines} lines total. ` +
+          `Showing first ${HALF} + last ${HALF} chars. ` +
+          `Use head/tail/sed to read specific ranges, e.g.: sed -n '100,200p' file] ...\n\n` +
+          tail
+        outputTruncated = true
+      }
+
       return {
         content: [
           {
@@ -592,8 +611,9 @@ const toolHandlers: Record<string, ToolHandler> = {
               command,
               cwd: cwd || process.cwd(),
               skillName,
-              stdout: stdout || "",
+              stdout: truncatedStdout,
               stderr: stderr || "",
+              ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
             }, null, 2),
           },
         ],
@@ -601,10 +621,22 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     } catch (error: any) {
       // exec errors include stdout/stderr in the error object
-      const stdout = error.stdout || ""
+      let stdout = error.stdout || ""
       const stderr = error.stderr || ""
       const errorMessage = error.message || String(error)
       const exitCode = error.code
+
+      // Truncate large error outputs too
+      const MAX_OUTPUT_CHARS = 10000
+      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
+      if (stdout.length > MAX_OUTPUT_CHARS) {
+        const totalLines = stdout.split("\n").length
+        const head = stdout.substring(0, HALF)
+        const tail = stdout.substring(stdout.length - HALF)
+        stdout = head +
+          `\n\n... [OUTPUT TRUNCATED: ${stdout.length} bytes, ~${totalLines} lines. Use head/tail/sed to read specific ranges] ...\n\n` +
+          tail
+      }
 
       return {
         content: [

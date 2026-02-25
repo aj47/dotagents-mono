@@ -453,10 +453,24 @@ ${src}`
     return await summarizeOnce(content)
   }
 
+  // Very large content (>100K): truncate to first + last chunks to avoid dozens of LLM calls
+  const MAX_CHUNKS = 6
+  const LARGE_CONTENT_THRESHOLD = CHUNK_SIZE * MAX_CHUNKS // ~96K chars
+  let contentToSummarize = content
+  if (content.length > LARGE_CONTENT_THRESHOLD) {
+    const halfChunks = Math.floor(MAX_CHUNKS / 2)
+    const headSize = CHUNK_SIZE * halfChunks
+    const tailSize = CHUNK_SIZE * halfChunks
+    contentToSummarize =
+      content.slice(0, headSize) +
+      `\n\n[... ${content.length - headSize - tailSize} chars truncated for summarization ...]\n\n` +
+      content.slice(content.length - tailSize)
+  }
+
   // Large content: chunk then combine
   const parts: string[] = []
-  for (let i = 0; i < content.length; i += CHUNK_SIZE) {
-    parts.push(content.slice(i, i + CHUNK_SIZE))
+  for (let i = 0; i < contentToSummarize.length; i += CHUNK_SIZE) {
+    parts.push(contentToSummarize.slice(i, i + CHUNK_SIZE))
   }
 
   const partials: string[] = []
@@ -629,19 +643,15 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     logLLM("ContextBudget: initial", { providerId, model, maxTokens, targetTokens, estTokens: tokens, count: messages.length })
   }
 
-  if (tokens <= targetTokens) {
-    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
-  }
-
-  // Tier 0: Aggressive truncation of very large tool responses (>5000 chars)
-  // This happens BEFORE summarization to avoid expensive LLM calls on huge payloads
+  // Tier 0: ALWAYS truncate very large individual messages regardless of budget
+  // This prevents sending massive payloads to the LLM even if total tokens seem OK
   const AGGRESSIVE_TRUNCATE_THRESHOLD = 5000
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i]
-    if (msg.role === "user" && msg.content && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD) {
-      // Check if this looks like a tool result (contains JSON arrays/objects)
-      if (msg.content.includes('"url":') || msg.content.includes('"id":')) {
-        // Truncate aggressively and add note
+    if (msg.role !== "system" && msg.content && msg.content.length > AGGRESSIVE_TRUNCATE_THRESHOLD) {
+      // Truncate tool results and large user messages (tool results, JSON payloads, etc.)
+      const isToolOrLargePayload = msg.role === "tool" || msg.content.includes('"url":') || msg.content.includes('"id":')
+      if (isToolOrLargePayload) {
         messages[i] = {
           ...msg,
           content: msg.content.substring(0, AGGRESSIVE_TRUNCATE_THRESHOLD) +
@@ -656,6 +666,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
         }
       }
     }
+  }
+
+  // Recalculate after Tier 0 truncation
+  tokens = estimateTokensFromMessages(messages)
+  if (tokens <= targetTokens) {
+    if (isDebugLLM()) logLLM("ContextBudget: after aggressive_truncate", { estTokens: tokens })
+    return { messages, appliedStrategies: applied, estTokensBefore: tokens, estTokensAfter: tokens, maxTokens }
   }
 
   // Tier 1: Summarize large messages (prefer tool outputs or very long entries)

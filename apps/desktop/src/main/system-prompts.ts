@@ -63,11 +63,14 @@ COMPLETION SIGNAL:
 
 AGENT FILE & COMMAND EXECUTION:
 - Use execute_command as your primary tool for shell commands, file I/O, and automation
-- Read files: execute_command with "cat path/to/file"
+- Read files: check size first with "wc -l file", then read in chunks with "sed -n '1,100p' file" or "head -n 100 file"
+- For small files (<200 lines): "cat path/to/file" is fine
+- For large files: read specific ranges with "sed -n 'START,ENDp' file" — never cat the whole thing
 - Write files: execute_command with "cat > path/to/file << 'EOF'\\n...content...\\nEOF" or "echo 'content' > file"
 - List directories: execute_command with "ls -la path/"
 - Create directories: execute_command with "mkdir -p path/to/dir"
 - Run scripts: execute_command with "./script.sh" or "python script.py" etc.
+- Output over 10K chars is automatically truncated (first 5K + last 5K preserved)
 
 MEMORIES (optional):
 - Use save_memory to store durable preferences/patterns you learn about the user.`

@@ -149,7 +149,14 @@ export const agentSessionStateManager = {
    * @param profileSnapshot - Optional profile snapshot for session isolation
    */
   createSession(sessionId: string, profileSnapshot?: SessionProfileSnapshot): void {
-    if (!state.agentSessions.has(sessionId)) {
+    const existing = state.agentSessions.get(sessionId)
+    if (existing) {
+      // Session already exists (revival case) — reset shouldStop so the revived session can proceed
+      existing.shouldStop = false
+      if (profileSnapshot) {
+        existing.profileSnapshot = profileSnapshot
+      }
+    } else {
       state.agentSessions.set(sessionId, {
         sessionId,
         shouldStop: false,
@@ -158,12 +165,12 @@ export const agentSessionStateManager = {
         processes: new Set(),
         profileSnapshot,
       })
-      // Update legacy global flag
-      state.isAgentModeActive = true
-      // Reset the global stop flag when starting a new session
-      // (it may have been left true from a previous emergency stop)
-      state.shouldStopAgent = false
     }
+    // Update legacy global flag
+    state.isAgentModeActive = true
+    // Reset the global stop flag when starting a new session
+    // (it may have been left true from a previous emergency stop)
+    state.shouldStopAgent = false
   },
 
   // Get session state
