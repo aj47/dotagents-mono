@@ -681,6 +681,19 @@ class SkillsService {
     return this.getSkills().find((s) => s.id === id)
   }
 
+  getSkillCanonicalFilePath(id: string): string | null {
+    this.ensureInitialized()
+
+    const origin = this.originById.get(id)
+    if (origin?.filePath) return origin.filePath
+
+    const skill = this.skills.find((s) => s.id === id)
+    if (!skill) return null
+
+    const { globalLayer } = this.getLayers()
+    return skillIdToFilePath(globalLayer, skill.id)
+  }
+
   getSkillByFilePath(filePath: string): AgentSkill | undefined {
     return this.getSkills().find((s) => s.filePath === filePath)
   }

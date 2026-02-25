@@ -7,7 +7,7 @@ import { Textarea } from "@renderer/components/ui/textarea"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
-import { Trash2, Plus, Edit2, Save, X, Play, Clock } from "lucide-react"
+import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig } from "@shared/types"
@@ -193,6 +193,17 @@ export function SettingsLoops() {
     }
   }
 
+  const handleOpenTaskFile = async (loop: LoopConfig) => {
+    try {
+      const result = await tipcClient.openLoopTaskFile({ loopId: loop.id })
+      if (!result?.success) {
+        toast.error(result?.error || "Failed to open task file")
+      }
+    } catch {
+      toast.error("Failed to open task file")
+    }
+  }
+
   const renderLoopList = () => (
     <div className="space-y-4">
       {loops.map((loop) => {
@@ -222,6 +233,9 @@ export function SettingsLoops() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => handleRunNow(loop)}>
                   <Play className="h-4 w-4" />Run Now
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleOpenTaskFile(loop)}>
+                  <FileText className="h-4 w-4" />Open File
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(loop)}>
                   <Edit2 className="h-4 w-4" />

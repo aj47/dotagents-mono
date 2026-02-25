@@ -190,9 +190,22 @@ export function Component() {
     return Math.max(lastStepTimestamp, lastHistoryTimestamp)
   }, [])
 
+  // State for pending conversation continuation (user selected a conversation to continue)
+  // Declared before allProgressEntries so it can be used in the filter below.
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null)
+
   const allProgressEntries = React.useMemo(() => {
     const entries = Array.from(agentProgressById.entries())
       .filter(([_, progress]) => progress !== null)
+      // When a pending continuation tile exists for a conversation, hide the
+      // completed progress entry for the same conversation to avoid showing
+      // duplicate tiles (one pending, one completed) for the same conversation.
+      .filter(([_, progress]) => {
+        if (pendingConversationId && progress?.isComplete && progress?.conversationId === pendingConversationId) {
+          return false
+        }
+        return true
+      })
 
     if (sessionOrder.length > 0) {
       return entries.sort((a, b) => {
@@ -216,7 +229,7 @@ export function Component() {
       if (aComplete !== bComplete) return aComplete ? 1 : -1
       return getLastActivityTimestamp(b[1]) - getLastActivityTimestamp(a[1])
     })
-  }, [agentProgressById, sessionOrder, getLastActivityTimestamp])
+  }, [agentProgressById, sessionOrder, getLastActivityTimestamp, pendingConversationId])
 
   // Sync session order when new sessions appear
   useEffect(() => {
@@ -246,9 +259,6 @@ export function Component() {
       }
     }
   }, [agentProgressById, getLastActivityTimestamp])
-
-  // State for pending conversation continuation (user selected a conversation to continue)
-  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null)
 
   // Handle route parameter for deep-linking to specific session
   // When navigating to /:id, focus the active session tile or create a new tile for past sessions

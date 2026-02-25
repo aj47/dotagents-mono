@@ -2150,6 +2150,28 @@ Return ONLY JSON per schema.`,
         // nudge/hint counters so the safety valves fire if the agent keeps looping.
         // This ensures repeated respond_to_user calls trigger the nudge path.
         noOpCount++
+
+        // Guard: if respond_to_user has been called repeatedly without real work,
+        // force completion using the stored response instead of letting the loop
+        // spin until maxIterations. The noOpCount threshold (2) matches the one
+        // used in the !hasToolCalls path so both branches converge consistently.
+        if (noOpCount >= 2) {
+          const storedResponse = getSessionUserResponse(currentSessionId)
+          if (storedResponse?.trim().length) {
+            // Already have a user-facing response — skip tool execution and break
+            finalContent = storedResponse
+            addMessage("assistant", finalContent)
+            emit({
+              currentIteration: iteration,
+              maxIterations,
+              steps: progressSteps.slice(-3),
+              isComplete: true,
+              finalContent,
+              conversationHistory: formatConversationForProgress(conversationHistory),
+            })
+            break
+          }
+        }
       } else {
         // Real work tools: full counter reset
         noOpCount = 0

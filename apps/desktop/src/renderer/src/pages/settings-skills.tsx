@@ -22,7 +22,7 @@ import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X } from "lucide-react"
+import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText } from "lucide-react"
 
 
 export function Component() {
@@ -211,6 +211,20 @@ export function Component() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to export skill: ${error.message}`)
+    },
+  })
+
+  const openSkillFileMutation = useMutation({
+    mutationFn: async (skillId: string) => {
+      return await tipcClient.openSkillFile({ skillId })
+    },
+    onSuccess: (result) => {
+      if (!result?.success) {
+        toast.error(result?.error || "Failed to open skill file")
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to open skill file: ${error.message}`)
     },
   })
 
@@ -594,6 +608,13 @@ Write your skill instructions here.
                       onClick={() => handleEditSkill(skill)}
                     >
                       <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openSkillFileMutation.mutate(skill.id)}
+                    >
+                      <FileText className="h-3 w-3" />
                     </Button>
                     <Button
                       variant="ghost"

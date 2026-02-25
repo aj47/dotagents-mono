@@ -376,6 +376,132 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
       required: ["skillId"],
     },
   },
+
+  // ============================================================================
+  // Repeat Task Management
+  // ============================================================================
+  {
+    name: "list_repeat_tasks",
+    description: "List all repeat tasks with their schedule, status, and last run time.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "save_repeat_task",
+    description: "Create or update a repeat task. If id matches an existing task, it updates it; otherwise creates a new one. Omit id to auto-generate.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Task ID. If provided and exists, updates that task. Omit to create new.",
+        },
+        name: {
+          type: "string",
+          description: "Display name for the task.",
+        },
+        prompt: {
+          type: "string",
+          description: "The prompt text sent to the agent when the task runs.",
+        },
+        intervalMinutes: {
+          type: "number",
+          description: "How often to run in minutes (minimum 1).",
+        },
+        enabled: {
+          type: "boolean",
+          description: "Whether the task is active.",
+        },
+        runOnStartup: {
+          type: "boolean",
+          description: "If true, runs immediately on app start before first interval.",
+        },
+        profileId: {
+          type: "string",
+          description: "Optional agent profile ID to use for execution.",
+        },
+      },
+      required: ["name", "prompt", "intervalMinutes"],
+    },
+  },
+  {
+    name: "delete_repeat_task",
+    description: "Delete a repeat task by ID. Use list_repeat_tasks first to get IDs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        taskId: {
+          type: "string",
+          description: "The task ID to delete.",
+        },
+      },
+      required: ["taskId"],
+    },
+  },
+
+  // ============================================================================
+  // Agent Profile Management
+  // ============================================================================
+  {
+    name: "list_agent_profiles",
+    description: "List all agent profiles with their name, role, connection type, and enabled status.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "save_agent_profile",
+    description: "Create or update an agent profile. If id matches an existing profile, it updates it; otherwise creates a new one. Omit id to create new.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Profile ID. If provided and exists, updates that profile. Omit to create new.",
+        },
+        name: {
+          type: "string",
+          description: "Display name for the agent.",
+        },
+        description: {
+          type: "string",
+          description: "What this agent does.",
+        },
+        systemPrompt: {
+          type: "string",
+          description: "System prompt that defines the agent's behavior.",
+        },
+        guidelines: {
+          type: "string",
+          description: "Additional guidelines for the agent.",
+        },
+        enabled: {
+          type: "boolean",
+          description: "Whether this agent is enabled (default: true).",
+        },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "delete_agent_profile",
+    description: "Delete an agent profile by ID. Built-in agents cannot be deleted. Use list_agent_profiles first to get IDs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        profileId: {
+          type: "string",
+          description: "The profile ID to delete.",
+        },
+      },
+      required: ["profileId"],
+    },
+  },
 ]
 
 /**

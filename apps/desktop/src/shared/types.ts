@@ -1455,6 +1455,11 @@ export type Config = {
 
   // Repeat Tasks Configuration
   loops?: LoopConfig[]  // Scheduled repeat tasks that run at intervals
+
+  // External editor integration for opening large .agents markdown files
+  // Each entry is a command template. Use {file} to control where the path is inserted.
+  // Example: ["code --reuse-window {file}", "cursor {file}"]
+  preferredEditorCommands?: string[]
 }
 
 // Push Notification Token (from mobile clients)

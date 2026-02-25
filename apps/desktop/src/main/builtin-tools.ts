@@ -1219,6 +1219,204 @@ const toolHandlers: Record<string, ToolHandler> = {
       isError: false,
     }
   },
+
+  // ============================================================================
+  // Repeat Task Management
+  // ============================================================================
+
+  list_repeat_tasks: async (): Promise<MCPToolResult> => {
+    try {
+      const { loopService } = await import("./loop-service")
+      const loops = loopService.getLoops()
+      const list = loops.map(l => ({
+        id: l.id,
+        name: l.name,
+        enabled: l.enabled,
+        intervalMinutes: l.intervalMinutes,
+        prompt: l.prompt.slice(0, 200) + (l.prompt.length > 200 ? "..." : ""),
+        runOnStartup: l.runOnStartup ?? false,
+        lastRunAt: l.lastRunAt,
+        profileId: l.profileId,
+      }))
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: true, count: list.length, tasks: list }) }],
+        isError: false,
+      }
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: String(error) }) }],
+        isError: true,
+      }
+    }
+  },
+
+  save_repeat_task: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    try {
+      if (typeof args.name !== "string" || !args.name.trim()) {
+        return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "name is required" }) }], isError: true }
+      }
+      if (typeof args.prompt !== "string" || !args.prompt.trim()) {
+        return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "prompt is required" }) }], isError: true }
+      }
+      const intervalMinutes = typeof args.intervalMinutes === "number" ? Math.max(1, Math.floor(args.intervalMinutes)) : 60
+
+      const { loopService } = await import("./loop-service")
+      const { randomUUID } = await import("crypto")
+
+      // Upsert: update if id exists, else create
+      const existingId = typeof args.id === "string" ? args.id.trim() : ""
+      const existing = existingId ? loopService.getLoop(existingId) : undefined
+
+      const task: import("../shared/types").LoopConfig = {
+        id: existing?.id || existingId || randomUUID(),
+        name: (args.name as string).trim(),
+        prompt: (args.prompt as string).trim(),
+        intervalMinutes,
+        enabled: typeof args.enabled === "boolean" ? args.enabled : existing?.enabled ?? true,
+        runOnStartup: typeof args.runOnStartup === "boolean" ? args.runOnStartup : existing?.runOnStartup,
+        profileId: typeof args.profileId === "string" ? args.profileId.trim() || undefined : existing?.profileId,
+        lastRunAt: existing?.lastRunAt,
+      }
+
+      loopService.saveLoop(task)
+
+      // Start or stop scheduling based on enabled state
+      if (task.enabled) {
+        loopService.startLoop(task.id)
+      } else {
+        loopService.stopLoop(task.id)
+      }
+
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: true, id: task.id, action: existing ? "updated" : "created", name: task.name }) }],
+        isError: false,
+      }
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: String(error) }) }],
+        isError: true,
+      }
+    }
+  },
+
+  delete_repeat_task: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    try {
+      if (typeof args.taskId !== "string" || !args.taskId.trim()) {
+        return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "taskId is required" }) }], isError: true }
+      }
+      const { loopService } = await import("./loop-service")
+      const deleted = loopService.deleteLoop(args.taskId.trim())
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: deleted, id: args.taskId, message: deleted ? "Task deleted" : "Task not found" }) }],
+        isError: !deleted,
+      }
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: String(error) }) }],
+        isError: true,
+      }
+    }
+  },
+
+  // ============================================================================
+  // Agent Profile Management
+  // ============================================================================
+
+  list_agent_profiles: async (): Promise<MCPToolResult> => {
+    try {
+      const profiles = agentProfileService.getAll()
+      const list = profiles.map(p => ({
+        id: p.id,
+        name: p.displayName || p.name,
+        description: p.description,
+        role: p.role,
+        connectionType: p.connection.type,
+        enabled: p.enabled,
+        isBuiltIn: p.isBuiltIn ?? false,
+      }))
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: true, count: list.length, agents: list }) }],
+        isError: false,
+      }
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: String(error) }) }],
+        isError: true,
+      }
+    }
+  },
+
+  save_agent_profile: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    try {
+      if (typeof args.name !== "string" || !args.name.trim()) {
+        return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "name is required" }) }], isError: true }
+      }
+
+      const name = (args.name as string).trim()
+      const existingId = typeof args.id === "string" ? args.id.trim() : ""
+      const existing = existingId ? agentProfileService.getById(existingId) : undefined
+
+      if (existing) {
+        // Update existing profile
+        const updates: Record<string, unknown> = { displayName: name }
+        if (typeof args.description === "string") updates.description = args.description
+        if (typeof args.systemPrompt === "string") updates.systemPrompt = args.systemPrompt
+        if (typeof args.guidelines === "string") updates.guidelines = args.guidelines
+        if (typeof args.enabled === "boolean") updates.enabled = args.enabled
+
+        const updated = agentProfileService.update(existingId, updates)
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: !!updated, id: existingId, action: "updated", name }) }],
+          isError: !updated,
+        }
+      } else {
+        // Create new profile
+        const newProfile = agentProfileService.create({
+          name,
+          displayName: name,
+          description: typeof args.description === "string" ? args.description : undefined,
+          systemPrompt: typeof args.systemPrompt === "string" ? args.systemPrompt : undefined,
+          guidelines: typeof args.guidelines === "string" ? args.guidelines : "",
+          connection: { type: "internal" },
+          role: "delegation-target",
+          enabled: typeof args.enabled === "boolean" ? args.enabled : true,
+          isAgentTarget: true,
+        })
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: true, id: newProfile.id, action: "created", name }) }],
+          isError: false,
+        }
+      }
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: String(error) }) }],
+        isError: true,
+      }
+    }
+  },
+
+  delete_agent_profile: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    try {
+      if (typeof args.profileId !== "string" || !args.profileId.trim()) {
+        return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "profileId is required" }) }], isError: true }
+      }
+      const id = args.profileId.trim()
+      const profile = agentProfileService.getById(id)
+      if (profile?.isBuiltIn) {
+        return { content: [{ type: "text", text: JSON.stringify({ success: false, error: "Cannot delete built-in agents" }) }], isError: true }
+      }
+      const deleted = agentProfileService.delete(id)
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: deleted, id, message: deleted ? "Agent deleted" : "Agent not found" }) }],
+        isError: !deleted,
+      }
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: String(error) }) }],
+        isError: true,
+      }
+    }
+  },
 }
 
 /**

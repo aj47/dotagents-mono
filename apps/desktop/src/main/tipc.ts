@@ -1,4 +1,5 @@
 import fs from "fs"
+import { spawn } from "child_process"
 import { logApp, logLLM, getDebugFlags } from "./debug"
 import { getRendererHandlers, tipc } from "@egoist/tipc/main"
 import {
@@ -613,6 +614,92 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
   } finally {
     // Always release the lock when done
     messageQueueService.releaseProcessingLock(conversationId)
+  }
+}
+
+type OpenFileResult = {
+  success: boolean
+  error?: string
+  path?: string
+  openedWith?: "preferred-editor" | "default-app"
+}
+
+function normalizePreferredEditorCommands(config: Config): string[] {
+  const raw = config.preferredEditorCommands
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .map((command) => (typeof command === "string" ? command.trim() : ""))
+    .filter(Boolean)
+}
+
+function quoteFilePathForShell(filePath: string): string {
+  if (process.platform === "win32") {
+    return `"${filePath.replace(/"/g, '\\"')}"`
+  }
+  return `'${filePath.replace(/'/g, `'"'"'`)}'`
+}
+
+function createEditorCommand(commandTemplate: string, filePath: string): string {
+  const quotedPath = quoteFilePathForShell(filePath)
+  if (commandTemplate.includes("{file}")) {
+    return commandTemplate.split("{file}").join(quotedPath)
+  }
+  return `${commandTemplate} ${quotedPath}`
+}
+
+async function tryLaunchEditorCommand(commandLine: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false
+    const settle = (value: boolean) => {
+      if (settled) return
+      settled = true
+      resolve(value)
+    }
+
+    try {
+      const child = spawn(commandLine, {
+        shell: true,
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      })
+
+      child.once("error", () => settle(false))
+      child.once("exit", (code) => settle(code === 0))
+      child.once("spawn", () => {
+        // If the command keeps running for a short moment, assume the editor launched.
+        setTimeout(() => {
+          child.unref()
+          settle(true)
+        }, 250)
+      })
+    } catch {
+      settle(false)
+    }
+  })
+}
+
+async function openFileInPreferredEditor(filePath: string, config: Config): Promise<OpenFileResult> {
+  const commands = normalizePreferredEditorCommands(config)
+
+  for (const commandTemplate of commands) {
+    const commandLine = createEditorCommand(commandTemplate, filePath)
+    const launched = await tryLaunchEditorCommand(commandLine)
+    if (launched) {
+      return { success: true, path: filePath, openedWith: "preferred-editor" }
+    }
+  }
+
+  const shellError = await shell.openPath(filePath)
+  if (!shellError) {
+    return { success: true, path: filePath, openedWith: "default-app" }
+  }
+
+  return {
+    success: false,
+    path: filePath,
+    error: shellError,
   }
 }
 
@@ -1977,6 +2064,54 @@ export const router = {
     fs.mkdirSync(workspaceAgentsFolder, { recursive: true })
     const error = await shell.openPath(workspaceAgentsFolder)
     return { success: !error, error: error || undefined }
+  }),
+
+  openSystemPromptFile: t.procedure.action(async () => {
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
+
+    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    const targetLayer = workspaceAgentsFolder
+      ? getAgentsLayerPaths(workspaceAgentsFolder)
+      : getAgentsLayerPaths(globalAgentsFolder)
+
+    fs.mkdirSync(targetLayer.agentsDir, { recursive: true })
+
+    const config = configStore.get()
+    writeAgentsPrompts(
+      targetLayer,
+      config.mcpCustomSystemPrompt || "",
+      config.mcpToolsSystemPrompt || "",
+      DEFAULT_SYSTEM_PROMPT,
+      { onlyIfMissing: true, maxBackups: 10 },
+    )
+
+    return openFileInPreferredEditor(targetLayer.systemPromptMdPath, config)
+  }),
+
+  openAgentsGuidelinesFile: t.procedure.action(async () => {
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
+
+    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    const targetLayer = workspaceAgentsFolder
+      ? getAgentsLayerPaths(workspaceAgentsFolder)
+      : getAgentsLayerPaths(globalAgentsFolder)
+
+    fs.mkdirSync(targetLayer.agentsDir, { recursive: true })
+
+    const config = configStore.get()
+    writeAgentsPrompts(
+      targetLayer,
+      config.mcpCustomSystemPrompt || "",
+      config.mcpToolsSystemPrompt || "",
+      DEFAULT_SYSTEM_PROMPT,
+      { onlyIfMissing: true, maxBackups: 10 },
+    )
+
+    return openFileInPreferredEditor(targetLayer.agentsMdPath, config)
   }),
 
   openMemoriesFolder: t.procedure.action(async () => {
@@ -3930,6 +4065,38 @@ export const router = {
     return { success: !error, error: error || undefined }
   }),
 
+  openSkillFile: t.procedure
+    .input<{ skillId: string }>()
+    .action(async ({ input }) => {
+      const { skillsService } = await import("./skills-service")
+
+      const skill = skillsService.getSkill(input.skillId)
+      if (!skill) {
+        return { success: false, error: `Skill with id ${input.skillId} not found` }
+      }
+
+      const filePath = skillsService.getSkillCanonicalFilePath(input.skillId)
+      if (!filePath) {
+        return { success: false, error: `No file path found for skill ${input.skillId}` }
+      }
+
+      if (!fs.existsSync(filePath)) {
+        try {
+          fs.mkdirSync(path.dirname(filePath), { recursive: true })
+          fs.writeFileSync(filePath, skillsService.exportSkillToMarkdown(input.skillId), "utf8")
+        } catch (error) {
+          return {
+            success: false,
+            path: filePath,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        }
+      }
+
+      const config = configStore.get()
+      return openFileInPreferredEditor(filePath, config)
+    }),
+
   scanSkillsFolder: t.procedure.action(async () => {
     const { skillsService } = await import("./skills-service")
     const importedSkills = skillsService.scanSkillsFolder()
@@ -4114,6 +4281,43 @@ export const router = {
   getLoopStatuses: t.procedure.action(async () => {
     return loopService.getLoopStatuses()
   }),
+
+  openLoopTaskFile: t.procedure
+    .input<{ loopId: string }>()
+    .action(async ({ input }) => {
+      const loop = loopService.getLoop(input.loopId)
+      if (!loop) {
+        return { success: false, error: `Task with id ${input.loopId} not found` }
+      }
+
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+      const { loadTasksLayer, taskIdToFilePath, writeTaskFile } = await import("./agents-files/tasks")
+
+      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+      const workspaceDir = resolveWorkspaceAgentsFolder()
+      const workspaceLayer = workspaceDir ? getAgentsLayerPaths(workspaceDir) : null
+
+      let filePath: string | undefined
+
+      if (workspaceLayer) {
+        const workspaceLoaded = loadTasksLayer(workspaceLayer)
+        filePath = workspaceLoaded.originById.get(input.loopId)?.filePath
+      }
+
+      if (!filePath) {
+        const globalLoaded = loadTasksLayer(globalLayer)
+        filePath = globalLoaded.originById.get(input.loopId)?.filePath
+      }
+
+      if (!filePath) {
+        writeTaskFile(globalLayer, loop, { maxBackups: 10 })
+        filePath = taskIdToFilePath(globalLayer, input.loopId)
+      }
+
+      const config = configStore.get()
+      return openFileInPreferredEditor(filePath, config)
+    }),
 
   saveLoop: t.procedure
     .input<{ loop: LoopConfig }>()
