@@ -6,12 +6,12 @@ import { useAgentStore } from "@renderer/stores"
 import { SessionGrid, SessionTileWrapper } from "@renderer/components/session-grid"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Kanban, Keyboard, Clock } from "lucide-react"
+import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Keyboard, Clock } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { AgentProgressUpdate } from "@shared/types"
 import { cn } from "@renderer/lib/utils"
 import { toast } from "sonner"
-import { SessionsKanban } from "@renderer/components/sessions-kanban"
+
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
@@ -151,9 +151,6 @@ export function Component() {
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const scrollToSessionId = useAgentStore((s) => s.scrollToSessionId)
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
-  const viewMode = useAgentStore((s) => s.viewMode)
-  const setViewMode = useAgentStore((s) => s.setViewMode)
-
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
 
   // Get config for shortcut displays
@@ -533,38 +530,17 @@ export function Component() {
                 Past Sessions
               </Button>
             )}
-            {/* View mode toggle */}
-            <div className="flex border rounded-md overflow-hidden" role="group" aria-label="Session view mode">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => {
-                  if (viewMode === "grid") {
-                    // Already in grid view - reset tile layout
-                    handleResetTileLayout()
-                  } else {
-                    setViewMode("grid")
-                  }
-                }}
-                className="rounded-none h-7 px-2"
-                title={viewMode === "grid" ? "Reset tile sizes to default" : "Grid view"}
-                aria-label={viewMode === "grid" ? "Reset tile layout" : "Grid view"}
-                aria-pressed={viewMode === "grid"}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "kanban" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("kanban")}
-                className="rounded-none h-7 px-2"
-                title="Kanban view"
-                aria-label="Kanban view"
-                aria-pressed={viewMode === "kanban"}
-              >
-                <Kanban className="h-4 w-4" />
-              </Button>
-            </div>
+            {/* Reset tile layout button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetTileLayout}
+              className="h-7 px-2"
+              title="Reset tile sizes to default"
+              aria-label="Reset tile layout"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
             {inactiveSessionCount > 0 && (
               <Button
                 variant="ghost"
@@ -596,18 +572,7 @@ export function Component() {
             dictationShortcut={dictationShortcut}
           />
         ) : (
-          /* Active sessions - grid or kanban view */
-          viewMode === "kanban" ? (
-            <SessionsKanban
-              sessions={allProgressEntries}
-              focusedSessionId={focusedSessionId}
-              onFocusSession={handleFocusSession}
-              onDismissSession={handleDismissSession}
-              pendingProgress={pendingProgress}
-              pendingSessionId={pendingSessionId}
-              onDismissPendingContinuation={handleDismissPendingContinuation}
-            />
-          ) : (
+          /* Active sessions - grid view */
             <SessionGrid sessionCount={allProgressEntries.length + (pendingProgress ? 1 : 0)} resetKey={tileResetKey}>
               {/* Pending continuation tile first */}
               {pendingProgress && pendingSessionId && (
@@ -668,7 +633,6 @@ export function Component() {
                 )
               })}
             </SessionGrid>
-          )
         )}
       </div>
     </div>
