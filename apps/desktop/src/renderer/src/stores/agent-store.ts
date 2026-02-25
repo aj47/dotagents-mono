@@ -121,8 +121,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           mergedUpdate = {
             ...existingProgress,
             ...update,
-            // On revival, drop the old userResponse so TTS doesn't re-read it.
-            ...(isRevival ? { userResponse: undefined } : {}),
+            // On revival, drop the old userResponse and history so TTS doesn't re-read it.
+            ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined } : {}),
             // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
             // use the update value; otherwise preserve existing. This ensures clearing works.
             pendingToolApproval: 'pendingToolApproval' in update
@@ -140,8 +140,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           mergedUpdate = {
             ...existingProgress,
             ...update,
-            // On revival, drop the old userResponse so TTS doesn't re-read it.
-            ...(isRevival ? { userResponse: undefined } : {}),
+            // On revival, drop the old userResponse and history so TTS doesn't re-read it.
+            ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined } : {}),
             // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
             // use the update value; otherwise preserve existing. This ensures clearing works.
             pendingToolApproval: 'pendingToolApproval' in update

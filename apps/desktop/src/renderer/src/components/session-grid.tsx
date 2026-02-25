@@ -3,12 +3,16 @@ import { cn } from "@renderer/lib/utils"
 import { GripVertical } from "lucide-react"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 
-// Context to share container width, height, gap, and reset key with tile wrappers
+/** Layout mode for session tiles: "1x2" = 2 columns, "2x2" = 4 tiles (2x2 grid), "1x1" = single maximized */
+export type TileLayoutMode = "1x2" | "2x2" | "1x1"
+
+// Context to share container width, height, gap, reset key, and layout mode with tile wrappers
 interface SessionGridContextValue {
   containerWidth: number
   containerHeight: number
   gap: number
   resetKey: number
+  layoutMode: TileLayoutMode
 }
 
 const SessionGridContext = createContext<SessionGridContextValue>({
@@ -16,6 +20,7 @@ const SessionGridContext = createContext<SessionGridContextValue>({
   containerHeight: 0,
   gap: 16,
   resetKey: 0,
+  layoutMode: "1x2",
 })
 
 export function useSessionGridContext() {
@@ -27,9 +32,10 @@ interface SessionGridProps {
   sessionCount: number
   className?: string
   resetKey?: number
+  layoutMode?: TileLayoutMode
 }
 
-export function SessionGrid({ children, sessionCount, className, resetKey = 0 }: SessionGridProps) {
+export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2" }: SessionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [containerHeight, setContainerHeight] = useState(0)
@@ -90,7 +96,7 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0 }:
   }, [])
 
   return (
-    <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey }}>
+    <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey, layoutMode }}>
       <div
         ref={containerRef}
         className={cn(
@@ -117,14 +123,40 @@ interface SessionTileWrapperProps {
   isDragging?: boolean
 }
 
-// Calculate half container width for tile sizing, clamped to min/max
-function calculateHalfWidth(containerWidth: number, gap: number): number {
+// Calculate tile width based on layout mode, clamped to min/max
+function calculateTileWidth(containerWidth: number, gap: number, layoutMode: TileLayoutMode): number {
   if (containerWidth <= 0) {
     return TILE_DIMENSIONS.width.default
   }
-  // Account for gap between tiles (subtract gap for the space between two tiles)
-  const halfWidth = Math.floor((containerWidth - gap) / 2)
-  return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, halfWidth))
+  switch (layoutMode) {
+    case "1x1":
+      // Full width
+      return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, containerWidth))
+    case "2x2":
+      // Half width (same as 1x2 — 2 columns)
+      return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, Math.floor((containerWidth - gap) / 2)))
+    case "1x2":
+    default:
+      // Half width — 2 columns
+      return Math.max(TILE_DIMENSIONS.width.min, Math.min(TILE_DIMENSIONS.width.max, Math.floor((containerWidth - gap) / 2)))
+  }
+}
+
+// Calculate tile height based on layout mode
+function calculateTileHeight(containerHeight: number, gap: number, layoutMode: TileLayoutMode): number {
+  if (containerHeight <= 0) return TILE_DIMENSIONS.height.default
+  switch (layoutMode) {
+    case "1x1":
+      // Full height
+      return Math.min(TILE_DIMENSIONS.height.max, Math.max(TILE_DIMENSIONS.height.min, containerHeight))
+    case "2x2":
+      // Half height — 2 rows
+      return Math.min(TILE_DIMENSIONS.height.max, Math.max(TILE_DIMENSIONS.height.min, Math.floor((containerHeight - gap) / 2)))
+    case "1x2":
+    default:
+      // Full height — single row
+      return Math.min(TILE_DIMENSIONS.height.max, Math.max(TILE_DIMENSIONS.height.min, containerHeight))
+  }
 }
 
 export function SessionTileWrapper({
@@ -140,17 +172,10 @@ export function SessionTileWrapper({
   isDragging,
 }: SessionTileWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { containerWidth, containerHeight, gap, resetKey } = useSessionGridContext()
+  const { containerWidth, containerHeight, gap, resetKey, layoutMode } = useSessionGridContext()
   const hasInitializedRef = useRef(false)
   const lastResetKeyRef = useRef(resetKey)
-
-  // Calculate initial height: fill available vertical space when container is known,
-  // otherwise fall back to the default height constant.
-  const calculateFillHeight = (availableHeight: number): number => {
-    if (availableHeight <= 0) return TILE_DIMENSIONS.height.default
-    const fillHeight = Math.max(TILE_DIMENSIONS.height.min, availableHeight)
-    return Math.min(TILE_DIMENSIONS.height.max, fillHeight)
-  }
+  const lastLayoutModeRef = useRef(layoutMode)
 
   const {
     width,
@@ -161,19 +186,32 @@ export function SessionTileWrapper({
     handleCornerResizeStart,
     setSize,
   } = useResizable({
-    initialWidth: calculateHalfWidth(containerWidth, gap),
-    initialHeight: calculateFillHeight(containerHeight),
+    initialWidth: calculateTileWidth(containerWidth, gap, layoutMode),
+    initialHeight: calculateTileHeight(containerHeight, gap, layoutMode),
     storageKey: "session-tile",
   })
 
-  // Reset tile size when resetKey changes (user clicked "Reset Layout")
+  // Reset tile size when resetKey changes (user clicked layout cycle button)
   useEffect(() => {
     if (resetKey !== lastResetKeyRef.current && containerWidth > 0) {
       lastResetKeyRef.current = resetKey
-      const halfWidth = calculateHalfWidth(containerWidth, gap)
-      setSize({ width: halfWidth, height: calculateFillHeight(containerHeight) })
+      setSize({
+        width: calculateTileWidth(containerWidth, gap, layoutMode),
+        height: calculateTileHeight(containerHeight, gap, layoutMode),
+      })
     }
-  }, [resetKey, containerWidth, containerHeight, gap, setSize])
+  }, [resetKey, containerWidth, containerHeight, gap, layoutMode, setSize])
+
+  // Update tile size when layout mode changes
+  useEffect(() => {
+    if (layoutMode !== lastLayoutModeRef.current && containerWidth > 0) {
+      lastLayoutModeRef.current = layoutMode
+      setSize({
+        width: calculateTileWidth(containerWidth, gap, layoutMode),
+        height: calculateTileHeight(containerHeight, gap, layoutMode),
+      })
+    }
+  }, [layoutMode, containerWidth, containerHeight, gap, setSize])
 
   // Update width and height to fill container once it is measured (only on first valid measurement)
   // This handles the case where containerWidth/containerHeight are 0 on initial render
@@ -182,7 +220,6 @@ export function SessionTileWrapper({
     if (containerWidth > 0 && !hasInitializedRef.current) {
       hasInitializedRef.current = true
       // Check if there's already a persisted size - if so, don't override it
-      // Use try/catch to handle restricted environments where localStorage may throw
       let hasPersistedSize = false
       try {
         const persistedKey = "dotagents-resizable-session-tile"
@@ -191,11 +228,13 @@ export function SessionTileWrapper({
         // Storage unavailable, fall back to default behavior
       }
       if (!hasPersistedSize) {
-        const halfWidth = calculateHalfWidth(containerWidth, gap)
-        setSize({ width: halfWidth, height: calculateFillHeight(containerHeight) })
+        setSize({
+          width: calculateTileWidth(containerWidth, gap, layoutMode),
+          height: calculateTileHeight(containerHeight, gap, layoutMode),
+        })
       }
     }
-  }, [containerWidth, containerHeight, gap, setSize])
+  }, [containerWidth, containerHeight, gap, layoutMode, setSize])
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = "move"

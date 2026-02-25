@@ -213,6 +213,11 @@ export interface AgentProgressUpdate {
    * Consumers should fall back to finalContent if this is not set.
    */
   userResponse?: string
+  /**
+   * History of past respond_to_user calls (excluding the current/latest one).
+   * Shown as collapsed items in the UI with TTS playback support.
+   */
+  userResponseHistory?: string[]
   conversationHistory?: Array<{
     role: "user" | "assistant" | "tool"
     content: string

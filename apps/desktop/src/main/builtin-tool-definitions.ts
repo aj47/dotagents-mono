@@ -277,6 +277,42 @@ export const builtinToolDefinitions: BuiltinToolDefinition[] = [
       required: ["skillId"],
     },
   },
+  {
+    name: "list_skills",
+    description: "List all available skills with their name, description, and enabled/disabled status for each agent profile.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        profileId: {
+          type: "string",
+          description: "Optional agent profile ID to show enabled/disabled status relative to. If omitted, shows global skill list.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "toggle_agent_skill",
+    description: "Enable or disable a skill for an agent profile. When a skill is disabled for an agent, it will not be available in that agent's system prompt.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        profileId: {
+          type: "string",
+          description: "The agent profile ID to toggle the skill for.",
+        },
+        skillId: {
+          type: "string",
+          description: "The skill ID to toggle.",
+        },
+        enabled: {
+          type: "boolean",
+          description: "Whether to enable (true) or disable (false) the skill. If not provided, toggles to the opposite of the current state.",
+        },
+      },
+      required: ["profileId", "skillId"],
+    },
+  },
 
   // ============================================================================
   // Repeat Task Management

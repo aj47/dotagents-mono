@@ -31,7 +31,7 @@ import {
   type SummarizationInput,
 } from "./summarization-service"
 import { memoryService } from "./memory-service"
-import { clearSessionUserResponse, getSessionUserResponse } from "./session-user-response-store"
+import { clearSessionUserResponse, getSessionUserResponse, getSessionUserResponseHistory } from "./session-user-response-store"
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
@@ -536,11 +536,16 @@ export async function processTranscriptWithAgentMode(
         ? update.finalContent
         : undefined)
 
+    // Get history of past respond_to_user calls (excluding current)
+    const responseHistory = getSessionUserResponseHistory(currentSessionId)
+
     const fullUpdate: AgentProgressUpdate = {
       ...update,
 	      // Only include userResponse when it has a value, so undefined doesn't
 	      // overwrite a previously-set value during the renderer's spread-merge.
 	      ...(userResponseForUpdate !== undefined ? { userResponse: userResponseForUpdate } : {}),
+      // Include response history if there are past responses
+      ...(responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
       sessionId: currentSessionId,
       conversationId: currentConversationId,
       conversationTitle,

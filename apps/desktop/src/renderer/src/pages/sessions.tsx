@@ -3,10 +3,10 @@ import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useParams, useOutletContext } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useAgentStore } from "@renderer/stores"
-import { SessionGrid, SessionTileWrapper } from "@renderer/components/session-grid"
+import { SessionGrid, SessionTileWrapper, type TileLayoutMode } from "@renderer/components/session-grid"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Keyboard, Clock } from "lucide-react"
+import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { AgentProgressUpdate } from "@shared/types"
 import { cn } from "@renderer/lib/utils"
@@ -151,8 +151,6 @@ export function Component() {
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const scrollToSessionId = useAgentStore((s) => s.scrollToSessionId)
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
-  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
-
   // Get config for shortcut displays
   const configQuery = useConfigQuery()
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
@@ -164,6 +162,7 @@ export function Component() {
   const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null)
   const [collapsedSessions, setCollapsedSessions] = useState<Record<string, boolean>>({})
   const [tileResetKey, setTileResetKey] = useState(0)
+  const [tileLayoutMode, setTileLayoutMode] = useState<TileLayoutMode>("1x2")
 
   const sessionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -453,57 +452,26 @@ export function Component() {
     }
   }
 
-  const handleResetTileLayout = useCallback(() => {
-    clearPersistedSize("session-tile")
-    setTileResetKey(prev => prev + 1)
-    toast.success("Tile sizes reset to default")
-  }, [])
+  const LAYOUT_MODES: TileLayoutMode[] = ["1x2", "2x2", "1x1"]
+  const LAYOUT_LABELS: Record<TileLayoutMode, string> = {
+    "1x2": "2 columns",
+    "2x2": "2×2 grid",
+    "1x1": "Maximized",
+  }
 
-  const handleCollapseExpanded = useCallback(() => {
-    setExpandedSessionId(null)
+  const handleCycleTileLayout = useCallback(() => {
+    clearPersistedSize("session-tile")
+    setTileLayoutMode(prev => {
+      const idx = LAYOUT_MODES.indexOf(prev)
+      return LAYOUT_MODES[(idx + 1) % LAYOUT_MODES.length]
+    })
+    setTileResetKey(prev => prev + 1)
   }, [])
 
   // Count inactive (completed) sessions
   const inactiveSessionCount = useMemo(() => {
     return allProgressEntries.filter(([_, progress]) => progress?.isComplete).length
   }, [allProgressEntries])
-
-  // Check if expanded session is a regular session or a pending session
-  const expandedProgress = expandedSessionId
-    ? (agentProgressById.get(expandedSessionId) || (expandedSessionId === pendingSessionId ? pendingProgress : null))
-    : null
-  const isExpandedPending = expandedSessionId === pendingSessionId
-
-  // If a session is expanded, show the expanded view
-  if (expandedSessionId && expandedProgress) {
-    const isCollapsed = collapsedSessions[expandedSessionId] ?? false
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 min-h-0 p-4">
-          <div className="h-full">
-            <AgentProgress
-              progress={expandedProgress}
-              variant="tile"
-              isExpanded={true}
-              isFocused={true}
-              onFocus={() => {}}
-              onDismiss={async () => {
-                if (isExpandedPending) {
-                  handleDismissPendingContinuation()
-                } else {
-                  await handleDismissSession(expandedSessionId)
-                }
-                setExpandedSessionId(null)
-              }}
-              isCollapsed={isCollapsed}
-              onCollapsedChange={(collapsed) => handleCollapsedChange(expandedSessionId, collapsed)}
-              onExpand={handleCollapseExpanded}
-            />
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const hasSessions = allProgressEntries.length > 0 || !!pendingProgress
 
@@ -540,16 +508,22 @@ export function Component() {
                 Past Sessions
               </Button>
             )}
-            {/* Reset tile layout button */}
+            {/* Cycle tile layout mode button */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleResetTileLayout}
+              onClick={handleCycleTileLayout}
               className="h-7 px-2"
-              title="Reset tile sizes to default"
-              aria-label="Reset tile layout"
+              title={`Layout: ${LAYOUT_LABELS[tileLayoutMode]} (click to cycle)`}
+              aria-label="Cycle tile layout"
             >
-              <LayoutGrid className="h-4 w-4" />
+              {tileLayoutMode === "1x1" ? (
+                <Maximize2 className="h-4 w-4" />
+              ) : tileLayoutMode === "2x2" ? (
+                <Grid2x2 className="h-4 w-4" />
+              ) : (
+                <LayoutGrid className="h-4 w-4" />
+              )}
             </Button>
             {inactiveSessionCount > 0 && (
               <Button
@@ -583,7 +557,7 @@ export function Component() {
           />
         ) : (
           /* Active sessions - grid view */
-            <SessionGrid sessionCount={allProgressEntries.length + (pendingProgress ? 1 : 0)} resetKey={tileResetKey}>
+            <SessionGrid sessionCount={allProgressEntries.length + (pendingProgress ? 1 : 0)} resetKey={tileResetKey} layoutMode={tileLayoutMode}>
               {/* Pending continuation tile first */}
               {pendingProgress && pendingSessionId && (
                 <SessionTileWrapper
@@ -605,7 +579,7 @@ export function Component() {
                     onDismiss={handleDismissPendingContinuation}
                     isCollapsed={collapsedSessions[pendingSessionId] ?? false}
                     onCollapsedChange={(collapsed) => handleCollapsedChange(pendingSessionId, collapsed)}
-                    onExpand={() => setExpandedSessionId(pendingSessionId)}
+
                   />
                 </SessionTileWrapper>
               )}
@@ -636,7 +610,7 @@ export function Component() {
                         onDismiss={() => handleDismissSession(sessionId)}
                         isCollapsed={isCollapsed}
                         onCollapsedChange={(collapsed) => handleCollapsedChange(sessionId, collapsed)}
-                        onExpand={() => setExpandedSessionId(sessionId)}
+
                       />
                     </SessionTileWrapper>
                   </div>

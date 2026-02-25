@@ -937,6 +937,117 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
+  list_skills: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const { skillsService } = await import("./skills-service")
+    const allSkills = skillsService.getSkills()
+
+    const profileId = typeof args.profileId === "string" ? args.profileId.trim() : undefined
+    const profile = profileId ? agentProfileService.getById(profileId) : undefined
+
+    const skillsList = allSkills.map(skill => {
+      const entry: Record<string, unknown> = {
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+      }
+      if (profile) {
+        entry.enabled = agentProfileService.isSkillEnabledForProfile(profile.id, skill.id)
+      }
+      return entry
+    })
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          skills: skillsList,
+          total: skillsList.length,
+          ...(profile ? { profileId: profile.id, profileName: profile.displayName || profile.name } : {}),
+        }, null, 2),
+      }],
+      isError: false,
+    }
+  },
+
+  toggle_agent_skill: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    if (typeof args.profileId !== "string" || args.profileId.trim() === "") {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "profileId must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+    if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "skillId must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+
+    const profileId = args.profileId.trim()
+    const skillId = args.skillId.trim()
+    const profile = agentProfileService.getById(profileId)
+
+    if (!profile) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: `Agent profile '${profileId}' not found` }) }],
+        isError: true,
+      }
+    }
+
+    const { skillsService } = await import("./skills-service")
+    const skill = skillsService.getSkill(skillId)
+    if (!skill) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: `Skill '${skillId}' not found` }) }],
+        isError: true,
+      }
+    }
+
+    if (typeof args.enabled === "boolean") {
+      // Explicit enable/disable
+      const isCurrentlyEnabled = agentProfileService.isSkillEnabledForProfile(profileId, skillId)
+      if (args.enabled === isCurrentlyEnabled) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            success: true,
+            skillId,
+            profileId,
+            enabled: isCurrentlyEnabled,
+            message: `Skill '${skill.name}' is already ${isCurrentlyEnabled ? "enabled" : "disabled"} for this agent.`,
+          }) }],
+          isError: false,
+        }
+      }
+    }
+
+    // Toggle the skill
+    const allSkillIds = skillsService.getSkills().map(s => s.id)
+    const updated = agentProfileService.toggleProfileSkill(profileId, skillId, allSkillIds)
+
+    if (!updated) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Failed to update agent profile" }) }],
+        isError: true,
+      }
+    }
+
+    const nowEnabled = agentProfileService.isSkillEnabledForProfile(profileId, skillId)
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        success: true,
+        skillId,
+        skillName: skill.name,
+        profileId,
+        profileName: updated.displayName || updated.name,
+        enabled: nowEnabled,
+        message: `Skill '${skill.name}' is now ${nowEnabled ? "enabled" : "disabled"} for agent '${updated.displayName || updated.name}'.`,
+      }, null, 2) }],
+      isError: false,
+    }
+  },
+
   // ============================================================================
   // Repeat Task Management
   // ============================================================================

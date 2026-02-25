@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, ExternalLink, Bot, OctagonX, Expand, Shrink, MessageSquare, Brain, Volume2 } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, ExternalLink, Bot, OctagonX, MessageSquare, Brain, Volume2 } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -95,6 +95,7 @@ type DisplayItem =
   | { kind: "delegation"; id: string; data: ACPDelegationProgress }
   | { kind: "mid_turn_response"; id: string; data: {
       userResponse: string
+      pastResponses?: string[]
     } }
 
 
@@ -561,6 +562,38 @@ const CompactMessage: React.FC<{
   )
 }
 
+// Helper to extract execute_command display info
+function getExecuteCommandDisplay(call: { name: string; arguments: any }, result?: { success: boolean; content: string; error?: string }) {
+  if (call.name !== "execute_command") return null
+
+  const command = typeof call.arguments?.command === "string" ? call.arguments.command : null
+  if (!command) return null
+
+  let outputPreview: string | null = null
+  if (result?.content) {
+    try {
+      const parsed = JSON.parse(result.content)
+      const stdout = parsed.stdout || ""
+      const stderr = parsed.stderr || ""
+      const output = stdout || stderr || parsed.error || ""
+      if (output) {
+        // Take first meaningful line, trim whitespace
+        const firstLine = output.split("\n").map((l: string) => l.trim()).filter(Boolean)[0] || ""
+        outputPreview = firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine
+      }
+    } catch {
+      // not JSON, use raw content
+      const firstLine = result.content.split("\n").map((l: string) => l.trim()).filter(Boolean)[0] || ""
+      outputPreview = firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine
+    }
+  }
+
+  // Truncate command for display
+  const displayCommand = command.length > 60 ? command.slice(0, 57) + "…" : command
+
+  return { displayCommand, outputPreview }
+}
+
 // Unified Tool Execution bubble combining call + response
 const ToolExecutionBubble: React.FC<{
   execution: {
@@ -593,6 +626,7 @@ const ToolExecutionBubble: React.FC<{
         const callSuccess = result?.success
         const callResultSummary = result ? getToolResultsSummary([result]) : null
         const isToolExpanded = isExpanded
+        const execCmdDisplay = getExecuteCommandDisplay(call, result)
 
         return (
           <div key={idx}>
@@ -612,18 +646,38 @@ const ToolExecutionBubble: React.FC<{
                 "i-mingcute-tool-line h-2.5 w-2.5 flex-shrink-0",
                 callIsPending ? "text-blue-500" : callSuccess ? "text-green-500" : "text-red-500"
               )} />
-              <span className="font-mono font-medium truncate">{call.name}</span>
-              <span className="text-[10px]">
-                {callIsPending ? (
-                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                ) : callSuccess ? (
-                  <Check className="h-2.5 w-2.5" />
-                ) : (
-                  <XCircle className="h-2.5 w-2.5" />
-                )}
-              </span>
-              {!isToolExpanded && callResultSummary && (
-                <span className="text-[10px] opacity-50 truncate flex-1">{callResultSummary}</span>
+              {execCmdDisplay ? (
+                <>
+                  <span className="font-mono font-medium truncate" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
+                  <span className="text-[10px]">
+                    {callIsPending ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : callSuccess ? (
+                      <Check className="h-2.5 w-2.5" />
+                    ) : (
+                      <XCircle className="h-2.5 w-2.5" />
+                    )}
+                  </span>
+                  {!isToolExpanded && execCmdDisplay.outputPreview && (
+                    <span className="text-[10px] opacity-50 truncate flex-1 font-mono">→ {execCmdDisplay.outputPreview}</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="font-mono font-medium truncate">{call.name}</span>
+                  <span className="text-[10px]">
+                    {callIsPending ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : callSuccess ? (
+                      <Check className="h-2.5 w-2.5" />
+                    ) : (
+                      <XCircle className="h-2.5 w-2.5" />
+                    )}
+                  </span>
+                  {!isToolExpanded && callResultSummary && (
+                    <span className="text-[10px] opacity-50 truncate flex-1">{callResultSummary}</span>
+                  )}
+                </>
               )}
               <ChevronRight className={cn(
                 "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
@@ -781,6 +835,7 @@ const AssistantWithToolsBubble: React.FC<{
               const callIsPending = !result
               const callSuccess = result?.success
               const callResultSummary = result ? getToolResultsSummary([result]) : null
+              const execCmdDisplay = getExecuteCommandDisplay(call, result)
 
               return (
                 <div
@@ -799,18 +854,38 @@ const AssistantWithToolsBubble: React.FC<{
                     "i-mingcute-tool-line h-2.5 w-2.5 flex-shrink-0",
                     callIsPending ? "text-blue-500" : callSuccess ? "text-green-500" : "text-red-500"
                   )} />
-                  <span className="font-mono font-medium truncate">{call.name}</span>
-                  <span className="text-[10px] opacity-60">
-                    {callIsPending ? (
-                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    ) : callSuccess ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <XCircle className="h-2.5 w-2.5" />
-                    )}
-                  </span>
-                  {!showToolDetails && callResultSummary && (
-                    <span className="text-[10px] opacity-50 truncate flex-1">{callResultSummary}</span>
+                  {execCmdDisplay ? (
+                    <>
+                      <span className="font-mono font-medium truncate" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
+                      <span className="text-[10px] opacity-60">
+                        {callIsPending ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : callSuccess ? (
+                          <Check className="h-2.5 w-2.5" />
+                        ) : (
+                          <XCircle className="h-2.5 w-2.5" />
+                        )}
+                      </span>
+                      {!showToolDetails && execCmdDisplay.outputPreview && (
+                        <span className="text-[10px] opacity-50 truncate flex-1 font-mono">→ {execCmdDisplay.outputPreview}</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-mono font-medium truncate">{call.name}</span>
+                      <span className="text-[10px] opacity-60">
+                        {callIsPending ? (
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                        ) : callSuccess ? (
+                          <Check className="h-2.5 w-2.5" />
+                        ) : (
+                          <XCircle className="h-2.5 w-2.5" />
+                        )}
+                      </span>
+                      {!showToolDetails && callResultSummary && (
+                        <span className="text-[10px] opacity-50 truncate flex-1">{callResultSummary}</span>
+                      )}
+                    </>
                   )}
                   <ChevronRight className={cn(
                     "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
@@ -1553,13 +1628,72 @@ const StreamingContentBubble: React.FC<{
   )
 }
 
+// Collapsed past response item - shows a single past respond_to_user call with TTS playback
+const PastResponseItem: React.FC<{
+  response: string
+  index: number
+  sessionId?: string
+}> = ({ response, index, sessionId }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const configQuery = useConfigQuery()
+  const shouldShowTTSButton = configQuery.data?.ttsEnabled
+
+  const generatePastAudio = async (): Promise<ArrayBuffer> => {
+    const result = await tipcClient.generateSpeech({ text: response })
+    return result.audio
+  }
+
+  const preview = response.length > 80 ? response.slice(0, 80) + "…" : response
+
+  return (
+    <div className="border border-green-200/60 dark:border-green-800/40 rounded-md overflow-hidden">
+      <div
+        className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-3 w-3 text-green-500 dark:text-green-500 flex-shrink-0" />
+        ) : (
+          <ChevronRight className="h-3 w-3 text-green-500 dark:text-green-500 flex-shrink-0" />
+        )}
+        <span className="text-[10px] font-medium text-green-600 dark:text-green-400 flex-shrink-0">
+          #{index + 1}
+        </span>
+        {!isExpanded && (
+          <span className="text-xs text-green-700/70 dark:text-green-300/60 truncate">
+            {preview}
+          </span>
+        )}
+      </div>
+      {isExpanded && (
+        <div className="px-2.5 pb-2 border-t border-green-200/40 dark:border-green-800/30">
+          <div className="pt-1.5 text-sm text-green-900 dark:text-green-100 whitespace-pre-wrap break-words">
+            <MarkdownRenderer content={response} />
+          </div>
+          {shouldShowTTSButton && (
+            <div className="mt-1.5">
+              <AudioPlayer
+                text={response}
+                onGenerateAudio={generatePastAudio}
+                compact={true}
+                autoPlay={false}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Mid-turn User Response Bubble - shows userResponse from respond_to_user mid-turn with TTS support
 const MidTurnUserResponseBubble: React.FC<{
   userResponse: string
+  pastResponses?: string[]
   sessionId?: string
   variant?: "default" | "overlay" | "tile"
   isComplete: boolean
-}> = ({ userResponse, sessionId, variant = "default", isComplete }) => {
+}> = ({ userResponse, pastResponses, sessionId, variant = "default", isComplete }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [ttsError, setTtsError] = useState<string | null>(null)
@@ -1739,6 +1873,25 @@ const MidTurnUserResponseBubble: React.FC<{
           </div>
         )}
       </div>
+
+      {/* Past Responses History */}
+      {pastResponses && pastResponses.length > 0 && (
+        <div className="px-3 py-2 border-t border-green-200/60 dark:border-green-800/40 bg-green-50/30 dark:bg-green-950/20">
+          <div className="text-[10px] font-medium text-green-600/70 dark:text-green-400/60 uppercase tracking-wider mb-1.5">
+            Past Responses ({pastResponses.length})
+          </div>
+          <div className="space-y-1">
+            {pastResponses.map((response, idx) => (
+              <PastResponseItem
+                key={`past-response-${idx}`}
+                response={response}
+                index={idx}
+                sessionId={sessionId}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -2262,13 +2415,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     })
   }
 
-  // Add mid-turn user response to display items if present and session is not complete
-  // This shows the userResponse from respond_to_user tool prominently mid-turn
-  if (progress.userResponse && !isComplete) {
+  // Add mid-turn user response to display items if present
+  // This shows the userResponse from respond_to_user tool prominently (both mid-turn and after completion)
+  if (progress.userResponse) {
     displayItems.push({
       kind: "mid_turn_response",
       id: "mid-turn-response",
-      data: { userResponse: progress.userResponse },
+      data: {
+        userResponse: progress.userResponse,
+        pastResponses: progress.userResponseHistory,
+      },
     })
   }
 
@@ -2530,21 +2686,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
-            {/* Expand to full window / Shrink back */}
-            {onExpand && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onExpand()
-                }}
-                title={isExpanded ? "Back to grid" : "Expand to fill window"}
-              >
-                {isExpanded ? <Shrink className="h-3 w-3" /> : <Expand className="h-3 w-3" />}
-              </Button>
-            )}
+
             {!isComplete && !isSnoozed && (
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
                 <Minimize2 className="h-3 w-3" />
@@ -2732,6 +2874,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           <MidTurnUserResponseBubble
                             key={itemKey}
                             userResponse={item.data.userResponse}
+                            pastResponses={item.data.pastResponses}
                             sessionId={progress.sessionId}
                             variant="tile"
                             isComplete={isComplete}
@@ -3109,6 +3252,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     <MidTurnUserResponseBubble
                       key={itemKey}
                       userResponse={item.data.userResponse}
+                      pastResponses={item.data.pastResponses}
                       sessionId={progress.sessionId}
                       variant={variant}
                       isComplete={isComplete}
