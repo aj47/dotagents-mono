@@ -134,8 +134,9 @@ export function SettingsLoops() {
     const sanitizedIntervalMinutes = Number.isFinite(editing.intervalMinutes) && editing.intervalMinutes >= 1
       ? Math.floor(editing.intervalMinutes)
       : 1
+    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
-      id: editing.id || crypto.randomUUID(),
+      id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
       intervalMinutes: sanitizedIntervalMinutes,

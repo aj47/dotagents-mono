@@ -707,7 +707,8 @@ class SkillsService {
     this.ensureInitialized()
 
     const { globalLayer } = this.getLayers()
-    const id = randomUUID()
+    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64)
+    const id = slugify(name) || randomUUID()
     const originFilePath = skillIdToFilePath(globalLayer, id)
     const now = Date.now()
 

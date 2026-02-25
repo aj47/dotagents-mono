@@ -1094,9 +1094,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       // Upsert: update if id exists, else create
       const existingId = typeof args.id === "string" ? args.id.trim() : ""
       const existing = existingId ? loopService.getLoop(existingId) : undefined
+      const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || randomUUID()
 
       const task: import("../shared/types").LoopConfig = {
-        id: existing?.id || existingId || randomUUID(),
+        id: existing?.id || existingId || slugify((args.name as string).trim()),
         name: (args.name as string).trim(),
         prompt: (args.prompt as string).trim(),
         intervalMinutes,
