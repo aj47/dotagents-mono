@@ -115,19 +115,25 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
     try {
       if (isEditing && agentId) {
-        const updateData: AgentProfileUpdateRequest = {
-          displayName: formData.displayName.trim(),
-          description: formData.description.trim() || undefined,
-          systemPrompt: formData.systemPrompt.trim() || undefined,
-          guidelines: formData.guidelines.trim() || undefined,
-          connectionType: formData.connectionType,
-          connectionCommand: formData.connectionCommand.trim() || undefined,
-          connectionArgs: formData.connectionArgs.trim() || undefined,
-          connectionBaseUrl: formData.connectionBaseUrl.trim() || undefined,
-          connectionCwd: formData.connectionCwd.trim() || undefined,
-          enabled: formData.enabled,
-          autoSpawn: formData.autoSpawn,
-        };
+        const updateData: AgentProfileUpdateRequest = originalProfile?.isBuiltIn
+          ? {
+            guidelines: formData.guidelines.trim() || undefined,
+            enabled: formData.enabled,
+            autoSpawn: formData.autoSpawn,
+          }
+          : {
+            displayName: formData.displayName.trim(),
+            description: formData.description.trim() || undefined,
+            systemPrompt: formData.systemPrompt.trim() || undefined,
+            guidelines: formData.guidelines.trim() || undefined,
+            connectionType: formData.connectionType,
+            connectionCommand: formData.connectionCommand.trim() || undefined,
+            connectionArgs: formData.connectionArgs.trim() || undefined,
+            connectionBaseUrl: formData.connectionBaseUrl.trim() || undefined,
+            connectionCwd: formData.connectionCwd.trim() || undefined,
+            enabled: formData.enabled,
+            autoSpawn: formData.autoSpawn,
+          };
         await settingsClient.updateAgentProfile(agentId, updateData);
       } else {
         const createData: AgentProfileCreateRequest = {
@@ -152,11 +158,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
     } finally {
       setIsSaving(false);
     }
-  }, [settingsClient, formData, isEditing, agentId, navigation]);
+  }, [settingsClient, formData, isEditing, agentId, navigation, originalProfile]);
 
   const updateField = useCallback(<K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
+
+  const isBuiltInAgent = originalProfile?.isBuiltIn === true;
 
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
@@ -182,7 +190,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
       )}
 
-      {originalProfile?.isBuiltIn && (
+      {isBuiltInAgent && (
         <View style={styles.warningContainer}>
           <Text style={styles.warningText}>⚠️ Built-in agents have limited editing options</Text>
         </View>
@@ -195,7 +203,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         onChangeText={v => updateField('displayName', v)}
         placeholder="My Agent"
         placeholderTextColor={theme.colors.mutedForeground}
-        editable={!originalProfile?.isBuiltIn}
+        editable={!isBuiltInAgent}
       />
 
       <Text style={styles.label}>Description</Text>
@@ -206,6 +214,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         placeholder="What this agent does..."
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
+        editable={!isBuiltInAgent}
       />
 
       <Text style={styles.label}>Connection Type</Text>
@@ -218,7 +227,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               formData.connectionType === ct.value && styles.connectionTypeOptionActive,
             ]}
             onPress={() => updateField('connectionType', ct.value)}
-            disabled={originalProfile?.isBuiltIn}
+            disabled={isBuiltInAgent}
           >
             <Text style={[
               styles.connectionTypeText,
@@ -242,6 +251,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="node"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
+                editable={!isBuiltInAgent}
               />
               <Text style={styles.label}>Arguments</Text>
               <TextInput
@@ -251,6 +261,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="agent.js --port 3000"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
+                editable={!isBuiltInAgent}
               />
               <Text style={styles.label}>Working Directory</Text>
               <TextInput
@@ -260,6 +271,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="/path/to/agent"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
+                editable={!isBuiltInAgent}
               />
             </>
           )}
@@ -274,6 +286,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 keyboardType="url"
+                editable={!isBuiltInAgent}
               />
             </>
           )}
@@ -290,6 +303,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={4}
         textAlignVertical="top"
+        editable={!isBuiltInAgent}
       />
 
       <Text style={styles.label}>Guidelines</Text>

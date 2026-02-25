@@ -407,7 +407,7 @@ export interface MemoriesResponse {
   memories: Memory[];
 }
 
-// Agent Profiles (Personas) Types
+// Agent Profiles Types
 export interface AgentProfile {
   id: string;
   name: string;
@@ -551,7 +551,7 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   }
 
   // ============================================
-  // Agent Profiles (Personas) Management
+  // Agent Profiles Management
   // ============================================
 
   async getAgentProfiles(): Promise<AgentProfilesResponse> {
@@ -618,4 +618,3 @@ export function createSettingsApiClient(baseUrl: string, apiKey: string): Settin
 export function createExtendedSettingsApiClient(baseUrl: string, apiKey: string): ExtendedSettingsApiClient {
   return new ExtendedSettingsApiClient(baseUrl, apiKey);
 }
-

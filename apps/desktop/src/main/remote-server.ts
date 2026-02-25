@@ -1086,9 +1086,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         openaiTtsModel: cfg.openaiTtsModel || "tts-1",
         openaiTtsVoice: cfg.openaiTtsVoice || "alloy",
         openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
-        groqTtsModel: cfg.groqTtsModel || "playai-tts",
-        groqTtsVoice: cfg.groqTtsVoice || "Arista-PlayAI",
-        geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash",
+        groqTtsModel: cfg.groqTtsModel || "canopylabs/orpheus-v1-english",
+        groqTtsVoice: cfg.groqTtsVoice || "autumn",
+        geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash-preview-tts",
         geminiTtsVoice: cfg.geminiTtsVoice || "Kore",
         // ACP Agent list for agent selection
         acpAgents: agentProfileService.getAll()
@@ -1282,15 +1282,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.openaiTtsSpeed = body.openaiTtsSpeed
       }
       // Groq TTS settings
-      if (typeof body.groqTtsModel === "string") {
-        updates.groqTtsModel = body.groqTtsModel as any
+      const validGroqTtsModels = ["canopylabs/orpheus-v1-english", "canopylabs/orpheus-arabic-saudi"] as const
+      if (typeof body.groqTtsModel === "string" && validGroqTtsModels.includes(body.groqTtsModel as typeof validGroqTtsModels[number])) {
+        updates.groqTtsModel = body.groqTtsModel as typeof validGroqTtsModels[number]
       }
       if (typeof body.groqTtsVoice === "string") {
         updates.groqTtsVoice = body.groqTtsVoice
       }
       // Gemini TTS settings
-      if (typeof body.geminiTtsModel === "string") {
-        updates.geminiTtsModel = body.geminiTtsModel as any
+      const validGeminiTtsModels = ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"] as const
+      if (typeof body.geminiTtsModel === "string" && validGeminiTtsModels.includes(body.geminiTtsModel as typeof validGeminiTtsModels[number])) {
+        updates.geminiTtsModel = body.geminiTtsModel as typeof validGeminiTtsModels[number]
       }
       if (typeof body.geminiTtsVoice === "string") {
         updates.geminiTtsVoice = body.geminiTtsVoice
@@ -2233,6 +2235,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       return reply.send({
+        success: true,
         profile: {
           id: updatedProfile.id,
           name: updatedProfile.name,

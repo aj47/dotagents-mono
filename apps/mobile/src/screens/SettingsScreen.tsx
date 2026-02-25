@@ -178,7 +178,7 @@ export default function SettingsScreen({ navigation }: any) {
   // Track if the server is a DotAgents desktop server (supports our settings API)
   const [isDotAgentsServer, setIsDotAgentsServer] = useState(false);
 
-  // Skills, Memories, Personas, and Loops state
+  // Skills, Memories, Agents, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
@@ -221,13 +221,13 @@ export default function SettingsScreen({ navigation }: any) {
     speechToText: false,
     textToSpeech: false,
     agentSettings: false,
-    memorySummarization: false,
+    summarization: false,
     toolExecution: false,
     whatsapp: false,
     langfuse: false,
     skills: false,
     memories: false,
-    agentPersonas: false,
+    agents: false,
     agentLoops: false,
   });
 
@@ -394,6 +394,18 @@ export default function SettingsScreen({ navigation }: any) {
       fetchLoops();
     }
   }, [settingsClient, isDotAgentsServer, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
+
+  // Refresh key remote data when returning from nested screens (e.g. agent editor)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (!settingsClient) return;
+      fetchRemoteSettings();
+      if (isDotAgentsServer) {
+        fetchAgentProfiles();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, settingsClient, isDotAgentsServer, fetchRemoteSettings, fetchAgentProfiles]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -2053,37 +2065,41 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
-            {/* 4m. Agent Personas */}
+            {/* 4m. Agents */}
             {isDotAgentsServer && (
-              <CollapsibleSection id="agentPersonas" title="Agent Personas">
+              <CollapsibleSection id="agents" title="Agents">
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : agentProfiles.length === 0 ? (
-                  <Text style={styles.helperText}>No agent personas configured</Text>
+                  <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
                   agentProfiles.map((profile) => (
-                    <TouchableOpacity
+                    <View
                       key={profile.id}
                       style={styles.serverRow}
-                      onPress={() => handleAgentProfileEdit(profile.id)}
-                      activeOpacity={0.7}
                     >
-                      <View style={styles.serverInfo}>
-                        <View style={styles.serverNameRow}>
-                          <Text style={styles.serverName}>{profile.displayName}</Text>
-                          {profile.isBuiltIn && (
-                            <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                              <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
-                            </View>
+                      <TouchableOpacity
+                        style={styles.agentInfoPressable}
+                        onPress={() => handleAgentProfileEdit(profile.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.serverInfo}>
+                          <View style={styles.serverNameRow}>
+                            <Text style={styles.serverName}>{profile.displayName}</Text>
+                            {profile.isBuiltIn && (
+                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.serverMeta}>
+                            {profile.connectionType} • {profile.role || 'agent'}
+                          </Text>
+                          {profile.description && (
+                            <Text style={styles.serverMeta} numberOfLines={1}>{profile.description}</Text>
                           )}
                         </View>
-                        <Text style={styles.serverMeta}>
-                          {profile.connectionType} • {profile.role || 'agent'}
-                        </Text>
-                        {profile.description && (
-                          <Text style={styles.serverMeta} numberOfLines={1}>{profile.description}</Text>
-                        )}
-                      </View>
+                      </TouchableOpacity>
                       <View style={styles.agentActions}>
                         <Switch
                           value={profile.enabled}
@@ -2101,7 +2117,7 @@ export default function SettingsScreen({ navigation }: any) {
                           </TouchableOpacity>
                         )}
                       </View>
-                    </TouchableOpacity>
+                    </View>
                   ))
                 )}
                 <TouchableOpacity
@@ -2111,7 +2127,7 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.createAgentButtonText}>+ Create New Agent</Text>
                 </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Tap an agent to edit, toggle to enable/disable
+                  Tap an agent name to edit, toggle to enable or disable
                 </Text>
               </CollapsibleSection>
             )}
@@ -2873,6 +2889,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.muted,
     },
     // Agent management styles
+    agentInfoPressable: {
+      flex: 1,
+    },
     agentActions: {
       flexDirection: 'row',
       alignItems: 'center',
