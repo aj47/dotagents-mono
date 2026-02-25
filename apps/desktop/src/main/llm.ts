@@ -531,8 +531,9 @@ export async function processTranscriptWithAgentMode(
       update.finalContent.includes("emergency kill switch")
     const userResponseForUpdate =
       update.userResponse ??
+      normalizedStoredUserResponse ??
       (update.isComplete && !isKillSwitchCompletion
-        ? normalizedStoredUserResponse ?? update.finalContent
+        ? update.finalContent
         : undefined)
 
     const fullUpdate: AgentProgressUpdate = {

@@ -93,6 +93,9 @@ type DisplayItem =
       isStreaming: boolean
     } }
   | { kind: "delegation"; id: string; data: ACPDelegationProgress }
+  | { kind: "mid_turn_response"; id: string; data: {
+      userResponse: string
+    } }
 
 
 // Compact message component for space efficiency
@@ -1550,6 +1553,196 @@ const StreamingContentBubble: React.FC<{
   )
 }
 
+// Mid-turn User Response Bubble - shows userResponse from respond_to_user mid-turn with TTS support
+const MidTurnUserResponseBubble: React.FC<{
+  userResponse: string
+  sessionId?: string
+  variant?: "default" | "overlay" | "tile"
+  isComplete: boolean
+}> = ({ userResponse, sessionId, variant = "default", isComplete }) => {
+  const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
+  const [ttsError, setTtsError] = useState<string | null>(null)
+  const [isTTSPlaying, setIsTTSPlaying] = useState(false)
+  const inFlightTtsKeyRef = useRef<string | null>(null)
+  const configQuery = useConfigQuery()
+  const ttsGenerationIdRef = useRef(0)
+  const latestUserResponseRef = useRef(userResponse)
+  latestUserResponseRef.current = userResponse
+
+  // TTS generation function
+  const generateAudio = async (): Promise<ArrayBuffer> => {
+    if (!configQuery.data?.ttsEnabled) {
+      throw new Error("TTS is not enabled")
+    }
+
+    const generationId = ++ttsGenerationIdRef.current
+    const generationSource = userResponse
+
+    setIsGeneratingAudio(true)
+    setTtsError(null)
+
+    try {
+      const result = await tipcClient.generateSpeech({
+        text: generationSource,
+      })
+
+      // Ignore stale completions if the userResponse changed while this request was in-flight.
+      if (
+        ttsGenerationIdRef.current !== generationId ||
+        latestUserResponseRef.current !== generationSource
+      ) {
+        return result.audio
+      }
+
+      setAudioData(result.audio)
+      return result.audio
+    } catch (error) {
+      console.error("[TTS MidTurn] Failed to generate TTS audio:", error)
+
+      let errorMessage = "Failed to generate audio"
+      if (error instanceof Error) {
+        if (error.message.includes("API key")) {
+          errorMessage = "TTS API key not configured"
+        } else if (error.message.includes("terms acceptance")) {
+          errorMessage = "Groq TTS model requires terms acceptance"
+        } else if (error.message.includes("rate limit")) {
+          errorMessage = "Rate limit exceeded"
+        } else {
+          errorMessage = `TTS error: ${error.message}`
+        }
+      }
+
+      if (
+        ttsGenerationIdRef.current === generationId &&
+        latestUserResponseRef.current === generationSource
+      ) {
+        setTtsError(errorMessage)
+      }
+      throw error
+    } finally {
+      if (ttsGenerationIdRef.current === generationId) {
+        setIsGeneratingAudio(false)
+      }
+    }
+  }
+
+  // Auto-play TTS for mid-turn userResponse (only in overlay variant to prevent double-play)
+  useEffect(() => {
+    const shouldAutoPlay = variant === "overlay"
+    if (!shouldAutoPlay || !userResponse || !configQuery.data?.ttsEnabled || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || isComplete) {
+      return
+    }
+
+    // Create a key to track TTS playback - use mid-turn prefix to avoid collision with completion TTS
+    const ttsKey = sessionId ? `${sessionId}:mid-turn:${userResponse}` : null
+
+    if (ttsKey && hasTTSPlayed(ttsKey)) {
+      return
+    }
+
+    // Mark as playing before starting generation
+    if (ttsKey) {
+      markTTSPlayed(ttsKey)
+      // Also mark the non-prefixed key that the completion path will check
+      // to prevent double TTS playback when session completes
+      if (sessionId) {
+        markTTSPlayed(`${sessionId}:${userResponse}`)
+      }
+      inFlightTtsKeyRef.current = ttsKey
+    }
+
+    generateAudio()
+      .then(() => {
+        inFlightTtsKeyRef.current = null
+      })
+      .catch(() => {
+        if (ttsKey && inFlightTtsKeyRef.current === ttsKey) {
+          removeTTSKey(ttsKey)
+          inFlightTtsKeyRef.current = null
+        }
+      })
+  }, [userResponse, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, ttsError, variant, sessionId, isComplete])
+
+  // Cleanup in-flight TTS key on unmount
+  useEffect(() => {
+    return () => {
+      const inFlightKeyAtUnmount = inFlightTtsKeyRef.current
+      if (inFlightKeyAtUnmount) {
+        queueMicrotask(() => {
+          if (inFlightTtsKeyRef.current === inFlightKeyAtUnmount) {
+            removeTTSKey(inFlightKeyAtUnmount)
+            inFlightTtsKeyRef.current = null
+          }
+        })
+      }
+    }
+  }, [])
+
+  if (!userResponse) return null
+
+  const shouldShowTTSButton = configQuery.data?.ttsEnabled
+
+  return (
+    <div className="rounded-lg border-2 border-green-400 bg-green-50/50 dark:bg-green-950/30 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-green-100/50 dark:bg-green-900/30 border-b border-green-200 dark:border-green-800">
+        <MessageSquare className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+        <span className="text-xs font-medium text-green-800 dark:text-green-200">
+          Assistant Response
+        </span>
+        {(isTTSPlaying || isGeneratingAudio) && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              ttsManager.stopAll()
+            }}
+            className={cn(
+              "ml-auto p-1 rounded hover:bg-green-200/50 dark:hover:bg-green-800/50 transition-colors",
+              isTTSPlaying && "animate-pulse"
+            )}
+            title={isGeneratingAudio ? "Generating audio…" : "Pause TTS"}
+          >
+            {isGeneratingAudio ? (
+              <Loader2 className="h-3 w-3 animate-spin text-green-600 dark:text-green-400" />
+            ) : (
+              <Volume2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="px-3 py-2">
+        <div className="text-sm text-green-900 dark:text-green-100 whitespace-pre-wrap break-words">
+          <MarkdownRenderer content={userResponse} />
+        </div>
+
+        {/* TTS Audio Player */}
+        {shouldShowTTSButton && (
+          <div className="mt-2">
+            <AudioPlayer
+              audioData={audioData || undefined}
+              text={userResponse}
+              onGenerateAudio={generateAudio}
+              isGenerating={isGeneratingAudio}
+              error={ttsError}
+              compact={true}
+              autoPlay={configQuery.data?.ttsAutoPlay ?? true}
+              onPlayStateChange={setIsTTSPlaying}
+            />
+            {ttsError && (
+              <div className="mt-1 rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300">
+                <span className="font-medium">Audio generation failed:</span> {ttsError}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 
 export const AgentProgress: React.FC<AgentProgressProps> = ({
   progress,
@@ -2069,6 +2262,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     })
   }
 
+  // Add mid-turn user response to display items if present and session is not complete
+  // This shows the userResponse from respond_to_user tool prominently mid-turn
+  if (progress.userResponse && !isComplete) {
+    displayItems.push({
+      kind: "mid_turn_response",
+      id: "mid-turn-response",
+      data: { userResponse: progress.userResponse },
+    })
+  }
+
   // Add delegation progress items from steps
   for (const step of progress.steps) {
     if (step.delegation) {
@@ -2096,6 +2299,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return item.data.startedAt
       case "tool_approval":
       case "streaming":
+      case "mid_turn_response":
         // These represent current state and should stay at the end
         return null
     }
@@ -2523,6 +2727,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         return <RetryStatusBanner key={itemKey} retryInfo={item.data} />
                       } else if (item.kind === "streaming") {
                         return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
+                      } else if (item.kind === "mid_turn_response") {
+                        return (
+                          <MidTurnUserResponseBubble
+                            key={itemKey}
+                            userResponse={item.data.userResponse}
+                            sessionId={progress.sessionId}
+                            variant="tile"
+                            isComplete={isComplete}
+                          />
+                        )
                       } else if (item.kind === "delegation") {
                         const delegationExpanded = expandedItems[itemKey] ?? true
                         return (
@@ -2888,6 +3102,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     <StreamingContentBubble
                       key={itemKey}
                       streamingContent={item.data}
+                    />
+                  )
+                } else if (item.kind === "mid_turn_response") {
+                  return (
+                    <MidTurnUserResponseBubble
+                      key={itemKey}
+                      userResponse={item.data.userResponse}
+                      sessionId={progress.sessionId}
+                      variant={variant}
+                      isComplete={isComplete}
                     />
                   )
                 } else if (item.kind === "delegation") {
