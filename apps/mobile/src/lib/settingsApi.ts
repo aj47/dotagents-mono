@@ -87,6 +87,15 @@ export interface Settings {
   ttsConvertMarkdown?: boolean;
   ttsUseLLMPreprocessing?: boolean;
 
+  // TTS Voice/Model per Provider
+  openaiTtsModel?: string;
+  openaiTtsVoice?: string;
+  openaiTtsSpeed?: number;
+  groqTtsModel?: string;
+  groqTtsVoice?: string;
+  geminiTtsModel?: string;
+  geminiTtsVoice?: string;
+
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
@@ -107,6 +116,9 @@ export interface Settings {
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
+
+  // ACP Agents list (read-only, from GET only)
+  acpAgents?: Array<{ name: string; displayName: string }>;
 }
 
 export interface ModelInfo {
@@ -208,6 +220,15 @@ export interface SettingsUpdate {
   ttsRemoveUrls?: boolean;
   ttsConvertMarkdown?: boolean;
   ttsUseLLMPreprocessing?: boolean;
+
+  // TTS Voice/Model per Provider
+  openaiTtsModel?: string;
+  openaiTtsVoice?: string;
+  openaiTtsSpeed?: number;
+  groqTtsModel?: string;
+  groqTtsVoice?: string;
+  geminiTtsModel?: string;
+  geminiTtsVoice?: string;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;
