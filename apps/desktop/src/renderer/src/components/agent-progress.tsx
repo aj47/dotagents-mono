@@ -2246,11 +2246,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     if (hasPendingApproval) {
       return <Shield className="h-4 w-4 text-amber-500 animate-pulse" />
     }
-    if (isSnoozed) {
-      return <Moon className="h-4 w-4 text-muted-foreground" />
-    }
     if (!isComplete) {
       return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
+    }
+    if (isSnoozed) {
+      return <Moon className="h-4 w-4 text-muted-foreground" />
     }
     if (hasErrors || wasStopped) {
       return <XCircle className="h-4 w-4 text-red-500" />
