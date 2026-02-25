@@ -8,6 +8,136 @@ import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { TTSSettings } from '../ui/TTSSettings';
+import Slider from '@react-native-community/slider';
+
+// STT Provider Options
+const STT_PROVIDERS = [
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'Groq', value: 'groq' },
+  { label: 'Parakeet (Local)', value: 'parakeet' },
+] as const;
+
+// Chat/Agent Provider Options (for Agent/MCP Tools and Transcript Post-Processing)
+const CHAT_PROVIDERS = [
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'Groq', value: 'groq' },
+  { label: 'Gemini', value: 'gemini' },
+] as const;
+
+// TTS Provider Options
+const TTS_PROVIDERS = [
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'Groq', value: 'groq' },
+  { label: 'Gemini', value: 'gemini' },
+  { label: 'Kitten', value: 'kitten' },
+  { label: 'Supertonic', value: 'supertonic' },
+] as const;
+
+// OpenAI TTS Voice Options
+const OPENAI_TTS_VOICES = [
+  { label: 'Alloy', value: 'alloy' },
+  { label: 'Echo', value: 'echo' },
+  { label: 'Fable', value: 'fable' },
+  { label: 'Onyx', value: 'onyx' },
+  { label: 'Nova', value: 'nova' },
+  { label: 'Shimmer', value: 'shimmer' },
+] as const;
+
+const OPENAI_TTS_MODELS = [
+  { label: 'TTS-1 (Standard)', value: 'tts-1' },
+  { label: 'TTS-1-HD (High Quality)', value: 'tts-1-hd' },
+] as const;
+
+// Groq TTS Voice Options (English) - Orpheus model voices
+const GROQ_TTS_VOICES_ENGLISH = [
+  { label: 'Autumn', value: 'autumn' },
+  { label: 'Diana', value: 'diana' },
+  { label: 'Hannah', value: 'hannah' },
+  { label: 'Austin', value: 'austin' },
+  { label: 'Daniel', value: 'daniel' },
+  { label: 'Troy', value: 'troy' },
+] as const;
+
+// Groq TTS Voice Options (Arabic Saudi) - Orpheus model voices
+const GROQ_TTS_VOICES_ARABIC = [
+  { label: 'Fahad', value: 'fahad' },
+  { label: 'Sultan', value: 'sultan' },
+  { label: 'Lulwa', value: 'lulwa' },
+  { label: 'Noura', value: 'noura' },
+] as const;
+
+const GROQ_TTS_MODELS = [
+  { label: 'Orpheus TTS (English)', value: 'canopylabs/orpheus-v1-english' },
+  { label: 'Orpheus TTS (Arabic Saudi)', value: 'canopylabs/orpheus-arabic-saudi' },
+] as const;
+
+// Gemini TTS Voice Options (30 voices)
+const GEMINI_TTS_VOICES = [
+  { label: 'Zephyr (Bright)', value: 'Zephyr' },
+  { label: 'Puck (Upbeat)', value: 'Puck' },
+  { label: 'Charon (Informative)', value: 'Charon' },
+  { label: 'Kore (Firm)', value: 'Kore' },
+  { label: 'Fenrir (Excitable)', value: 'Fenrir' },
+  { label: 'Leda (Young)', value: 'Leda' },
+  { label: 'Orus (Corporate)', value: 'Orus' },
+  { label: 'Aoede (Breezy)', value: 'Aoede' },
+  { label: 'Callirrhoe (Casual)', value: 'Callirrhoe' },
+  { label: 'Autonoe (Bright)', value: 'Autonoe' },
+  { label: 'Enceladus (Breathy)', value: 'Enceladus' },
+  { label: 'Iapetus (Clear)', value: 'Iapetus' },
+  { label: 'Umbriel (Calm)', value: 'Umbriel' },
+  { label: 'Algieba (Smooth)', value: 'Algieba' },
+  { label: 'Despina (Smooth)', value: 'Despina' },
+  { label: 'Erinome (Serene)', value: 'Erinome' },
+  { label: 'Algenib (Gravelly)', value: 'Algenib' },
+  { label: 'Rasalgethi (Informative)', value: 'Rasalgethi' },
+  { label: 'Laomedeia (Upbeat)', value: 'Laomedeia' },
+  { label: 'Achernar (Soft)', value: 'Achernar' },
+  { label: 'Alnilam (Firm)', value: 'Alnilam' },
+  { label: 'Schedar (Even)', value: 'Schedar' },
+  { label: 'Gacrux (Mature)', value: 'Gacrux' },
+  { label: 'Pulcherrima (Forward)', value: 'Pulcherrima' },
+  { label: 'Achird (Friendly)', value: 'Achird' },
+  { label: 'Zubenelgenubi (Casual)', value: 'Zubenelgenubi' },
+  { label: 'Vindemiatrix (Gentle)', value: 'Vindemiatrix' },
+  { label: 'Sadachbia (Lively)', value: 'Sadachbia' },
+  { label: 'Sadaltager (Knowledgeable)', value: 'Sadaltager' },
+  { label: 'Sulafat (Warm)', value: 'Sulafat' },
+] as const;
+
+const GEMINI_TTS_MODELS = [
+  { label: 'Gemini 2.5 Flash TTS', value: 'gemini-2.5-flash-preview-tts' },
+  { label: 'Gemini 2.5 Pro TTS', value: 'gemini-2.5-pro-preview-tts' },
+] as const;
+
+// Helper to get TTS voices for a provider
+const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonly { label: string; value: string }[] => {
+  switch (providerId) {
+    case 'openai':
+      return OPENAI_TTS_VOICES;
+    case 'groq':
+      // Groq voices depend on the selected model (English vs Arabic)
+      return ttsModel === 'canopylabs/orpheus-arabic-saudi' ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH;
+    case 'gemini':
+      return GEMINI_TTS_VOICES;
+    default:
+      return [];
+  }
+};
+
+// Helper to get TTS models for a provider
+const getTtsModelsForProvider = (providerId: string): readonly { label: string; value: string }[] => {
+  switch (providerId) {
+    case 'openai':
+      return OPENAI_TTS_MODELS;
+    case 'groq':
+      return GROQ_TTS_MODELS;
+    case 'gemini':
+      return GEMINI_TTS_MODELS;
+    default:
+      return [];
+  }
+};
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -74,12 +204,17 @@ export default function SettingsScreen({ navigation }: any) {
   // Preset picker state
   const [showPresetPicker, setShowPresetPicker] = useState(false);
 
+  // TTS voice/model picker state
+  const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
+  const [showTtsModelPicker, setShowTtsModelPicker] = useState(false);
+
   // Custom model input state (for debouncing)
   const [customModelDraft, setCustomModelDraft] = useState('');
   const modelUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collapsible section state - all new sections start collapsed
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    providerSelection: false, // Provider selection section
     profileModel: true,  // Keep profile/model expanded by default since it was already visible
     mcpServers: true,    // Keep MCP servers expanded by default since it was already visible
     streamerMode: false,
@@ -467,6 +602,41 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert('Error', 'Failed to toggle agent profile');
     }
   };
+
+  // Handle agent profile delete
+  const handleAgentProfileDelete = useCallback(async (profile: AgentProfile) => {
+    if (!settingsClient) return;
+    if (profile.isBuiltIn) {
+      Alert.alert('Cannot Delete', 'Built-in agents cannot be deleted');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Agent',
+      `Are you sure you want to delete "${profile.displayName}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await settingsClient.deleteAgentProfile(profile.id);
+              setAgentProfiles(prev => prev.filter(p => p.id !== profile.id));
+            } catch (error: any) {
+              console.error('[Settings] Failed to delete agent profile:', error);
+              Alert.alert('Error', error.message || 'Failed to delete agent profile');
+            }
+          },
+        },
+      ]
+    );
+  }, [settingsClient]);
+
+  // Navigate to agent edit screen
+  const handleAgentProfileEdit = useCallback((agentId?: string) => {
+    navigation.navigate('AgentEdit', { agentId });
+  }, [navigation]);
 
   // Handle loop toggle
   const handleLoopToggle = async (loopId: string) => {
@@ -906,6 +1076,103 @@ export default function SettingsScreen({ navigation }: any) {
               </View>
             )}
 
+            {/* Provider Selection */}
+            {remoteSettings && (
+              <CollapsibleSection id="providerSelection" title="Provider Selection">
+                <Text style={styles.helperText}>
+                  Select which AI provider to use for each feature.
+                </Text>
+
+                {/* Voice Transcription (STT) Provider */}
+                <Text style={styles.label}>🎤 Voice Transcription (STT)</Text>
+                <View style={styles.providerSelector}>
+                  {STT_PROVIDERS.map((provider) => (
+                    <Pressable
+                      key={provider.value}
+                      style={[
+                        styles.providerOption,
+                        remoteSettings.sttProviderId === provider.value && styles.providerOptionActive,
+                      ]}
+                      onPress={() => handleRemoteSettingUpdate('sttProviderId', provider.value)}
+                    >
+                      <Text style={[
+                        styles.providerOptionText,
+                        remoteSettings.sttProviderId === provider.value && styles.providerOptionTextActive,
+                      ]}>
+                        {provider.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Transcript Post-Processing Provider */}
+                <Text style={[styles.label, { marginTop: spacing.md }]}>📝 Transcript Post-Processing</Text>
+                <View style={styles.providerSelector}>
+                  {CHAT_PROVIDERS.map((provider) => (
+                    <Pressable
+                      key={provider.value}
+                      style={[
+                        styles.providerOption,
+                        remoteSettings.transcriptPostProcessingProviderId === provider.value && styles.providerOptionActive,
+                      ]}
+                      onPress={() => handleRemoteSettingUpdate('transcriptPostProcessingProviderId', provider.value)}
+                    >
+                      <Text style={[
+                        styles.providerOptionText,
+                        remoteSettings.transcriptPostProcessingProviderId === provider.value && styles.providerOptionTextActive,
+                      ]}>
+                        {provider.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Agent/MCP Tools Provider */}
+                <Text style={[styles.label, { marginTop: spacing.md }]}>🤖 Agent/MCP Tools</Text>
+                <View style={styles.providerSelector}>
+                  {CHAT_PROVIDERS.map((provider) => (
+                    <Pressable
+                      key={provider.value}
+                      style={[
+                        styles.providerOption,
+                        remoteSettings.mcpToolsProviderId === provider.value && styles.providerOptionActive,
+                      ]}
+                      onPress={() => handleProviderChange(provider.value as 'openai' | 'groq' | 'gemini')}
+                    >
+                      <Text style={[
+                        styles.providerOptionText,
+                        remoteSettings.mcpToolsProviderId === provider.value && styles.providerOptionTextActive,
+                      ]}>
+                        {provider.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Text-to-Speech (TTS) Provider */}
+                <Text style={[styles.label, { marginTop: spacing.md }]}>🔊 Text-to-Speech (TTS)</Text>
+                <View style={styles.providerSelector}>
+                  {TTS_PROVIDERS.map((provider) => (
+                    <Pressable
+                      key={provider.value}
+                      style={[
+                        styles.providerOption,
+                        remoteSettings.ttsProviderId === provider.value && styles.providerOptionActive,
+                      ]}
+                      onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
+                    >
+                      <Text style={[
+                        styles.providerOptionText,
+                        remoteSettings.ttsProviderId === provider.value && styles.providerOptionTextActive,
+                      ]}>
+                        {provider.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </CollapsibleSection>
+            )}
+
             {/* 4a. Profile & Model */}
             {remoteSettings && (
               <CollapsibleSection id="profileModel" title="Profile & Model">
@@ -1154,7 +1421,111 @@ export default function SettingsScreen({ navigation }: any) {
 
                 {remoteSettings.ttsEnabled && (
                   <>
-                    <View style={styles.row}>
+                    {/* TTS Provider Selector */}
+                    <Text style={[styles.label, { marginTop: spacing.md }]}>TTS Provider</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: spacing.sm }}>
+                      <View style={styles.providerSelector}>
+                        {TTS_PROVIDERS.map((provider) => (
+                          <Pressable
+                            key={provider.value}
+                            style={[
+                              styles.providerOption,
+                              remoteSettings.ttsProviderId === provider.value && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              remoteSettings.ttsProviderId === provider.value && styles.providerOptionTextActive,
+                            ]}>
+                              {provider.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
+
+                    {/* Per-provider Voice/Model Settings */}
+                    {(remoteSettings.ttsProviderId === 'openai' || remoteSettings.ttsProviderId === 'groq' || remoteSettings.ttsProviderId === 'gemini') && (
+                      <>
+                        {/* TTS Model Selector */}
+                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
+                        <TouchableOpacity
+                          style={styles.modelSelector}
+                          onPress={() => setShowTtsModelPicker(true)}
+                        >
+                          <View style={styles.modelSelectorContent}>
+                            <Text style={styles.modelSelectorText}>
+                              {(() => {
+                                const models = getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai');
+                                const modelValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
+                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
+                                  : remoteSettings.geminiTtsModel;
+                                const model = models.find(m => m.value === modelValue);
+                                return model?.label || modelValue || 'Select model';
+                              })()}
+                            </Text>
+                            <Text style={styles.modelSelectorChevron}>▼</Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* TTS Voice Selector */}
+                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
+                        <TouchableOpacity
+                          style={styles.modelSelector}
+                          onPress={() => setShowTtsVoicePicker(true)}
+                        >
+                          <View style={styles.modelSelectorContent}>
+                            <Text style={styles.modelSelectorText}>
+                              {(() => {
+                                const ttsModel = remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
+                                const voices = getTtsVoicesForProvider(remoteSettings.ttsProviderId || 'openai', ttsModel);
+                                const voiceValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
+                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
+                                  : remoteSettings.geminiTtsVoice;
+                                const voice = voices.find(v => v.value === voiceValue);
+                                return voice?.label || voiceValue || 'Select voice';
+                              })()}
+                            </Text>
+                            <Text style={styles.modelSelectorChevron}>▼</Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* OpenAI Speed Slider */}
+                        {remoteSettings.ttsProviderId === 'openai' && (
+                          <View style={{ marginTop: spacing.sm }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Text style={styles.label}>Speed</Text>
+                              <Text style={[styles.helperText, { marginTop: 0 }]}>
+                                {(remoteSettings.openaiTtsSpeed ?? 1.0).toFixed(1)}x
+                              </Text>
+                            </View>
+                            <Slider
+                              style={{ width: '100%', height: 40 }}
+                              minimumValue={0.25}
+                              maximumValue={4.0}
+                              step={0.25}
+                              value={remoteSettings.openaiTtsSpeed ?? 1.0}
+                              onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
+                              minimumTrackTintColor={theme.colors.primary}
+                              maximumTrackTintColor={theme.colors.muted}
+                              thumbTintColor={theme.colors.primary}
+                            />
+                          </View>
+                        )}
+                      </>
+                    )}
+
+                    {/* Kitten/Supertonic notice */}
+                    {(remoteSettings.ttsProviderId === 'kitten' || remoteSettings.ttsProviderId === 'supertonic') && (
+                      <Text style={[styles.helperText, { marginTop: spacing.sm }]}>
+                        {remoteSettings.ttsProviderId === 'kitten'
+                          ? 'Kitten uses local TTS. Configure voice in desktop settings.'
+                          : 'Supertonic uses local TTS. Configure voice in desktop settings.'}
+                      </Text>
+                    )}
+
+                    <View style={[styles.row, { marginTop: spacing.md }]}>
                       <Text style={styles.label}>Auto-Play</Text>
                       <Switch
                         value={remoteSettings.ttsAutoPlay ?? true}
@@ -1252,6 +1623,52 @@ export default function SettingsScreen({ navigation }: any) {
                   API uses external LLMs, ACP routes to an ACP agent
                 </Text>
 
+                {/* ACP-specific settings - only show when ACP mode selected */}
+                {remoteSettings.mainAgentMode === 'acp' && (
+                  <>
+                    <Text style={styles.label}>ACP Agent</Text>
+                    {remoteSettings.acpAgents && remoteSettings.acpAgents.length > 0 ? (
+                      <View style={styles.providerSelector}>
+                        {remoteSettings.acpAgents.map((agent) => (
+                          <Pressable
+                            key={agent.name}
+                            style={[
+                              styles.providerOption,
+                              remoteSettings.mainAgentName === agent.name && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate('mainAgentName', agent.name)}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              remoteSettings.mainAgentName === agent.name && styles.providerOptionTextActive,
+                            ]}>
+                              {agent.displayName || agent.name}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={styles.helperText}>No ACP agents available</Text>
+                    )}
+                    <Text style={styles.helperText}>
+                      Select which ACP agent handles requests
+                    </Text>
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Inject Builtin Tools</Text>
+                      <Switch
+                        value={remoteSettings.acpInjectBuiltinTools ?? true}
+                        onValueChange={(v) => handleRemoteSettingToggle('acpInjectBuiltinTools', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={remoteSettings.acpInjectBuiltinTools ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+                    <Text style={styles.helperText}>
+                      Add DotAgents tools (delegation, settings) to ACP sessions
+                    </Text>
+                  </>
+                )}
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Message Queue</Text>
                   <Switch
@@ -1327,34 +1744,9 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
-            {/* 4f. Memory & Summarization */}
+            {/* 4f. Summarization */}
             {remoteSettings && (
-              <CollapsibleSection id="memorySummarization" title="Memory & Summarization">
-                <View style={styles.row}>
-                  <Text style={styles.label}>Memory System</Text>
-                  <Switch
-                    value={remoteSettings.memoriesEnabled ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('memoriesEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.memoriesEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Enable memory features and save_memory tool
-                </Text>
-
-                {remoteSettings.memoriesEnabled && (
-                  <View style={[styles.row, { paddingLeft: spacing.md }]}>
-                    <Text style={styles.label}>Inject Memories</Text>
-                    <Switch
-                      value={remoteSettings.dualModelInjectMemories ?? false}
-                      onValueChange={(v) => handleRemoteSettingToggle('dualModelInjectMemories', v)}
-                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                      thumbColor={remoteSettings.dualModelInjectMemories ? theme.colors.primaryForeground : theme.colors.background}
-                    />
-                  </View>
-                )}
-
+              <CollapsibleSection id="summarization" title="Summarization">
                 <View style={styles.row}>
                   <Text style={styles.label}>Summarization</Text>
                   <Switch
@@ -1367,18 +1759,6 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.helperText}>
                   Generate summaries of agent steps for the UI
                 </Text>
-
-                {remoteSettings.dualModelEnabled && remoteSettings.memoriesEnabled && (
-                  <View style={[styles.row, { paddingLeft: spacing.md }]}>
-                    <Text style={styles.label}>Auto-Save Important</Text>
-                    <Switch
-                      value={remoteSettings.dualModelAutoSaveImportant ?? false}
-                      onValueChange={(v) => handleRemoteSettingToggle('dualModelAutoSaveImportant', v)}
-                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                      thumbColor={remoteSettings.dualModelAutoSaveImportant ? theme.colors.primaryForeground : theme.colors.background}
-                    />
-                  </View>
-                )}
               </CollapsibleSection>
             )}
 
@@ -1682,7 +2062,12 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>No agent personas configured</Text>
                 ) : (
                   agentProfiles.map((profile) => (
-                    <View key={profile.id} style={styles.serverRow}>
+                    <TouchableOpacity
+                      key={profile.id}
+                      style={styles.serverRow}
+                      onPress={() => handleAgentProfileEdit(profile.id)}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.serverInfo}>
                         <View style={styles.serverNameRow}>
                           <Text style={styles.serverName}>{profile.displayName}</Text>
@@ -1699,17 +2084,34 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.serverMeta} numberOfLines={1}>{profile.description}</Text>
                         )}
                       </View>
-                      <Switch
-                        value={profile.enabled}
-                        onValueChange={() => handleAgentProfileToggle(profile.id)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
+                      <View style={styles.agentActions}>
+                        <Switch
+                          value={profile.enabled}
+                          onValueChange={() => handleAgentProfileToggle(profile.id)}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                        {!profile.isBuiltIn && (
+                          <TouchableOpacity
+                            style={styles.agentDeleteButton}
+                            onPress={() => handleAgentProfileDelete(profile)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   ))
                 )}
+                <TouchableOpacity
+                  style={styles.createAgentButton}
+                  onPress={() => handleAgentProfileEdit()}
+                >
+                  <Text style={styles.createAgentButtonText}>+ Create New Agent</Text>
+                </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Enable or disable agent personas for delegation
+                  Tap an agent to edit, toggle to enable/disable
                 </Text>
               </CollapsibleSection>
             )}
@@ -1909,6 +2311,139 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* TTS Model Picker Modal */}
+      <Modal
+        visible={showTtsModelPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTtsModelPicker(false)}
+      >
+        <View style={styles.modelPickerOverlay}>
+          <View style={styles.modelPickerContainer}>
+            <View style={styles.modelPickerHeader}>
+              <Text style={styles.modelPickerTitle}>Select TTS Model</Text>
+              <TouchableOpacity onPress={() => setShowTtsModelPicker(false)}>
+                <Text style={styles.modelPickerClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modelList}>
+              {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').map((model) => {
+                const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
+                  : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
+                  : remoteSettings?.geminiTtsModel;
+                const isSelected = currentValue === model.value;
+                return (
+                  <TouchableOpacity
+                    key={model.value}
+                    style={[
+                      styles.modelItem,
+                      isSelected && styles.modelItemActive,
+                    ]}
+                    onPress={() => {
+                      const key = remoteSettings?.ttsProviderId === 'openai' ? 'openaiTtsModel'
+                        : remoteSettings?.ttsProviderId === 'groq' ? 'groqTtsModel'
+                        : 'geminiTtsModel';
+                      handleRemoteSettingUpdate(key, model.value);
+                      setShowTtsModelPicker(false);
+                    }}
+                  >
+                    <View style={styles.modelItemContent}>
+                      <Text style={[
+                        styles.modelItemName,
+                        isSelected && styles.modelItemNameActive,
+                      ]}>
+                        {model.label}
+                      </Text>
+                      <Text style={styles.modelItemId}>{model.value}</Text>
+                    </View>
+                    {isSelected && (
+                      <Text style={styles.modelItemCheck}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.modelPickerFooter}>
+              <Text style={styles.modelPickerFooterText}>
+                {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').length} model{getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').length !== 1 ? 's' : ''} available
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* TTS Voice Picker Modal */}
+      <Modal
+        visible={showTtsVoicePicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTtsVoicePicker(false)}
+      >
+        <View style={styles.modelPickerOverlay}>
+          <View style={styles.modelPickerContainer}>
+            <View style={styles.modelPickerHeader}>
+              <Text style={styles.modelPickerTitle}>Select TTS Voice</Text>
+              <TouchableOpacity onPress={() => setShowTtsVoicePicker(false)}>
+                <Text style={styles.modelPickerClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modelList}>
+              {(() => {
+                const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
+                const voices = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel);
+                return voices.map((voice) => {
+                  const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
+                    : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
+                    : remoteSettings?.geminiTtsVoice;
+                  const isSelected = currentValue === voice.value;
+                  return (
+                    <TouchableOpacity
+                      key={voice.value}
+                      style={[
+                        styles.modelItem,
+                        isSelected && styles.modelItemActive,
+                      ]}
+                      onPress={() => {
+                        const key = remoteSettings?.ttsProviderId === 'openai' ? 'openaiTtsVoice'
+                          : remoteSettings?.ttsProviderId === 'groq' ? 'groqTtsVoice'
+                          : 'geminiTtsVoice';
+                        handleRemoteSettingUpdate(key, voice.value);
+                        setShowTtsVoicePicker(false);
+                      }}
+                    >
+                      <View style={styles.modelItemContent}>
+                        <Text style={[
+                          styles.modelItemName,
+                          isSelected && styles.modelItemNameActive,
+                        ]}>
+                          {voice.label}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <Text style={styles.modelItemCheck}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                });
+              })()}
+            </ScrollView>
+
+            <View style={styles.modelPickerFooter}>
+              <Text style={styles.modelPickerFooterText}>
+                {(() => {
+                  const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings?.groqTtsModel : undefined;
+                  const count = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel).length;
+                  return `${count} voice${count !== 1 ? 's' : ''} available`;
+                })()}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Profile Import Modal */}
       <Modal
         visible={showImportModal}
@@ -2083,11 +2618,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     providerSelector: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: spacing.sm,
       marginTop: spacing.xs,
     },
     providerOption: {
-      flex: 1,
+      minWidth: 70,
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
       borderRadius: radius.lg,
