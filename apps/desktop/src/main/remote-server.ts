@@ -1077,6 +1077,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         langfusePublicKey: cfg.langfusePublicKey ?? "",
         langfuseSecretKey: cfg.langfuseSecretKey ? "••••••••" : "",
         langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
+        // STT/TTS/Post-Processing Provider settings
+        sttProviderId: cfg.sttProviderId || "openai",
+        ttsProviderId: cfg.ttsProviderId || "openai",
+        transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || "openai",
+        transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || "",
+        transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || "",
+        transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || "",
+        // ACP Agent settings
+        mainAgentName: cfg.mainAgentName || "",
+        acpInjectBuiltinTools: cfg.acpInjectBuiltinTools !== false,
+        // TTS voice/model per provider
+        openaiTtsModel: cfg.openaiTtsModel || "tts-1",
+        openaiTtsVoice: cfg.openaiTtsVoice || "alloy",
+        openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
+        groqTtsModel: cfg.groqTtsModel || "canopylabs/orpheus-v1-english",
+        groqTtsVoice: cfg.groqTtsVoice || "autumn",
+        geminiTtsModel: cfg.geminiTtsModel || "gemini-2.5-flash-preview-tts",
+        geminiTtsVoice: cfg.geminiTtsVoice || "Kore",
+        // ACP Agent list for agent selection
+        acpAgents: agentProfileService.getAll()
+          .filter(p => p.connection.type === 'acp' && p.enabled !== false)
+          .map(p => ({ name: p.name, displayName: p.displayName })),
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get settings", error)
@@ -1222,6 +1244,63 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.langfuseBaseUrl === "string") {
         updates.langfuseBaseUrl = body.langfuseBaseUrl
+      }
+      // STT Provider
+      const validSttProviders = ["openai", "groq", "parakeet"]
+      if (typeof body.sttProviderId === "string" && validSttProviders.includes(body.sttProviderId)) {
+        updates.sttProviderId = body.sttProviderId as "openai" | "groq" | "parakeet"
+      }
+      // TTS Provider
+      const validTtsProviders = ["openai", "groq", "gemini", "kitten", "supertonic"]
+      if (typeof body.ttsProviderId === "string" && validTtsProviders.includes(body.ttsProviderId)) {
+        updates.ttsProviderId = body.ttsProviderId as "openai" | "groq" | "gemini" | "kitten" | "supertonic"
+      }
+      // Transcript Post-Processing Provider
+      const validPostProcessingProviders = ["openai", "groq", "gemini"]
+      if (typeof body.transcriptPostProcessingProviderId === "string" && validPostProcessingProviders.includes(body.transcriptPostProcessingProviderId)) {
+        updates.transcriptPostProcessingProviderId = body.transcriptPostProcessingProviderId as "openai" | "groq" | "gemini"
+      }
+      if (typeof body.transcriptPostProcessingOpenaiModel === "string") {
+        updates.transcriptPostProcessingOpenaiModel = body.transcriptPostProcessingOpenaiModel
+      }
+      if (typeof body.transcriptPostProcessingGroqModel === "string") {
+        updates.transcriptPostProcessingGroqModel = body.transcriptPostProcessingGroqModel
+      }
+      if (typeof body.transcriptPostProcessingGeminiModel === "string") {
+        updates.transcriptPostProcessingGeminiModel = body.transcriptPostProcessingGeminiModel
+      }
+      // ACP Agent settings
+      if (typeof body.mainAgentName === "string") {
+        updates.mainAgentName = body.mainAgentName
+      }
+      if (typeof body.acpInjectBuiltinTools === "boolean") {
+        updates.acpInjectBuiltinTools = body.acpInjectBuiltinTools
+      }
+      // OpenAI TTS settings
+      if (typeof body.openaiTtsModel === "string") {
+        updates.openaiTtsModel = body.openaiTtsModel as "tts-1" | "tts-1-hd"
+      }
+      if (typeof body.openaiTtsVoice === "string") {
+        updates.openaiTtsVoice = body.openaiTtsVoice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
+      }
+      if (typeof body.openaiTtsSpeed === "number" && body.openaiTtsSpeed >= 0.25 && body.openaiTtsSpeed <= 4.0) {
+        updates.openaiTtsSpeed = body.openaiTtsSpeed
+      }
+      // Groq TTS settings
+      const validGroqTtsModels = ["canopylabs/orpheus-v1-english", "canopylabs/orpheus-arabic-saudi"] as const
+      if (typeof body.groqTtsModel === "string" && validGroqTtsModels.includes(body.groqTtsModel as typeof validGroqTtsModels[number])) {
+        updates.groqTtsModel = body.groqTtsModel as typeof validGroqTtsModels[number]
+      }
+      if (typeof body.groqTtsVoice === "string") {
+        updates.groqTtsVoice = body.groqTtsVoice
+      }
+      // Gemini TTS settings
+      const validGeminiTtsModels = ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"] as const
+      if (typeof body.geminiTtsModel === "string" && validGeminiTtsModels.includes(body.geminiTtsModel as typeof validGeminiTtsModels[number])) {
+        updates.geminiTtsModel = body.geminiTtsModel as typeof validGeminiTtsModels[number]
+      }
+      if (typeof body.geminiTtsVoice === "string") {
+        updates.geminiTtsVoice = body.geminiTtsVoice
       }
 
       if (Object.keys(updates).length === 0) {
@@ -1941,6 +2020,282 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to toggle agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to toggle agent profile" })
+    }
+  })
+
+  // GET /v1/agent-profiles/:id - Get single agent profile with full detail
+  fastify.get("/v1/agent-profiles/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const profile = agentProfileService.getById(params.id)
+
+      if (!profile) {
+        return reply.code(404).send({ error: "Agent profile not found" })
+      }
+
+      return reply.send({
+        profile: {
+          id: profile.id,
+          name: profile.name,
+          displayName: profile.displayName,
+          description: profile.description,
+          avatarDataUrl: profile.avatarDataUrl,
+          systemPrompt: profile.systemPrompt,
+          guidelines: profile.guidelines,
+          properties: profile.properties,
+          modelConfig: profile.modelConfig,
+          toolConfig: profile.toolConfig,
+          skillsConfig: profile.skillsConfig,
+          connection: profile.connection,
+          isStateful: profile.isStateful,
+          conversationId: profile.conversationId,
+          role: profile.role,
+          enabled: profile.enabled,
+          isBuiltIn: profile.isBuiltIn,
+          isUserProfile: profile.isUserProfile,
+          isAgentTarget: profile.isAgentTarget,
+          isDefault: profile.isDefault,
+          autoSpawn: profile.autoSpawn,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+        },
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get agent profile", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get agent profile" })
+    }
+  })
+
+  // POST /v1/agent-profiles - Create a new agent profile
+  fastify.post("/v1/agent-profiles", async (req, reply) => {
+    try {
+      const body = req.body as {
+        displayName?: string
+        description?: string
+        systemPrompt?: string
+        guidelines?: string
+        connectionType?: string
+        connectionCommand?: string
+        connectionArgs?: string
+        connectionBaseUrl?: string
+        connectionCwd?: string
+        enabled?: boolean
+        autoSpawn?: boolean
+        modelConfig?: any
+        toolConfig?: any
+        skillsConfig?: any
+        properties?: Record<string, string>
+      }
+
+      // Validate displayName
+      if (!body.displayName || typeof body.displayName !== "string" || body.displayName.trim() === "") {
+        return reply.code(400).send({ error: "displayName is required and must be a non-empty string" })
+      }
+
+      // Validate connectionType
+      const validConnectionTypes = ["internal", "acp", "stdio", "remote"]
+      const connectionType = body.connectionType || "internal"
+      if (!validConnectionTypes.includes(connectionType)) {
+        return reply.code(400).send({ error: `connectionType must be one of: ${validConnectionTypes.join(", ")}` })
+      }
+
+      // Build connection object
+      const connection: import("@shared/types").AgentProfileConnection = {
+        type: connectionType as import("@shared/types").AgentProfileConnectionType,
+      }
+      if (body.connectionCommand) connection.command = body.connectionCommand
+      if (body.connectionArgs) connection.args = body.connectionArgs.split(/\s+/).filter(Boolean)
+      if (body.connectionBaseUrl) connection.baseUrl = body.connectionBaseUrl
+      if (body.connectionCwd) connection.cwd = body.connectionCwd
+
+      // Create the profile
+      const newProfile = agentProfileService.create({
+        name: body.displayName.trim(),
+        displayName: body.displayName.trim(),
+        description: body.description,
+        systemPrompt: body.systemPrompt,
+        guidelines: body.guidelines,
+        connection,
+        enabled: body.enabled !== false,
+        autoSpawn: body.autoSpawn,
+        modelConfig: body.modelConfig,
+        toolConfig: body.toolConfig,
+        skillsConfig: body.skillsConfig,
+        properties: body.properties,
+        role: "delegation-target",
+        isUserProfile: false,
+        isAgentTarget: true,
+      })
+
+      return reply.code(201).send({
+        profile: {
+          id: newProfile.id,
+          name: newProfile.name,
+          displayName: newProfile.displayName,
+          description: newProfile.description,
+          avatarDataUrl: newProfile.avatarDataUrl,
+          systemPrompt: newProfile.systemPrompt,
+          guidelines: newProfile.guidelines,
+          properties: newProfile.properties,
+          modelConfig: newProfile.modelConfig,
+          toolConfig: newProfile.toolConfig,
+          skillsConfig: newProfile.skillsConfig,
+          connection: newProfile.connection,
+          isStateful: newProfile.isStateful,
+          role: newProfile.role,
+          enabled: newProfile.enabled,
+          isBuiltIn: newProfile.isBuiltIn,
+          isUserProfile: newProfile.isUserProfile,
+          isAgentTarget: newProfile.isAgentTarget,
+          isDefault: newProfile.isDefault,
+          autoSpawn: newProfile.autoSpawn,
+          createdAt: newProfile.createdAt,
+          updatedAt: newProfile.updatedAt,
+        },
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create agent profile", error)
+      return reply.code(500).send({ error: error?.message || "Failed to create agent profile" })
+    }
+  })
+
+  // PATCH /v1/agent-profiles/:id - Update an agent profile
+  fastify.patch("/v1/agent-profiles/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const body = req.body as {
+        displayName?: string
+        description?: string
+        systemPrompt?: string
+        guidelines?: string
+        connectionType?: string
+        connectionCommand?: string
+        connectionArgs?: string
+        connectionBaseUrl?: string
+        connectionCwd?: string
+        enabled?: boolean
+        autoSpawn?: boolean
+        modelConfig?: any
+        toolConfig?: any
+        skillsConfig?: any
+        properties?: Record<string, string>
+      }
+
+      const profile = agentProfileService.getById(params.id)
+      if (!profile) {
+        return reply.code(404).send({ error: "Agent profile not found" })
+      }
+
+      // Build updates object
+      const updates: Partial<import("@shared/types").AgentProfile> = {}
+
+      // For built-in agents, only allow updating certain fields
+      if (profile.isBuiltIn) {
+        // Allow toggling enabled, updating guidelines for built-in agents
+        if (body.enabled !== undefined) updates.enabled = body.enabled
+        if (body.guidelines !== undefined) updates.guidelines = body.guidelines
+        if (body.autoSpawn !== undefined) updates.autoSpawn = body.autoSpawn
+      } else {
+        // For non-built-in agents, allow all field updates
+        if (body.displayName !== undefined) {
+          if (typeof body.displayName !== "string" || body.displayName.trim() === "") {
+            return reply.code(400).send({ error: "displayName must be a non-empty string" })
+          }
+          updates.displayName = body.displayName.trim()
+          updates.name = body.displayName.trim()
+        }
+        if (body.description !== undefined) updates.description = body.description
+        if (body.systemPrompt !== undefined) updates.systemPrompt = body.systemPrompt
+        if (body.guidelines !== undefined) updates.guidelines = body.guidelines
+        if (body.enabled !== undefined) updates.enabled = body.enabled
+        if (body.autoSpawn !== undefined) updates.autoSpawn = body.autoSpawn
+        if (body.modelConfig !== undefined) updates.modelConfig = body.modelConfig
+        if (body.toolConfig !== undefined) updates.toolConfig = body.toolConfig
+        if (body.skillsConfig !== undefined) updates.skillsConfig = body.skillsConfig
+        if (body.properties !== undefined) updates.properties = body.properties
+
+        // Handle connection updates
+        if (body.connectionType !== undefined || body.connectionCommand !== undefined ||
+            body.connectionArgs !== undefined || body.connectionBaseUrl !== undefined ||
+            body.connectionCwd !== undefined) {
+          const validConnectionTypes = ["internal", "acp", "stdio", "remote"]
+          const connectionType = body.connectionType || profile.connection.type
+          if (!validConnectionTypes.includes(connectionType)) {
+            return reply.code(400).send({ error: `connectionType must be one of: ${validConnectionTypes.join(", ")}` })
+          }
+
+          updates.connection = {
+            type: connectionType as import("@shared/types").AgentProfileConnectionType,
+            command: body.connectionCommand !== undefined ? body.connectionCommand : profile.connection.command,
+            args: body.connectionArgs !== undefined ? body.connectionArgs.split(/\s+/).filter(Boolean) : profile.connection.args,
+            baseUrl: body.connectionBaseUrl !== undefined ? body.connectionBaseUrl : profile.connection.baseUrl,
+            cwd: body.connectionCwd !== undefined ? body.connectionCwd : profile.connection.cwd,
+          }
+        }
+      }
+
+      const updatedProfile = agentProfileService.update(params.id, updates)
+      if (!updatedProfile) {
+        return reply.code(500).send({ error: "Failed to update agent profile" })
+      }
+
+      return reply.send({
+        success: true,
+        profile: {
+          id: updatedProfile.id,
+          name: updatedProfile.name,
+          displayName: updatedProfile.displayName,
+          description: updatedProfile.description,
+          avatarDataUrl: updatedProfile.avatarDataUrl,
+          systemPrompt: updatedProfile.systemPrompt,
+          guidelines: updatedProfile.guidelines,
+          properties: updatedProfile.properties,
+          modelConfig: updatedProfile.modelConfig,
+          toolConfig: updatedProfile.toolConfig,
+          skillsConfig: updatedProfile.skillsConfig,
+          connection: updatedProfile.connection,
+          isStateful: updatedProfile.isStateful,
+          conversationId: updatedProfile.conversationId,
+          role: updatedProfile.role,
+          enabled: updatedProfile.enabled,
+          isBuiltIn: updatedProfile.isBuiltIn,
+          isUserProfile: updatedProfile.isUserProfile,
+          isAgentTarget: updatedProfile.isAgentTarget,
+          isDefault: updatedProfile.isDefault,
+          autoSpawn: updatedProfile.autoSpawn,
+          createdAt: updatedProfile.createdAt,
+          updatedAt: updatedProfile.updatedAt,
+        },
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update agent profile", error)
+      return reply.code(500).send({ error: error?.message || "Failed to update agent profile" })
+    }
+  })
+
+  // DELETE /v1/agent-profiles/:id - Delete an agent profile
+  fastify.delete("/v1/agent-profiles/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const profile = agentProfileService.getById(params.id)
+
+      if (!profile) {
+        return reply.code(404).send({ error: "Agent profile not found" })
+      }
+
+      if (profile.isBuiltIn) {
+        return reply.code(403).send({ error: "Cannot delete built-in agent profiles" })
+      }
+
+      const success = agentProfileService.delete(params.id)
+      if (!success) {
+        return reply.code(500).send({ error: "Failed to delete agent profile" })
+      }
+
+      return reply.send({ success: true })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete agent profile", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete agent profile" })
     }
   })
 

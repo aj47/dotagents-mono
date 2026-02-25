@@ -87,6 +87,15 @@ export interface Settings {
   ttsConvertMarkdown?: boolean;
   ttsUseLLMPreprocessing?: boolean;
 
+  // TTS Voice/Model per Provider
+  openaiTtsModel?: string;
+  openaiTtsVoice?: string;
+  openaiTtsSpeed?: number;
+  groqTtsModel?: string;
+  groqTtsVoice?: string;
+  geminiTtsModel?: string;
+  geminiTtsVoice?: string;
+
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
@@ -99,14 +108,14 @@ export interface Settings {
   langfuseSecretKey?: string;
   langfuseBaseUrl?: string;
 
-  // Dual-Model & Memory Settings
+  // Dual-Model Settings (Summarization only - memory toggles removed as phantom features)
   dualModelEnabled?: boolean;
-  dualModelInjectMemories?: boolean;
-  dualModelAutoSaveImportant?: boolean;
-  memoriesEnabled?: boolean;
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
+
+  // ACP Agents list (read-only, from GET only)
+  acpAgents?: Array<{ name: string; displayName: string }>;
 }
 
 export interface ModelInfo {
@@ -209,6 +218,15 @@ export interface SettingsUpdate {
   ttsConvertMarkdown?: boolean;
   ttsUseLLMPreprocessing?: boolean;
 
+  // TTS Voice/Model per Provider
+  openaiTtsModel?: string;
+  openaiTtsVoice?: string;
+  openaiTtsSpeed?: number;
+  groqTtsModel?: string;
+  groqTtsVoice?: string;
+  geminiTtsModel?: string;
+  geminiTtsVoice?: string;
+
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
@@ -221,11 +239,8 @@ export interface SettingsUpdate {
   langfuseSecretKey?: string;
   langfuseBaseUrl?: string;
 
-  // Dual-Model & Memory Settings
+  // Dual-Model Settings (Summarization only - memory toggles removed as phantom features)
   dualModelEnabled?: boolean;
-  dualModelInjectMemories?: boolean;
-  dualModelAutoSaveImportant?: boolean;
-  memoriesEnabled?: boolean;
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
@@ -392,7 +407,7 @@ export interface MemoriesResponse {
   memories: Memory[];
 }
 
-// Agent Profiles (Personas) Types
+// Agent Profiles Types
 export interface AgentProfile {
   id: string;
   name: string;
@@ -409,8 +424,59 @@ export interface AgentProfile {
   updatedAt: number;
 }
 
+// Full agent profile detail (from GET /v1/agent-profiles/:id)
+export interface AgentProfileFull extends AgentProfile {
+  systemPrompt?: string;
+  guidelines?: string;
+  properties?: Record<string, string>;
+  avatarDataUrl?: string;
+  isDefault?: boolean;
+  isStateful?: boolean;
+  conversationId?: string;
+  connection?: {
+    type: 'internal' | 'acp' | 'stdio' | 'remote';
+    command?: string;
+    args?: string[];
+    baseUrl?: string;
+    cwd?: string;
+  };
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
+}
+
 export interface AgentProfilesResponse {
   profiles: AgentProfile[];
+}
+
+export interface AgentProfileCreateRequest {
+  displayName: string;
+  description?: string;
+  systemPrompt?: string;
+  guidelines?: string;
+  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionCommand?: string;
+  connectionArgs?: string;
+  connectionBaseUrl?: string;
+  connectionCwd?: string;
+  enabled?: boolean;
+  autoSpawn?: boolean;
+  properties?: Record<string, string>;
+}
+
+export interface AgentProfileUpdateRequest {
+  displayName?: string;
+  description?: string;
+  systemPrompt?: string;
+  guidelines?: string;
+  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
+  connectionCommand?: string;
+  connectionArgs?: string;
+  connectionBaseUrl?: string;
+  connectionCwd?: string;
+  enabled?: boolean;
+  autoSpawn?: boolean;
+  properties?: Record<string, string>;
 }
 
 // Agent Loops Types
@@ -485,11 +551,35 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   }
 
   // ============================================
-  // Agent Profiles (Personas) Management
+  // Agent Profiles Management
   // ============================================
 
   async getAgentProfiles(): Promise<AgentProfilesResponse> {
     return this.request<AgentProfilesResponse>('/v1/agent-profiles');
+  }
+
+  async getAgentProfile(id: string): Promise<{ profile: AgentProfileFull }> {
+    return this.request<{ profile: AgentProfileFull }>(`/v1/agent-profiles/${encodeURIComponent(id)}`);
+  }
+
+  async createAgentProfile(data: AgentProfileCreateRequest): Promise<{ profile: AgentProfileFull }> {
+    return this.request<{ profile: AgentProfileFull }>('/v1/agent-profiles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAgentProfile(id: string, data: AgentProfileUpdateRequest): Promise<{ success: boolean; profile: AgentProfileFull }> {
+    return this.request<{ success: boolean; profile: AgentProfileFull }>(`/v1/agent-profiles/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAgentProfile(id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/v1/agent-profiles/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   }
 
   async toggleAgentProfile(id: string): Promise<{ success: boolean; id: string; enabled: boolean }> {
@@ -528,4 +618,3 @@ export function createSettingsApiClient(baseUrl: string, apiKey: string): Settin
 export function createExtendedSettingsApiClient(baseUrl: string, apiKey: string): ExtendedSettingsApiClient {
   return new ExtendedSettingsApiClient(baseUrl, apiKey);
 }
-
