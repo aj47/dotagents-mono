@@ -30,6 +30,36 @@
       "types": "./dist/chat-utils.d.ts",
       "import": "./dist/chat-utils.mjs",
       "require": "./dist/chat-utils.js"
+    },
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "import": "./dist/providers.mjs",
+      "require": "./dist/providers.js"
+    },
+    "./languages": {
+      "types": "./dist/languages.d.ts",
+      "import": "./dist/languages.mjs",
+      "require": "./dist/languages.js"
+    },
+    "./session": {
+      "types": "./dist/session.d.ts",
+      "import": "./dist/session.mjs",
+      "require": "./dist/session.js"
+    },
+    "./shell-parse": {
+      "types": "./dist/shell-parse.d.ts",
+      "import": "./dist/shell-parse.mjs",
+      "require": "./dist/shell-parse.js"
+    },
+    "./connection-recovery": {
+      "types": "./dist/connection-recovery.d.ts",
+      "import": "./dist/connection-recovery.mjs",
+      "require": "./dist/connection-recovery.js"
+    },
+    "./api-types": {
+      "types": "./dist/api-types.d.ts",
+      "import": "./dist/api-types.mjs",
+      "require": "./dist/api-types.js"
     }
   },
   "scripts": {
