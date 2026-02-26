@@ -12,6 +12,7 @@ import { AgentProgressUpdate } from "@shared/types"
 import { cn } from "@renderer/lib/utils"
 import { toast } from "sonner"
 
+import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
@@ -230,6 +231,19 @@ export function Component() {
     })
   }, [agentProgressById, sessionOrder, getLastActivityTimestamp, pendingConversationId])
 
+  // Log visible sessions for debugging
+  useEffect(() => {
+    logUI('[Sessions] Visible sessions:', {
+      count: allProgressEntries.length,
+      pending: !!pendingConversationId,
+      sessions: allProgressEntries.map(([id, p]) => ({
+        id: id.substring(0, 20),
+        complete: p?.isComplete ?? false,
+        conversationId: p?.conversationId?.substring(0, 12),
+      })),
+    })
+  }, [allProgressEntries.length, pendingConversationId])
+
   // Sync session order when new sessions appear
   useEffect(() => {
     const currentIds = Array.from(agentProgressById.keys())
@@ -356,6 +370,7 @@ export function Component() {
 
   // Handle dismissing the pending continuation
   const handleDismissPendingContinuation = () => {
+    logUI('[Sessions] Dismissing pending continuation:', { pendingConversationId })
     setPendingConversationId(null)
   }
 
@@ -409,6 +424,13 @@ export function Component() {
   }
 
   const handleDismissSession = async (sessionId: string) => {
+    const progress = agentProgressById.get(sessionId)
+    logUI('[Sessions] Dismiss/hide session clicked:', {
+      sessionId,
+      status: progress?.isComplete ? 'complete' : 'active',
+      conversationTitle: progress?.conversationHistory?.[0]?.content?.substring(0, 50),
+      conversationId: progress?.conversationId,
+    })
     await tipcClient.clearAgentSessionProgress({ sessionId })
     queryClient.invalidateQueries({ queryKey: ["agentSessions"] })
   }
@@ -444,6 +466,11 @@ export function Component() {
   }, [draggedSessionId, dragTargetIndex, allProgressEntries])
 
   const handleClearInactiveSessions = async () => {
+    const inactiveSessions = allProgressEntries.filter(([_, p]) => p?.isComplete).map(([id]) => id)
+    logUI('[Sessions] Clear all inactive sessions clicked:', {
+      count: inactiveSessions.length,
+      sessionIds: inactiveSessions,
+    })
     try {
       await tipcClient.clearInactiveSessions()
       toast.success("Inactive sessions cleared")
