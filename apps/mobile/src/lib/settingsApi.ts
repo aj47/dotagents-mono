@@ -1,249 +1,82 @@
 /**
  * Settings API client for communicating with the desktop app's remote server.
  * Provides methods for managing profiles, MCP servers, and settings.
+ *
+ * Type definitions are imported from @dotagents/shared to avoid duplication.
+ * Only the client classes (SettingsApiClient, ExtendedSettingsApiClient) are defined here.
  */
 
-export interface Profile {
-  id: string;
-  name: string;
-  isDefault?: boolean;
-  guidelines?: string;
-  systemPrompt?: string;
-  createdAt?: number;
-  updatedAt?: number;
-}
+// Re-export all API types from shared package
+export type {
+  Profile,
+  ProfilesResponse,
+  MCPServer,
+  MCPServersResponse,
+  ModelInfo,
+  ModelsResponse,
+  Settings,
+  SettingsUpdate,
+  ServerConversationMessage,
+  ServerConversation,
+  ServerConversationFull,
+  CreateConversationRequest,
+  UpdateConversationRequest,
+  PushTokenRegistration,
+  PushStatusResponse,
+  Skill,
+  SkillsResponse,
+  Memory,
+  MemoriesResponse,
+  AgentProfileCreateRequest,
+  AgentProfileUpdateRequest,
+  Loop,
+  LoopsResponse,
+} from '@dotagents/shared';
 
-export interface ProfilesResponse {
-  profiles: Profile[];
-  currentProfileId?: string;
-}
+// Re-export agent profile types with backward-compatible names
+// The shared package uses Api* prefix to avoid conflicts with desktop's AgentProfile
+export type {
+  ApiAgentProfile as AgentProfile,
+  ApiAgentProfileFull as AgentProfileFull,
+  ApiAgentProfilesResponse as AgentProfilesResponse,
+} from '@dotagents/shared';
 
-export interface MCPServer {
-  name: string;
-  connected: boolean;
-  toolCount: number;
-  enabled: boolean;
-  runtimeEnabled: boolean;
-  configDisabled: boolean;
-  error?: string;
-}
+// Import types needed for the class implementation
+import type {
+  Profile,
+  ProfilesResponse,
+  MCPServer,
+  MCPServersResponse,
+  ModelInfo,
+  ModelsResponse,
+  Settings,
+  SettingsUpdate,
+  ServerConversation,
+  ServerConversationFull,
+  CreateConversationRequest,
+  UpdateConversationRequest,
+  PushTokenRegistration,
+  PushStatusResponse,
+  Skill,
+  SkillsResponse,
+  Memory,
+  MemoriesResponse,
+  ApiAgentProfile,
+  ApiAgentProfileFull,
+  ApiAgentProfilesResponse,
+  AgentProfileCreateRequest,
+  AgentProfileUpdateRequest,
+  Loop,
+  LoopsResponse,
+} from '@dotagents/shared';
 
-export interface MCPServersResponse {
-  servers: MCPServer[];
-}
-
+// Mobile-only type: ModelPreset with slightly different shape than shared
+// Keep this local for now as the shared Settings.availablePresets uses a different shape
 export interface ModelPreset {
   id: string;
   name: string;
   baseUrl: string;
   isBuiltIn: boolean;
-}
-
-export interface Settings {
-  // MCP Tools Model Configuration
-  mcpToolsProviderId: 'openai' | 'groq' | 'gemini';
-  mcpToolsOpenaiModel?: string;
-  mcpToolsGroqModel?: string;
-  mcpToolsGeminiModel?: string;
-  currentModelPresetId?: string;
-  availablePresets?: ModelPreset[];
-
-  // Agent Execution Settings
-  mcpRequireApprovalBeforeToolCall?: boolean;
-  mcpMaxIterations?: number;
-  mcpUnlimitedIterations?: boolean;
-  mainAgentMode?: 'api' | 'acp';
-  mainAgentName?: string;
-  acpInjectBuiltinTools?: boolean;
-  mcpVerifyCompletionEnabled?: boolean;
-  mcpFinalSummaryEnabled?: boolean;
-
-  // Context Reduction & Tool Response Processing
-  mcpContextReductionEnabled?: boolean;
-  mcpToolResponseProcessingEnabled?: boolean;
-  mcpParallelToolExecution?: boolean;
-  mcpMessageQueueEnabled?: boolean;
-
-  // Speech-to-Text Configuration
-  sttProviderId?: 'openai' | 'groq' | 'parakeet';
-  sttLanguage?: string;
-  transcriptionPreviewEnabled?: boolean;
-
-  // Transcript Post-Processing
-  transcriptPostProcessingEnabled?: boolean;
-  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini';
-  transcriptPostProcessingOpenaiModel?: string;
-  transcriptPostProcessingGroqModel?: string;
-  transcriptPostProcessingGeminiModel?: string;
-  transcriptPostProcessingPrompt?: string;
-
-  // Text-to-Speech Configuration
-  ttsEnabled?: boolean;
-  ttsAutoPlay?: boolean;
-  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'kitten' | 'supertonic';
-  ttsPreprocessingEnabled?: boolean;
-  ttsRemoveCodeBlocks?: boolean;
-  ttsRemoveUrls?: boolean;
-  ttsConvertMarkdown?: boolean;
-  ttsUseLLMPreprocessing?: boolean;
-
-  // TTS Voice/Model per Provider
-  openaiTtsModel?: string;
-  openaiTtsVoice?: string;
-  openaiTtsSpeed?: number;
-  groqTtsModel?: string;
-  groqTtsVoice?: string;
-  geminiTtsModel?: string;
-  geminiTtsVoice?: string;
-
-  // WhatsApp Integration
-  whatsappEnabled?: boolean;
-  whatsappAllowFrom?: string[];
-  whatsappAutoReply?: boolean;
-  whatsappLogMessages?: boolean;
-
-  // Langfuse Observability
-  langfuseEnabled?: boolean;
-  langfusePublicKey?: string;
-  langfuseSecretKey?: string;
-  langfuseBaseUrl?: string;
-
-  // Dual-Model Settings (Summarization only - memory toggles removed as phantom features)
-  dualModelEnabled?: boolean;
-
-  // Streamer Mode
-  streamerModeEnabled?: boolean;
-
-  // ACP Agents list (read-only, from GET only)
-  acpAgents?: Array<{ name: string; displayName: string }>;
-}
-
-export interface ModelInfo {
-  id: string;
-  name: string;
-  description?: string;
-  context_length?: number;
-}
-
-export interface ModelsResponse {
-  providerId: string;
-  models: ModelInfo[];
-}
-
-// Conversation Sync Types
-export interface ServerConversationMessage {
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-  timestamp?: number;
-  toolCalls?: unknown[];
-  toolResults?: unknown[];
-}
-
-export interface ServerConversation {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  messageCount: number;
-  lastMessage?: string;
-  preview?: string;
-}
-
-export interface ServerConversationFull {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  messages: ServerConversationMessage[];
-  metadata?: Record<string, unknown>;
-}
-
-export interface CreateConversationRequest {
-  title?: string;
-  messages: ServerConversationMessage[];
-  createdAt?: number;
-  updatedAt?: number;
-}
-
-export interface UpdateConversationRequest {
-  title?: string;
-  messages?: ServerConversationMessage[];
-  updatedAt?: number;
-}
-
-export interface SettingsUpdate {
-  // MCP Tools Model Configuration
-  mcpToolsProviderId?: 'openai' | 'groq' | 'gemini';
-  mcpToolsOpenaiModel?: string;
-  mcpToolsGroqModel?: string;
-  mcpToolsGeminiModel?: string;
-  currentModelPresetId?: string;
-
-  // Agent Execution Settings
-  mcpRequireApprovalBeforeToolCall?: boolean;
-  mcpMaxIterations?: number;
-  mcpUnlimitedIterations?: boolean;
-  mainAgentMode?: 'api' | 'acp';
-  mainAgentName?: string;
-  acpInjectBuiltinTools?: boolean;
-  mcpVerifyCompletionEnabled?: boolean;
-  mcpFinalSummaryEnabled?: boolean;
-
-  // Context Reduction & Tool Response Processing
-  mcpContextReductionEnabled?: boolean;
-  mcpToolResponseProcessingEnabled?: boolean;
-  mcpParallelToolExecution?: boolean;
-  mcpMessageQueueEnabled?: boolean;
-
-  // Speech-to-Text Configuration
-  sttProviderId?: 'openai' | 'groq' | 'parakeet';
-  sttLanguage?: string;
-  transcriptionPreviewEnabled?: boolean;
-
-  // Transcript Post-Processing
-  transcriptPostProcessingEnabled?: boolean;
-  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini';
-  transcriptPostProcessingOpenaiModel?: string;
-  transcriptPostProcessingGroqModel?: string;
-  transcriptPostProcessingGeminiModel?: string;
-  transcriptPostProcessingPrompt?: string;
-
-  // Text-to-Speech Configuration
-  ttsEnabled?: boolean;
-  ttsAutoPlay?: boolean;
-  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'kitten' | 'supertonic';
-  ttsPreprocessingEnabled?: boolean;
-  ttsRemoveCodeBlocks?: boolean;
-  ttsRemoveUrls?: boolean;
-  ttsConvertMarkdown?: boolean;
-  ttsUseLLMPreprocessing?: boolean;
-
-  // TTS Voice/Model per Provider
-  openaiTtsModel?: string;
-  openaiTtsVoice?: string;
-  openaiTtsSpeed?: number;
-  groqTtsModel?: string;
-  groqTtsVoice?: string;
-  geminiTtsModel?: string;
-  geminiTtsVoice?: string;
-
-  // WhatsApp Integration
-  whatsappEnabled?: boolean;
-  whatsappAllowFrom?: string[];
-  whatsappAutoReply?: boolean;
-  whatsappLogMessages?: boolean;
-
-  // Langfuse Observability
-  langfuseEnabled?: boolean;
-  langfusePublicKey?: string;
-  langfuseSecretKey?: string;
-  langfuseBaseUrl?: string;
-
-  // Dual-Model Settings (Summarization only - memory toggles removed as phantom features)
-  dualModelEnabled?: boolean;
-
-  // Streamer Mode
-  streamerModeEnabled?: boolean;
 }
 
 export class SettingsApiClient {
@@ -360,144 +193,6 @@ export class SettingsApiClient {
   }
 }
 
-// Push notification registration/unregistration
-export interface PushTokenRegistration {
-  token: string;
-  type: 'expo';
-  platform: 'ios' | 'android';
-  deviceId?: string;
-}
-
-export interface PushStatusResponse {
-  enabled: boolean;
-  tokenCount: number;
-  platforms: string[];
-}
-
-// Skills Types
-export interface Skill {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  enabledForProfile: boolean;
-  source?: 'local' | 'imported';
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface SkillsResponse {
-  skills: Skill[];
-  currentProfileId?: string;
-}
-
-// Memories Types
-export interface Memory {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  importance: 'low' | 'medium' | 'high' | 'critical';
-  profileId?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface MemoriesResponse {
-  memories: Memory[];
-}
-
-// Agent Profiles Types
-export interface AgentProfile {
-  id: string;
-  name: string;
-  displayName: string;
-  description?: string;
-  enabled: boolean;
-  isBuiltIn?: boolean;
-  isUserProfile?: boolean;
-  isAgentTarget?: boolean;
-  role?: 'user-profile' | 'delegation-target' | 'external-agent';
-  connectionType: 'internal' | 'acp' | 'stdio' | 'remote';
-  autoSpawn?: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
-
-// Full agent profile detail (from GET /v1/agent-profiles/:id)
-export interface AgentProfileFull extends AgentProfile {
-  systemPrompt?: string;
-  guidelines?: string;
-  properties?: Record<string, string>;
-  avatarDataUrl?: string;
-  isDefault?: boolean;
-  isStateful?: boolean;
-  conversationId?: string;
-  connection?: {
-    type: 'internal' | 'acp' | 'stdio' | 'remote';
-    command?: string;
-    args?: string[];
-    baseUrl?: string;
-    cwd?: string;
-  };
-  modelConfig?: Record<string, unknown>;
-  toolConfig?: Record<string, unknown>;
-  skillsConfig?: Record<string, unknown>;
-}
-
-export interface AgentProfilesResponse {
-  profiles: AgentProfile[];
-}
-
-export interface AgentProfileCreateRequest {
-  displayName: string;
-  description?: string;
-  systemPrompt?: string;
-  guidelines?: string;
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
-  connectionCommand?: string;
-  connectionArgs?: string;
-  connectionBaseUrl?: string;
-  connectionCwd?: string;
-  enabled?: boolean;
-  autoSpawn?: boolean;
-  properties?: Record<string, string>;
-}
-
-export interface AgentProfileUpdateRequest {
-  displayName?: string;
-  description?: string;
-  systemPrompt?: string;
-  guidelines?: string;
-  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
-  connectionCommand?: string;
-  connectionArgs?: string;
-  connectionBaseUrl?: string;
-  connectionCwd?: string;
-  enabled?: boolean;
-  autoSpawn?: boolean;
-  properties?: Record<string, string>;
-}
-
-// Agent Loops Types
-export interface Loop {
-  id: string;
-  name: string;
-  prompt: string;
-  intervalMinutes: number;
-  enabled: boolean;
-  profileId?: string;
-  profileName?: string;
-  runOnStartup?: boolean;
-  lastRunAt?: number;
-  isRunning: boolean;
-  nextRunAt?: number;
-}
-
-export interface LoopsResponse {
-  loops: Loop[];
-}
-
 // Extended client with push notification methods
 export class ExtendedSettingsApiClient extends SettingsApiClient {
   // Register push notification token
@@ -554,23 +249,23 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   // Agent Profiles Management
   // ============================================
 
-  async getAgentProfiles(): Promise<AgentProfilesResponse> {
-    return this.request<AgentProfilesResponse>('/v1/agent-profiles');
+  async getAgentProfiles(): Promise<ApiAgentProfilesResponse> {
+    return this.request<ApiAgentProfilesResponse>('/v1/agent-profiles');
   }
 
-  async getAgentProfile(id: string): Promise<{ profile: AgentProfileFull }> {
-    return this.request<{ profile: AgentProfileFull }>(`/v1/agent-profiles/${encodeURIComponent(id)}`);
+  async getAgentProfile(id: string): Promise<{ profile: ApiAgentProfileFull }> {
+    return this.request<{ profile: ApiAgentProfileFull }>(`/v1/agent-profiles/${encodeURIComponent(id)}`);
   }
 
-  async createAgentProfile(data: AgentProfileCreateRequest): Promise<{ profile: AgentProfileFull }> {
-    return this.request<{ profile: AgentProfileFull }>('/v1/agent-profiles', {
+  async createAgentProfile(data: AgentProfileCreateRequest): Promise<{ profile: ApiAgentProfileFull }> {
+    return this.request<{ profile: ApiAgentProfileFull }>('/v1/agent-profiles', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateAgentProfile(id: string, data: AgentProfileUpdateRequest): Promise<{ success: boolean; profile: AgentProfileFull }> {
-    return this.request<{ success: boolean; profile: AgentProfileFull }>(`/v1/agent-profiles/${encodeURIComponent(id)}`, {
+  async updateAgentProfile(id: string, data: AgentProfileUpdateRequest): Promise<{ success: boolean; profile: ApiAgentProfileFull }> {
+    return this.request<{ success: boolean; profile: ApiAgentProfileFull }>(`/v1/agent-profiles/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });

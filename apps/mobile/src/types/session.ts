@@ -1,134 +1,23 @@
-import type { ToolCall, ToolResult } from '@dotagents/shared';
+/**
+ * Session types and utilities - re-exports from @dotagents/shared
+ * This file is a barrel that re-exports from the shared package,
+ * keeping backward compatibility for existing importers.
+ */
 
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-  timestamp: number;
-  toolCalls?: ToolCall[];
-  toolResults?: ToolResult[];
-}
+// Re-export session functions from shared
+export {
+  generateSessionId,
+  generateMessageId,
+  generateSessionTitle,
+  createSession,
+  sessionToListItem,
+  isStubSession,
+} from '@dotagents/shared';
 
-// Re-export shared types for convenience
+// Re-export session types from shared
+// Note: SessionChatMessage is re-exported as ChatMessage for backward compatibility
+export type { Session, SessionListItem, SessionChatMessage as ChatMessage } from '@dotagents/shared';
+
+// Re-export ToolCall/ToolResult for backward compat
 export type { ToolCall, ToolResult } from '@dotagents/shared';
-
-export interface Session {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  messages: ChatMessage[];
-  /** Server-side conversation ID for continuing conversations on the DotAgents server */
-  serverConversationId?: string;
-  /** Optional metadata about the session */
-  metadata?: {
-    model?: string;
-    totalTokens?: number;
-  };
-  /** Cached server metadata for lazy-loaded sessions (messages not yet fetched) */
-  serverMetadata?: {
-    messageCount: number;
-    lastMessage: string;
-    preview: string;
-  };
-}
-
-export interface SessionListItem {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  messageCount: number;
-  lastMessage: string;
-  preview: string;
-}
-
-/**
- * Generate a unique session ID
- */
-export function generateSessionId(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-/**
- * Generate a unique message ID
- */
-export function generateMessageId(): string {
-  return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-/**
- * Generate a session title from the first message
- */
-export function generateSessionTitle(firstMessage: string): string {
-  const maxLength = 50;
-  const trimmed = firstMessage.trim();
-  if (trimmed.length <= maxLength) {
-    return trimmed;
-  }
-  return trimmed.substring(0, maxLength - 3) + '...';
-}
-
-/**
- * Create a new session with an optional first message
- */
-export function createSession(firstMessage?: string): Session {
-  const now = Date.now();
-  const session: Session = {
-    id: generateSessionId(),
-    title: firstMessage ? generateSessionTitle(firstMessage) : 'New Chat',
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-  };
-
-  if (firstMessage) {
-    session.messages.push({
-      id: generateMessageId(),
-      role: 'user',
-      content: firstMessage,
-      timestamp: now,
-    });
-  }
-
-  return session;
-}
-
-/**
- * Convert a Session to a SessionListItem for display in list
- */
-export function sessionToListItem(session: Session): SessionListItem {
-  // For lazy-loaded sessions (stub sessions with no messages), use cached server metadata
-  if (session.messages.length === 0 && session.serverMetadata) {
-    return {
-      id: session.id,
-      title: session.title,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-      messageCount: session.serverMetadata.messageCount,
-      lastMessage: session.serverMetadata.lastMessage,
-      preview: session.serverMetadata.preview,
-    };
-  }
-
-  const lastMsg = session.messages[session.messages.length - 1];
-  const preview = lastMsg?.content || '';
-
-  return {
-    id: session.id,
-    title: session.title,
-    createdAt: session.createdAt,
-    updatedAt: session.updatedAt,
-    messageCount: session.messages.length,
-    lastMessage: preview.substring(0, 100),
-    preview: preview.substring(0, 200),
-  };
-}
-
-/**
- * Check if a session is a lazy stub (has serverConversationId but no messages loaded)
- */
-export function isStubSession(session: Session): boolean {
-  return session.messages.length === 0 && !!session.serverConversationId && !!session.serverMetadata;
-}
 
