@@ -16,6 +16,7 @@ import { useConfigQuery } from "@renderer/lib/query-client"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { ttsManager } from "@renderer/lib/tts-manager"
+import { logUI } from "@renderer/lib/debug"
 import { formatKeyComboForDisplay } from "@shared/key-utils"
 import { Send } from "lucide-react"
 
@@ -899,9 +900,9 @@ export function Component() {
   // Clear agent progress handler
   useEffect(() => {
     const unlisten = rendererHandlers.clearAgentProgress.listen(() => {
-      console.log('[Panel] Clearing agent progress - stopping all TTS audio and resetting mutations')
+      logUI("[Panel] clearAgentProgress received; stopping TTS and resetting local panel state")
       // Stop all TTS audio when clearing progress (ESC key pressed)
-      ttsManager.stopAll()
+      ttsManager.stopAll("panel-clear-agent-progress")
 
       // Stop any ongoing recording and reset recording state
       if (recordingRef.current) {
@@ -932,8 +933,8 @@ export function Component() {
   // Emergency stop handler - stop all TTS audio and reset processing state
   useEffect(() => {
     const unlisten = rendererHandlers.emergencyStopAgent.listen(() => {
-      console.log('[Panel] Emergency stop triggered - stopping all TTS audio and resetting state')
-      ttsManager.stopAll()
+      logUI("[Panel] emergencyStopAgent received; stopping TTS and resetting local panel state")
+      ttsManager.stopAll("panel-emergency-stop")
 
       // Stop any ongoing recording and reset recording state
       if (recordingRef.current) {

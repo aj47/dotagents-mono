@@ -136,23 +136,27 @@ export function AudioPlayer({
         setWasStopped(true)
         onPlayStateChange?.(false)
       }
-    })
+    }, audio)
 
     return () => {
       unregisterAudio()
       unregisterCallback()
     }
-  }, [audioRef.current])
+  }, [onPlayStateChange])
 
   useEffect(() => {
     if (autoPlay && hasAudio && audioRef.current && !isPlaying && !hasAutoPlayed && !wasStopped) {
-      console.log("[AudioPlayer] Auto-playing audio")
       setHasAutoPlayed(true)
-      audioRef.current.play().catch((error) => {
+
+      ttsManager.playExclusive(audioRef.current, {
+        source: "audio-player:auto",
+        autoPlay: true,
+        textPreview: text.slice(0, 80),
+      }).catch((error) => {
         console.error("[AudioPlayer] Auto-play failed:", error)
       })
     }
-  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped])
+  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, text])
 
   const handlePlayPause = async () => {
     if (!hasAudio && onGenerateAudio && !isGenerating && !error) {
@@ -169,7 +173,12 @@ export function AudioPlayer({
         if (isPlaying) {
           audioRef.current.pause()
         } else {
-          await audioRef.current.play()
+          setWasStopped(false)
+          await ttsManager.playExclusive(audioRef.current, {
+            source: "audio-player:manual",
+            autoPlay: false,
+            textPreview: text.slice(0, 80),
+          })
         }
       } catch (playError) {
         console.error("[AudioPlayer] Playback failed:", playError)
