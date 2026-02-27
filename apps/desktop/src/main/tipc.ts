@@ -224,7 +224,7 @@ async function processWithAgentMode(
     logLLM(`[processWithAgentMode] ACP mode enabled, routing to agent: ${config.mainAgentName}`)
 
     // Create conversation title for session tracking
-    const conversationTitle = text.length > 50 ? text.substring(0, 50) + "..." : text
+    const conversationTitle = text
 
     // Start tracking this agent session (or reuse existing one)
     const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed)
@@ -284,7 +284,7 @@ async function processWithAgentMode(
   }
 
   // Start tracking this agent session (or reuse existing one)
-  let conversationTitle = text.length > 50 ? text.substring(0, 50) + "..." : text
+  let conversationTitle = text
   // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
 
@@ -1848,7 +1848,7 @@ export const router = {
       }
 
       // Update session with actual conversation ID and title after transcription
-      const conversationTitle = transcript.length > 50 ? transcript.substring(0, 50) + "..." : transcript
+      const conversationTitle = transcript
       agentSessionTracker.updateSession(sessionId, {
         conversationId,
         conversationTitle,

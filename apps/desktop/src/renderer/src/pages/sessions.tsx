@@ -9,7 +9,6 @@ import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { AgentProgressUpdate } from "@shared/types"
-import { cn } from "@renderer/lib/utils"
 import { toast } from "sonner"
 
 import { logUI } from "@renderer/lib/debug"
@@ -482,10 +481,20 @@ export function Component() {
     setTileResetKey(prev => prev + 1)
   }, [])
 
+  const handleMaximizeSingleTile = useCallback(() => {
+    if (tileLayoutMode === "1x1") return
+    clearPersistedSize("session-tile")
+    setTileLayoutMode("1x1")
+    setTileResetKey(prev => prev + 1)
+  }, [tileLayoutMode])
+
   // Count inactive (completed) sessions
   const inactiveSessionCount = useMemo(() => {
     return allProgressEntries.filter(([_, progress]) => progress?.isComplete).length
   }, [allProgressEntries])
+
+  const visibleTileCount = allProgressEntries.length + (pendingProgress ? 1 : 0)
+  const showSingleTileMaximize = visibleTileCount === 1 && tileLayoutMode !== "1x1"
 
   const hasSessions = allProgressEntries.length > 0 || !!pendingProgress
 
@@ -593,6 +602,8 @@ export function Component() {
                     onDismiss={handleDismissPendingContinuation}
                     isCollapsed={collapsedSessions[pendingSessionId] ?? false}
                     onCollapsedChange={(collapsed) => handleCollapsedChange(pendingSessionId, collapsed)}
+                    onExpand={showSingleTileMaximize ? handleMaximizeSingleTile : undefined}
+                    isExpanded={tileLayoutMode === "1x1"}
 
                   />
                 </SessionTileWrapper>
@@ -624,6 +635,8 @@ export function Component() {
                         onDismiss={() => handleDismissSession(sessionId)}
                         isCollapsed={isCollapsed}
                         onCollapsedChange={(collapsed) => handleCollapsedChange(sessionId, collapsed)}
+                        onExpand={showSingleTileMaximize ? handleMaximizeSingleTile : undefined}
+                        isExpanded={tileLayoutMode === "1x1"}
 
                       />
                     </SessionTileWrapper>
