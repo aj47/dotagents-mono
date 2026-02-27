@@ -17,7 +17,11 @@ import {
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
+import {
+  useConfigQuery,
+  useConversationHistoryQuery,
+  useSaveConfigMutation,
+} from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { useNavigate } from "react-router-dom"
 
@@ -40,7 +44,20 @@ interface AgentSessionsResponse {
   recentSessions: AgentSession[]
 }
 
-const MAX_SIDEBAR_SESSIONS = 5
+interface ConversationHistoryItem {
+  id: string
+  title: string
+  updatedAt: number
+}
+
+interface SidebarSession {
+  session: AgentSession
+  isPast: boolean
+  key: string
+}
+
+const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
+const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 
@@ -68,6 +85,7 @@ export function ActiveAgentsSidebar({
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
+  const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
   const navigate = useNavigate()
 
   const saveConfig = useCallback(
@@ -134,6 +152,7 @@ export function ActiveAgentsSidebar({
       return await tipcClient.getAgentSessions()
     },
   })
+  const conversationHistoryQuery = useConversationHistoryQuery(isExpanded)
 
   useEffect(() => {
     const unlisten = rendererHandlers.agentSessionsUpdated.listen(
@@ -146,29 +165,89 @@ export function ActiveAgentsSidebar({
 
   const activeSessions = data?.activeSessions || []
   const recentSessions = data?.recentSessions || []
+  const conversationHistory =
+    (conversationHistoryQuery.data as ConversationHistoryItem[] | undefined) ||
+    []
 
-  // Build a unified list of up to MAX_SIDEBAR_SESSIONS items.
-  // Active sessions first, then fill remaining slots with recent (past) sessions.
-  const sidebarSessions = useMemo(() => {
-    const items: Array<{ session: AgentSession; isPast: boolean }> = []
+  const allPastSessions = useMemo(() => {
+    const items: SidebarSession[] = []
+    const seenConversationIds = new Set<string>(
+      activeSessions
+        .map((session) => session.conversationId)
+        .filter((id): id is string => !!id),
+    )
+    const seenFallbackIds = new Set<string>()
 
-    // Add all active sessions first
-    for (const session of activeSessions) {
-      items.push({ session, isPast: false })
+    const addPastSession = (session: AgentSession, keyPrefix: string) => {
+      const conversationId = session.conversationId
+      if (conversationId) {
+        if (seenConversationIds.has(conversationId)) return
+        seenConversationIds.add(conversationId)
+      } else {
+        if (seenFallbackIds.has(session.id)) return
+        seenFallbackIds.add(session.id)
+      }
+
+      items.push({
+        session,
+        isPast: true,
+        key: `${keyPrefix}:${session.id}`,
+      })
     }
 
-    // Fill remaining slots with recent (completed/stopped) sessions
-    const remainingSlots = MAX_SIDEBAR_SESSIONS - items.length
-    if (remainingSlots > 0) {
-      for (const session of recentSessions.slice(0, remainingSlots)) {
-        items.push({ session, isPast: true })
+    // Recent runtime sessions first so just-finished agents stay near the top.
+    for (const session of recentSessions) {
+      addPastSession(session, "recent")
+    }
+
+    // Fill with persisted conversation history.
+    for (const historyItem of conversationHistory) {
+      const mappedSession: AgentSession = {
+        id: historyItem.id,
+        conversationId: historyItem.id,
+        conversationTitle: historyItem.title || "Untitled session",
+        status: "completed",
+        startTime: historyItem.updatedAt,
+        endTime: historyItem.updatedAt,
       }
+      addPastSession(mappedSession, "history")
     }
 
     return items
-  }, [activeSessions, recentSessions])
+  }, [activeSessions, conversationHistory, recentSessions])
+
+  const minimumPastSessionsNeeded = useMemo(
+    () => Math.max(MIN_VISIBLE_SIDEBAR_SESSIONS - activeSessions.length, 0),
+    [activeSessions.length],
+  )
+
+  const displayedPastSessionCount = Math.max(
+    visiblePastSessionCount,
+    minimumPastSessionsNeeded,
+  )
+
+  const sidebarSessions = useMemo(() => {
+    const activeItems: SidebarSession[] = activeSessions.map((session) => ({
+      session,
+      isPast: false,
+      key: `active:${session.id}`,
+    }))
+
+    return [
+      ...activeItems,
+      ...allPastSessions.slice(0, displayedPastSessionCount),
+    ]
+  }, [activeSessions, allPastSessions, displayedPastSessionCount])
+
+  const hasMorePastSessions = allPastSessions.length > displayedPastSessionCount
 
   const hasAnySessions = sidebarSessions.length > 0
+
+  useEffect(() => {
+    setVisiblePastSessionCount((prev) =>
+      Math.max(prev, minimumPastSessionsNeeded),
+    )
+  }, [minimumPastSessionsNeeded])
 
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
@@ -327,6 +406,28 @@ export function ActiveAgentsSidebar({
 
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
 
+  const handleSidebarSessionsScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (!hasMorePastSessions) return
+
+      const container = e.currentTarget
+      const nearBottom =
+        container.scrollTop + container.clientHeight >=
+        container.scrollHeight - 32
+
+      if (!nearBottom) return
+
+      setVisiblePastSessionCount((prev) =>
+        Math.min(
+          Math.max(prev, minimumPastSessionsNeeded) +
+            SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
+          allPastSessions.length,
+        ),
+      )
+    },
+    [allPastSessions.length, hasMorePastSessions, minimumPastSessionsNeeded],
+  )
+
   return (
     <div className="px-2">
       <div
@@ -415,8 +516,11 @@ export function ActiveAgentsSidebar({
       </div>
 
       {isExpanded && (
-        <div className="mt-1 space-y-0.5 pl-2">
-          {sidebarSessions.map(({ session, isPast }) => {
+        <div
+          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
+          onScroll={handleSidebarSessionsScroll}
+        >
+          {sidebarSessions.map(({ session, isPast, key }) => {
             const isFocused = focusedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
             const hasPendingApproval =
@@ -428,13 +532,9 @@ export function ActiveAgentsSidebar({
 
             if (isPast) {
               // Past agent row — archive icon, no action buttons
-              const statusDotColor =
-                session.status === "error" || session.status === "stopped"
-                  ? "bg-red-500"
-                  : "bg-muted-foreground"
               return (
                 <div
-                  key={session.id}
+                  key={key}
                   onClick={() => {
                     if (session.conversationId) {
                       logUI(
@@ -452,7 +552,9 @@ export function ActiveAgentsSidebar({
                 >
                   {/* Archive icon for past agents */}
                   <Archive className="h-3 w-3 shrink-0 opacity-50" />
-                  <p className="flex-1 truncate">{session.conversationTitle}</p>
+                  <p className="flex-1 truncate">
+                    {session.conversationTitle || "Untitled session"}
+                  </p>
                 </div>
               )
             }
@@ -466,7 +568,7 @@ export function ActiveAgentsSidebar({
                 : "bg-blue-500"
             return (
               <div
-                key={session.id}
+                key={key}
                 onClick={() => handleSessionClick(session.id)}
                 className={cn(
                   "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
@@ -530,6 +632,24 @@ export function ActiveAgentsSidebar({
               </div>
             )
           })}
+
+          {hasMorePastSessions && (
+            <button
+              type="button"
+              onClick={() =>
+                setVisiblePastSessionCount((prev) =>
+                  Math.min(
+                    Math.max(prev, minimumPastSessionsNeeded) +
+                      SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
+                    allPastSessions.length,
+                  ),
+                )
+              }
+              className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+            >
+              Load more sessions
+            </button>
+          )}
         </div>
       )}
     </div>
