@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
-import { ChevronDown, ChevronRight, X, Minimize2, Maximize2, Clock, Archive } from "lucide-react"
+import { ChevronDown, ChevronRight, X, Minimize2, Maximize2, Clock, Archive, Volume2, VolumeX, OctagonX, Loader2 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
+import { ttsManager } from "@renderer/lib/tts-manager"
 import { useNavigate } from "react-router-dom"
 
 interface AgentSession {
@@ -47,7 +49,59 @@ export function ActiveAgentsSidebar({
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const configQuery = useConfigQuery()
+  const saveConfigMutation = useSaveConfigMutation()
+  const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const navigate = useNavigate()
+
+  const saveConfig = useCallback((partial: Record<string, unknown>) => {
+    if (!configQuery.data) return
+
+    saveConfigMutation.mutate({
+      config: {
+        ...configQuery.data,
+        ...partial,
+      },
+    })
+  }, [configQuery.data, saveConfigMutation])
+
+  const handleToggleGlobalTTS = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const currentEnabled = configQuery.data?.ttsEnabled ?? true
+    const nextEnabled = !currentEnabled
+
+    logUI("[ActiveAgentsSidebar] Global TTS toggle clicked", {
+      from: currentEnabled,
+      to: nextEnabled,
+    })
+
+    if (!nextEnabled) {
+      ttsManager.stopAll("sidebar-global-tts-disabled")
+    }
+
+    saveConfig({ ttsEnabled: nextEnabled })
+  }, [configQuery.data?.ttsEnabled, saveConfig])
+
+  const handleEmergencyStopAll = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isEmergencyStopping) return
+
+    setIsEmergencyStopping(true)
+    logUI("[ActiveAgentsSidebar] Emergency stop triggered from sidebar")
+
+    // Emergency stop should always silence active TTS immediately.
+    ttsManager.stopAll("sidebar-emergency-stop")
+
+    try {
+      await tipcClient.emergencyStopAgent()
+      setFocusedSessionId(null)
+    } catch (error) {
+      console.error("Failed to trigger emergency stop:", error)
+    } finally {
+      setIsEmergencyStopping(false)
+    }
+  }, [isEmergencyStopping, setFocusedSessionId])
 
   const { data, refetch } = useQuery<AgentSessionsResponse>({
     queryKey: ["agentSessions"],
@@ -102,14 +156,6 @@ export function ActiveAgentsSidebar({
     }
   }, [isExpanded])
 
-  // Log when sessions change
-  useEffect(() => {
-    logUI('[ActiveAgentsSidebar] Sessions updated:', {
-      count: activeSessions.length,
-      sessions: activeSessions.map(s => ({ id: s.id, title: s.conversationTitle, snoozed: s.isSnoozed }))
-    })
-  }, [activeSessions.length])
-
   const handleSessionClick = (sessionId: string) => {
     logUI('[ActiveAgentsSidebar] Session clicked:', sessionId)
     // Navigate to sessions page and focus this session
@@ -135,7 +181,7 @@ export function ActiveAgentsSidebar({
 
   const handleToggleSnooze = async (sessionId: string, isSnoozed: boolean, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent session focus when clicking snooze
-    logUI('🟢 [ActiveAgentsSidebar SIDEBAR] Minimize button clicked in SIDEBAR (not overlay):', {
+    logUI('[ActiveAgentsSidebar] Toggle snooze clicked', {
       sessionId,
       sidebarSaysIsSnoozed: isSnoozed,
       action: isSnoozed ? 'unsnooze' : 'snooze',
@@ -227,6 +273,8 @@ export function ActiveAgentsSidebar({
     }
   }
 
+  const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
+
   return (
     <div className="px-2">
       <div
@@ -263,16 +311,48 @@ export function ActiveAgentsSidebar({
             </span>
           )}
         </button>
-        {onOpenPastSessionsDialog && (
+        <div className="ml-auto flex items-center gap-1">
           <button
-            onClick={onOpenPastSessionsDialog}
-            className="ml-auto shrink-0 p-1 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground"
-            title="Past Sessions"
-            aria-label="Past Sessions"
+            onClick={handleToggleGlobalTTS}
+            disabled={!configQuery.data || saveConfigMutation.isPending}
+            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground disabled:opacity-50"
+            title={isGlobalTTSEnabled ? "Disable global TTS" : "Enable global TTS"}
+            aria-label={isGlobalTTSEnabled ? "Disable global TTS" : "Enable global TTS"}
           >
-            <Clock className="h-3.5 w-3.5" />
+            {saveConfigMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : isGlobalTTSEnabled ? (
+              <Volume2 className="h-3.5 w-3.5" />
+            ) : (
+              <VolumeX className="h-3.5 w-3.5" />
+            )}
           </button>
-        )}
+
+          <button
+            onClick={handleEmergencyStopAll}
+            disabled={isEmergencyStopping}
+            className="shrink-0 rounded p-1 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+            title="Emergency stop all agent sessions"
+            aria-label="Emergency stop all agent sessions"
+          >
+            {isEmergencyStopping ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <OctagonX className="h-3.5 w-3.5" />
+            )}
+          </button>
+
+          {onOpenPastSessionsDialog && (
+            <button
+              onClick={onOpenPastSessionsDialog}
+              className="shrink-0 p-1 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+              title="Past Sessions"
+              aria-label="Past Sessions"
+            >
+              <Clock className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {isExpanded && (

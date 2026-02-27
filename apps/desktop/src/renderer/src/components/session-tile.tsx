@@ -419,7 +419,7 @@ export function SessionTile({
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                ttsManager.stopAll()
+                ttsManager.stopAll("session-tile-pause")
               }}
               className={cn(
                 "p-1 rounded hover:bg-muted/30 transition-colors",
