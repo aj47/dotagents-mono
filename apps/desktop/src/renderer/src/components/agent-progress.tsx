@@ -335,14 +335,6 @@ const CompactMessage: React.FC<{
     }
   }
 
-  const getRoleIcon = () => {
-    switch (message.role) {
-      case "user": return <span className="i-mingcute-user-3-line h-3 w-3 text-blue-500" />
-      case "assistant": return <span className="i-mingcute-android-2-line h-3 w-3 text-gray-500" />
-      case "tool": return <span className="i-mingcute-tool-line h-3 w-3 text-orange-500" />
-    }
-  }
-
   const handleToggleExpand = () => {
     if (shouldCollapse) {
       onToggleExpand()
@@ -362,10 +354,9 @@ const CompactMessage: React.FC<{
       shouldCollapse && "cursor-pointer"
     )}>
       <div
-        className="flex items-start gap-2 px-2 py-1 text-left"
+        className="flex items-start px-2 py-1 text-left"
         onClick={handleToggleExpand}
       >
-        <span className="opacity-60 mt-0.5 flex-shrink-0">{getRoleIcon()}</span>
         <div className="flex-1 min-w-0">
           <div className={cn(
             "leading-relaxed text-left",
@@ -643,10 +634,6 @@ const ToolExecutionBubble: React.FC<{
               )}
               onClick={handleToggleExpand}
             >
-              <span className={cn(
-                "i-mingcute-tool-line h-2.5 w-2.5 flex-shrink-0",
-                callIsPending ? "text-blue-500" : callSuccess ? "text-green-500" : "text-red-500"
-              )} />
               {execCmdDisplay ? (
                 <>
                   <span className="font-mono font-medium truncate" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
@@ -812,10 +799,9 @@ const AssistantWithToolsBubble: React.FC<{
     )}>
       {/* Thought content section */}
       <div
-        className="flex items-start gap-2 px-2 py-1 text-left"
+        className="flex items-start px-2 py-1 text-left"
         onClick={handleToggleExpand}
       >
-        <span className="i-mingcute-android-2-line h-3 w-3 text-gray-500 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           {hasThought && (
             <div className={cn(
@@ -851,10 +837,6 @@ const AssistantWithToolsBubble: React.FC<{
                   )}
                   onClick={handleToggleToolDetails}
                 >
-                  <span className={cn(
-                    "i-mingcute-tool-line h-2.5 w-2.5 flex-shrink-0",
-                    callIsPending ? "text-blue-500" : callSuccess ? "text-green-500" : "text-red-500"
-                  )} />
                   {execCmdDisplay ? (
                     <>
                       <span className="font-mono font-medium truncate" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
@@ -2623,14 +2605,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Get title for tile variant
   const getTitle = () => {
+    const firstUserMsg = conversationHistory?.find(m => m.role === "user")
+    const firstUserContent = firstUserMsg?.content
+      ? (typeof firstUserMsg.content === "string" ? firstUserMsg.content : JSON.stringify(firstUserMsg.content))
+      : undefined
+
     if (progress.conversationTitle) {
+      const isLikelyCappedTitle = progress.conversationTitle.endsWith("...") || progress.conversationTitle.endsWith("…")
+      if (isLikelyCappedTitle && firstUserContent && firstUserContent.length > progress.conversationTitle.length) {
+        return firstUserContent
+      }
       return progress.conversationTitle
     }
-    const firstUserMsg = conversationHistory?.find(m => m.role === "user")
-    if (firstUserMsg?.content) {
-      const content = typeof firstUserMsg.content === "string" ? firstUserMsg.content : JSON.stringify(firstUserMsg.content)
-      return content.length > 50 ? content.substring(0, 50) + "..." : content
+
+    if (firstUserContent) {
+      return firstUserContent
     }
+
     return `Session ${progress.sessionId?.substring(0, 8) || "..."}`
   }
 
@@ -2689,6 +2680,21 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
+
+            {onExpand && !isExpanded && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onExpand()
+                }}
+                title="Maximize tile"
+              >
+                <Maximize2 className="h-3 w-3" />
+              </Button>
+            )}
 
             {!isComplete && !isSnoozed && (
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
