@@ -60,11 +60,13 @@ function sendToWindows(update: AgentProgressUpdate): void {
 
 /**
  * Determine whether an update must be sent immediately (not throttled).
- * Critical updates include: completion, tool approvals, errors, and the first update for a session.
+ * Critical updates include: completion, tool approvals, user responses, errors,
+ * and the first update for a session.
  */
 function isCriticalUpdate(update: AgentProgressUpdate): boolean {
   if (update.isComplete) return true
   if (update.pendingToolApproval) return true
+  if (typeof update.userResponse === "string" && update.userResponse.trim().length > 0) return true
   // First update for a session — send immediately
   if (update.sessionId && !sessionThrottleState.has(update.sessionId)) return true
   // Steps with error or awaiting_approval status

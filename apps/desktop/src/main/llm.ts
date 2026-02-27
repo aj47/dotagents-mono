@@ -512,6 +512,7 @@ export async function processTranscriptWithAgentMode(
     ? getCurrentPresetName(config.currentModelPresetId, config.modelPresets)
     : providerId === "groq" ? "Groq" : providerId === "gemini" ? "Gemini" : providerId
   const modelInfoRef = { provider: providerDisplayName, model: modelName }
+  let lastEmittedUserResponse: string | undefined
 
   // Create bound emitter that always includes sessionId, conversationId, snooze state, sessionStartIndex, conversationTitle, and contextInfo
   const emit = (
@@ -536,17 +537,20 @@ export async function processTranscriptWithAgentMode(
       (update.isComplete && !isKillSwitchCompletion
         ? update.finalContent
         : undefined)
+    const shouldEmitUserResponse =
+      userResponseForUpdate !== undefined &&
+      userResponseForUpdate !== lastEmittedUserResponse
 
     // Get history of past respond_to_user calls (excluding current)
     const responseHistory = getSessionUserResponseHistory(currentSessionId)
 
     const fullUpdate: AgentProgressUpdate = {
       ...update,
-	      // Only include userResponse when it has a value, so undefined doesn't
-	      // overwrite a previously-set value during the renderer's spread-merge.
-	      ...(userResponseForUpdate !== undefined ? { userResponse: userResponseForUpdate } : {}),
+      // Only include userResponse when it changed. This avoids re-sending large
+      // image payloads on every progress tick while preserving merge behavior.
+      ...(shouldEmitUserResponse ? { userResponse: userResponseForUpdate } : {}),
       // Include response history if there are past responses
-      ...(responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
+      ...(shouldEmitUserResponse && responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
       sessionId: currentSessionId,
       conversationId: currentConversationId,
       conversationTitle,
@@ -561,6 +565,10 @@ export async function processTranscriptWithAgentMode(
       // Dual-model summarization data (from service - single source of truth)
       stepSummaries: summarizationService.getSummaries(currentSessionId),
       latestSummary: summarizationService.getLatestSummary(currentSessionId),
+    }
+
+    if (shouldEmitUserResponse) {
+      lastEmittedUserResponse = userResponseForUpdate
     }
 
     // Fire and forget - don't await, but catch errors

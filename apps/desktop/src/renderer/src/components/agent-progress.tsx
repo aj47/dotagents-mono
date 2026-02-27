@@ -22,6 +22,7 @@ import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
+import { sanitizeMessageContentForSpeech } from "@shared/message-display-utils"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -184,7 +185,7 @@ const CompactMessage: React.FC<{
 
   // Track the computed ttsSource (ttsText || message.content) since that's what determines the
   // ttsKey and should also gate async state updates.
-  const ttsSource = ttsText || message.content
+  const ttsSource = sanitizeMessageContentForSpeech(ttsText || message.content)
   const latestTtsSourceRef = useRef(ttsSource)
   latestTtsSourceRef.current = ttsSource
   const ttsGenerationIdRef = useRef(0)
@@ -471,7 +472,7 @@ const CompactMessage: React.FC<{
             <div className="mt-2">
               <AudioPlayer
                 audioData={audioData || undefined}
-                text={ttsText || message.content}
+                text={ttsSource}
                 onGenerateAudio={generateAudio}
                 isGenerating={isGeneratingAudio}
                 error={ttsError}
@@ -1637,9 +1638,10 @@ const PastResponseItem: React.FC<{
   const [isExpanded, setIsExpanded] = useState(false)
   const configQuery = useConfigQuery()
   const shouldShowTTSButton = configQuery.data?.ttsEnabled
+  const ttsResponseText = sanitizeMessageContentForSpeech(response)
 
   const generatePastAudio = async (): Promise<ArrayBuffer> => {
-    const result = await tipcClient.generateSpeech({ text: response })
+    const result = await tipcClient.generateSpeech({ text: ttsResponseText })
     return result.audio
   }
 
@@ -1673,7 +1675,7 @@ const PastResponseItem: React.FC<{
           {shouldShowTTSButton && (
             <div className="mt-1.5">
               <AudioPlayer
-                text={response}
+                text={ttsResponseText}
                 onGenerateAudio={generatePastAudio}
                 compact={true}
                 autoPlay={false}
@@ -1701,8 +1703,9 @@ const MidTurnUserResponseBubble: React.FC<{
   const inFlightTtsKeyRef = useRef<string | null>(null)
   const configQuery = useConfigQuery()
   const ttsGenerationIdRef = useRef(0)
-  const latestUserResponseRef = useRef(userResponse)
-  latestUserResponseRef.current = userResponse
+  const ttsSource = sanitizeMessageContentForSpeech(userResponse)
+  const latestTtsSourceRef = useRef(ttsSource)
+  latestTtsSourceRef.current = ttsSource
 
   // TTS generation function
   const generateAudio = async (): Promise<ArrayBuffer> => {
@@ -1711,7 +1714,7 @@ const MidTurnUserResponseBubble: React.FC<{
     }
 
     const generationId = ++ttsGenerationIdRef.current
-    const generationSource = userResponse
+    const generationSource = ttsSource
 
     setIsGeneratingAudio(true)
     setTtsError(null)
@@ -1721,10 +1724,10 @@ const MidTurnUserResponseBubble: React.FC<{
         text: generationSource,
       })
 
-      // Ignore stale completions if the userResponse changed while this request was in-flight.
+      // Ignore stale completions if the TTS source changed while this request was in-flight.
       if (
         ttsGenerationIdRef.current !== generationId ||
-        latestUserResponseRef.current !== generationSource
+        latestTtsSourceRef.current !== generationSource
       ) {
         return result.audio
       }
@@ -1749,7 +1752,7 @@ const MidTurnUserResponseBubble: React.FC<{
 
       if (
         ttsGenerationIdRef.current === generationId &&
-        latestUserResponseRef.current === generationSource
+        latestTtsSourceRef.current === generationSource
       ) {
         setTtsError(errorMessage)
       }
@@ -1764,12 +1767,12 @@ const MidTurnUserResponseBubble: React.FC<{
   // Auto-play TTS for mid-turn userResponse (only in overlay variant to prevent double-play)
   useEffect(() => {
     const shouldAutoPlay = variant === "overlay"
-    if (!shouldAutoPlay || !userResponse || !configQuery.data?.ttsEnabled || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || isComplete) {
+    if (!shouldAutoPlay || !ttsSource || !configQuery.data?.ttsEnabled || !configQuery.data?.ttsAutoPlay || audioData || isGeneratingAudio || ttsError || isComplete) {
       return
     }
 
     // Create a key to track TTS playback - use mid-turn prefix to avoid collision with completion TTS
-    const ttsKey = sessionId ? `${sessionId}:mid-turn:${userResponse}` : null
+    const ttsKey = sessionId ? `${sessionId}:mid-turn:${ttsSource}` : null
 
     if (ttsKey && hasTTSPlayed(ttsKey)) {
       return
@@ -1781,7 +1784,7 @@ const MidTurnUserResponseBubble: React.FC<{
       // Also mark the non-prefixed key that the completion path will check
       // to prevent double TTS playback when session completes
       if (sessionId) {
-        markTTSPlayed(`${sessionId}:${userResponse}`)
+        markTTSPlayed(`${sessionId}:${ttsSource}`)
       }
       inFlightTtsKeyRef.current = ttsKey
     }
@@ -1796,7 +1799,7 @@ const MidTurnUserResponseBubble: React.FC<{
           inFlightTtsKeyRef.current = null
         }
       })
-  }, [userResponse, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, ttsError, variant, sessionId, isComplete])
+  }, [ttsSource, configQuery.data?.ttsEnabled, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, ttsError, variant, sessionId, isComplete])
 
   // Cleanup in-flight TTS key on unmount
   useEffect(() => {
@@ -1857,7 +1860,7 @@ const MidTurnUserResponseBubble: React.FC<{
           <div className="mt-2">
             <AudioPlayer
               audioData={audioData || undefined}
-              text={userResponse}
+              text={ttsSource}
               onGenerateAudio={generateAudio}
               isGenerating={isGeneratingAudio}
               error={ttsError}
