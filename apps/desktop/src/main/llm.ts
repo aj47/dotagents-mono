@@ -1249,6 +1249,11 @@ Return ONLY JSON per schema.`,
     ? Math.max(1, Math.floor(maxIterations))
     : 60
 
+  // Keep loop behavior aligned with guardrails by normalizing non-finite limits
+  // to the same fallback budget. This avoids cases where the main loop could
+  // skip entirely (NaN) or run unbounded (Infinity) while guardrails are capped.
+  maxIterations = effectiveIterationBudget
+
   // Verification failure limit - after this many failed completion checks, end as incomplete.
   // Scales with iteration budget instead of a fixed low constant.
   const VERIFICATION_FAIL_LIMIT = clamp(Math.ceil(effectiveIterationBudget * 0.8), 5, 60)
