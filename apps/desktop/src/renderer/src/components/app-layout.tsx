@@ -1,6 +1,7 @@
-import { rendererHandlers } from "@renderer/lib/tipc-client"
+import { useQuery } from "@tanstack/react-query"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
@@ -9,8 +10,21 @@ import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilitie
 
 import { PastSessionsDialog } from "@renderer/components/past-sessions-dialog"
 import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
-import { useConfigQuery } from "@renderer/lib/query-client"
-import { Clock, PanelLeftClose, PanelLeft } from "lucide-react"
+import {
+  useConfigQuery,
+  useSaveConfigMutation,
+} from "@renderer/lib/query-client"
+import { ttsManager } from "@renderer/lib/tts-manager"
+import { useAgentStore } from "@renderer/stores"
+import {
+  Clock,
+  PanelLeftClose,
+  PanelLeft,
+  Volume2,
+  VolumeX,
+  OctagonX,
+  Loader2,
+} from "lucide-react"
 
 type NavLinkItem = {
   text: string
@@ -18,16 +32,114 @@ type NavLinkItem = {
   icon: string
 }
 
+interface AgentSession {
+  id: string
+  conversationTitle?: string
+  status: "active" | "completed" | "error" | "stopped"
+  isSnoozed?: boolean
+}
+
+interface AgentSessionsResponse {
+  activeSessions: AgentSession[]
+}
+
 export const Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
+  const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
     useSidebar()
   const configQuery = useConfigQuery()
+  const saveConfigMutation = useSaveConfigMutation()
+  const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
+  const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
+  const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
+  const agentProgressById = useAgentStore((s) => s.agentProgressById)
+
+  const { data: sessionData, refetch: refetchSessionData } =
+    useQuery<AgentSessionsResponse>({
+      queryKey: ["agentSessions"],
+      queryFn: async () => {
+        return await tipcClient.getAgentSessions()
+      },
+      enabled: isCollapsed,
+      refetchOnWindowFocus: false,
+    })
+
+  useEffect(() => {
+    const unlisten = rendererHandlers.agentSessionsUpdated.listen(() => {
+      if (isCollapsed) {
+        refetchSessionData()
+      }
+    })
+    return unlisten
+  }, [isCollapsed, refetchSessionData])
 
   const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
+  const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
+  const collapsedActiveSessions = sessionData?.activeSessions ?? []
+  const collapsedPreviewSessions = useMemo(
+    () => collapsedActiveSessions.slice(0, 3),
+    [collapsedActiveSessions],
+  )
+
+  const saveConfig = useCallback(
+    (partial: Record<string, unknown>) => {
+      if (!configQuery.data) return
+
+      saveConfigMutation.mutate({
+        config: {
+          ...configQuery.data,
+          ...partial,
+        },
+      })
+    },
+    [configQuery.data, saveConfigMutation],
+  )
+
+  const handleToggleGlobalTTS = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+
+      const nextEnabled = !(configQuery.data?.ttsEnabled ?? true)
+      if (!nextEnabled) {
+        ttsManager.stopAll("collapsed-sidebar-global-tts-disabled")
+      }
+      saveConfig({ ttsEnabled: nextEnabled })
+    },
+    [configQuery.data?.ttsEnabled, saveConfig],
+  )
+
+  const handleEmergencyStopAll = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (isEmergencyStopping) return
+
+      setIsEmergencyStopping(true)
+      ttsManager.stopAll("collapsed-sidebar-emergency-stop")
+
+      try {
+        await tipcClient.emergencyStopAgent()
+        setFocusedSessionId(null)
+      } catch (error) {
+        console.error("Failed to trigger emergency stop:", error)
+      } finally {
+        setIsEmergencyStopping(false)
+      }
+    },
+    [isEmergencyStopping, setFocusedSessionId],
+  )
+
+  const handleCollapsedSessionClick = useCallback(
+    (sessionId: string) => {
+      navigate("/")
+      setFocusedSessionId(sessionId)
+      setScrollToSessionId(sessionId)
+    },
+    [navigate, setFocusedSessionId, setScrollToSessionId],
+  )
 
   const settingsNavLinks: NavLinkItem[] = [
     {
@@ -158,10 +270,10 @@ export const Component = () => {
           {/* Header with collapse toggle */}
           <header
             className={cn(
-              "flex items-center shrink-0",
+              "flex shrink-0 items-center",
               isCollapsed ? "justify-center" : "justify-end",
               // On macOS, add top padding to clear the traffic-light window controls
-              process.env.IS_MAC ? "pt-7 pb-1" : "pt-2 pb-1",
+              process.env.IS_MAC ? "pb-1 pt-7" : "pb-1 pt-2",
               isCollapsed ? "px-1" : "px-2",
             )}
           >
@@ -182,14 +294,161 @@ export const Component = () => {
             </button>
           </header>
 
-
-
           {/* Scrollable area: Settings + Sessions scroll together */}
           {isCollapsed ? (
-            /* Collapsed: Show settings icons then sessions icon */
-            <div className={cn("px-1")}>
-              {/* Settings Section - Collapsed: Show all settings icons for quick navigation */}
+            /* Collapsed: Sessions quick actions first, then settings shortcuts */
+            <div className="mt-2 px-1">
               <div className="grid gap-1">
+                <button
+                  type="button"
+                  onClick={handleToggleGlobalTTS}
+                  disabled={!configQuery.data || saveConfigMutation.isPending}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground disabled:opacity-50",
+                  )}
+                  title={
+                    isGlobalTTSEnabled
+                      ? "Disable global TTS"
+                      : "Enable global TTS"
+                  }
+                  aria-label={
+                    isGlobalTTSEnabled
+                      ? "Disable global TTS"
+                      : "Enable global TTS"
+                  }
+                >
+                  {saveConfigMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isGlobalTTSEnabled ? (
+                    <Volume2 className="h-4 w-4" />
+                  ) : (
+                    <VolumeX className="h-4 w-4" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleEmergencyStopAll}
+                  disabled={isEmergencyStopping}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    "text-destructive hover:bg-destructive/10 disabled:opacity-50",
+                  )}
+                  title="Emergency stop all agent sessions"
+                  aria-label="Emergency stop all agent sessions"
+                >
+                  {isEmergencyStopping ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <OctagonX className="h-4 w-4" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPastSessionsDialogOpen(true)}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    pastSessionsDialogOpen
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Past Sessions"
+                  aria-label="Past Sessions"
+                  aria-pressed={pastSessionsDialogOpen || undefined}
+                >
+                  <Clock className="h-4 w-4" />
+                </button>
+
+                <NavLink
+                  to="/"
+                  end
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    isSessionsActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Sessions"
+                  aria-label="Sessions"
+                  aria-current={isSessionsActive ? "page" : undefined}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <span className="i-mingcute-chat-3-line"></span>
+                    {collapsedActiveSessions.length > 0 && (
+                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[9px] font-semibold text-white">
+                        {collapsedActiveSessions.length > 9
+                          ? "9+"
+                          : collapsedActiveSessions.length}
+                      </span>
+                    )}
+                  </div>
+                </NavLink>
+
+                {collapsedPreviewSessions.map((session) => {
+                  const isFocused = focusedSessionId === session.id
+                  const sessionProgress = agentProgressById.get(session.id)
+                  const hasPendingApproval =
+                    !!sessionProgress?.pendingToolApproval
+                  const isSnoozed =
+                    sessionProgress?.isSnoozed ?? session.isSnoozed ?? false
+                  const statusDotColor = hasPendingApproval
+                    ? "bg-amber-500"
+                    : isSnoozed
+                      ? "bg-muted-foreground"
+                      : "bg-blue-500"
+                  const title =
+                    session.conversationTitle?.trim() || "Untitled session"
+                  const initial = title.charAt(0).toUpperCase()
+
+                  return (
+                    <button
+                      key={session.id}
+                      type="button"
+                      onClick={() => handleCollapsedSessionClick(session.id)}
+                      className={cn(
+                        "group relative flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                        isFocused
+                          ? "text-foreground bg-blue-500/15"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                      )}
+                      title={title}
+                      aria-label={`Open session ${title}`}
+                    >
+                      <span className="text-xs font-semibold">{initial}</span>
+                      <span
+                        className={cn(
+                          "border-background absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border",
+                          statusDotColor,
+                          !isSnoozed && !hasPendingApproval && "animate-pulse",
+                        )}
+                      />
+                    </button>
+                  )
+                })}
+
+                {collapsedActiveSessions.length >
+                  collapsedPreviewSessions.length && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    className={cn(
+                      "flex h-8 w-full items-center justify-center rounded-md text-[10px] font-semibold transition-all duration-200",
+                      "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    )}
+                    title={`View ${collapsedActiveSessions.length - collapsedPreviewSessions.length} more sessions`}
+                    aria-label="View more sessions"
+                  >
+                    +
+                    {collapsedActiveSessions.length -
+                      collapsedPreviewSessions.length}
+                  </button>
+                )}
+              </div>
+
+              {/* Settings Section - collapsed quick navigation */}
+              <div className="mt-2 grid gap-1">
                 {settingsNavLinks.map((link) => {
                   const isActive = isNavLinkActive(link.href)
                   return (
@@ -216,7 +475,9 @@ export const Component = () => {
             /* Expanded: Settings and Sessions share one scrollable container */
             <div className="scrollbar-none mt-2 min-h-0 flex-1 overflow-y-auto">
               {/* Sessions Section - shows sessions list */}
-              <ActiveAgentsSidebar onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)} />
+              <ActiveAgentsSidebar
+                onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)}
+              />
 
               {/* Agents Section - capability management */}
               <AgentCapabilitiesSidebar />
@@ -248,43 +509,6 @@ export const Component = () => {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Sessions icon when collapsed - navigates to sessions page */}
-          {isCollapsed && (
-            <div className="mt-2 grid gap-1 px-1">
-              <button
-                type="button"
-                onClick={() => setPastSessionsDialogOpen(true)}
-                className={cn(
-                  "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
-                  pastSessionsDialogOpen
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                )}
-                title="Past Sessions"
-                aria-label="Past Sessions"
-                aria-pressed={pastSessionsDialogOpen || undefined}
-              >
-                <Clock className="h-4 w-4" />
-              </button>
-
-              <NavLink
-                to="/"
-                end
-                className={cn(
-                  "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
-                  isSessionsActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                )}
-                title="Sessions"
-                aria-label="Sessions"
-                aria-current={isSessionsActive ? "page" : undefined}
-              >
-                <span className="i-mingcute-chat-3-line"></span>
-              </NavLink>
             </div>
           )}
 
@@ -330,7 +554,11 @@ export const Component = () => {
 
           {/* Scrollable content area */}
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <Outlet context={{ onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true) }} />
+            <Outlet
+              context={{
+                onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+              }}
+            />
           </div>
         </div>
       </div>

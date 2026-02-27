@@ -514,7 +514,7 @@ const CompactMessage: React.FC<{
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                ttsManager.stopAll()
+                ttsManager.stopAll("agent-progress-message-pause")
               }}
               className={cn(
                 "p-1 rounded hover:bg-muted/30 transition-colors",
@@ -1832,7 +1832,7 @@ const MidTurnUserResponseBubble: React.FC<{
           <button
             onClick={(e) => {
               e.stopPropagation()
-              ttsManager.stopAll()
+              ttsManager.stopAll("agent-progress-midturn-pause")
             }}
             className={cn(
               "ml-auto p-1 rounded hover:bg-green-200/50 dark:hover:bg-green-800/50 transition-colors",
