@@ -47,6 +47,8 @@ interface BuiltinToolContext {
 
 const MAX_RESPOND_TO_USER_IMAGES = 4
 const MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES = 8 * 1024 * 1024
+const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024
+const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
@@ -98,6 +100,9 @@ const getDataImageBytesFromUrl = (url: string): number | null => {
   const base64Payload = trimmed.slice(commaIndex + 1)
   return getDecodedBase64ByteLength(base64Payload)
 }
+
+const getUtf8ByteLength = (value: string): number =>
+  Buffer.byteLength(value, "utf8")
 
 async function imagePathToDataUrl(rawPath: string): Promise<string> {
   const resolvedPath = path.isAbsolute(rawPath)
@@ -554,6 +559,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const imageMarkdownBlocks: string[] = []
     let localImageCount = 0
+    let embeddedImageBytes = 0
 
     for (let index = 0; index < imageInputs.length; index++) {
       const rawItem = imageInputs[index]
@@ -610,6 +616,15 @@ const toolHandlers: Record<string, ToolHandler> = {
               isError: true,
             }
           }
+          const dataImageUrlBytes = getUtf8ByteLength(url)
+          if (embeddedImageBytes + dataImageUrlBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
+            const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
+            return {
+              content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
+              isError: true,
+            }
+          }
+          embeddedImageBytes += dataImageUrlBytes
         }
         imageMarkdownBlocks.push(`![${safeAlt}](${url})`)
         continue
@@ -617,6 +632,15 @@ const toolHandlers: Record<string, ToolHandler> = {
 
       try {
         const dataUrl = await imagePathToDataUrl(imagePath)
+        const dataImageUrlBytes = getUtf8ByteLength(dataUrl)
+        if (embeddedImageBytes + dataImageUrlBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
+          const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
+          return {
+            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
+            isError: true,
+          }
+        }
+        embeddedImageBytes += dataImageUrlBytes
         imageMarkdownBlocks.push(`![${safeAlt}](${dataUrl})`)
         localImageCount++
       } catch (error) {
@@ -637,10 +661,19 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const imageMarkdown = imageMarkdownBlocks.join("\n\n")
     const responseContent = [text, imageMarkdown].filter(Boolean).join("\n\n")
+    const responseContentBytes = getUtf8ByteLength(responseContent)
 
     if (!responseContent.trim()) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "respond_to_user requires text and/or images" }) }],
+        isError: true,
+      }
+    }
+
+    if (responseContentBytes > MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES) {
+      const maxMb = Math.round(MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES / (1024 * 1024))
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: `Response content exceeds the ${maxMb}MB limit` }) }],
         isError: true,
       }
     }
@@ -656,8 +689,10 @@ const toolHandlers: Record<string, ToolHandler> = {
             message: "Response recorded for delivery to user.",
             textLength: text.length,
             responseContentLength: responseContent.length,
+            responseContentBytes,
             imageCount: imageMarkdownBlocks.length,
             localImageCount,
+            embeddedImageBytes,
           }, null, 2),
         },
       ],

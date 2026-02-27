@@ -56,6 +56,7 @@ interface PendingImageAttachment {
 
 const MAX_PENDING_IMAGES = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
+const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -77,6 +78,13 @@ const getApproxBase64Bytes = (base64: string) => {
   const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
   return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
 };
+
+const getApproxDataUrlBytes = (dataUrl: string) => {
+  const [, base64 = ''] = dataUrl.split(',', 2);
+  return getApproxBase64Bytes(base64);
+};
+
+const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 
 const inferImageMimeType = (asset: {
   mimeType?: string | null;
@@ -1191,6 +1199,18 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
+    const existingEmbeddedBytes = pendingImages.reduce(
+      (sum, image) => sum + getApproxDataUrlBytes(image.dataUrl),
+      0
+    );
+    if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
+      Alert.alert(
+        'Image budget reached',
+        `This message already reached the image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
+      );
+      return;
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -1208,6 +1228,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const missingBase64Names: string[] = [];
       const oversizedImageNames: string[] = [];
       const unknownMimeNames: string[] = [];
+      const budgetExceededNames: string[] = [];
+      let runningEmbeddedBytes = existingEmbeddedBytes;
 
       selectedAssets.forEach((asset, index) => {
         const displayName = asset.fileName || `Image ${index + 1}`;
@@ -1231,12 +1253,20 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
 
+        const dataUrl = `data:${mimeType};base64,${asset.base64}`;
+        const embeddedBytes = getApproxDataUrlBytes(dataUrl) || inferredBytes;
+        if (runningEmbeddedBytes + embeddedBytes > MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
+          budgetExceededNames.push(displayName);
+          return;
+        }
+        runningEmbeddedBytes += embeddedBytes;
+
         const fileName = asset.fileName || `image-${Date.now()}-${index + 1}`;
         nextImages.push({
           id: `${Date.now()}-${index}-${asset.uri}`,
           name: fileName,
           previewUri: asset.uri,
-          dataUrl: `data:${mimeType};base64,${asset.base64}`,
+          dataUrl,
         });
       });
 
@@ -1264,10 +1294,17 @@ export default function ChatScreen({ route, navigation }: any) {
           `${unknownMimeNames.join(', ')} could not be attached because the image type could not be determined.`
         );
       }
+
+      if (budgetExceededNames.length > 0) {
+        Alert.alert(
+          'Image budget reached',
+          `${budgetExceededNames.join(', ')} exceed the per-message image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
+        );
+      }
     } catch (error: any) {
       Alert.alert('Image picker error', error?.message || 'Unable to select images right now.');
     }
-  }, [pendingImages.length]);
+  }, [pendingImages]);
 
   const removePendingImage = useCallback((attachmentId: string) => {
     setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));

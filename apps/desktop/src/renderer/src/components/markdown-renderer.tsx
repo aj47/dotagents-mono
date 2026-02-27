@@ -66,8 +66,9 @@ const markdownLinkComponent = ({
 }: {
   children?: React.ReactNode
   href?: string
-}) => (
-  isAllowedMarkdownLinkUrl(href) ? (
+}) => {
+  if (isAllowedMarkdownLinkUrl(href)) {
+    return (
     <a
       href={href}
       className="text-primary underline hover:text-primary/80"
@@ -76,8 +77,11 @@ const markdownLinkComponent = ({
     >
       {children}
     </a>
-  ) : null
-)
+    )
+  }
+
+  return <>{children}</>
+}
 
 const markdownImageComponent = ({
   src,
