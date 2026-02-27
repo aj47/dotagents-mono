@@ -113,6 +113,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       color: theme.colors.primary,
       textDecorationLine: 'underline',
     },
+    image: {
+      width: '100%',
+      minHeight: 140,
+      maxHeight: 320,
+      borderRadius: radius.md,
+      marginBottom: spacing.xs,
+      backgroundColor: theme.colors.muted,
+    },
     table: {
       borderWidth: 1,
       borderColor: theme.colors.border,

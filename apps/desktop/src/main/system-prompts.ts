@@ -46,7 +46,9 @@ AGENT MODE: You can see tool results and make follow-up tool calls. Continue cal
 RESPONDING TO USER:
 - Use respond_to_user whenever you want to communicate directly with the user
 - On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
-- Write respond_to_user text naturally and conversationally (no markdown, code blocks, or formatting)
+- Write respond_to_user content naturally and conversationally
+- Markdown is allowed when useful (for example links or image captions)
+- To send images, use respond_to_user.images with either URL/data URL entries or local file paths
 - If respond_to_user is unavailable, provide your final user-facing answer in normal assistant text
 
 SKILLS:

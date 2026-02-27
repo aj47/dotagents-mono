@@ -4,6 +4,15 @@
 
 import type { ToolCall, ToolResult } from './types';
 
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi;
+
+export function sanitizeSessionText(content: string): string {
+  return content
+    .replace(MARKDOWN_IMAGE_REGEX, '[Image]')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export interface SessionChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'tool';
@@ -63,7 +72,10 @@ export function generateMessageId(): string {
  */
 export function generateSessionTitle(firstMessage: string): string {
   const maxLength = 50;
-  const trimmed = firstMessage.trim();
+  const trimmed = sanitizeSessionText(firstMessage);
+  if (!trimmed) {
+    return 'New Chat';
+  }
   if (trimmed.length <= maxLength) {
     return trimmed;
   }
@@ -113,7 +125,7 @@ export function sessionToListItem(session: Session): SessionListItem {
   }
 
   const lastMsg = session.messages[session.messages.length - 1];
-  const preview = lastMsg?.content || '';
+  const preview = sanitizeSessionText(lastMsg?.content || '');
 
   return {
     id: session.id,

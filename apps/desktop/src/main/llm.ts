@@ -41,6 +41,7 @@ import { filterEphemeralMessages } from "./conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
+import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -1183,22 +1184,22 @@ IMPORTANT - Do NOT mark complete just because:
 
 Return ONLY JSON per schema.`,
     })
-    messages.push({ role: "user", content: `Original request:\n${transcript}` })
+    messages.push({ role: "user", content: `Original request:\n${sanitizeMessageContentForDisplay(transcript)}` })
     for (const entry of recent) {
       if (entry.role === "tool") {
-        const text = (entry.content || "").trim()
+        const text = sanitizeMessageContentForDisplay((entry.content || "").trim())
         // Tool results already contain tool name prefix (format: [toolName] content...)
         // Pass through directly without adding redundant wrapper
         messages.push({ role: "user", content: text || "[No tool output]" })
       } else if (entry.role === "user") {
         // Skip empty user messages
-        const text = (entry.content || "").trim()
+        const text = sanitizeMessageContentForDisplay((entry.content || "").trim())
         if (text) {
           messages.push({ role: "user", content: text })
         }
       } else {
         // Ensure non-empty content for assistant messages (Anthropic API requirement)
-        let content = entry.content
+        let content = sanitizeMessageContentForDisplay(entry.content)
         if (entry.role === "assistant" && !content?.trim()) {
           if (entry.toolCalls && entry.toolCalls.length > 0) {
             const toolNames = entry.toolCalls.map(tc => tc.name).join(", ")
@@ -1214,8 +1215,9 @@ Return ONLY JSON per schema.`,
       }
     }
     // Only add finalAssistantText if it's different from the last assistant message added
-    if (finalAssistantText?.trim() && finalAssistantText.trim() !== lastAddedAssistantContent?.trim()) {
-      messages.push({ role: "assistant", content: finalAssistantText })
+    const sanitizedFinalAssistantText = sanitizeMessageContentForDisplay(finalAssistantText || "")
+    if (sanitizedFinalAssistantText.trim() && sanitizedFinalAssistantText.trim() !== lastAddedAssistantContent?.trim()) {
+      messages.push({ role: "assistant", content: sanitizedFinalAssistantText })
     }
 
     // Build the JSON request with optional verification attempt note (combined into single message)

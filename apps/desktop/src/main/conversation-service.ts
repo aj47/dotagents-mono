@@ -9,6 +9,7 @@ import {
   ConversationHistoryItem,
 } from "../shared/types"
 import { summarizeContent } from "./context-budget"
+import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 
 // Threshold for compacting conversations on load
 // When a conversation exceeds this many messages, older ones are summarized
@@ -88,9 +89,11 @@ export class ConversationService {
   }
 
   private generateConversationTitle(firstMessage: string): string {
+    const cleanedMessage = sanitizeMessageContentForDisplay(firstMessage).trim()
+    const source = cleanedMessage || firstMessage.trim()
     // Generate a title from the first message (first 50 characters)
-    const title = firstMessage.trim().slice(0, 50)
-    return title.length < firstMessage.trim().length ? `${title}...` : title
+    const title = source.slice(0, 50)
+    return title.length < source.length ? `${title}...` : title
   }
 
   /**
@@ -393,10 +396,16 @@ export class ConversationService {
   }
 
   private generatePreview(messages: ConversationMessage[]): string {
+    const sanitizePreviewText = (value: string) =>
+      value
+        .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, "[Image]")
+        .replace(/\s+/g, " ")
+        .trim()
+
     // Generate a preview from the first few messages
     const previewMessages = messages.slice(0, 3)
     const preview = previewMessages
-      .map((msg) => `${msg.role}: ${msg.content.slice(0, 100)}`)
+      .map((msg) => `${msg.role}: ${sanitizePreviewText(msg.content || "").slice(0, 100)}`)
       .join(" | ")
     return preview.length > 200 ? `${preview.slice(0, 200)}...` : preview
   }
@@ -639,7 +648,8 @@ export class ConversationService {
     // Build a summary of the older messages
     const summaryInput = messagesToSummarize
       .map((m) => {
-        let text = `${m.role}: ${m.content?.substring(0, 500) || "(empty)"}`
+        const sanitizedContent = sanitizeMessageContentForDisplay(m.content || "")
+        let text = `${m.role}: ${sanitizedContent.substring(0, 500) || "(empty)"}`
 
         // Include tool calls if present
         if (m.toolCalls && m.toolCalls.length > 0) {

@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Brain } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import "highlight.js/styles/github.css"
 
-import { logExpand } from "@renderer/lib/debug"
+import { logExpand, logUI } from "@renderer/lib/debug"
 
 interface MarkdownRendererProps {
   content: string
@@ -22,6 +22,31 @@ interface ThinkSectionProps {
   isCollapsed?: boolean
   onToggle?: () => void
 }
+
+const isAllowedMarkdownUrl = (rawUrl?: string) => {
+  if (!rawUrl) return false
+
+  const url = rawUrl.trim().toLowerCase()
+
+  // Allow in-app anchors/relative paths and common safe external schemes.
+  if (
+    url.startsWith("#") ||
+    url.startsWith("/") ||
+    url.startsWith("./") ||
+    url.startsWith("../") ||
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("mailto:")
+  ) {
+    return true
+  }
+
+  // Explicitly allow inline image uploads rendered via markdown image syntax.
+  return url.startsWith("data:image/")
+}
+
+const markdownUrlTransform = (url: string) =>
+  isAllowedMarkdownUrl(url) ? url : ""
 
 const ThinkSection: React.FC<ThinkSectionProps> = ({
   content,
@@ -72,6 +97,7 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
+              urlTransform={markdownUrlTransform}
               components={{}}
             >
               {content}
@@ -153,6 +179,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               key={`text-${index}`}
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
+              urlTransform={markdownUrlTransform}
               components={{
                 // Custom components for better styling
                 h1: ({ children }) => (
@@ -229,6 +256,25 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                     {children}
                   </a>
                 ),
+                img: ({ src, alt }) => {
+                  if (!src || !isAllowedMarkdownUrl(src)) return null
+
+                  return (
+                    <img
+                      src={src}
+                      alt={alt || "Image"}
+                      loading="lazy"
+                      decoding="async"
+                      onError={() => {
+                        logUI("[MarkdownRenderer] image failed to render", {
+                          alt: alt || "Image",
+                          srcPreview: src.slice(0, 64),
+                        })
+                      }}
+                      className="mb-3 max-h-[28rem] w-full rounded-md border border-border bg-muted/20 object-contain"
+                    />
+                  )
+                },
                 table: ({ children }) => (
                   <div className="mb-3 overflow-x-auto">
                     <table className="min-w-full border-collapse border border-border">

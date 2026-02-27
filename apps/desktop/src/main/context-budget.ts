@@ -4,6 +4,7 @@ import { makeTextCompletionWithFetch } from "./llm-fetch"
 import { constructMinimalSystemPrompt } from "./system-prompts"
 import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
+import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 
 export type LLMMessage = { role: string; content: string }
 
@@ -389,7 +390,10 @@ export async function getMaxContextTokens(providerId: string, model: string): Pr
 
 export function estimateTokensFromMessages(messages: LLMMessage[]): number {
   // Rough estimate: 4 chars ≈ 1 token
-  const totalChars = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0)
+  const totalChars = messages.reduce((sum, m) => {
+    const budgetContent = sanitizeMessageContentForDisplay(m.content || "")
+    return sum + budgetContent.length
+  }, 0)
   return Math.ceil(totalChars / 4)
 }
 
@@ -677,7 +681,16 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   // Tier 1: Summarize large messages (prefer tool outputs or very long entries)
   const indicesByLength = messages
-    .map((m, i) => ({ i, len: m.content?.length || 0, role: m.role, content: m.content }))
+    .map((m, i) => {
+      const originalContent = m.content || ""
+      const budgetContent = sanitizeMessageContentForDisplay(originalContent)
+      return {
+        i,
+        len: budgetContent.length,
+        role: m.role,
+        contentForSummary: budgetContent,
+      }
+    })
     .filter((x) => x.len > summarizeThreshold && x.role !== "system")
     .sort((a, b) => b.len - a.len)
 
@@ -693,7 +706,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     // Emit progress update before summarization
     summarizedCount++
     if (opts.onSummarizationProgress) {
-      const messagePreview = item.content!.substring(0, 100).replace(/\n/g, ' ')
+      const messagePreview = item.contentForSummary.substring(0, 100).replace(/\n/g, " ")
       opts.onSummarizationProgress(
         summarizedCount,
         totalToSummarize,
@@ -701,7 +714,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       )
     }
 
-    const summarized = await summarizeContent(item.content!, opts.sessionId)
+    const summarized = await summarizeContent(item.contentForSummary, opts.sessionId)
     messages[item.i] = { ...messages[item.i], content: summarized }
 
     applied.push("summarize")

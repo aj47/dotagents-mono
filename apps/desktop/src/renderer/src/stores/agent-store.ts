@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
 import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
+import {
+  sanitizeAgentProgressUpdateForDisplay,
+  sanitizeMessageContentForDisplay,
+} from '@shared/message-display-utils'
 
 export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
@@ -54,7 +58,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   sortBy: 'recent' as SessionSortBy,
   pinnedSessionIds: new Set<string>(),
 
-  updateSessionProgress: (update: AgentProgressUpdate) => {
+  updateSessionProgress: (incomingUpdate: AgentProgressUpdate) => {
+    const update = sanitizeAgentProgressUpdateForDisplay(incomingUpdate)
     const sessionId = update.sessionId
 
     set((state) => {
@@ -299,6 +304,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   appendUserMessageToSession: (sessionId: string, message: string) => {
+    const sanitizedMessage = sanitizeMessageContentForDisplay(message)
+
     set((state) => {
       const existingProgress = state.agentProgressById.get(sessionId)
       if (!existingProgress) return state
@@ -309,7 +316,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         ...existingProgress,
         conversationHistory: [
           ...existingHistory,
-          { role: "user" as const, content: message, timestamp: Date.now() },
+          { role: "user" as const, content: sanitizedMessage, timestamp: Date.now() },
         ],
       })
       return { agentProgressById: newMap }

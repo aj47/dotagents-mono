@@ -1,10 +1,18 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react"
 import { Textarea } from "@renderer/components/ui/textarea"
+import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
 import { AgentProcessingView } from "./agent-processing-view"
 import { AgentProgressUpdate } from "../../../shared/types"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { ImagePlus, X } from "lucide-react"
+import {
+  buildMessageWithImages,
+  MAX_IMAGE_ATTACHMENTS,
+  MessageImageAttachment,
+  readImageAttachments,
+} from "@renderer/lib/message-image-utils"
 
 interface TextInputPanelProps {
   onSubmit: (text: string) => void
@@ -29,7 +37,9 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   continueConversationTitle,
 }, ref) => {
   const [text, setText] = useState(initialText || "")
+  const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { isDark } = useTheme()
 
   useImperativeHandle(ref, () => ({
@@ -62,10 +72,41 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }, [isProcessing])
 
   const handleSubmit = () => {
-    if (text.trim() && !isProcessing) {
-      onSubmit(text.trim())
+    const message = buildMessageWithImages(text, imageAttachments)
+    if (message && !isProcessing) {
+      onSubmit(message)
       setText("")
+      setImageAttachments([])
     }
+  }
+
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const { attachments, errors } = await readImageAttachments(
+        e.target.files,
+        imageAttachments
+      )
+
+      if (attachments.length > 0) {
+        setImageAttachments((prev) => [...prev, ...attachments])
+      }
+
+      if (errors.length > 0) {
+        window.alert(errors.join("\n"))
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+    } finally {
+      e.target.value = ""
+    }
+  }
+
+  const handleImageButtonClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const removeImageAttachment = (attachmentId: string) => {
+    setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -91,6 +132,8 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       onCancel()
     }
   }
+
+  const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
 
   if (isProcessing && agentProgress) {
     return (
@@ -133,11 +176,44 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
           )}
           <div className="modern-text-muted flex items-center justify-between text-xs">
             <span>Type your message • Enter to send • Shift+Enter for new line • Esc to cancel</span>
-            <PredefinedPromptsMenu
-              onSelectPrompt={(content) => setText(content)}
-              disabled={isProcessing}
-            />
+            <div className="flex items-center gap-1">
+              <PredefinedPromptsMenu
+                onSelectPrompt={(content) => setText(content)}
+                disabled={isProcessing}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                disabled={isProcessing || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+                onClick={handleImageButtonClick}
+                title="Attach image"
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
+          {imageAttachments.length > 0 && (
+            <div className="flex w-full gap-2 overflow-x-auto pb-1">
+              {imageAttachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border"
+                >
+                  <img src={attachment.dataUrl} alt={attachment.name} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white"
+                    onClick={() => removeImageAttachment(attachment.id)}
+                    title="Remove image"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <Textarea
             ref={textareaRef}
             value={text}
@@ -152,14 +228,23 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
             disabled={isProcessing}
             aria-label="Message input"
           />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleImageSelection}
+          />
         </div>
       )}
 
       <div className="modern-text-muted flex items-center justify-between text-xs">
         <div>
-          {text.length > 0 && (
+          {(text.length > 0 || imageAttachments.length > 0) && (
             <span>
               {text.length} character{text.length !== 1 ? "s" : ""}
+              {imageAttachments.length > 0 && ` • ${imageAttachments.length} image${imageAttachments.length !== 1 ? "s" : ""}`}
             </span>
           )}
         </div>
@@ -173,10 +258,10 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!text.trim() || isProcessing}
+            disabled={!hasMessageContent || isProcessing}
             className={cn(
               "rounded px-2 py-1 transition-colors",
-              text.trim() && !isProcessing
+              hasMessageContent && !isProcessing
                 ? "bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
                 : "cursor-not-allowed opacity-50",
             )}

@@ -35,6 +35,7 @@ import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
+import * as ImagePicker from 'expo-image-picker';
 import {
   preprocessTextForTTS,
   shouldCollapseMessage,
@@ -45,6 +46,68 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
+
+interface PendingImageAttachment {
+  id: string;
+  name: string;
+  previewUri: string;
+  dataUrl: string;
+}
+
+const MAX_PENDING_IMAGES = 4;
+const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
+
+const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
+
+const buildMessageWithPendingImages = (text: string, images: PendingImageAttachment[]) => {
+  const trimmed = text.trim();
+  const imageMarkdown = images
+    .map((image, index) => {
+      const fallbackName = `Image ${index + 1}`;
+      const safeName = escapeMarkdownImageAlt(image.name || fallbackName) || fallbackName;
+      return `![${safeName}](${image.dataUrl})`;
+    })
+    .join('\n\n');
+
+  return [trimmed, imageMarkdown].filter(Boolean).join('\n\n');
+};
+
+const getCollapsedMessagePreview = (content: string) =>
+  content
+    .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const applyUserResponseToMessages = (
+  messages: ChatMessage[],
+  userResponse?: string
+): ChatMessage[] => {
+  const trimmedResponse = userResponse?.trim();
+  if (!trimmedResponse) {
+    return messages;
+  }
+
+  const updatedMessages = [...messages];
+  for (let i = updatedMessages.length - 1; i >= 0; i--) {
+    const msg = updatedMessages[i];
+    if (msg.role !== 'assistant') {
+      continue;
+    }
+
+    const hasToolMetadata =
+      (msg.toolCalls && msg.toolCalls.length > 0) ||
+      (msg.toolResults && msg.toolResults.length > 0);
+    if (hasToolMetadata) {
+      continue;
+    }
+
+    updatedMessages[i] = { ...msg, content: trimmedResponse };
+    return updatedMessages;
+  }
+
+  updatedMessages.push({ role: 'assistant', content: trimmedResponse });
+  return updatedMessages;
+};
 
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -354,6 +417,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		else console.log(`[Voice ${seq}] ${msg}`);
 	}, []);
 	  const [input, setInput] = useState('');
+	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [listening, setListening] = useState(false);
 	const listeningRef = useRef<boolean>(listening);
@@ -1049,7 +1113,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }
     }
 
-    return messages;
+    return applyUserResponseToMessages(messages, update.userResponse || update.spokenContent);
   }, []);
 
   // Get the current conversation ID for queue operations
@@ -1058,7 +1122,77 @@ export default function ChatScreen({ route, navigation }: any) {
   // Get queued messages for the current conversation
   const queuedMessages = messageQueue.getQueue(currentConversationId);
 
-  const send = async (text: string) => {
+  const handlePickImages = useCallback(async () => {
+    if (pendingImages.length >= MAX_PENDING_IMAGES) {
+      Alert.alert('Image limit reached', `You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: MAX_PENDING_IMAGES - pendingImages.length,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      const slotsRemaining = MAX_PENDING_IMAGES - pendingImages.length;
+      const selectedAssets = result.assets.slice(0, slotsRemaining);
+      const nextImages: PendingImageAttachment[] = [];
+      const missingBase64Names: string[] = [];
+      const oversizedImageNames: string[] = [];
+
+      selectedAssets.forEach((asset, index) => {
+        if (asset.fileSize && asset.fileSize > MAX_PENDING_IMAGE_FILE_SIZE_BYTES) {
+          oversizedImageNames.push(asset.fileName || `Image ${index + 1}`);
+          return;
+        }
+
+        if (!asset.base64) {
+          missingBase64Names.push(asset.fileName || `Image ${index + 1}`);
+          return;
+        }
+
+        const mimeType = asset.mimeType || 'image/jpeg';
+        const fileName = asset.fileName || `image-${Date.now()}-${index + 1}.jpg`;
+        nextImages.push({
+          id: `${Date.now()}-${index}-${asset.uri}`,
+          name: fileName,
+          previewUri: asset.uri,
+          dataUrl: `data:${mimeType};base64,${asset.base64}`,
+        });
+      });
+
+      if (nextImages.length > 0) {
+        setPendingImages((prev) => [...prev, ...nextImages]);
+      }
+
+      if (missingBase64Names.length > 0) {
+        Alert.alert(
+          'Some images were skipped',
+          `${missingBase64Names.join(', ')} could not be attached. Please try again.`
+        );
+      }
+
+      if (oversizedImageNames.length > 0) {
+        Alert.alert(
+          'Image too large',
+          `${oversizedImageNames.join(', ')} exceed the 4MB limit.`
+        );
+      }
+    } catch (error: any) {
+      Alert.alert('Image picker error', error?.message || 'Unable to select images right now.');
+    }
+  }, [pendingImages.length]);
+
+  const removePendingImage = useCallback((attachmentId: string) => {
+    setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));
+  }, []);
+
+  const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
 
     // If message queue is enabled and we're already responding, queue the message
@@ -1066,6 +1200,9 @@ export default function ChatScreen({ route, navigation }: any) {
       console.log('[ChatScreen] Agent busy, queuing message:', text);
       messageQueue.enqueue(currentConversationId, text);
       setInput('');
+      if (options?.fromComposer) {
+        setPendingImages([]);
+      }
       return;
     }
 
@@ -1109,6 +1246,9 @@ export default function ChatScreen({ route, navigation }: any) {
     });
 
     setInput('');
+	    if (options?.fromComposer) {
+	      setPendingImages([]);
+	    }
 
     // Capture the session ID at request start to guard against session changes
     const requestSessionId = sessionStore.currentSessionId;
@@ -1215,6 +1355,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
 	      const response = await client.chat([...currentMessages, userMsg], onToken, onProgress, serverConversationId);
       const finalText = response.content || streamingText;
+	      const finalDisplayText = lastUserResponse || finalText;
       console.log('[ChatScreen] Chat completed, conversationId:', response.conversationId);
 
       // Guard: skip UI updates if session has changed, BUT still persist to the original session
@@ -1301,8 +1442,9 @@ export default function ChatScreen({ route, navigation }: any) {
             toolResults: historyMsg.toolResults,
           });
         }
-        console.log('[ChatScreen] newMessages count:', newMessages.length);
-        console.log('[ChatScreen] newMessages roles:', newMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
+	        const finalTurnMessages = applyUserResponseToMessages(newMessages, lastUserResponse);
+	        console.log('[ChatScreen] newMessages count:', finalTurnMessages.length);
+	        console.log('[ChatScreen] newMessages roles:', finalTurnMessages.map(m => `${m.role}(toolCalls:${m.toolCalls?.length || 0},toolResults:${m.toolResults?.length || 0})`).join(', '));
         console.log('[ChatScreen] messageCountBeforeTurn:', messageCountBeforeTurn);
 
         if (sessionChanged && requestSessionId) {
@@ -1312,7 +1454,7 @@ export default function ChatScreen({ route, navigation }: any) {
             console.log('[ChatScreen] Persisting completed response to background session:', requestSessionId);
             // Build the final messages array: messages before this turn + user message + new assistant messages
 	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
-            const finalMessages = [...messagesBeforeTurn, userMsg, ...newMessages];
+	            const finalMessages = [...messagesBeforeTurn, userMsg, ...finalTurnMessages];
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping background persistence - request superseded within session:', {
@@ -1332,26 +1474,26 @@ export default function ChatScreen({ route, navigation }: any) {
             // If progress had more messages than conversationHistory, keep progress messages
             // and only update/append the final message from history
             let mergedMessages: ChatMessage[];
-            if (progressMsgs.length > 0 && newMessages.length === 0) {
+	            if (progressMsgs.length > 0 && finalTurnMessages.length === 0) {
               // Edge case: server returned empty history but we have progress messages
               // Keep progress messages to prevent intermediate messages from disappearing (#1083)
               console.log('[ChatScreen] Merging: newMessages empty, keeping progress messages');
               mergedMessages = [...progressMsgs];
-            } else if (progressMsgs.length > newMessages.length && newMessages.length > 0) {
+	            } else if (progressMsgs.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
               console.log('[ChatScreen] Merging: progress had more messages, preserving intermediate');
               mergedMessages = [...progressMsgs];
               // Replace/update the last message with the final one from history
-              mergedMessages[mergedMessages.length - 1] = newMessages[newMessages.length - 1];
+	              mergedMessages[mergedMessages.length - 1] = finalTurnMessages[finalTurnMessages.length - 1];
             } else {
               // History is authoritative when it has >= messages
-              mergedMessages = newMessages;
+	              mergedMessages = finalTurnMessages;
             }
             const result = [...beforePlaceholder, ...mergedMessages];
             console.log('[ChatScreen] Final messages count:', result.length);
             return result;
           });
         }
-      } else if (finalText) {
+	      } else if (finalDisplayText) {
         console.log('[ChatScreen] FALLBACK: No conversationHistory, using finalText only. response.conversationHistory:', response.conversationHistory);
         if (sessionChanged && requestSessionId) {
           // Only persist to background session if this is still the latest request for that session
@@ -1359,7 +1501,7 @@ export default function ChatScreen({ route, navigation }: any) {
           if (isLatestForSession) {
             console.log('[ChatScreen] Persisting fallback response to background session:', requestSessionId);
 	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
-            const finalMessages = [...messagesBeforeTurn, userMsg, { role: 'assistant' as const, content: finalText }];
+	            const finalMessages = [...messagesBeforeTurn, userMsg, { role: 'assistant' as const, content: finalDisplayText }];
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
           } else {
             console.log('[ChatScreen] Skipping fallback background persistence - request superseded within session:', {
@@ -1373,7 +1515,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const copy = [...m];
             for (let i = copy.length - 1; i >= 0; i--) {
               if (copy[i].role === 'assistant') {
-                copy[i] = { ...copy[i], content: finalText };
+	                copy[i] = { ...copy[i], content: finalDisplayText };
                 break;
               }
             }
@@ -1622,6 +1764,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const response = await client.chat([...currentMessages, userMsg], onToken, onProgress, serverConversationId);
       const finalText = response.content || streamingText;
+      const finalDisplayText = lastUserResponse || finalText;
 
       // Early exit guards - finalize queue status before returning to prevent stuck 'processing' items
       if (sessionStore.currentSessionId !== requestSessionId) {
@@ -1658,17 +1801,18 @@ export default function ChatScreen({ route, navigation }: any) {
             toolResults: historyMsg.toolResults,
           });
         }
+        const finalTurnMessages = applyUserResponseToMessages(newMessages, lastUserResponse);
 
         setMessages((m) => {
           const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-          return [...beforePlaceholder, ...newMessages];
+          return [...beforePlaceholder, ...finalTurnMessages];
         });
-      } else if (finalText) {
+      } else if (finalDisplayText) {
         setMessages((m) => {
           const copy = [...m];
           for (let i = copy.length - 1; i >= 0; i--) {
             if (copy[i].role === 'assistant') {
-              copy[i] = { ...copy[i], content: finalText };
+              copy[i] = { ...copy[i], content: finalDisplayText };
               break;
             }
           }
@@ -1727,6 +1871,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	// We intentionally assign during render (not useEffect) so it is available immediately.
 	sendRef.current = send;
 
+  const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+
+  const sendComposerInput = useCallback(() => {
+    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+    if (!composedMessage.trim()) return;
+    void send(composedMessage, { fromComposer: true });
+  }, [input, pendingImages, send]);
+
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
     shift: false,
@@ -1759,8 +1911,8 @@ export default function ChatScreen({ route, navigation }: any) {
           // to ensure the newline is not inserted after send() clears the input
           e.preventDefault?.();
           webEvent.preventDefault?.();
-          if (input.trim()) {
-            send(input);
+          if (composerHasContent) {
+            sendComposerInput();
           }
         }
       } else {
@@ -1802,8 +1954,8 @@ export default function ChatScreen({ route, navigation }: any) {
             // Always suppress the newline that will be inserted by the native TextInput
             // when modifier+Enter is pressed, even if input is empty (matches web behavior)
             suppressNextChangeRef.current = true;
-            if (input.trim()) {
-              send(input);
+            if (composerHasContent) {
+              sendComposerInput();
             }
           }
           // Reset modifier state after Enter is processed
@@ -1818,7 +1970,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
       }
     },
-    [input, send]
+    [composerHasContent, sendComposerInput]
   );
 
   // Wrapper for onChangeText that suppresses stray newlines after native keyboard shortcut submission
@@ -2403,7 +2555,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             style={{ color: theme.colors.foreground, fontSize: 13, lineHeight: 18 }}
                             numberOfLines={1}
                           >
-                            {m.content}
+	                            {getCollapsedMessagePreview(m.content)}
                           </Text>
                         )
                       )
@@ -2811,8 +2963,38 @@ export default function ChatScreen({ route, navigation }: any) {
 		              <Text style={styles.sttPreviewText}>{sttPreview}</Text>
 	            </View>
 	          )}
+	          {pendingImages.length > 0 && (
+	            <ScrollView
+	              horizontal
+	              showsHorizontalScrollIndicator={false}
+	              contentContainerStyle={styles.pendingImagesRow}
+	            >
+	              {pendingImages.map((image) => (
+	                <View key={image.id} style={styles.pendingImageCard}>
+	                  <Image source={{ uri: image.previewUri }} style={styles.pendingImagePreview} />
+	                  <TouchableOpacity
+	                    style={styles.pendingImageRemoveButton}
+	                    onPress={() => removePendingImage(image.id)}
+	                    activeOpacity={0.8}
+	                  >
+	                    <Text style={styles.pendingImageRemoveButtonText}>✕</Text>
+	                  </TouchableOpacity>
+	                </View>
+	              ))}
+	            </ScrollView>
+	          )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
+	            <TouchableOpacity
+	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
+	              onPress={handlePickImages}
+	              activeOpacity={0.7}
+	              accessibilityRole="button"
+	              accessibilityLabel="Attach images"
+	              accessibilityHint="Select one or more images to include with your next message."
+	            >
+	              <Text style={styles.ttsToggleText}>🖼️</Text>
+	            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
               onPress={toggleTts}
@@ -2843,7 +3025,11 @@ export default function ChatScreen({ route, navigation }: any) {
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
             />
-            <TouchableOpacity style={styles.sendButton} onPress={() => send(input)}>
+	            <TouchableOpacity
+	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
+	              onPress={sendComposerInput}
+	              disabled={!composerHasContent}
+	            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
           </View>
@@ -2971,6 +3157,43 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
     },
+    pendingImagesRow: {
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.xs,
+      paddingBottom: 2,
+      gap: spacing.xs,
+    },
+    pendingImageCard: {
+      width: 64,
+      height: 64,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: 'hidden',
+      backgroundColor: theme.colors.muted,
+      position: 'relative',
+    },
+    pendingImagePreview: {
+      width: '100%',
+      height: '100%',
+    },
+    pendingImageRemoveButton: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pendingImageRemoveButtonText: {
+      color: '#FFFFFF',
+      fontSize: 11,
+      fontWeight: '700',
+      lineHeight: 12,
+    },
     sttPreviewBox: {
       marginHorizontal: spacing.sm,
       marginTop: spacing.xs,
@@ -3055,6 +3278,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
       borderRadius: radius.md,
+    },
+    sendButtonDisabled: {
+      opacity: 0.5,
     },
     sendButtonText: {
       color: theme.colors.primaryForeground,

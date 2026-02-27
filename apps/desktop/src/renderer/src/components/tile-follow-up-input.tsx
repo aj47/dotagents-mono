@@ -1,12 +1,19 @@
 import React, { useState, useRef } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, X } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
+import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import {
+  buildMessageWithImages,
+  MAX_IMAGE_ATTACHMENTS,
+  MessageImageAttachment,
+  readImageAttachments,
+} from "@renderer/lib/message-image-utils"
 
 interface TileFollowUpInputProps {
   conversationId?: string
@@ -31,8 +38,10 @@ export function TileFollowUpInput({
   onStopSession,
 }: TileFollowUpInputProps) {
   const [text, setText] = useState("")
+  const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const configQuery = useConfigQuery()
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
@@ -56,7 +65,15 @@ export function TileFollowUpInput({
       }
     },
     onSuccess: (_data, variables) => {
+      logUI("[TileFollowUpInput] message sent", {
+        messageLength: variables.length,
+        attachmentCount: imageAttachments.length,
+        conversationId: conversationId ?? null,
+        sessionId: sessionId ?? null,
+      })
+
       setText("")
+      setImageAttachments([])
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the session tile without waiting for agent progress updates
       if (sessionId) {
@@ -73,13 +90,58 @@ export function TileFollowUpInput({
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault()
-    const trimmed = text.trim()
+    const message = buildMessageWithImages(text, imageAttachments)
+    logUI("[TileFollowUpInput] submit requested", {
+      hasText: text.trim().length > 0,
+      attachmentCount: imageAttachments.length,
+      messageLength: message.length,
+      isSessionActive,
+      isQueueEnabled,
+      pending: sendMutation.isPending,
+    })
+
     // Allow submission if:
     // 1. Not already pending
     // 2. Either session is not active OR queue is enabled
-    if (trimmed && !sendMutation.isPending && (!isSessionActive || isQueueEnabled)) {
-      sendMutation.mutate(trimmed)
+    if (message && !sendMutation.isPending && (!isSessionActive || isQueueEnabled)) {
+      sendMutation.mutate(message)
     }
+  }
+
+  const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      logUI("[TileFollowUpInput] image selection started", {
+        existingCount: imageAttachments.length,
+        selectedCount: e.target.files?.length ?? 0,
+      })
+
+      const { attachments, errors } = await readImageAttachments(
+        e.target.files,
+        imageAttachments
+      )
+
+      if (attachments.length > 0) {
+        setImageAttachments((prev) => [...prev, ...attachments])
+      }
+
+      logUI("[TileFollowUpInput] image selection completed", {
+        addedCount: attachments.length,
+        errorCount: errors.length,
+      })
+
+      if (errors.length > 0) {
+        window.alert(errors.join("\n"))
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+    } finally {
+      e.target.value = ""
+    }
+  }
+
+  const removeImageAttachment = (attachmentId: string) => {
+    logUI("[TileFollowUpInput] remove image", { attachmentId })
+    setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -149,6 +211,7 @@ export function TileFollowUpInput({
   // The transcript will be queued after transcription completes
   // When queue is disabled, don't allow voice input while session is active
   const isVoiceDisabled = sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
 
   // Show appropriate placeholder based on state
   const getPlaceholder = () => {
@@ -165,60 +228,101 @@ export function TileFollowUpInput({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 border-t bg-muted/20",
+        "flex flex-col gap-2 border-t bg-muted/20 px-2 py-1.5",
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      <input
-        ref={inputRef}
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={getPlaceholder()}
-        className={cn(
-          "flex-1 text-sm bg-transparent border-0 outline-none",
-          "placeholder:text-muted-foreground/60",
-          "focus:ring-0"
-        )}
-        disabled={isDisabled}
-      />
-      <PredefinedPromptsMenu
-        onSelectPrompt={(content) => setText(content)}
-        disabled={isDisabled}
-        className="h-6 w-6"
-      />
-      <Button
-        type="submit"
-        size="icon"
-        variant="ghost"
-        className="h-6 w-6 flex-shrink-0"
-        disabled={!text.trim() || isDisabled}
-        title={isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-      >
-        <Send className={cn(
-          "h-3 w-3",
-          sendMutation.isPending && "animate-pulse"
-        )} />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        className={cn(
-          "h-6 w-6 flex-shrink-0",
-          "hover:bg-red-100 dark:hover:bg-red-900/30",
-          "hover:text-red-600 dark:hover:text-red-400"
-        )}
-        disabled={isVoiceDisabled}
-        onClick={handleVoiceClick}
-        title={isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
-      >
-        <Mic className="h-3 w-3" />
-      </Button>
-      {/* Kill switch - stop agent button (only show when session is active) */}
-      {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
+      {imageAttachments.length > 0 && (
+        <div className="flex w-full gap-1.5 overflow-x-auto pb-1">
+          {imageAttachments.map((attachment) => (
+            <div
+              key={attachment.id}
+              className="relative h-12 w-12 shrink-0 overflow-hidden rounded border border-border"
+            >
+              <img src={attachment.dataUrl} alt={attachment.name} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white"
+                onClick={() => removeImageAttachment(attachment.id)}
+                title="Remove image"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex w-full items-center gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={getPlaceholder()}
+          className={cn(
+            "flex-1 text-sm bg-transparent border-0 outline-none",
+            "placeholder:text-muted-foreground/60",
+            "focus:ring-0"
+          )}
+          disabled={isDisabled}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleImageSelection}
+        />
+        <PredefinedPromptsMenu
+          onSelectPrompt={(content) => setText(content)}
+          disabled={isDisabled}
+          className="h-6 w-6"
+        />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 flex-shrink-0"
+          disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+          onClick={() => fileInputRef.current?.click()}
+          title="Attach image"
+        >
+          <ImagePlus className="h-3 w-3" />
+        </Button>
+        <Button
+          type="submit"
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 flex-shrink-0"
+          disabled={!hasMessageContent || isDisabled}
+          title={isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+        >
+          <Send className={cn(
+            "h-3 w-3",
+            sendMutation.isPending && "animate-pulse"
+          )} />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className={cn(
+            "h-6 w-6 flex-shrink-0",
+            "hover:bg-red-100 dark:hover:bg-red-900/30",
+            "hover:text-red-600 dark:hover:text-red-400"
+          )}
+          disabled={isVoiceDisabled}
+          onClick={handleVoiceClick}
+          title={isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
+        >
+          <Mic className="h-3 w-3" />
+        </Button>
+        {/* Kill switch - stop agent button (only show when session is active) */}
+        {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
         <Button
           type="button"
           size="icon"
@@ -237,7 +341,8 @@ export function TileFollowUpInput({
             isStoppingSession && "animate-pulse"
           )} />
         </Button>
-      )}
+        )}
+      </div>
     </form>
   )
 }
