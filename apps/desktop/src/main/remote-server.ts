@@ -11,7 +11,7 @@ import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
-import { AgentProgressUpdate, SessionProfileSnapshot } from "../shared/types"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
@@ -2303,6 +2303,34 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Repeat Tasks Management Endpoints (for mobile app)
   // ============================================
 
+  const formatLoopResponse = async (loop: LoopConfig) => {
+    const profile = loop.profileId
+      ? agentProfileService.getUserProfiles().find(p => p.id === loop.profileId)
+      : undefined
+
+    let status: { isRunning: boolean; nextRunAt?: number; lastRunAt?: number } | undefined
+    try {
+      const { loopService } = await import("./loop-service")
+      status = loopService.getLoopStatus(loop.id)
+    } catch {
+      // Repeat task service might not be initialized
+    }
+
+    return {
+      id: loop.id,
+      name: loop.name,
+      prompt: loop.prompt,
+      intervalMinutes: loop.intervalMinutes,
+      enabled: loop.enabled,
+      profileId: loop.profileId,
+      profileName: profile?.displayName,
+      runOnStartup: loop.runOnStartup,
+      lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
+      isRunning: status?.isRunning ?? false,
+      nextRunAt: status?.nextRunAt,
+    }
+  }
+
   // GET /v1/loops - List all repeat tasks
   fastify.get("/v1/loops", async (_req, reply) => {
     try {
@@ -2574,9 +2602,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "name and prompt are required and must be non-empty strings" })
       }
 
-      const intervalMinutes = typeof body.intervalMinutes === "number" && body.intervalMinutes >= 1
-        ? body.intervalMinutes
-        : 60
+      if (
+        body.intervalMinutes !== undefined
+        && (
+          typeof body.intervalMinutes !== "number"
+          || !Number.isFinite(body.intervalMinutes)
+          || !Number.isInteger(body.intervalMinutes)
+          || body.intervalMinutes < 1
+        )
+      ) {
+        return reply.code(400).send({ error: "intervalMinutes must be a finite integer >= 1 when provided" })
+      }
+      const intervalMinutes = typeof body.intervalMinutes === "number" ? body.intervalMinutes : 60
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply.code(400).send({ error: "enabled must be a boolean when provided" })
       }
@@ -2612,7 +2649,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Loop service might not be initialized
       }
 
-      return reply.send({ loop: newLoop })
+      return reply.send({ loop: await formatLoopResponse(newLoop) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create repeat task", error)
       return reply.code(500).send({ error: error?.message || "Failed to create repeat task" })
@@ -2645,8 +2682,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.prompt !== undefined && (typeof body.prompt !== "string" || body.prompt.trim() === "")) {
         return reply.code(400).send({ error: "prompt must be a non-empty string when provided" })
       }
-      if (body.intervalMinutes !== undefined && (typeof body.intervalMinutes !== "number" || body.intervalMinutes < 1)) {
-        return reply.code(400).send({ error: "intervalMinutes must be a number >= 1 when provided" })
+      if (
+        body.intervalMinutes !== undefined
+        && (
+          typeof body.intervalMinutes !== "number"
+          || !Number.isFinite(body.intervalMinutes)
+          || !Number.isInteger(body.intervalMinutes)
+          || body.intervalMinutes < 1
+        )
+      ) {
+        return reply.code(400).send({ error: "intervalMinutes must be a finite integer >= 1 when provided" })
       }
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply.code(400).send({ error: "enabled must be a boolean when provided" })
@@ -2659,7 +2704,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const name = typeof body.name === "string" ? body.name.trim() : undefined
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : undefined
       const intervalMinutes =
-        typeof body.intervalMinutes === "number" && body.intervalMinutes >= 1
+        typeof body.intervalMinutes === "number"
           ? body.intervalMinutes
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
@@ -2691,7 +2736,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Loop service might not be initialized
       }
 
-      return reply.send({ success: true, loop: updated })
+      return reply.send({ success: true, loop: await formatLoopResponse(updated) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update repeat task", error)
       return reply.code(500).send({ error: error?.message || "Failed to update repeat task" })
