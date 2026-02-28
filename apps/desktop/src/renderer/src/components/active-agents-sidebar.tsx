@@ -9,20 +9,11 @@ import {
   Maximize2,
   Clock,
   Archive,
-  Volume2,
-  VolumeX,
-  OctagonX,
-  Loader2,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
-import {
-  useConfigQuery,
-  useConversationHistoryQuery,
-  useSaveConfigMutation,
-} from "@renderer/lib/queries"
-import { ttsManager } from "@renderer/lib/tts-manager"
+import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { useNavigate } from "react-router-dom"
 
 interface AgentSession {
@@ -82,79 +73,8 @@ export function ActiveAgentsSidebar({
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
-  const configQuery = useConfigQuery()
-  const saveConfigMutation = useSaveConfigMutation()
-  const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const [visiblePastSessionCount, setVisiblePastSessionCount] = useState(0)
   const navigate = useNavigate()
-
-  const saveConfig = useCallback(
-    (partial: Record<string, unknown>) => {
-      if (!configQuery.data) return
-
-      saveConfigMutation.mutate({
-        config: {
-          ...configQuery.data,
-          ...partial,
-        },
-      })
-    },
-    [configQuery.data, saveConfigMutation],
-  )
-
-  const handleToggleGlobalTTS = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation()
-
-      const currentEnabled = configQuery.data?.ttsEnabled ?? true
-      const nextEnabled = !currentEnabled
-
-      logUI("[ActiveAgentsSidebar] Global TTS toggle clicked", {
-        from: currentEnabled,
-        to: nextEnabled,
-      })
-
-      if (!nextEnabled) {
-        ttsManager.stopAll("sidebar-global-tts-disabled")
-        try {
-          await tipcClient.stopAllTts()
-        } catch (error) {
-          console.error("Failed to stop TTS in all windows:", error)
-        }
-      }
-
-      saveConfig({ ttsEnabled: nextEnabled })
-    },
-    [configQuery.data?.ttsEnabled, saveConfig],
-  )
-
-  const handleEmergencyStopAll = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (isEmergencyStopping) return
-
-      setIsEmergencyStopping(true)
-      logUI("[ActiveAgentsSidebar] Emergency stop triggered from sidebar")
-
-      // Emergency stop should always silence active TTS immediately.
-      ttsManager.stopAll("sidebar-emergency-stop")
-      try {
-        await tipcClient.stopAllTts()
-      } catch (error) {
-        console.error("Failed to stop TTS in all windows:", error)
-      }
-
-      try {
-        await tipcClient.emergencyStopAgent()
-        setFocusedSessionId(null)
-      } catch (error) {
-        console.error("Failed to trigger emergency stop:", error)
-      } finally {
-        setIsEmergencyStopping(false)
-      }
-    },
-    [isEmergencyStopping, setFocusedSessionId],
-  )
 
   const { data, refetch } = useQuery<AgentSessionsResponse>({
     queryKey: ["agentSessions"],
@@ -405,8 +325,6 @@ export function ActiveAgentsSidebar({
     }
   }
 
-  const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
-
   const handleSidebarSessionsScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
       if (!hasMorePastSessions) return
@@ -437,53 +355,6 @@ export function ActiveAgentsSidebar({
           "text-muted-foreground",
         )}
       >
-        <div className="mb-1 flex items-center justify-end gap-1">
-          <button
-            onClick={handleToggleGlobalTTS}
-            disabled={!configQuery.data || saveConfigMutation.isPending}
-            className="text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-            title={
-              isGlobalTTSEnabled ? "Disable global TTS" : "Enable global TTS"
-            }
-            aria-label={
-              isGlobalTTSEnabled ? "Disable global TTS" : "Enable global TTS"
-            }
-          >
-            {saveConfigMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : isGlobalTTSEnabled ? (
-              <Volume2 className="h-3.5 w-3.5" />
-            ) : (
-              <VolumeX className="h-3.5 w-3.5" />
-            )}
-          </button>
-
-          <button
-            onClick={handleEmergencyStopAll}
-            disabled={isEmergencyStopping}
-            className="text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-            title="Emergency stop all agent sessions"
-            aria-label="Emergency stop all agent sessions"
-          >
-            {isEmergencyStopping ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <OctagonX className="h-3.5 w-3.5" />
-            )}
-          </button>
-
-          {onOpenPastSessionsDialog && (
-            <button
-              onClick={onOpenPastSessionsDialog}
-              className="hover:bg-accent/50 text-muted-foreground hover:text-foreground shrink-0 rounded p-1"
-              title="Past Sessions"
-              aria-label="Past Sessions"
-            >
-              <Clock className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-
         <div className="hover:bg-accent/50 hover:text-foreground flex items-center gap-2 rounded-md px-1 py-1 transition-all duration-200">
           {hasAnySessions ? (
             <button
@@ -513,6 +384,19 @@ export function ActiveAgentsSidebar({
               </span>
             )}
           </button>
+          {onOpenPastSessionsDialog && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenPastSessionsDialog()
+              }}
+              className="hover:bg-accent/50 text-muted-foreground hover:text-foreground shrink-0 rounded p-1"
+              title="Past Sessions"
+              aria-label="Past Sessions"
+            >
+              <Clock className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

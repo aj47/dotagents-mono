@@ -281,12 +281,58 @@ export const Component = () => {
           <header
             className={cn(
               "flex shrink-0 items-center",
-              isCollapsed ? "justify-center" : "justify-end",
+              isCollapsed ? "justify-center" : "justify-between",
               // On macOS, add top padding to clear the traffic-light window controls
               process.env.IS_MAC ? "pb-1 pt-7" : "pb-1 pt-2",
               isCollapsed ? "px-1" : "px-2",
             )}
           >
+            {!isCollapsed && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleToggleGlobalTTS}
+                  disabled={!configQuery.data || saveConfigMutation.isPending}
+                  className={cn(
+                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded p-1 transition-colors disabled:opacity-50",
+                  )}
+                  title={
+                    isGlobalTTSEnabled
+                      ? "Disable global TTS"
+                      : "Enable global TTS"
+                  }
+                  aria-label={
+                    isGlobalTTSEnabled
+                      ? "Disable global TTS"
+                      : "Enable global TTS"
+                  }
+                >
+                  {saveConfigMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : isGlobalTTSEnabled ? (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleEmergencyStopAll}
+                  disabled={isEmergencyStopping}
+                  className="text-destructive hover:bg-destructive/10 shrink-0 rounded p-1 transition-colors disabled:opacity-50"
+                  title="Emergency stop all agent sessions"
+                  aria-label="Emergency stop all agent sessions"
+                >
+                  {isEmergencyStopping ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <OctagonX className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            )}
+
             <button
               onClick={toggleCollapse}
               className={cn(
