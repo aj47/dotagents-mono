@@ -4,6 +4,7 @@
  */
 
 import { acpClientService } from './acp-client-service';
+import { acpRegistry } from './acp-registry';
 import { acpRouterToolDefinitions, resolveToolName } from './acp-router-tool-definitions';
 import type {
   ACPRunResult,
@@ -634,7 +635,8 @@ async function executeAgentProfileDelegation(
       return executeACPAgent(
         { ...args, context: profileContext },
         parentSessionId,
-        waitForResult
+        waitForResult,
+        profile.connection
       );
 
     case 'remote':
@@ -643,7 +645,8 @@ async function executeAgentProfileDelegation(
       return executeACPAgent(
         { ...args, context: remoteContext },
         parentSessionId,
-        waitForResult
+        waitForResult,
+        profile.connection
       );
 
     default:
@@ -739,24 +742,62 @@ async function executeInternalAgent(
 async function executeACPAgent(
   args: { agentName: string; task: string; context?: string },
   parentSessionId: string | undefined,
-  waitForResult: boolean
+  waitForResult: boolean,
+  profileConnection?: AgentProfile['connection']
 ): Promise<object> {
   try {
-    // Check if agent exists in config
+    // Resolve connection details from unified profile first, then fall back to legacy config.
     const config = configStore.get();
-    const agentConfig = config.acpAgents?.find((a) => a.name === args.agentName);
-    if (!agentConfig) {
+    const legacyAgentConfig = config.acpAgents?.find((a) => a.name === args.agentName);
+    const connection = profileConnection || legacyAgentConfig?.connection;
+
+    if (!connection) {
       return { success: false, error: `Agent "${args.agentName}" not found in configuration` };
     }
 
-    if (agentConfig.enabled === false) {
+    // Unified profiles are already checked for enablement in handleDelegateToAgent.
+    // Preserve legacy disabled checks when we route through config.acpAgents.
+    if (!profileConnection && legacyAgentConfig?.enabled === false) {
       return { success: false, error: `Agent "${args.agentName}" is disabled` };
     }
 
-    // Ensure stdio agents are spawned
-    if (agentConfig.connection.type === 'stdio') {
+    const legacyConnection = connection as AgentProfile['connection'] & {
+      source?: string;
+      transport?: string;
+      url?: string;
+    };
+    const resolvedBaseUrl = connection.baseUrl || legacyConnection.url;
+    const isRemoteLikeConnection =
+      connection.type === 'remote'
+      || legacyConnection.transport === 'streamableHttp'
+      || legacyConnection.transport === 'websocket'
+      || legacyConnection.source === 'external'
+      || ((connection.type === 'acp' || connection.type === 'stdio') && !!resolvedBaseUrl && !connection.command);
+
+    let externalConnection: { type: 'acp' | 'stdio' | 'remote'; baseUrl?: string };
+    if (isRemoteLikeConnection && resolvedBaseUrl) {
+      externalConnection = { type: 'remote', baseUrl: resolvedBaseUrl };
+    } else if (connection.type === 'acp' || connection.type === 'stdio') {
+      externalConnection = { type: connection.type, baseUrl: resolvedBaseUrl };
+    } else if (connection.type === 'remote') {
+      externalConnection = { type: 'remote', baseUrl: resolvedBaseUrl };
+    } else {
+      return {
+        success: false,
+        error: `Unsupported connection type for agent "${args.agentName}": ${connection.type}`,
+      };
+    }
+
+    // Ensure local process agents are spawned before task execution.
+    if (externalConnection.type === 'acp' || externalConnection.type === 'stdio') {
       const agentStatus = acpService.getAgentStatus(args.agentName);
       if (agentStatus?.status !== 'ready') {
+        if (!connection.command) {
+          return {
+            success: false,
+            error: `Agent "${args.agentName}" is configured for local execution but has no command configured`,
+          };
+        }
         try {
           await acpService.spawnAgent(args.agentName);
         } catch (spawnError) {
@@ -786,9 +827,18 @@ async function executeACPAgent(
     };
 
     if (waitForResult) {
+      if (externalConnection.type === 'remote') {
+        if (!externalConnection.baseUrl) {
+          return {
+            success: false,
+            error: `Remote agent "${args.agentName}" has no baseUrl configured`,
+          };
+        }
+        return executeRemoteAgentSync(subAgentState, args, externalConnection.baseUrl, parentSessionId);
+      }
       return executeACPAgentSync(subAgentState, args, registerSessionMapping);
     } else {
-      return executeACPAgentAsync(subAgentState, args, agentConfig, parentSessionId, registerSessionMapping);
+      return executeACPAgentAsync(subAgentState, args, externalConnection, parentSessionId, registerSessionMapping);
     }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -847,16 +897,16 @@ async function executeACPAgentSync(
 function executeACPAgentAsync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string },
-  agentConfig: NonNullable<ReturnType<typeof configStore.get>['acpAgents']>[number],
+  connection: { type: 'acp' | 'stdio' | 'remote'; baseUrl?: string },
   parentSessionId: string | undefined,
   registerSessionMapping: () => void
 ): DelegationResult {
   // Start background polling for notifications
   acpBackgroundNotifier.startPolling();
 
-  if (agentConfig.connection.type === 'remote' && agentConfig.connection.baseUrl) {
-    executeRemoteAgentAsync(subAgentState, args, agentConfig.connection.baseUrl, parentSessionId);
-  } else if (agentConfig.connection.type === 'remote') {
+  if (connection.type === 'remote' && connection.baseUrl) {
+    executeRemoteAgentAsync(subAgentState, args, connection.baseUrl, parentSessionId);
+  } else if (connection.type === 'remote') {
     // Remote agent without baseUrl is a configuration error
     subAgentState.status = 'failed';
     return createFailedResult(subAgentState, `Remote agent "${args.agentName}" has no baseUrl configured`);
@@ -865,6 +915,82 @@ function executeACPAgentAsync(
   }
 
   return createRunningResult(subAgentState);
+}
+
+/**
+ * Ensure an agent has a remote registry entry for ACP HTTP calls.
+ */
+function ensureRemoteRegistryEntry(agentName: string, baseUrl: string): void {
+  const existing = acpRegistry.getAgent(agentName);
+  if (
+    existing
+    && existing.definition.baseUrl === baseUrl
+    && !existing.definition.spawnConfig
+  ) {
+    return;
+  }
+
+  acpRegistry.registerAgent({
+    name: agentName,
+    displayName: existing?.definition.displayName || agentName,
+    description: existing?.definition.description || '',
+    baseUrl,
+  });
+}
+
+/**
+ * Execute sync remote HTTP agent delegation.
+ */
+async function executeRemoteAgentSync(
+  subAgentState: DelegatedRun,
+  args: { agentName: string; task: string; context?: string },
+  baseUrl: string,
+  parentSessionId: string | undefined,
+): Promise<object> {
+  try {
+    subAgentState.baseUrl = baseUrl;
+    ensureRemoteRegistryEntry(args.agentName, baseUrl);
+
+    const result = await acpClientService.runAgentSync({
+      agentName: args.agentName,
+      input: args.task,
+      mode: 'sync',
+      parentSessionId,
+    });
+
+    const outputText = result.output
+      ?.map((msg) => msg.parts.map((p) => p.content).join('\n'))
+      .join('\n\n') || '';
+
+    if (outputText) {
+      subAgentState.conversation.push({
+        role: 'assistant',
+        content: outputText,
+        timestamp: Date.now(),
+      });
+    }
+
+    if (result.status === 'completed') {
+      return createCompletedResult(subAgentState, outputText, subAgentState.conversation);
+    }
+
+    if ((result.status === 'running' || result.status === 'pending') && result.runId) {
+      subAgentState.acpRunId = result.runId;
+      return createRunningResult(subAgentState);
+    }
+
+    return createFailedResult(
+      subAgentState,
+      result.error || `Remote agent returned status "${result.status}"`,
+      subAgentState.conversation,
+    );
+  } catch (error) {
+    return createFailedResult(
+      subAgentState,
+      error instanceof Error ? error.message : String(error),
+      subAgentState.conversation,
+    );
+  }
 }
 
 /**
@@ -877,6 +1003,7 @@ function executeRemoteAgentAsync(
   parentSessionId: string | undefined
 ): void {
   subAgentState.baseUrl = baseUrl;
+  ensureRemoteRegistryEntry(args.agentName, baseUrl);
 
   acpClientService.runAgentAsync({
     agentName: args.agentName,
