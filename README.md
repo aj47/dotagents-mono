@@ -1,27 +1,84 @@
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](./LICENSE)
-[![Electron](https://img.shields.io/badge/Electron-31.0.2-47848f.svg)](https://electronjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6.3-blue.svg)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.3.1-61dafb.svg)](https://reactjs.org/)
+<p align="center">
+  <strong>dotagents</strong>
+</p>
 
-## 🎬 Preview
+<p align="center">
+  <em>One dot. Every agent.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/aj47/dotagents-mono/releases/latest"><strong>Download</strong></a> &middot;
+  <a href="https://discord.gg/cK9WeQ7jPq"><strong>Discord</strong></a> &middot;
+  <a href="https://dotagents.ai"><strong>Website</strong></a>
+</p>
+
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-AGPL%203.0-blue.svg" alt="License: AGPL-3.0"></a>
+  <a href="https://electronjs.org/"><img src="https://img.shields.io/badge/Electron-31.0.2-47848f.svg" alt="Electron"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.6.3-blue.svg" alt="TypeScript"></a>
+  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.3.1-61dafb.svg" alt="React"></a>
+</p>
+
+---
+
+DotAgents is the desktop app that gives you a team of AI specialists — each with memory, skills, and tools — controlled by your voice. Built on the `.agents` open standard, so your skills work across Claude Code, Cursor, Codex, and every tool adopting the protocol.
+
+## Preview
+
 v1.4
-<img width="1341" height="1174" alt="image" src="https://github.com/user-attachments/assets/4ea2fa66-9a22-4d56-b388-457dfc99fed6" />
+<img width="1341" height="1174" alt="DotAgents Desktop v1.4" src="https://github.com/user-attachments/assets/4ea2fa66-9a22-4d56-b388-457dfc99fed6" />
 
-[Click here to see v1 launch video on youtube ](https://www.youtube.com/watch?v=A4oKYCaeaaw)
-<img width="2050" height="1564" alt="image" src="https://github.com/user-attachments/assets/a1e55c53-838f-414f-92e7-d752f74e7107" />
+[Watch the launch video on YouTube](https://www.youtube.com/watch?v=A4oKYCaeaaw)
+
+<img width="2050" height="1564" alt="DotAgents Desktop" src="https://github.com/user-attachments/assets/a1e55c53-838f-414f-92e7-d752f74e7107" />
 
 https://github.com/user-attachments/assets/0c181c70-d1f1-4c5d-a6f5-a73147e75182
 
-## 🚀 Quick Start
+## What is DotAgents?
+
+DotAgents is three things:
+
+**1. A Desktop App** — A voice-first AI agent interface. Hold to speak, release to act. Your agents listen, think, and execute tools on your behalf.
+
+**2. The `.agents` Protocol** — An open standard for agent skills, memories, and commands. Define your skills once in `.agents/`, and they work across Claude Code, Cursor, OpenCode, and any tool that adopts the protocol.
+
+**3. Agent Skills** — Reusable capabilities your agents can learn. Skills are portable, shareable, and composable — not locked into any single tool or vendor.
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Skills** | Portable agent capabilities defined in `.agents/skills/`. Works across tools. |
+| **Memory** | Persistent agent context stored in `.agents/memory/`. Agents remember across sessions. |
+| **Agent Profiles** | Specialized AI personas with distinct skills and tools. Delegate tasks to the right agent. |
+| **Voice Interface** | Hold-to-record, 30+ languages, auto-insert results into any app. Voice is the primary interface. |
+| **MCP Tools** | Model Context Protocol integration for tool execution, OAuth 2.1 auth, and real-time progress. |
+| **ACP Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents. |
+
+## The `.agents` Protocol
+
+The `.agents/` directory is an open standard for agent configuration that works across tools:
+
+```
+.agents/
+├── skills/          # Reusable agent capabilities
+├── memory/          # Persistent context across sessions
+├── commands/        # Custom agent commands
+└── config.yaml      # Agent profiles and settings
+```
+
+Skills you define for DotAgents Desktop work in Claude Code, Cursor, Codex, and any tool adopting the protocol. Protocol first, product second.
+
+## Quick Start
 
 ### Download
 
-**[📥 Download Latest Release](https://github.com/aj47/SpeakMCP/releases/latest)**
+**[Download Latest Release](https://github.com/aj47/dotagents-mono/releases/latest)**
 
 > **Platform Support**: macOS (Apple Silicon & Intel) with full MCP agent functionality.
-> ⚠️ **Windows/Linux**: MCP tools not currently supported — see [v0.2.2](https://github.com/aj47/SpeakMCP/releases/tag/v0.2.2) for dictation-only builds.
+> Windows/Linux: MCP tools not currently supported — see [v0.2.2](https://github.com/aj47/dotagents-mono/releases/tag/v0.2.2) for dictation-only builds.
 
-### Basic Usage
+### Usage
 
 **Voice Recording:**
 
@@ -40,27 +97,19 @@ https://github.com/user-attachments/assets/0c181c70-d1f1-4c5d-a6f5-a73147e75182
 
 - **`Ctrl+T`** (macOS/Linux) or **`Ctrl+Shift+T`** (Windows) for direct typing
 
-## ✨ Features
+## Features
 
 | Category | Capabilities |
 |----------|--------------|
-| **🎤 Voice** | Hold-to-record, 30+ languages, Fn toggle mode, auto-insert to any app |
-| **🔊 TTS** | 50+ AI voices via OpenAI, Groq, and Gemini with auto-play |
-| **🤖 MCP Agent** | Tool execution, OAuth 2.1 auth, real-time progress, conversation context |
-| **📊 Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging |
-| **🛠️ Platform** | macOS/Windows/Linux, rate limit handling, multi-provider AI |
-| **🎨 UX** | Dark/light themes, resizable panels, kill switch, conversation history |
+| **Voice** | Hold-to-record, 30+ languages, Fn toggle mode, auto-insert to any app |
+| **TTS** | 50+ AI voices via OpenAI, Groq, and Gemini with auto-play |
+| **Multi-Agent** | Agent profiles, skill-based delegation, persistent memory, ACP coordination |
+| **MCP Tools** | Tool execution, OAuth 2.1 auth, real-time progress, conversation context |
+| **Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging |
+| **Platform** | macOS/Windows/Linux, rate limit handling, multi-provider AI |
+| **UX** | Dark/light themes, resizable panels, kill switch, conversation history |
 
-## 🛠️ Development
-
-```bash
-git clone https://github.com/aj47/SpeakMCP.git && cd SpeakMCP
-pnpm install && pnpm build-rs && pnpm dev
-```
-
-See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
-
-## ⚙️ Configuration
+## Configuration
 
 **AI Providers** — Configure in settings:
 - OpenAI, Groq, or Google Gemini API keys
@@ -89,20 +138,41 @@ See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, trouble
 | `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input |
 | `Ctrl+Shift+Escape` | Kill switch |
 
-## 🤝 Contributing
+## Development
 
-We welcome contributions! Fork the repo, create a feature branch, and open a Pull Request.
+```bash
+git clone https://github.com/aj47/dotagents-mono.git && cd dotagents-mono
+pnpm install && pnpm build-rs && pnpm dev
+```
 
-**💬 Get help on [Discord](https://discord.gg/cK9WeQ7jPq)** | **🌐 More info at [techfren.net](https://techfren.net)**
+See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
 
-## 📄 License
+### Architecture
+
+```
+dotagents-mono/
+├── apps/
+│   ├── desktop/     # Electron desktop app (voice, agents, MCP)
+│   └── mobile/      # React Native mobile app
+├── packages/
+│   └── shared/      # Shared utilities, types, and constants
+└── .agents/         # The open standard — skills, memory, commands
+```
+
+## Contributing
+
+We welcome contributions. Fork the repo, create a feature branch, and open a Pull Request.
+
+**[Discord](https://discord.gg/cK9WeQ7jPq)** | **[Website](https://dotagents.ai)**
+
+## License
 
 This project is licensed under the [AGPL-3.0 License](./LICENSE).
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-Built on [Whispo](https://github.com/egoist/whispo) • Powered by [OpenAI](https://openai.com/), [Anthropic](https://anthropic.com/), [Groq](https://groq.com/), [Google](https://ai.google.dev/) • [MCP](https://modelcontextprotocol.io/) • [Electron](https://electronjs.org/) • [React](https://reactjs.org/) • [Rust](https://rust-lang.org/)
+Built on [Whispo](https://github.com/egoist/whispo). Powered by [OpenAI](https://openai.com/), [Anthropic](https://anthropic.com/), [Groq](https://groq.com/), [Google](https://ai.google.dev/). [MCP](https://modelcontextprotocol.io/). [Electron](https://electronjs.org/). [React](https://reactjs.org/). [Rust](https://rust-lang.org/).
 
 ---
 
-**Made with ❤️ by the SpeakMCP team**
+**Made with care by the DotAgents community**

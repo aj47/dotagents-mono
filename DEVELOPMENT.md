@@ -14,8 +14,8 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/aj47/SpeakMCP.git
-cd SpeakMCP
+git clone https://github.com/aj47/dotagents-mono.git
+cd dotagents-mono
 pnpm install
 pnpm build-rs  # Build Rust binary
 pnpm dev       # Start development server

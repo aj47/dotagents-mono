@@ -2,10 +2,10 @@
   "name": "@dotagents/desktop",
   "version": "0.0.1",
   "type": "module",
-  "description": "AI-powered agents with MCP integration",
+  "description": "DotAgents Desktop — Voice-first AI agent orchestrator with skills, memory, and the .agents protocol",
   "main": "./out/main/index.js",
   "author": "DotAgents",
-  "homepage": "https://github.com/aj47/dotagents-mono",
+  "homepage": "https://dotagents.ai",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
