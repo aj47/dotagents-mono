@@ -66,92 +66,117 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       const isNewSession = !newMap.has(sessionId)
       const existingProgress = newMap.get(sessionId)
 
+      if (
+        existingProgress &&
+        typeof existingProgress.runId === 'number' &&
+        typeof update.runId === 'number' &&
+        update.runId < existingProgress.runId
+      ) {
+        return state
+      }
+
       let mergedUpdate = update
       if (existingProgress) {
-        const hasEmptyHistory = !update.conversationHistory || update.conversationHistory.length === 0
-        const hasEmptySteps = !update.steps || update.steps.length === 0
+        const isNewRun =
+          typeof existingProgress.runId === 'number' &&
+          typeof update.runId === 'number' &&
+          update.runId > existingProgress.runId
 
-        // Detect session revival: transitioning from complete → active.
-        // Clear stale userResponse so the TTS engine doesn't re-read
-        // the previous run's spoken content when the session is continued.
-        const isRevival = existingProgress.isComplete && !update.isComplete
-
-        // Merge delegation steps: preserve existing delegation steps and update/add new ones
-        // This ensures parallel delegations and completed delegations persist
-        const mergedSteps = (() => {
-          const existingSteps = existingProgress.steps || []
-          const newSteps = update.steps || []
-          
-          // Extract existing delegation steps (keyed by runId)
-          const existingDelegationSteps = new Map<string, typeof existingSteps[0]>()
-          const existingNonDelegationSteps: typeof existingSteps = []
-          
-          for (const step of existingSteps) {
-            if (step.delegation?.runId) {
-              existingDelegationSteps.set(step.delegation.runId, step)
-            } else {
-              existingNonDelegationSteps.push(step)
-            }
-          }
-          
-          // Extract new delegation steps (keyed by runId)
-          const newDelegationSteps = new Map<string, typeof newSteps[0]>()
-          const newNonDelegationSteps: typeof newSteps = []
-          
-          for (const step of newSteps) {
-            if (step.delegation?.runId) {
-              newDelegationSteps.set(step.delegation.runId, step)
-            } else {
-              newNonDelegationSteps.push(step)
-            }
-          }
-          
-          // Merge delegation steps: new ones override existing ones with same runId
-          const mergedDelegationSteps = new Map(existingDelegationSteps)
-          for (const [runId, step] of newDelegationSteps) {
-            mergedDelegationSteps.set(runId, step)
-          }
-          
-          // Use new non-delegation steps if available, otherwise keep existing
-          const finalNonDelegationSteps = newNonDelegationSteps.length > 0 
-            ? newNonDelegationSteps 
-            : existingNonDelegationSteps
-          
-          // Combine: non-delegation steps first, then delegation steps
-          return [...finalNonDelegationSteps, ...Array.from(mergedDelegationSteps.values())]
-        })()
-
-        if (hasEmptyHistory || hasEmptySteps) {
+        if (isNewRun) {
+          // New run on a reused session: reset run-scoped UI fields and keep only stable metadata.
           mergedUpdate = {
-            ...existingProgress,
             ...update,
-            // On revival, drop the old userResponse and history so TTS doesn't re-read it.
-            ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined } : {}),
-            // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
-            // use the update value; otherwise preserve existing. This ensures clearing works.
-            pendingToolApproval: 'pendingToolApproval' in update
-              ? update.pendingToolApproval
-              : existingProgress.pendingToolApproval,
-            conversationHistory: hasEmptyHistory
-              ? existingProgress.conversationHistory
-              : update.conversationHistory,
-            steps: hasEmptySteps
-              ? existingProgress.steps
-              : mergedSteps,
+            conversationId: update.conversationId ?? existingProgress.conversationId,
+            conversationTitle: update.conversationTitle ?? existingProgress.conversationTitle,
+            isSnoozed: update.isSnoozed ?? existingProgress.isSnoozed,
+            sessionStartIndex: update.sessionStartIndex ?? existingProgress.sessionStartIndex,
           }
         } else {
-          // Even when update has non-empty steps, we need to preserve delegation steps
-          mergedUpdate = {
-            ...existingProgress,
-            ...update,
-            // On revival, drop the old userResponse and history so TTS doesn't re-read it.
-            ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined } : {}),
-            // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
-            // use the update value; otherwise preserve existing. This ensures clearing works.
-            pendingToolApproval: 'pendingToolApproval' in update
-              ? update.pendingToolApproval
-              : existingProgress.pendingToolApproval,
-            steps: mergedSteps,
+          const hasEmptyHistory = !update.conversationHistory || update.conversationHistory.length === 0
+          const hasEmptySteps = !update.steps || update.steps.length === 0
+
+          // Detect session revival: transitioning from complete → active.
+          // Clear stale userResponse so the TTS engine doesn't re-read
+          // the previous run's spoken content when the session is continued.
+          const isRevival = existingProgress.isComplete && !update.isComplete
+
+          // Merge delegation steps: preserve existing delegation steps and update/add new ones
+          // This ensures parallel delegations and completed delegations persist
+          const mergedSteps = (() => {
+            const existingSteps = existingProgress.steps || []
+            const newSteps = update.steps || []
+
+            // Extract existing delegation steps (keyed by runId)
+            const existingDelegationSteps = new Map<string, typeof existingSteps[0]>()
+            const existingNonDelegationSteps: typeof existingSteps = []
+
+            for (const step of existingSteps) {
+              if (step.delegation?.runId) {
+                existingDelegationSteps.set(step.delegation.runId, step)
+              } else {
+                existingNonDelegationSteps.push(step)
+              }
+            }
+
+            // Extract new delegation steps (keyed by runId)
+            const newDelegationSteps = new Map<string, typeof newSteps[0]>()
+            const newNonDelegationSteps: typeof newSteps = []
+
+            for (const step of newSteps) {
+              if (step.delegation?.runId) {
+                newDelegationSteps.set(step.delegation.runId, step)
+              } else {
+                newNonDelegationSteps.push(step)
+              }
+            }
+
+            // Merge delegation steps: new ones override existing ones with same runId
+            const mergedDelegationSteps = new Map(existingDelegationSteps)
+            for (const [runId, step] of newDelegationSteps) {
+              mergedDelegationSteps.set(runId, step)
+            }
+
+            // Use new non-delegation steps if available, otherwise keep existing
+            const finalNonDelegationSteps = newNonDelegationSteps.length > 0
+              ? newNonDelegationSteps
+              : existingNonDelegationSteps
+
+            // Combine: non-delegation steps first, then delegation steps
+            return [...finalNonDelegationSteps, ...Array.from(mergedDelegationSteps.values())]
+          })()
+
+          if (hasEmptyHistory || hasEmptySteps) {
+            mergedUpdate = {
+              ...existingProgress,
+              ...update,
+              // On revival, drop the old userResponse and history so TTS doesn't re-read it.
+              ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined } : {}),
+              // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
+              // use the update value; otherwise preserve existing. This ensures clearing works.
+              pendingToolApproval: 'pendingToolApproval' in update
+                ? update.pendingToolApproval
+                : existingProgress.pendingToolApproval,
+              conversationHistory: hasEmptyHistory
+                ? existingProgress.conversationHistory
+                : update.conversationHistory,
+              steps: hasEmptySteps
+                ? existingProgress.steps
+                : mergedSteps,
+            }
+          } else {
+            // Even when update has non-empty steps, we need to preserve delegation steps
+            mergedUpdate = {
+              ...existingProgress,
+              ...update,
+              // On revival, drop the old userResponse and history so TTS doesn't re-read it.
+              ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined } : {}),
+              // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
+              // use the update value; otherwise preserve existing. This ensures clearing works.
+              pendingToolApproval: 'pendingToolApproval' in update
+                ? update.pendingToolApproval
+                : existingProgress.pendingToolApproval,
+              steps: mergedSteps,
+            }
           }
         }
       }

@@ -439,6 +439,7 @@ export async function processTranscriptWithAgentMode(
   sessionId?: string, // Session ID for progress routing and isolation
   onProgress?: (update: AgentProgressUpdate) => void, // Optional callback for external progress consumers (e.g., SSE)
   profileSnapshot?: SessionProfileSnapshot, // Profile snapshot for session isolation
+  runId?: number,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
 
@@ -446,6 +447,7 @@ export async function processTranscriptWithAgentMode(
   const currentConversationId = conversationId
   const currentSessionId =
     sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const effectiveRunId = runId ?? agentSessionStateManager.getSessionRunId(currentSessionId)
   // Clear any stale user response from prior runs that may have reused this session ID.
   clearSessionUserResponse(currentSessionId)
   // Number of messages in the conversation history that predate this agent session.
@@ -516,7 +518,7 @@ export async function processTranscriptWithAgentMode(
 
   // Create bound emitter that always includes sessionId, conversationId, snooze state, sessionStartIndex, conversationTitle, and contextInfo
   const emit = (
-    update: Omit<AgentProgressUpdate, 'sessionId' | 'conversationId' | 'isSnoozed' | 'conversationTitle'>,
+    update: Omit<AgentProgressUpdate, 'sessionId' | 'runId' | 'conversationId' | 'isSnoozed' | 'conversationTitle'>,
   ) => {
     const isSnoozed = agentSessionTracker.isSessionSnoozed(currentSessionId)
     const session = agentSessionTracker.getSession(currentSessionId)
@@ -552,6 +554,7 @@ export async function processTranscriptWithAgentMode(
       // Include response history if there are past responses
       ...(shouldEmitUserResponse && responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
       sessionId: currentSessionId,
+      runId: effectiveRunId,
       conversationId: currentConversationId,
       conversationTitle,
       isSnoozed,

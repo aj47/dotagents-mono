@@ -19,6 +19,7 @@ export function setHeadlessMode(value: boolean): void {
 
 export interface AgentSessionState {
   sessionId: string
+  runId: number
   shouldStop: boolean
   iterationCount: number
   abortControllers: Set<AbortController>
@@ -159,6 +160,7 @@ export const agentSessionStateManager = {
     } else {
       state.agentSessions.set(sessionId, {
         sessionId,
+        runId: 0,
         shouldStop: false,
         iterationCount: 0,
         abortControllers: new Set(),
@@ -182,6 +184,21 @@ export const agentSessionStateManager = {
   getSessionProfileSnapshot(sessionId: string): SessionProfileSnapshot | undefined {
     const session = state.agentSessions.get(sessionId)
     return session?.profileSnapshot
+  },
+
+  // Start a new run for a session and return the new run ID.
+  startSessionRun(sessionId: string, profileSnapshot?: SessionProfileSnapshot): number {
+    this.createSession(sessionId, profileSnapshot)
+    const session = state.agentSessions.get(sessionId)!
+    session.runId += 1
+    session.shouldStop = false
+    return session.runId
+  },
+
+  // Get current run ID for stale-update filtering.
+  getSessionRunId(sessionId: string): number | undefined {
+    const session = state.agentSessions.get(sessionId)
+    return session?.runId
   },
 
   // Check if session is registered in the state manager
