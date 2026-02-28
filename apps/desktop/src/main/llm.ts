@@ -1241,8 +1241,26 @@ Return ONLY JSON per schema.`,
     return messages
   }
 
-  // Verification failure limit - after this many failed completion checks, end as incomplete
-  const VERIFICATION_FAIL_LIMIT = 5
+  // Derive loop safety budgets from the configured iteration budget so we don't
+  // give up too early on recoverable tasks (e.g. tool-heavy flows that need
+  // several correction nudges before converging).
+  const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
+  const effectiveIterationBudget = Number.isFinite(maxIterations)
+    ? Math.max(1, Math.floor(maxIterations))
+    : 60
+
+  // Keep loop behavior aligned with guardrails by normalizing non-finite limits
+  // to the same fallback budget. This avoids cases where the main loop could
+  // skip entirely (NaN) or run unbounded (Infinity) while guardrails are capped.
+  maxIterations = effectiveIterationBudget
+
+  // Verification failure limit - after this many failed completion checks, end as incomplete.
+  // Scales with iteration budget instead of a fixed low constant.
+  const VERIFICATION_FAIL_LIMIT = clamp(Math.ceil(effectiveIterationBudget * 0.8), 5, 60)
+
+  // Max nudges before forcing an incomplete fallback.
+  // Scales with iteration budget to avoid premature fallback on long tasks.
+  const MAX_NUDGES = clamp(Math.ceil(effectiveIterationBudget * 0.6), 3, 40)
 
   // Empty response retry limit - after this many retries, break to prevent infinite loops
   const MAX_EMPTY_RESPONSE_RETRIES = 3
@@ -1433,7 +1451,6 @@ Return ONLY JSON per schema.`,
 
   let noOpCount = 0 // Track iterations without meaningful progress
   let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
-  const MAX_NUDGES = 3 // Max nudges before forcing an incomplete fallback
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
   const MAX_COMPLETION_SIGNAL_HINTS = 2
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
