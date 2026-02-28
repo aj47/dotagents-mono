@@ -2303,10 +2303,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Repeat Tasks Management Endpoints (for mobile app)
   // ============================================
 
+  const getLoopProfileName = (profileId?: string) =>
+    profileId ? agentProfileService.getById(profileId)?.displayName : undefined
+
   const formatLoopResponse = async (loop: LoopConfig) => {
-    const profile = loop.profileId
-      ? agentProfileService.getUserProfiles().find(p => p.id === loop.profileId)
-      : undefined
 
     let status: { isRunning: boolean; nextRunAt?: number; lastRunAt?: number } | undefined
     try {
@@ -2323,7 +2323,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       intervalMinutes: loop.intervalMinutes,
       enabled: loop.enabled,
       profileId: loop.profileId,
-      profileName: profile?.displayName,
+      profileName: getLoopProfileName(loop.profileId),
       runOnStartup: loop.runOnStartup,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
@@ -2336,7 +2336,6 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     try {
       const cfg = configStore.get()
       const loops = cfg.loops || []
-      const profiles = agentProfileService.getUserProfiles()
 
       // Get repeat task runtime statuses if available
       let statuses: Array<{ id: string; isRunning: boolean; nextRunAt?: number; lastRunAt?: number }> = []
@@ -2352,7 +2351,6 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       return reply.send({
         loops: loops.map(l => {
           const status = statusById.get(l.id)
-          const profile = l.profileId ? profiles.find(p => p.id === l.profileId) : undefined
           return {
             id: l.id,
             name: l.name,
@@ -2360,7 +2358,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             intervalMinutes: l.intervalMinutes,
             enabled: l.enabled,
             profileId: l.profileId,
-            profileName: profile?.displayName,
+            profileName: getLoopProfileName(l.profileId),
             runOnStartup: l.runOnStartup,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
