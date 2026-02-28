@@ -481,6 +481,11 @@ export function Component() {
     setTileResetKey(prev => prev + 1)
   }, [])
 
+  const nextTileLayoutMode = useMemo(() => {
+    const idx = LAYOUT_MODES.indexOf(tileLayoutMode)
+    return LAYOUT_MODES[(idx + 1) % LAYOUT_MODES.length]
+  }, [tileLayoutMode])
+
   const handleMaximizeSingleTile = useCallback(() => {
     if (tileLayoutMode === "1x1") return
     clearPersistedSize("session-tile")
@@ -537,12 +542,12 @@ export function Component() {
               size="sm"
               onClick={handleCycleTileLayout}
               className="h-7 px-2"
-              title={`Layout: ${LAYOUT_LABELS[tileLayoutMode]} (click to cycle)`}
+              title={`Next layout: ${LAYOUT_LABELS[nextTileLayoutMode]} (click to cycle)`}
               aria-label="Cycle tile layout"
             >
-              {tileLayoutMode === "1x1" ? (
+              {nextTileLayoutMode === "1x1" ? (
                 <Maximize2 className="h-4 w-4" />
-              ) : tileLayoutMode === "2x2" ? (
+              ) : nextTileLayoutMode === "2x2" ? (
                 <Grid2x2 className="h-4 w-4" />
               ) : (
                 <LayoutGrid className="h-4 w-4" />
