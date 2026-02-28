@@ -2306,15 +2306,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   const getLoopProfileName = (profileId?: string) =>
     profileId ? agentProfileService.getById(profileId)?.displayName : undefined
 
-  const formatLoopResponse = async (loop: LoopConfig) => {
-
-    let status: { isRunning: boolean; nextRunAt?: number; lastRunAt?: number } | undefined
+  const loadLoopService = async () => {
     try {
       const { loopService } = await import("./loop-service")
-      status = loopService.getLoopStatus(loop.id)
+      return loopService
     } catch {
-      // Repeat task service might not be initialized
+      return null
     }
+  }
+
+  const formatLoopResponse = async (loop: LoopConfig) => {
+    const status = (await loadLoopService())?.getLoopStatus(loop.id)
 
     return {
       id: loop.id,
@@ -2334,17 +2336,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // GET /v1/loops - List all repeat tasks
   fastify.get("/v1/loops", async (_req, reply) => {
     try {
-      const cfg = configStore.get()
-      const loops = cfg.loops || []
-
-      // Get repeat task runtime statuses if available
-      let statuses: Array<{ id: string; isRunning: boolean; nextRunAt?: number; lastRunAt?: number }> = []
-      try {
-        const { loopService } = await import("./loop-service")
-        statuses = loopService.getLoopStatuses()
-      } catch {
-        // Repeat task service might not be initialized
-      }
+      const loopService = await loadLoopService()
+      const loops = loopService?.getLoops() ?? (configStore.get().loops || [])
+      const statuses = loopService?.getLoopStatuses() ?? []
 
       const statusById = new Map(statuses.map(s => [s.id, s]))
 
@@ -2376,6 +2370,30 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.post("/v1/loops/:id/toggle", async (req, reply) => {
     try {
       const params = req.params as { id: string }
+      const loopService = await loadLoopService()
+
+      if (loopService) {
+        const existing = loopService.getLoop(params.id)
+        if (!existing) {
+          return reply.code(404).send({ error: "Repeat task not found" })
+        }
+
+        const updated = { ...existing, enabled: !existing.enabled }
+        loopService.saveLoop(updated)
+
+        if (updated.enabled) {
+          loopService.startLoop(params.id)
+        } else {
+          loopService.stopLoop(params.id)
+        }
+
+        return reply.send({
+          success: true,
+          id: params.id,
+          enabled: updated.enabled,
+        })
+      }
+
       const cfg = configStore.get()
       const loops = cfg.loops || []
       const loopIndex = loops.findIndex(l => l.id === params.id)
@@ -2392,19 +2410,6 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       configStore.save({ ...cfg, loops: updatedLoops })
 
-      // Start or stop the loop scheduling to match the new enabled state
-      try {
-        const { loopService } = await import("./loop-service")
-        const newEnabled = updatedLoops[loopIndex].enabled
-        if (newEnabled) {
-          loopService.startLoop(params.id)
-        } else {
-          loopService.stopLoop(params.id)
-        }
-      } catch {
-        // Repeat task service might not be initialized
-      }
-
       return reply.send({
         success: true,
         id: params.id,
@@ -2420,23 +2425,24 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.post("/v1/loops/:id/run", async (req, reply) => {
     try {
       const params = req.params as { id: string }
+      const loopService = await loadLoopService()
 
-      // First check if the repeat task exists in config
-      const cfg = configStore.get()
-      const loops = cfg.loops || []
-      const loopExists = loops.some(l => l.id === params.id)
-      if (!loopExists) {
-        return reply.code(404).send({ error: "Repeat task not found" })
+      if (loopService) {
+        const loopExists = loopService.getLoop(params.id)
+        if (!loopExists) {
+          return reply.code(404).send({ error: "Repeat task not found" })
+        }
+
+        const triggered = await loopService.triggerLoop(params.id)
+
+        if (!triggered) {
+          return reply.code(409).send({ error: "Task is already running" })
+        }
+
+        return reply.send({ success: true, id: params.id })
       }
 
-      const { loopService } = await import("./loop-service")
-      const triggered = await loopService.triggerLoop(params.id)
-
-      if (!triggered) {
-        return reply.code(409).send({ error: "Task is already running" })
-      }
-
-      return reply.send({ success: true, id: params.id })
+      return reply.code(503).send({ error: "Repeat task service is unavailable" })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to run repeat task", error)
       return reply.code(500).send({ error: error?.message || "Failed to run repeat task" })
@@ -2632,22 +2638,19 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         profileId: profileId || undefined,
       }
 
-      const cfg = configStore.get()
-      const loops = [...(cfg.loops || []), newLoop]
-      configStore.save({ ...cfg, loops })
-
-      // Also save to loopService for runtime scheduling
-      try {
-        const { loopService } = await import("./loop-service")
+      const loopService = await loadLoopService()
+      if (loopService) {
         loopService.saveLoop(newLoop)
         if (newLoop.enabled) {
           loopService.startLoop(newLoop.id)
         }
-      } catch {
-        // Loop service might not be initialized
+      } else {
+        const cfg = configStore.get()
+        const loops = [...(cfg.loops || []), newLoop]
+        configStore.save({ ...cfg, loops })
       }
 
-      return reply.send({ loop: await formatLoopResponse(newLoop) })
+      return reply.send({ loop: await formatLoopResponse(loopService?.getLoop(newLoop.id) ?? newLoop) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create repeat task", error)
       return reply.code(500).send({ error: error?.message || "Failed to create repeat task" })
@@ -2666,11 +2669,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         profileId?: unknown
       }
 
-      const cfg = configStore.get()
-      const loops = cfg.loops || []
-      const loopIndex = loops.findIndex(l => l.id === params.id)
+      const loopService = await loadLoopService()
+      let existing: LoopConfig | undefined
+      let cfg: ReturnType<typeof configStore.get> | undefined
+      let loops: LoopConfig[] = []
+      let loopIndex = -1
 
-      if (loopIndex === -1) {
+      if (loopService) {
+        existing = loopService.getLoop(params.id)
+      } else {
+        cfg = configStore.get()
+        loops = cfg.loops || []
+        loopIndex = loops.findIndex(l => l.id === params.id)
+        existing = loopIndex >= 0 ? loops[loopIndex] : undefined
+      }
+
+      if (!existing) {
         return reply.code(404).send({ error: "Repeat task not found" })
       }
 
@@ -2698,7 +2712,6 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
 
-      const existing = loops[loopIndex]
       const name = typeof body.name === "string" ? body.name.trim() : undefined
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : undefined
       const intervalMinutes =
@@ -2716,13 +2729,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
       }
 
-      const updatedLoops = [...loops]
-      updatedLoops[loopIndex] = updated
-      configStore.save({ ...cfg, loops: updatedLoops })
-
-      // Update runtime scheduling
-      try {
-        const { loopService } = await import("./loop-service")
+      if (loopService) {
         loopService.saveLoop(updated)
         if (updated.enabled) {
           loopService.stopLoop(params.id)
@@ -2730,11 +2737,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         } else {
           loopService.stopLoop(params.id)
         }
-      } catch {
-        // Loop service might not be initialized
+      } else if (cfg && loopIndex >= 0) {
+        const updatedLoops = [...loops]
+        updatedLoops[loopIndex] = updated
+        configStore.save({ ...cfg, loops: updatedLoops })
       }
 
-      return reply.send({ success: true, loop: await formatLoopResponse(updated) })
+      return reply.send({ success: true, loop: await formatLoopResponse(loopService?.getLoop(params.id) ?? updated) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update repeat task", error)
       return reply.code(500).send({ error: error?.message || "Failed to update repeat task" })
@@ -2745,6 +2754,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   fastify.delete("/v1/loops/:id", async (req, reply) => {
     try {
       const params = req.params as { id: string }
+      const loopService = await loadLoopService()
+
+      if (loopService) {
+        const existing = loopService.getLoop(params.id)
+        if (!existing) {
+          return reply.code(404).send({ error: "Repeat task not found" })
+        }
+
+        const deleted = loopService.deleteLoop(params.id)
+        if (!deleted) {
+          return reply.code(500).send({ error: "Failed to delete repeat task" })
+        }
+
+        return reply.send({ success: true, id: params.id })
+      }
 
       const cfg = configStore.get()
       const loops = cfg.loops || []
@@ -2756,14 +2780,6 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const updatedLoops = loops.filter(l => l.id !== params.id)
       configStore.save({ ...cfg, loops: updatedLoops })
-
-      // Remove from runtime
-      try {
-        const { loopService } = await import("./loop-service")
-        loopService.deleteLoop(params.id)
-      } catch {
-        // Loop service might not be initialized
-      }
 
       return reply.send({ success: true, id: params.id })
     } catch (error: any) {

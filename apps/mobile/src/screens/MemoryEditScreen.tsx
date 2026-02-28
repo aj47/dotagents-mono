@@ -76,6 +76,13 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   }, [isEditing, navigation]);
 
   useEffect(() => {
+    if (isEditing && !memoryFromRoute && !settingsClient) {
+      setIsLoading(false);
+      setError('Configure Base URL and API key to load and save memories');
+    }
+  }, [isEditing, memoryFromRoute, settingsClient]);
+
+  useEffect(() => {
     if (!isEditing || memoryFromRoute || !settingsClient || !effectiveMemoryId) {
       return;
     }
@@ -114,7 +121,10 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!settingsClient) return;
+    if (!settingsClient) {
+      setError('Configure Base URL and API key in Settings before saving');
+      return;
+    }
     const title = formData.title.trim();
     const content = formData.content.trim();
     if (!title || !content) {
@@ -151,6 +161,8 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     }
   }, [effectiveMemoryId, formData, isEditing, navigation, settingsClient]);
 
+  const isSaveDisabled = isSaving || !settingsClient;
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -167,6 +179,9 @@ export default function MemoryEditScreen({ navigation, route }: any) {
       keyboardShouldPersistTaps="handled"
     >
       {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+      {!settingsClient && (
+        <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+      )}
 
       <Text style={styles.label}>Title *</Text>
       <TextInput
@@ -212,7 +227,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
         autoCapitalize="none"
       />
 
-      <TouchableOpacity style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving}>
+      <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Memory' : 'Create Memory'}</Text>}
       </TouchableOpacity>
     </ScrollView>
@@ -225,6 +240,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: spacing.md, color: theme.colors.mutedForeground, fontSize: 14 },
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
+    helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 120 },

@@ -78,6 +78,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
   }, [isEditing, navigation]);
 
   useEffect(() => {
+    if (isEditing && !loopFromRoute && !settingsClient) {
+      setIsLoading(false);
+      setError('Configure Base URL and API key to load and save loops');
+    }
+  }, [isEditing, loopFromRoute, settingsClient]);
+
+  useEffect(() => {
     if (!settingsClient) return;
     let cancelled = false;
     setIsLoadingProfiles(true);
@@ -139,7 +146,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!settingsClient) return;
+    if (!settingsClient) {
+      setError('Configure Base URL and API key in Settings before saving');
+      return;
+    }
 
     const name = formData.name.trim();
     const prompt = formData.prompt.trim();
@@ -184,6 +194,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
     }
   }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
 
+  const isSaveDisabled = isSaving || !settingsClient;
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -200,6 +212,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       keyboardShouldPersistTaps="handled"
     >
       {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+      {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
 
       <Text style={styles.label}>Name *</Text>
       <TextInput
@@ -262,7 +275,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
 
-      <TouchableOpacity style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving}>
+      <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
       </TouchableOpacity>
     </ScrollView>
