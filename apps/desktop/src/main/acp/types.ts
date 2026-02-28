@@ -142,6 +142,8 @@ export interface ACPSubAgentState {
   agentName: string;
   /** Parent session ID linking to the main DotAgents session */
   parentSessionId: string;
+  /** Parent session run ID captured when delegation started */
+  parentRunId?: number;
   /** Description of the task delegated to this sub-agent */
   task: string;
   /** Current status of the sub-agent run */
@@ -166,4 +168,3 @@ export interface ACPSubAgentState {
 // This avoids duplication and ensures consistency across the codebase.
 // Re-export for backward compatibility within the ACP module.
 export type { ACPAgentConfig } from '../../shared/types';
-

@@ -16,6 +16,7 @@ const sessionThrottleState = new Map<string, {
   timer: ReturnType<typeof setTimeout> | null
   lastSendTime: number
   pendingUpdate: AgentProgressUpdate | null
+  runId?: number
 }>()
 
 /**
@@ -91,11 +92,37 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   }
 
   const sessionId = displayUpdate.sessionId || "__global__"
+  const incomingRunId = displayUpdate.runId
+  let state = sessionThrottleState.get(sessionId)
+
+  if (displayUpdate.sessionId && typeof incomingRunId === "number") {
+    const currentRunId = agentSessionStateManager.getSessionRunId(displayUpdate.sessionId)
+    if (typeof currentRunId === "number" && incomingRunId < currentRunId) {
+      return
+    }
+  }
+
+  // Drop stale updates from older runs when session IDs are reused.
+  if (typeof incomingRunId === "number") {
+    if (!state) {
+      state = { timer: null, lastSendTime: 0, pendingUpdate: null, runId: incomingRunId }
+      sessionThrottleState.set(sessionId, state)
+    } else if (typeof state.runId === "number" && incomingRunId < state.runId) {
+      return
+    } else if (typeof state.runId === "number" && incomingRunId > state.runId) {
+      if (state.timer) {
+        clearTimeout(state.timer)
+      }
+      state = { timer: null, lastSendTime: 0, pendingUpdate: null, runId: incomingRunId }
+      sessionThrottleState.set(sessionId, state)
+    } else if (state.runId === undefined) {
+      state.runId = incomingRunId
+    }
+  }
 
   // Critical updates bypass the throttle entirely
   if (isCriticalUpdate(displayUpdate)) {
     // Flush any pending throttled update for this session first
-    const state = sessionThrottleState.get(sessionId)
     if (state?.timer) {
       clearTimeout(state.timer)
       state.timer = null
@@ -110,6 +137,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       timer: null,
       lastSendTime: Date.now(),
       pendingUpdate: null,
+      runId: typeof incomingRunId === "number" ? incomingRunId : state?.runId,
     })
 
     // Clean up throttle state when session completes
@@ -120,9 +148,13 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   }
 
   // Non-critical update — apply throttling
-  let state = sessionThrottleState.get(sessionId)
   if (!state) {
-    state = { timer: null, lastSendTime: 0, pendingUpdate: null }
+    state = {
+      timer: null,
+      lastSendTime: 0,
+      pendingUpdate: null,
+      runId: typeof incomingRunId === "number" ? incomingRunId : undefined,
+    }
     sessionThrottleState.set(sessionId, state)
   }
 
@@ -146,6 +178,12 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       state.timer = setTimeout(() => {
         const s = sessionThrottleState.get(sessionId)
         if (s?.pendingUpdate) {
+          const pendingRunId = s.pendingUpdate.runId
+          if (typeof pendingRunId === "number" && typeof s.runId === "number" && pendingRunId < s.runId) {
+            s.pendingUpdate = null
+            s.timer = null
+            return
+          }
           if (
             s.pendingUpdate.sessionId &&
             !s.pendingUpdate.isComplete &&

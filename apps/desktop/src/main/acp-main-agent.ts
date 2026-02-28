@@ -27,6 +27,8 @@ export interface ACPMainAgentOptions {
   forceNewSession?: boolean
   /** Session ID for progress tracking (from agentSessionTracker) */
   sessionId: string
+  /** Session run ID for stale-update filtering when session IDs are reused */
+  runId: number
   /** Callback for progress updates */
   onProgress?: (update: AgentProgressUpdate) => void
 }
@@ -52,7 +54,7 @@ export async function processTranscriptWithACPAgent(
   transcript: string,
   options: ACPMainAgentOptions
 ): Promise<ACPMainAgentResult> {
-  const { agentName, conversationId, forceNewSession, sessionId, onProgress } = options
+  const { agentName, conversationId, forceNewSession, sessionId, runId, onProgress } = options
 
   logApp(`[ACP Main] Processing transcript with agent ${agentName} for conversation ${conversationId}`)
 
@@ -116,6 +118,7 @@ export async function processTranscriptWithACPAgent(
   ) => {
     const update: AgentProgressUpdate = {
       sessionId,
+      runId,
       conversationId,
       currentIteration: 1,
       maxIterations: 1,
@@ -167,7 +170,7 @@ export async function processTranscriptWithACPAgent(
 
     // Register the ACP session → DotAgents session mapping
     // This is critical for routing tool approval requests to the correct UI session
-    setAcpToSpeakMcpSessionMapping(acpSessionId, sessionId)
+    setAcpToSpeakMcpSessionMapping(acpSessionId, sessionId, runId)
 
     // Set up progress listener for session updates
     const progressHandler = (event: {
@@ -353,4 +356,3 @@ export function startNewACPSession(conversationId: string): void {
   clearSessionForConversation(conversationId)
   logApp(`[ACP Main] Cleared session for conversation ${conversationId}`)
 }
-

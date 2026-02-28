@@ -18,6 +18,7 @@ export function setHeadlessMode(value: boolean): void {
 
 export interface AgentSessionState {
   sessionId: string
+  runId: number
   shouldStop: boolean
   iterationCount: number
   abortControllers: Set<AbortController>
@@ -50,8 +51,27 @@ export const state = {
   agentIterationCount: 0,
   llmAbortControllers: new Set<AbortController>(),
   agentSessions: new Map<string, AgentSessionState>(),
+  // Persist the most recent runId per sessionId so revived sessions continue monotonic run IDs.
+  // Bounded in size to avoid unbounded growth from one-off session IDs.
+  agentSessionRunCounters: new Map<string, number>(),
   panelAutoShowSuppressedUntil: 0,
   pendingToolApprovals: new Map<string, PendingToolApproval>(),
+}
+
+const MAX_TRACKED_SESSION_RUN_COUNTERS = 1000
+
+function rememberSessionRunId(sessionId: string, runId: number): void {
+  if (!Number.isFinite(runId) || runId < 0) return
+  if (state.agentSessionRunCounters.has(sessionId)) {
+    state.agentSessionRunCounters.delete(sessionId)
+  }
+  state.agentSessionRunCounters.set(sessionId, runId)
+
+  while (state.agentSessionRunCounters.size > MAX_TRACKED_SESSION_RUN_COUNTERS) {
+    const oldestSessionId = state.agentSessionRunCounters.keys().next().value as string | undefined
+    if (!oldestSessionId) break
+    state.agentSessionRunCounters.delete(oldestSessionId)
+  }
 }
 
 export const agentProcessManager = {
@@ -156,8 +176,10 @@ export const agentSessionStateManager = {
         existing.profileSnapshot = profileSnapshot
       }
     } else {
+      const previousRunId = state.agentSessionRunCounters.get(sessionId) ?? 0
       state.agentSessions.set(sessionId, {
         sessionId,
+        runId: previousRunId,
         shouldStop: false,
         iterationCount: 0,
         abortControllers: new Set(),
@@ -181,6 +203,22 @@ export const agentSessionStateManager = {
   getSessionProfileSnapshot(sessionId: string): SessionProfileSnapshot | undefined {
     const session = state.agentSessions.get(sessionId)
     return session?.profileSnapshot
+  },
+
+  // Start a new run for a session and return the new run ID.
+  startSessionRun(sessionId: string, profileSnapshot?: SessionProfileSnapshot): number {
+    this.createSession(sessionId, profileSnapshot)
+    const session = state.agentSessions.get(sessionId)!
+    session.runId += 1
+    session.shouldStop = false
+    rememberSessionRunId(sessionId, session.runId)
+    return session.runId
+  },
+
+  // Get current run ID for stale-update filtering.
+  getSessionRunId(sessionId: string): number | undefined {
+    const session = state.agentSessions.get(sessionId)
+    return session?.runId ?? state.agentSessionRunCounters.get(sessionId)
   },
 
   // Check if session is registered in the state manager
@@ -285,6 +323,8 @@ export const agentSessionStateManager = {
   cleanupSession(sessionId: string): void {
     const session = state.agentSessions.get(sessionId)
     if (session) {
+      rememberSessionRunId(sessionId, session.runId)
+
       // Abort any remaining controllers
       for (const controller of session.abortControllers) {
         try {

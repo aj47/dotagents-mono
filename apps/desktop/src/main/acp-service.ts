@@ -14,11 +14,11 @@ import { readFile, writeFile, mkdir, realpath } from "fs/promises"
 import { dirname } from "path"
 import { configStore } from "./config"
 import { ACPAgentConfig } from "../shared/types"
-import { toolApprovalManager } from "./state"
+import { toolApprovalManager, agentSessionStateManager } from "./state"
 import { agentProfileService } from "./agent-profile-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { logACP } from "./debug"
-import { getAppSessionForAcpSession } from "./acp-session-state"
+import { getAppRunIdForAcpSession, getAppSessionForAcpSession } from "./acp-session-state"
 
 // JSON-RPC types
 interface JsonRpcRequest {
@@ -900,6 +900,7 @@ class ACPService extends EventEmitter {
     // The ACP agent uses its own session IDs, but DotAgents' UI tracks progress
     // using its own session IDs from agentSessionTracker
     const appSessionId = getAppSessionForAcpSession(acpSessionId) || acpSessionId
+    const runId = getAppRunIdForAcpSession(acpSessionId) ?? agentSessionStateManager.getSessionRunId(appSessionId)
     logACP("NOTIFICATION", agentName, "session/request_permission", { acpSessionId, appSessionId })
 
     // Emit tool call status update for UI visibility
@@ -924,6 +925,7 @@ class ACPService extends EventEmitter {
     // Emit progress update to show pending approval in UI
     await emitAgentProgress({
       sessionId: appSessionId,
+      runId,
       currentIteration: 0,
       maxIterations: 1,
       steps: [
@@ -966,6 +968,7 @@ class ACPService extends EventEmitter {
     // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
     await emitAgentProgress({
       sessionId: appSessionId,
+      runId,
       currentIteration: 0,
       maxIterations: 1,
       steps: [
@@ -1071,6 +1074,7 @@ class ACPService extends EventEmitter {
 
     // Map ACP session ID to DotAgents session ID for UI routing
     const appSessionId = getAppSessionForAcpSession(acpSessionId) || acpSessionId
+    const runId = getAppRunIdForAcpSession(acpSessionId) ?? agentSessionStateManager.getSessionRunId(appSessionId)
 
     try {
       // Security check: Ensure path is absolute
@@ -1101,6 +1105,7 @@ class ACPService extends EventEmitter {
         // Emit progress update to show pending approval in UI
         await emitAgentProgress({
           sessionId: appSessionId,
+          runId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1132,6 +1137,7 @@ class ACPService extends EventEmitter {
         // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
         await emitAgentProgress({
           sessionId: appSessionId,
+          runId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1192,6 +1198,7 @@ class ACPService extends EventEmitter {
 
     // Map ACP session ID to DotAgents session ID for UI routing
     const appSessionId = getAppSessionForAcpSession(acpSessionId) || acpSessionId
+    const runId = getAppRunIdForAcpSession(acpSessionId) ?? agentSessionStateManager.getSessionRunId(appSessionId)
 
     try {
       // Security check: Ensure path is absolute
@@ -1231,6 +1238,7 @@ class ACPService extends EventEmitter {
         // Emit progress update to show pending approval in UI
         await emitAgentProgress({
           sessionId: appSessionId,
+          runId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1262,6 +1270,7 @@ class ACPService extends EventEmitter {
         // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
         await emitAgentProgress({
           sessionId: appSessionId,
+          runId,
           currentIteration: 0,
           maxIterations: 1,
           steps: [
@@ -1740,4 +1749,3 @@ class ACPService extends EventEmitter {
 }
 
 export const acpService = new ACPService()
-

@@ -93,10 +93,11 @@ class MessageQueueService {
   /**
    * Add a message to the queue for a conversation
    */
-  enqueue(conversationId: string, text: string): QueuedMessage {
+  enqueue(conversationId: string, text: string, sessionId?: string): QueuedMessage {
     const message: QueuedMessage = {
       id: this.generateMessageId(),
       conversationId,
+      sessionId,
       text,
       createdAt: Date.now(),
       status: "pending",

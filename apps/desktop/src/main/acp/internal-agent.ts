@@ -51,6 +51,8 @@ export interface InternalSubSession {
   id: string;
   /** Parent session ID that spawned this sub-session */
   parentSessionId: string;
+  /** Parent session run ID captured when this sub-session started */
+  parentRunId?: number;
   /** Current recursion depth (1 = first level sub-session) */
   depth: number;
   /** The task being executed */
@@ -231,6 +233,7 @@ function emitSubSessionDelegationProgress(
   // parent session as done in the UI while the main agent is still processing.
   emitAgentProgress({
     sessionId: parentSessionId,
+    runId: subSession.parentRunId ?? agentSessionStateManager.getSessionRunId(parentSessionId),
     currentIteration: 0,
     maxIterations: 1,
     isComplete: false,
@@ -338,6 +341,7 @@ export async function runInternalSubSession(
   const subSession: InternalSubSession = {
     id: subSessionId,
     parentSessionId,
+    parentRunId: agentSessionStateManager.getSessionRunId(parentSessionId),
     depth: subSessionDepth,
     task,
     status: 'pending',
@@ -757,4 +761,3 @@ export function getInternalAgentInfo() {
     maxConcurrent: MAX_CONCURRENT_SUB_SESSIONS,
   };
 }
-

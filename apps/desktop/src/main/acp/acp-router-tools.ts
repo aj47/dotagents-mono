@@ -13,6 +13,7 @@ import { acpBackgroundNotifier } from './acp-background-notifier';
 import { configStore } from '../config';
 import { acpService, ACPContentBlock } from '../acp-service';
 import { emitAgentProgress } from '../emit-agent-progress';
+import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
 import {
   runInternalSubSession,
@@ -100,6 +101,7 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
     runId,
     agentName: args.agentName,
     parentSessionId: args.parentSessionId,
+    parentRunId: agentSessionStateManager.getSessionRunId(args.parentSessionId),
     task: args.task,
     status: 'pending',
     startTime: now,
@@ -413,6 +415,7 @@ acpService.on('sessionUpdate', (event: {
   // parent session as done in the UI while the main agent is still processing.
   emitAgentProgress({
     sessionId: subAgentState.parentSessionId,
+    runId: subAgentState.parentRunId ?? agentSessionStateManager.getSessionRunId(subAgentState.parentSessionId),
     currentIteration: 0,
     maxIterations: 1,
     isComplete: false,

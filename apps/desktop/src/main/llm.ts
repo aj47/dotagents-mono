@@ -31,7 +31,11 @@ import {
   type SummarizationInput,
 } from "./summarization-service"
 import { memoryService } from "./memory-service"
-import { getSessionUserResponse, getSessionUserResponseHistory } from "./session-user-response-store"
+import {
+  clearSessionUserResponse,
+  getSessionUserResponse,
+  getSessionUserResponseHistory,
+} from "./session-user-response-store"
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
@@ -439,6 +443,7 @@ export async function processTranscriptWithAgentMode(
   sessionId?: string, // Session ID for progress routing and isolation
   onProgress?: (update: AgentProgressUpdate) => void, // Optional callback for external progress consumers (e.g., SSE)
   profileSnapshot?: SessionProfileSnapshot, // Profile snapshot for session isolation
+  runId?: number,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
 
@@ -446,6 +451,8 @@ export async function processTranscriptWithAgentMode(
   const currentConversationId = conversationId
   const currentSessionId =
     sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  // Clear any stale user response from prior runs that may have reused this session ID.
+  clearSessionUserResponse(currentSessionId)
   // Number of messages in the conversation history that predate this agent session.
   // Used by the UI to show only this session's messages while still saving full history.
   // When continuing a conversation, we set this to 0 so the UI shows the full history.
@@ -458,9 +465,16 @@ export async function processTranscriptWithAgentMode(
   const storedSnapshot = sessionId ? agentSessionStateManager.getSessionProfileSnapshot(sessionId) : undefined
   const effectiveProfileSnapshot = storedSnapshot ?? profileSnapshot
 
-  // Create session state for this agent run with profile snapshot for isolation
-  // Note: createSession is a no-op if the session already exists, so this is safe for resumed sessions
-  agentSessionStateManager.createSession(currentSessionId, effectiveProfileSnapshot)
+  // Ensure this run always has a concrete runId.
+  // - If caller already started the run (and passed runId), keep that ID.
+  // - Otherwise start a new run here for flows that call this function directly.
+  let effectiveRunId: number
+  if (typeof runId === "number") {
+    agentSessionStateManager.createSession(currentSessionId, effectiveProfileSnapshot)
+    effectiveRunId = runId
+  } else {
+    effectiveRunId = agentSessionStateManager.startSessionRun(currentSessionId, effectiveProfileSnapshot)
+  }
 
   // Track step summaries for dual-model mode
   const stepSummaries: import("../shared/types").AgentStepSummary[] = []
@@ -514,7 +528,7 @@ export async function processTranscriptWithAgentMode(
 
   // Create bound emitter that always includes sessionId, conversationId, snooze state, sessionStartIndex, conversationTitle, and contextInfo
   const emit = (
-    update: Omit<AgentProgressUpdate, 'sessionId' | 'conversationId' | 'isSnoozed' | 'conversationTitle'>,
+    update: Omit<AgentProgressUpdate, 'sessionId' | 'runId' | 'conversationId' | 'isSnoozed' | 'conversationTitle'>,
   ) => {
     const isSnoozed = agentSessionTracker.isSessionSnoozed(currentSessionId)
     const session = agentSessionTracker.getSession(currentSessionId)
@@ -558,6 +572,7 @@ export async function processTranscriptWithAgentMode(
       // Include response history if there are past responses
       ...(shouldEmitUserResponse && responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
       sessionId: currentSessionId,
+      runId: effectiveRunId,
       conversationId: currentConversationId,
       conversationTitle,
       isSnoozed,

@@ -122,7 +122,7 @@ function float32ToWav(samples: Float32Array, sampleRate: number): Buffer {
   return buffer
 }
 
-async function initializeMcpWithProgress(config: Config, sessionId: string): Promise<void> {
+async function initializeMcpWithProgress(config: Config, sessionId: string, runId?: number): Promise<void> {
   const shouldStop = () => agentSessionStateManager.shouldStopSession(sessionId)
   const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
 
@@ -134,6 +134,7 @@ async function initializeMcpWithProgress(config: Config, sessionId: string): Pro
 
   await emitAgentProgress({
     sessionId,
+    runId,
     currentIteration: 0,
     maxIterations: effectiveMaxIterations,
     steps: [
@@ -161,6 +162,7 @@ async function initializeMcpWithProgress(config: Config, sessionId: string): Pro
     if (currentStatus.isInitializing) {
       await emitAgentProgress({
         sessionId,
+        runId,
         currentIteration: 0,
         maxIterations: effectiveMaxIterations,
         steps: [
@@ -194,6 +196,7 @@ async function initializeMcpWithProgress(config: Config, sessionId: string): Pro
 
   await emitAgentProgress({
     sessionId,
+    runId,
     currentIteration: 0,
     maxIterations: effectiveMaxIterations,
     steps: [
@@ -229,35 +232,41 @@ async function processWithAgentMode(
 
     // Start tracking this agent session (or reuse existing one)
     const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed)
+    const runId = agentSessionStateManager.startSessionRun(sessionId)
 
-    // Process with ACP agent
-    const result = await processTranscriptWithACPAgent(text, {
-      agentName: config.mainAgentName,
-      conversationId: conversationId || sessionId,
-      sessionId,
-    })
+    try {
+      // Process with ACP agent
+      const result = await processTranscriptWithACPAgent(text, {
+        agentName: config.mainAgentName,
+        conversationId: conversationId || sessionId,
+        sessionId,
+        runId,
+      })
 
-    // Save assistant response to conversation history if we have a conversation ID
-    // Note: User message is already added by createMcpTextInput or processQueuedMessages
-    if (conversationId && result.response) {
-      await conversationService.addMessageToConversation(
-        conversationId,
-        result.response,
-        "assistant"
-      )
+      // Save assistant response to conversation history if we have a conversation ID
+      // Note: User message is already added by createMcpTextInput or processQueuedMessages
+      if (conversationId && result.response) {
+        await conversationService.addMessageToConversation(
+          conversationId,
+          result.response,
+          "assistant"
+        )
+      }
+
+      // Mark session as completed
+      if (result.success) {
+        logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
+        agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
+      } else {
+        logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
+        agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
+      }
+
+      logLLM(`[processWithAgentMode] ACP mode returning, queue processing should trigger in .finally()`)
+      return result.response || result.error || "No response from agent"
+    } finally {
+      agentSessionStateManager.cleanupSession(sessionId)
     }
-
-    // Mark session as completed
-    if (result.success) {
-      logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
-      agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
-    } else {
-      logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
-      agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
-    }
-
-    logLLM(`[processWithAgentMode] ACP mode returning, queue processing should trigger in .finally()`)
-    return result.response || result.error || "No response from agent"
   }
 
   // NOTE: Don't clear all agent progress here - we support multiple concurrent sessions
@@ -288,10 +297,11 @@ async function processWithAgentMode(
   let conversationTitle = text
   // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
 
   try {
     // Initialize MCP with progress feedback
-    await initializeMcpWithProgress(config, sessionId)
+    await initializeMcpWithProgress(config, sessionId, runId)
 
     // Register any existing MCP server processes with the agent process manager
     // This handles the case where servers were already initialized before agent mode was activated
@@ -317,6 +327,7 @@ async function processWithAgentMode(
         // Emit progress update with pending approval to show approve/deny buttons
         await emitAgentProgress({
           sessionId,
+          runId,
           currentIteration: 0, // Will be updated by the agent loop
           maxIterations: effectiveMaxIterations,
           steps: [],
@@ -334,6 +345,7 @@ async function processWithAgentMode(
         // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
         await emitAgentProgress({
           sessionId,
+          runId,
           currentIteration: 0,
           maxIterations: effectiveMaxIterations,
           steps: [],
@@ -431,6 +443,7 @@ async function processWithAgentMode(
       sessionId, // Pass session ID for progress routing and isolation
       undefined, // onProgress callback (not used here, progress is emitted via emitAgentProgress)
       profileSnapshot, // Pass profile snapshot for session isolation
+      runId,
     )
 
     // Mark session as completed
@@ -445,6 +458,7 @@ async function processWithAgentMode(
     // Emit error progress update to the UI so users see the error message
     await emitAgentProgress({
       sessionId,
+      runId,
       conversationId: conversationId || "",
       conversationTitle: conversationTitle,
       currentIteration: 1,
@@ -580,16 +594,26 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
         const shouldStartSnoozed = !isPanelVisible
         logLLM(`[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${shouldStartSnoozed}`)
 
-        // Find and revive the existing session for this conversation to maintain session continuity
-        // This ensures queued messages execute in the same session context as the original conversation
+        // Prefer the exact session captured at enqueue time for strict same-session semantics.
+        // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
         let existingSessionId: string | undefined
-        const foundSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-        if (foundSessionId) {
+        const fallbackSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
+        const candidateSessionIds = [queuedMessage.sessionId, fallbackSessionId].filter(
+          (sessionId, index, list): sessionId is string =>
+            typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
+        )
+
+        for (const candidateSessionId of candidateSessionIds) {
           // Only start snoozed if panel is not visible
-          const revived = agentSessionTracker.reviveSession(foundSessionId, shouldStartSnoozed)
+          const revived = agentSessionTracker.reviveSession(candidateSessionId, shouldStartSnoozed)
           if (revived) {
-            existingSessionId = foundSessionId
+            existingSessionId = candidateSessionId
             logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${shouldStartSnoozed}`)
+            break
+          }
+
+          if (candidateSessionId === queuedMessage.sessionId) {
+            logLLM(`[processQueuedMessages] Preferred queued session ${candidateSessionId} could not be revived, trying fallback lookup`)
           }
         }
 
@@ -906,11 +930,14 @@ export const router = {
         logLLM(`[stopAgentSession] Paused queue for conversation ${session.conversationId}`)
       }
 
+      const runId = agentSessionStateManager.getSessionRunId(input.sessionId)
+
       // Immediately emit a final progress update with isComplete: true
       // This ensures the UI updates immediately without waiting for the agent loop
       // to detect the stop signal and emit its own final update
       await emitAgentProgress({
         sessionId: input.sessionId,
+        runId,
         currentIteration: 0,
         maxIterations: 0,
         steps: [
@@ -1493,7 +1520,7 @@ export const router = {
             const session = agentSessionTracker.getSession(activeSessionId)
             if (session && session.status === "active") {
               // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, input.text)
+              const queuedMessage = messageQueueService.enqueue(conversationId, input.text, activeSessionId)
               logApp(`[createMcpTextInput] Queued message ${queuedMessage.id} for active session ${activeSessionId}`)
               return { conversationId, queued: true, queuedMessageId: queuedMessage.id }
             }
@@ -1685,7 +1712,7 @@ export const router = {
             )
 
             // Queue the transcript instead of processing immediately
-            const queuedMessage = messageQueueService.enqueue(input.conversationId, transcript)
+            const queuedMessage = messageQueueService.enqueue(input.conversationId, transcript, activeSessionId)
             logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
 
             return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }

@@ -1,6 +1,7 @@
 import { Notification } from 'electron'
 import { acpClientService } from './acp-client-service'
 import { emitAgentProgress } from '../emit-agent-progress'
+import { agentSessionStateManager } from '../state'
 import type { ACPDelegationProgress } from '../../shared/types'
 import { logApp } from '../debug'
 import type { ACPSubAgentState } from './types'
@@ -165,6 +166,7 @@ export class ACPBackgroundNotifier {
     // Setting isComplete: true here would incorrectly mark the parent session as done.
     await emitAgentProgress({
       sessionId: state.parentSessionId,
+      runId: state.parentRunId ?? agentSessionStateManager.getSessionRunId(state.parentSessionId),
       currentIteration: 0,
       maxIterations: 1,
       isComplete: false,
@@ -223,4 +225,3 @@ export class ACPBackgroundNotifier {
 }
 
 export const acpBackgroundNotifier = new ACPBackgroundNotifier()
-

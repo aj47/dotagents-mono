@@ -28,6 +28,9 @@ const conversationSessions: Map<string, ACPSessionInfo> = new Map()
 // Mapping from ACP session ID → DotAgents session ID
 // This is needed for routing tool approval requests to the correct UI session
 const acpToAppSession: Map<string, string> = new Map()
+// Mapping from ACP session ID → DotAgents run ID
+// Used so ACP-originated updates can be tagged with the originating run.
+const acpToAppRunId: Map<string, number> = new Map()
 
 /**
  * Get the ACP session for a conversation (if any).
@@ -120,9 +123,15 @@ export function touchSession(conversationId: string): void {
  */
 export function setAcpToAppSessionMapping(
   acpSessionId: string,
-  appSessionId: string
+  appSessionId: string,
+  appRunId?: number,
 ): void {
   acpToAppSession.set(acpSessionId, appSessionId)
+  if (typeof appRunId === "number") {
+    acpToAppRunId.set(acpSessionId, appRunId)
+  } else {
+    acpToAppRunId.delete(acpSessionId)
+  }
   logApp(`[ACP Session] Mapped ACP session ${acpSessionId} → app session ${appSessionId}`)
 }
 
@@ -142,16 +151,25 @@ export function getAppSessionForAcpSession(acpSessionId: string): string | undef
 export const getSpeakMcpSessionForAcpSession = getAppSessionForAcpSession
 
 /**
+ * Get the DotAgents run ID for a given ACP session ID.
+ * @param acpSessionId The ACP agent's session ID
+ * @returns The DotAgents run ID, or undefined if not mapped
+ */
+export function getAppRunIdForAcpSession(acpSessionId: string): number | undefined {
+  return acpToAppRunId.get(acpSessionId)
+}
+
+/**
  * Clear the ACP → DotAgents session mapping.
  * @param acpSessionId The ACP session ID to remove
  */
 export function clearAcpToAppSessionMapping(acpSessionId: string): void {
   if (acpToAppSession.has(acpSessionId)) {
     acpToAppSession.delete(acpSessionId)
+    acpToAppRunId.delete(acpSessionId)
     logApp(`[ACP Session] Cleared ACP → app session mapping for ${acpSessionId}`)
   }
 }
 
 /** @deprecated Use clearAcpToAppSessionMapping instead */
 export const clearAcpToSpeakMcpSessionMapping = clearAcpToAppSessionMapping
-

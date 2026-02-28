@@ -198,6 +198,9 @@ export interface AgentProgressStep {
 
 export interface AgentProgressUpdate {
   sessionId: string
+  // Monotonic run counter for a reused session ID.
+  // Lets the renderer ignore stale updates from older runs.
+  runId?: number
   conversationId?: string
   conversationTitle?: string
   currentIteration: number
@@ -343,6 +346,8 @@ export interface AgentMemory {
 export interface QueuedMessage {
   id: string
   conversationId: string
+  // Session that was active when this message was queued.
+  sessionId?: string
   text: string
   createdAt: number
   status: "pending" | "processing" | "cancelled" | "failed"
