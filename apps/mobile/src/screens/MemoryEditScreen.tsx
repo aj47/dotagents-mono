@@ -45,7 +45,8 @@ export default function MemoryEditScreen({ navigation, route }: any) {
 
   const memoryFromRoute = route.params?.memory as Memory | undefined;
   const memoryId = route.params?.memoryId as string | undefined;
-  const isEditing = !!memoryId;
+  const effectiveMemoryId = memoryId ?? memoryFromRoute?.id;
+  const isEditing = !!effectiveMemoryId;
 
   const [formData, setFormData] = useState<MemoryFormData>(() =>
     memoryFromRoute
@@ -75,7 +76,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   }, [isEditing, navigation]);
 
   useEffect(() => {
-    if (!isEditing || memoryFromRoute || !settingsClient || !memoryId) {
+    if (!isEditing || memoryFromRoute || !settingsClient || !effectiveMemoryId) {
       return;
     }
     let cancelled = false;
@@ -84,7 +85,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     settingsClient.getMemories()
       .then((res) => {
         if (cancelled) return;
-        const memory = res.memories.find(m => m.id === memoryId);
+        const memory = res.memories.find(m => m.id === effectiveMemoryId);
         if (!memory) {
           setError('Memory not found');
           return;
@@ -106,7 +107,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
       });
 
     return () => { cancelled = true; };
-  }, [isEditing, memoryFromRoute, settingsClient, memoryId]);
+  }, [effectiveMemoryId, isEditing, memoryFromRoute, settingsClient]);
 
   const updateField = useCallback(<K extends keyof MemoryFormData>(key: K, value: MemoryFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -125,14 +126,14 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     setError(null);
     try {
       const tags = parseTags(formData.tagsInput);
-      if (isEditing && memoryId) {
+      if (isEditing && effectiveMemoryId) {
         const updatePayload: MemoryUpdateRequest = {
           title,
           content,
           importance: formData.importance,
           tags,
         };
-        await settingsClient.updateMemory(memoryId, updatePayload);
+        await settingsClient.updateMemory(effectiveMemoryId, updatePayload);
       } else {
         const createPayload: MemoryCreateRequest = {
           title,
@@ -148,7 +149,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
     } finally {
       setIsSaving(false);
     }
-  }, [formData, isEditing, memoryId, navigation, settingsClient]);
+  }, [effectiveMemoryId, formData, isEditing, navigation, settingsClient]);
 
   if (isLoading) {
     return (

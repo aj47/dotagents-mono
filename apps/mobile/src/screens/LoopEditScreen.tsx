@@ -44,7 +44,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
   const loopFromRoute = route.params?.loop as Loop | undefined;
   const loopId = route.params?.loopId as string | undefined;
-  const isEditing = !!loopId;
+  const effectiveLoopId = loopId ?? loopFromRoute?.id;
+  const isEditing = !!effectiveLoopId;
 
   const [formData, setFormData] = useState<LoopFormData>(() =>
     loopFromRoute
@@ -99,7 +100,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   }, [settingsClient]);
 
   useEffect(() => {
-    if (!isEditing || loopFromRoute || !settingsClient || !loopId) {
+    if (!isEditing || loopFromRoute || !settingsClient || !effectiveLoopId) {
       return;
     }
     let cancelled = false;
@@ -108,7 +109,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     settingsClient.getLoops()
       .then((res) => {
         if (cancelled) return;
-        const loop = res.loops.find(l => l.id === loopId);
+        const loop = res.loops.find(l => l.id === effectiveLoopId);
         if (!loop) {
           setError('Loop not found');
           return;
@@ -131,7 +132,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       });
 
     return () => { cancelled = true; };
-  }, [isEditing, loopFromRoute, settingsClient, loopId]);
+  }, [effectiveLoopId, isEditing, loopFromRoute, settingsClient]);
 
   const updateField = useCallback(<K extends keyof LoopFormData>(key: K, value: LoopFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -142,20 +143,21 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
     const name = formData.name.trim();
     const prompt = formData.prompt.trim();
-    const intervalMinutes = Number.parseInt(formData.intervalMinutes, 10);
+    const intervalInput = formData.intervalMinutes.trim();
+    const intervalMinutes = Number(intervalInput);
     if (!name || !prompt) {
       setError('Name and prompt are required');
       return;
     }
-    if (!Number.isFinite(intervalMinutes) || intervalMinutes < 1) {
-      setError('Interval must be a positive number of minutes');
+    if (!/^\d+$/.test(intervalInput) || !Number.isInteger(intervalMinutes) || intervalMinutes < 1) {
+      setError('Interval must be a positive whole number of minutes');
       return;
     }
 
     setIsSaving(true);
     setError(null);
     try {
-      if (isEditing && loopId) {
+      if (isEditing && effectiveLoopId) {
         const updatePayload: LoopUpdateRequest = {
           name,
           prompt,
@@ -163,7 +165,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
         };
-        await settingsClient.updateLoop(loopId, updatePayload);
+        await settingsClient.updateLoop(effectiveLoopId, updatePayload);
       } else {
         const createPayload: LoopCreateRequest = {
           name,
@@ -180,7 +182,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     } finally {
       setIsSaving(false);
     }
-  }, [formData, isEditing, loopId, navigation, settingsClient]);
+  }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
 
   if (isLoading) {
     return (
