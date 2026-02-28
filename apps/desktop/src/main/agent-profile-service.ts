@@ -660,7 +660,12 @@ class AgentProfileService {
    * Get external agents (ACP/stdio/remote agents).
    */
   getExternalAgents(): AgentProfile[] {
-    return this.getByRole("external-agent")
+    return this.getAll().filter((profile) =>
+      profile.role === "external-agent"
+      || profile.connection.type === "acp"
+      || profile.connection.type === "stdio"
+      || profile.connection.type === "remote"
+    )
   }
 
   /**

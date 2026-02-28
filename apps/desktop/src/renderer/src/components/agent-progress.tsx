@@ -1307,7 +1307,7 @@ const SubAgentConversationMessage: React.FC<{
   const getRoleIcon = () => {
     switch (message.role) {
       case 'user': return "📤"
-      case 'assistant': return "🤖"
+      case 'assistant': return null
       case 'tool': return "🔧"
       default: return "💬"
     }
@@ -1331,7 +1331,9 @@ const SubAgentConversationMessage: React.FC<{
         )}
         onClick={shouldShowToggle ? onToggleExpand : undefined}
       >
-        <span className="opacity-60 mt-0.5 flex-shrink-0">{getRoleIcon()}</span>
+        {getRoleIcon() && (
+          <span className="opacity-60 mt-0.5 flex-shrink-0">{getRoleIcon()}</span>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">

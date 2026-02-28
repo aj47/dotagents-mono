@@ -42,11 +42,20 @@ export const acpRouterToolDefinitions = [
         },
         task: {
           type: 'string',
-          description: 'Description of the task to delegate',
+          description: 'Description of the task to delegate. Required unless prepareOnly is true.',
         },
         context: {
           type: 'string',
           description: 'Optional additional context for the agent',
+        },
+        workingDirectory: {
+          type: 'string',
+          description: 'Optional working directory override for this delegation. Relative paths resolve from workspace root.',
+        },
+        prepareOnly: {
+          type: 'boolean',
+          description: 'If true, only prepare/spawn the agent without running the task (default: false).',
+          default: false,
         },
         waitForResult: {
           type: 'boolean',
@@ -54,7 +63,7 @@ export const acpRouterToolDefinitions = [
           default: true,
         },
       },
-      required: ['agentName', 'task'],
+      required: ['agentName'],
     },
   },
   {
@@ -80,13 +89,17 @@ export const acpRouterToolDefinitions = [
   {
     name: 'spawn_agent',
     description:
-      'Spawn a new instance of an ACP agent. Use when you need to ensure an agent is ready before delegating.',
+      'Prepare an ACP agent for delegation without executing a task. Compatibility wrapper around delegate_to_agent with prepareOnly=true.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         agentName: {
           type: 'string',
           description: 'Name of the agent to spawn',
+        },
+        workingDirectory: {
+          type: 'string',
+          description: 'Optional working directory override for spawn. Relative paths resolve from workspace root.',
         },
       },
       required: ['agentName'],
@@ -140,11 +153,20 @@ export const acpRouterToolDefinitions = [
         },
         task: {
           type: 'string',
-          description: 'Description of the task to send',
+          description: 'Description of the task to send. Required unless prepareOnly is true.',
         },
         context: {
           type: 'string',
           description: 'Optional additional context for the agent',
+        },
+        workingDirectory: {
+          type: 'string',
+          description: 'Optional working directory override for this delegation. Relative paths resolve from workspace root.',
+        },
+        prepareOnly: {
+          type: 'boolean',
+          description: 'If true, only prepare/spawn the agent without running the task (default: false).',
+          default: false,
         },
         contextId: {
           type: 'string',
@@ -156,7 +178,7 @@ export const acpRouterToolDefinitions = [
           default: true,
         },
       },
-      required: ['agentName', 'task'],
+      required: ['agentName'],
     },
   },
 ];

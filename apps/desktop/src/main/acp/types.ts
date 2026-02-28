@@ -100,6 +100,8 @@ export interface ACPRunRequest {
   sessionId?: string;
   /** Parent session ID - links to main DotAgents session */
   parentSessionId?: string;
+  /** Optional per-request working directory override */
+  workingDirectory?: string;
   /** Timeout in milliseconds for this specific run */
   timeout?: number;
   /** External abort signal to cancel the request */
@@ -146,6 +148,8 @@ export interface ACPSubAgentState {
   parentRunId?: number;
   /** Description of the task delegated to this sub-agent */
   task: string;
+  /** Optional working directory override used for this delegated run */
+  workingDirectory?: string;
   /** Current status of the sub-agent run */
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   /** Timestamp when the sub-agent run started */

@@ -2,10 +2,20 @@
 
 ## 🔧 Quick Start: Enable Debug Logging
 
-**Always start with debug logging enabled** - this captures LLM calls, tool execution, UI events, and app lifecycle:
+**Always start with a debug port + debug logging enabled** - this captures LLM calls, tool execution, UI events, and app lifecycle:
 
 ```bash
-pnpm dev -- -d              # Enable ALL debug logging (recommended)
+# Pick any free port. It does NOT need to be 9222.
+# (Different worktrees may already be using common ports.)
+REMOTE_DEBUGGING_PORT=9333 pnpm dev -- -d
+```
+
+Then connect via Chrome DevTools: `chrome://inspect` → Configure → `localhost:9333`.
+
+If you also need programmatic CDP automation (`electron_execute_electron-native`), add a Node inspect port too:
+
+```bash
+REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -d
 ```
 
 Selective flags:

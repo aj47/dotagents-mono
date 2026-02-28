@@ -96,6 +96,7 @@ export class ACPClientService {
           agent_name: request.agentName,
           input: formatInput(request.input),
           mode: 'sync',
+          cwd: request.workingDirectory,
         }),
         signal: controller.signal,
       });
@@ -158,6 +159,7 @@ export class ACPClientService {
           agent_name: request.agentName,
           input: formatInput(request.input),
           mode: 'async',
+          cwd: request.workingDirectory,
         }),
         signal: controller.signal,
       });
@@ -252,6 +254,7 @@ export class ACPClientService {
           agent_name: request.agentName,
           input: formatInput(request.input),
           mode: 'stream',
+          cwd: request.workingDirectory,
         }),
         signal: controller.signal,
       });

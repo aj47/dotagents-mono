@@ -82,6 +82,7 @@ interface CreateSubAgentStateArgs {
   agentName: string;
   task: string;
   parentSessionId: string;
+  workingDirectory?: string;
   isInternal?: boolean;
 }
 
@@ -103,6 +104,7 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
     parentSessionId: args.parentSessionId,
     parentRunId: agentSessionStateManager.getSessionRunId(args.parentSessionId),
     task: args.task,
+    workingDirectory: args.workingDirectory,
     status: 'pending',
     startTime: now,
     isInternal: args.isInternal,
@@ -237,6 +239,15 @@ function truncateContent(content: string, maxSize: number): string {
 }
 
 /**
+ * Hard-cap content without appending ellipsis.
+ * Keeps prefix checks stable for stream merge (delta vs cumulative snapshot detection).
+ */
+function capContent(content: string, maxSize: number): string {
+  if (content.length <= maxSize) return content;
+  return content.substring(0, maxSize);
+}
+
+/**
  * Safely stringify a value to JSON, catching errors from circular structures or BigInt.
  * Returns a fallback string if serialization fails.
  */
@@ -247,6 +258,58 @@ function safeJsonStringify(value: unknown, indent?: number): string {
     // Handle circular references, BigInt, or other non-serializable values
     return '[Unable to serialize value]';
   }
+}
+
+/**
+ * Merge streaming assistant text into the latest assistant message.
+ *
+ * ACP agents may emit either token deltas ("he" + "llo") or cumulative snapshots
+ * ("he" then "hello"). This helper handles both to avoid one-message-per-token UI spam.
+ */
+function mergeAssistantStreamText(
+  conversation: ACPSubAgentMessage[],
+  text: string,
+  timestamp: number
+): void {
+  if (!text) return;
+
+  const normalizedText = capContent(text, MAX_MESSAGE_CONTENT_SIZE);
+  const lastMessage = conversation[conversation.length - 1];
+
+  if (lastMessage?.role === 'assistant' && !lastMessage.toolName) {
+    const previous = lastMessage.content || '';
+
+    if (normalizedText === previous) {
+      return;
+    }
+
+    if (normalizedText.startsWith(previous)) {
+      // Cumulative snapshot update: replace with the fuller content.
+      lastMessage.content = normalizedText;
+      lastMessage.timestamp = timestamp;
+      return;
+    }
+
+    if (previous.startsWith(normalizedText)) {
+      // Older/stale partial chunk arrived after a newer one; ignore it.
+      return;
+    }
+
+    // Delta chunk: append.
+    const merged = capContent(previous + normalizedText, MAX_MESSAGE_CONTENT_SIZE);
+    if (merged === previous) {
+      return;
+    }
+    lastMessage.content = merged;
+    lastMessage.timestamp = timestamp;
+    return;
+  }
+
+  conversation.push({
+    role: 'assistant',
+    content: normalizedText,
+    timestamp,
+  });
 }
 
 /**
@@ -263,7 +326,8 @@ function prepareConversationForUI(conversation: ACPSubAgentMessage[]): ACPSubAge
   // Process from end to start to keep most recent messages
   for (let i = recentMessages.length - 1; i >= 0; i--) {
     const msg = recentMessages[i];
-    const msgSize = msg.content.length;
+    const truncatedContent = truncateContent(msg.content, MAX_MESSAGE_CONTENT_SIZE);
+    const msgSize = truncatedContent.length;
 
     if (totalSize + msgSize > MAX_CONVERSATION_SIZE_FOR_UI) {
       // Add a truncation notice at the start
@@ -278,7 +342,7 @@ function prepareConversationForUI(conversation: ACPSubAgentMessage[]): ACPSubAge
     totalSize += msgSize;
     result.unshift({
       ...msg,
-      content: truncateContent(msg.content, MAX_MESSAGE_CONTENT_SIZE),
+      content: truncatedContent,
     });
   }
 
@@ -356,16 +420,15 @@ acpService.on('sessionUpdate', (event: {
   // Convert content blocks to conversation messages with size limits
   if (content && Array.isArray(content)) {
     for (const block of content) {
+      const now = Date.now();
       const message: ACPSubAgentMessage = {
         role: 'assistant',
         content: '',
-        timestamp: Date.now(),
+        timestamp: now,
       };
 
       if (block.type === 'text' && block.text) {
-        // Truncate individual message content
-        message.content = truncateContent(block.text, MAX_MESSAGE_CONTENT_SIZE);
-        conversation.push(message);
+        mergeAssistantStreamText(conversation, block.text, now);
       } else if (block.type === 'tool_use' && block.name) {
         message.role = 'tool';
         message.toolName = block.name;
@@ -578,36 +641,69 @@ export async function handleListAvailableAgents(args: {
 export async function handleDelegateToAgent(
   args: {
     agentName: string;
-    task: string;
+    task?: string;
     context?: string;
+    workingDirectory?: string;
+    prepareOnly?: boolean;
     waitForResult?: boolean;
   },
   parentSessionId?: string
 ): Promise<object> {
+  const normalizedAgentName = typeof args.agentName === 'string'
+    ? args.agentName.trim()
+    : '';
+  const normalizedWorkingDirectory = args.workingDirectory?.trim() || undefined;
+  const prepareOnly = args.prepareOnly === true;
+  const hasTask = typeof args.task === 'string' && args.task.trim().length > 0;
+
+  if (!normalizedAgentName) {
+    return {
+      success: false,
+      error: 'Missing required parameter: agentName',
+    };
+  }
+
+  if (!prepareOnly && !hasTask) {
+    return {
+      success: false,
+      error: 'Missing required parameter: task must be provided unless prepareOnly is true',
+    };
+  }
+
+  const normalizedArgs = {
+    ...args,
+    agentName: normalizedAgentName,
+    task: hasTask
+      ? args.task!.trim()
+      : `Prepare agent "${normalizedAgentName}" for future delegated work.`,
+    workingDirectory: normalizedWorkingDirectory,
+    prepareOnly,
+  };
+
   const waitForResult = args.waitForResult !== false; // Default to true
 
   // Try unified agent profile lookup first
-  const profile = agentProfileService.getByName(args.agentName);
+  const profile = agentProfileService.getByName(normalizedArgs.agentName);
   if (profile) {
     // Check if agent is enabled
     if (!profile.enabled) {
       return {
         success: false,
-        error: `Agent "${args.agentName}" is currently disabled.`,
+        error: `Agent "${normalizedArgs.agentName}" is currently disabled.`,
       };
     }
 
     // Route based on connection type using the unified profile
-    return executeAgentProfileDelegation(profile, args, parentSessionId, waitForResult);
+    return executeAgentProfileDelegation(profile, normalizedArgs, parentSessionId, waitForResult);
   }
 
   // BACKWARD COMPATIBILITY: Handle explicit 'internal' agent name
-  if (args.agentName === 'internal') {
-    return executeInternalAgent(args, parentSessionId, waitForResult);
+  if (normalizedArgs.agentName === 'internal') {
+    return executeInternalAgent(normalizedArgs, parentSessionId, waitForResult);
   }
 
   // BACKWARD COMPATIBILITY: Fall back to legacy ACP agent lookup from config
-  return executeACPAgent(args, parentSessionId, waitForResult);
+  return executeACPAgent(normalizedArgs, parentSessionId, waitForResult);
 }
 
 /**
@@ -616,7 +712,13 @@ export async function handleDelegateToAgent(
  */
 async function executeAgentProfileDelegation(
   profile: AgentProfile,
-  args: { agentName: string; task: string; context?: string },
+  args: {
+    agentName: string;
+    task: string;
+    context?: string;
+    workingDirectory?: string;
+    prepareOnly?: boolean;
+  },
   parentSessionId: string | undefined,
   waitForResult: boolean
 ): Promise<object> {
@@ -676,7 +778,13 @@ function buildProfileContext(profile: AgentProfile, existingContext?: string): s
  * Can optionally run as a specific persona when personaName is provided.
  */
 async function executeInternalAgent(
-  args: { task: string; context?: string; personaName?: string },
+  args: {
+    task: string;
+    context?: string;
+    personaName?: string;
+    workingDirectory?: string;
+    prepareOnly?: boolean;
+  },
   parentSessionId: string | undefined,
   waitForResult: boolean
 ): Promise<object> {
@@ -686,18 +794,32 @@ async function executeInternalAgent(
     return { success: false, error: 'Internal agent is disabled' };
   }
 
+  // Use persona name for agent identification if provided, otherwise 'internal'
+  const agentName = args.personaName || 'internal';
+
+  if (args.prepareOnly) {
+    return {
+      success: true,
+      prepared: true,
+      agentName,
+      status: 'ready',
+      message: `Internal agent "${agentName}" is always available and does not require spawning.`,
+      note: args.workingDirectory
+        ? 'workingDirectory is ignored for internal agent delegation.'
+        : undefined,
+    };
+  }
+
   if (!parentSessionId) {
     return { success: false, error: 'Parent session ID is required for internal agent delegation' };
   }
-
-  // Use persona name for agent identification if provided, otherwise 'internal'
-  const agentName = args.personaName || 'internal';
 
   // Create unified sub-agent state (conversation initialized automatically)
   const subAgentState = createSubAgentState({
     agentName,
     task: args.task,
     parentSessionId,
+    workingDirectory: args.workingDirectory,
     isInternal: true,
   });
   subAgentState.status = 'running';
@@ -736,39 +858,128 @@ async function executeInternalAgent(
 }
 
 /**
+ * Normalized agent configuration used by ACP delegation/spawn/stop handlers.
+ * Prefers unified AgentProfile data, with legacy config fallback.
+ */
+interface ResolvedAcpAgentConfig {
+  source: 'profile' | 'legacy';
+  name: string;
+  enabled: boolean;
+  connectionType: 'acp' | 'stdio' | 'remote' | 'internal';
+  baseUrl?: string;
+}
+
+/**
+ * Resolve an ACP-capable agent by name from AgentProfile first, then legacy config.
+ */
+function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null {
+  const profile = agentProfileService.getByName(agentName);
+  if (profile) {
+    return {
+      source: 'profile',
+      name: profile.name,
+      enabled: profile.enabled !== false,
+      connectionType: profile.connection.type,
+      baseUrl: profile.connection.baseUrl,
+    };
+  }
+
+  const config = configStore.get();
+  const legacy = config.acpAgents?.find((a) => a.name === agentName);
+  if (!legacy) {
+    return null;
+  }
+
+  return {
+    source: 'legacy',
+    name: legacy.name,
+    enabled: legacy.enabled !== false,
+    connectionType: legacy.connection.type,
+    baseUrl: legacy.connection.baseUrl,
+  };
+}
+
+/**
  * Execute delegation to an external ACP agent (stdio or remote).
  * Handles both synchronous and asynchronous execution modes.
  */
 async function executeACPAgent(
-  args: { agentName: string; task: string; context?: string },
+  args: {
+    agentName: string;
+    task: string;
+    context?: string;
+    workingDirectory?: string;
+    prepareOnly?: boolean;
+  },
   parentSessionId: string | undefined,
   waitForResult: boolean
 ): Promise<object> {
   try {
-    // Check if agent exists in config
-    const config = configStore.get();
-    const agentConfig = config.acpAgents?.find((a) => a.name === args.agentName);
-    if (!agentConfig) {
-      return { success: false, error: `Agent "${args.agentName}" not found in configuration` };
+    const resolvedAgent = resolveAcpAgentConfig(args.agentName);
+    if (!resolvedAgent) {
+      return {
+        success: false,
+        error: `Agent "${args.agentName}" not found in agent profiles or legacy configuration`,
+      };
     }
 
-    if (agentConfig.enabled === false) {
+    if (!resolvedAgent.enabled) {
       return { success: false, error: `Agent "${args.agentName}" is disabled` };
     }
 
-    // Ensure stdio agents are spawned
-    if (agentConfig.connection.type === 'stdio') {
-      const agentStatus = acpService.getAgentStatus(args.agentName);
-      if (agentStatus?.status !== 'ready') {
-        try {
-          await acpService.spawnAgent(args.agentName);
-        } catch (spawnError) {
-          return {
-            success: false,
-            error: `Failed to spawn agent "${args.agentName}": ${spawnError instanceof Error ? spawnError.message : String(spawnError)}`,
-          };
-        }
+    let spawnResult: Awaited<ReturnType<typeof acpService.spawnAgent>> | null = null;
+
+    // Ensure local ACP/stdio agents are spawned
+    if (resolvedAgent.connectionType === 'acp' || resolvedAgent.connectionType === 'stdio') {
+      try {
+        spawnResult = await acpService.spawnAgent(args.agentName, {
+          workingDirectory: args.workingDirectory,
+        });
+      } catch (spawnError) {
+        return {
+          success: false,
+          error: `Failed to spawn agent "${args.agentName}": ${spawnError instanceof Error ? spawnError.message : String(spawnError)}`,
+        };
       }
+    } else if (resolvedAgent.connectionType === 'internal') {
+      return {
+        success: false,
+        error: `Agent "${args.agentName}" is configured as internal and cannot be delegated through external ACP routing`,
+      };
+    }
+
+    if (args.prepareOnly) {
+      if (resolvedAgent.connectionType === 'remote') {
+        return {
+          success: true,
+          prepared: true,
+          agentName: args.agentName,
+          status: 'ready',
+          message: `Remote agent "${args.agentName}" is externally managed and ready for delegation.`,
+          note: args.workingDirectory
+            ? 'workingDirectory is ignored for remote ACP agents unless the remote server supports it.'
+            : undefined,
+        };
+      }
+
+      return {
+        success: true,
+        prepared: true,
+        agentName: args.agentName,
+        status: 'ready',
+        message: `Agent "${args.agentName}" is ready for delegated work.`,
+        effectiveWorkingDirectory: spawnResult?.effectiveWorkingDirectory,
+        reusedExistingProcess: spawnResult?.reusedExistingProcess,
+        restartedProcess: spawnResult?.restartedProcess,
+      };
+    }
+
+    if (waitForResult && resolvedAgent.connectionType === 'remote') {
+      return {
+        success: false,
+        error: `Remote agent "${args.agentName}" does not support synchronous delegation in this path. ` +
+          'Use waitForResult=false to run asynchronously.',
+      };
     }
 
     // Create unified sub-agent state (conversation initialized automatically)
@@ -776,6 +987,7 @@ async function executeACPAgent(
       agentName: args.agentName,
       task: args.task,
       parentSessionId: parentSessionId || `orphaned-${Date.now()}`,
+      workingDirectory: args.workingDirectory,
     });
     subAgentState.status = 'running';
     registerAgentRunMapping(args.agentName, subAgentState.runId);
@@ -791,7 +1003,7 @@ async function executeACPAgent(
     if (waitForResult) {
       return executeACPAgentSync(subAgentState, args, registerSessionMapping);
     } else {
-      return executeACPAgentAsync(subAgentState, args, agentConfig, parentSessionId, registerSessionMapping);
+      return executeACPAgentAsync(subAgentState, args, resolvedAgent, parentSessionId, registerSessionMapping);
     }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -803,7 +1015,7 @@ async function executeACPAgent(
  */
 async function executeACPAgentSync(
   subAgentState: DelegatedRun,
-  args: { agentName: string; task: string; context?: string },
+  args: { agentName: string; task: string; context?: string; workingDirectory?: string },
   registerSessionMapping: () => void
 ): Promise<object> {
   try {
@@ -813,6 +1025,7 @@ async function executeACPAgentSync(
       agentName: args.agentName,
       input: args.task,
       context: args.context,
+      workingDirectory: args.workingDirectory,
       mode: 'sync',
     });
 
@@ -820,11 +1033,7 @@ async function executeACPAgentSync(
 
     // Add final assistant message if we got a result
     if (result.result) {
-      subAgentState.conversation.push({
-        role: 'assistant',
-        content: result.result,
-        timestamp: Date.now(),
-      });
+      mergeAssistantStreamText(subAgentState.conversation, result.result, Date.now());
     }
 
     // Note: Don't cleanup delegation mappings here - the sessionUpdate handler
@@ -849,21 +1058,25 @@ async function executeACPAgentSync(
  */
 function executeACPAgentAsync(
   subAgentState: DelegatedRun,
-  args: { agentName: string; task: string; context?: string },
-  agentConfig: NonNullable<ReturnType<typeof configStore.get>['acpAgents']>[number],
+  args: { agentName: string; task: string; context?: string; workingDirectory?: string },
+  agentConfig: ResolvedAcpAgentConfig,
   parentSessionId: string | undefined,
   registerSessionMapping: () => void
 ): DelegationResult {
   // Start background polling for notifications
   acpBackgroundNotifier.startPolling();
 
-  if (agentConfig.connection.type === 'remote' && agentConfig.connection.baseUrl) {
-    executeRemoteAgentAsync(subAgentState, args, agentConfig.connection.baseUrl, parentSessionId);
-  } else if (agentConfig.connection.type === 'remote') {
+  if (agentConfig.connectionType === 'remote' && agentConfig.baseUrl) {
+    executeRemoteAgentAsync(subAgentState, args, agentConfig.baseUrl, parentSessionId);
+  } else if (agentConfig.connectionType === 'remote') {
     // Remote agent without baseUrl is a configuration error
     subAgentState.status = 'failed';
     return createFailedResult(subAgentState, `Remote agent "${args.agentName}" has no baseUrl configured`);
+  } else if (agentConfig.connectionType === 'internal') {
+    subAgentState.status = 'failed';
+    return createFailedResult(subAgentState, `Agent "${args.agentName}" is internal and not executable via ACP external delegation`);
   } else {
+    // ACP/stdio local process-backed agents
     executeStdioAgentAsync(subAgentState, args, registerSessionMapping);
   }
 
@@ -875,7 +1088,7 @@ function executeACPAgentAsync(
  */
 function executeRemoteAgentAsync(
   subAgentState: DelegatedRun,
-  args: { agentName: string; task: string },
+  args: { agentName: string; task: string; workingDirectory?: string },
   baseUrl: string,
   parentSessionId: string | undefined
 ): void {
@@ -884,6 +1097,7 @@ function executeRemoteAgentAsync(
   acpClientService.runAgentAsync({
     agentName: args.agentName,
     input: args.task,
+    workingDirectory: args.workingDirectory,
     mode: 'async',
     parentSessionId,
   }).then(
@@ -901,13 +1115,14 @@ function executeRemoteAgentAsync(
  */
 function executeStdioAgentAsync(
   subAgentState: DelegatedRun,
-  args: { agentName: string; task: string; context?: string },
+  args: { agentName: string; task: string; context?: string; workingDirectory?: string },
   registerSessionMapping: () => void
 ): void {
   acpService.runTask({
     agentName: args.agentName,
     input: args.task,
     context: args.context,
+    workingDirectory: args.workingDirectory,
     mode: 'async',
   }).then(
     (result) => {
@@ -1013,6 +1228,7 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       runId: subAgentState.runId,
       agentName: subAgentState.agentName,
       task: subAgentState.task,
+      workingDirectory: subAgentState.workingDirectory,
       status: subAgentState.status,
       startTime: subAgentState.startTime,
       duration: Date.now() - subAgentState.startTime,
@@ -1044,64 +1260,22 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
 }
 
 /**
- * Spawn a new instance of an ACP agent.
- * Uses acpService to spawn stdio-based agents.
- * @param args - Arguments containing the agent name
- * @returns Object with spawn result
+ * Prepare an ACP agent without executing delegated work.
+ * Compatibility wrapper that routes to delegate_to_agent with prepareOnly=true.
  */
-export async function handleSpawnAgent(args: { agentName: string }): Promise<object> {
-  try {
-    // Check if agent exists in config
-    const config = configStore.get();
-    const agentConfig = config.acpAgents?.find((a) => a.name === args.agentName);
-    if (!agentConfig) {
-      return {
-        success: false,
-        error: `Agent "${args.agentName}" not found in configuration`,
-      };
-    }
-
-    if (agentConfig.enabled === false) {
-      return {
-        success: false,
-        error: `Agent "${args.agentName}" is disabled`,
-      };
-    }
-
-    // Check current status
-    const agentStatus = acpService.getAgentStatus(args.agentName);
-
-    // Check if agent is already running
-    if (agentStatus?.status === 'ready') {
-      return {
-        success: true,
-        message: `Agent "${args.agentName}" is already running`,
-        status: 'ready',
-      };
-    }
-
-    // Only stdio agents can be spawned
-    if (agentConfig.connection.type !== 'stdio') {
-      return {
-        success: false,
-        error: `Agent "${args.agentName}" is a remote agent and cannot be spawned. It should be started externally.`,
-      };
-    }
-
-    // Spawn the agent via acpService
-    await acpService.spawnAgent(args.agentName);
-
-    return {
-      success: true,
-      message: `Agent "${args.agentName}" spawned successfully`,
+export async function handleSpawnAgent(
+  args: { agentName: string; workingDirectory?: string }
+): Promise<object> {
+  return handleDelegateToAgent(
+    {
       agentName: args.agentName,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+      task: `Prepare agent "${args.agentName}" for upcoming delegated work.`,
+      workingDirectory: args.workingDirectory,
+      prepareOnly: true,
+      waitForResult: false,
+    },
+    undefined
+  );
 }
 
 /**
@@ -1112,13 +1286,25 @@ export async function handleSpawnAgent(args: { agentName: string }): Promise<obj
  */
 export async function handleStopAgent(args: { agentName: string }): Promise<object> {
   try {
-    // Check if agent exists in config
-    const config = configStore.get();
-    const agentConfig = config.acpAgents?.find((a) => a.name === args.agentName);
-    if (!agentConfig) {
+    const resolvedAgent = resolveAcpAgentConfig(args.agentName);
+    if (!resolvedAgent) {
       return {
         success: false,
-        error: `Agent "${args.agentName}" not found in configuration`,
+        error: `Agent "${args.agentName}" not found in agent profiles or legacy configuration`,
+      };
+    }
+
+    if (resolvedAgent.connectionType === 'remote') {
+      return {
+        success: false,
+        error: `Agent "${args.agentName}" is a remote agent and cannot be stopped locally.`,
+      };
+    }
+
+    if (resolvedAgent.connectionType === 'internal') {
+      return {
+        success: false,
+        error: `Agent "${args.agentName}" is internal and cannot be stopped via external ACP process controls.`,
       };
     }
 
@@ -1186,8 +1372,10 @@ export async function executeACPRouterTool(
         result = await handleDelegateToAgent(
           args as {
             agentName: string;
-            task: string;
+            task?: string;
             context?: string;
+            workingDirectory?: string;
+            prepareOnly?: boolean;
             contextId?: string;
             waitForResult?: boolean;
           },
@@ -1213,7 +1401,7 @@ export async function executeACPRouterTool(
         break;
 
       case 'spawn_agent':
-        result = await handleSpawnAgent(args as { agentName: string });
+        result = await handleSpawnAgent(args as { agentName: string; workingDirectory?: string });
         break;
 
       case 'stop_agent':

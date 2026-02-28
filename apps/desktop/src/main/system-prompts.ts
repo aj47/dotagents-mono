@@ -196,7 +196,8 @@ DELEGATION RULES (PRIORITY — check BEFORE responding):
 AVAILABLE AGENTS (${delegationTargets.length}):
 ${agentsList}
 
-To delegate: \`delegate_to_agent(agentName: "agent_name", task: "...")\`
+To delegate: \`delegate_to_agent(agentName: "agent_name", task: "...", workingDirectory?: "path")\`
+To prepare only: \`delegate_to_agent(agentName: "agent_name", prepareOnly: true, workingDirectory?: "path")\`
 `.trim()
 }
 

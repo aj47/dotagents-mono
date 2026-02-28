@@ -5,7 +5,7 @@
  * This allows using agents like Claude Code as the "brain" for DotAgents.
  */
 
-import { acpService, ACPContentBlock } from "./acp-service"
+import { acpService, ACPContentBlock, ACPToolCallUpdate } from "./acp-service"
 import {
   getSessionForConversation,
   setSessionForConversation,
@@ -161,9 +161,6 @@ export async function processTranscriptWithACPAgent(
     } else {
       // Create new session
       acpSessionId = await acpService.getOrCreateSession(agentName, true)
-      if (!acpSessionId) {
-        throw new Error(`Failed to create session with agent ${agentName}`)
-      }
       setSessionForConversation(conversationId, acpSessionId, agentName)
       logApp(`[ACP Main] Created new session ${acpSessionId}`)
     }
@@ -177,6 +174,7 @@ export async function processTranscriptWithACPAgent(
       agentName: string
       sessionId: string
       content?: ACPContentBlock[]
+      toolCall?: ACPToolCallUpdate
       isComplete?: boolean
       toolResponseStats?: {
         status?: string
@@ -233,6 +231,20 @@ export async function processTranscriptWithACPAgent(
             steps.push(step)
           }
         }
+      }
+
+      if (event.toolCall) {
+        const toolStatus = event.toolCall.status
+        steps.push({
+          id: generateStepId("acp-tool-call"),
+          type: "tool_call",
+          title: event.toolCall.title || "Tool call",
+          description: toolStatus ? `Status: ${toolStatus}` : undefined,
+          status: toolStatus === "completed"
+            ? "completed"
+            : (toolStatus === "failed" ? "error" : "in_progress"),
+          timestamp: Date.now(),
+        })
       }
 
       // If we have toolResponseStats but no tool_use content block, it's a tool completion update

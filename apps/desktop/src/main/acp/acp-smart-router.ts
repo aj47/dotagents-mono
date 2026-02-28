@@ -56,7 +56,9 @@ ${agentDescriptions}
 - Use the **writing** agent for document creation, summarization, and content drafting
 
 ### How to Delegate
-Use the delegate_to_agent tool with the agent name and a clear task description.
+Use delegate_to_agent with agentName and a clear task description.
+If work must run in a specific path, pass workingDirectory.
+Use prepareOnly: true when you only need to warm up/spawn the agent without running a task.
 Monitor the agent's progress and incorporate its results into your response.
 `.trim()
   }
