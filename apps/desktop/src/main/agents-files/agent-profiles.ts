@@ -233,6 +233,9 @@ function assembleAgentProfile(
     type: mdPartial.connection?.type ?? "internal",
   }
 
+  const isExternalConnection = connection.type === "acp" || connection.type === "stdio" || connection.type === "remote"
+  const role = mdPartial.role ?? (isExternalConnection ? "delegation-target" : undefined)
+
   return {
     id: mdPartial.id,
     name: mdPartial.name ?? mdPartial.id,
@@ -241,13 +244,13 @@ function assembleAgentProfile(
     systemPrompt: mdPartial.systemPrompt,
     guidelines: mdPartial.guidelines,
     connection,
-    role: mdPartial.role,
+    role,
     enabled: mdPartial.enabled ?? true,
     isBuiltIn: mdPartial.isBuiltIn,
     isDefault: mdPartial.isDefault,
     isStateful: mdPartial.isStateful,
     autoSpawn: mdPartial.autoSpawn,
-    isAgentTarget: mdPartial.role === "delegation-target" || mdPartial.role === "external-agent" || undefined,
+    isAgentTarget: role === "delegation-target" || role === "external-agent" || isExternalConnection || undefined,
     createdAt: mdPartial.createdAt ?? Date.now(),
     updatedAt: mdPartial.updatedAt ?? Date.now(),
     // From config.json
