@@ -110,21 +110,50 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
   const [isResizing, setIsResizing] = useState(false)
 
   const resizeTypeRef = useRef<"width" | "height" | "corner" | null>(null)
+  const widthRef = useRef(initial.width)
+  const heightRef = useRef(initial.height)
+  const activeElementRef = useRef<HTMLElement | null>(null)
+  const removeListenersRef = useRef<(() => void) | null>(null)
 
   const clampWidth = useCallback((w: number) => Math.min(maxWidth, Math.max(minWidth, w)), [minWidth, maxWidth])
   const clampHeight = useCallback((h: number) => Math.min(maxHeight, Math.max(minHeight, h)), [minHeight, maxHeight])
 
   const storageKeyRef = useRef(storageKey)
+
+  useEffect(() => {
+    widthRef.current = width
+  }, [width])
+
+  useEffect(() => {
+    heightRef.current = height
+  }, [height])
+
   useEffect(() => {
     if (storageKey && storageKey !== storageKeyRef.current) {
       storageKeyRef.current = storageKey
       const persisted = loadPersistedSize(storageKey)
       if (persisted) {
-        setWidth(clampWidth(persisted.width ?? initialWidth))
-        setHeight(clampHeight(persisted.height ?? initialHeight))
+        const nextWidth = clampWidth(persisted.width ?? initialWidth)
+        const nextHeight = clampHeight(persisted.height ?? initialHeight)
+        widthRef.current = nextWidth
+        heightRef.current = nextHeight
+        setWidth(nextWidth)
+        setHeight(nextHeight)
       }
     }
   }, [storageKey, initialWidth, initialHeight, clampWidth, clampHeight])
+
+  const applyPreviewSize = useCallback((size: { width?: number; height?: number }) => {
+    const activeElement = activeElementRef.current
+    if (!activeElement) return
+
+    if (size.width !== undefined) {
+      activeElement.style.width = `${size.width}px`
+    }
+    if (size.height !== undefined) {
+      activeElement.style.height = `${size.height}px`
+    }
+  }, [])
 
   const handleWidthResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -133,31 +162,54 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     resizeTypeRef.current = "width"
     onResizeStart?.()
 
+    activeElementRef.current = (e.currentTarget as HTMLElement).parentElement
     const startX = e.clientX
-    const startWidth = width
+    const startWidth = widthRef.current
     let lastWidth = startWidth
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX
       lastWidth = clampWidth(startWidth + delta)
-      setWidth(lastWidth)
+      applyPreviewSize({ width: lastWidth })
     }
 
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      resizeTypeRef.current = null
+    const removeListeners = () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      const finalSize = { width: lastWidth, height }
+      window.removeEventListener("blur", handleBlur)
+      removeListenersRef.current = null
+    }
+
+    const completeResize = () => {
+      removeListeners()
+      setIsResizing(false)
+      resizeTypeRef.current = null
+      activeElementRef.current = null
+
+      widthRef.current = lastWidth
+      setWidth(lastWidth)
+
+      const finalSize = { width: lastWidth, height: heightRef.current }
       if (storageKey) {
         savePersistedSize(storageKey, finalSize)
       }
       onResizeEnd?.(finalSize)
     }
 
+    const handleMouseUp = () => {
+      completeResize()
+    }
+
+    const handleBlur = () => {
+      completeResize()
+    }
+
+    removeListenersRef.current = removeListeners
+
     document.addEventListener("mousemove", handleMouseMove)
     document.addEventListener("mouseup", handleMouseUp)
-  }, [width, height, clampWidth, onResizeStart, onResizeEnd, storageKey])
+    window.addEventListener("blur", handleBlur)
+  }, [clampWidth, onResizeStart, onResizeEnd, storageKey, applyPreviewSize])
 
   const handleHeightResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -166,31 +218,54 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     resizeTypeRef.current = "height"
     onResizeStart?.()
 
+    activeElementRef.current = (e.currentTarget as HTMLElement).parentElement
     const startY = e.clientY
-    const startHeight = height
+    const startHeight = heightRef.current
     let lastHeight = startHeight
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientY - startY
       lastHeight = clampHeight(startHeight + delta)
-      setHeight(lastHeight)
+      applyPreviewSize({ height: lastHeight })
     }
 
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      resizeTypeRef.current = null
+    const removeListeners = () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
-      const finalSize = { width, height: lastHeight }
+      window.removeEventListener("blur", handleBlur)
+      removeListenersRef.current = null
+    }
+
+    const completeResize = () => {
+      removeListeners()
+      setIsResizing(false)
+      resizeTypeRef.current = null
+      activeElementRef.current = null
+
+      heightRef.current = lastHeight
+      setHeight(lastHeight)
+
+      const finalSize = { width: widthRef.current, height: lastHeight }
       if (storageKey) {
         savePersistedSize(storageKey, finalSize)
       }
       onResizeEnd?.(finalSize)
     }
 
+    const handleMouseUp = () => {
+      completeResize()
+    }
+
+    const handleBlur = () => {
+      completeResize()
+    }
+
+    removeListenersRef.current = removeListeners
+
     document.addEventListener("mousemove", handleMouseMove)
     document.addEventListener("mouseup", handleMouseUp)
-  }, [width, height, clampHeight, onResizeStart, onResizeEnd, storageKey])
+    window.addEventListener("blur", handleBlur)
+  }, [clampHeight, onResizeStart, onResizeEnd, storageKey, applyPreviewSize])
 
   const handleCornerResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -199,10 +274,11 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     resizeTypeRef.current = "corner"
     onResizeStart?.()
 
+    activeElementRef.current = (e.currentTarget as HTMLElement).parentElement
     const startX = e.clientX
     const startY = e.clientY
-    const startWidth = width
-    const startHeight = height
+    const startWidth = widthRef.current
+    const startHeight = heightRef.current
     let lastWidth = startWidth
     let lastHeight = startHeight
 
@@ -211,15 +287,27 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
       const deltaY = moveEvent.clientY - startY
       lastWidth = clampWidth(startWidth + deltaX)
       lastHeight = clampHeight(startHeight + deltaY)
-      setWidth(lastWidth)
-      setHeight(lastHeight)
+      applyPreviewSize({ width: lastWidth, height: lastHeight })
     }
 
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      resizeTypeRef.current = null
+    const removeListeners = () => {
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
+      window.removeEventListener("blur", handleBlur)
+      removeListenersRef.current = null
+    }
+
+    const completeResize = () => {
+      removeListeners()
+      setIsResizing(false)
+      resizeTypeRef.current = null
+      activeElementRef.current = null
+
+      widthRef.current = lastWidth
+      heightRef.current = lastHeight
+      setWidth(lastWidth)
+      setHeight(lastHeight)
+
       const finalSize = { width: lastWidth, height: lastHeight }
       if (storageKey) {
         savePersistedSize(storageKey, finalSize)
@@ -227,11 +315,24 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
       onResizeEnd?.(finalSize)
     }
 
+    const handleMouseUp = () => {
+      completeResize()
+    }
+
+    const handleBlur = () => {
+      completeResize()
+    }
+
+    removeListenersRef.current = removeListeners
+
     document.addEventListener("mousemove", handleMouseMove)
     document.addEventListener("mouseup", handleMouseUp)
-  }, [width, height, clampWidth, clampHeight, onResizeStart, onResizeEnd, storageKey])
+    window.addEventListener("blur", handleBlur)
+  }, [clampWidth, clampHeight, onResizeStart, onResizeEnd, storageKey, applyPreviewSize])
 
   const reset = useCallback(() => {
+    widthRef.current = initialWidth
+    heightRef.current = initialHeight
     setWidth(initialWidth)
     setHeight(initialHeight)
     if (storageKey) {
@@ -242,14 +343,32 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
   }, [initialWidth, initialHeight, storageKey])
 
   const setSize = useCallback((size: { width?: number; height?: number }) => {
-    const newWidth = size.width !== undefined ? clampWidth(size.width) : width
-    const newHeight = size.height !== undefined ? clampHeight(size.height) : height
-    if (size.width !== undefined) setWidth(newWidth)
-    if (size.height !== undefined) setHeight(newHeight)
+    const newWidth = size.width !== undefined ? clampWidth(size.width) : widthRef.current
+    const newHeight = size.height !== undefined ? clampHeight(size.height) : heightRef.current
+
+    if (size.width !== undefined) {
+      widthRef.current = newWidth
+      setWidth(newWidth)
+    }
+
+    if (size.height !== undefined) {
+      heightRef.current = newHeight
+      setHeight(newHeight)
+    }
+
     if (storageKey) {
       savePersistedSize(storageKey, { width: newWidth, height: newHeight })
     }
-  }, [clampWidth, clampHeight, width, height, storageKey])
+  }, [clampWidth, clampHeight, storageKey])
+
+  useEffect(() => {
+    return () => {
+      if (removeListenersRef.current) {
+        removeListenersRef.current()
+      }
+      activeElementRef.current = null
+    }
+  }, [])
 
   return {
     width,

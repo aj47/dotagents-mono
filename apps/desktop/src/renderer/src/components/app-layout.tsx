@@ -613,6 +613,7 @@ export const Component = () => {
             <Outlet
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+                sidebarWidth,
               }}
             />
           </div>
