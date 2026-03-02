@@ -72,7 +72,6 @@ export function ResizeHandle({
           break
       }
 
-      console.log("Resizing:", { width: deltaWidth, height: deltaHeight })
       onResize({ width: deltaWidth, height: deltaHeight })
     }
 
@@ -161,8 +160,6 @@ export function ResizeHandle({
     e.preventDefault()
     e.stopPropagation()
 
-    console.log("Resize handle clicked! Position:", position)
-
     try {
       // Get current window size
       const windowSize = await tipcClient.getPanelSize()
@@ -170,7 +167,6 @@ export function ResizeHandle({
         console.error("Invalid window size response:", windowSize)
         return
       }
-      console.log("Current window size:", windowSize)
 
       setIsResizing(true)
       setResizeStart({

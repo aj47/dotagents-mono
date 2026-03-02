@@ -58,7 +58,7 @@ export function PanelResizeWrapper({
     resizeStartSizeRef.current = currentSize
   }, [currentSize])
 
-  const handleResize = useCallback(async (delta: { width: number; height: number }) => {
+  const handleResize = useCallback((delta: { width: number; height: number }) => {
     const startSize = resizeStartSizeRef.current
     if (!startSize || !enableResize) return
 
@@ -72,13 +72,11 @@ export function PanelResizeWrapper({
     const newWidth = Math.max(minWidth, startSize.width + delta.width)
     const newHeight = Math.max(minHeight, startSize.height + delta.height)
 
-    // Update the panel size immediately
-    try {
-      await tipcClient.updatePanelSize({ width: newWidth, height: newHeight })
-      setCurrentSize({ width: newWidth, height: newHeight })
-    } catch (error) {
+    // Update local size immediately; send IPC without awaiting to avoid resize lag.
+    setCurrentSize({ width: newWidth, height: newHeight })
+    void tipcClient.updatePanelSize({ width: newWidth, height: newHeight }).catch((error: unknown) => {
       console.error("Failed to update panel size:", error)
-    }
+    })
   }, [enableResize, minWidth, minHeight])
 
   const handleResizeEnd = useCallback(async (size: { width: number; height: number }) => {

@@ -1875,7 +1875,7 @@ export const router = {
             timestamp: Date.now(),
           }],
           isComplete: false,
-          isSnoozed: false,
+          isSnoozed: startSnoozed,
           conversationTitle: "Transcribing...",
           conversationHistory: [],
         })
@@ -2043,7 +2043,7 @@ export const router = {
             timestamp: Date.now(),
           }],
           isComplete: true,
-          isSnoozed: false,
+          isSnoozed: startSnoozed,
           conversationTitle: "Transcription Error",
           conversationHistory: [],
           finalContent: `Transcription failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -3117,12 +3117,11 @@ export const router = {
 
       // Update size constraints to allow resizing
       win.setMinimumSize(minWidth, minHeight)
-      win.setMaximumSize(finalWidth + 1000, finalHeight + 1000) // Allow growth
 
       // Set the actual size
       // Mark manual resize to avoid immediate mode re-apply fighting user
       markManualResize()
-      win.setSize(finalWidth, finalHeight, true) // animate = true
+      win.setSize(finalWidth, finalHeight, false)
       return { width: finalWidth, height: finalHeight }
     }),
 
