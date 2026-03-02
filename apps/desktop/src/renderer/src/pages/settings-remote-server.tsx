@@ -27,7 +27,15 @@ function maskUrl(url: string): string {
   return url.replace(/([a-zA-Z0-9-]+)/g, (match) => "*".repeat(Math.min(match.length, 8)))
 }
 
-export function Component() {
+interface RemoteServerSettingsGroupsProps {
+  collapsible?: boolean
+  defaultCollapsed?: boolean
+}
+
+export function RemoteServerSettingsGroups({
+  collapsible = false,
+  defaultCollapsed = false,
+}: RemoteServerSettingsGroupsProps = {}) {
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const queryClient = useQueryClient()
@@ -116,9 +124,10 @@ export function Component() {
     : undefined
 
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
-      <div className="grid gap-4">
+    <>
         <ControlGroup
+          collapsible={collapsible}
+          defaultCollapsed={defaultCollapsed}
           title="Remote Server"
           endDescription={(
             <div className="break-words whitespace-normal">
@@ -346,6 +355,8 @@ export function Component() {
         {/* Cloudflare Tunnel Section - only show when remote server is enabled */}
         {enabled && (
           <ControlGroup
+            collapsible={collapsible}
+            defaultCollapsed={defaultCollapsed}
             title="Cloudflare Tunnel"
             endDescription={(
               <div className="break-words whitespace-normal">
@@ -640,6 +651,15 @@ export function Component() {
             )}
           </ControlGroup>
         )}
+    </>
+  )
+}
+
+export function Component() {
+  return (
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
+      <div className="grid gap-4">
+        <RemoteServerSettingsGroups />
       </div>
     </div>
   )

@@ -43,6 +43,7 @@ import {
   getEffectiveShortcut,
   formatKeyComboForDisplay,
 } from "@shared/key-utils"
+import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
 export function Component() {
   const configQuery = useConfigQuery()
@@ -408,6 +409,8 @@ export function Component() {
             </Select>
           </Control>
         </ControlGroup>
+
+        <RemoteServerSettingsGroups collapsible defaultCollapsed />
 
         <ControlGroup
           collapsible

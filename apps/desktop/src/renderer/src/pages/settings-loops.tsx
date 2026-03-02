@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@rend
 import { Badge } from "@renderer/components/ui/badge"
 import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig } from "@shared/types"
 import { toast } from "sonner"
@@ -206,19 +207,24 @@ export function SettingsLoops() {
   }
 
   const renderLoopList = () => (
-    <div className="space-y-4">
+    <div className="space-y-1">
       {loops.map((loop) => {
         const runtime = statusByLoopId.get(loop.id)
         const isRunning = runtime?.isRunning ?? false
         const nextRunAt = runtime?.nextRunAt
         const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
         return (
-        <Card key={loop.id} className={!loop.enabled ? "opacity-60" : ""}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  {loop.name}
+          <div
+            key={loop.id}
+            className={cn(
+              "rounded-lg border bg-card px-3 py-2",
+              !loop.enabled && "opacity-60",
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{loop.name}</span>
                   {isRunning ? (
                     <Badge variant="secondary">Running</Badge>
                   ) : loop.enabled ? (
@@ -226,29 +232,50 @@ export function SettingsLoops() {
                   ) : (
                     <Badge variant="outline">Disabled</Badge>
                   )}
-                </CardTitle>
-                <CardDescription className="truncate max-w-md">
+                </div>
+                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                   {loop.prompt}
-                </CardDescription>
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleRunNow(loop)}>
-                  <Play className="h-4 w-4" />Run Now
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2"
+                  onClick={() => handleRunNow(loop)}
+                >
+                  <Play className="h-3.5 w-3.5" />Run
                 </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleOpenTaskFile(loop)}>
-                  <FileText className="h-4 w-4" />Reveal File
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2"
+                  onClick={() => handleOpenTaskFile(loop)}
+                >
+                  <FileText className="h-3.5 w-3.5" />File
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(loop)}>
-                  <Edit2 className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="Edit task"
+                  onClick={() => handleEdit(loop)}
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(loop.id)}>
-                  <Trash2 className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="Delete task"
+                  onClick={() => handleDelete(loop.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 text-sm text-muted-foreground">
+
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
                 Every {formatInterval(loop.intervalMinutes)}
@@ -257,21 +284,21 @@ export function SettingsLoops() {
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
-              <div className="ml-auto">Last run: {formatLastRun(lastRunAt)}</div>
+              <div>Last run: {formatLastRun(lastRunAt)}</div>
             </div>
+
             <div className="mt-2 flex items-center gap-2">
               <Switch
                 checked={loop.enabled}
                 onCheckedChange={() => handleToggleEnabled(loop)}
               />
-              <Label className="text-sm">{loop.enabled ? "Enabled" : "Disabled"}</Label>
+              <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
             </div>
-          </CardContent>
-        </Card>
+          </div>
         )
       })}
       {loops.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
+        <div className="py-8 text-center text-muted-foreground">
           No repeat tasks configured. Click &quot;Add Task&quot; to create one.
         </div>
       )}
@@ -281,14 +308,14 @@ export function SettingsLoops() {
   const renderEditForm = () => {
     if (!editing) return null
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
+      <Card className="max-w-3xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
           <CardDescription>
             Configure a task to run automatically at regular intervals
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input
@@ -308,7 +335,7 @@ export function SettingsLoops() {
               rows={4}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="interval">Interval</Label>
               <div className="flex gap-2">
@@ -335,7 +362,6 @@ export function SettingsLoops() {
                 ))}
               </div>
             </div>
-
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center space-x-2">
@@ -369,19 +395,23 @@ export function SettingsLoops() {
   }
 
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Repeat Tasks</h1>
-          <p className="text-muted-foreground">
-            Configure tasks to run automatically at regular intervals
-          </p>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="shrink-0 border-b bg-background px-6 pb-2 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold">Repeat Tasks</h1>
+            <p className="text-xs text-muted-foreground">
+              Configure tasks to run automatically at regular intervals
+            </p>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" />Add Task
+          </Button>
         </div>
-        <Button className="gap-2" onClick={handleCreate}>
-          <Plus className="h-4 w-4" />Add Task
-        </Button>
       </div>
-      {editing ? renderEditForm() : renderLoopList()}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+        {editing ? renderEditForm() : renderLoopList()}
+      </div>
     </div>
   )
 }
