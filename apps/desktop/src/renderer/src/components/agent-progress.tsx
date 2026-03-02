@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2 } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -1259,12 +1259,94 @@ const RetryStatusBanner: React.FC<{
 }
 
 // Subagent Conversation Message - individual message in the collapsible conversation
+const DELEGATION_COMPACT_WIDTH = 360
+
+const truncatePreview = (text: string | undefined, maxLength: number): string => {
+  const normalized = (text ?? "").trim().replace(/\s+/g, " ")
+  if (!normalized) return ""
+  if (normalized.length <= maxLength) return normalized
+  return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`
+}
+
+const formatDelegationStatus = (status: ACPDelegationProgress["status"]): string => {
+  switch (status) {
+    case "pending":
+    case "spawning":
+      return "Starting"
+    case "running":
+      return "Running"
+    case "completed":
+      return "Completed"
+    case "cancelled":
+      return "Cancelled"
+    case "failed":
+    default:
+      return "Failed"
+  }
+}
+
+const getDelegationSubtitle = (delegation: ACPDelegationProgress, maxLength: number): string => {
+  const source = delegation.status === "failed"
+    ? delegation.error ?? delegation.progressMessage ?? delegation.task
+    : delegation.status === "completed"
+      ? delegation.resultSummary ?? delegation.progressMessage ?? delegation.task
+      : delegation.progressMessage ?? delegation.task
+
+  return truncatePreview(source, maxLength) || truncatePreview(delegation.task, maxLength)
+}
+
+const getConversationPreview = (
+  conversation: ACPSubAgentMessage[],
+  agentName: string,
+  maxLength: number,
+): string => {
+  const lastMessage = conversation[conversation.length - 1]
+  if (!lastMessage) return "No conversation yet"
+
+  const roleLabel = lastMessage.role === "assistant"
+    ? agentName
+    : lastMessage.role === "tool"
+      ? lastMessage.toolName || "Tool"
+      : "Task"
+
+  return truncatePreview(`${roleLabel}: ${lastMessage.content}`, maxLength)
+}
+
+function useCompactWidth<T extends HTMLElement>(threshold = DELEGATION_COMPACT_WIDTH) {
+  const ref = useRef<T | null>(null)
+  const [isCompact, setIsCompact] = useState(false)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return undefined
+
+    const update = (width: number) => setIsCompact(width < threshold)
+    update(Math.round(node.getBoundingClientRect().width))
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      update(Math.round(entry.contentRect.width))
+    })
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [threshold])
+
+  return { ref, isCompact }
+}
+
 const SubAgentConversationMessage: React.FC<{
   message: ACPSubAgentMessage
   agentName: string
   isExpanded: boolean
   onToggleExpand: () => void
-}> = ({ message, agentName, isExpanded, onToggleExpand }) => {
+  isCompact?: boolean
+}> = ({ message, agentName, isExpanded, onToggleExpand, isCompact = false }) => {
   const [isCopied, setIsCopied] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -1292,92 +1374,98 @@ const SubAgentConversationMessage: React.FC<{
 
   const isLongContent = message.content.length > 300
   const shouldShowToggle = isLongContent
-
-  const getRoleStyle = () => {
+  const roleMeta = (() => {
     switch (message.role) {
-      case 'user':
-        return "border-l-2 border-blue-400 bg-blue-50/50 dark:bg-blue-900/20"
-      case 'assistant':
-        return "border-l-2 border-purple-400 bg-purple-50/50 dark:bg-purple-900/20"
-      case 'tool':
-        return "border-l-2 border-amber-400 bg-amber-50/50 dark:bg-amber-900/20"
+      case "user":
+        return {
+          label: "Task",
+          containerClass: "border-blue-200/80 bg-blue-50/70 dark:border-blue-800/60 dark:bg-blue-950/30",
+          badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200",
+          iconClass: "text-blue-600 dark:text-blue-300",
+          Icon: MessageSquare,
+        }
+      case "assistant":
+        return {
+          label: agentName,
+          containerClass: "border-purple-200/80 bg-purple-50/70 dark:border-purple-800/60 dark:bg-purple-950/30",
+          badgeClass: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200",
+          iconClass: "text-purple-600 dark:text-purple-300",
+          Icon: Bot,
+        }
+      case "tool":
+        return {
+          label: message.toolName || "Tool",
+          containerClass: "border-amber-200/80 bg-amber-50/70 dark:border-amber-800/60 dark:bg-amber-950/30",
+          badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200",
+          iconClass: "text-amber-600 dark:text-amber-300",
+          Icon: Wrench,
+        }
       default:
-        return "border-l-2 border-gray-400 bg-gray-50/50 dark:bg-gray-900/20"
+        return {
+          label: "Message",
+          containerClass: "border-gray-200/80 bg-gray-50/70 dark:border-gray-700/60 dark:bg-gray-900/30",
+          badgeClass: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200",
+          iconClass: "text-gray-500 dark:text-gray-300",
+          Icon: MessageSquare,
+        }
     }
-  }
-
-  const getRoleIcon = () => {
-    switch (message.role) {
-      case 'user': return "📤"
-      case 'assistant': return null
-      case 'tool': return "🔧"
-      default: return "💬"
-    }
-  }
-
-  const getRoleLabel = () => {
-    switch (message.role) {
-      case 'user': return "Task"
-      case 'assistant': return agentName
-      case 'tool': return message.toolName || "Tool"
-      default: return "Message"
-    }
-  }
+  })()
+  const RoleIcon = roleMeta.Icon
+  const timestampLabel = message.timestamp
+    ? new Date(message.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null
 
   return (
-    <div className={cn("rounded-md text-xs transition-all", getRoleStyle())}>
-      <div
-        className={cn(
-          "flex items-start gap-2 px-2 py-1.5",
-          shouldShowToggle && "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
-        )}
-        onClick={shouldShowToggle ? onToggleExpand : undefined}
-      >
-        {getRoleIcon() && (
-          <span className="opacity-60 mt-0.5 flex-shrink-0">{getRoleIcon()}</span>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
-              {getRoleLabel()}
+    <div className={cn("rounded-lg border text-xs transition-all", roleMeta.containerClass)}>
+      <div className="flex items-start gap-2.5 px-3 py-2.5">
+        <div className={cn("mt-0.5 rounded-full p-1.5 bg-white/70 dark:bg-black/20", roleMeta.iconClass)}>
+          <RoleIcon className="h-3.5 w-3.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className={cn("mb-1 flex gap-2", isCompact ? "flex-col items-start" : "flex-wrap items-center")}>
+            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", roleMeta.badgeClass)}>
+              {roleMeta.label}
             </span>
-            {message.timestamp && (
-              <span className="text-[9px] text-gray-400 dark:text-gray-500">
-                {new Date(message.timestamp).toLocaleTimeString()}
+            {timestampLabel && (
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                {timestampLabel}
               </span>
             )}
           </div>
-          <div className={cn(
-            "whitespace-pre-wrap break-words text-gray-700 dark:text-gray-300",
-            !isExpanded && isLongContent && "line-clamp-3"
-          )}>
+          <div
+            className={cn(
+              "whitespace-pre-wrap break-words text-[13px] leading-5 text-gray-700 dark:text-gray-200",
+              !isExpanded && isLongContent && (isCompact ? "line-clamp-3" : "line-clamp-4"),
+            )}
+          >
             {message.content}
           </div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={handleCopy}
-            className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-            title={isCopied ? "Copied!" : "Copy message"}
-          >
-            {isCopied ? (
-              <CheckCheck className="h-3 w-3 text-green-500" />
-            ) : (
-              <Copy className="h-3 w-3 opacity-50 hover:opacity-100" />
-            )}
-          </button>
           {shouldShowToggle && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-              className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
             >
               {isExpanded ? (
-                <ChevronUp className="h-3 w-3 opacity-60" />
+                <ChevronUp className="h-3 w-3" />
               ) : (
-                <ChevronDown className="h-3 w-3 opacity-60" />
+                <ChevronDown className="h-3 w-3" />
               )}
+              {isExpanded ? "Show less" : "Show more"}
             </button>
           )}
+        </div>
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <button
+            onClick={handleCopy}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            title={isCopied ? "Copied!" : "Copy message"}
+          >
+            {isCopied ? (
+              <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -1390,9 +1478,12 @@ const SubAgentConversationPanel: React.FC<{
   agentName: string
   isOpen: boolean
   onToggle: () => void
-}> = ({ conversation, agentName, isOpen, onToggle }) => {
+  isCompact?: boolean
+}> = ({ conversation, agentName, isOpen, onToggle, isCompact = false }) => {
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
+  const previousConversationLengthRef = useRef(conversation.length)
 
   const toggleMessage = (index: number) => {
     setExpandedMessages(prev => ({
@@ -1414,27 +1505,66 @@ const SubAgentConversationPanel: React.FC<{
     }
   }
 
+  const conversationPreview = getConversationPreview(conversation, agentName, isCompact ? 72 : 120)
+
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const node = scrollRef.current
+    if (!node) return
+    node.scrollTo({ top: node.scrollHeight, behavior })
+  }
+
+  const handleScroll = () => {
+    const node = scrollRef.current
+    if (!node) return
+    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight
+    setIsPinnedToBottom(distanceFromBottom < 24)
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    requestAnimationFrame(() => scrollToBottom("auto"))
+    setIsPinnedToBottom(true)
+  }, [isOpen])
+
+  useEffect(() => {
+    const hadNewMessages = conversation.length > previousConversationLengthRef.current
+    previousConversationLengthRef.current = conversation.length
+
+    if (!isOpen || !hadNewMessages || !isPinnedToBottom) {
+      return
+    }
+
+    requestAnimationFrame(() => scrollToBottom("smooth"))
+  }, [conversation.length, isOpen, isPinnedToBottom])
+
   return (
     <div className="mt-3 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
       {/* Collapsible Header */}
       <div
-        className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="flex items-start gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         onClick={onToggle}
       >
-        <Bot className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-          Subagent Conversation
-        </span>
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-          {conversation.length} messages
-        </Badge>
-        <div className="ml-auto flex items-center gap-1">
+        <Bot className="mt-0.5 h-3.5 w-3.5 text-purple-500 dark:text-purple-400 flex-shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className={cn("flex gap-2", isCompact ? "flex-col items-start" : "flex-wrap items-center")}>
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              Conversation
+            </span>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              {conversation.length} messages
+            </Badge>
+          </div>
+          <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">
+            {isOpen ? "Live transcript and tool activity" : conversationPreview}
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-1 flex-shrink-0 self-start">
           <button
             onClick={handleCopyAll}
-            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Copy entire conversation"
           >
-            <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
+            <Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
           </button>
           {isOpen ? (
             <ChevronUp className="h-4 w-4 text-gray-500" />
@@ -1446,19 +1576,37 @@ const SubAgentConversationPanel: React.FC<{
 
       {/* Collapsible Content */}
       {isOpen && (
-        <div
-          ref={scrollRef}
-          className="max-h-[400px] overflow-y-auto p-2 space-y-2 bg-white/50 dark:bg-black/20"
-        >
-          {conversation.map((msg, idx) => (
-            <SubAgentConversationMessage
-              key={idx}
-              message={msg}
-              agentName={agentName}
-              isExpanded={expandedMessages[idx] ?? false}
-              onToggleExpand={() => toggleMessage(idx)}
-            />
-          ))}
+        <div className="relative bg-white/50 dark:bg-black/20">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="overflow-y-auto p-2 space-y-2"
+            style={{ maxHeight: isCompact ? "min(45vh, 320px)" : "min(50vh, 400px)" }}
+          >
+            {conversation.map((msg, idx) => (
+              <SubAgentConversationMessage
+                key={idx}
+                message={msg}
+                agentName={agentName}
+                isExpanded={expandedMessages[idx] ?? false}
+                onToggleExpand={() => toggleMessage(idx)}
+                isCompact={isCompact}
+              />
+            ))}
+          </div>
+          {!isPinnedToBottom && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsPinnedToBottom(true)
+                scrollToBottom("smooth")
+              }}
+              className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
+            >
+              <ChevronDown className="h-3 w-3" />
+              Jump to latest
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1472,8 +1620,9 @@ const DelegationBubble: React.FC<{
   isExpanded?: boolean
   onToggleExpand?: () => void
 }> = ({ delegation, isExpanded = true, onToggleExpand }) => {
+  const { ref: containerRef, isCompact } = useCompactWidth<HTMLDivElement>()
   const [isConversationOpen, setIsConversationOpen] = useState(false)
-  const isRunning = delegation.status === 'running' || delegation.status === 'pending'
+  const isRunning = delegation.status === 'running' || delegation.status === 'pending' || delegation.status === 'spawning'
   const isCompleted = delegation.status === 'completed'
   const isFailed = delegation.status === 'failed'
   const isCancelled = delegation.status === 'cancelled'
@@ -1545,74 +1694,120 @@ const DelegationBubble: React.FC<{
     onToggleExpand?.()
   }
 
+  const mutedTextColor = textColor.replace('800', '600').replace('200', '400')
+  const bodyTextColor = textColor.replace('800', '700').replace('200', '300')
+  const statusLabel = formatDelegationStatus(delegation.status)
+  const subtitle = getDelegationSubtitle(delegation, isCompact ? 72 : 120)
+  const durationLabel = `${duration}s`
+  const statusBadgeClass = isCompleted
+    ? 'border-green-300/70 bg-green-100/70 text-green-800 dark:border-green-700/70 dark:bg-green-900/40 dark:text-green-200'
+    : isFailed
+    ? 'border-red-300/70 bg-red-100/70 text-red-800 dark:border-red-700/70 dark:bg-red-900/40 dark:text-red-200'
+    : isCancelled
+    ? 'border-amber-300/70 bg-amber-100/70 text-amber-800 dark:border-amber-700/70 dark:bg-amber-900/40 dark:text-amber-200'
+    : 'border-blue-300/70 bg-blue-100/70 text-blue-800 dark:border-blue-700/70 dark:bg-blue-900/40 dark:text-blue-200'
+
   return (
-    <div className={cn("rounded-lg border overflow-hidden", statusColor)}>
+    <div ref={containerRef} className={cn("rounded-lg border overflow-hidden", statusColor)}>
       {/* Header - clickable to collapse/expand entire bubble */}
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-2 cursor-pointer hover:opacity-90 transition-opacity",
+          "px-3 py-2.5 cursor-pointer hover:opacity-90 transition-opacity",
           isExpanded && "border-b",
           headerColor
         )}
         onClick={handleHeaderClick}
       >
-        <Bot className={cn("h-3.5 w-3.5", iconColor)} />
-        <span className={cn("text-xs font-medium", textColor)}>
-          {delegation.agentName}
-        </span>
-        {hasConversation && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-gray-500 dark:text-gray-400">
-            {delegation.conversation!.length} msgs
-          </Badge>
-        )}
-        <div className="ml-auto flex items-center gap-1">
-          {isRunning && (
-            <Loader2 className={cn("h-3 w-3 animate-spin", iconColor)} />
-          )}
-          {isCompleted && (
-            <Check className={cn("h-3 w-3", iconColor)} />
-          )}
-          {isFailed && (
-            <XCircle className={cn("h-3 w-3", iconColor)} />
-          )}
-          {isCancelled && (
-            <OctagonX className={cn("h-3 w-3", iconColor)} />
-          )}
-          <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400 ml-1">
-            {duration}s
-          </span>
-          {/* Collapse/Expand chevron */}
-          {isExpanded ? (
-            <ChevronUp className="h-3.5 w-3.5 text-gray-400 ml-1" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5 text-gray-400 ml-1" />
-          )}
+        <div className="flex items-start gap-2">
+          <Bot className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", iconColor)} />
+          <div className="min-w-0 flex-1">
+            <div className={cn("flex gap-2", isCompact ? "flex-col items-start" : "items-start justify-between")}>
+              <div className="min-w-0 flex-1">
+                <div className={cn("text-xs font-medium truncate", textColor)}>
+                  {delegation.agentName}
+                </div>
+                <div className="mt-0.5 text-[11px] leading-4 text-gray-600 dark:text-gray-400 line-clamp-2">
+                  {subtitle}
+                </div>
+              </div>
+              <div className={cn("flex items-center gap-1.5", isCompact ? "w-full justify-between" : "pl-2 flex-shrink-0")}>
+                <Badge variant="outline" className={cn("h-5 rounded-full px-1.5 text-[10px] font-medium", statusBadgeClass)}>
+                  {statusLabel}
+                </Badge>
+                {isExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                )}
+              </div>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
+              <span className="inline-flex items-center gap-1">
+                {isRunning ? (
+                  <Loader2 className={cn("h-3 w-3 animate-spin", iconColor)} />
+                ) : isCompleted ? (
+                  <Check className={cn("h-3 w-3", iconColor)} />
+                ) : isFailed ? (
+                  <XCircle className={cn("h-3 w-3", iconColor)} />
+                ) : (
+                  <OctagonX className={cn("h-3 w-3", iconColor)} />
+                )}
+                <span>{durationLabel}</span>
+              </span>
+              {hasConversation && (
+                <span>{delegation.conversation!.length} messages</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Collapsed preview - show task snippet when collapsed */}
-      {!isExpanded && (
-        <div className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 truncate">
-          {delegation.task.length > 60
-            ? `${delegation.task.substring(0, 60)}...`
-            : delegation.task}
-        </div>
-      )}
-
       {/* Content - only shown when expanded */}
       {isExpanded && (
-        <div className="px-3 py-2">
-          <p className={cn("text-xs", textColor.replace('800', '700').replace('200', '300'))}>
-            {delegation.task.length > 100
-              ? `${delegation.task.substring(0, 100)}...`
-              : delegation.task}
-          </p>
+        <div className="px-3 py-3 space-y-3">
+          <div className="space-y-1">
+            <div className={cn("text-[11px] font-semibold uppercase tracking-wide", mutedTextColor)}>
+              Task
+            </div>
+            <p className={cn("text-[13px] leading-5 whitespace-pre-wrap break-words", bodyTextColor)}>
+              {delegation.task}
+            </p>
+          </div>
 
           {/* Progress message */}
           {delegation.progressMessage && (
-            <p className={cn("text-xs mt-1 italic", textColor.replace('800', '600').replace('200', '400'))}>
-              {delegation.progressMessage}
-            </p>
+            <div className="space-y-1">
+              <div className={cn("text-[11px] font-semibold uppercase tracking-wide", mutedTextColor)}>
+                Latest update
+              </div>
+              <p className={cn("text-[13px] leading-5 italic whitespace-pre-wrap break-words", mutedTextColor)}>
+                {delegation.progressMessage}
+              </p>
+            </div>
+          )}
+
+          {/* Result summary (when conversation is collapsed) */}
+          {delegation.resultSummary && (
+            <div className="space-y-1 rounded-md border border-white/60 bg-white/50 p-2.5 dark:border-white/10 dark:bg-black/20">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Result
+              </div>
+              <p className="text-[13px] leading-5 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+                {delegation.resultSummary}
+              </p>
+            </div>
+          )}
+
+          {/* Error message */}
+          {delegation.error && (
+            <div className="space-y-1 rounded-md border border-red-200/80 bg-red-100/50 p-2.5 dark:border-red-800/70 dark:bg-red-900/30">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
+                Error
+              </div>
+              <p className="text-[13px] leading-5 text-red-700 dark:text-red-300 whitespace-pre-wrap break-words">
+                {delegation.error}
+              </p>
+            </div>
           )}
 
           {/* Collapsible conversation panel - persists after completion */}
@@ -1622,40 +1817,21 @@ const DelegationBubble: React.FC<{
               agentName={delegation.agentName}
               isOpen={isConversationOpen}
               onToggle={() => setIsConversationOpen(!isConversationOpen)}
+              isCompact={isCompact}
             />
           )}
 
-          {/* Result summary (when conversation is collapsed) */}
-          {!isConversationOpen && delegation.resultSummary && (
-            <div className="mt-2 p-2 rounded bg-white/50 dark:bg-black/20">
-              <p className="text-xs text-gray-700 dark:text-gray-300">
-                {delegation.resultSummary.length > 150
-                  ? `${delegation.resultSummary.substring(0, 150)}...`
-                  : delegation.resultSummary}
-              </p>
-            </div>
-          )}
-
-          {/* Error message */}
-          {delegation.error && (
-            <div className="mt-2 p-2 rounded bg-red-100/50 dark:bg-red-900/30">
-              <p className="text-xs text-red-700 dark:text-red-300">
-                {delegation.error}
-              </p>
-            </div>
-          )}
-
           {/* Status footer */}
-          <div className="flex items-center justify-between mt-2">
-            <span className={cn("text-xs", textColor.replace('800', '600').replace('200', '400'))}>
-              {isRunning ? 'Running' : isCompleted ? 'Completed' : isCancelled ? 'Cancelled' : 'Failed'}
+          <div className={cn("flex items-center justify-between gap-2 border-t border-black/5 pt-2 dark:border-white/10", isCompact && "flex-col items-stretch")}>
+            <span className={cn("text-[11px]", mutedTextColor)}>
+              {statusLabel} · {durationLabel}
             </span>
             {hasConversation && !isConversationOpen && (
               <button
                 onClick={(e) => { e.stopPropagation(); setIsConversationOpen(true) }}
-                className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline"
+                className="inline-flex h-8 items-center justify-center rounded-md border border-purple-200/80 px-3 text-[11px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
               >
-                View conversation
+                Open conversation
               </button>
             )}
           </div>
@@ -1764,11 +1940,21 @@ const MidTurnUserResponseBubble: React.FC<{
   userResponse: string
   pastResponses?: string[]
   sessionId?: string
+  agentLabel?: string
   variant?: "default" | "overlay" | "tile"
   isComplete: boolean
   isExpanded: boolean
   onToggleExpand: () => void
-}> = ({ userResponse, pastResponses, sessionId, variant = "default", isComplete, isExpanded, onToggleExpand }) => {
+}> = ({
+  userResponse,
+  pastResponses,
+  sessionId,
+  agentLabel = "Agent",
+  variant = "default",
+  isComplete,
+  isExpanded,
+  onToggleExpand,
+}) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [ttsError, setTtsError] = useState<string | null>(null)
@@ -1906,7 +2092,7 @@ const MidTurnUserResponseBubble: React.FC<{
       {/* Header */}
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-2 bg-green-100/50 dark:bg-green-900/30 cursor-pointer hover:bg-green-100/70 dark:hover:bg-green-900/40 transition-colors",
+          "flex items-start gap-2 px-3 py-2 bg-green-100/50 dark:bg-green-900/30 cursor-pointer hover:bg-green-100/70 dark:hover:bg-green-900/40 transition-colors",
           isExpanded && "border-b border-green-200 dark:border-green-800",
         )}
         onClick={onToggleExpand}
@@ -1917,14 +2103,14 @@ const MidTurnUserResponseBubble: React.FC<{
           <ChevronRight className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
         )}
         <MessageSquare className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-        <span className="text-xs font-medium text-green-800 dark:text-green-200 flex-shrink-0">
-          Assistant Response
-        </span>
-        {!isExpanded && (
-          <span className="text-xs text-green-700/80 dark:text-green-300/70 truncate min-w-0 flex-1">
-            {collapsedPreview}
-          </span>
-        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-green-800 dark:text-green-200 truncate">
+            {agentLabel}
+          </div>
+          <div className="text-xs text-green-700/80 dark:text-green-300/70 truncate min-w-0">
+            {isExpanded ? "Latest response" : collapsedPreview}
+          </div>
+        </div>
         {(isTTSPlaying || isGeneratingAudio) && (
           <button
             onClick={(e) => {
@@ -2413,6 +2599,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     ?? (fallbackRespondToUserResponses.length > 1
       ? fallbackRespondToUserResponses.slice(0, -1)
       : undefined)
+  const primaryAgentLabel = acpSessionInfo?.agentTitle
+    ?? acpSessionInfo?.agentName
+    ?? profileName
+    ?? "Agent"
 
   if (!progress.userResponse && effectiveUserResponse) {
     const logKey = `${progress.sessionId}:${effectiveUserResponse.length}:${effectiveUserResponseHistory?.length || 0}`
@@ -2996,6 +3186,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             userResponse={item.data.userResponse}
                             pastResponses={item.data.pastResponses}
                             sessionId={progress.sessionId}
+                            agentLabel={primaryAgentLabel}
                             variant="tile"
                             isComplete={isComplete}
                             isExpanded={isExpanded}
@@ -3377,6 +3568,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       userResponse={item.data.userResponse}
                       pastResponses={item.data.pastResponses}
                       sessionId={progress.sessionId}
+                      agentLabel={primaryAgentLabel}
                       variant={variant}
                       isComplete={isComplete}
                       isExpanded={isExpanded}
