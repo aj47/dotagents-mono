@@ -11,6 +11,7 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import { emergencyStopAll } from "./emergency-stop"
+import { getErrorMessage } from "./error-utils"
 import { SessionProfileSnapshot, AgentProgressUpdate } from "@shared/types"
 
 // ANSI color codes (no external deps)
@@ -300,7 +301,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
     console.log()
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorMessage = getErrorMessage(error)
     agentSessionTracker.errorSession(sessionId, errorMessage)
     printColored(colors.red, `Error: ${errorMessage}`)
   } finally {

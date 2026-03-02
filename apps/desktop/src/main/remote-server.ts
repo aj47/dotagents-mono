@@ -7,6 +7,7 @@ import path from "path"
 import QRCode from "qrcode"
 import { configStore, recordingsFolder } from "./config"
 import { diagnosticsService } from "./diagnostics"
+import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
@@ -533,7 +534,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
     return { content: agentResult.content, conversationId, conversationHistory: formattedHistory }
   } catch (error) {
     // Mark session as errored
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorMessage = getErrorMessage(error)
     agentSessionTracker.errorSession(sessionId, errorMessage)
 
     // Conversation was already created/updated before agent execution started.

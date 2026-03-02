@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, X } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, Loader2, X } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
@@ -19,6 +19,7 @@ interface TileFollowUpInputProps {
   conversationId?: string
   sessionId?: string
   isSessionActive?: boolean
+  isInitializingSession?: boolean
   className?: string
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
@@ -33,6 +34,7 @@ export function TileFollowUpInput({
   conversationId,
   sessionId,
   isSessionActive = false,
+  isInitializingSession = false,
   className,
   onMessageSent,
   onStopSession,
@@ -96,6 +98,7 @@ export function TileFollowUpInput({
       attachmentCount: imageAttachments.length,
       messageLength: message.length,
       isSessionActive,
+      isInitializingSession,
       isQueueEnabled,
       pending: sendMutation.isPending,
     })
@@ -103,7 +106,7 @@ export function TileFollowUpInput({
     // Allow submission if:
     // 1. Not already pending
     // 2. Either session is not active OR queue is enabled
-    if (message && !sendMutation.isPending && (!isSessionActive || isQueueEnabled)) {
+    if (message && !isInitializingSession && !sendMutation.isPending && (!isSessionActive || isQueueEnabled)) {
       sendMutation.mutate(message)
     }
   }
@@ -153,6 +156,8 @@ export function TileFollowUpInput({
 
   const handleVoiceClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (isInitializingSession) return
+
     // Pass conversationId and sessionId directly through IPC to continue in the same session
     // This is more reliable than using Zustand store which has timing issues
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
@@ -205,16 +210,19 @@ export function TileFollowUpInput({
 
   // When queue is enabled, allow TEXT input even when session is active
   // When queue is disabled, don't allow input while session is active
-  const isDisabled = sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const isDisabled = isInitializingSession || sendMutation.isPending || (isSessionActive && !isQueueEnabled)
 
   // When queue is enabled, allow voice recording even when session is active
   // The transcript will be queued after transcription completes
   // When queue is disabled, don't allow voice input while session is active
-  const isVoiceDisabled = sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const isVoiceDisabled = isInitializingSession || sendMutation.isPending || (isSessionActive && !isQueueEnabled)
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
 
   // Show appropriate placeholder based on state
   const getPlaceholder = () => {
+    if (isInitializingSession) {
+      return "Initializing session..."
+    }
     if (isSessionActive && isQueueEnabled) {
       return "Queue message..."
     }
@@ -299,12 +307,16 @@ export function TileFollowUpInput({
           variant="ghost"
           className="h-6 w-6 flex-shrink-0"
           disabled={!hasMessageContent || isDisabled}
-          title={isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          title={isInitializingSession ? "Starting agent session" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
         >
-          <Send className={cn(
-            "h-3 w-3",
-            sendMutation.isPending && "animate-pulse"
-          )} />
+          {isInitializingSession ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Send className={cn(
+              "h-3 w-3",
+              sendMutation.isPending && "animate-pulse"
+            )} />
+          )}
         </Button>
         <Button
           type="button"
@@ -317,7 +329,7 @@ export function TileFollowUpInput({
           )}
           disabled={isVoiceDisabled}
           onClick={handleVoiceClick}
-          title={isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
+          title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
         >
           <Mic className="h-3 w-3" />
         </Button>

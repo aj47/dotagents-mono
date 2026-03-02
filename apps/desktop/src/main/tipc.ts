@@ -1,5 +1,6 @@
 import fs from "fs"
 import { logApp, logLLM, getDebugFlags } from "./debug"
+import { getErrorMessage } from "./error-utils"
 import { getRendererHandlers, tipc } from "@egoist/tipc/main"
 import {
   showPanelWindow,
@@ -513,7 +514,7 @@ async function processWithAgentMode(
     return agentResult.content
   } catch (error) {
     // Mark session as errored
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    const errorMessage = getErrorMessage(error)
     agentSessionTracker.errorSession(sessionId, errorMessage)
 
     // Emit error progress update to the UI so users see the error message
@@ -690,7 +691,7 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
       } catch (error) {
         logLLM(`[processQueuedMessages] Error processing queued message ${queuedMessage.id}:`, error)
         // Mark the message as failed so users can see it in the UI
-        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        const errorMessage = getErrorMessage(error)
         messageQueueService.markFailed(conversationId, queuedMessage.id, errorMessage)
         // Stop processing - user needs to handle the failed message
         break
@@ -1988,10 +1989,10 @@ export const router = {
         Buffer.from(input.recording),
       )
 
-        // Fire-and-forget: Start agent processing without blocking
-        // This allows multiple sessions to run concurrently
-        // Pass the sessionId to avoid creating a duplicate session
-        processWithAgentMode(transcript, conversationId, sessionId)
+        // Fire-and-forget: Start agent processing without blocking.
+        // Preserve the tile/background snooze state after transcription so
+        // voice follow-ups from a session tile do not re-focus the panel.
+        processWithAgentMode(transcript, conversationId, sessionId, startSnoozed)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -2038,7 +2039,7 @@ export const router = {
             id: `transcribe_error_${Date.now()}`,
             type: "completion",
             title: "Transcription failed",
-            description: error instanceof Error ? error.message : "Unknown transcription error",
+            description: getErrorMessage(error, "Unknown transcription error"),
             status: "error",
             timestamp: Date.now(),
           }],
@@ -2046,11 +2047,11 @@ export const router = {
           isSnoozed: startSnoozed,
           conversationTitle: "Transcription Error",
           conversationHistory: [],
-          finalContent: `Transcription failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+          finalContent: `Transcription failed: ${getErrorMessage(error)}`,
         })
 
         // Mark the session as errored to clean up the UI
-        agentSessionTracker.errorSession(sessionId, error instanceof Error ? error.message : "Transcription failed")
+        agentSessionTracker.errorSession(sessionId, getErrorMessage(error, "Transcription failed"))
 
         // Re-throw the error so the caller knows transcription failed
         throw error

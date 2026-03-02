@@ -40,6 +40,8 @@ interface AgentProgressProps {
   onCollapsedChange?: (collapsed: boolean) => void
   /** For tile variant: callback when a follow-up message is sent */
   onFollowUpSent?: () => void
+  /** For tile variant: show a transient startup state before the real session arrives */
+  isFollowUpInputInitializing?: boolean
   /** For tile variant: callback to expand this tile to full view */
   onExpand?: () => void
   /** For tile variant: whether this tile is in expanded/full view mode */
@@ -2012,6 +2014,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   isCollapsed: controlledIsCollapsed,
   onCollapsedChange,
   onFollowUpSent,
+  isFollowUpInputInitializing,
   onExpand,
   isExpanded,
 }) => {
@@ -3120,6 +3123,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           conversationId={progress.conversationId}
           sessionId={progress.sessionId}
           isSessionActive={!isComplete}
+          isInitializingSession={isFollowUpInputInitializing}
           className="flex-shrink-0"
           onMessageSent={onFollowUpSent}
         />

@@ -193,6 +193,11 @@ export function Component() {
   // State for pending conversation continuation (user selected a conversation to continue)
   // Declared before allProgressEntries so it can be used in the filter below.
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null)
+  const [pendingContinuationStartedAt, setPendingContinuationStartedAt] = useState<number | null>(null)
+
+  useEffect(() => {
+    setPendingContinuationStartedAt(null)
+  }, [pendingConversationId])
 
   const allProgressEntries = React.useMemo(() => {
     const entries = Array.from(agentProgressById.entries())
@@ -327,6 +332,7 @@ export function Component() {
       console.error("Pending conversation not found:", pendingConversationId)
     }
     toast.error("Unable to load that past session")
+    setPendingContinuationStartedAt(null)
     setPendingConversationId(null)
   }, [pendingConversationId, pendingConversationQuery.isError, pendingConversationQuery.error, isPendingConversationMissing])
 
@@ -336,14 +342,25 @@ export function Component() {
   const pendingProgress: AgentProgressUpdate | null = useMemo(() => {
     if (!pendingConversationId || !pendingConversationQuery.data) return null
     const conv = pendingConversationQuery.data
+    const isInitializing = pendingContinuationStartedAt !== null
+
     return {
       sessionId: `pending-${pendingConversationId}`,
       conversationId: pendingConversationId,
       conversationTitle: conv.title || "Continue Conversation",
-      currentIteration: 0,
-      maxIterations: 10,
-      steps: [],
-      isComplete: true, // Mark as complete so it shows the follow-up input
+      currentIteration: isInitializing ? 1 : 0,
+      maxIterations: isInitializing ? Infinity : 10,
+      steps: isInitializing
+        ? [{
+            id: `pending-start-${pendingConversationId}`,
+            type: "thinking",
+            title: "Initializing session",
+            description: "Starting agent session...",
+            status: "in_progress",
+            timestamp: pendingContinuationStartedAt,
+          }]
+        : [],
+      isComplete: !isInitializing,
       conversationHistory: conv.messages.map(m => ({
         role: m.role,
         content: m.content,
@@ -352,7 +369,7 @@ export function Component() {
         timestamp: m.timestamp,
       })),
     }
-  }, [pendingConversationId, pendingConversationQuery.data])
+  }, [pendingConversationId, pendingConversationQuery.data, pendingContinuationStartedAt])
 
   // Handle continuing a conversation - check for existing active session first
   // If found, focus it; otherwise create a pending tile
@@ -371,6 +388,7 @@ export function Component() {
       }, 100)
     } else {
       // No active session exists, create a pending tile
+      setPendingContinuationStartedAt(null)
       setPendingConversationId(conversationId)
     }
   }
@@ -378,8 +396,13 @@ export function Component() {
   // Handle dismissing the pending continuation
   const handleDismissPendingContinuation = () => {
     logUI('[Sessions] Dismissing pending continuation:', { pendingConversationId })
+    setPendingContinuationStartedAt(null)
     setPendingConversationId(null)
   }
+
+  const handlePendingContinuationStarted = useCallback(() => {
+    setPendingContinuationStartedAt((existing) => existing ?? Date.now())
+  }, [])
 
   // Auto-dismiss pending tile when a real session starts for the same conversationId
   // This ensures smooth transition from "pending" state to "active" session
@@ -398,6 +421,7 @@ export function Component() {
 
     if (hasRealSession) {
       // A real session has started for this conversation, dismiss the pending tile
+      setPendingContinuationStartedAt(null)
       setPendingConversationId(null)
     }
   }, [pendingConversationId, agentProgressById])
@@ -637,10 +661,12 @@ export function Component() {
                     isFocused={true}
                     onFocus={() => {}}
                     onDismiss={handleDismissPendingContinuation}
+                    onFollowUpSent={handlePendingContinuationStarted}
                     isCollapsed={collapsedSessions[pendingSessionId] ?? false}
                     onCollapsedChange={(collapsed) => handleCollapsedChange(pendingSessionId, collapsed)}
                     onExpand={showTileMaximize ? handleMaximizeSingleTile : undefined}
                     isExpanded={tileLayoutMode === "1x1"}
+                    isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
 
                   />
                 </SessionTileWrapper>
