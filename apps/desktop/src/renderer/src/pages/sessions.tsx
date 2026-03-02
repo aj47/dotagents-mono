@@ -40,6 +40,7 @@ function formatTimestamp(timestamp: number): string {
 }
 
 const RECENT_SESSIONS_LIMIT = 8
+const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
 function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionClick, onOpenPastSessionsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut }: {
   onTextClick: () => void
@@ -404,19 +405,23 @@ export function Component() {
     setPendingContinuationStartedAt((existing) => existing ?? Date.now())
   }, [])
 
-  // Auto-dismiss pending tile when a real session starts for the same conversationId
-  // This ensures smooth transition from "pending" state to "active" session
+  // Auto-dismiss pending tile when a real session starts for the same conversationId.
+  // During initialization, also dismiss when a completed session appears with
+  // activity at/after the follow-up start timestamp.
   useEffect(() => {
     if (!pendingConversationId) return
 
-    // Check if any active (non-complete) real session exists for this conversationId.
-    // Completed sessions should not dismiss the pending tile because we want to
-    // reload completed history from disk for freshness and remote-sync correctness.
     const hasRealSession = Array.from(agentProgressById.entries()).some(
       ([sessionId, progress]) =>
         !sessionId.startsWith("pending-") &&
         progress?.conversationId === pendingConversationId &&
-        !progress?.isComplete
+        (
+          !progress?.isComplete ||
+          (
+            pendingContinuationStartedAt !== null &&
+            getLastActivityTimestamp(progress) >= pendingContinuationStartedAt
+          )
+        )
     )
 
     if (hasRealSession) {
@@ -424,7 +429,32 @@ export function Component() {
       setPendingContinuationStartedAt(null)
       setPendingConversationId(null)
     }
-  }, [pendingConversationId, agentProgressById])
+  }, [pendingConversationId, pendingContinuationStartedAt, agentProgressById, getLastActivityTimestamp])
+
+  // Safety fallback: if initialization does not produce a real session in time,
+  // dismiss the pending tile instead of leaving it stuck indefinitely.
+  useEffect(() => {
+    if (!pendingConversationId || pendingContinuationStartedAt === null) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingConversationId((currentConversationId) => {
+        if (currentConversationId !== pendingConversationId) return currentConversationId
+        logUI("[Sessions] Pending continuation timed out waiting for real session", {
+          pendingConversationId,
+          pendingContinuationStartedAt,
+        })
+        toast.error("Session startup timed out. Please try again.")
+        return null
+      })
+      setPendingContinuationStartedAt((currentStartedAt) =>
+        currentStartedAt === pendingContinuationStartedAt ? null : currentStartedAt
+      )
+    }, PENDING_CONTINUATION_TIMEOUT_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [pendingConversationId, pendingContinuationStartedAt])
 
   // Handle text click - open panel with text input
   const handleTextClick = async () => {
