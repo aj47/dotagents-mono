@@ -391,32 +391,36 @@ export function Component() {
     setPendingConversationId(null)
   }
 
-  // Auto-dismiss pending tile when a real session starts for the same conversationId
-  // (Handled above via hasRealActiveSessionForPending — this effect is kept as a
-  // safety net but the primary dismissal now happens synchronously in the memo filter
-  // to prevent the phantom "Initializing..." tile from ever rendering.)
-  useEffect(() => {
-    // Already handled by the effect near allProgressEntries
-  }, [pendingConversationId, agentProgressById])
-
   const applySelectedAgentToNextSession = useCallback(async (options?: { silent?: boolean }) => {
     try {
-      let agentIdToApply = selectedAgentId
+      const agents = await tipcClient.getAgentProfiles()
+      const enabledAgents = (agents as AgentProfile[]).filter((agent) => agent.enabled)
 
-      if (!agentIdToApply) {
-        const agents = await tipcClient.getAgentProfiles()
-        const enabledAgents = (agents as AgentProfile[]).filter((agent) => agent.enabled)
+      let agentIdToApply: string | null
+      if (selectedAgentId) {
+        const selectedAgent = enabledAgents.find((agent) => agent.id === selectedAgentId)
+        if (!selectedAgent) {
+          setSelectedAgentId(null)
+          if (!options?.silent) {
+            toast.error("Selected agent is no longer available")
+          }
+          return false
+        }
+        agentIdToApply = selectedAgent.id
+      } else {
         const defaultAgent =
           enabledAgents.find((agent) => agent.isDefault)
           ?? enabledAgents.find((agent) => agent.name === "main-agent")
           ?? enabledAgents[0]
-
         agentIdToApply = defaultAgent?.id ?? null
       }
 
       if (!agentIdToApply) return true
 
-      await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
+      const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
+      if (!result?.success) {
+        throw new Error("setCurrentAgentProfile returned success=false")
+      }
       return true
     } catch (error) {
       logUI("[Sessions] Failed to apply selected agent", { selectedAgentId, error })
@@ -425,7 +429,7 @@ export function Component() {
       }
       return false
     }
-  }, [selectedAgentId])
+  }, [selectedAgentId, setSelectedAgentId])
 
   // Keep the main-process current profile aligned with the selected agent so all
   // new-session entry points (including conversation follow-ups) use the selector.

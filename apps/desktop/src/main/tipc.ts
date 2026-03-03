@@ -3910,6 +3910,10 @@ export const router = {
   setCurrentAgentProfile: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {
+      const profile = agentProfileService.getById(input.id)
+      if (!profile || !profile.enabled) {
+        return { success: false }
+      }
       agentProfileService.setCurrentProfile(input.id)
       return { success: true }
     }),

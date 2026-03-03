@@ -8,7 +8,7 @@
 
 import fs from "fs"
 import path from "path"
-import { dialog, BrowserWindow } from "electron"
+import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
 import type { AgentProfile } from "@shared/types"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer } from "./agents-files/agent-profiles"
@@ -235,15 +235,18 @@ export async function exportBundleToFile(
   const bundle = await exportBundle(agentsDir, options)
   const bundleJson = JSON.stringify(bundle, null, 2)
 
-  const win = BrowserWindow.getFocusedWindow()
-  const result = await dialog.showSaveDialog(win ?? undefined as any, {
+  const saveDialogOptions: SaveDialogOptions = {
     title: "Export Agent Configuration",
     defaultPath: `${bundle.manifest.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}.dotagents`,
     filters: [
       { name: "DotAgents Bundle", extensions: ["dotagents"] },
       { name: "JSON", extensions: ["json"] },
     ],
-  })
+  }
+  const win = BrowserWindow.getFocusedWindow()
+  const result = win
+    ? await dialog.showSaveDialog(win, saveDialogOptions)
+    : await dialog.showSaveDialog(saveDialogOptions)
 
   if (result.canceled || !result.filePath) {
     return null
@@ -299,12 +302,15 @@ export async function previewBundleFromDialog(): Promise<{
   filePath: string
   bundle: DotAgentsBundle
 } | null> {
-  const win = BrowserWindow.getFocusedWindow()
-  const result = await dialog.showOpenDialog(win ?? undefined as any, {
+  const openDialogOptions: OpenDialogOptions = {
     title: "Select Agent Configuration Bundle",
     properties: ["openFile"],
     filters: [{ name: "DotAgents Bundle", extensions: ["dotagents", "json"] }],
-  })
+  }
+  const win = BrowserWindow.getFocusedWindow()
+  const result = win
+    ? await dialog.showOpenDialog(win, openDialogOptions)
+    : await dialog.showOpenDialog(openDialogOptions)
 
   if (result.canceled || result.filePaths.length === 0) {
     return null
