@@ -4,7 +4,7 @@ import { MultiAgentProgressView } from "@renderer/components/multi-agent-progres
 import { Recorder } from "@renderer/lib/recorder"
 import { playSound } from "@renderer/lib/sound"
 import { cn } from "@renderer/lib/utils"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { rendererHandlers, tipcClient } from "~/lib/tipc-client"
 import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-input-panel"
@@ -18,7 +18,9 @@ import { useTheme } from "@renderer/contexts/theme-context"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { logUI } from "@renderer/lib/debug"
 import { formatKeyComboForDisplay } from "@shared/key-utils"
-import { Send } from "lucide-react"
+import { Send, Bot } from "lucide-react"
+import { useSelectedAgentId } from "@renderer/components/agent-selector"
+import type { AgentProfile } from "@shared/types"
 
 const DEFAULT_VISUALIZER_BAR_COUNT = 70
 const MIN_VISUALIZER_BAR_COUNT = 24
@@ -87,6 +89,18 @@ export function Component() {
   const currentConversationId = useConversationStore((s) => s.currentConversationId)
   const setCurrentConversationId = useConversationStore((s) => s.setCurrentConversationId)
   const endConversation = useConversationStore((s) => s.endConversation)
+
+  // Get currently selected agent for display in waveform recording UI
+  const [selectedAgentId] = useSelectedAgentId()
+  const { data: agents = [] } = useQuery<AgentProfile[]>({
+    queryKey: ["agentProfilesPanel"],
+    queryFn: () => tipcClient.getAgentProfiles(),
+  })
+  const selectedAgentName = useMemo(() => {
+    if (!selectedAgentId) return null
+    const agent = agents.find((a) => a.id === selectedAgentId)
+    return agent?.displayName || agent?.name || null
+  }, [selectedAgentId, agents])
 
   const conversationQuery = useConversationQuery(currentConversationId)
   const currentConversation = conversationQuery.data ?? null
@@ -1145,6 +1159,13 @@ export function Component() {
                   ref={recordingViewportRef}
                   className="absolute inset-0 z-30 flex flex-col items-center justify-center"
                 >
+                  {/* Selected agent indicator during recording */}
+                  {selectedAgentName && !continueConversationTitle && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 mb-1 rounded bg-primary/10 dark:bg-primary/10 text-primary text-xs">
+                      <Bot className="h-3 w-3 shrink-0" />
+                      <span className="font-medium truncate max-w-[180px]">{selectedAgentName}</span>
+                    </div>
+                  )}
                   {/* Continue conversation indicator */}
                   {continueConversationTitle && (
                     <div className="flex items-center gap-1 px-2 py-0.5 mb-1 rounded bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 text-xs">

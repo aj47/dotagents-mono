@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, Loader2, X } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
@@ -21,6 +21,8 @@ interface TileFollowUpInputProps {
   isSessionActive?: boolean
   isInitializingSession?: boolean
   className?: string
+  /** Agent/profile name to display as indicator */
+  agentName?: string
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
@@ -36,6 +38,7 @@ export function TileFollowUpInput({
   isSessionActive = false,
   isInitializingSession = false,
   className,
+  agentName,
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
@@ -236,11 +239,19 @@ export function TileFollowUpInput({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-2 border-t bg-muted/20 px-2 py-1.5",
+        "flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5",
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Agent indicator - shows which agent is handling this session */}
+      {agentName && (
+        <div className="flex items-center gap-1 text-[10px] text-primary/70">
+          <Bot className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate" title={`Agent: ${agentName}`}>{agentName}</span>
+        </div>
+      )}
+
       {imageAttachments.length > 0 && (
         <div className="flex w-full gap-1.5 overflow-x-auto pb-1">
           {imageAttachments.map((attachment) => (

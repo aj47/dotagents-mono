@@ -9,6 +9,7 @@ import {
   Maximize2,
   Clock,
   Archive,
+  Bot,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
@@ -451,6 +452,10 @@ export function ActiveAgentsSidebar({
               : isSnoozed
                 ? "bg-muted-foreground"
                 : "bg-blue-500"
+
+            // Get agent/profile name from progress data
+            const agentName = sessionProgress?.profileName
+
             return (
               <div
                 key={key}
@@ -472,20 +477,32 @@ export function ActiveAgentsSidebar({
                     !isSnoozed && !hasPendingApproval && "animate-pulse",
                   )}
                 />
-                <p
-                  className={cn(
-                    "flex-1 truncate",
-                    hasPendingApproval
-                      ? "text-amber-700 dark:text-amber-300"
-                      : isSnoozed
-                        ? "text-muted-foreground"
-                        : "text-foreground",
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <p
+                    className={cn(
+                      "truncate",
+                      hasPendingApproval
+                        ? "text-amber-700 dark:text-amber-300"
+                        : isSnoozed
+                          ? "text-muted-foreground"
+                          : "text-foreground",
+                    )}
+                  >
+                    {hasPendingApproval
+                      ? `⚠ ${session.conversationTitle}`
+                      : session.conversationTitle}
+                  </p>
+                  {/* Agent name indicator */}
+                  {agentName && (
+                    <span
+                      className="flex items-center gap-0.5 text-[10px] text-primary/60 truncate"
+                      title={`Agent: ${agentName}`}
+                    >
+                      <Bot className="h-2.5 w-2.5 shrink-0" />
+                      <span className="truncate">{agentName}</span>
+                    </span>
                   )}
-                >
-                  {hasPendingApproval
-                    ? `⚠ ${session.conversationTitle}`
-                    : session.conversationTitle}
-                </p>
+                </div>
                 <button
                   onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
                   className={cn(

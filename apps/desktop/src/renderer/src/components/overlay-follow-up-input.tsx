@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, X } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, X, Bot } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
@@ -20,6 +20,8 @@ interface OverlayFollowUpInputProps {
   sessionId?: string
   isSessionActive?: boolean
   className?: string
+  /** Agent/profile name to display as indicator */
+  agentName?: string
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
@@ -35,6 +37,7 @@ export function OverlayFollowUpInput({
   sessionId,
   isSessionActive = false,
   className,
+  agentName,
   onMessageSent,
   onStopSession,
 }: OverlayFollowUpInputProps) {
@@ -251,14 +254,22 @@ export function OverlayFollowUpInput({
   }
 
   return (
-    <form 
+    <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-2 border-t bg-muted/30 px-3 py-2 backdrop-blur-sm",
+        "flex flex-col gap-1.5 border-t bg-muted/30 px-3 py-2 backdrop-blur-sm",
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Agent indicator - shows which agent is handling this session */}
+      {agentName && (
+        <div className="flex items-center gap-1 text-[10px] text-primary/70">
+          <Bot className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate" title={`Agent: ${agentName}`}>{agentName}</span>
+        </div>
+      )}
+
       {imageAttachments.length > 0 && (
         <div className="flex w-full gap-2 overflow-x-auto pb-1">
           {imageAttachments.map((attachment) => (

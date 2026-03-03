@@ -3004,9 +3004,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           onClick={handleToggleCollapse}
         >
           {getStatusIndicator()}
-          <span className="flex-1 truncate font-medium text-sm">
-            {getTitle()}
-          </span>
+          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <span className="truncate font-medium text-sm">
+              {getTitle()}
+            </span>
+            {/* Agent name indicator in header */}
+            {profileName && (
+              <span className="flex items-center gap-1 text-[10px] text-primary/70">
+                <Bot className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{profileName}</span>
+              </span>
+            )}
+          </div>
           {hasPendingApproval && (
             <Badge variant="outline" className="text-amber-600 border-amber-500 text-xs">
               Approval
@@ -3317,6 +3326,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           sessionId={progress.sessionId}
           isSessionActive={!isComplete}
           isInitializingSession={isFollowUpInputInitializing}
+          agentName={profileName}
           className="flex-shrink-0"
           onMessageSent={onFollowUpSent}
         />
@@ -3371,10 +3381,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           )}
         </div>
         <div className="flex items-center gap-3">
-          {/* Profile name */}
+          {/* Profile/agent name - more prominent with icon */}
           {profileName && (
-            <span className="text-[10px] text-primary/70 truncate max-w-[80px]" title={`Profile: ${profileName}`}>
-              {profileName}
+            <span className="flex items-center gap-1 text-[10px] text-primary/70" title={`Agent: ${profileName}`}>
+              <Bot className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate max-w-[80px]">{profileName}</span>
             </span>
           )}
           {/* ACP Session info (agent and model from ACP) */}
@@ -3646,6 +3657,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         conversationId={progress.conversationId}
         sessionId={progress.sessionId}
         isSessionActive={!isComplete}
+        agentName={profileName}
         className="flex-shrink-0"
       />
 
