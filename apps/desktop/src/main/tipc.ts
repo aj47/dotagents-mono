@@ -4258,15 +4258,72 @@ export const router = {
   // ============================================================================
 
   exportBundle: t.procedure.action(async () => {
-    const { globalAgentsFolder } = await import("./config")
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
     const { exportBundleToFile } = await import("./bundle-service")
-    return exportBundleToFile(globalAgentsFolder)
+    // Use workspace layer if present, otherwise global
+    const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
+    return exportBundleToFile(targetDir)
   }),
 
   previewBundle: t.procedure.action(async () => {
     const { previewBundleFromDialog } = await import("./bundle-service")
     return previewBundleFromDialog()
   }),
+
+  previewBundleWithConflicts: t.procedure
+    .input<{ filePath: string }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { previewBundleWithConflicts } = await import("./bundle-service")
+      // Use workspace layer if present, otherwise global
+      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
+      return previewBundleWithConflicts(input.filePath, targetDir)
+    }),
+
+  importBundle: t.procedure
+    .input<{
+      filePath: string
+      conflictStrategy: "skip" | "overwrite" | "rename"
+      components?: {
+        agentProfiles?: boolean
+        mcpServers?: boolean
+        skills?: boolean
+        repeatTasks?: boolean
+        memories?: boolean
+      }
+    }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { importBundle } = await import("./bundle-service")
+      // Use workspace layer if present, otherwise global
+      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
+      return importBundle(input.filePath, targetDir, {
+        conflictStrategy: input.conflictStrategy,
+        components: input.components,
+      })
+    }),
+
+  importBundleFromDialog: t.procedure
+    .input<{
+      conflictStrategy: "skip" | "overwrite" | "rename"
+      components?: {
+        agentProfiles?: boolean
+        mcpServers?: boolean
+        skills?: boolean
+        repeatTasks?: boolean
+        memories?: boolean
+      }
+    }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { importBundleFromDialog } = await import("./bundle-service")
+      // Use workspace layer if present, otherwise global
+      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
+      return importBundleFromDialog(targetDir, {
+        conflictStrategy: input.conflictStrategy,
+        components: input.components,
+      })
+    }),
 
   // Memory service handlers
   getAllMemories: t.procedure

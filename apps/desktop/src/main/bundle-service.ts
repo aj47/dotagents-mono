@@ -3,16 +3,19 @@
  *
  * Phase 1: JSON-based bundle format with automatic secret stripping.
  * A .dotagents file is a JSON document containing a manifest plus embedded
- * agent profiles, MCP server configs, and skills metadata.
+ * agent profiles, MCP server configs, skills, repeat tasks, and memories.
  */
 
 import fs from "fs"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
-import type { AgentProfile } from "@shared/types"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
-import { loadAgentProfilesLayer } from "./agents-files/agent-profiles"
-import { safeReadJsonFileSync } from "./agents-files/safe-file"
+import type { AgentProfile, AgentSkill, AgentMemory, LoopConfig } from "@shared/types"
+import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
+import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToFilePath } from "./agents-files/skills"
+import { loadAgentsMemoriesLayer, writeAgentsMemoryFile, memoryIdToFilePath } from "./agents-files/memories"
+import { loadTasksLayer, writeTaskFile, taskIdToFilePath } from "./agents-files/tasks"
+import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
 import { logApp } from "./debug"
 
 // ============================================================================
@@ -29,6 +32,8 @@ export interface BundleManifest {
     agentProfiles: number
     mcpServers: number
     skills: number
+    repeatTasks: number
+    memories: number
   }
 }
 
@@ -60,7 +65,28 @@ export interface BundleSkill {
   id: string
   name: string
   description?: string
+  instructions: string
   source?: string
+}
+
+export interface BundleRepeatTask {
+  id: string
+  name: string
+  prompt: string
+  intervalMinutes: number
+  enabled: boolean
+  runOnStartup?: boolean
+  // profileId omitted — the profile may not exist in the target environment
+}
+
+export interface BundleMemory {
+  id: string
+  title: string
+  content: string
+  importance: "low" | "medium" | "high" | "critical"
+  tags: string[]
+  keyFindings?: string[]
+  userNotes?: string
 }
 
 export interface DotAgentsBundle {
@@ -68,12 +94,81 @@ export interface DotAgentsBundle {
   agentProfiles: BundleAgentProfile[]
   mcpServers: BundleMCPServer[]
   skills: BundleSkill[]
+  repeatTasks: BundleRepeatTask[]
+  memories: BundleMemory[]
+}
+
+export interface ExportBundleResult {
+  success: boolean
+  bundle?: DotAgentsBundle
+  error?: string
 }
 
 export interface ExportBundleToFileResult {
   success: boolean
   filePath: string | null
   canceled: boolean
+  error?: string
+}
+
+// ============================================================================
+// Import Types
+// ============================================================================
+
+export type ImportConflictStrategy = "skip" | "overwrite" | "rename"
+
+export interface ImportOptions {
+  /** How to handle conflicts when an item with the same ID already exists */
+  conflictStrategy: ImportConflictStrategy
+  /** Components to import (defaults to all) */
+  components?: {
+    agentProfiles?: boolean
+    mcpServers?: boolean
+    skills?: boolean
+    repeatTasks?: boolean
+    memories?: boolean
+  }
+}
+
+export interface ImportItemResult {
+  id: string
+  name: string
+  action: "imported" | "skipped" | "renamed" | "overwritten"
+  newId?: string // Only set if renamed
+  error?: string
+}
+
+export interface ImportBundleResult {
+  success: boolean
+  agentProfiles: ImportItemResult[]
+  mcpServers: ImportItemResult[]
+  skills: ImportItemResult[]
+  repeatTasks: ImportItemResult[]
+  memories: ImportItemResult[]
+  errors: string[]
+}
+
+// ============================================================================
+// Preview Types
+// ============================================================================
+
+export interface PreviewConflict {
+  id: string
+  name: string
+  existingName?: string
+}
+
+export interface BundlePreviewResult {
+  success: boolean
+  filePath?: string
+  bundle?: DotAgentsBundle
+  conflicts?: {
+    agentProfiles: PreviewConflict[]
+    mcpServers: PreviewConflict[]
+    skills: PreviewConflict[]
+    repeatTasks: PreviewConflict[]
+    memories: PreviewConflict[]
+  }
   error?: string
 }
 
@@ -142,8 +237,7 @@ function sanitizeAgentProfile(profile: AgentProfile): BundleAgentProfile {
   return sanitized
 }
 
-function loadMCPServers(agentsDir: string): BundleMCPServer[] {
-  const layer = getAgentsLayerPaths(agentsDir)
+function loadMCPServersForBundle(layer: AgentsLayerPaths): BundleMCPServer[] {
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
@@ -172,30 +266,41 @@ function loadMCPServers(agentsDir: string): BundleMCPServer[] {
   return servers
 }
 
-function loadSkillsMetadata(agentsDir: string): BundleSkill[] {
-  const skillsDir = path.join(agentsDir, "skills")
-  if (!fs.existsSync(skillsDir)) return []
+function loadSkillsForBundle(layer: AgentsLayerPaths): BundleSkill[] {
+  const skillsResult = loadAgentsSkillsLayer(layer)
+  return skillsResult.skills.map((skill): BundleSkill => ({
+    id: skill.id,
+    name: skill.name,
+    description: skill.description,
+    instructions: skill.instructions,
+    source: skill.source || "local",
+  }))
+}
 
-  const skills: BundleSkill[] = []
-  try {
-    const entries = fs.readdirSync(skillsDir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      const skillMdPath = path.join(skillsDir, entry.name, "skill.md")
-      if (fs.existsSync(skillMdPath)) {
-        skills.push({
-          id: entry.name,
-          name: entry.name,
-          description: `Skill from ${entry.name}`,
-          source: "local",
-        })
-      }
-    }
-  } catch {
-    // Skills directory not readable
-  }
+function loadRepeatTasksForBundle(layer: AgentsLayerPaths): BundleRepeatTask[] {
+  const tasksResult = loadTasksLayer(layer)
+  return tasksResult.tasks.map((task): BundleRepeatTask => ({
+    id: task.id,
+    name: task.name,
+    prompt: task.prompt,
+    intervalMinutes: task.intervalMinutes,
+    enabled: task.enabled,
+    runOnStartup: task.runOnStartup,
+    // profileId intentionally omitted — may not exist in target environment
+  }))
+}
 
-  return skills
+function loadMemoriesForBundle(layer: AgentsLayerPaths): BundleMemory[] {
+  const memoriesResult = loadAgentsMemoriesLayer(layer)
+  return memoriesResult.memories.map((memory): BundleMemory => ({
+    id: memory.id,
+    title: memory.title,
+    content: memory.content,
+    importance: memory.importance,
+    tags: memory.tags,
+    keyFindings: memory.keyFindings,
+    userNotes: memory.userNotes,
+  }))
 }
 
 export async function exportBundle(
@@ -203,10 +308,13 @@ export async function exportBundle(
   options?: { name?: string; description?: string }
 ): Promise<DotAgentsBundle> {
   const layer = getAgentsLayerPaths(agentsDir)
+
   const profilesResult = loadAgentProfilesLayer(layer)
   const profiles = profilesResult.profiles.map(sanitizeAgentProfile)
-  const mcpServers = loadMCPServers(agentsDir)
-  const skills = loadSkillsMetadata(agentsDir)
+  const mcpServers = loadMCPServersForBundle(layer)
+  const skills = loadSkillsForBundle(layer)
+  const repeatTasks = loadRepeatTasksForBundle(layer)
+  const memories = loadMemoriesForBundle(layer)
 
   const bundle: DotAgentsBundle = {
     manifest: {
@@ -219,17 +327,23 @@ export async function exportBundle(
         agentProfiles: profiles.length,
         mcpServers: mcpServers.length,
         skills: skills.length,
+        repeatTasks: repeatTasks.length,
+        memories: memories.length,
       },
     },
     agentProfiles: profiles,
     mcpServers,
     skills,
+    repeatTasks,
+    memories,
   }
 
   logApp("[bundle-service] Exported bundle", {
     profiles: profiles.length,
     mcpServers: mcpServers.length,
     skills: skills.length,
+    repeatTasks: repeatTasks.length,
+    memories: memories.length,
   })
 
   return bundle
@@ -294,6 +408,28 @@ function isSupportedBundleFile(filePath: string): boolean {
   return BUNDLE_FILE_EXTENSIONS.has(extension)
 }
 
+function validateBundle(bundle: unknown): bundle is DotAgentsBundle {
+  if (!bundle || typeof bundle !== "object") return false
+  const b = bundle as Record<string, unknown>
+  if (!b.manifest || typeof b.manifest !== "object") return false
+  const m = b.manifest as Record<string, unknown>
+  if (m.version !== 1) return false
+  // Ensure arrays exist (may be empty)
+  if (!Array.isArray(b.agentProfiles)) return false
+  if (!Array.isArray(b.mcpServers)) return false
+  if (!Array.isArray(b.skills)) return false
+  // repeatTasks and memories may be absent in older bundles — default to empty
+  return true
+}
+
+function normalizeBundle(bundle: DotAgentsBundle): DotAgentsBundle {
+  return {
+    ...bundle,
+    repeatTasks: Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : [],
+    memories: Array.isArray(bundle.memories) ? bundle.memories : [],
+  }
+}
+
 export function previewBundle(filePath: string): DotAgentsBundle | null {
   try {
     const normalizedPath = path.resolve(filePath)
@@ -307,18 +443,79 @@ export function previewBundle(filePath: string): DotAgentsBundle | null {
     }
 
     const content = fs.readFileSync(normalizedPath, "utf-8")
-    const bundle = JSON.parse(content) as DotAgentsBundle
+    const parsed = JSON.parse(content) as unknown
 
-    // Basic validation
-    if (!bundle.manifest || bundle.manifest.version !== 1) {
+    if (!validateBundle(parsed)) {
       throw new Error("Invalid bundle format or unsupported version")
     }
 
-    return bundle
+    return normalizeBundle(parsed)
   } catch (error) {
     logApp("[bundle-service] Failed to preview bundle", { filePath, error })
     return null
   }
+}
+
+/**
+ * Preview a bundle and detect conflicts with existing items in the target layer.
+ */
+export function previewBundleWithConflicts(
+  filePath: string,
+  targetAgentsDir: string
+): BundlePreviewResult {
+  const bundle = previewBundle(filePath)
+  if (!bundle) {
+    return { success: false, error: "Failed to parse bundle file" }
+  }
+
+  const layer = getAgentsLayerPaths(targetAgentsDir)
+
+  // Load existing items
+  const existingProfiles = loadAgentProfilesLayer(layer)
+  const existingSkills = loadAgentsSkillsLayer(layer)
+  const existingTasks = loadTasksLayer(layer)
+  const existingMemories = loadAgentsMemoriesLayer(layer)
+
+  // Load existing MCP servers
+  const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
+    defaultValue: {},
+  })
+  const existingMcpServers = new Set(
+    Object.keys((mcpConfig as any)?.mcpServers || mcpConfig || {})
+  )
+
+  // Detect conflicts
+  const conflicts = {
+    agentProfiles: bundle.agentProfiles
+      .filter(p => existingProfiles.originById.has(p.id))
+      .map(p => {
+        const existing = existingProfiles.profiles.find(ep => ep.id === p.id)
+        return { id: p.id, name: p.name, existingName: existing?.name }
+      }),
+    mcpServers: bundle.mcpServers
+      .filter(s => existingMcpServers.has(s.name))
+      .map(s => ({ id: s.name, name: s.name })),
+    skills: bundle.skills
+      .filter(s => existingSkills.originById.has(s.id))
+      .map(s => {
+        const existing = existingSkills.skills.find(es => es.id === s.id)
+        return { id: s.id, name: s.name, existingName: existing?.name }
+      }),
+    repeatTasks: bundle.repeatTasks
+      .filter(t => existingTasks.originById.has(t.id))
+      .map(t => {
+        const existing = existingTasks.tasks.find(et => et.id === t.id)
+        return { id: t.id, name: t.name, existingName: existing?.name }
+      }),
+    memories: bundle.memories
+      .filter(m => existingMemories.originById.has(m.id))
+      .map(m => {
+        const existing = existingMemories.memories.find(em => em.id === m.id)
+        return { id: m.id, name: m.title, existingName: existing?.title }
+      }),
+  }
+
+  return { success: true, filePath, bundle, conflicts }
 }
 
 export async function previewBundleFromDialog(): Promise<{
@@ -346,4 +543,428 @@ export async function previewBundleFromDialog(): Promise<{
   }
 
   return { filePath: selectedPath, bundle }
+}
+
+// ============================================================================
+// Import
+// ============================================================================
+
+/**
+ * Generate a unique ID by appending a suffix.
+ * Used when renaming conflicting items during import.
+ */
+function generateUniqueId(baseId: string, existingIds: Set<string>): string {
+  let counter = 1
+  let newId = `${baseId}_imported`
+  while (existingIds.has(newId)) {
+    counter++
+    newId = `${baseId}_imported_${counter}`
+  }
+  return newId
+}
+
+/**
+ * Import a bundle into the target .agents directory.
+ * Handles conflicts according to the specified strategy.
+ */
+export async function importBundle(
+  filePath: string,
+  targetAgentsDir: string,
+  options: ImportOptions
+): Promise<ImportBundleResult> {
+  const result: ImportBundleResult = {
+    success: false,
+    agentProfiles: [],
+    mcpServers: [],
+    skills: [],
+    repeatTasks: [],
+    memories: [],
+    errors: [],
+  }
+
+  // Parse bundle
+  const bundle = previewBundle(filePath)
+  if (!bundle) {
+    result.errors.push("Failed to parse bundle file")
+    return result
+  }
+
+  const layer = getAgentsLayerPaths(targetAgentsDir)
+  const { conflictStrategy } = options
+  const components = options.components ?? {
+    agentProfiles: true,
+    mcpServers: true,
+    skills: true,
+    repeatTasks: true,
+    memories: true,
+  }
+
+  // Ensure directories exist
+  fs.mkdirSync(targetAgentsDir, { recursive: true })
+
+  // Import agent profiles
+  if (components.agentProfiles !== false) {
+    const existingProfiles = loadAgentProfilesLayer(layer)
+    const existingIds = new Set(existingProfiles.profiles.map(p => p.id))
+
+    for (const bundleProfile of bundle.agentProfiles) {
+      try {
+        const exists = existingIds.has(bundleProfile.id)
+
+        if (exists && conflictStrategy === "skip") {
+          result.agentProfiles.push({
+            id: bundleProfile.id,
+            name: bundleProfile.name,
+            action: "skipped",
+          })
+          continue
+        }
+
+        let finalId = bundleProfile.id
+        let action: ImportItemResult["action"] = "imported"
+
+        if (exists && conflictStrategy === "rename") {
+          finalId = generateUniqueId(bundleProfile.id, existingIds)
+          action = "renamed"
+        } else if (exists && conflictStrategy === "overwrite") {
+          action = "overwritten"
+        }
+
+        // Convert bundle profile to full AgentProfile
+        const now = Date.now()
+        const fullProfile: AgentProfile = {
+          id: finalId,
+          name: bundleProfile.name,
+          displayName: bundleProfile.displayName || bundleProfile.name,
+          description: bundleProfile.description,
+          systemPrompt: bundleProfile.systemPrompt,
+          guidelines: bundleProfile.guidelines,
+          connection: { type: bundleProfile.connection.type as any },
+          role: bundleProfile.role as any,
+          enabled: bundleProfile.enabled,
+          createdAt: now,
+          updatedAt: now,
+        }
+
+        writeAgentsProfileFiles(layer, fullProfile)
+        existingIds.add(finalId)
+
+        result.agentProfiles.push({
+          id: bundleProfile.id,
+          name: bundleProfile.name,
+          action,
+          newId: action === "renamed" ? finalId : undefined,
+        })
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        result.agentProfiles.push({
+          id: bundleProfile.id,
+          name: bundleProfile.name,
+          action: "skipped",
+          error: msg,
+        })
+        result.errors.push(`Agent profile "${bundleProfile.name}": ${msg}`)
+      }
+    }
+  }
+
+  // Import MCP servers
+  if (components.mcpServers !== false) {
+    try {
+      const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
+        defaultValue: {},
+      })
+      const mcpServers = (mcpConfig as any)?.mcpServers || mcpConfig || {}
+      const existingNames = new Set(Object.keys(mcpServers))
+      let modified = false
+
+      for (const bundleServer of bundle.mcpServers) {
+        const exists = existingNames.has(bundleServer.name)
+
+        if (exists && conflictStrategy === "skip") {
+          result.mcpServers.push({
+            id: bundleServer.name,
+            name: bundleServer.name,
+            action: "skipped",
+          })
+          continue
+        }
+
+        let finalName = bundleServer.name
+        let action: ImportItemResult["action"] = "imported"
+
+        if (exists && conflictStrategy === "rename") {
+          finalName = generateUniqueId(bundleServer.name, existingNames)
+          action = "renamed"
+        } else if (exists && conflictStrategy === "overwrite") {
+          action = "overwritten"
+        }
+
+        // Build server config
+        const serverConfig: Record<string, unknown> = {}
+        if (bundleServer.command) serverConfig.command = bundleServer.command
+        if (bundleServer.args) serverConfig.args = bundleServer.args
+        if (bundleServer.transport) serverConfig.transport = bundleServer.transport
+        if (bundleServer.enabled === false) serverConfig.disabled = true
+
+        mcpServers[finalName] = serverConfig
+        existingNames.add(finalName)
+        modified = true
+
+        result.mcpServers.push({
+          id: bundleServer.name,
+          name: bundleServer.name,
+          action,
+          newId: action === "renamed" ? finalName : undefined,
+        })
+      }
+
+      if (modified) {
+        const newMcpConfig = { ...(mcpConfig as any), mcpServers }
+        safeWriteJsonFileSync(layer.mcpJsonPath, newMcpConfig, {
+          backupDir: layer.backupsDir,
+          maxBackups: 10,
+          pretty: true,
+        })
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      result.errors.push(`MCP servers import failed: ${msg}`)
+    }
+  }
+
+  // Import skills
+  if (components.skills !== false) {
+    const existingSkills = loadAgentsSkillsLayer(layer)
+    const existingIds = new Set(existingSkills.skills.map(s => s.id))
+
+    for (const bundleSkill of bundle.skills) {
+      try {
+        const exists = existingIds.has(bundleSkill.id)
+
+        if (exists && conflictStrategy === "skip") {
+          result.skills.push({
+            id: bundleSkill.id,
+            name: bundleSkill.name,
+            action: "skipped",
+          })
+          continue
+        }
+
+        let finalId = bundleSkill.id
+        let action: ImportItemResult["action"] = "imported"
+
+        if (exists && conflictStrategy === "rename") {
+          finalId = generateUniqueId(bundleSkill.id, existingIds)
+          action = "renamed"
+        } else if (exists && conflictStrategy === "overwrite") {
+          action = "overwritten"
+        }
+
+        const now = Date.now()
+        const fullSkill: AgentSkill = {
+          id: finalId,
+          name: bundleSkill.name,
+          description: bundleSkill.description || "",
+          instructions: bundleSkill.instructions || "",
+          createdAt: now,
+          updatedAt: now,
+          source: "imported",
+        }
+
+        // Create skill directory and write file
+        const skillDir = path.join(layer.agentsDir, "skills", finalId)
+        fs.mkdirSync(skillDir, { recursive: true })
+        writeAgentsSkillFile(layer, fullSkill)
+        existingIds.add(finalId)
+
+        result.skills.push({
+          id: bundleSkill.id,
+          name: bundleSkill.name,
+          action,
+          newId: action === "renamed" ? finalId : undefined,
+        })
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        result.skills.push({
+          id: bundleSkill.id,
+          name: bundleSkill.name,
+          action: "skipped",
+          error: msg,
+        })
+        result.errors.push(`Skill "${bundleSkill.name}": ${msg}`)
+      }
+    }
+  }
+
+  // Import repeat tasks
+  if (components.repeatTasks !== false) {
+    const existingTasks = loadTasksLayer(layer)
+    const existingIds = new Set(existingTasks.tasks.map(t => t.id))
+
+    for (const bundleTask of bundle.repeatTasks) {
+      try {
+        const exists = existingIds.has(bundleTask.id)
+
+        if (exists && conflictStrategy === "skip") {
+          result.repeatTasks.push({
+            id: bundleTask.id,
+            name: bundleTask.name,
+            action: "skipped",
+          })
+          continue
+        }
+
+        let finalId = bundleTask.id
+        let action: ImportItemResult["action"] = "imported"
+
+        if (exists && conflictStrategy === "rename") {
+          finalId = generateUniqueId(bundleTask.id, existingIds)
+          action = "renamed"
+        } else if (exists && conflictStrategy === "overwrite") {
+          action = "overwritten"
+        }
+
+        const fullTask: LoopConfig = {
+          id: finalId,
+          name: bundleTask.name,
+          prompt: bundleTask.prompt,
+          intervalMinutes: bundleTask.intervalMinutes,
+          enabled: bundleTask.enabled,
+          runOnStartup: bundleTask.runOnStartup,
+          // profileId intentionally not imported — may not exist in target
+        }
+
+        writeTaskFile(layer, fullTask)
+        existingIds.add(finalId)
+
+        result.repeatTasks.push({
+          id: bundleTask.id,
+          name: bundleTask.name,
+          action,
+          newId: action === "renamed" ? finalId : undefined,
+        })
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        result.repeatTasks.push({
+          id: bundleTask.id,
+          name: bundleTask.name,
+          action: "skipped",
+          error: msg,
+        })
+        result.errors.push(`Repeat task "${bundleTask.name}": ${msg}`)
+      }
+    }
+  }
+
+  // Import memories
+  if (components.memories !== false) {
+    const existingMemories = loadAgentsMemoriesLayer(layer)
+    const existingIds = new Set(existingMemories.memories.map(m => m.id))
+
+    for (const bundleMemory of bundle.memories) {
+      try {
+        const exists = existingIds.has(bundleMemory.id)
+
+        if (exists && conflictStrategy === "skip") {
+          result.memories.push({
+            id: bundleMemory.id,
+            name: bundleMemory.title,
+            action: "skipped",
+          })
+          continue
+        }
+
+        let finalId = bundleMemory.id
+        let action: ImportItemResult["action"] = "imported"
+
+        if (exists && conflictStrategy === "rename") {
+          finalId = generateUniqueId(bundleMemory.id, existingIds)
+          action = "renamed"
+        } else if (exists && conflictStrategy === "overwrite") {
+          action = "overwritten"
+        }
+
+        const now = Date.now()
+        const fullMemory: AgentMemory = {
+          id: finalId,
+          title: bundleMemory.title,
+          content: bundleMemory.content,
+          importance: bundleMemory.importance,
+          tags: bundleMemory.tags || [],
+          keyFindings: bundleMemory.keyFindings,
+          userNotes: bundleMemory.userNotes,
+          createdAt: now,
+          updatedAt: now,
+        }
+
+        // Create memories directory and write file
+        const memoriesDir = path.join(layer.agentsDir, "memories")
+        fs.mkdirSync(memoriesDir, { recursive: true })
+        writeAgentsMemoryFile(layer, fullMemory)
+        existingIds.add(finalId)
+
+        result.memories.push({
+          id: bundleMemory.id,
+          name: bundleMemory.title,
+          action,
+          newId: action === "renamed" ? finalId : undefined,
+        })
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        result.memories.push({
+          id: bundleMemory.id,
+          name: bundleMemory.title,
+          action: "skipped",
+          error: msg,
+        })
+        result.errors.push(`Memory "${bundleMemory.title}": ${msg}`)
+      }
+    }
+  }
+
+  result.success = result.errors.length === 0
+
+  logApp("[bundle-service] Import completed", {
+    success: result.success,
+    profiles: result.agentProfiles.length,
+    mcpServers: result.mcpServers.length,
+    skills: result.skills.length,
+    repeatTasks: result.repeatTasks.length,
+    memories: result.memories.length,
+    errors: result.errors.length,
+  })
+
+  return result
+}
+
+/**
+ * Import a bundle from a file dialog, with preview and conflict detection.
+ */
+export async function importBundleFromDialog(
+  targetAgentsDir: string,
+  options: ImportOptions
+): Promise<{
+  filePath: string
+  result: ImportBundleResult
+} | null> {
+  const openDialogOptions: OpenDialogOptions = {
+    title: "Import Agent Configuration Bundle",
+    properties: ["openFile"],
+    filters: [{ name: "DotAgents Bundle", extensions: ["dotagents", "json"] }],
+  }
+
+  const win = BrowserWindow.getFocusedWindow()
+  const dialogResult = win
+    ? await dialog.showOpenDialog(win, openDialogOptions)
+    : await dialog.showOpenDialog(openDialogOptions)
+
+  if (dialogResult.canceled || dialogResult.filePaths.length === 0) {
+    return null
+  }
+
+  const selectedPath = dialogResult.filePaths[0]
+  const importResult = await importBundle(selectedPath, targetAgentsDir, options)
+
+  return { filePath: selectedPath, result: importResult }
 }
