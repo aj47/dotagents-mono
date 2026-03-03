@@ -6,6 +6,18 @@ import {
 } from '@shared/message-display-utils'
 import { logUI } from '@renderer/lib/debug'
 
+const getProgressActivityTimestamp = (progress: AgentProgressUpdate): number => {
+  const historyTs =
+    progress.conversationHistory && progress.conversationHistory.length > 0
+      ? progress.conversationHistory[progress.conversationHistory.length - 1]?.timestamp || 0
+      : 0
+  const stepTs =
+    progress.steps && progress.steps.length > 0
+      ? progress.steps[progress.steps.length - 1]?.timestamp || 0
+      : 0
+  return Math.max(historyTs, stepTs, 0)
+}
+
 export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
 export type SessionSortBy = 'recent' | 'oldest' | 'status'
@@ -268,8 +280,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         const candidates = Array.from(newMap.entries())
           .filter(([_, p]) => !p.isSnoozed)
           .sort((a, b) => {
-            const ta = a[1].conversationHistory?.[0]?.timestamp || 0
-            const tb = b[1].conversationHistory?.[0]?.timestamp || 0
+            const ta = getProgressActivityTimestamp(a[1])
+            const tb = getProgressActivityTimestamp(b[1])
             return tb - ta
           })
         newFocusedSessionId = candidates[0]?.[0] || null
@@ -306,8 +318,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         const candidates = Array.from(newMap.entries())
           .filter(([_, p]) => !p.isSnoozed)
           .sort((a, b) => {
-            const ta = a[1].conversationHistory?.[0]?.timestamp || 0
-            const tb = b[1].conversationHistory?.[0]?.timestamp || 0
+            const ta = getProgressActivityTimestamp(a[1])
+            const tb = getProgressActivityTimestamp(b[1])
             return tb - ta
           })
         newFocusedSessionId = candidates[0]?.[0] || null

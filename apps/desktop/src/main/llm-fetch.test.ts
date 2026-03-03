@@ -851,4 +851,44 @@ describe('LLM Fetch with AI SDK', () => {
     isRegisteredSpy.mockRestore()
     shouldStopSpy.mockRestore()
   })
+
+  it('should surface string stream errors instead of "Unknown error"', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'error', error: 'fatal stream failure' }
+      })(),
+    } as any)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreamingAndTools(
+        [{ role: 'user', content: 'test' }],
+        vi.fn(),
+      )
+    ).rejects.toThrow('fatal stream failure')
+  })
+
+  it('should surface object stream errors that only include a message field', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'error', error: { message: 'provider returned malformed chunk' } }
+      })(),
+    } as any)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreamingAndTools(
+        [{ role: 'user', content: 'test' }],
+        vi.fn(),
+      )
+    ).rejects.toThrow('provider returned malformed chunk')
+  })
 })

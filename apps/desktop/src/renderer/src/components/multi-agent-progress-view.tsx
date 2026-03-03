@@ -14,6 +14,18 @@ interface MultiAgentProgressViewProps {
   showBackgroundSpinner?: boolean
 }
 
+const getSessionActivityTimestamp = (progress: AgentProgressUpdate): number => {
+  const historyTs =
+    progress.conversationHistory && progress.conversationHistory.length > 0
+      ? progress.conversationHistory[progress.conversationHistory.length - 1]?.timestamp || 0
+      : 0
+  const stepTs =
+    progress.steps && progress.steps.length > 0
+      ? progress.steps[progress.steps.length - 1]?.timestamp || 0
+      : 0
+  return Math.max(historyTs, stepTs, 0)
+}
+
 export function MultiAgentProgressView({
   className,
   variant = "overlay",
@@ -28,8 +40,8 @@ export function MultiAgentProgressView({
     return Array.from(agentProgressById?.entries() ?? [])
       .filter(([_, progress]) => progress && !progress.isSnoozed)
       .sort((a, b) => {
-        const timeA = a[1].conversationHistory?.[0]?.timestamp || 0
-        const timeB = b[1].conversationHistory?.[0]?.timestamp || 0
+        const timeA = getSessionActivityTimestamp(a[1])
+        const timeB = getSessionActivityTimestamp(b[1])
         return timeB - timeA
       })
   }, [agentProgressById])
@@ -125,4 +137,3 @@ export function MultiAgentProgressView({
     </div>
   )
 }
-

@@ -173,11 +173,6 @@ export const Component = () => {
       href: "/settings/capabilities",
       icon: "i-mingcute-tool-line",
     },
-    {
-      text: "Remote Server",
-      href: "/settings/remote-server",
-      icon: "i-mingcute-server-line",
-    },
     // Only show WhatsApp settings when enabled
     ...(whatsappEnabled
       ? [
@@ -202,6 +197,7 @@ export const Component = () => {
     "/settings/providers": "/settings/models",
     "/settings/mcp-tools": "/settings/capabilities",
     "/settings/skills": "/settings/capabilities",
+    "/settings/remote-server": "/settings",
     "/settings/loops": "/settings/repeat-tasks",
   }
 
@@ -613,6 +609,7 @@ export const Component = () => {
             <Outlet
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+                sidebarWidth,
               }}
             />
           </div>

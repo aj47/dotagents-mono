@@ -20,6 +20,8 @@ export function PanelDragBar({
     windowY: number
   } | null>(null)
   const dragBarRef = useRef<HTMLDivElement>(null)
+  const lastDragUpdateRef = useRef(0)
+  const DRAG_THROTTLE_MS = 16
 
   useEffect(() => {
     if (!isDragging || disabled) return undefined
@@ -34,8 +36,14 @@ export function PanelDragBar({
       const newX = dragStart.windowX + deltaX
       const newY = dragStart.windowY + deltaY
 
-      // Update panel position via IPC
-      tipcClient.updatePanelPosition({
+      // Throttle high-frequency move events to reduce IPC pressure.
+      const now = Date.now()
+      if (now - lastDragUpdateRef.current < DRAG_THROTTLE_MS) {
+        return
+      }
+      lastDragUpdateRef.current = now
+
+      void tipcClient.updatePanelPosition({
         x: newX,
         y: newY,
       })
@@ -52,7 +60,7 @@ export function PanelDragBar({
       const finalY = dragStart.windowY + deltaY
 
       // Save the final position as custom position
-      tipcClient.savePanelCustomPosition({
+      void tipcClient.savePanelCustomPosition({
         x: finalX,
         y: finalY,
       })
@@ -85,6 +93,7 @@ export function PanelDragBar({
     const windowPos = await tipcClient.getPanelPosition()
 
     setIsDragging(true)
+    lastDragUpdateRef.current = 0
     setDragStart({
       x: e.screenX,
       y: e.screenY,

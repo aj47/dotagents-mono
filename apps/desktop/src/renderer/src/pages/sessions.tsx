@@ -6,7 +6,7 @@ import { useAgentStore } from "@renderer/stores"
 import { SessionGrid, SessionTileWrapper, type TileLayoutMode } from "@renderer/components/session-grid"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock } from "lucide-react"
+import { MessageCircle, Mic, Plus, CheckCircle2, LayoutGrid, Maximize2, Grid2x2, Keyboard, Clock, Loader2 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
@@ -21,6 +21,7 @@ import dayjs from "dayjs"
 
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
+  sidebarWidth: number
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -40,6 +41,7 @@ function formatTimestamp(timestamp: number): string {
 }
 
 const RECENT_SESSIONS_LIMIT = 8
+const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
 function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionClick, onOpenPastSessionsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
   onTextClick: () => void
@@ -152,7 +154,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 export function Component() {
   const queryClient = useQueryClient()
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
-  const { onOpenPastSessionsDialog } = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
+  const { onOpenPastSessionsDialog, sidebarWidth } = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
@@ -200,6 +202,21 @@ export function Component() {
   // State for pending conversation continuation (user selected a conversation to continue)
   // Declared before allProgressEntries so it can be used in the filter below.
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null)
+  const [pendingContinuationStartedAt, setPendingContinuationStartedAt] = useState<number | null>(null)
+  const pendingConversationIdRef = useRef<string | null>(pendingConversationId)
+  const pendingContinuationStartedAtRef = useRef<number | null>(pendingContinuationStartedAt)
+
+  useEffect(() => {
+    pendingConversationIdRef.current = pendingConversationId
+  }, [pendingConversationId])
+
+  useEffect(() => {
+    pendingContinuationStartedAtRef.current = pendingContinuationStartedAt
+  }, [pendingContinuationStartedAt])
+
+  useEffect(() => {
+    setPendingContinuationStartedAt(null)
+  }, [pendingConversationId])
 
   // Check if any real (non-pending) active session exists for the pending conversation.
   // Used both to suppress duplicate tiles in the memo AND to auto-dismiss the pending tile.
@@ -340,20 +357,52 @@ export function Component() {
     enabled: !!pendingConversationId,
   })
 
+  const isPendingConversationMissing =
+    !!pendingConversationId &&
+    pendingConversationQuery.isSuccess &&
+    pendingConversationQuery.data === null
+
+  // If loading a pending conversation fails (deleted/missing), clear the pending
+  // state so we do not keep showing a stuck loading tile.
+  useEffect(() => {
+    if (!pendingConversationId) return
+    if (!pendingConversationQuery.isError && !isPendingConversationMissing) return
+
+    if (pendingConversationQuery.isError) {
+      console.error("Failed to load pending conversation:", pendingConversationQuery.error)
+    } else {
+      console.error("Pending conversation not found:", pendingConversationId)
+    }
+    toast.error("Unable to load that past session")
+    setPendingContinuationStartedAt(null)
+    setPendingConversationId(null)
+  }, [pendingConversationId, pendingConversationQuery.isError, pendingConversationQuery.error, isPendingConversationMissing])
+
   // Create a synthetic AgentProgressUpdate for the pending conversation
   // This allows us to reuse the AgentProgress component with the same UI
   const pendingSessionId = pendingConversationId ? `pending-${pendingConversationId}` : null
   const pendingProgress: AgentProgressUpdate | null = useMemo(() => {
     if (!pendingConversationId || !pendingConversationQuery.data) return null
     const conv = pendingConversationQuery.data
+    const isInitializing = pendingContinuationStartedAt !== null
+
     return {
       sessionId: `pending-${pendingConversationId}`,
       conversationId: pendingConversationId,
       conversationTitle: conv.title || "Continue Conversation",
-      currentIteration: 0,
-      maxIterations: 10,
-      steps: [],
-      isComplete: true, // Mark as complete so it shows the follow-up input
+      currentIteration: isInitializing ? 1 : 0,
+      maxIterations: isInitializing ? Infinity : 10,
+      steps: isInitializing
+        ? [{
+            id: `pending-start-${pendingConversationId}`,
+            type: "thinking",
+            title: "Initializing session",
+            description: "Starting agent session...",
+            status: "in_progress",
+            timestamp: pendingContinuationStartedAt,
+          }]
+        : [],
+      isComplete: !isInitializing,
       conversationHistory: conv.messages.map(m => ({
         role: m.role,
         content: m.content,
@@ -362,7 +411,7 @@ export function Component() {
         timestamp: m.timestamp,
       })),
     }
-  }, [pendingConversationId, pendingConversationQuery.data])
+  }, [pendingConversationId, pendingConversationQuery.data, pendingContinuationStartedAt])
 
   // Handle continuing a conversation - check for existing active session first
   // If found, focus it; otherwise create a pending tile
@@ -381,6 +430,7 @@ export function Component() {
       }, 100)
     } else {
       // No active session exists, create a pending tile
+      setPendingContinuationStartedAt(null)
       setPendingConversationId(conversationId)
     }
   }
@@ -388,6 +438,7 @@ export function Component() {
   // Handle dismissing the pending continuation
   const handleDismissPendingContinuation = () => {
     logUI('[Sessions] Dismissing pending continuation:', { pendingConversationId })
+    setPendingContinuationStartedAt(null)
     setPendingConversationId(null)
   }
 
@@ -436,6 +487,65 @@ export function Component() {
   useEffect(() => {
     void applySelectedAgentToNextSession({ silent: true })
   }, [applySelectedAgentToNextSession])
+
+  const handlePendingContinuationStarted = useCallback(() => {
+    setPendingContinuationStartedAt((existing) => existing ?? Date.now())
+  }, [])
+
+  // Auto-dismiss pending tile when a real session starts for the same conversationId.
+  // During initialization, also dismiss when a completed session appears with
+  // activity at/after the follow-up start timestamp.
+  useEffect(() => {
+    if (!pendingConversationId) return
+
+    const hasRealSession = Array.from(agentProgressById.entries()).some(
+      ([sessionId, progress]) =>
+        !sessionId.startsWith("pending-") &&
+        progress?.conversationId === pendingConversationId &&
+        (
+          !progress?.isComplete ||
+          (
+            pendingContinuationStartedAt !== null &&
+            getLastActivityTimestamp(progress) >= pendingContinuationStartedAt
+          )
+        )
+    )
+
+    if (hasRealSession) {
+      // A real session has started for this conversation, dismiss the pending tile
+      setPendingContinuationStartedAt(null)
+      setPendingConversationId(null)
+    }
+  }, [pendingConversationId, pendingContinuationStartedAt, agentProgressById, getLastActivityTimestamp])
+
+  // Safety fallback: if initialization does not produce a real session in time,
+  // dismiss the pending tile instead of leaving it stuck indefinitely.
+  useEffect(() => {
+    if (!pendingConversationId || pendingContinuationStartedAt === null) return undefined
+
+    const timeoutConversationId = pendingConversationId
+    const timeoutStartedAt = pendingContinuationStartedAt
+    const timeoutId = window.setTimeout(() => {
+      if (
+        pendingConversationIdRef.current !== timeoutConversationId ||
+        pendingContinuationStartedAtRef.current !== timeoutStartedAt
+      ) {
+        return
+      }
+
+      logUI("[Sessions] Pending continuation timed out waiting for real session", {
+        pendingConversationId: timeoutConversationId,
+        pendingContinuationStartedAt: timeoutStartedAt,
+      })
+      toast.error("Session startup timed out. Please try again.")
+      setPendingContinuationStartedAt(null)
+      setPendingConversationId(null)
+    }, PENDING_CONTINUATION_TIMEOUT_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [pendingConversationId, pendingContinuationStartedAt])
 
   // Handle text click - open panel with text input
   const handleTextClick = async () => {
@@ -575,9 +685,15 @@ export function Component() {
     return allProgressEntries.filter(([_, progress]) => progress?.isComplete).length
   }, [allProgressEntries])
 
-  const visibleTileCount = allProgressEntries.length + (pendingProgress ? 1 : 0)
+  const showPendingLoadingTile =
+    !!pendingConversationId &&
+    !pendingProgress &&
+    !pendingConversationQuery.isError &&
+    !isPendingConversationMissing
+  const hasPendingTile = !!pendingProgress || showPendingLoadingTile
+  const showTileMaximize = tileLayoutMode !== "1x1"
 
-  const hasSessions = allProgressEntries.length > 0 || !!pendingProgress
+  const hasSessions = allProgressEntries.length > 0 || hasPendingTile
 
   return (
     <div className="group/tile flex h-full flex-col">
@@ -668,7 +784,12 @@ export function Component() {
           />
         ) : (
           /* Active sessions - grid view */
-            <SessionGrid sessionCount={allProgressEntries.length + (pendingProgress ? 1 : 0)} resetKey={tileResetKey} layoutMode={tileLayoutMode}>
+            <SessionGrid
+              sessionCount={allProgressEntries.length + (hasPendingTile ? 1 : 0)}
+              resetKey={tileResetKey}
+              layoutMode={tileLayoutMode}
+              layoutChangeKey={sidebarWidth}
+            >
               {/* Pending continuation tile first */}
               {pendingProgress && pendingSessionId && (
                 <SessionTileWrapper
@@ -676,6 +797,7 @@ export function Component() {
                   sessionId={pendingSessionId}
                   index={0}
                   isCollapsed={collapsedSessions[pendingSessionId] ?? false}
+                  isDraggable={false}
                   onDragStart={() => {}}
                   onDragOver={() => {}}
                   onDragEnd={() => {}}
@@ -688,17 +810,45 @@ export function Component() {
                     isFocused={true}
                     onFocus={() => {}}
                     onDismiss={handleDismissPendingContinuation}
+                    onFollowUpSent={handlePendingContinuationStarted}
                     isCollapsed={collapsedSessions[pendingSessionId] ?? false}
                     onCollapsedChange={(collapsed) => handleCollapsedChange(pendingSessionId, collapsed)}
-                    onExpand={() => handleMaximizeTile(pendingSessionId)}
+                    onExpand={showTileMaximize ? () => handleMaximizeTile(pendingSessionId) : undefined}
                     isExpanded={tileLayoutMode === "1x1"}
+                    isFollowUpInputInitializing={pendingContinuationStartedAt !== null}
                   />
+                </SessionTileWrapper>
+              )}
+              {showPendingLoadingTile && pendingSessionId && (
+                <SessionTileWrapper
+                  key={pendingSessionId}
+                  sessionId={pendingSessionId}
+                  index={0}
+                  isCollapsed={false}
+                  isDraggable={false}
+                  onDragStart={() => {}}
+                  onDragOver={() => {}}
+                  onDragEnd={() => {}}
+                  isDragTarget={false}
+                  isDragging={false}
+                >
+                  <div className="flex h-full flex-col rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-3 w-full animate-pulse rounded bg-muted/70" />
+                      <div className="h-3 w-5/6 animate-pulse rounded bg-muted/70" />
+                      <div className="h-3 w-2/3 animate-pulse rounded bg-muted/70" />
+                    </div>
+                  </div>
                 </SessionTileWrapper>
               )}
               {/* Regular sessions */}
               {allProgressEntries.map(([sessionId, progress], index) => {
                 const isCollapsed = collapsedSessions[sessionId] ?? false
-                const adjustedIndex = pendingProgress ? index + 1 : index
+                const adjustedIndex = hasPendingTile ? index + 1 : index
                 return (
                   <div
                     key={sessionId}
@@ -722,7 +872,7 @@ export function Component() {
                         onDismiss={() => handleDismissSession(sessionId)}
                         isCollapsed={isCollapsed}
                         onCollapsedChange={(collapsed) => handleCollapsedChange(sessionId, collapsed)}
-                        onExpand={() => handleMaximizeTile(sessionId)}
+                        onExpand={showTileMaximize ? () => handleMaximizeTile(sessionId) : undefined}
                         isExpanded={tileLayoutMode === "1x1"}
                       />
                     </SessionTileWrapper>

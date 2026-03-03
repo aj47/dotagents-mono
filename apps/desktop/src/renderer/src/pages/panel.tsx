@@ -131,9 +131,33 @@ export function Component() {
     // If user has explicitly focused a session, show it regardless of snoozed state
     // This fixes the bug where clicking a completed snoozed session in kanban shows blank panel
     if (agentProgress) return agentProgress
-    // pick first non-snoozed session if focused one is missing
-    const entry = Array.from(agentProgressById?.values() ?? []).find(p => p && !p.isSnoozed)
-    return entry || null
+    // Pick the most recently active visible session when focused one is missing.
+    const candidates = Array.from(agentProgressById?.values() ?? []).filter(
+      (p): p is NonNullable<typeof p> => !!p && !p.isSnoozed,
+    )
+    if (candidates.length === 0) return null
+
+    const activityTs = (p: NonNullable<typeof candidates[number]>) => {
+      const historyTs =
+        p.conversationHistory && p.conversationHistory.length > 0
+          ? p.conversationHistory[p.conversationHistory.length - 1]?.timestamp || 0
+          : 0
+      const stepTs =
+        p.steps && p.steps.length > 0
+          ? p.steps[p.steps.length - 1]?.timestamp || 0
+          : 0
+      return Math.max(historyTs, stepTs, 0)
+    }
+
+    candidates.sort((a, b) => {
+      // Prefer active sessions over completed when both are visible.
+      if (!!a.isComplete !== !!b.isComplete) {
+        return a.isComplete ? 1 : -1
+      }
+      return activityTs(b) - activityTs(a)
+    })
+
+    return candidates[0]
   }, [agentProgress, agentProgressById])
 
   const configQuery = useConfigQuery()

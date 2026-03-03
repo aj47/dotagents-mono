@@ -24,6 +24,7 @@ import { configStore } from "./config"
 import type { LLMToolCallResponse, MCPTool } from "./mcp-service"
 import { diagnosticsService } from "./diagnostics"
 import { isDebugLLM, logLLM } from "./debug"
+import { getErrorMessage, normalizeError } from "./error-utils"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import {
   createLLMGeneration,
@@ -1052,7 +1053,7 @@ export async function makeLLMCallWithStreamingAndTools(
           } else if (event.type === "finish") {
             finishUsage = event.totalUsage
           } else if (event.type === "error") {
-            throw event.error
+            throw normalizeError(event.error, "Streaming request failed")
           }
         }
 
@@ -1092,7 +1093,7 @@ export async function makeLLMCallWithStreamingAndTools(
         if (generationId) {
           endLLMGeneration(generationId, {
             level: "ERROR",
-            statusMessage: error?.message || "Streaming+tools LLM call failed",
+            statusMessage: getErrorMessage(error, "Streaming+tools LLM call failed"),
           })
         }
         throw error

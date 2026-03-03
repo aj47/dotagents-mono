@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, createContext, useContext } from "react"
+import React, { useRef, useState, useEffect, createContext, useContext, useCallback } from "react"
 import { cn } from "@renderer/lib/utils"
 import { GripVertical } from "lucide-react"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
@@ -33,15 +33,16 @@ interface SessionGridProps {
   className?: string
   resetKey?: number
   layoutMode?: TileLayoutMode
+  layoutChangeKey?: number
 }
 
-export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2" }: SessionGridProps) {
+export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey }: SessionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [containerHeight, setContainerHeight] = useState(0)
   const [gap, setGap] = useState(16) // Default to gap-4 = 16px
 
-  const updateMeasurements = () => {
+  const updateMeasurements = useCallback(() => {
     if (containerRef.current) {
       // Dynamically compute padding from computed styles to handle className overrides
       const computedStyle = getComputedStyle(containerRef.current)
@@ -74,7 +75,7 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       const columnGap = !Number.isNaN(parsedColumnGap) ? parsedColumnGap : (!Number.isNaN(parsedGap) ? parsedGap : 16)
       setGap(columnGap)
     }
-  }
+  }, [])
 
   useEffect(() => {
     updateMeasurements()
@@ -90,17 +91,38 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       resizeObserver.observe(containerRef.current.parentElement)
     }
 
+    // Observe one more ancestor so sidebar collapse/expand width changes always reflow tiles.
+    if (containerRef.current?.parentElement?.parentElement) {
+      resizeObserver.observe(containerRef.current.parentElement.parentElement)
+    }
+
+    window.addEventListener("resize", updateMeasurements)
+
     return () => {
       resizeObserver.disconnect()
+      window.removeEventListener("resize", updateMeasurements)
     }
-  }, [])
+  }, [updateMeasurements])
+
+  useEffect(() => {
+    updateMeasurements()
+
+    // Sidebar collapse/expand animates width, so re-measure once after transition ends.
+    const animationFrameId = window.requestAnimationFrame(updateMeasurements)
+    const timeoutId = window.setTimeout(updateMeasurements, 220)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId)
+      window.clearTimeout(timeoutId)
+    }
+  }, [layoutChangeKey, updateMeasurements])
 
   return (
     <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey, layoutMode }}>
       <div
         ref={containerRef}
         className={cn(
-          "flex flex-wrap gap-4 p-4 content-start min-h-full",
+          "flex flex-wrap gap-4 p-4 content-start min-h-full w-full",
           className
         )}
       >
@@ -116,6 +138,7 @@ interface SessionTileWrapperProps {
   index: number
   className?: string
   isCollapsed?: boolean
+  isDraggable?: boolean
   onDragStart?: (sessionId: string, index: number) => void
   onDragOver?: (index: number) => void
   onDragEnd?: () => void
@@ -165,6 +188,7 @@ export function SessionTileWrapper({
   index,
   className,
   isCollapsed,
+  isDraggable = true,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -254,18 +278,21 @@ export function SessionTileWrapper({
   }, [containerWidth, containerHeight, gap, layoutMode, setSize, isResizing])
 
   const handleDragStart = (e: React.DragEvent) => {
+    if (!isDraggable) return
     e.dataTransfer.effectAllowed = "move"
     e.dataTransfer.setData("text/plain", sessionId)
     onDragStart?.(sessionId, index)
   }
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!isDraggable) return
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
     onDragOver?.(index)
   }
 
   const handleDragEnd = () => {
+    if (!isDraggable) return
     onDragEnd?.()
   }
 
@@ -280,18 +307,20 @@ export function SessionTileWrapper({
         className
       )}
       style={{ width, height: isCollapsed ? "auto" : height }}
-      draggable={!isResizing}
+      draggable={isDraggable && !isResizing}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       {/* Drag handle indicator in top-left */}
-      <div
-        className="absolute top-2 left-2 z-10 p-1 rounded bg-muted/50 cursor-grab active:cursor-grabbing opacity-0 hover:opacity-100 transition-opacity"
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
+      {isDraggable && (
+        <div
+          className="absolute top-2 left-2 z-10 p-1 rounded bg-muted/50 cursor-grab active:cursor-grabbing opacity-0 hover:opacity-100 transition-opacity"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
 
       {/* Main content */}
       <div className={cn("w-full", isCollapsed ? "h-auto" : "h-full")}>
@@ -327,4 +356,3 @@ export function SessionTileWrapper({
     </div>
   )
 }
-
