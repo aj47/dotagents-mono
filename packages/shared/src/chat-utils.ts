@@ -464,3 +464,101 @@ export const ROLE_CONFIG: Record<MessageRole | 'default', RoleConfig> = {
 export function getRoleConfig(role: string): RoleConfig {
   return ROLE_CONFIG[role as MessageRole] ?? ROLE_CONFIG.default;
 }
+
+// ============================================================================
+// respond_to_user Content Extraction
+// ============================================================================
+
+/** The tool name used to explicitly respond to the user */
+export const RESPOND_TO_USER_TOOL = 'respond_to_user';
+
+/**
+ * Extract text content from respond_to_user tool call arguments
+ * @param args Tool call arguments
+ * @returns Extracted text content or null if not valid
+ */
+export function extractRespondToUserContentFromArgs(args: unknown): string | null {
+  if (!args || typeof args !== 'object') return null;
+
+  const parsedArgs = args as Record<string, unknown>;
+  const text = typeof parsedArgs.text === 'string' ? parsedArgs.text.trim() : '';
+  const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : [];
+
+  // Build markdown for images (matching desktop behavior)
+  const imagesMd = images
+    .filter(
+      (img): img is { mimeType: string; data: string; altText?: string } =>
+        typeof img === 'object' &&
+        img !== null &&
+        typeof img.mimeType === 'string' &&
+        typeof img.data === 'string',
+    )
+    .map((img) => {
+      const alt = typeof img.altText === 'string' ? img.altText : 'image';
+      return `![${alt}](data:${img.mimeType};base64,${img.data})`;
+    })
+    .join('\n\n');
+
+  const combined = [text, imagesMd].filter(Boolean).join('\n\n');
+  return combined || null;
+}
+
+/**
+ * Extract all respond_to_user content from an array of chat messages.
+ * Used to populate the respond_to_user history when reloading saved conversations.
+ * @param messages Array of chat messages
+ * @returns Array of extracted user-facing response strings (deduplicated)
+ */
+export function extractRespondToUserResponses(
+  messages: Array<{
+    role: 'user' | 'assistant' | 'tool';
+    toolCalls?: Array<{ name: string; arguments: unknown }>;
+  }>,
+): string[] {
+  const responses: string[] = [];
+
+  for (const message of messages) {
+    if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
+
+    for (const call of message.toolCalls) {
+      if (call.name !== RESPOND_TO_USER_TOOL) continue;
+      const content = extractRespondToUserContentFromArgs(call.arguments);
+      if (!content) continue;
+      // Deduplicate consecutive identical responses
+      if (responses[responses.length - 1] === content) continue;
+      responses.push(content);
+    }
+  }
+
+  return responses;
+}
+
+/**
+ * Check if a message is purely a tool call message (no user-facing content).
+ * Used to determine if a message should be collapsed by default.
+ * @param message A chat message object
+ * @returns True if the message is only tool calls with no real content
+ */
+export function isToolOnlyMessage(message: {
+  content?: string;
+  toolCalls?: Array<{ name: string }>;
+  toolResults?: Array<unknown>;
+}): boolean {
+  const hasToolCalls = (message.toolCalls?.length ?? 0) > 0;
+  const hasToolResults = (message.toolResults?.length ?? 0) > 0;
+  const hasContent = !!(message.content && message.content.trim().length > 0);
+
+  // A message is "tool-only" if it has tool calls but no meaningful content
+  // or only placeholder content like "Executing tools..."
+  if (!hasToolCalls && !hasToolResults) return false;
+  if (!hasContent) return true;
+
+  const trimmedContent = message.content?.trim().toLowerCase() || '';
+  const placeholderPhrases = [
+    'executing tools...',
+    'executing tools',
+    'running tools...',
+    'running tools',
+  ];
+  return placeholderPhrases.includes(trimmedContent);
+}

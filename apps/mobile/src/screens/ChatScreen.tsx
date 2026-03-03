@@ -42,6 +42,8 @@ import {
   shouldCollapseMessage,
   formatToolArguments,
   getToolResultsSummary,
+  extractRespondToUserResponses,
+  isToolOnlyMessage,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '../ui/ThemeProvider';
@@ -742,6 +744,18 @@ export default function ChatScreen({ route, navigation }: any) {
           toolResults: m.toolResults,
         }));
         setMessages(chatMessages);
+
+        // Extract respond_to_user content from saved messages for display (#32, #33)
+        const savedResponses = extractRespondToUserResponses(chatMessages as Array<{
+          role: 'user' | 'assistant' | 'tool';
+          toolCalls?: Array<{ name: string; arguments: unknown }>;
+        }>);
+        if (savedResponses.length > 0) {
+          setRespondToUserHistory(savedResponses.map(text => ({
+            text,
+            timestamp: Date.now(), // Use current time as we don't have original timestamps
+          })));
+        }
       } else if (currentSession.serverConversationId && hasServerAuth) {
         // Stub session — lazy-load messages from server
         setMessages([]);
@@ -763,13 +777,26 @@ export default function ChatScreen({ route, navigation }: any) {
             if (result.messages.length > 0) {
               skipNextPersistRef.current = true;
             }
-            setMessages(result.messages.map(m => ({
+            const loadedMessages = result.messages.map(m => ({
               id: m.id,
               role: m.role,
               content: m.content,
               toolCalls: m.toolCalls,
               toolResults: m.toolResults,
-            })));
+            }));
+            setMessages(loadedMessages);
+
+            // Extract respond_to_user content from lazy-loaded messages (#32, #33)
+            const lazyResponses = extractRespondToUserResponses(loadedMessages as Array<{
+              role: 'user' | 'assistant' | 'tool';
+              toolCalls?: Array<{ name: string; arguments: unknown }>;
+            }>);
+            if (lazyResponses.length > 0) {
+              setRespondToUserHistory(lazyResponses.map(text => ({
+                text,
+                timestamp: Date.now(),
+              })));
+            }
           })
           .catch((err) => {
             console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
@@ -802,6 +829,18 @@ export default function ChatScreen({ route, navigation }: any) {
         toolResults: m.toolResults,
       }));
       setMessages(chatMessages);
+
+      // Extract respond_to_user content from new session messages (#32, #33)
+      const newResponses = extractRespondToUserResponses(chatMessages as Array<{
+        role: 'user' | 'assistant' | 'tool';
+        toolCalls?: Array<{ name: string; arguments: unknown }>;
+      }>);
+      if (newResponses.length > 0) {
+        setRespondToUserHistory(newResponses.map(text => ({
+          text,
+          timestamp: Date.now(),
+        })));
+      }
     } else {
       setMessages([]);
     }
@@ -877,9 +916,11 @@ export default function ChatScreen({ route, navigation }: any) {
     setExpandedToolCalls(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // Auto-expand only the final assistant message (the last one in the conversation)
-  // Tool call messages (intermediate assistant messages with tool calls) should be collapsed by default
-  // When a new message arrives, collapse previous assistant messages with tool calls
+  // Auto-expand logic matching desktop behavior (#32, #33):
+  // - Tool call messages (those with toolCalls/toolResults) are ALWAYS collapsed by default
+  // - Only the final assistant message is expanded, AND only when not streaming (agent complete)
+  // - During streaming, tool calls stay collapsed to avoid showing raw JSON
+  // - Users can still manually expand any collapsed message
   useEffect(() => {
     const lastAssistantIndex = messages.reduce((lastIdx, m, i) =>
       m.role === 'assistant' ? i : lastIdx, -1);
@@ -887,20 +928,37 @@ export default function ChatScreen({ route, navigation }: any) {
     if (lastAssistantIndex >= 0) {
       setExpandedMessages(prev => {
         const updated = { ...prev };
-        // Collapse all previous assistant messages that have tool calls/results
-        // Only the final assistant message should remain expanded
+        const lastMsg = messages[lastAssistantIndex];
+
+        // Collapse ALL assistant messages with tool calls/results by default
         messages.forEach((m, i) => {
-          if (i < lastAssistantIndex && m.role === 'assistant' &&
-              ((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0)) {
-            updated[i] = false;
+          if (m.role === 'assistant' && isToolOnlyMessage(m)) {
+            // Only set to false if not explicitly toggled by user
+            // (We check if the index exists in prev - if so, preserve user choice)
+            if (!(i in prev)) {
+              updated[i] = false;
+            }
           }
         });
-        // Expand the last assistant message
-        updated[lastAssistantIndex] = true;
+
+        // Expand final assistant message ONLY if:
+        // 1. Agent is not currently streaming/responding
+        // 2. The message is NOT a tool-only message (has real content for user)
+        const isComplete = !responding;
+        const isFinalToolOnly = isToolOnlyMessage(lastMsg);
+
+        if (isComplete && !isFinalToolOnly) {
+          // Expand final message only if it has user-facing content
+          updated[lastAssistantIndex] = true;
+        } else if (!(lastAssistantIndex in prev)) {
+          // During streaming or for tool-only messages, collapse by default
+          updated[lastAssistantIndex] = false;
+        }
+
         return updated;
       });
     }
-  }, [messages]);
+  }, [messages, responding]);
 
   const [willCancel, setWillCancel] = useState(false);
   const startYRef = useRef<number | null>(null);
