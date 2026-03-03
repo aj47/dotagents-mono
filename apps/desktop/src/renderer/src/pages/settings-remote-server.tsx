@@ -78,6 +78,13 @@ export function RemoteServerSettingsGroups({
     enabled: cfg?.remoteServerEnabled ?? false,
   })
 
+  const remoteServerStatusQuery = useQuery({
+    queryKey: ["remote-server-status"],
+    queryFn: () => tipcClient.getRemoteServerStatus(),
+    refetchInterval: 2000,
+    enabled: cfg?.remoteServerEnabled ?? false,
+  })
+
   const startTunnelMutation = useMutation({
     mutationFn: () => tipcClient.startCloudflareTunnel(),
     onSuccess: () => {
@@ -101,6 +108,7 @@ export function RemoteServerSettingsGroups({
   })
 
   const tunnelStatus = tunnelStatusQuery.data
+  const remoteServerStatus = remoteServerStatusQuery.data
   const isCloudflaredInstalled = cloudflaredInstalledQuery.data ?? false
   const isCloudflaredLoggedIn = cloudflaredLoggedInQuery.data ?? false
   const tunnelList: Array<{ id: string; name: string; created_at: string }> = tunnelListQuery.data?.tunnels ?? []
@@ -119,9 +127,11 @@ export function RemoteServerSettingsGroups({
   const enabled = cfg.remoteServerEnabled ?? false
   const streamerMode = cfg.streamerModeEnabled ?? false
 
-  const baseUrl = cfg.remoteServerBindAddress && cfg.remoteServerPort
-    ? `http://${cfg.remoteServerBindAddress}:${cfg.remoteServerPort}/v1`
-    : undefined
+  const baseUrl = remoteServerStatus?.connectableUrl ?? (
+    cfg.remoteServerBindAddress && cfg.remoteServerPort
+      ? `http://${cfg.remoteServerBindAddress}:${cfg.remoteServerPort}/v1`
+      : undefined
+  )
 
   return (
     <>

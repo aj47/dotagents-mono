@@ -65,7 +65,7 @@ import {
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
 
 
-import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal } from "./remote-server"
+import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus } from "./remote-server"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
@@ -3513,6 +3513,10 @@ export const router = {
   checkCloudflaredLoggedIn: t.procedure.action(async () => {
     const { checkCloudflaredLoggedIn } = await import("./cloudflare-tunnel")
     return checkCloudflaredLoggedIn()
+  }),
+
+  getRemoteServerStatus: t.procedure.action(async () => {
+    return getRemoteServerStatus()
   }),
 
   // Remote Server QR Code handler

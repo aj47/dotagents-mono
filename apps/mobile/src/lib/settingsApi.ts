@@ -121,21 +121,20 @@ export class SettingsApiClient {
     this.apiKey = apiKey;
   }
 
-  private authHeaders() {
-    return {
-      Authorization: `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
-    };
-  }
-
   protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const headers = new Headers(options.headers);
+    headers.set('Authorization', `Bearer ${this.apiKey}`);
+
+    // Only send a JSON content type when a request body exists. Fastify treats
+    // an empty JSON body as a 400 for methods like DELETE/POST when the header is present.
+    if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        ...this.authHeaders(),
-        ...options.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
