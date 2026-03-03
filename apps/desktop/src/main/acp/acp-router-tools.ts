@@ -12,6 +12,7 @@ import type {
 import { acpBackgroundNotifier } from './acp-background-notifier';
 import { configStore } from '../config';
 import { acpService, ACPContentBlock } from '../acp-service';
+import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
@@ -140,12 +141,13 @@ function createCompletedResult(
   conversation: ACPSubAgentMessage[]
 ): DelegationResult {
   subAgentState.status = 'completed';
+  const resolvedOutput = getPreferredDelegationOutput(output, conversation);
   return {
     success: true,
     runId: subAgentState.runId,
     agentName: subAgentState.agentName,
     status: 'completed',
-    output,
+    output: resolvedOutput,
     duration: Date.now() - subAgentState.startTime,
     conversation,
   };

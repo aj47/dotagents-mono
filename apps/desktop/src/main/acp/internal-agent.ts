@@ -21,6 +21,7 @@ import { agentSessionTracker } from '../agent-session-tracker';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { skillsService } from '../skills-service';
 import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-profile-service';
+import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
 import type { AgentProgressUpdate, SessionProfileSnapshot, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage, AgentProfile } from '../../shared/types';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';
@@ -622,18 +623,19 @@ export async function runInternalSubSession(
     const wasCancelled = currentSubSession?.status === 'cancelled';
     
     if (currentSubSession && !wasCancelled) {
+      const resolvedResultContent = getPreferredDelegationOutput(result.content, subSession.conversationHistory);
       currentSubSession.status = 'completed';
       currentSubSession.endTime = Date.now();
-      currentSubSession.result = result.content;
+      currentSubSession.result = resolvedResultContent;
 
       // Add final assistant message to conversation history only for completed runs (not cancelled)
       const existingFinal = subSession.conversationHistory.find(
-        m => m.role === 'assistant' && m.content === result.content
+        m => m.role === 'assistant' && m.content === resolvedResultContent
       );
       if (!existingFinal) {
         subSession.conversationHistory.push({
           role: 'assistant',
-          content: result.content,
+          content: resolvedResultContent,
           timestamp: Date.now(),
         });
       }
@@ -675,7 +677,7 @@ export async function runInternalSubSession(
     return {
       success: true,
       subSessionId,
-      result: result.content,
+      result: getPreferredDelegationOutput(result.content, subSession.conversationHistory),
       conversationHistory: subSession.conversationHistory,
       duration: Date.now() - subSession.startTime,
     };

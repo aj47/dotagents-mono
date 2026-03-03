@@ -41,6 +41,10 @@ import {
   RESPOND_TO_USER_TOOL,
   INTERNAL_COMPLETION_NUDGE_TEXT,
 } from "../shared/builtin-tool-names"
+import {
+  appendAgentStopNote,
+  resolveAgentIterationLimits,
+} from "./agent-run-utils"
 import { filterEphemeralMessages } from "./conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
@@ -446,6 +450,8 @@ export async function processTranscriptWithAgentMode(
   runId?: number,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
+  const { loopMaxIterations, guardrailBudget } = resolveAgentIterationLimits(maxIterations)
+  maxIterations = loopMaxIterations
 
   // Store IDs for use in progress updates
   const currentConversationId = conversationId
@@ -997,6 +1003,30 @@ export async function processTranscriptWithAgentMode(
       }))
   }
 
+  const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
+    finalContent = appendAgentStopNote(finalContent)
+
+    const lastMessage = conversationHistory[conversationHistory.length - 1]
+    if (
+      !lastMessage ||
+      lastMessage.role !== "assistant" ||
+      lastMessage.content !== finalContent
+    ) {
+      addMessage("assistant", finalContent)
+    }
+
+    emit({
+      currentIteration: iteration,
+      maxIterations,
+      steps,
+      isComplete: true,
+      finalContent,
+      conversationHistory: formatConversationForProgress(conversationHistory),
+    })
+
+    wasAborted = true
+  }
+
   // Helper to check if content is just a tool call placeholder (not real content)
   const isToolCallPlaceholder = (content: string): boolean => {
     const trimmed = content.trim()
@@ -1274,14 +1304,7 @@ Return ONLY JSON per schema.`,
   // give up too early on recoverable tasks (e.g. tool-heavy flows that need
   // several correction nudges before converging).
   const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
-  const effectiveIterationBudget = Number.isFinite(maxIterations)
-    ? Math.max(1, Math.floor(maxIterations))
-    : 60
-
-  // Keep loop behavior aligned with guardrails by normalizing non-finite limits
-  // to the same fallback budget. This avoids cases where the main loop could
-  // skip entirely (NaN) or run unbounded (Infinity) while guardrails are capped.
-  maxIterations = effectiveIterationBudget
+  const effectiveIterationBudget = guardrailBudget
 
   // Verification failure limit - after this many failed completion checks, end as incomplete.
   // Scales with iteration budget instead of a fixed low constant.
@@ -1535,20 +1558,7 @@ Return ONLY JSON per schema.`,
       )
       progressSteps.push(stopStep)
 
-      // Emit final progress (ensure final output is saved in history)
-      const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-      const finalOutput = (finalContent || "") + killNote
-      conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-      emit({
-        currentIteration: iteration,
-        maxIterations,
-        steps: progressSteps.slice(-3),
-        isComplete: true,
-        finalContent: finalOutput,
-        conversationHistory: formatConversationForProgress(conversationHistory),
-      })
-
-      wasAborted = true
+      finalizeEmergencyStop(progressSteps.slice(-3))
       break
     }
 
@@ -1649,18 +1659,7 @@ Return ONLY JSON per schema.`,
       thinkingStep.status = "completed"
       thinkingStep.title = "Agent stopped"
       thinkingStep.description = "Emergency stop triggered"
-      const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-      const finalOutput = (finalContent || "") + killNote
-      conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-      emit({
-        currentIteration: iteration,
-        maxIterations,
-        steps: progressSteps.slice(-3),
-        isComplete: true,
-        finalContent: finalOutput,
-        conversationHistory: formatConversationForProgress(conversationHistory),
-      })
-      wasAborted = true
+      finalizeEmergencyStop(progressSteps.slice(-3))
       break
     }
 
@@ -1717,18 +1716,7 @@ Return ONLY JSON per schema.`,
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
         thinkingStep.description = "Emergency stop triggered"
-        const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-        const finalOutput = (finalContent || "") + killNote
-        conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-        emit({
-          currentIteration: iteration,
-          maxIterations,
-          steps: progressSteps.slice(-3),
-          isComplete: true,
-          finalContent: finalOutput,
-          conversationHistory: formatConversationForProgress(conversationHistory),
-        })
-        wasAborted = true
+        finalizeEmergencyStop(progressSteps.slice(-3))
         break
       }
     } catch (error: any) {
@@ -1737,19 +1725,7 @@ Return ONLY JSON per schema.`,
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
         thinkingStep.description = "Emergency stop triggered"
-        // Ensure final output appears in saved conversation on abort
-        const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-        const finalOutput = (finalContent || "") + killNote
-        conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-        emit({
-          currentIteration: iteration,
-          maxIterations,
-          steps: progressSteps.slice(-3),
-          isComplete: true,
-          finalContent: finalOutput,
-          conversationHistory: formatConversationForProgress(conversationHistory),
-        })
-        wasAborted = true
+        finalizeEmergencyStop(progressSteps.slice(-3))
         break
       }
 
@@ -2272,18 +2248,7 @@ Return ONLY JSON per schema.`,
     // Check for stop signal before starting tool execution
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
       logLLM(`Agent session ${currentSessionId} stopped before tool execution`)
-      const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-      const finalOutput = (finalContent || "") + killNote
-      conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-      emit({
-        currentIteration: iteration,
-        maxIterations,
-        steps: progressSteps.slice(-3),
-        isComplete: true,
-        finalContent: finalOutput,
-        conversationHistory: formatConversationForProgress(conversationHistory),
-      })
-      wasAborted = true
+      finalizeEmergencyStop(progressSteps.slice(-3))
       break
     }
 
@@ -2380,18 +2345,7 @@ Return ONLY JSON per schema.`,
       // Check if any tool was cancelled by kill switch
       const anyCancelled = executionResults.some(r => r.cancelledByKill)
       if (anyCancelled) {
-        const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-        const finalOutput = (finalContent || "") + killNote
-        conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-        emit({
-          currentIteration: iteration,
-          maxIterations,
-          steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
-          isComplete: true,
-          finalContent: finalOutput,
-          conversationHistory: formatConversationForProgress(conversationHistory),
-        })
-        wasAborted = true
+        finalizeEmergencyStop(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)))
         break
       }
 
@@ -2427,18 +2381,7 @@ Return ONLY JSON per schema.`,
         // Check for stop signal before executing each tool
         if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
           logLLM(`Agent session ${currentSessionId} stopped during tool execution`)
-          const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-          const finalOutput = (finalContent || "") + killNote
-          conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-          emit({
-            currentIteration: iteration,
-            maxIterations,
-            steps: progressSteps.slice(-3),
-            isComplete: true,
-            finalContent: finalOutput,
-            conversationHistory: formatConversationForProgress(conversationHistory),
-          })
-          wasAborted = true
+          finalizeEmergencyStop(progressSteps.slice(-3))
           break
         }
 
@@ -2500,18 +2443,7 @@ Return ONLY JSON per schema.`,
           )
           toolResultStep.toolResult = toolCallStep.toolResult
           progressSteps.push(toolResultStep)
-          const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-          const finalOutput = (finalContent || "") + killNote
-          conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-          emit({
-            currentIteration: iteration,
-            maxIterations,
-            steps: progressSteps.slice(-3),
-            isComplete: true,
-            finalContent: finalOutput,
-            conversationHistory: formatConversationForProgress(conversationHistory),
-          })
-          wasAborted = true
+          finalizeEmergencyStop(progressSteps.slice(-3))
           break
         }
 
@@ -2558,19 +2490,7 @@ Return ONLY JSON per schema.`,
 
     // If stop was requested during tool execution, exit the agent loop now
     if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
-      // Emit final progress with complete status
-      const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-      const finalOutput = (finalContent || "") + killNote
-      addMessage("assistant", finalOutput)
-      emit({
-        currentIteration: iteration,
-        maxIterations,
-        steps: progressSteps.slice(-3),
-        isComplete: true,
-        finalContent: finalOutput,
-        conversationHistory: formatConversationForProgress(conversationHistory),
-      })
-      wasAborted = true
+      finalizeEmergencyStop(progressSteps.slice(-3))
       break
     }
 
@@ -2808,18 +2728,7 @@ Return ONLY JSON per schema.`,
           // Check if stop was requested during summary generation
           if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
             logLLM(`Agent session ${currentSessionId} stopped during summary generation`)
-            const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-            const finalOutput = (finalContent || "") + killNote
-            conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-            emit({
-              currentIteration: iteration,
-              maxIterations,
-              steps: progressSteps.slice(-3),
-              isComplete: true,
-              finalContent: finalOutput,
-              conversationHistory: formatConversationForProgress(conversationHistory),
-            })
-            wasAborted = true
+            finalizeEmergencyStop(progressSteps.slice(-3))
             break
           }
 
@@ -2896,18 +2805,7 @@ Return ONLY JSON per schema.`,
 	        // Check if stop was requested during verification
 	        if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
 	          logLLM(`Agent session ${currentSessionId} stopped during verification`)
-	          const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-	          const finalOutput = (finalContent || "") + killNote
-	          conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-	          emit({
-	            currentIteration: iteration,
-	            maxIterations,
-	            steps: progressSteps.slice(-3),
-	            isComplete: true,
-	            finalContent: finalOutput,
-	            conversationHistory: formatConversationForProgress(conversationHistory),
-	          })
-	          wasAborted = true
+	          finalizeEmergencyStop(progressSteps.slice(-3))
 	          break
 	        }
 
@@ -2933,17 +2831,7 @@ Return ONLY JSON per schema.`,
           try {
             const result = await generatePostVerifySummary(finalContent, true, activeTools)
             if (result.stopped) {
-              const killNote = "\n\n(Agent mode was stopped by emergency kill switch)"
-              const finalOutput = (finalContent || "") + killNote
-              conversationHistory.push({ role: "assistant", content: finalOutput, timestamp: Date.now() })
-              emit({
-                currentIteration: iteration,
-                maxIterations,
-                steps: progressSteps.slice(-3),
-                isComplete: true,
-                finalContent: finalOutput,
-                conversationHistory: formatConversationForProgress(conversationHistory),
-              })
+              finalizeEmergencyStop(progressSteps.slice(-3))
               break
             }
             finalContent = result.content
