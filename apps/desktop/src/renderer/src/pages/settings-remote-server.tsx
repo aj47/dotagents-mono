@@ -350,7 +350,7 @@ export function RemoteServerSettingsGroups({
                     )}
                     {showConnectableUrlResolutionWarning && (
                       <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words">
-                        The server is running, but no LAN IPv4 address was detected for wildcard bind (0.0.0.0/::). Connect to a local network or use a specific LAN IP to enable mobile pairing.
+                        The server is running, but no LAN-reachable address was detected for wildcard bind (0.0.0.0/::). Connect to a local network or use a specific LAN IP/host to enable mobile pairing.
                       </div>
                     )}
                     {showLoopbackBindWarning && (

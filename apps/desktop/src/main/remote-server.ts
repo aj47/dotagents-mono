@@ -231,6 +231,19 @@ function isLoopbackHost(host: string): boolean {
   return normalizedHost === "127.0.0.1" || normalizedHost === "localhost" || normalizedHost === "::1"
 }
 
+function isConnectableIpv6Address(host: string): boolean {
+  const normalizedHost = normalizeHostForComparison(host)
+  // Zone-scoped addresses (e.g. fe80::1%en0) are not reliable for QR/deep-link URLs.
+  if (normalizedHost.includes("%")) {
+    return false
+  }
+  // Exclude unspecified/loopback/link-local/multicast ranges.
+  if (normalizedHost === "::" || normalizedHost === "::1" || /^fe[89ab]/.test(normalizedHost) || normalizedHost.startsWith("ff")) {
+    return false
+  }
+  return true
+}
+
 function formatHostForHttpUrl(host: string): string {
   const normalizedHost = host.trim()
   // IPv6 literals must be bracketed in URLs: http://[::1]:3210/v1
@@ -265,22 +278,45 @@ export function getConnectableIp(bind: string, options: ConnectableIpOptions = {
     return normalizedBind
   }
 
-  // Find first non-internal IPv4 address
+  const wildcardWantsIpv6 = normalizedBind === "::"
+  let firstIpv4Address: string | undefined
+  let firstIpv6Address: string | undefined
+
+  // For wildcard binds, discover LAN-reachable interface addresses.
   const interfaces = os.networkInterfaces()
   for (const name of Object.keys(interfaces)) {
     const addrs = interfaces[name]
     if (!addrs) continue
     for (const addr of addrs) {
-      if (addr.family === "IPv4" && !addr.internal) {
-        return addr.address
+      if (addr.internal) {
+        continue
+      }
+      if (addr.family === "IPv4" && !firstIpv4Address) {
+        firstIpv4Address = addr.address
+      }
+      if (addr.family === "IPv6" && !firstIpv6Address && isConnectableIpv6Address(addr.address)) {
+        firstIpv6Address = addr.address
       }
     }
   }
 
+  if (wildcardWantsIpv6) {
+    if (firstIpv6Address) {
+      return firstIpv6Address
+    }
+    // Some platforms expose dual-stack sockets for ::, so IPv4 can still be connectable.
+    if (firstIpv4Address) {
+      return firstIpv4Address
+    }
+  } else if (firstIpv4Address) {
+    return firstIpv4Address
+  }
+
   // Fallback to the original bind address with a warning
   if (warn) {
+    const expectedFamily = wildcardWantsIpv6 ? "IPv6" : "IPv4"
     console.warn(
-      `[Remote Server] Warning: Could not find LAN IP. QR code will use ${normalizedBind} which may not be reachable from mobile devices.`
+      `[Remote Server] Warning: Could not find LAN ${expectedFamily} address. QR code will use ${normalizedBind} which may not be reachable from mobile devices.`
     )
   }
   return normalizedBind
