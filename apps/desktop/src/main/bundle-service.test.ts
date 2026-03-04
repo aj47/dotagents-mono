@@ -290,6 +290,56 @@ describe("bundle-service", () => {
       expect(result).toBeNull()
     })
 
+    it("returns null when required manifest fields are missing", async () => {
+      const missingNameBundle = {
+        manifest: {
+          version: 1,
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const missingComponentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Missing Components",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const invalidCreatedAtBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Date",
+          createdAt: "not-a-date",
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const missingNamePath = path.join(tempDir, "missing-name.dotagents")
+      const missingComponentsPath = path.join(tempDir, "missing-components.dotagents")
+      const invalidCreatedAtPath = path.join(tempDir, "invalid-created-at.dotagents")
+      fs.writeFileSync(missingNamePath, JSON.stringify(missingNameBundle))
+      fs.writeFileSync(missingComponentsPath, JSON.stringify(missingComponentsBundle))
+      fs.writeFileSync(invalidCreatedAtPath, JSON.stringify(invalidCreatedAtBundle))
+
+      expect(previewBundle(missingNamePath)).toBeNull()
+      expect(previewBundle(missingComponentsPath)).toBeNull()
+      expect(previewBundle(invalidCreatedAtPath)).toBeNull()
+    })
+
     it("handles bundles without repeatTasks/memories (backwards compat)", async () => {
       const oldBundle = {
         manifest: {
@@ -312,6 +362,8 @@ describe("bundle-service", () => {
       expect(result).not.toBeNull()
       expect(result?.repeatTasks).toEqual([])
       expect(result?.memories).toEqual([])
+      expect(result?.manifest.components.repeatTasks).toBe(0)
+      expect(result?.manifest.components.memories).toBe(0)
     })
   })
 
@@ -654,6 +706,42 @@ describe("bundle-service", () => {
         mcpDisabledTools: ["github:create_issue"],
       })
     })
+
+    it("canonicalizes legacy bare MCP server maps without preserving duplicate top-level servers", async () => {
+      writeTestMcpJson(targetDir, {
+        github: {
+          transport: "stdio",
+          command: "existing-command",
+          args: ["existing-arg"],
+        },
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+      })
+    })
   })
 })
-

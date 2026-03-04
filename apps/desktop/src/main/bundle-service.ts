@@ -202,6 +202,16 @@ const SECRET_PATTERNS = [
 ]
 
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
+const TOP_LEVEL_MCP_CONFIG_KEYS = [
+  "mcpDisabledTools",
+  "mcpRuntimeDisabledServers",
+  "mcpToolsCollapsedServers",
+  "mcpServersCollapsedServers",
+] as const
+
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
 
 function isSecretKey(key: string): boolean {
   return SECRET_PATTERNS.some((pattern) => pattern.test(key))
@@ -233,31 +243,32 @@ function stripSecretsFromObject(obj: Record<string, unknown>): Record<string, un
 
 function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
   const nestedMcpConfig = mcpJson.mcpConfig
-  if (typeof nestedMcpConfig === "object" && nestedMcpConfig !== null && !Array.isArray(nestedMcpConfig)) {
+  if (isRecordObject(nestedMcpConfig)) {
     const nestedServers = (nestedMcpConfig as Record<string, unknown>).mcpServers
-    if (typeof nestedServers === "object" && nestedServers !== null && !Array.isArray(nestedServers)) {
+    if (isRecordObject(nestedServers)) {
       return nestedServers as Record<string, unknown>
     }
     return {}
   }
 
   const topLevelServers = mcpJson.mcpServers
-  if (typeof topLevelServers === "object" && topLevelServers !== null && !Array.isArray(topLevelServers)) {
+  if (isRecordObject(topLevelServers)) {
     return topLevelServers as Record<string, unknown>
   }
 
-  const hasTopLevelMcpConfigKeys = [
-    "mcpDisabledTools",
-    "mcpRuntimeDisabledServers",
-    "mcpToolsCollapsedServers",
-    "mcpServersCollapsedServers",
-  ].some((key) => key in mcpJson)
+  const hasTopLevelMcpConfigKeys = TOP_LEVEL_MCP_CONFIG_KEYS.some((key) => key in mcpJson)
 
   if (hasTopLevelMcpConfigKeys) {
     return {}
   }
 
   return mcpJson
+}
+
+function isLegacyBareMcpServersMap(mcpJson: Record<string, unknown>): boolean {
+  if (isRecordObject(mcpJson.mcpConfig)) return false
+  if (isRecordObject(mcpJson.mcpServers)) return false
+  return !TOP_LEVEL_MCP_CONFIG_KEYS.some((key) => key in mcpJson)
 }
 
 function writeCanonicalMcpConfig(
@@ -267,10 +278,16 @@ function writeCanonicalMcpConfig(
   const nextMcpJson = { ...mcpJson }
   delete nextMcpJson.mcpServers
 
+  // Legacy shape: top-level map of servers without mcpConfig/mcpServers wrappers.
+  // Remove those keys so we don't persist duplicate server definitions.
+  if (isLegacyBareMcpServersMap(mcpJson)) {
+    for (const legacyServerName of Object.keys(mcpServers)) {
+      delete nextMcpJson[legacyServerName]
+    }
+  }
+
   const existingMcpConfig =
-    typeof nextMcpJson.mcpConfig === "object" &&
-    nextMcpJson.mcpConfig !== null &&
-    !Array.isArray(nextMcpJson.mcpConfig)
+    isRecordObject(nextMcpJson.mcpConfig)
       ? { ...(nextMcpJson.mcpConfig as Record<string, unknown>) }
       : {}
 
@@ -497,6 +514,16 @@ function validateBundle(bundle: unknown): bundle is DotAgentsBundle {
   if (!b.manifest || typeof b.manifest !== "object") return false
   const m = b.manifest as Record<string, unknown>
   if (m.version !== 1) return false
+  if (typeof m.name !== "string" || m.name.trim().length === 0) return false
+  if (typeof m.createdAt !== "string" || Number.isNaN(Date.parse(m.createdAt))) return false
+  if (typeof m.exportedFrom !== "string" || m.exportedFrom.trim().length === 0) return false
+  if (!isRecordObject(m.components)) return false
+  const components = m.components as Record<string, unknown>
+  if (typeof components.agentProfiles !== "number") return false
+  if (typeof components.mcpServers !== "number") return false
+  if (typeof components.skills !== "number") return false
+  if ("repeatTasks" in components && typeof components.repeatTasks !== "number") return false
+  if ("memories" in components && typeof components.memories !== "number") return false
   // Ensure arrays exist (may be empty)
   if (!Array.isArray(b.agentProfiles)) return false
   if (!Array.isArray(b.mcpServers)) return false
@@ -506,10 +533,28 @@ function validateBundle(bundle: unknown): bundle is DotAgentsBundle {
 }
 
 function normalizeBundle(bundle: DotAgentsBundle): DotAgentsBundle {
+  const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
+  const memories = Array.isArray(bundle.memories) ? bundle.memories : []
+  const rawComponents = isRecordObject(bundle.manifest.components)
+    ? (bundle.manifest.components as Record<string, unknown>)
+    : {}
+  const countOrFallback = (value: unknown, fallback: number): number =>
+    typeof value === "number" && Number.isFinite(value) ? value : fallback
+
   return {
     ...bundle,
-    repeatTasks: Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : [],
-    memories: Array.isArray(bundle.memories) ? bundle.memories : [],
+    manifest: {
+      ...bundle.manifest,
+      components: {
+        agentProfiles: countOrFallback(rawComponents.agentProfiles, bundle.agentProfiles.length),
+        mcpServers: countOrFallback(rawComponents.mcpServers, bundle.mcpServers.length),
+        skills: countOrFallback(rawComponents.skills, bundle.skills.length),
+        repeatTasks: countOrFallback(rawComponents.repeatTasks, repeatTasks.length),
+        memories: countOrFallback(rawComponents.memories, memories.length),
+      },
+    },
+    repeatTasks,
+    memories,
   }
 }
 
