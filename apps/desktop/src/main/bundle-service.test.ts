@@ -532,6 +532,54 @@ describe("bundle-service", () => {
       })
     })
 
+    it("detects conflicts from legacy top-level MCP servers when canonical mcpConfig.mcpServers also exists", async () => {
+      writeTestMcpJson(agentsDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "canonical-github-server",
+            },
+          },
+        },
+        exa: {
+          transport: "stdio",
+          command: "legacy-exa-server",
+        },
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Mixed MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "exa",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-exa"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "mixed-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "exa", name: "exa" }])
+    })
+
     it("detects conflicts from legacy top-level MCP servers even when mcp* config keys are present", async () => {
       writeTestMcpJson(agentsDir, {
         github: {
@@ -995,6 +1043,57 @@ describe("bundle-service", () => {
         mcpConfig: {
           mcpServers: {
             exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("merges canonical and legacy MCP server maps before canonicalization", async () => {
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-github-command",
+              args: ["existing-arg"],
+            },
+          },
+        },
+        exa: {
+          transport: "stdio",
+          command: "legacy-exa-command",
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("filesystem")
+      const bundlePath = path.join(tempDir, "import-mcp-merged.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "filesystem", name: "filesystem", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-github-command",
+              args: ["existing-arg"],
+            },
+            exa: {
+              transport: "stdio",
+              command: "legacy-exa-command",
+            },
+            filesystem: {
               command: "npx",
               args: ["-y", "@modelcontextprotocol/server-github"],
               transport: "stdio",

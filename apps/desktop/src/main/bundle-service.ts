@@ -303,20 +303,30 @@ function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<
 }
 
 function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
+  const legacyServers = readLegacyTopLevelMcpServers(mcpJson)
+
   const nestedMcpConfig = mcpJson.mcpConfig
+  let nestedServers: Record<string, unknown> = {}
   if (isRecordObject(nestedMcpConfig)) {
-    const nestedServers = (nestedMcpConfig as Record<string, unknown>).mcpServers
-    if (isRecordObject(nestedServers)) {
-      return nestedServers as Record<string, unknown>
+    const mcpConfigServers = (nestedMcpConfig as Record<string, unknown>).mcpServers
+    if (isRecordObject(mcpConfigServers)) {
+      nestedServers = mcpConfigServers as Record<string, unknown>
     }
   }
 
   const topLevelServers = mcpJson.mcpServers
+  let directServers: Record<string, unknown> = {}
   if (isRecordObject(topLevelServers)) {
-    return topLevelServers as Record<string, unknown>
+    directServers = topLevelServers as Record<string, unknown>
   }
 
-  return readLegacyTopLevelMcpServers(mcpJson)
+  // Merge all known MCP server shapes to avoid dropping legacy servers in mixed configs.
+  // Precedence: nested mcpConfig.mcpServers > top-level mcpServers > legacy top-level.
+  return {
+    ...legacyServers,
+    ...directServers,
+    ...nestedServers,
+  }
 }
 
 function writeCanonicalMcpConfig(

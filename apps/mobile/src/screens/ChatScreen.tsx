@@ -149,20 +149,43 @@ type RespondToUserHistorySourceMessage = {
   toolCalls?: Array<{ name: string; arguments: unknown }>;
 };
 
+const resolveMessageTimestamps = (messages: RespondToUserHistorySourceMessage[]): number[] => {
+  const resolved: Array<number | null> = messages.map((message) =>
+    typeof message.timestamp === 'number' && Number.isFinite(message.timestamp) ? message.timestamp : null
+  );
+
+  for (let i = 1; i < resolved.length; i++) {
+    if (resolved[i] === null && resolved[i - 1] !== null) {
+      resolved[i] = (resolved[i - 1] as number) + 1;
+    }
+  }
+
+  for (let i = resolved.length - 2; i >= 0; i--) {
+    if (resolved[i] === null && resolved[i + 1] !== null) {
+      resolved[i] = (resolved[i + 1] as number) - 1;
+    }
+  }
+
+  for (let i = 0; i < resolved.length; i++) {
+    if (resolved[i] === null) {
+      resolved[i] = i;
+    }
+  }
+
+  return resolved as number[];
+};
+
 const extractRespondToUserHistory = (
   messages: RespondToUserHistorySourceMessage[]
 ): Array<{ text: string; timestamp: number }> => {
   const history: Array<{ text: string; timestamp: number }> = [];
   const seenResponses = new Set<string>();
+  const resolvedTimestamps = resolveMessageTimestamps(messages);
 
-  for (const message of messages) {
+  for (const [index, message] of messages.entries()) {
     if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
 
-    const fallbackTimestamp = Date.now();
-    const messageTimestamp =
-      typeof message.timestamp === 'number' && Number.isFinite(message.timestamp)
-        ? message.timestamp
-        : fallbackTimestamp;
+    const messageTimestamp = resolvedTimestamps[index];
 
     for (const call of message.toolCalls) {
       if (call.name !== RESPOND_TO_USER_TOOL) continue;

@@ -586,6 +586,45 @@ const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
   )
 }
 
+async function refreshRuntimeAfterBundleImport(): Promise<void> {
+  try {
+    configStore.reload()
+  } catch (error) {
+    logApp("[tipc] Failed to reload config after bundle import", { error })
+  }
+
+  try {
+    agentProfileService.reload()
+  } catch (error) {
+    logApp("[tipc] Failed to reload agent profiles after bundle import", { error })
+  }
+
+  try {
+    const { skillsService } = await import("./skills-service")
+    skillsService.scanSkillsFolder()
+  } catch (error) {
+    logApp("[tipc] Failed to reload skills after bundle import", { error })
+  }
+
+  try {
+    loopService.reload()
+  } catch (error) {
+    logApp("[tipc] Failed to reload repeat tasks after bundle import", { error })
+  }
+
+  try {
+    await memoryService.reload()
+  } catch (error) {
+    logApp("[tipc] Failed to reload memories after bundle import", { error })
+  }
+
+  try {
+    await mcpService.initialize()
+  } catch (error) {
+    logApp("[tipc] Failed to reinitialize MCP after bundle import", { error })
+  }
+}
+
 /**
  * Process queued messages for a conversation after the current session completes.
  * This function peeks at messages and only removes them after successful processing.
@@ -4315,10 +4354,12 @@ export const router = {
       const { importBundle } = await import("./bundle-service")
       // Use workspace layer if present, otherwise global
       const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
-      return importBundle(input.filePath, targetDir, {
+      const result = await importBundle(input.filePath, targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
       })
+      await refreshRuntimeAfterBundleImport()
+      return result
     }),
 
   importBundleFromDialog: t.procedure
@@ -4337,10 +4378,14 @@ export const router = {
       const { importBundleFromDialog } = await import("./bundle-service")
       // Use workspace layer if present, otherwise global
       const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
-      return importBundleFromDialog(targetDir, {
+      const result = await importBundleFromDialog(targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
       })
+      if (result) {
+        await refreshRuntimeAfterBundleImport()
+      }
+      return result
     }),
 
   // Memory service handlers

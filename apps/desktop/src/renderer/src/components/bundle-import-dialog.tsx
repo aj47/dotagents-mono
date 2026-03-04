@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -95,6 +95,8 @@ export function BundleImportDialog({
   const [preview, setPreview] = useState<BundlePreview | null>(null)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
   const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
+  const isOpenRef = useRef(open)
+  const previewRequestIdRef = useRef(0)
 
   const isComponentAvailable = (key: BundleComponentKey) => availableComponents?.[key] ?? true
 
@@ -104,7 +106,9 @@ export function BundleImportDialog({
   }, {} as BundleComponentsState)
 
   useEffect(() => {
+    isOpenRef.current = open
     if (!open) {
+      previewRequestIdRef.current += 1
       setPreview(null)
       setConflictStrategy("skip")
       setComponents(resolveComponents(initialComponents))
@@ -119,10 +123,12 @@ export function BundleImportDialog({
   }, [open])
 
   const handleSelectFile = async () => {
+    const requestId = ++previewRequestIdRef.current
     setLoading(true)
     try {
       // First, open file dialog and get basic preview
       const dialogResult = await tipcClient.previewBundle()
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       if (!dialogResult) {
         // User cancelled file picker
         onOpenChange(false)
@@ -130,13 +136,17 @@ export function BundleImportDialog({
       }
       // Then, get full preview with conflicts
       const fullResult = await tipcClient.previewBundleWithConflicts({ filePath: dialogResult.filePath })
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       setPreview(fullResult as BundlePreview)
     } catch (error) {
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(`Failed to preview bundle: ${errorMessage}`)
       onOpenChange(false)
     } finally {
-      setLoading(false)
+      if (previewRequestIdRef.current === requestId && isOpenRef.current) {
+        setLoading(false)
+      }
     }
   }
 
@@ -172,6 +182,8 @@ export function BundleImportDialog({
   }
 
   const handleClose = () => {
+    previewRequestIdRef.current += 1
+    setLoading(false)
     setPreview(null)
     setConflictStrategy("skip")
     setComponents(resolveComponents(initialComponents))
