@@ -27,15 +27,34 @@ function maskUrl(url: string): string {
   return url.replace(/([a-zA-Z0-9-]+)/g, (match) => "*".repeat(Math.min(match.length, 8)))
 }
 
+function normalizeHostForComparison(host: string): string {
+  const normalized = host.trim().toLowerCase()
+  if (normalized.startsWith("[") && normalized.endsWith("]")) {
+    return normalized.slice(1, -1)
+  }
+  return normalized
+}
+
+function isWildcardMobileHost(host: string): boolean {
+  const normalizedHost = normalizeHostForComparison(host)
+  return normalizedHost === "0.0.0.0" || normalizedHost === "::"
+}
+
+function isLoopbackMobileHost(host: string): boolean {
+  const normalizedHost = normalizeHostForComparison(host)
+  return normalizedHost === "127.0.0.1" || normalizedHost === "localhost" || normalizedHost === "::1"
+}
+
 function isUnconnectableMobileHost(host: string): boolean {
-  return host === "0.0.0.0" || host === "::"
+  return isWildcardMobileHost(host) || isLoopbackMobileHost(host)
 }
 
 function formatHostForHttpUrl(host: string): string {
-  if (host.includes(":") && !host.startsWith("[") && !host.endsWith("]")) {
-    return `[${host}]`
+  const normalizedHost = host.trim()
+  if (normalizedHost.includes(":") && !normalizedHost.startsWith("[") && !normalizedHost.endsWith("]")) {
+    return `[${normalizedHost}]`
   }
-  return host
+  return normalizedHost
 }
 
 interface RemoteServerSettingsGroupsProps {
@@ -137,18 +156,22 @@ export function RemoteServerSettingsGroups({
 
   const enabled = cfg.remoteServerEnabled ?? false
   const streamerMode = cfg.streamerModeEnabled ?? false
+  const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
 
-  const fallbackBaseUrl = cfg.remoteServerBindAddress &&
-    !isUnconnectableMobileHost(cfg.remoteServerBindAddress) &&
+  const fallbackBaseUrl = !isUnconnectableMobileHost(configuredBindAddress) &&
     cfg.remoteServerPort
-      ? `http://${formatHostForHttpUrl(cfg.remoteServerBindAddress)}:${cfg.remoteServerPort}/v1`
+      ? `http://${formatHostForHttpUrl(configuredBindAddress)}:${cfg.remoteServerPort}/v1`
       : undefined
 
   const baseUrl = remoteServerStatus?.connectableUrl ?? fallbackBaseUrl
-  const showConnectableUrlResolutionWarning =
+  const shouldShowConnectabilityWarning =
     (remoteServerStatus?.running ?? false) &&
-    isUnconnectableMobileHost(cfg.remoteServerBindAddress || "") &&
+    isUnconnectableMobileHost(configuredBindAddress) &&
     !remoteServerStatus?.connectableUrl
+  const showConnectableUrlResolutionWarning =
+    shouldShowConnectabilityWarning && isWildcardMobileHost(configuredBindAddress)
+  const showLoopbackBindWarning =
+    shouldShowConnectabilityWarning && isLoopbackMobileHost(configuredBindAddress)
 
   return (
     <>
@@ -307,7 +330,7 @@ export function RemoteServerSettingsGroups({
                 </div>
               </Control>
 
-              {(baseUrl || showConnectableUrlResolutionWarning) && (
+              {(baseUrl || showConnectableUrlResolutionWarning || showLoopbackBindWarning) && (
                 <>
                   <Control label="Base URL" className="px-3">
                     {baseUrl ? (
@@ -328,6 +351,11 @@ export function RemoteServerSettingsGroups({
                     {showConnectableUrlResolutionWarning && (
                       <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words">
                         The server is running, but no LAN IPv4 address was detected for wildcard bind (0.0.0.0/::). Connect to a local network or use a specific LAN IP to enable mobile pairing.
+                      </div>
+                    )}
+                    {showLoopbackBindWarning && (
+                      <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words">
+                        The server is running on loopback ({configuredBindAddress}), which is only reachable from this computer. Use 0.0.0.0 or a LAN IP to enable mobile pairing.
                       </div>
                     )}
                   </Control>

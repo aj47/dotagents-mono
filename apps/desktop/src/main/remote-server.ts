@@ -213,20 +213,31 @@ interface ConnectableIpOptions {
   warn?: boolean
 }
 
+function normalizeHostForComparison(host: string): string {
+  const normalized = host.trim().toLowerCase()
+  if (normalized.startsWith("[") && normalized.endsWith("]")) {
+    return normalized.slice(1, -1)
+  }
+  return normalized
+}
+
 function isWildcardBindHost(host: string): boolean {
-  return host === "0.0.0.0" || host === "::"
+  const normalizedHost = normalizeHostForComparison(host)
+  return normalizedHost === "0.0.0.0" || normalizedHost === "::"
 }
 
 function isLoopbackHost(host: string): boolean {
-  return host === "127.0.0.1" || host === "localhost" || host === "::1"
+  const normalizedHost = normalizeHostForComparison(host)
+  return normalizedHost === "127.0.0.1" || normalizedHost === "localhost" || normalizedHost === "::1"
 }
 
 function formatHostForHttpUrl(host: string): string {
+  const normalizedHost = host.trim()
   // IPv6 literals must be bracketed in URLs: http://[::1]:3210/v1
-  if (host.includes(":") && !host.startsWith("[") && !host.endsWith("]")) {
-    return `[${host}]`
+  if (normalizedHost.includes(":") && !normalizedHost.startsWith("[") && !normalizedHost.endsWith("]")) {
+    return `[${normalizedHost}]`
   }
-  return host
+  return normalizedHost
 }
 
 function buildRemoteServerBaseUrl(host: string, port: number): string {
@@ -235,22 +246,23 @@ function buildRemoteServerBaseUrl(host: string, port: number): string {
 
 export function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): string {
   const { warn = true } = options
+  const normalizedBind = normalizeHostForComparison(bind)
 
   // If bound to loopback, warn that mobile devices cannot connect
-  if (isLoopbackHost(bind)) {
+  if (isLoopbackHost(normalizedBind)) {
     if (warn) {
       console.warn(
-        `[Remote Server] Warning: Server is bound to ${bind} (loopback only). ` +
+        `[Remote Server] Warning: Server is bound to ${normalizedBind} (loopback only). ` +
         `Mobile devices on the same network cannot connect. ` +
         `Change bind address to 0.0.0.0 or your LAN IP for mobile access.`
       )
     }
-    return bind
+    return normalizedBind
   }
 
   // If already a specific IP (not wildcard), use it
-  if (!isWildcardBindHost(bind)) {
-    return bind
+  if (!isWildcardBindHost(normalizedBind)) {
+    return normalizedBind
   }
 
   // Find first non-internal IPv4 address
@@ -268,14 +280,26 @@ export function getConnectableIp(bind: string, options: ConnectableIpOptions = {
   // Fallback to the original bind address with a warning
   if (warn) {
     console.warn(
-      `[Remote Server] Warning: Could not find LAN IP. QR code will use ${bind} which may not be reachable from mobile devices.`
+      `[Remote Server] Warning: Could not find LAN IP. QR code will use ${normalizedBind} which may not be reachable from mobile devices.`
     )
   }
-  return bind
+  return normalizedBind
 }
 
 function isUnconnectableHostForMobilePairing(host: string): boolean {
   return isWildcardBindHost(host) || isLoopbackHost(host)
+}
+
+function getConnectableBaseUrlForMobilePairing(
+  bind: string,
+  port: number,
+  options: ConnectableIpOptions = {},
+): string | undefined {
+  const connectableHost = getConnectableIp(bind, options)
+  if (isUnconnectableHostForMobilePairing(connectableHost)) {
+    return undefined
+  }
+  return buildRemoteServerBaseUrl(connectableHost, port)
 }
 
 function resolveActiveModelId(cfg: any): string {
@@ -2838,14 +2862,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     if (!skipAutoPrintQR) {
       const currentCfg = configStore.get()
       if (currentCfg.remoteServerApiKey && !currentCfg.streamerModeEnabled) {
-        // Use connectable IP for QR code (not 0.0.0.0 or 127.0.0.1)
-        const connectableIp = getConnectableIp(bind)
-        const serverUrl = buildRemoteServerBaseUrl(connectableIp, port)
-
         // In headless environments, always print the QR code
         // Otherwise, print if terminal QR is explicitly enabled
         if (isHeadlessEnvironment() || currentCfg.remoteServerTerminalQrEnabled) {
-          await printTerminalQRCode(serverUrl, currentCfg.remoteServerApiKey)
+          const serverUrl = getConnectableBaseUrlForMobilePairing(bind, port)
+          if (serverUrl) {
+            await printTerminalQRCode(serverUrl, currentCfg.remoteServerApiKey)
+          } else {
+            console.warn(
+              `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`
+            )
+          }
         }
       }
     }
@@ -2883,13 +2910,7 @@ export function getRemoteServerStatus() {
   const port = cfg.remoteServerPort || 3210
   const running = !!server
   const url = running ? buildRemoteServerBaseUrl(bind, port) : undefined
-  let connectableUrl: string | undefined
-  if (running) {
-    const connectableHost = getConnectableIp(bind, { warn: false })
-    if (!isUnconnectableHostForMobilePairing(connectableHost)) {
-      connectableUrl = buildRemoteServerBaseUrl(connectableHost, port)
-    }
-  }
+  const connectableUrl = running ? getConnectableBaseUrlForMobilePairing(bind, port, { warn: false }) : undefined
   return { running, url, connectableUrl, bind, port, lastError }
 }
 
@@ -2920,9 +2941,12 @@ export async function printQRCodeToTerminal(urlOverride?: string): Promise<boole
   } else {
     const bind = cfg.remoteServerBindAddress || "127.0.0.1"
     const port = cfg.remoteServerPort || 3210
-    // Use connectable IP for QR code (not 0.0.0.0 or 127.0.0.1)
-    const connectableIp = getConnectableIp(bind)
-    serverUrl = buildRemoteServerBaseUrl(connectableIp, port)
+    const connectableBaseUrl = getConnectableBaseUrlForMobilePairing(bind, port)
+    if (!connectableBaseUrl) {
+      console.log("[Remote Server] Cannot print QR code: unable to resolve a LAN-reachable URL for the current bind address")
+      return false
+    }
+    serverUrl = connectableBaseUrl
   }
 
   // Return the actual result from printTerminalQRCode to indicate success/failure
