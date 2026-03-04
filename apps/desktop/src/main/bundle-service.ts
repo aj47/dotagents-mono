@@ -20,7 +20,7 @@ import type {
 } from "@shared/types"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
-import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToFilePath } from "./agents-files/skills"
+import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
 import { loadAgentsMemoriesLayer, writeAgentsMemoryFile, memoryIdToFilePath } from "./agents-files/memories"
 import { loadTasksLayer, writeTaskFile, taskIdToFilePath } from "./agents-files/tasks"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
@@ -1103,7 +1103,7 @@ export async function importBundle(
         }
 
         // Create skill directory and write file
-        const skillDir = path.join(layer.agentsDir, "skills", finalId)
+        const skillDir = skillIdToDirPath(layer, finalId)
         fs.mkdirSync(skillDir, { recursive: true })
         writeAgentsSkillFile(layer, fullSkill)
         existingIds.add(finalId)
