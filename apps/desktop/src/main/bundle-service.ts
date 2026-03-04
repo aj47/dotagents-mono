@@ -208,6 +208,17 @@ const TOP_LEVEL_MCP_CONFIG_KEYS = [
   "mcpToolsCollapsedServers",
   "mcpServersCollapsedServers",
 ] as const
+const MCP_SERVER_CONFIG_KEYS = [
+  "transport",
+  "command",
+  "args",
+  "env",
+  "url",
+  "headers",
+  "oauth",
+  "timeout",
+  "disabled",
+] as const
 
 function isRecordObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -241,6 +252,27 @@ function stripSecretsFromObject(obj: Record<string, unknown>): Record<string, un
   return result
 }
 
+function isLikelyMcpServerConfig(value: unknown): value is Record<string, unknown> {
+  if (!isRecordObject(value)) return false
+  const keys = Object.keys(value)
+  if (keys.length === 0) return true
+  return keys.some((key) => (MCP_SERVER_CONFIG_KEYS as readonly string[]).includes(key))
+}
+
+function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<string, unknown> {
+  const legacyServers: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(mcpJson)) {
+    if (key === "mcpConfig" || key === "mcpServers") continue
+    if ((TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)) continue
+    if (!isLikelyMcpServerConfig(value)) continue
+
+    legacyServers[key] = value
+  }
+
+  return legacyServers
+}
+
 function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
   const nestedMcpConfig = mcpJson.mcpConfig
   if (isRecordObject(nestedMcpConfig)) {
@@ -248,7 +280,6 @@ function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<stri
     if (isRecordObject(nestedServers)) {
       return nestedServers as Record<string, unknown>
     }
-    return {}
   }
 
   const topLevelServers = mcpJson.mcpServers
@@ -256,19 +287,7 @@ function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<stri
     return topLevelServers as Record<string, unknown>
   }
 
-  const hasTopLevelMcpConfigKeys = TOP_LEVEL_MCP_CONFIG_KEYS.some((key) => key in mcpJson)
-
-  if (hasTopLevelMcpConfigKeys) {
-    return {}
-  }
-
-  return mcpJson
-}
-
-function isLegacyBareMcpServersMap(mcpJson: Record<string, unknown>): boolean {
-  if (isRecordObject(mcpJson.mcpConfig)) return false
-  if (isRecordObject(mcpJson.mcpServers)) return false
-  return !TOP_LEVEL_MCP_CONFIG_KEYS.some((key) => key in mcpJson)
+  return readLegacyTopLevelMcpServers(mcpJson)
 }
 
 function writeCanonicalMcpConfig(
@@ -278,12 +297,10 @@ function writeCanonicalMcpConfig(
   const nextMcpJson = { ...mcpJson }
   delete nextMcpJson.mcpServers
 
-  // Legacy shape: top-level map of servers without mcpConfig/mcpServers wrappers.
-  // Remove those keys so we don't persist duplicate server definitions.
-  if (isLegacyBareMcpServersMap(mcpJson)) {
-    for (const legacyServerName of Object.keys(mcpServers)) {
-      delete nextMcpJson[legacyServerName]
-    }
+  // Remove legacy top-level server entries so we only persist canonical mcpConfig.mcpServers.
+  const legacyTopLevelServers = readLegacyTopLevelMcpServers(mcpJson)
+  for (const legacyServerName of Object.keys(legacyTopLevelServers)) {
+    delete nextMcpJson[legacyServerName]
   }
 
   const existingMcpConfig =
@@ -508,31 +525,122 @@ function isSupportedBundleFile(filePath: string): boolean {
   return BUNDLE_FILE_EXTENSIONS.has(extension)
 }
 
-function validateBundle(bundle: unknown): bundle is DotAgentsBundle {
+type LegacyBundleManifestComponents = Omit<BundleManifest["components"], "repeatTasks" | "memories"> & {
+  repeatTasks?: number
+  memories?: number
+}
+
+type LegacyDotAgentsBundle = Omit<DotAgentsBundle, "manifest" | "repeatTasks" | "memories"> & {
+  manifest: Omit<BundleManifest, "components"> & {
+    components: LegacyBundleManifestComponents
+  }
+  repeatTasks?: BundleRepeatTask[]
+  memories?: BundleMemory[]
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === "string"
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
+}
+
+function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (typeof value.enabled !== "boolean") return false
+  if (!isOptionalString(value.displayName)) return false
+  if (!isOptionalString(value.description)) return false
+  if (!isOptionalString(value.role)) return false
+  if (!isOptionalString(value.systemPrompt)) return false
+  if (!isOptionalString(value.guidelines)) return false
+  if (!isRecordObject(value.connection)) return false
+  return isNonEmptyString(value.connection.type)
+}
+
+function isBundleMcpServer(value: unknown): value is BundleMCPServer {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (!isOptionalString(value.command)) return false
+  if (!isOptionalString(value.transport)) return false
+  if (value.args !== undefined && !isStringArray(value.args)) return false
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") return false
+  return true
+}
+
+function isBundleSkill(value: unknown): value is BundleSkill {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (!isOptionalString(value.description)) return false
+  return typeof value.instructions === "string"
+}
+
+function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (typeof value.prompt !== "string") return false
+  if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
+  if (typeof value.enabled !== "boolean") return false
+  return value.runOnStartup === undefined || typeof value.runOnStartup === "boolean"
+}
+
+function isBundleMemory(value: unknown): value is BundleMemory {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.title)) return false
+  if (typeof value.content !== "string") return false
+  if (!["low", "medium", "high", "critical"].includes(String(value.importance))) return false
+  if (!isStringArray(value.tags)) return false
+  if (value.keyFindings !== undefined && !isStringArray(value.keyFindings)) return false
+  return value.userNotes === undefined || typeof value.userNotes === "string"
+}
+
+function hasValidManifestComponents(value: unknown): value is LegacyBundleManifestComponents {
+  if (!isRecordObject(value)) return false
+  if (!isNonNegativeFiniteNumber(value.agentProfiles)) return false
+  if (!isNonNegativeFiniteNumber(value.mcpServers)) return false
+  if (!isNonNegativeFiniteNumber(value.skills)) return false
+  if (value.repeatTasks !== undefined && !isNonNegativeFiniteNumber(value.repeatTasks)) return false
+  if (value.memories !== undefined && !isNonNegativeFiniteNumber(value.memories)) return false
+  return true
+}
+
+function validateBundle(bundle: unknown): bundle is LegacyDotAgentsBundle {
   if (!bundle || typeof bundle !== "object") return false
   const b = bundle as Record<string, unknown>
   if (!b.manifest || typeof b.manifest !== "object") return false
   const m = b.manifest as Record<string, unknown>
   if (m.version !== 1) return false
-  if (typeof m.name !== "string" || m.name.trim().length === 0) return false
+  if (!isNonEmptyString(m.name)) return false
+  if (!isOptionalString(m.description)) return false
   if (typeof m.createdAt !== "string" || Number.isNaN(Date.parse(m.createdAt))) return false
-  if (typeof m.exportedFrom !== "string" || m.exportedFrom.trim().length === 0) return false
-  if (!isRecordObject(m.components)) return false
-  const components = m.components as Record<string, unknown>
-  if (typeof components.agentProfiles !== "number") return false
-  if (typeof components.mcpServers !== "number") return false
-  if (typeof components.skills !== "number") return false
-  if ("repeatTasks" in components && typeof components.repeatTasks !== "number") return false
-  if ("memories" in components && typeof components.memories !== "number") return false
-  // Ensure arrays exist (may be empty)
-  if (!Array.isArray(b.agentProfiles)) return false
-  if (!Array.isArray(b.mcpServers)) return false
-  if (!Array.isArray(b.skills)) return false
-  // repeatTasks and memories may be absent in older bundles — default to empty
+  if (!isNonEmptyString(m.exportedFrom)) return false
+  if (!hasValidManifestComponents(m.components)) return false
+  if (!Array.isArray(b.agentProfiles) || !b.agentProfiles.every(isBundleAgentProfile)) return false
+  if (!Array.isArray(b.mcpServers) || !b.mcpServers.every(isBundleMcpServer)) return false
+  if (!Array.isArray(b.skills) || !b.skills.every(isBundleSkill)) return false
+  if ("repeatTasks" in b && b.repeatTasks !== undefined) {
+    if (!Array.isArray(b.repeatTasks) || !b.repeatTasks.every(isBundleRepeatTask)) return false
+  }
+  if ("memories" in b && b.memories !== undefined) {
+    if (!Array.isArray(b.memories) || !b.memories.every(isBundleMemory)) return false
+  }
   return true
 }
 
-function normalizeBundle(bundle: DotAgentsBundle): DotAgentsBundle {
+function normalizeBundle(bundle: LegacyDotAgentsBundle): DotAgentsBundle {
   const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
   const memories = Array.isArray(bundle.memories) ? bundle.memories : []
   const rawComponents = isRecordObject(bundle.manifest.components)

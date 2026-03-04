@@ -365,6 +365,28 @@ describe("bundle-service", () => {
       expect(result?.manifest.components.repeatTasks).toBe(0)
       expect(result?.manifest.components.memories).toBe(0)
     })
+
+    it("returns null when optional collections are present but malformed", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Optional Collections",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0, repeatTasks: 1, memories: 1 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [{ id: "task-1", name: "Task", prompt: "Run", enabled: true }],
+        memories: [{ id: "memory-1", title: "Memory", content: "Body", importance: "medium", tags: "oops" }],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-optional-collections.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
+    })
   })
 
   describe("previewBundleWithConflicts", () => {
@@ -453,6 +475,47 @@ describe("bundle-service", () => {
         repeatTasks: [],
         memories: [],
       })
+    })
+
+    it("detects conflicts from legacy top-level MCP servers even when mcp* config keys are present", async () => {
+      writeTestMcpJson(agentsDir, {
+        github: {
+          transport: "stdio",
+          command: "legacy-github-server",
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Legacy MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "github",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "legacy-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "github", name: "github" }])
     })
   })
 
@@ -741,6 +804,45 @@ describe("bundle-service", () => {
             },
           },
         },
+      })
+    })
+
+    it("canonicalizes mixed legacy MCP server maps with mcp* keys into mcpConfig.mcpServers only", async () => {
+      writeTestMcpJson(targetDir, {
+        github: {
+          transport: "stdio",
+          command: "existing-command",
+          args: ["existing-arg"],
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-mixed-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
       })
     })
   })
