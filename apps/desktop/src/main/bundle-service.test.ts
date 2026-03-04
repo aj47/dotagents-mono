@@ -387,6 +387,61 @@ describe("bundle-service", () => {
 
       expect(previewBundle(bundlePath)).toBeNull()
     })
+
+    it("returns null when an agent profile has an unsupported connection type", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Connection Type",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "bad-connection",
+            name: "Bad Connection",
+            enabled: true,
+            connection: { type: "custom" },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-connection-type.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
+    })
+
+    it("returns null when an agent profile has an unsupported role", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Role",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "bad-role",
+            name: "Bad Role",
+            enabled: true,
+            role: "super-agent",
+            connection: { type: "internal" },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-role.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
+    })
   })
 
   describe("previewBundleWithConflicts", () => {

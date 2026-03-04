@@ -32,6 +32,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const { config } = useConfigContext();
   const { currentProfile, setCurrentProfile, refresh } = useProfile();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
+  const missingConfigError = 'Configure server URL and API key to switch agents';
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +41,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfiles = useCallback(async () => {
-    if (!config.baseUrl || !config.apiKey) return;
+    if (!hasApiConfig) {
+      setProfiles([]);
+      setError(missingConfigError);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -54,7 +60,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     } finally {
       setIsLoading(false);
     }
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, hasApiConfig, missingConfigError]);
 
   useEffect(() => {
     if (visible) {
@@ -63,7 +69,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   }, [visible, fetchProfiles]);
 
   const handleSelectProfile = async (profile: Profile) => {
-    if (!config.baseUrl || !config.apiKey) return;
+    if (!hasApiConfig) {
+      setProfiles([]);
+      setError(missingConfigError);
+      return;
+    }
     if (currentProfile?.id === profile.id) {
       onClose();
       return;
@@ -265,4 +275,3 @@ function createStyles(theme: Theme) {
     },
   });
 }
-

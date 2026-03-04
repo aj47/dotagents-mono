@@ -9,7 +9,14 @@
 import fs from "fs"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
-import type { AgentProfile, AgentSkill, AgentMemory, LoopConfig } from "@shared/types"
+import type {
+  AgentProfile,
+  AgentSkill,
+  AgentMemory,
+  LoopConfig,
+  AgentProfileConnectionType,
+  AgentProfileRole,
+} from "@shared/types"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToFilePath } from "./agents-files/skills"
@@ -43,11 +50,11 @@ export interface BundleAgentProfile {
   displayName?: string
   description?: string
   enabled: boolean
-  role?: string
+  role?: AgentProfileRole
   systemPrompt?: string
   guidelines?: string
   connection: {
-    type: string
+    type: AgentProfileConnectionType
     // Secrets stripped — no API keys, tokens, or passwords
   }
 }
@@ -219,6 +226,8 @@ const MCP_SERVER_CONFIG_KEYS = [
   "timeout",
   "disabled",
 ] as const
+const AGENT_PROFILE_CONNECTION_TYPES = ["internal", "acp", "stdio", "remote"] as const
+const AGENT_PROFILE_ROLES = ["user-profile", "delegation-target", "external-agent"] as const
 
 function isRecordObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -554,6 +563,14 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string")
 }
 
+function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionType {
+  return typeof value === "string" && (AGENT_PROFILE_CONNECTION_TYPES as readonly string[]).includes(value)
+}
+
+function isAgentProfileRole(value: unknown): value is AgentProfileRole {
+  return typeof value === "string" && (AGENT_PROFILE_ROLES as readonly string[]).includes(value)
+}
+
 function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
   if (!isRecordObject(value)) return false
   if (!isNonEmptyString(value.id)) return false
@@ -561,11 +578,11 @@ function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
   if (typeof value.enabled !== "boolean") return false
   if (!isOptionalString(value.displayName)) return false
   if (!isOptionalString(value.description)) return false
-  if (!isOptionalString(value.role)) return false
+  if (value.role !== undefined && !isAgentProfileRole(value.role)) return false
   if (!isOptionalString(value.systemPrompt)) return false
   if (!isOptionalString(value.guidelines)) return false
   if (!isRecordObject(value.connection)) return false
-  return isNonEmptyString(value.connection.type)
+  return isAgentProfileConnectionType(value.connection.type)
 }
 
 function isBundleMcpServer(value: unknown): value is BundleMCPServer {
@@ -873,8 +890,8 @@ export async function importBundle(
           description: bundleProfile.description,
           systemPrompt: bundleProfile.systemPrompt,
           guidelines: bundleProfile.guidelines,
-          connection: { type: bundleProfile.connection.type as any },
-          role: bundleProfile.role as any,
+          connection: { type: bundleProfile.connection.type },
+          role: bundleProfile.role,
           enabled: bundleProfile.enabled,
           createdAt: now,
           updatedAt: now,
