@@ -42,7 +42,8 @@ import {
   shouldCollapseMessage,
   formatToolArguments,
   getToolResultsSummary,
-  extractRespondToUserResponses,
+  extractRespondToUserContentFromArgs,
+  RESPOND_TO_USER_TOOL,
   isToolOnlyMessage,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -141,6 +142,63 @@ const sanitizeMessagesForModel = (messages: ChatMessage[]): ChatMessage[] =>
       content: sanitizedContent,
     };
   });
+
+type RespondToUserHistorySourceMessage = {
+  role: 'user' | 'assistant' | 'tool';
+  timestamp?: number;
+  toolCalls?: Array<{ name: string; arguments: unknown }>;
+};
+
+const resolveMessageTimestamps = (messages: RespondToUserHistorySourceMessage[]): number[] => {
+  const resolved: Array<number | null> = messages.map((message) =>
+    typeof message.timestamp === 'number' && Number.isFinite(message.timestamp) ? message.timestamp : null
+  );
+
+  for (let i = 1; i < resolved.length; i++) {
+    if (resolved[i] === null && resolved[i - 1] !== null) {
+      resolved[i] = (resolved[i - 1] as number) + 1;
+    }
+  }
+
+  for (let i = resolved.length - 2; i >= 0; i--) {
+    if (resolved[i] === null && resolved[i + 1] !== null) {
+      resolved[i] = (resolved[i + 1] as number) - 1;
+    }
+  }
+
+  for (let i = 0; i < resolved.length; i++) {
+    if (resolved[i] === null) {
+      resolved[i] = i;
+    }
+  }
+
+  return resolved as number[];
+};
+
+const extractRespondToUserHistory = (
+  messages: RespondToUserHistorySourceMessage[]
+): Array<{ text: string; timestamp: number }> => {
+  const history: Array<{ text: string; timestamp: number }> = [];
+  const seenResponses = new Set<string>();
+  const resolvedTimestamps = resolveMessageTimestamps(messages);
+
+  for (const [index, message] of messages.entries()) {
+    if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
+
+    const messageTimestamp = resolvedTimestamps[index];
+
+    for (const call of message.toolCalls) {
+      if (call.name !== RESPOND_TO_USER_TOOL) continue;
+      const responseText = extractRespondToUserContentFromArgs(call.arguments);
+      if (!responseText || seenResponses.has(responseText)) continue;
+
+      seenResponses.add(responseText);
+      history.push({ text: responseText, timestamp: messageTimestamp });
+    }
+  }
+
+  return history;
+};
 
 const getMessageLogMeta = (content: string) => ({
   length: content.length,
@@ -746,22 +804,15 @@ export default function ChatScreen({ route, navigation }: any) {
         const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
           role: m.role,
           content: m.content,
+          timestamp: m.timestamp,
           toolCalls: m.toolCalls,
           toolResults: m.toolResults,
         }));
         setMessages(chatMessages);
 
         // Extract respond_to_user content from saved messages for display (#32, #33)
-        const savedResponses = extractRespondToUserResponses(chatMessages as Array<{
-          role: 'user' | 'assistant' | 'tool';
-          toolCalls?: Array<{ name: string; arguments: unknown }>;
-        }>);
-        if (savedResponses.length > 0) {
-          setRespondToUserHistory(savedResponses.map(text => ({
-            text,
-            timestamp: Date.now(), // Use current time as we don't have original timestamps
-          })));
-        }
+        const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
+        setRespondToUserHistory(savedResponses);
       } else if (currentSession.serverConversationId && hasServerAuth) {
         // Stub session — lazy-load messages from server
         setMessages([]);
@@ -787,22 +838,17 @@ export default function ChatScreen({ route, navigation }: any) {
               id: m.id,
               role: m.role,
               content: m.content,
+              timestamp: m.timestamp,
               toolCalls: m.toolCalls,
               toolResults: m.toolResults,
             }));
             setMessages(loadedMessages);
 
             // Extract respond_to_user content from lazy-loaded messages (#32, #33)
-            const lazyResponses = extractRespondToUserResponses(loadedMessages as Array<{
-              role: 'user' | 'assistant' | 'tool';
-              toolCalls?: Array<{ name: string; arguments: unknown }>;
-            }>);
-            if (lazyResponses.length > 0) {
-              setRespondToUserHistory(lazyResponses.map(text => ({
-                text,
-                timestamp: Date.now(),
-              })));
-            }
+            const lazyResponses = extractRespondToUserHistory(
+              loadedMessages as RespondToUserHistorySourceMessage[]
+            );
+            setRespondToUserHistory(lazyResponses);
           })
           .catch((err) => {
             console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
@@ -831,22 +877,15 @@ export default function ChatScreen({ route, navigation }: any) {
       const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
         role: m.role,
         content: m.content,
+        timestamp: m.timestamp,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
       }));
       setMessages(chatMessages);
 
       // Extract respond_to_user content from new session messages (#32, #33)
-      const newResponses = extractRespondToUserResponses(chatMessages as Array<{
-        role: 'user' | 'assistant' | 'tool';
-        toolCalls?: Array<{ name: string; arguments: unknown }>;
-      }>);
-      if (newResponses.length > 0) {
-        setRespondToUserHistory(newResponses.map(text => ({
-          text,
-          timestamp: Date.now(),
-        })));
-      }
+      const newResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
+      setRespondToUserHistory(newResponses);
     } else {
       setMessages([]);
     }

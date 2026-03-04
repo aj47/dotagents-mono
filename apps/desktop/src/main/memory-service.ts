@@ -239,6 +239,14 @@ class MemoryService {
     }
   }
 
+  async reload(): Promise<void> {
+    await this.loadFromDisk()
+    this.initialized = true
+    if (isDebugLLM()) {
+      logLLM("[MemoryService] Reloaded", this.memories.length, "memories from disk")
+    }
+  }
+
   async saveMemory(memory: AgentMemory): Promise<boolean> {
     await this.initialize()
 
@@ -510,4 +518,3 @@ class MemoryService {
 }
 
 export const memoryService = new MemoryService()
-

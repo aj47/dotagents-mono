@@ -3,7 +3,7 @@
  * from the current agent session, with per-message TTS playback.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -150,23 +150,14 @@ export function ResponseHistoryPanel({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  // Track previous responses count to detect new entries
+  // Track previous responses count to detect newly added entries.
   const prevCountRef = useRef(responses.length);
-  const newestTimestampRef = useRef<number | null>(
-    responses.length > 0 ? Math.max(...responses.map((r) => r.timestamp)) : null
-  );
+  const newestTimestamp = responses.length > 0 ? Math.max(...responses.map((r) => r.timestamp)) : null;
+  const shouldAnimateNewest = responses.length > prevCountRef.current;
 
-  // Update refs when responses change
   useEffect(() => {
-    if (responses.length > prevCountRef.current) {
-      // New entry added - update newest timestamp for animation
-      newestTimestampRef.current = Math.max(...responses.map((r) => r.timestamp));
-    }
     prevCountRef.current = responses.length;
-  }, [responses]);
-
-  // Memoize the newest timestamp to avoid re-renders triggering new animations
-  const newestTimestamp = useMemo(() => newestTimestampRef.current, [responses.length]);
+  }, [responses.length]);
 
   const styles = StyleSheet.create({
     container: {
@@ -267,7 +258,8 @@ export function ResponseHistoryPanel({
             const originalIndex = responses.length - 1 - index;
             const isSpeaking = speakingIndex === originalIndex;
             // Animate newest entry (shown at top after reverse)
-            const isNewestEntry = index === 0 && response.timestamp === newestTimestamp;
+            const isNewestEntry =
+              shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
             return (
               <React.Fragment key={`${response.timestamp}-${index}`}>
                 {index > 0 && <View style={styles.separator} />}

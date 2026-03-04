@@ -394,9 +394,22 @@ export function SettingsAgents() {
   }
 
   const handleImportComplete = () => {
-    loadAgents()
+    void loadAgents()
+    void loadSkills()
+    void loadServers()
+    void loadAllTools()
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
     queryClient.invalidateQueries({ queryKey: ["skills"] })
+    queryClient.invalidateQueries({ queryKey: ["skillsSidebar"] })
+    queryClient.invalidateQueries({ queryKey: ["mcp-server-status"] })
+    queryClient.invalidateQueries({ queryKey: ["mcp-initialization-status"] })
+    queryClient.invalidateQueries({ queryKey: ["serverStatusSidebar"] })
+    queryClient.invalidateQueries({ queryKey: ["toolsSidebar"] })
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+    queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+    queryClient.invalidateQueries({ queryKey: ["memories"] })
+    queryClient.invalidateQueries({ queryKey: ["config"] })
   }
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,22 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 
 type ConflictStrategy = "skip" | "overwrite" | "rename"
+type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
+type BundleComponentsState = Record<BundleComponentKey, boolean>
+
+const DEFAULT_COMPONENTS: BundleComponentsState = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: true,
+  memories: true,
+}
+
+const COMPONENT_KEYS: BundleComponentKey[] = ["agentProfiles", "mcpServers", "skills", "repeatTasks", "memories"]
+
+function resolveComponents(initialComponents?: Partial<BundleComponentsState>): BundleComponentsState {
+  return { ...DEFAULT_COMPONENTS, ...initialComponents }
+}
 
 interface BundleManifest {
   version: number
@@ -59,20 +75,46 @@ interface BundleImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImportComplete: () => void
+  initialComponents?: Partial<BundleComponentsState>
+  availableComponents?: Partial<Record<BundleComponentKey, boolean>>
+  title?: string
+  description?: string
 }
 
-export function BundleImportDialog({ open, onOpenChange, onImportComplete }: BundleImportDialogProps) {
+export function BundleImportDialog({
+  open,
+  onOpenChange,
+  onImportComplete,
+  initialComponents,
+  availableComponents,
+  title = "Import Bundle",
+  description = "Preview and import a .dotagents bundle file.",
+}: BundleImportDialogProps) {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState<BundlePreview | null>(null)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
-  const [components, setComponents] = useState({
-    agentProfiles: true,
-    mcpServers: true,
-    skills: true,
-    repeatTasks: true,
-    memories: true,
-  })
+  const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
+  const isOpenRef = useRef(open)
+  const previewRequestIdRef = useRef(0)
+  isOpenRef.current = open
+
+  const isComponentAvailable = (key: BundleComponentKey) => availableComponents?.[key] ?? true
+
+  const normalizedComponents = COMPONENT_KEYS.reduce((acc, key) => {
+    acc[key] = isComponentAvailable(key) ? components[key] : false
+    return acc
+  }, {} as BundleComponentsState)
+
+  useEffect(() => {
+    isOpenRef.current = open
+    if (!open) {
+      previewRequestIdRef.current += 1
+      setPreview(null)
+      setConflictStrategy("skip")
+      setComponents(resolveComponents(initialComponents))
+    }
+  }, [initialComponents, open])
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -82,10 +124,12 @@ export function BundleImportDialog({ open, onOpenChange, onImportComplete }: Bun
   }, [open])
 
   const handleSelectFile = async () => {
+    const requestId = ++previewRequestIdRef.current
     setLoading(true)
     try {
       // First, open file dialog and get basic preview
       const dialogResult = await tipcClient.previewBundle()
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       if (!dialogResult) {
         // User cancelled file picker
         onOpenChange(false)
@@ -93,13 +137,17 @@ export function BundleImportDialog({ open, onOpenChange, onImportComplete }: Bun
       }
       // Then, get full preview with conflicts
       const fullResult = await tipcClient.previewBundleWithConflicts({ filePath: dialogResult.filePath })
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       setPreview(fullResult as BundlePreview)
     } catch (error) {
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(`Failed to preview bundle: ${errorMessage}`)
       onOpenChange(false)
     } finally {
-      setLoading(false)
+      if (previewRequestIdRef.current === requestId && isOpenRef.current) {
+        setLoading(false)
+      }
     }
   }
 
@@ -110,7 +158,7 @@ export function BundleImportDialog({ open, onOpenChange, onImportComplete }: Bun
       const result = await tipcClient.importBundle({
         filePath: preview.filePath,
         conflictStrategy,
-        components,
+        components: normalizedComponents,
       })
       if (result.success) {
         const imported = [
@@ -135,21 +183,20 @@ export function BundleImportDialog({ open, onOpenChange, onImportComplete }: Bun
   }
 
   const handleClose = () => {
+    isOpenRef.current = false
+    previewRequestIdRef.current += 1
+    setLoading(false)
     setPreview(null)
     setConflictStrategy("skip")
-    setComponents({ agentProfiles: true, mcpServers: true, skills: true, repeatTasks: true, memories: true })
+    setComponents(resolveComponents(initialComponents))
     onOpenChange(false)
   }
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
-  const hasConflicts = conflicts && (
-    conflicts.agentProfiles.length > 0 ||
-    conflicts.mcpServers.length > 0 ||
-    conflicts.skills.length > 0 ||
-    conflicts.repeatTasks.length > 0 ||
-    conflicts.memories.length > 0
-  )
+  const hasConflicts = conflicts
+    ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
+    : false
 
   const toggleComponent = (key: keyof typeof components) => {
     setComponents(prev => ({ ...prev, [key]: !prev[key] }))
@@ -161,10 +208,10 @@ export function BundleImportDialog({ open, onOpenChange, onImportComplete }: Bun
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Import Bundle
+            {title}
           </DialogTitle>
           <DialogDescription>
-            Preview and import a .dotagents bundle file.
+            {description}
           </DialogDescription>
         </DialogHeader>
 
@@ -197,46 +244,56 @@ export function BundleImportDialog({ open, onOpenChange, onImportComplete }: Bun
             <div className="space-y-2">
               <Label>Components to import</Label>
               <div className="space-y-2 rounded-lg border p-3">
-                <ComponentRow
-                  icon={Bot}
-                  label="Agent Profiles"
-                  count={manifest.components.agentProfiles}
-                  conflicts={conflicts?.agentProfiles.length ?? 0}
-                  checked={components.agentProfiles}
-                  onToggle={() => toggleComponent("agentProfiles")}
-                />
-                <ComponentRow
-                  icon={Server}
-                  label="MCP Servers"
-                  count={manifest.components.mcpServers}
-                  conflicts={conflicts?.mcpServers.length ?? 0}
-                  checked={components.mcpServers}
-                  onToggle={() => toggleComponent("mcpServers")}
-                />
-                <ComponentRow
-                  icon={Sparkles}
-                  label="Skills"
-                  count={manifest.components.skills}
-                  conflicts={conflicts?.skills.length ?? 0}
-                  checked={components.skills}
-                  onToggle={() => toggleComponent("skills")}
-                />
-                <ComponentRow
-                  icon={Clock}
-                  label="Repeat Tasks"
-                  count={manifest.components.repeatTasks}
-                  conflicts={conflicts?.repeatTasks.length ?? 0}
-                  checked={components.repeatTasks}
-                  onToggle={() => toggleComponent("repeatTasks")}
-                />
-                <ComponentRow
-                  icon={Brain}
-                  label="Memories"
-                  count={manifest.components.memories}
-                  conflicts={conflicts?.memories.length ?? 0}
-                  checked={components.memories}
-                  onToggle={() => toggleComponent("memories")}
-                />
+                {isComponentAvailable("agentProfiles") && (
+                  <ComponentRow
+                    icon={Bot}
+                    label="Agent Profiles"
+                    count={manifest.components.agentProfiles}
+                    conflicts={conflicts?.agentProfiles.length ?? 0}
+                    checked={components.agentProfiles}
+                    onToggle={() => toggleComponent("agentProfiles")}
+                  />
+                )}
+                {isComponentAvailable("mcpServers") && (
+                  <ComponentRow
+                    icon={Server}
+                    label="MCP Servers"
+                    count={manifest.components.mcpServers}
+                    conflicts={conflicts?.mcpServers.length ?? 0}
+                    checked={components.mcpServers}
+                    onToggle={() => toggleComponent("mcpServers")}
+                  />
+                )}
+                {isComponentAvailable("skills") && (
+                  <ComponentRow
+                    icon={Sparkles}
+                    label="Skills"
+                    count={manifest.components.skills}
+                    conflicts={conflicts?.skills.length ?? 0}
+                    checked={components.skills}
+                    onToggle={() => toggleComponent("skills")}
+                  />
+                )}
+                {isComponentAvailable("repeatTasks") && (
+                  <ComponentRow
+                    icon={Clock}
+                    label="Repeat Tasks"
+                    count={manifest.components.repeatTasks}
+                    conflicts={conflicts?.repeatTasks.length ?? 0}
+                    checked={components.repeatTasks}
+                    onToggle={() => toggleComponent("repeatTasks")}
+                  />
+                )}
+                {isComponentAvailable("memories") && (
+                  <ComponentRow
+                    icon={Brain}
+                    label="Memories"
+                    count={manifest.components.memories}
+                    conflicts={conflicts?.memories.length ?? 0}
+                    checked={components.memories}
+                    onToggle={() => toggleComponent("memories")}
+                  />
+                )}
               </div>
             </div>
 
@@ -306,4 +363,3 @@ function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }
     </div>
   )
 }
-

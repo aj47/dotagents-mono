@@ -30,6 +30,7 @@ export type ChatMessage = {
   id?: string;
   role: 'user' | 'assistant' | 'tool';
   content?: string;
+  timestamp?: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
 };

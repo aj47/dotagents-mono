@@ -16,8 +16,8 @@ import {
   type ImportConflictStrategy,
 } from "./bundle-service"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
-import { writeAgentsProfileFiles } from "./agents-files/agent-profiles"
-import { writeAgentsSkillFile } from "./agents-files/skills"
+import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
+import { loadAgentsSkillsLayer, writeAgentsSkillFile } from "./agents-files/skills"
 import { writeAgentsMemoryFile } from "./agents-files/memories"
 import { writeTaskFile } from "./agents-files/tasks"
 import type { AgentProfile, AgentSkill, AgentMemory, LoopConfig } from "@shared/types"
@@ -88,6 +88,22 @@ function createTestTask(id: string, name: string): LoopConfig {
   }
 }
 
+function writeTestMcpJson(
+  agentsDir: string,
+  mcpJson: Record<string, unknown> = {
+    mcpConfig: { mcpServers: {} },
+  }
+): string {
+  const layer = getAgentsLayerPaths(agentsDir)
+  fs.writeFileSync(layer.mcpJsonPath, JSON.stringify(mcpJson, null, 2), "utf-8")
+  return layer.mcpJsonPath
+}
+
+function readTestMcpJson(agentsDir: string): Record<string, unknown> {
+  const layer = getAgentsLayerPaths(agentsDir)
+  return JSON.parse(fs.readFileSync(layer.mcpJsonPath, "utf-8")) as Record<string, unknown>
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -132,6 +148,40 @@ describe("bundle-service", () => {
       expect(bundle.agentProfiles[0].connection.type).toBe("internal")
     })
 
+    it("exports non-secret connection fields for external agent profiles", async () => {
+      const layer = getAgentsLayerPaths(agentsDir)
+      const now = Date.now()
+      const profile: AgentProfile = {
+        id: "external-agent",
+        name: "external-agent",
+        displayName: "External Agent",
+        enabled: true,
+        connection: {
+          type: "stdio",
+          command: "node",
+          args: ["agent.js", "--mode", "safe"],
+          cwd: "/tmp/external-agent",
+          baseUrl: "https://agents.example.com",
+          env: { API_KEY: "super-secret" },
+        },
+        createdAt: now,
+        updatedAt: now,
+      }
+      writeAgentsProfileFiles(layer, profile)
+
+      const bundle = await exportBundle(agentsDir)
+
+      expect(bundle.agentProfiles).toHaveLength(1)
+      expect(bundle.agentProfiles[0].connection).toEqual({
+        type: "stdio",
+        command: "node",
+        args: ["agent.js", "--mode", "safe"],
+        cwd: "/tmp/external-agent",
+        baseUrl: "https://agents.example.com",
+      })
+      expect(bundle.agentProfiles[0].connection).not.toHaveProperty("env")
+    })
+
     it("exports skills with full instructions", async () => {
       const layer = getAgentsLayerPaths(agentsDir)
       const skill = createTestSkill("test-skill", "Test Skill")
@@ -171,6 +221,66 @@ describe("bundle-service", () => {
       expect(bundle.repeatTasks.length).toBe(1)
       expect(bundle.repeatTasks[0].id).toBe("test-task")
       expect((bundle.repeatTasks[0] as any).profileId).toBeUndefined()
+    })
+
+    it("exports MCP servers from canonical mcpConfig and omits secret-bearing fields", async () => {
+      writeTestMcpJson(agentsDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              env: {
+                GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_secret",
+                SAFE_VALUE: "keep-out-of-bundle",
+              },
+              headers: {
+                Authorization: "Bearer secret",
+                "X-Api-Key": "api-secret",
+              },
+              oauth: {
+                clientId: "client-id",
+                clientSecret: "client-secret",
+              },
+              timeout: 30_000,
+            },
+            exa: {
+              transport: "streamableHttp",
+              url: "https://mcp.exa.ai/mcp",
+              headers: {
+                Authorization: "Bearer remote-secret",
+              },
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = await exportBundle(agentsDir)
+
+      expect(bundle.manifest.components.mcpServers).toBe(2)
+      expect(bundle.mcpServers).toEqual([
+        {
+          name: "github",
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-github"],
+          transport: "stdio",
+          enabled: true,
+        },
+        {
+          name: "exa",
+          transport: "streamableHttp",
+          enabled: false,
+        },
+      ])
+
+      expect(bundle.mcpServers[0]).not.toHaveProperty("env")
+      expect(bundle.mcpServers[0]).not.toHaveProperty("headers")
+      expect(bundle.mcpServers[0]).not.toHaveProperty("oauth")
+      expect(bundle.mcpServers[0]).not.toHaveProperty("timeout")
+      expect(bundle.mcpServers[1]).not.toHaveProperty("url")
     })
   })
 
@@ -214,6 +324,56 @@ describe("bundle-service", () => {
       expect(result).toBeNull()
     })
 
+    it("returns null when required manifest fields are missing", async () => {
+      const missingNameBundle = {
+        manifest: {
+          version: 1,
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const missingComponentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Missing Components",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const invalidCreatedAtBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Date",
+          createdAt: "not-a-date",
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const missingNamePath = path.join(tempDir, "missing-name.dotagents")
+      const missingComponentsPath = path.join(tempDir, "missing-components.dotagents")
+      const invalidCreatedAtPath = path.join(tempDir, "invalid-created-at.dotagents")
+      fs.writeFileSync(missingNamePath, JSON.stringify(missingNameBundle))
+      fs.writeFileSync(missingComponentsPath, JSON.stringify(missingComponentsBundle))
+      fs.writeFileSync(invalidCreatedAtPath, JSON.stringify(invalidCreatedAtBundle))
+
+      expect(previewBundle(missingNamePath)).toBeNull()
+      expect(previewBundle(missingComponentsPath)).toBeNull()
+      expect(previewBundle(invalidCreatedAtPath)).toBeNull()
+    })
+
     it("handles bundles without repeatTasks/memories (backwards compat)", async () => {
       const oldBundle = {
         manifest: {
@@ -236,6 +396,150 @@ describe("bundle-service", () => {
       expect(result).not.toBeNull()
       expect(result?.repeatTasks).toEqual([])
       expect(result?.memories).toEqual([])
+      expect(result?.manifest.components.repeatTasks).toBe(0)
+      expect(result?.manifest.components.memories).toBe(0)
+    })
+
+    it("handles legacy bundles with metadata-only skills", async () => {
+      const oldBundle = {
+        manifest: {
+          version: 1,
+          name: "Legacy Skills Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 1 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [
+          {
+            id: "legacy-skill",
+            name: "Legacy Skill",
+            description: "Metadata-only skill entry",
+          },
+        ],
+      }
+
+      const bundlePath = path.join(tempDir, "legacy-skills.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(oldBundle))
+
+      const result = previewBundle(bundlePath)
+      expect(result).not.toBeNull()
+      expect(result?.skills).toEqual([
+        {
+          id: "legacy-skill",
+          name: "Legacy Skill",
+          description: "Metadata-only skill entry",
+        },
+      ])
+    })
+
+    it("returns null when optional collections are present but malformed", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Optional Collections",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0, repeatTasks: 1, memories: 1 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [{ id: "task-1", name: "Task", prompt: "Run", enabled: true }],
+        memories: [{ id: "memory-1", title: "Memory", content: "Body", importance: "medium", tags: "oops" }],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-optional-collections.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
+    })
+
+    it("returns null when an agent profile has an unsupported connection type", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Connection Type",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "bad-connection",
+            name: "Bad Connection",
+            enabled: true,
+            connection: { type: "custom" },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-connection-type.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
+    })
+
+    it("returns null when an agent profile has an unsupported role", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Invalid Role",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "bad-role",
+            name: "Bad Role",
+            enabled: true,
+            role: "super-agent",
+            connection: { type: "internal" },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-role.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
+    })
+
+    it("returns null when an agent profile has malformed connection metadata", async () => {
+      const invalidBundle = {
+        manifest: {
+          version: 1,
+          name: "Malformed Connection Metadata",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "bad-connection-meta",
+            name: "Bad Connection Meta",
+            enabled: true,
+            connection: {
+              type: "stdio",
+              command: "node",
+              args: "--should-be-array",
+            },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+      }
+
+      const bundlePath = path.join(tempDir, "invalid-connection-metadata.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
+
+      expect(previewBundle(bundlePath)).toBeNull()
     })
   })
 
@@ -270,6 +574,277 @@ describe("bundle-service", () => {
       expect(result.conflicts?.agentProfiles.length).toBe(1)
       expect(result.conflicts?.agentProfiles[0].id).toBe("conflict-id")
     })
+
+    it("includes MCP server conflicts as structured conflict entries", async () => {
+      writeTestMcpJson(agentsDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "old-github-server",
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 2, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "github",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            enabled: true,
+          },
+          {
+            name: "exa",
+            transport: "streamableHttp",
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts).toEqual({
+        agentProfiles: [],
+        mcpServers: [{ id: "github", name: "github" }],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      })
+    })
+
+    it("detects conflicts from legacy top-level MCP servers when canonical mcpConfig.mcpServers also exists", async () => {
+      writeTestMcpJson(agentsDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "canonical-github-server",
+            },
+          },
+        },
+        exa: {
+          transport: "stdio",
+          command: "legacy-exa-server",
+        },
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Mixed MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "exa",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-exa"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "mixed-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "exa", name: "exa" }])
+    })
+
+    it("detects conflicts from legacy top-level MCP servers even when mcp* config keys are present", async () => {
+      writeTestMcpJson(agentsDir, {
+        github: {
+          transport: "stdio",
+          command: "legacy-github-server",
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Legacy MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "github",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "legacy-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "github", name: "github" }])
+    })
+
+    it("detects conflicts from legacy top-level MCP servers with unknown object shapes", async () => {
+      writeTestMcpJson(agentsDir, {
+        github: {
+          executable: "node",
+          launchArgs: ["server.js"],
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Unknown Legacy MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "github",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "unknown-legacy-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "github", name: "github" }])
+    })
+
+    it("detects unknown-shape legacy MCP conflicts even when known-shape legacy servers are present", async () => {
+      writeTestMcpJson(agentsDir, {
+        github: {
+          transport: "stdio",
+          command: "legacy-github-server",
+        },
+        exa: {
+          executable: "node",
+          launchArgs: ["server.js"],
+        },
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Mixed Legacy MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "exa",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-exa"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "mixed-unknown-legacy-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "exa", name: "exa" }])
+    })
+
+    it("detects conflicts from legacy top-level MCP servers whose names start with mcp", async () => {
+      writeTestMcpJson(agentsDir, {
+        mcpGithub: {
+          transport: "stdio",
+          command: "legacy-mcp-github-server",
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "mcp-prefixed Legacy MCP Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "mcpGithub",
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            enabled: true,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "mcp-prefixed-legacy-mcp-conflict.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.mcpServers).toEqual([{ id: "mcpGithub", name: "mcpGithub" }])
+    })
   })
 
   describe("importBundle", () => {
@@ -297,6 +872,31 @@ describe("bundle-service", () => {
       }
     }
 
+    function createTestMcpBundle(serverName: string = "github"): DotAgentsBundle {
+      return {
+        manifest: {
+          version: 1,
+          name: "MCP Import Test",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: serverName,
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            transport: "stdio",
+            enabled: false,
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+    }
+
     it("imports all components with skip strategy", async () => {
       const bundle = createTestBundle()
       const bundlePath = path.join(tempDir, "import.dotagents")
@@ -309,6 +909,33 @@ describe("bundle-service", () => {
       expect(result.skills[0].action).toBe("imported")
       expect(result.repeatTasks[0].action).toBe("imported")
       expect(result.memories[0].action).toBe("imported")
+    })
+
+    it("imports legacy metadata-only bundle skills with empty instructions", async () => {
+      const bundle = {
+        manifest: {
+          version: 1,
+          name: "Legacy Skill Import",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 1 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [{ id: "legacy-skill", name: "Legacy Skill", description: "No instructions field" }],
+      }
+
+      const bundlePath = path.join(tempDir, "import-legacy-skill.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const layer = getAgentsLayerPaths(targetDir)
+      const importedSkill = loadAgentsSkillsLayer(layer).skills.find((skill) => skill.id === "legacy-skill")
+
+      expect(result.success).toBe(true)
+      expect(result.skills).toEqual([{ id: "legacy-skill", name: "Legacy Skill", action: "imported" }])
+      expect(importedSkill).toBeTruthy()
+      expect(importedSkill?.instructions).toBe("")
     })
 
     it("skips existing items with skip strategy", async () => {
@@ -357,6 +984,61 @@ describe("bundle-service", () => {
       expect(result.agentProfiles[0].action).toBe("overwritten")
     })
 
+    it("imports agent profiles with non-secret connection fields intact", async () => {
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "External Agent Import",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 1, mcpServers: 0, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [
+          {
+            id: "external-agent",
+            name: "external-agent",
+            displayName: "External Agent",
+            enabled: true,
+            connection: {
+              type: "stdio",
+              command: "node",
+              args: ["agent.js", "--profile", "ops"],
+              cwd: "/tmp/external-agent",
+              baseUrl: "https://agents.example.com",
+            },
+          },
+        ],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "import-external-agent.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const layer = getAgentsLayerPaths(targetDir)
+      const imported = loadAgentProfilesLayer(layer).profiles.find((profile) => profile.id === "external-agent")
+
+      expect(result.success).toBe(true)
+      expect(result.agentProfiles).toHaveLength(1)
+      expect(result.agentProfiles[0]).toMatchObject({
+        id: "external-agent",
+        name: "external-agent",
+        action: "imported",
+      })
+      expect(imported).toBeTruthy()
+      expect(imported?.connection).toEqual({
+        type: "stdio",
+        command: "node",
+        args: ["agent.js", "--profile", "ops"],
+        cwd: "/tmp/external-agent",
+        baseUrl: "https://agents.example.com",
+      })
+      expect(imported?.connection.env).toBeUndefined()
+    })
+
     it("respects component selection", async () => {
       const bundle = createTestBundle()
       const bundlePath = path.join(tempDir, "import.dotagents")
@@ -372,6 +1054,436 @@ describe("bundle-service", () => {
       expect(result.repeatTasks.length).toBe(0)
       expect(result.memories.length).toBe(0)
     })
+
+    it("skips conflicting MCP servers and preserves canonical mcpConfig shape", async () => {
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle()
+      const bundlePath = path.join(tempDir, "import-mcp-skip.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "github", name: "github", action: "skipped" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("overwrites conflicting MCP servers in canonical mcpConfig", async () => {
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle()
+      const bundlePath = path.join(tempDir, "import-mcp-overwrite.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "overwrite" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([
+        { id: "github", name: "github", action: "overwritten" },
+      ])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("renames conflicting MCP servers in canonical mcpConfig", async () => {
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle()
+      const bundlePath = path.join(tempDir, "import-mcp-rename.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "rename" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([
+        {
+          id: "github",
+          name: "github",
+          action: "renamed",
+          newId: "github_imported",
+        },
+      ])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+            },
+            github_imported: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("canonicalizes legacy bare MCP server maps without preserving duplicate top-level servers", async () => {
+      writeTestMcpJson(targetDir, {
+        github: {
+          transport: "stdio",
+          command: "existing-command",
+          args: ["existing-arg"],
+        },
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+      })
+    })
+
+    it("canonicalizes mixed legacy MCP server maps with mcp* keys into mcpConfig.mcpServers only", async () => {
+      writeTestMcpJson(targetDir, {
+        github: {
+          transport: "stdio",
+          command: "existing-command",
+          args: ["existing-arg"],
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-mixed-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+              args: ["existing-arg"],
+            },
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("canonicalizes unknown legacy top-level MCP servers and preserves top-level mcp config keys", async () => {
+      writeTestMcpJson(targetDir, {
+        github: {
+          executable: "node",
+          launchArgs: ["server.js"],
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("github")
+      const bundlePath = path.join(tempDir, "import-mcp-unknown-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "overwrite" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "github", name: "github", action: "overwritten" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("does not treat empty top-level objects as legacy MCP servers during canonicalization", async () => {
+      writeTestMcpJson(targetDir, {
+        localNotes: {},
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-empty-object.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        localNotes: {},
+        mcpConfig: {
+          mcpServers: {
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("preserves non-object top-level metadata keys even when they match imported server names", async () => {
+      writeTestMcpJson(targetDir, {
+        exa: "workspace-note",
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-preserve-metadata.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        exa: "workspace-note",
+        mcpConfig: {
+          mcpServers: {
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("merges canonical and legacy MCP server maps before canonicalization", async () => {
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-github-command",
+              args: ["existing-arg"],
+            },
+          },
+        },
+        exa: {
+          transport: "stdio",
+          command: "legacy-exa-command",
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("filesystem")
+      const bundlePath = path.join(tempDir, "import-mcp-merged.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "filesystem", name: "filesystem", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-github-command",
+              args: ["existing-arg"],
+            },
+            exa: {
+              transport: "stdio",
+              command: "legacy-exa-command",
+            },
+            filesystem: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("keeps unknown-shape legacy MCP servers when known-shape legacy servers also exist", async () => {
+      writeTestMcpJson(targetDir, {
+        github: {
+          transport: "stdio",
+          command: "legacy-github-command",
+        },
+        exa: {
+          executable: "node",
+          launchArgs: ["server.js"],
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("filesystem")
+      const bundlePath = path.join(tempDir, "import-mcp-mixed-known-unknown-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "filesystem", name: "filesystem", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "legacy-github-command",
+            },
+            exa: {
+              executable: "node",
+              launchArgs: ["server.js"],
+            },
+            filesystem: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("canonicalizes mcp-prefixed legacy top-level MCP servers into mcpConfig.mcpServers", async () => {
+      writeTestMcpJson(targetDir, {
+        mcpGithub: {
+          transport: "stdio",
+          command: "legacy-github-command",
+          args: ["legacy-arg"],
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+
+      const bundle = createTestMcpBundle("exa")
+      const bundlePath = path.join(tempDir, "import-mcp-prefixed-legacy.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "exa", name: "exa", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            mcpGithub: {
+              transport: "stdio",
+              command: "legacy-github-command",
+              args: ["legacy-arg"],
+            },
+            exa: {
+              command: "npx",
+              args: ["-y", "@modelcontextprotocol/server-github"],
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      })
+    })
   })
 })
-

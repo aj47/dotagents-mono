@@ -243,12 +243,13 @@ export function OverlayFollowUpInput({
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
 
   // Show appropriate placeholder based on state
+  // Use minimal placeholders - loading states indicated by spinners instead
   const getPlaceholder = () => {
     if (isSessionActive && isQueueEnabled) {
       return "Queue message..."
     }
     if (isSessionActive) {
-      return "Waiting for agent..."
+      return "" // Spinner indicates loading state
     }
     return "Continue conversation..."
   }

@@ -70,7 +70,12 @@ export function AgentProcessingView({
           />
         </div>
       ) : (
-        <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
+        <div
+          className="relative flex h-full w-full flex-col items-center justify-center gap-4"
+          role="status"
+          aria-label="Processing"
+          aria-live="polite"
+        >
           <div className="absolute right-2 top-2">
             <Button
               variant="ghost"
@@ -79,17 +84,18 @@ export function AgentProcessingView({
               onClick={handleKillConfirmation}
               disabled={isKilling}
               title="Stop agent execution"
+              aria-label="Stop agent execution"
             >
               <X className="h-3 w-3" />
             </Button>
           </div>
 
-          <Spinner />
-          <span className="text-sm text-muted-foreground">Processing...</span>
+          <Spinner aria-hidden="true" />
+          <span className="sr-only">Processing</span>
 
-          {/* Help text showing keyboard shortcut */}
-          <div className="text-xs text-muted-foreground">
-            Press Ctrl+Shift+Escape or click the X button to stop
+          {/* Help text showing keyboard shortcut - visually subtle */}
+          <div className="text-[10px] text-muted-foreground/50">
+            Ctrl+Shift+Escape to stop
           </div>
         </div>
       )}

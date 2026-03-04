@@ -808,8 +808,9 @@ const ToolExecutionBubble: React.FC<{
                   </>
                 )}
                 {callIsPending && (
-                  <div className="text-[10px] opacity-60 italic py-1">
-                    Waiting for response...
+                  <div className="text-[10px] opacity-60 italic py-1 flex items-center gap-1" role="status" aria-label="Waiting for response">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />
+                    <span className="sr-only">Waiting for response</span>
                   </div>
                 )}
               </div>

@@ -455,6 +455,12 @@ class ConfigStore {
       // best-effort
     }
   }
+
+  reload(): Config {
+    const loaded = getConfig()
+    this.config = syncPresetToLegacyFields(loaded.config) as Config
+    return this.get()
+  }
 }
 
 export const configStore = new ConfigStore()

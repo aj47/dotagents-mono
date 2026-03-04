@@ -9,10 +9,18 @@
 import fs from "fs"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
-import type { AgentProfile, AgentSkill, AgentMemory, LoopConfig } from "@shared/types"
+import type {
+  AgentProfile,
+  AgentProfileConnection,
+  AgentSkill,
+  AgentMemory,
+  LoopConfig,
+  AgentProfileConnectionType,
+  AgentProfileRole,
+} from "@shared/types"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
-import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToFilePath } from "./agents-files/skills"
+import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
 import { loadAgentsMemoriesLayer, writeAgentsMemoryFile, memoryIdToFilePath } from "./agents-files/memories"
 import { loadTasksLayer, writeTaskFile, taskIdToFilePath } from "./agents-files/tasks"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
@@ -43,12 +51,16 @@ export interface BundleAgentProfile {
   displayName?: string
   description?: string
   enabled: boolean
-  role?: string
+  role?: AgentProfileRole
   systemPrompt?: string
   guidelines?: string
   connection: {
-    type: string
-    // Secrets stripped — no API keys, tokens, or passwords
+    type: AgentProfileConnectionType
+    // Preserve non-secret connection fields to keep imported external agents functional.
+    command?: string
+    args?: string[]
+    cwd?: string
+    baseUrl?: string
   }
 }
 
@@ -65,7 +77,8 @@ export interface BundleSkill {
   id: string
   name: string
   description?: string
-  instructions: string
+  // Legacy v1 bundles may omit instructions (metadata-only skill entries).
+  instructions?: string
   source?: string
 }
 
@@ -109,6 +122,21 @@ export interface ExportBundleToFileResult {
   filePath: string | null
   canceled: boolean
   error?: string
+}
+
+export interface BundleComponentSelection {
+  agentProfiles?: boolean
+  mcpServers?: boolean
+  skills?: boolean
+  repeatTasks?: boolean
+  memories?: boolean
+}
+
+export interface ExportBundleOptions {
+  name?: string
+  description?: string
+  components?: BundleComponentSelection
+  skillIds?: string[]
 }
 
 // ============================================================================
@@ -187,6 +215,34 @@ const SECRET_PATTERNS = [
 ]
 
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
+const TOP_LEVEL_MCP_CONFIG_KEYS = [
+  "mcpDisabledTools",
+  "mcpRuntimeDisabledServers",
+  "mcpToolsCollapsedServers",
+  "mcpServersCollapsedServers",
+] as const
+const MCP_SERVER_CONFIG_KEYS = [
+  "transport",
+  "command",
+  "args",
+  "env",
+  "url",
+  "headers",
+  "oauth",
+  "timeout",
+  "disabled",
+] as const
+const AGENT_PROFILE_CONNECTION_TYPES = ["internal", "acp", "stdio", "remote"] as const
+const AGENT_PROFILE_ROLES = ["user-profile", "delegation-target", "external-agent"] as const
+
+function isReservedTopLevelMcpKey(key: string): boolean {
+  if (key === "mcpConfig" || key === "mcpServers") return true
+  return (TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)
+}
+
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
 
 function isSecretKey(key: string): boolean {
   return SECRET_PATTERNS.some((pattern) => pattern.test(key))
@@ -216,11 +272,115 @@ function stripSecretsFromObject(obj: Record<string, unknown>): Record<string, un
   return result
 }
 
+function isLikelyMcpServerConfig(value: unknown): value is Record<string, unknown> {
+  if (!isRecordObject(value)) return false
+  const keys = Object.keys(value)
+  if (keys.length === 0) return false
+  return keys.some((key) => (MCP_SERVER_CONFIG_KEYS as readonly string[]).includes(key))
+}
+
+function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<string, unknown> {
+  const legacyServers: Record<string, Record<string, unknown>> = {}
+
+  for (const [key, value] of Object.entries(mcpJson)) {
+    if (!isRecordObject(value)) continue
+    if (isReservedTopLevelMcpKey(key)) continue
+
+    const likelyServerConfig = isLikelyMcpServerConfig(value)
+
+    // Reserve future top-level `mcp*` config keys unless this key clearly
+    // looks like a legacy server entry (e.g. mcpGithub: { command, args }).
+    if (key.startsWith("mcp") && !likelyServerConfig) continue
+
+    // Backward compatibility: keep non-empty object entries even when their shape is unknown.
+    // This avoids missing legacy servers in mixed configs that contain both known and unknown
+    // server schemas during migration.
+    if (Object.keys(value).length > 0) {
+      legacyServers[key] = value
+    }
+  }
+
+  return legacyServers
+}
+
+function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
+  const legacyServers = readLegacyTopLevelMcpServers(mcpJson)
+
+  const nestedMcpConfig = mcpJson.mcpConfig
+  let nestedServers: Record<string, unknown> = {}
+  if (isRecordObject(nestedMcpConfig)) {
+    const mcpConfigServers = (nestedMcpConfig as Record<string, unknown>).mcpServers
+    if (isRecordObject(mcpConfigServers)) {
+      nestedServers = mcpConfigServers as Record<string, unknown>
+    }
+  }
+
+  const topLevelServers = mcpJson.mcpServers
+  let directServers: Record<string, unknown> = {}
+  if (isRecordObject(topLevelServers)) {
+    directServers = topLevelServers as Record<string, unknown>
+  }
+
+  // Merge all known MCP server shapes to avoid dropping legacy servers in mixed configs.
+  // Precedence: nested mcpConfig.mcpServers > top-level mcpServers > legacy top-level.
+  return {
+    ...legacyServers,
+    ...directServers,
+    ...nestedServers,
+  }
+}
+
+function writeCanonicalMcpConfig(
+  mcpJson: Record<string, unknown>,
+  mcpServers: Record<string, unknown>
+): Record<string, unknown> {
+  const nextMcpJson = { ...mcpJson }
+  delete nextMcpJson.mcpServers
+
+  // Remove legacy top-level server entries so we only persist canonical mcpConfig.mcpServers.
+  const legacyTopLevelServers = readLegacyTopLevelMcpServers(mcpJson)
+  for (const legacyServerName of Object.keys(legacyTopLevelServers)) {
+    delete nextMcpJson[legacyServerName]
+  }
+
+  const existingMcpConfig =
+    isRecordObject(nextMcpJson.mcpConfig)
+      ? { ...(nextMcpJson.mcpConfig as Record<string, unknown>) }
+      : {}
+
+  delete existingMcpConfig.mcpServers
+
+  return {
+    ...nextMcpJson,
+    mcpConfig: {
+      ...existingMcpConfig,
+      mcpServers,
+    },
+  }
+}
+
 // ============================================================================
 // Export
 // ============================================================================
 
 function sanitizeAgentProfile(profile: AgentProfile): BundleAgentProfile {
+  const sanitizedConnection: BundleAgentProfile["connection"] = {
+    type: profile.connection?.type || "internal",
+  }
+  if (isNonEmptyString(profile.connection?.command)) {
+    sanitizedConnection.command = profile.connection.command
+  }
+  if (Array.isArray(profile.connection?.args)) {
+    sanitizedConnection.args = profile.connection.args
+      .filter((arg): arg is string => typeof arg === "string")
+  }
+  if (isNonEmptyString(profile.connection?.cwd)) {
+    sanitizedConnection.cwd = profile.connection.cwd
+  }
+  if (isNonEmptyString(profile.connection?.baseUrl)) {
+    sanitizedConnection.baseUrl = profile.connection.baseUrl
+  }
+
   const sanitized: BundleAgentProfile = {
     id: profile.id,
     name: profile.name,
@@ -230,9 +390,7 @@ function sanitizeAgentProfile(profile: AgentProfile): BundleAgentProfile {
     role: profile.role,
     systemPrompt: profile.systemPrompt,
     guidelines: profile.guidelines,
-    connection: {
-      type: profile.connection?.type || "internal",
-    },
+    connection: sanitizedConnection,
   }
   return sanitized
 }
@@ -243,7 +401,7 @@ function loadMCPServersForBundle(layer: AgentsLayerPaths): BundleMCPServer[] {
   })
 
   const servers: BundleMCPServer[] = []
-  const mcpServers = (mcpConfig as any)?.mcpServers || mcpConfig
+  const mcpServers = readMcpServersFromConfig(mcpConfig)
 
   if (typeof mcpServers === "object" && mcpServers !== null) {
     for (const [name, config] of Object.entries(mcpServers)) {
@@ -266,15 +424,27 @@ function loadMCPServersForBundle(layer: AgentsLayerPaths): BundleMCPServer[] {
   return servers
 }
 
-function loadSkillsForBundle(layer: AgentsLayerPaths): BundleSkill[] {
+const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: true,
+  memories: true,
+}
+
+function loadSkillsForBundle(layer: AgentsLayerPaths, options?: { skillIds?: string[] }): BundleSkill[] {
   const skillsResult = loadAgentsSkillsLayer(layer)
-  return skillsResult.skills.map((skill): BundleSkill => ({
+  const selectedSkillIds = options?.skillIds?.length ? new Set(options.skillIds) : null
+
+  return skillsResult.skills
+    .filter(skill => !selectedSkillIds || selectedSkillIds.has(skill.id))
+    .map((skill): BundleSkill => ({
     id: skill.id,
     name: skill.name,
     description: skill.description,
     instructions: skill.instructions,
     source: skill.source || "local",
-  }))
+    }))
 }
 
 function loadRepeatTasksForBundle(layer: AgentsLayerPaths): BundleRepeatTask[] {
@@ -303,20 +473,17 @@ function loadMemoriesForBundle(layer: AgentsLayerPaths): BundleMemory[] {
   }))
 }
 
-export async function exportBundle(
-  agentsDir: string,
-  options?: { name?: string; description?: string }
-): Promise<DotAgentsBundle> {
-  const layer = getAgentsLayerPaths(agentsDir)
-
-  const profilesResult = loadAgentProfilesLayer(layer)
-  const profiles = profilesResult.profiles.map(sanitizeAgentProfile)
-  const mcpServers = loadMCPServersForBundle(layer)
-  const skills = loadSkillsForBundle(layer)
-  const repeatTasks = loadRepeatTasksForBundle(layer)
-  const memories = loadMemoriesForBundle(layer)
-
-  const bundle: DotAgentsBundle = {
+function buildBundle(
+  options: ExportBundleOptions | undefined,
+  data: {
+    agentProfiles: BundleAgentProfile[]
+    mcpServers: BundleMCPServer[]
+    skills: BundleSkill[]
+    repeatTasks: BundleRepeatTask[]
+    memories: BundleMemory[]
+  }
+): DotAgentsBundle {
+  return {
     manifest: {
       version: 1,
       name: options?.name || "My Agent Configuration",
@@ -324,19 +491,54 @@ export async function exportBundle(
       createdAt: new Date().toISOString(),
       exportedFrom: "dotagents-desktop",
       components: {
-        agentProfiles: profiles.length,
-        mcpServers: mcpServers.length,
-        skills: skills.length,
-        repeatTasks: repeatTasks.length,
-        memories: memories.length,
+        agentProfiles: data.agentProfiles.length,
+        mcpServers: data.mcpServers.length,
+        skills: data.skills.length,
+        repeatTasks: data.repeatTasks.length,
+        memories: data.memories.length,
       },
     },
+    agentProfiles: data.agentProfiles,
+    mcpServers: data.mcpServers,
+    skills: data.skills,
+    repeatTasks: data.repeatTasks,
+    memories: data.memories,
+  }
+}
+
+function mergeByKey<T>(
+  values: T[],
+  getKey: (value: T) => string
+): T[] {
+  const merged = new Map<string, T>()
+  for (const value of values) {
+    merged.set(getKey(value), value)
+  }
+  return Array.from(merged.values())
+}
+
+export async function exportBundle(
+  agentsDir: string,
+  options?: ExportBundleOptions
+): Promise<DotAgentsBundle> {
+  const layer = getAgentsLayerPaths(agentsDir)
+  const components = { ...DEFAULT_EXPORT_COMPONENTS, ...options?.components }
+
+  const profiles = components.agentProfiles
+    ? loadAgentProfilesLayer(layer).profiles.map(sanitizeAgentProfile)
+    : []
+  const mcpServers = components.mcpServers ? loadMCPServersForBundle(layer) : []
+  const skills = components.skills ? loadSkillsForBundle(layer, { skillIds: options?.skillIds }) : []
+  const repeatTasks = components.repeatTasks ? loadRepeatTasksForBundle(layer) : []
+  const memories = components.memories ? loadMemoriesForBundle(layer) : []
+
+  const bundle = buildBundle(options, {
     agentProfiles: profiles,
     mcpServers,
     skills,
     repeatTasks,
     memories,
-  }
+  })
 
   logApp("[bundle-service] Exported bundle", {
     profiles: profiles.length,
@@ -349,9 +551,115 @@ export async function exportBundle(
   return bundle
 }
 
+export async function exportBundleFromLayers(
+  agentsDirs: string[],
+  options?: ExportBundleOptions
+): Promise<DotAgentsBundle> {
+  const normalizedDirs = Array.from(
+    new Set(agentsDirs.map((dir) => path.resolve(dir)).filter((dir) => dir.length > 0))
+  )
+
+  if (normalizedDirs.length === 0) {
+    throw new Error("No agents directories provided for bundle export")
+  }
+
+  if (normalizedDirs.length === 1) {
+    return exportBundle(normalizedDirs[0], options)
+  }
+
+  // Layer order matters: later layers override earlier layers by id/name.
+  const layerBundles = await Promise.all(
+    normalizedDirs.map((dir) => exportBundle(dir, options))
+  )
+
+  const mergedAgentProfiles = mergeByKey(
+    layerBundles.flatMap((bundle) => bundle.agentProfiles),
+    (profile) => profile.id
+  )
+  const mergedMcpServers = mergeByKey(
+    layerBundles.flatMap((bundle) => bundle.mcpServers),
+    (server) => server.name
+  )
+  const mergedSkills = mergeByKey(
+    layerBundles.flatMap((bundle) => bundle.skills),
+    (skill) => skill.id
+  )
+  const mergedRepeatTasks = mergeByKey(
+    layerBundles.flatMap((bundle) => bundle.repeatTasks),
+    (task) => task.id
+  )
+  const mergedMemories = mergeByKey(
+    layerBundles.flatMap((bundle) => bundle.memories),
+    (memory) => memory.id
+  )
+
+  const mergedBundle = buildBundle(options, {
+    agentProfiles: mergedAgentProfiles,
+    mcpServers: mergedMcpServers,
+    skills: mergedSkills,
+    repeatTasks: mergedRepeatTasks,
+    memories: mergedMemories,
+  })
+
+  logApp("[bundle-service] Exported merged bundle", {
+    layers: normalizedDirs.length,
+    profiles: mergedAgentProfiles.length,
+    mcpServers: mergedMcpServers.length,
+    skills: mergedSkills.length,
+    repeatTasks: mergedRepeatTasks.length,
+    memories: mergedMemories.length,
+  })
+
+  return mergedBundle
+}
+
+async function saveBundleToFile(bundle: DotAgentsBundle): Promise<ExportBundleToFileResult> {
+  try {
+    const bundleJson = JSON.stringify(bundle, null, 2)
+
+    const saveDialogOptions: SaveDialogOptions = {
+      title: "Export Agent Configuration",
+      defaultPath: `${bundle.manifest.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}.dotagents`,
+      filters: [
+        { name: "DotAgents Bundle", extensions: ["dotagents"] },
+        { name: "JSON", extensions: ["json"] },
+      ],
+    }
+    let result: Awaited<ReturnType<typeof dialog.showSaveDialog>>
+    try {
+      const win = BrowserWindow.getFocusedWindow()
+      result = win
+        ? await dialog.showSaveDialog(win, saveDialogOptions)
+        : await dialog.showSaveDialog(saveDialogOptions)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logApp("[bundle-service] Failed to open save dialog", { error })
+      return { success: false, filePath: null, canceled: false, error: errorMessage }
+    }
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, filePath: null, canceled: true }
+    }
+
+    try {
+      fs.writeFileSync(result.filePath, bundleJson, "utf-8")
+      logApp("[bundle-service] Bundle saved to", { filePath: result.filePath })
+      return { success: true, filePath: result.filePath, canceled: false }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logApp("[bundle-service] Failed to save bundle", { filePath: result.filePath, error })
+      return { success: false, filePath: null, canceled: false, error: errorMessage }
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logApp("[bundle-service] Failed to serialize bundle for export", { error })
+    return { success: false, filePath: null, canceled: false, error: errorMessage }
+  }
+}
+
 export async function exportBundleToFile(
   agentsDir: string,
-  options?: { name?: string; description?: string }
+  options?: ExportBundleOptions
 ): Promise<ExportBundleToFileResult> {
   let bundle: DotAgentsBundle
   try {
@@ -362,41 +670,23 @@ export async function exportBundleToFile(
     return { success: false, filePath: null, canceled: false, error: errorMessage }
   }
 
-  const bundleJson = JSON.stringify(bundle, null, 2)
+  return saveBundleToFile(bundle)
+}
 
-  const saveDialogOptions: SaveDialogOptions = {
-    title: "Export Agent Configuration",
-    defaultPath: `${bundle.manifest.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}.dotagents`,
-    filters: [
-      { name: "DotAgents Bundle", extensions: ["dotagents"] },
-      { name: "JSON", extensions: ["json"] },
-    ],
-  }
-  let result: Awaited<ReturnType<typeof dialog.showSaveDialog>>
+export async function exportBundleToFileFromLayers(
+  agentsDirs: string[],
+  options?: ExportBundleOptions
+): Promise<ExportBundleToFileResult> {
+  let bundle: DotAgentsBundle
   try {
-    const win = BrowserWindow.getFocusedWindow()
-    result = win
-      ? await dialog.showSaveDialog(win, saveDialogOptions)
-      : await dialog.showSaveDialog(saveDialogOptions)
+    bundle = await exportBundleFromLayers(agentsDirs, options)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    logApp("[bundle-service] Failed to open save dialog", { error })
+    logApp("[bundle-service] Failed to prepare merged bundle export", { error })
     return { success: false, filePath: null, canceled: false, error: errorMessage }
   }
 
-  if (result.canceled || !result.filePath) {
-    return { success: false, filePath: null, canceled: true }
-  }
-
-  try {
-    fs.writeFileSync(result.filePath, bundleJson, "utf-8")
-    logApp("[bundle-service] Bundle saved to", { filePath: result.filePath })
-    return { success: true, filePath: result.filePath, canceled: false }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    logApp("[bundle-service] Failed to save bundle", { filePath: result.filePath, error })
-    return { success: false, filePath: null, canceled: false, error: errorMessage }
-  }
+  return saveBundleToFile(bundle)
 }
 
 // ============================================================================
@@ -408,25 +698,157 @@ function isSupportedBundleFile(filePath: string): boolean {
   return BUNDLE_FILE_EXTENSIONS.has(extension)
 }
 
-function validateBundle(bundle: unknown): bundle is DotAgentsBundle {
+type LegacyBundleManifestComponents = Omit<BundleManifest["components"], "repeatTasks" | "memories"> & {
+  repeatTasks?: number
+  memories?: number
+}
+
+type LegacyDotAgentsBundle = Omit<DotAgentsBundle, "manifest" | "repeatTasks" | "memories"> & {
+  manifest: Omit<BundleManifest, "components"> & {
+    components: LegacyBundleManifestComponents
+  }
+  repeatTasks?: BundleRepeatTask[]
+  memories?: BundleMemory[]
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === "string"
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
+}
+
+function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionType {
+  return typeof value === "string" && (AGENT_PROFILE_CONNECTION_TYPES as readonly string[]).includes(value)
+}
+
+function isAgentProfileRole(value: unknown): value is AgentProfileRole {
+  return typeof value === "string" && (AGENT_PROFILE_ROLES as readonly string[]).includes(value)
+}
+
+function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (typeof value.enabled !== "boolean") return false
+  if (!isOptionalString(value.displayName)) return false
+  if (!isOptionalString(value.description)) return false
+  if (value.role !== undefined && !isAgentProfileRole(value.role)) return false
+  if (!isOptionalString(value.systemPrompt)) return false
+  if (!isOptionalString(value.guidelines)) return false
+  if (!isRecordObject(value.connection)) return false
+  if (!isAgentProfileConnectionType(value.connection.type)) return false
+  if (!isOptionalString(value.connection.command)) return false
+  if (value.connection.args !== undefined && !isStringArray(value.connection.args)) return false
+  if (!isOptionalString(value.connection.cwd)) return false
+  if (!isOptionalString(value.connection.baseUrl)) return false
+  return true
+}
+
+function isBundleMcpServer(value: unknown): value is BundleMCPServer {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (!isOptionalString(value.command)) return false
+  if (!isOptionalString(value.transport)) return false
+  if (value.args !== undefined && !isStringArray(value.args)) return false
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") return false
+  return true
+}
+
+function isBundleSkill(value: unknown): value is BundleSkill {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (!isOptionalString(value.description)) return false
+  return isOptionalString(value.instructions)
+}
+
+function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (typeof value.prompt !== "string") return false
+  if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
+  if (typeof value.enabled !== "boolean") return false
+  return value.runOnStartup === undefined || typeof value.runOnStartup === "boolean"
+}
+
+function isBundleMemory(value: unknown): value is BundleMemory {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.title)) return false
+  if (typeof value.content !== "string") return false
+  if (!["low", "medium", "high", "critical"].includes(String(value.importance))) return false
+  if (!isStringArray(value.tags)) return false
+  if (value.keyFindings !== undefined && !isStringArray(value.keyFindings)) return false
+  return value.userNotes === undefined || typeof value.userNotes === "string"
+}
+
+function hasValidManifestComponents(value: unknown): value is LegacyBundleManifestComponents {
+  if (!isRecordObject(value)) return false
+  if (!isNonNegativeFiniteNumber(value.agentProfiles)) return false
+  if (!isNonNegativeFiniteNumber(value.mcpServers)) return false
+  if (!isNonNegativeFiniteNumber(value.skills)) return false
+  if (value.repeatTasks !== undefined && !isNonNegativeFiniteNumber(value.repeatTasks)) return false
+  if (value.memories !== undefined && !isNonNegativeFiniteNumber(value.memories)) return false
+  return true
+}
+
+function validateBundle(bundle: unknown): bundle is LegacyDotAgentsBundle {
   if (!bundle || typeof bundle !== "object") return false
   const b = bundle as Record<string, unknown>
   if (!b.manifest || typeof b.manifest !== "object") return false
   const m = b.manifest as Record<string, unknown>
   if (m.version !== 1) return false
-  // Ensure arrays exist (may be empty)
-  if (!Array.isArray(b.agentProfiles)) return false
-  if (!Array.isArray(b.mcpServers)) return false
-  if (!Array.isArray(b.skills)) return false
-  // repeatTasks and memories may be absent in older bundles — default to empty
+  if (!isNonEmptyString(m.name)) return false
+  if (!isOptionalString(m.description)) return false
+  if (typeof m.createdAt !== "string" || Number.isNaN(Date.parse(m.createdAt))) return false
+  if (!isNonEmptyString(m.exportedFrom)) return false
+  if (!hasValidManifestComponents(m.components)) return false
+  if (!Array.isArray(b.agentProfiles) || !b.agentProfiles.every(isBundleAgentProfile)) return false
+  if (!Array.isArray(b.mcpServers) || !b.mcpServers.every(isBundleMcpServer)) return false
+  if (!Array.isArray(b.skills) || !b.skills.every(isBundleSkill)) return false
+  if ("repeatTasks" in b && b.repeatTasks !== undefined) {
+    if (!Array.isArray(b.repeatTasks) || !b.repeatTasks.every(isBundleRepeatTask)) return false
+  }
+  if ("memories" in b && b.memories !== undefined) {
+    if (!Array.isArray(b.memories) || !b.memories.every(isBundleMemory)) return false
+  }
   return true
 }
 
-function normalizeBundle(bundle: DotAgentsBundle): DotAgentsBundle {
+function normalizeBundle(bundle: LegacyDotAgentsBundle): DotAgentsBundle {
+  const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
+  const memories = Array.isArray(bundle.memories) ? bundle.memories : []
+  const rawComponents = isRecordObject(bundle.manifest.components)
+    ? (bundle.manifest.components as Record<string, unknown>)
+    : {}
+  const countOrFallback = (value: unknown, fallback: number): number =>
+    typeof value === "number" && Number.isFinite(value) ? value : fallback
+
   return {
     ...bundle,
-    repeatTasks: Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : [],
-    memories: Array.isArray(bundle.memories) ? bundle.memories : [],
+    manifest: {
+      ...bundle.manifest,
+      components: {
+        agentProfiles: countOrFallback(rawComponents.agentProfiles, bundle.agentProfiles.length),
+        mcpServers: countOrFallback(rawComponents.mcpServers, bundle.mcpServers.length),
+        skills: countOrFallback(rawComponents.skills, bundle.skills.length),
+        repeatTasks: countOrFallback(rawComponents.repeatTasks, repeatTasks.length),
+        memories: countOrFallback(rawComponents.memories, memories.length),
+      },
+    },
+    repeatTasks,
+    memories,
   }
 }
 
@@ -480,9 +902,7 @@ export function previewBundleWithConflicts(
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
-  const existingMcpServers = new Set(
-    Object.keys((mcpConfig as any)?.mcpServers || mcpConfig || {})
-  )
+  const existingMcpServers = new Set(Object.keys(readMcpServersFromConfig(mcpConfig)))
 
   // Detect conflicts
   const conflicts = {
@@ -632,6 +1052,23 @@ export async function importBundle(
 
         // Convert bundle profile to full AgentProfile
         const now = Date.now()
+        const connection: AgentProfileConnection = {
+          type: bundleProfile.connection.type,
+        }
+        if (isNonEmptyString(bundleProfile.connection.command)) {
+          connection.command = bundleProfile.connection.command
+        }
+        if (Array.isArray(bundleProfile.connection.args)) {
+          connection.args = bundleProfile.connection.args
+            .filter((arg): arg is string => typeof arg === "string")
+        }
+        if (isNonEmptyString(bundleProfile.connection.cwd)) {
+          connection.cwd = bundleProfile.connection.cwd
+        }
+        if (isNonEmptyString(bundleProfile.connection.baseUrl)) {
+          connection.baseUrl = bundleProfile.connection.baseUrl
+        }
+
         const fullProfile: AgentProfile = {
           id: finalId,
           name: bundleProfile.name,
@@ -639,8 +1076,8 @@ export async function importBundle(
           description: bundleProfile.description,
           systemPrompt: bundleProfile.systemPrompt,
           guidelines: bundleProfile.guidelines,
-          connection: { type: bundleProfile.connection.type as any },
-          role: bundleProfile.role as any,
+          connection,
+          role: bundleProfile.role,
           enabled: bundleProfile.enabled,
           createdAt: now,
           updatedAt: now,
@@ -674,7 +1111,7 @@ export async function importBundle(
       const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
         defaultValue: {},
       })
-      const mcpServers = (mcpConfig as any)?.mcpServers || mcpConfig || {}
+      const mcpServers = { ...readMcpServersFromConfig(mcpConfig) }
       const existingNames = new Set(Object.keys(mcpServers))
       let modified = false
 
@@ -720,7 +1157,7 @@ export async function importBundle(
       }
 
       if (modified) {
-        const newMcpConfig = { ...(mcpConfig as any), mcpServers }
+        const newMcpConfig = writeCanonicalMcpConfig(mcpConfig, mcpServers)
         safeWriteJsonFileSync(layer.mcpJsonPath, newMcpConfig, {
           backupDir: layer.backupsDir,
           maxBackups: 10,
@@ -773,7 +1210,7 @@ export async function importBundle(
         }
 
         // Create skill directory and write file
-        const skillDir = path.join(layer.agentsDir, "skills", finalId)
+        const skillDir = skillIdToDirPath(layer, finalId)
         fs.mkdirSync(skillDir, { recursive: true })
         writeAgentsSkillFile(layer, fullSkill)
         existingIds.add(finalId)

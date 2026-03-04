@@ -222,15 +222,16 @@ export function TileFollowUpInput({
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
 
   // Show appropriate placeholder based on state
+  // Use minimal placeholders - loading states indicated by spinners instead
   const getPlaceholder = () => {
     if (isInitializingSession) {
-      return "Initializing session..."
+      return "" // Spinner indicates loading state
     }
     if (isSessionActive && isQueueEnabled) {
       return "Queue message..."
     }
     if (isSessionActive) {
-      return "Waiting for agent..."
+      return "" // Spinner indicates loading state
     }
     return "Continue conversation..."
   }
@@ -319,14 +320,15 @@ export function TileFollowUpInput({
           className="h-6 w-6 flex-shrink-0"
           disabled={!hasMessageContent || isDisabled}
           title={isInitializingSession ? "Starting agent session" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          aria-label={isInitializingSession ? "Starting agent session" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
         >
           {isInitializingSession ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
             <Send className={cn(
               "h-3 w-3",
               sendMutation.isPending && "animate-pulse"
-            )} />
+            )} aria-hidden="true" />
           )}
         </Button>
         <Button

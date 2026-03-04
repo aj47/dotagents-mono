@@ -326,7 +326,9 @@ export function useSessions(): SessionStore {
       id: generateMessageId(),
       role: m.role as 'user' | 'assistant' | 'tool',
       content: m.content || '',
-      timestamp: now + idx,
+      timestamp: typeof m.timestamp === 'number' && Number.isFinite(m.timestamp)
+        ? m.timestamp
+        : now + idx,
       toolCalls: m.toolCalls,
       toolResults: m.toolResults,
     }));
@@ -376,7 +378,9 @@ export function useSessions(): SessionStore {
       id: generateMessageId(),
       role: m.role as 'user' | 'assistant' | 'tool',
       content: m.content || '',
-      timestamp: now + idx,
+      timestamp: typeof m.timestamp === 'number' && Number.isFinite(m.timestamp)
+        ? m.timestamp
+        : now + idx,
       toolCalls: m.toolCalls,
       toolResults: m.toolResults,
     }));

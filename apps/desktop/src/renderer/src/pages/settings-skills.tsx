@@ -18,11 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@renderer/components/ui/dropdown-menu"
+import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText } from "lucide-react"
+import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package } from "lucide-react"
 
 
 export function Component() {
@@ -34,6 +35,7 @@ export function Component() {
   const [newSkillDescription, setNewSkillDescription] = useState("")
   const [newSkillInstructions, setNewSkillInstructions] = useState("")
   const [isGitHubDialogOpen, setIsGitHubDialogOpen] = useState(false)
+  const [isBundleImportDialogOpen, setIsBundleImportDialogOpen] = useState(false)
   const [gitHubRepoInput, setGitHubRepoInput] = useState("")
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set())
@@ -214,6 +216,36 @@ export function Component() {
     },
   })
 
+  const exportBundleMutation = useMutation({
+    mutationFn: async ({ skillIds, name }: { skillIds: string[]; name: string }) => {
+      return await tipcClient.exportBundle({
+        name,
+        skillIds,
+        components: {
+          agentProfiles: false,
+          mcpServers: false,
+          skills: true,
+          repeatTasks: false,
+          memories: false,
+        },
+      })
+    },
+    onSuccess: (result: { success: boolean; canceled?: boolean; error?: string }) => {
+      if (result.success) {
+        toast.success("Bundle exported successfully")
+        return
+      }
+      if (result.canceled) {
+        toast.message("Bundle export canceled")
+        return
+      }
+      toast.error(result.error || "Failed to export bundle")
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to export bundle: ${error.message}`)
+    },
+  })
+
   const openSkillFileMutation = useMutation({
     mutationFn: async (skillId: string) => {
       return await tipcClient.openSkillFile({ skillId })
@@ -351,6 +383,17 @@ export function Component() {
     }
   }
 
+  const handleExportSelectedBundle = () => {
+    if (selectedSkillIds.size === 0) return
+    const selectedSkills = skills.filter((skill) => selectedSkillIds.has(skill.id))
+    const skillIds = selectedSkills.map((skill) => skill.id)
+    const bundleName = selectedSkills.length === 1
+      ? `${selectedSkills[0].name} Skill Bundle`
+      : `${skillIds.length || selectedSkillIds.size} Skills Bundle`
+
+    exportBundleMutation.mutate({ skillIds, name: bundleName })
+  }
+
   const toggleSkillSelection = (id: string) => {
     setSelectedSkillIds((prev) => {
       const next = new Set(prev)
@@ -376,6 +419,11 @@ export function Component() {
   const handleEditSkill = (skill: AgentSkill) => {
     setEditingSkill({ ...skill })
     setIsEditDialogOpen(true)
+  }
+
+  const handleBundleImportComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ["skills"] })
+    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
   }
 
   const skillsFileTemplate = `---
@@ -413,6 +461,20 @@ Write your skill instructions here.
                     <Square className="h-3 w-3" />
                   )}
                   {selectedSkillIds.size === skills.length && skills.length > 0 ? "Deselect All" : "Select All"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleExportSelectedBundle}
+                  disabled={selectedSkillIds.size === 0 || exportBundleMutation.isPending}
+                >
+                  {exportBundleMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Download className="h-3 w-3" />
+                  )}
+                  Export Bundle {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : ""}
                 </Button>
                 <Button
                   variant="destructive"
@@ -494,6 +556,10 @@ Write your skill instructions here.
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setIsBundleImportDialogOpen(true)}>
+                      <Package />
+                      Import Bundle
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setIsGitHubDialogOpen(true)}>
                       <Github />
                       Import from GitHub
@@ -745,6 +811,28 @@ Write your skill instructions here.
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <BundleImportDialog
+          open={isBundleImportDialogOpen}
+          onOpenChange={setIsBundleImportDialogOpen}
+          onImportComplete={handleBundleImportComplete}
+          title="Import Skill Bundle"
+          description="Preview and import skills from a local .dotagents bundle file."
+          initialComponents={{
+            agentProfiles: false,
+            mcpServers: false,
+            skills: true,
+            repeatTasks: false,
+            memories: false,
+          }}
+          availableComponents={{
+            agentProfiles: false,
+            mcpServers: false,
+            skills: true,
+            repeatTasks: false,
+            memories: false,
+          }}
+        />
 
         {/* GitHub Import Dialog */}
         <Dialog open={isGitHubDialogOpen} onOpenChange={setIsGitHubDialogOpen}>
