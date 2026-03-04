@@ -77,7 +77,8 @@ export interface BundleSkill {
   id: string
   name: string
   description?: string
-  instructions: string
+  // Legacy v1 bundles may omit instructions (metadata-only skill entries).
+  instructions?: string
   source?: string
 }
 
@@ -279,8 +280,7 @@ function isLikelyMcpServerConfig(value: unknown): value is Record<string, unknow
 }
 
 function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<string, unknown> {
-  const legacyServerCandidates: Record<string, Record<string, unknown>> = {}
-  const knownShapeLegacyServers: Record<string, Record<string, unknown>> = {}
+  const legacyServers: Record<string, Record<string, unknown>> = {}
 
   for (const [key, value] of Object.entries(mcpJson)) {
     if (!isRecordObject(value)) continue
@@ -292,27 +292,15 @@ function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<
     // looks like a legacy server entry (e.g. mcpGithub: { command, args }).
     if (key.startsWith("mcp") && !likelyServerConfig) continue
 
-    legacyServerCandidates[key] = value
-    if (likelyServerConfig) {
-      knownShapeLegacyServers[key] = value
-    }
-  }
-
-  if (Object.keys(knownShapeLegacyServers).length > 0) {
-    return knownShapeLegacyServers
-  }
-
-  // Backward compatibility: some legacy server entries use non-canonical keys.
-  // Only fall back to non-empty object candidates to avoid treating `{}` placeholders
-  // as MCP server definitions and deleting them during canonicalization.
-  const fallbackLegacyServers: Record<string, Record<string, unknown>> = {}
-  for (const [key, value] of Object.entries(legacyServerCandidates)) {
+    // Backward compatibility: keep non-empty object entries even when their shape is unknown.
+    // This avoids missing legacy servers in mixed configs that contain both known and unknown
+    // server schemas during migration.
     if (Object.keys(value).length > 0) {
-      fallbackLegacyServers[key] = value
+      legacyServers[key] = value
     }
   }
 
-  return fallbackLegacyServers
+  return legacyServers
 }
 
 function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
@@ -781,7 +769,7 @@ function isBundleSkill(value: unknown): value is BundleSkill {
   if (!isNonEmptyString(value.id)) return false
   if (!isNonEmptyString(value.name)) return false
   if (!isOptionalString(value.description)) return false
-  return typeof value.instructions === "string"
+  return isOptionalString(value.instructions)
 }
 
 function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
