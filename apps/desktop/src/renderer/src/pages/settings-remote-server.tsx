@@ -127,11 +127,13 @@ export function RemoteServerSettingsGroups({
   const enabled = cfg.remoteServerEnabled ?? false
   const streamerMode = cfg.streamerModeEnabled ?? false
 
-  const baseUrl = remoteServerStatus?.connectableUrl ?? (
-    cfg.remoteServerBindAddress && cfg.remoteServerPort
+  const fallbackBaseUrl = cfg.remoteServerBindAddress &&
+    cfg.remoteServerBindAddress !== "0.0.0.0" &&
+    cfg.remoteServerPort
       ? `http://${cfg.remoteServerBindAddress}:${cfg.remoteServerPort}/v1`
       : undefined
-  )
+
+  const baseUrl = remoteServerStatus?.connectableUrl ?? fallbackBaseUrl
 
   return (
     <>
@@ -674,4 +676,3 @@ export function Component() {
     </div>
   )
 }
-

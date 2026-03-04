@@ -209,14 +209,22 @@ function redact(value?: string) {
  * When bind is 127.0.0.1 or localhost, the server is bound to loopback only and cannot
  * accept connections from mobile devices - we warn and return the original address.
  */
-export function getConnectableIp(bind: string): string {
+interface ConnectableIpOptions {
+  warn?: boolean
+}
+
+export function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): string {
+  const { warn = true } = options
+
   // If bound to loopback, warn that mobile devices cannot connect
   if (bind === "127.0.0.1" || bind === "localhost") {
-    console.warn(
-      `[Remote Server] Warning: Server is bound to ${bind} (loopback only). ` +
-      `Mobile devices on the same network cannot connect. ` +
-      `Change bind address to 0.0.0.0 or your LAN IP for mobile access.`
-    )
+    if (warn) {
+      console.warn(
+        `[Remote Server] Warning: Server is bound to ${bind} (loopback only). ` +
+        `Mobile devices on the same network cannot connect. ` +
+        `Change bind address to 0.0.0.0 or your LAN IP for mobile access.`
+      )
+    }
     return bind
   }
 
@@ -238,9 +246,11 @@ export function getConnectableIp(bind: string): string {
   }
 
   // Fallback to the original bind address with a warning
-  console.warn(
-    `[Remote Server] Warning: Could not find LAN IP. QR code will use ${bind} which may not be reachable from mobile devices.`
-  )
+  if (warn) {
+    console.warn(
+      `[Remote Server] Warning: Could not find LAN IP. QR code will use ${bind} which may not be reachable from mobile devices.`
+    )
+  }
   return bind
 }
 
@@ -2849,7 +2859,7 @@ export function getRemoteServerStatus() {
   const port = cfg.remoteServerPort || 3210
   const running = !!server
   const url = running ? `http://${bind}:${port}/v1` : undefined
-  const connectableUrl = running ? `http://${getConnectableIp(bind)}:${port}/v1` : undefined
+  const connectableUrl = running ? `http://${getConnectableIp(bind, { warn: false })}:${port}/v1` : undefined
   return { running, url, connectableUrl, bind, port, lastError }
 }
 
