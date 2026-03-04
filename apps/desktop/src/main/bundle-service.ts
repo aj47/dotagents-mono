@@ -274,7 +274,15 @@ function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<
   for (const [key, value] of Object.entries(mcpJson)) {
     if (key === "mcpConfig" || key === "mcpServers") continue
     if ((TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)) continue
-    if (!isLikelyMcpServerConfig(value)) continue
+    // Reserve future top-level `mcp*` config keys.
+    if (key.startsWith("mcp")) continue
+    if (!isRecordObject(value)) continue
+
+    // Accept unknown object shapes as legacy servers for backward compatibility.
+    if (!isLikelyMcpServerConfig(value)) {
+      legacyServers[key] = value
+      continue
+    }
 
     legacyServers[key] = value
   }
@@ -310,6 +318,13 @@ function writeCanonicalMcpConfig(
   const legacyTopLevelServers = readLegacyTopLevelMcpServers(mcpJson)
   for (const legacyServerName of Object.keys(legacyTopLevelServers)) {
     delete nextMcpJson[legacyServerName]
+  }
+
+  // Also remove any top-level keys that match canonical server names to avoid duplicates.
+  for (const serverName of Object.keys(mcpServers)) {
+    if (serverName === "mcpConfig" || serverName === "mcpServers") continue
+    if ((TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(serverName)) continue
+    delete nextMcpJson[serverName]
   }
 
   const existingMcpConfig =
