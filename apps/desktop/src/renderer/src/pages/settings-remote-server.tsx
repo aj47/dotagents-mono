@@ -145,6 +145,10 @@ export function RemoteServerSettingsGroups({
       : undefined
 
   const baseUrl = remoteServerStatus?.connectableUrl ?? fallbackBaseUrl
+  const showConnectableUrlResolutionWarning =
+    (remoteServerStatus?.running ?? false) &&
+    isUnconnectableMobileHost(cfg.remoteServerBindAddress || "") &&
+    !remoteServerStatus?.connectableUrl
 
   return (
     <>
@@ -303,21 +307,32 @@ export function RemoteServerSettingsGroups({
                 </div>
               </Control>
 
-              {baseUrl && (
+              {(baseUrl || showConnectableUrlResolutionWarning) && (
                 <>
                   <Control label="Base URL" className="px-3">
-                    <div className="text-sm text-muted-foreground select-text break-all">
-                      {streamerMode ? maskUrl(baseUrl) : baseUrl}
-                    </div>
-                    {streamerMode && (
+                    {baseUrl ? (
+                      <div className="text-sm text-muted-foreground select-text break-all">
+                        {streamerMode ? maskUrl(baseUrl) : baseUrl}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-amber-700 dark:text-amber-300 break-words">
+                        Unable to resolve a LAN-reachable URL for the current bind address.
+                      </div>
+                    )}
+                    {streamerMode && baseUrl && (
                       <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                         <EyeOff className="h-3 w-3" />
                         URL masked in Streamer Mode
                       </div>
                     )}
+                    {showConnectableUrlResolutionWarning && (
+                      <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words">
+                        The server is running, but no LAN IPv4 address was detected for wildcard bind (0.0.0.0/::). Connect to a local network or use a specific LAN IP to enable mobile pairing.
+                      </div>
+                    )}
                   </Control>
 
-                  {cfg?.remoteServerApiKey && (
+                  {baseUrl && cfg?.remoteServerApiKey && (
                     <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect (local network only)" />} className="px-3">
                       <div className="flex flex-col items-start gap-3">
                         {streamerMode ? (

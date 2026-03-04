@@ -2827,7 +2827,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     await fastify.listen({ port, host: bind })
     diagnosticsService.logInfo(
       "remote-server",
-      `Remote server listening at http://${bind}:${port}/v1`,
+      `Remote server listening at ${buildRemoteServerBaseUrl(bind, port)}`,
     )
     server = fastify
 
