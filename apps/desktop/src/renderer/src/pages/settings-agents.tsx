@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/ui/tabs"
-import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload } from "lucide-react"
+import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe } from "lucide-react"
 import { Facehash } from "facehash"
 import { toast } from "sonner"
 
@@ -29,6 +29,7 @@ function agentColors(seed: string): string[] {
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ModelSelector } from "@renderer/components/model-selector"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
+import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
 import {
   AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill,
@@ -97,6 +98,7 @@ export function SettingsAgents() {
   const [showSystemPrompt, setShowSystemPrompt] = useState(false)
   const [defaultSystemPrompt, setDefaultSystemPrompt] = useState("")
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -422,6 +424,9 @@ export function SettingsAgents() {
           <Button variant="outline" className="gap-2" onClick={handleExportBundle}>
             <Download className="h-4 w-4" />Export Bundle
           </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setIsPublishDialogOpen(true)}>
+            <Globe className="h-4 w-4" />Publish to Hub
+          </Button>
           <Button variant="outline" className="gap-2" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
@@ -433,6 +438,10 @@ export function SettingsAgents() {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImportComplete={handleImportComplete}
+      />
+      <BundlePublishDialog
+        open={isPublishDialogOpen}
+        onOpenChange={setIsPublishDialogOpen}
       />
     </div>
   )

@@ -30,12 +30,31 @@ import { logApp } from "./debug"
 // Types
 // ============================================================================
 
+export interface BundlePublicMetadataAuthor {
+  displayName: string
+  handle?: string
+  url?: string
+}
+
+export interface BundlePublicMetadataCompatibility {
+  minDesktopVersion?: string
+  notes?: string[]
+}
+
+export interface BundlePublicMetadata {
+  summary: string
+  author: BundlePublicMetadataAuthor
+  tags: string[]
+  compatibility?: BundlePublicMetadataCompatibility
+}
+
 export interface BundleManifest {
   version: 1
   name: string
   description?: string
   createdAt: string
   exportedFrom: string
+  publicMetadata?: BundlePublicMetadata
   components: {
     agentProfiles: number
     mcpServers: number
@@ -135,6 +154,7 @@ export interface BundleComponentSelection {
 export interface ExportBundleOptions {
   name?: string
   description?: string
+  publicMetadata?: BundlePublicMetadata
   components?: BundleComponentSelection
   skillIds?: string[]
 }
@@ -242,6 +262,65 @@ function isReservedTopLevelMcpKey(key: string): boolean {
 
 function isRecordObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function normalizeOptionalString(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
+}
+
+function normalizeStringArray(values: string[] | undefined): string[] {
+  if (!Array.isArray(values)) return []
+
+  const normalized = new Set<string>()
+  for (const value of values) {
+    if (typeof value !== "string") continue
+    const trimmed = value.trim()
+    if (trimmed.length === 0) continue
+    normalized.add(trimmed)
+  }
+
+  return Array.from(normalized)
+}
+
+function sanitizeBundlePublicMetadata(
+  publicMetadata: BundlePublicMetadata | undefined
+): BundlePublicMetadata | undefined {
+  if (!publicMetadata) return undefined
+
+  const summary = normalizeOptionalString(publicMetadata.summary)
+  if (!summary) {
+    throw new Error("Bundle public metadata requires a non-empty summary")
+  }
+
+  const displayName = normalizeOptionalString(publicMetadata.author?.displayName)
+  if (!displayName) {
+    throw new Error("Bundle public metadata requires author.displayName")
+  }
+
+  const handle = normalizeOptionalString(publicMetadata.author.handle)
+  const url = normalizeOptionalString(publicMetadata.author.url)
+  const minDesktopVersion = normalizeOptionalString(publicMetadata.compatibility?.minDesktopVersion)
+  const notes = normalizeStringArray(publicMetadata.compatibility?.notes)
+
+  return {
+    summary,
+    author: {
+      displayName,
+      ...(handle ? { handle } : {}),
+      ...(url ? { url } : {}),
+    },
+    tags: normalizeStringArray(publicMetadata.tags),
+    ...((minDesktopVersion || notes.length > 0)
+      ? {
+          compatibility: {
+            ...(minDesktopVersion ? { minDesktopVersion } : {}),
+            ...(notes.length > 0 ? { notes } : {}),
+          },
+        }
+      : {}),
+  }
 }
 
 function isSecretKey(key: string): boolean {
@@ -483,6 +562,8 @@ function buildBundle(
     memories: BundleMemory[]
   }
 ): DotAgentsBundle {
+  const publicMetadata = sanitizeBundlePublicMetadata(options?.publicMetadata)
+
   return {
     manifest: {
       version: 1,
@@ -490,6 +571,7 @@ function buildBundle(
       description: options?.description,
       createdAt: new Date().toISOString(),
       exportedFrom: "dotagents-desktop",
+      ...(publicMetadata ? { publicMetadata } : {}),
       components: {
         agentProfiles: data.agentProfiles.length,
         mcpServers: data.mcpServers.length,
@@ -727,6 +809,27 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string")
 }
 
+function isBundlePublicMetadataAuthor(value: unknown): value is BundlePublicMetadataAuthor {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.displayName)) return false
+  if (!isOptionalString(value.handle)) return false
+  return isOptionalString(value.url)
+}
+
+function isBundlePublicMetadataCompatibility(value: unknown): value is BundlePublicMetadataCompatibility {
+  if (!isRecordObject(value)) return false
+  if (!isOptionalString(value.minDesktopVersion)) return false
+  return value.notes === undefined || isStringArray(value.notes)
+}
+
+function isBundlePublicMetadata(value: unknown): value is BundlePublicMetadata {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.summary)) return false
+  if (!isBundlePublicMetadataAuthor(value.author)) return false
+  if (!isStringArray(value.tags)) return false
+  return value.compatibility === undefined || isBundlePublicMetadataCompatibility(value.compatibility)
+}
+
 function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionType {
   return typeof value === "string" && (AGENT_PROFILE_CONNECTION_TYPES as readonly string[]).includes(value)
 }
@@ -813,6 +916,7 @@ function validateBundle(bundle: unknown): bundle is LegacyDotAgentsBundle {
   if (!isOptionalString(m.description)) return false
   if (typeof m.createdAt !== "string" || Number.isNaN(Date.parse(m.createdAt))) return false
   if (!isNonEmptyString(m.exportedFrom)) return false
+  if (m.publicMetadata !== undefined && !isBundlePublicMetadata(m.publicMetadata)) return false
   if (!hasValidManifestComponents(m.components)) return false
   if (!Array.isArray(b.agentProfiles) || !b.agentProfiles.every(isBundleAgentProfile)) return false
   if (!Array.isArray(b.mcpServers) || !b.mcpServers.every(isBundleMcpServer)) return false
@@ -1404,4 +1508,81 @@ export async function importBundleFromDialog(
   const importResult = await importBundle(selectedPath, targetAgentsDir, options)
 
   return { filePath: selectedPath, result: importResult }
+}
+
+// ============================================================================
+// Publish Payload Generation
+// ============================================================================
+
+export interface HubPublishPayload {
+  /** Catalog metadata suitable for Hub listing */
+  catalogItem: {
+    name: string
+    summary: string
+    description?: string
+    author: BundlePublicMetadataAuthor
+    tags: string[]
+    bundleVersion: 1
+    publishedAt: string
+    updatedAt: string
+    componentCounts: BundleManifest["components"]
+    artifact: {
+      fileName: string
+      sizeBytes: number
+    }
+    compatibility?: BundlePublicMetadataCompatibility
+  }
+  /** The raw bundle JSON string, ready to save as .dotagents file */
+  bundleJson: string
+}
+
+/**
+ * Generate a publish-ready payload from the local .agents layer(s).
+ *
+ * Returns both:
+ * 1. A HubCatalogItemV1-shaped metadata object for Hub listing
+ * 2. The serialized .dotagents bundle JSON for artifact upload/download
+ *
+ * Requires publicMetadata with at least summary and author.displayName.
+ */
+export async function generatePublishPayload(
+  agentsDirs: string[],
+  options: ExportBundleOptions & { publicMetadata: BundlePublicMetadata }
+): Promise<HubPublishPayload> {
+  if (!options.publicMetadata?.summary) {
+    throw new Error("Publish payload requires a summary in publicMetadata")
+  }
+  if (!options.publicMetadata?.author?.displayName) {
+    throw new Error("Publish payload requires author.displayName in publicMetadata")
+  }
+
+  const bundle = agentsDirs.length === 1
+    ? await exportBundle(agentsDirs[0], options)
+    : await exportBundleFromLayers(agentsDirs, options)
+
+  const bundleJson = JSON.stringify(bundle, null, 2)
+  const now = new Date().toISOString()
+  const safeName = (bundle.manifest.name || "bundle").replace(/[^a-zA-Z0-9-_ ]/g, "")
+
+  return {
+    catalogItem: {
+      name: bundle.manifest.name,
+      summary: bundle.manifest.publicMetadata!.summary,
+      description: bundle.manifest.description,
+      author: bundle.manifest.publicMetadata!.author,
+      tags: bundle.manifest.publicMetadata!.tags,
+      bundleVersion: 1,
+      publishedAt: now,
+      updatedAt: now,
+      componentCounts: bundle.manifest.components,
+      artifact: {
+        fileName: `${safeName}.dotagents`,
+        sizeBytes: Buffer.byteLength(bundleJson, "utf-8"),
+      },
+      ...(bundle.manifest.publicMetadata!.compatibility
+        ? { compatibility: bundle.manifest.publicMetadata!.compatibility }
+        : {}),
+    },
+    bundleJson,
+  }
 }

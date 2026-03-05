@@ -12,8 +12,10 @@ import {
   previewBundle,
   previewBundleWithConflicts,
   importBundle,
+  generatePublishPayload,
   type DotAgentsBundle,
   type ImportConflictStrategy,
+  type HubPublishPayload,
 } from "./bundle-service"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
@@ -133,6 +135,45 @@ describe("bundle-service", () => {
       expect(bundle.skills).toEqual([])
       expect(bundle.repeatTasks).toEqual([])
       expect(bundle.memories).toEqual([])
+    })
+
+    it("exports sanitized public metadata for sharing without changing the bundle format", async () => {
+      const bundle = await exportBundle(agentsDir, {
+        name: "Hub Ready Bundle",
+        description: "Installable agent setup",
+        publicMetadata: {
+          summary: "  A shareable agent bundle for the Hub.  ",
+          author: {
+            displayName: "  AJ  ",
+            handle: "  techfren  ",
+            url: "  https://dotagents.org/authors/aj  ",
+          },
+          tags: [" productivity ", "agents", "productivity", ""],
+          compatibility: {
+            minDesktopVersion: " 0.0.1 ",
+            notes: [" Works with workspace overlays ", "", "No secrets included", "Works with workspace overlays"],
+          },
+        },
+      })
+
+      expect(bundle.manifest).toMatchObject({
+        version: 1,
+        name: "Hub Ready Bundle",
+        description: "Installable agent setup",
+        publicMetadata: {
+          summary: "A shareable agent bundle for the Hub.",
+          author: {
+            displayName: "AJ",
+            handle: "techfren",
+            url: "https://dotagents.org/authors/aj",
+          },
+          tags: ["productivity", "agents"],
+          compatibility: {
+            minDesktopVersion: "0.0.1",
+            notes: ["Works with workspace overlays", "No secrets included"],
+          },
+        },
+      })
     })
 
     it("exports agent profiles with secrets stripped", async () => {
@@ -432,6 +473,42 @@ describe("bundle-service", () => {
           description: "Metadata-only skill entry",
         },
       ])
+    })
+
+    it("preserves valid public metadata when previewing a shareable bundle", async () => {
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Public Bundle",
+          description: "Previewable bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          publicMetadata: {
+            summary: "Preview this in the Hub",
+            author: {
+              displayName: "AJ",
+              handle: "techfren",
+            },
+            tags: ["agents", "hub"],
+            compatibility: {
+              minDesktopVersion: "0.0.1",
+              notes: ["Uses existing import flow"],
+            },
+          },
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+
+      const bundlePath = path.join(tempDir, "public-metadata.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundle(bundlePath)
+      expect(result?.manifest.publicMetadata).toEqual(bundle.manifest.publicMetadata)
     })
 
     it("returns null when optional collections are present but malformed", async () => {
@@ -936,6 +1013,32 @@ describe("bundle-service", () => {
       expect(result.skills).toEqual([{ id: "legacy-skill", name: "Legacy Skill", action: "imported" }])
       expect(importedSkill).toBeTruthy()
       expect(importedSkill?.instructions).toBe("")
+    })
+
+    it("imports bundles that include public metadata without affecting existing import behavior", async () => {
+      const bundle = createTestBundle()
+      bundle.manifest.publicMetadata = {
+        summary: "Public Hub listing",
+        author: {
+          displayName: "AJ",
+          handle: "techfren",
+        },
+        tags: ["hub", "agents"],
+        compatibility: {
+          minDesktopVersion: "0.0.1",
+        },
+      }
+
+      const bundlePath = path.join(tempDir, "import-public-metadata.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+
+      expect(result.success).toBe(true)
+      expect(result.agentProfiles[0].action).toBe("imported")
+      expect(result.skills[0].action).toBe("imported")
+      expect(result.repeatTasks[0].action).toBe("imported")
+      expect(result.memories[0].action).toBe("imported")
     })
 
     it("skips existing items with skip strategy", async () => {
@@ -1485,5 +1588,129 @@ describe("bundle-service", () => {
         mcpDisabledTools: ["github:create_issue"],
       })
     })
+  })
+})
+
+// ============================================================================
+// generatePublishPayload tests
+// ============================================================================
+
+describe("generatePublishPayload", () => {
+  let tempDir: string
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+    const layer = getAgentsLayerPaths(tempDir)
+    fs.mkdirSync(layer.agentsDir, { recursive: true })
+    fs.mkdirSync(path.join(layer.agentsDir, "skills"), { recursive: true })
+    writeAgentsProfileFiles(layer, createTestProfile("agent-pub-1", "Publish Agent"))
+    writeAgentsSkillFile(layer, createTestSkill("skill-pub-1", "Pub Skill"))
+  })
+
+  afterEach(() => cleanupDir(tempDir))
+
+  it("generates a valid publish payload with catalog metadata and bundle JSON", async () => {
+    const result = await generatePublishPayload([tempDir], {
+      name: "Test Publish Bundle",
+      description: "A test bundle for publish",
+      publicMetadata: {
+        summary: "Great agent setup",
+        author: { displayName: "Test Author", handle: "@test" },
+        tags: ["test", "demo"],
+      },
+    })
+
+    // Catalog item shape
+    expect(result.catalogItem).toBeDefined()
+    expect(result.catalogItem.name).toBe("Test Publish Bundle")
+    expect(result.catalogItem.summary).toBe("Great agent setup")
+    expect(result.catalogItem.description).toBe("A test bundle for publish")
+    expect(result.catalogItem.author.displayName).toBe("Test Author")
+    expect(result.catalogItem.author.handle).toBe("@test")
+    expect(result.catalogItem.tags).toEqual(["test", "demo"])
+    expect(result.catalogItem.bundleVersion).toBe(1)
+    expect(result.catalogItem.publishedAt).toBeTruthy()
+    expect(result.catalogItem.updatedAt).toBeTruthy()
+    expect(result.catalogItem.componentCounts.agentProfiles).toBe(1)
+    expect(result.catalogItem.componentCounts.skills).toBe(1)
+    expect(result.catalogItem.artifact.fileName).toBe("Test Publish Bundle.dotagents")
+    expect(result.catalogItem.artifact.sizeBytes).toBeGreaterThan(0)
+
+    // Bundle JSON is valid
+    const bundle = JSON.parse(result.bundleJson)
+    expect(bundle.manifest.version).toBe(1)
+    expect(bundle.manifest.name).toBe("Test Publish Bundle")
+    expect(bundle.agentProfiles).toHaveLength(1)
+    expect(bundle.skills).toHaveLength(1)
+  })
+
+  it("throws when summary is missing", async () => {
+    await expect(
+      generatePublishPayload([tempDir], {
+        name: "No Summary",
+        publicMetadata: {
+          summary: "",
+          author: { displayName: "Author" },
+          tags: [],
+        },
+      })
+    ).rejects.toThrow(/summary/)
+  })
+
+  it("throws when author displayName is missing", async () => {
+    await expect(
+      generatePublishPayload([tempDir], {
+        name: "No Author",
+        publicMetadata: {
+          summary: "Has summary",
+          author: { displayName: "" },
+          tags: [],
+        },
+      })
+    ).rejects.toThrow(/displayName/)
+  })
+
+  it("includes compatibility metadata when provided", async () => {
+    const result = await generatePublishPayload([tempDir], {
+      name: "Compat Bundle",
+      publicMetadata: {
+        summary: "With compat",
+        author: { displayName: "Author" },
+        tags: [],
+        compatibility: { minDesktopVersion: "1.5.0", notes: ["Requires macOS"] },
+      },
+    })
+
+    expect(result.catalogItem.compatibility).toBeDefined()
+    expect(result.catalogItem.compatibility!.minDesktopVersion).toBe("1.5.0")
+    expect(result.catalogItem.compatibility!.notes).toEqual(["Requires macOS"])
+  })
+
+  it("strips whitespace-only tags", async () => {
+    const result = await generatePublishPayload([tempDir], {
+      name: "Tag Test",
+      publicMetadata: {
+        summary: "Tags",
+        author: { displayName: "Author" },
+        tags: ["valid", " ", "  ", "also-valid"],
+      },
+    })
+
+    expect(result.catalogItem.tags).toEqual(["valid", "also-valid"])
+  })
+
+  it("omits optional author fields when not provided", async () => {
+    const result = await generatePublishPayload([tempDir], {
+      name: "Minimal",
+      publicMetadata: {
+        summary: "Minimal author",
+        author: { displayName: "Just Name" },
+        tags: [],
+      },
+    })
+
+    expect(result.catalogItem.author.displayName).toBe("Just Name")
+    expect(result.catalogItem.author.handle).toBeUndefined()
+    expect(result.catalogItem.author.url).toBeUndefined()
   })
 })

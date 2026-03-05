@@ -4423,6 +4423,19 @@ export const router = {
     .input<{
       name?: string
       description?: string
+      publicMetadata?: {
+        summary: string
+        author: {
+          displayName: string
+          handle?: string
+          url?: string
+        }
+        tags: string[]
+        compatibility?: {
+          minDesktopVersion?: string
+          notes?: string[]
+        }
+      }
       skillIds?: string[]
       components?: {
         agentProfiles?: boolean
@@ -4439,6 +4452,7 @@ export const router = {
       const exportOptions = {
         name: input?.name,
         description: input?.description,
+        publicMetadata: input?.publicMetadata,
         skillIds: input?.skillIds,
         components: input?.components,
       }
@@ -4449,6 +4463,48 @@ export const router = {
       }
 
       return exportBundleToFile(globalAgentsFolder, exportOptions)
+    }),
+
+  generatePublishPayload: t.procedure
+    .input<{
+      name?: string
+      description?: string
+      publicMetadata: {
+        summary: string
+        author: {
+          displayName: string
+          handle?: string
+          url?: string
+        }
+        tags: string[]
+        compatibility?: {
+          minDesktopVersion?: string
+          notes?: string[]
+        }
+      }
+      components?: {
+        agentProfiles?: boolean
+        mcpServers?: boolean
+        skills?: boolean
+        repeatTasks?: boolean
+        memories?: boolean
+      }
+      skillIds?: string[]
+    }>()
+    .action(async ({ input }) => {
+      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { generatePublishPayload } = await import("./bundle-service")
+      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+      const dirs = workspaceAgentsFolder
+        ? [globalAgentsFolder, workspaceAgentsFolder]
+        : [globalAgentsFolder]
+      return generatePublishPayload(dirs, {
+        name: input.name,
+        description: input.description,
+        publicMetadata: input.publicMetadata,
+        components: input.components,
+        skillIds: input.skillIds,
+      })
     }),
 
   previewBundle: t.procedure.action(async () => {
