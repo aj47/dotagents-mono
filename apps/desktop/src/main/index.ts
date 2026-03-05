@@ -6,6 +6,7 @@ import {
   createSetupWindow,
   makePanelWindowClosable,
   setAppQuitting,
+  showMainWindow,
   WINDOWS,
 } from "./window"
 import { listenToKeyboardEvents } from "./keyboard"
@@ -34,6 +35,7 @@ import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
+import { findHubBundleHandoffFilePath } from "./bundle-service"
 
 // Check for --qr flag (headless mode with QR code)
 const isQRMode = process.argv.includes("--qr")
@@ -60,6 +62,51 @@ if (process.platform === 'linux') {
 }
 
 registerServeSchema()
+
+let pendingHubBundleHandoffPath = findHubBundleHandoffFilePath(process.argv)
+
+function buildHubBundleInstallUrl(filePath: string): string {
+  return `/settings/agents?installBundle=${encodeURIComponent(filePath)}`
+}
+
+function openPendingHubBundleInstall(): boolean {
+  if (!pendingHubBundleHandoffPath) return false
+  if (!isAccessibilityGranted()) {
+    logApp("[hub-install] Accessibility not granted; deferring bundle install handoff", {
+      filePath: pendingHubBundleHandoffPath,
+    })
+    return false
+  }
+
+  const installUrl = buildHubBundleInstallUrl(pendingHubBundleHandoffPath)
+  pendingHubBundleHandoffPath = null
+  showMainWindow(installUrl)
+  return true
+}
+
+function queueHubBundleInstall(filePath: string | null | undefined): boolean {
+  const resolvedPath = filePath ? findHubBundleHandoffFilePath([filePath]) : null
+  if (!resolvedPath) return false
+
+  pendingHubBundleHandoffPath = resolvedPath
+  logApp("[hub-install] Queued Hub bundle install handoff", { filePath: resolvedPath })
+
+  if (app.isReady()) {
+    openPendingHubBundleInstall()
+  }
+
+  return true
+}
+
+app.on("open-file", (event, filePath) => {
+  event.preventDefault()
+  queueHubBundleInstall(filePath)
+})
+
+app.on("second-instance", (_event, commandLine) => {
+  const bundlePath = findHubBundleHandoffFilePath(commandLine)
+  queueHubBundleInstall(bundlePath)
+})
 
 app.whenReady().then(async () => {
   initDebugFlags(process.argv)
@@ -298,8 +345,18 @@ app.whenReady().then(async () => {
       createMainWindow({ url: "/onboarding" })
       logApp("Main window created (showing onboarding)")
     } else {
-      createMainWindow()
-      logApp("Main window created")
+      const initialUrl = pendingHubBundleHandoffPath
+        ? buildHubBundleInstallUrl(pendingHubBundleHandoffPath)
+        : undefined
+      createMainWindow(initialUrl ? { url: initialUrl } : undefined)
+      if (initialUrl) {
+        logApp("Main window created (opening Hub bundle install)", {
+          filePath: pendingHubBundleHandoffPath,
+        })
+        pendingHubBundleHandoffPath = null
+      } else {
+        logApp("Main window created")
+      }
     }
   } else {
     createSetupWindow()
@@ -469,6 +526,7 @@ app.whenReady().then(async () => {
       if (mainWin) {
         // Window exists (may be hidden on macOS close-to-hide) — just show it
         mainWin.show()
+        openPendingHubBundleInstall()
       } else {
         // Check if onboarding has been completed
         // Skip for existing users who have already configured models (pre-onboarding installs)
@@ -479,7 +537,13 @@ app.whenReady().then(async () => {
         if (needsOnboarding) {
           createMainWindow({ url: "/onboarding" })
         } else {
-          createMainWindow()
+          const initialUrl = pendingHubBundleHandoffPath
+            ? buildHubBundleInstallUrl(pendingHubBundleHandoffPath)
+            : undefined
+          createMainWindow(initialUrl ? { url: initialUrl } : undefined)
+          if (initialUrl) {
+            pendingHubBundleHandoffPath = null
+          }
         }
       }
     } else {

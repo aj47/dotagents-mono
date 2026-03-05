@@ -75,16 +75,22 @@ interface BundleImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImportComplete: () => void
+  initialFilePath?: string
   initialComponents?: Partial<BundleComponentsState>
   availableComponents?: Partial<Record<BundleComponentKey, boolean>>
   title?: string
   description?: string
 }
 
+export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
+  return (await tipcClient.previewBundleWithConflicts({ filePath })) as BundlePreview
+}
+
 export function BundleImportDialog({
   open,
   onOpenChange,
   onImportComplete,
+  initialFilePath,
   initialComponents,
   availableComponents,
   title = "Import Bundle",
@@ -119,9 +125,19 @@ export function BundleImportDialog({
   // Reset state when dialog opens
   useEffect(() => {
     if (open && !preview) {
-      handleSelectFile()
+      if (initialFilePath) {
+        void handlePreviewFile(initialFilePath)
+      } else {
+        void handleSelectFile()
+      }
     }
-  }, [open])
+  }, [initialFilePath, open, preview])
+
+  const loadPreviewForFile = async (filePath: string, requestId: number) => {
+    const fullResult = await previewProvidedBundleFile(filePath)
+    if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
+    setPreview(fullResult as BundlePreview)
+  }
 
   const handleSelectFile = async () => {
     const requestId = ++previewRequestIdRef.current
@@ -135,10 +151,24 @@ export function BundleImportDialog({
         onOpenChange(false)
         return
       }
-      // Then, get full preview with conflicts
-      const fullResult = await tipcClient.previewBundleWithConflicts({ filePath: dialogResult.filePath })
+      await loadPreviewForFile(dialogResult.filePath, requestId)
+    } catch (error) {
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
-      setPreview(fullResult as BundlePreview)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to preview bundle: ${errorMessage}`)
+      onOpenChange(false)
+    } finally {
+      if (previewRequestIdRef.current === requestId && isOpenRef.current) {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handlePreviewFile = async (filePath: string) => {
+    const requestId = ++previewRequestIdRef.current
+    setLoading(true)
+    try {
+      await loadPreviewForFile(filePath, requestId)
     } catch (error) {
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       const errorMessage = error instanceof Error ? error.message : String(error)

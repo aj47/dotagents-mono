@@ -9,6 +9,7 @@ import path from "path"
 import os from "os"
 import {
   exportBundle,
+  findHubBundleHandoffFilePath,
   previewBundle,
   previewBundleWithConflicts,
   importBundle,
@@ -617,6 +618,41 @@ describe("bundle-service", () => {
       fs.writeFileSync(bundlePath, JSON.stringify(invalidBundle))
 
       expect(previewBundle(bundlePath)).toBeNull()
+    })
+  })
+
+  describe("findHubBundleHandoffFilePath", () => {
+    it("returns the first existing .dotagents file from argv-style candidates", () => {
+      const bundlePath = path.join(tempDir, "hub-install.dotagents")
+      const ignoredJsonPath = path.join(tempDir, "hub-install.json")
+
+      fs.writeFileSync(bundlePath, JSON.stringify({ test: true }), "utf-8")
+      fs.writeFileSync(ignoredJsonPath, JSON.stringify({ test: true }), "utf-8")
+
+      expect(
+        findHubBundleHandoffFilePath([
+          "/Applications/DotAgents.app",
+          "--inspect",
+          ignoredJsonPath,
+          bundlePath,
+        ])
+      ).toBe(path.resolve(bundlePath))
+    })
+
+    it("ignores missing files, directories, and non-.dotagents candidates", () => {
+      const directoryPath = path.join(tempDir, "folder.dotagents")
+      const jsonPath = path.join(tempDir, "bundle.json")
+
+      fs.mkdirSync(directoryPath, { recursive: true })
+      fs.writeFileSync(jsonPath, JSON.stringify({ test: true }), "utf-8")
+
+      expect(
+        findHubBundleHandoffFilePath([
+          path.join(tempDir, "missing.dotagents"),
+          directoryPath,
+          jsonPath,
+        ])
+      ).toBeNull()
     })
   })
 

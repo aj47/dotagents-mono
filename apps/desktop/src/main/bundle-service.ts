@@ -235,6 +235,7 @@ const SECRET_PATTERNS = [
 ]
 
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
+const HUB_BUNDLE_FILE_EXTENSION = ".dotagents"
 const TOP_LEVEL_MCP_CONFIG_KEYS = [
   "mcpDisabledTools",
   "mcpRuntimeDisabledServers",
@@ -786,6 +787,28 @@ export async function exportBundleToFileFromLayers(
 function isSupportedBundleFile(filePath: string): boolean {
   const extension = path.extname(filePath).toLowerCase()
   return BUNDLE_FILE_EXTENSIONS.has(extension)
+}
+
+export function findHubBundleHandoffFilePath(candidates: readonly string[]): string | null {
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" || candidate.trim().length === 0) continue
+
+    const normalizedPath = path.resolve(candidate)
+    if (path.extname(normalizedPath).toLowerCase() !== HUB_BUNDLE_FILE_EXTENSION) {
+      continue
+    }
+
+    try {
+      const stats = fs.statSync(normalizedPath)
+      if (stats.isFile()) {
+        return normalizedPath
+      }
+    } catch {
+      // Ignore missing/inaccessible candidates while scanning argv or OS handoff inputs.
+    }
+  }
+
+  return null
 }
 
 type LegacyBundleManifestComponents = Omit<BundleManifest["components"], "repeatTasks" | "memories"> & {

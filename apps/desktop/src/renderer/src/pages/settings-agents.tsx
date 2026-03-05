@@ -98,6 +98,7 @@ export function SettingsAgents() {
   const [showSystemPrompt, setShowSystemPrompt] = useState(false)
   const [defaultSystemPrompt, setDefaultSystemPrompt] = useState("")
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [prefilledImportFilePath, setPrefilledImportFilePath] = useState<string | null>(null)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -106,6 +107,20 @@ export function SettingsAgents() {
     tipcClient.getDefaultSystemPrompt().then(setDefaultSystemPrompt).catch(console.error)
   }, [])
   useEffect(() => { if (editing) { loadServers(); loadSkills(); loadAllTools() } }, [!!editing])
+
+  useEffect(() => {
+    const installBundlePath = searchParams.get("installBundle")
+    if (!installBundlePath) return
+
+    setEditing(null)
+    setIsCreating(false)
+    setPrefilledImportFilePath(installBundlePath)
+    setIsImportDialogOpen(true)
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete("installBundle")
+    setSearchParams(nextParams, { replace: true })
+  }, [searchParams, setSearchParams])
 
   // Handle URL-driven navigation: ?edit=<agentId> opens edit, ?view=list returns to list
   useEffect(() => {
@@ -414,11 +429,18 @@ export function SettingsAgents() {
     queryClient.invalidateQueries({ queryKey: ["config"] })
   }
 
+  const handleImportDialogOpenChange = (open: boolean) => {
+    setIsImportDialogOpen(open)
+    if (!open) {
+      setPrefilledImportFilePath(null)
+    }
+  }
+
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       {!editing && (
         <div className="flex items-center justify-end gap-2 mb-4">
-          <Button variant="outline" className="gap-2" onClick={() => setIsImportDialogOpen(true)}>
+          <Button variant="outline" className="gap-2" onClick={() => handleImportDialogOpenChange(true)}>
             <Upload className="h-4 w-4" />Import Bundle
           </Button>
           <Button variant="outline" className="gap-2" onClick={handleExportBundle}>
@@ -436,8 +458,13 @@ export function SettingsAgents() {
       {editing ? renderEditForm() : renderAgentList()}
       <BundleImportDialog
         open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
+        onOpenChange={handleImportDialogOpenChange}
         onImportComplete={handleImportComplete}
+        initialFilePath={prefilledImportFilePath || undefined}
+        title={prefilledImportFilePath ? "Install Hub Bundle" : undefined}
+        description={prefilledImportFilePath
+          ? "Preview and import the downloaded Hub .dotagents bundle using the existing conflict-aware flow."
+          : undefined}
       />
       <BundlePublishDialog
         open={isPublishDialogOpen}
