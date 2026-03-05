@@ -1605,11 +1605,13 @@ describe("generatePublishPayload", () => {
     fs.mkdirSync(path.join(layer.agentsDir, "skills"), { recursive: true })
     writeAgentsProfileFiles(layer, createTestProfile("agent-pub-1", "Publish Agent"))
     writeAgentsSkillFile(layer, createTestSkill("skill-pub-1", "Pub Skill"))
+    writeAgentsMemoryFile(layer, createTestMemory("memory-pub-1", "Publish Memory"))
+    writeTaskFile(layer, createTestTask("task-pub-1", "Publish Task"))
   })
 
   afterEach(() => cleanupDir(tempDir))
 
-  it("generates a valid publish payload with catalog metadata and bundle JSON", async () => {
+  it("defaults publish output to the public-safe component set", async () => {
     const result = await generatePublishPayload([tempDir], {
       name: "Test Publish Bundle",
       description: "A test bundle for publish",
@@ -1633,6 +1635,8 @@ describe("generatePublishPayload", () => {
     expect(result.catalogItem.updatedAt).toBeTruthy()
     expect(result.catalogItem.componentCounts.agentProfiles).toBe(1)
     expect(result.catalogItem.componentCounts.skills).toBe(1)
+    expect(result.catalogItem.componentCounts.repeatTasks).toBe(0)
+    expect(result.catalogItem.componentCounts.memories).toBe(0)
     expect(result.catalogItem.artifact.fileName).toBe("Test Publish Bundle.dotagents")
     expect(result.catalogItem.artifact.sizeBytes).toBeGreaterThan(0)
 
@@ -1642,6 +1646,32 @@ describe("generatePublishPayload", () => {
     expect(bundle.manifest.name).toBe("Test Publish Bundle")
     expect(bundle.agentProfiles).toHaveLength(1)
     expect(bundle.skills).toHaveLength(1)
+    expect(bundle.repeatTasks).toHaveLength(0)
+    expect(bundle.memories).toHaveLength(0)
+  })
+
+  it("includes opt-in repeat tasks and memories when explicitly selected", async () => {
+    const result = await generatePublishPayload([tempDir], {
+      name: "Opt In Bundle",
+      publicMetadata: {
+        summary: "With optional public content",
+        author: { displayName: "Test Author" },
+        tags: ["test"],
+      },
+      components: {
+        repeatTasks: true,
+        memories: true,
+      },
+    })
+
+    expect(result.catalogItem.componentCounts.repeatTasks).toBe(1)
+    expect(result.catalogItem.componentCounts.memories).toBe(1)
+
+    const bundle = JSON.parse(result.bundleJson)
+    expect(bundle.repeatTasks).toHaveLength(1)
+    expect(bundle.repeatTasks[0].id).toBe("task-pub-1")
+    expect(bundle.memories).toHaveLength(1)
+    expect(bundle.memories[0].id).toBe("memory-pub-1")
   })
 
   it("throws when summary is missing", async () => {

@@ -5,6 +5,7 @@ import {
 import { Button } from "@renderer/components/ui/button"
 import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
+import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Badge } from "@renderer/components/ui/badge"
 import { Loader2, Copy, Download, Globe, User, Tag, Info } from "lucide-react"
@@ -13,7 +14,21 @@ import { toast } from "sonner"
 
 interface PublishDialogProps { open: boolean; onOpenChange: (open: boolean) => void }
 interface PublishForm { name: string; description: string; summary: string; authorName: string; authorHandle: string; authorUrl: string; tags: string }
+interface PublishComponents { agentProfiles: boolean; mcpServers: boolean; skills: boolean; repeatTasks: boolean; memories: boolean }
 const EMPTY: PublishForm = { name: "", description: "", summary: "", authorName: "", authorHandle: "", authorUrl: "", tags: "" }
+const DEFAULT_PUBLISH_COMPONENTS: PublishComponents = { agentProfiles: true, mcpServers: true, skills: true, repeatTasks: false, memories: false }
+
+const COMPONENT_FIELDS: Array<{
+  key: keyof PublishComponents
+  label: string
+  description: string
+}> = [
+  { key: "agentProfiles", label: "Agents", description: "Agent definitions and their non-secret configuration." },
+  { key: "mcpServers", label: "MCP servers", description: "Server connections and non-secret settings with secrets stripped." },
+  { key: "skills", label: "Skills", description: "Skill instructions and metadata." },
+  { key: "repeatTasks", label: "Repeat tasks", description: "Scheduled task prompts and cadence. Public if enabled." },
+  { key: "memories", label: "Memories", description: "Memory content and notes. Public if enabled." },
+]
 
 function buildMeta(f: PublishForm) {
   return {
@@ -26,22 +41,32 @@ function buildMeta(f: PublishForm) {
 export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) {
   const [step, setStep] = useState<"metadata" | "preview">("metadata")
   const [form, setForm] = useState<PublishForm>({ ...EMPTY })
+  const [components, setComponents] = useState<PublishComponents>({ ...DEFAULT_PUBLISH_COMPONENTS })
   const [loading, setLoading] = useState(false)
   const [payloadJson, setPayloadJson] = useState("")
   const [bundleJson, setBundleJson] = useState("")
-  const close = (v: boolean) => { if (!v) { setStep("metadata"); setForm({ ...EMPTY }); setPayloadJson(""); setBundleJson("") }; onOpenChange(v) }
+  const close = (v: boolean) => {
+    if (!v) {
+      setStep("metadata")
+      setForm({ ...EMPTY })
+      setComponents({ ...DEFAULT_PUBLISH_COMPONENTS })
+      setPayloadJson("")
+      setBundleJson("")
+    }
+    onOpenChange(v)
+  }
   const ok = !!(form.name.trim() && form.summary.trim() && form.authorName.trim())
   const copy = async (t: string, l: string) => { try { await navigator.clipboard.writeText(t); toast.success(`${l} copied`) } catch { toast.error("Copy failed") } }
   const generate = async () => {
     setLoading(true)
     try {
-      const r = await tipcClient.generatePublishPayload({ name: form.name.trim(), description: form.description.trim() || undefined, publicMetadata: buildMeta(form) })
+      const r = await tipcClient.generatePublishPayload({ name: form.name.trim(), description: form.description.trim() || undefined, publicMetadata: buildMeta(form), components })
       setPayloadJson(JSON.stringify(r.catalogItem, null, 2)); setBundleJson(r.bundleJson); setStep("preview")
     } catch (e) { toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`) } finally { setLoading(false) }
   }
   const saveFile = async () => {
     try {
-      const r = await tipcClient.exportBundle({ name: form.name.trim(), description: form.description.trim() || undefined, publicMetadata: buildMeta(form) })
+      const r = await tipcClient.exportBundle({ name: form.name.trim(), description: form.description.trim() || undefined, publicMetadata: buildMeta(form), components })
       if (r.success) toast.success("Bundle saved"); else if (r.canceled) toast.message("Canceled"); else toast.error(r.error || "Failed")
     } catch (e) { toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`) }
   }
@@ -50,16 +75,17 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{step === "metadata" ? "Publish to Hub" : "Publish Payload Preview"}</DialogTitle>
-          <DialogDescription>{step === "metadata" ? "Enter metadata for your Hub listing. This information will be public." : "Review the generated payload. Copy metadata or save the bundle."}</DialogDescription>
+          <DialogDescription>{step === "metadata" ? "Choose what goes into the public artifact, then add listing metadata. Enabled content is public." : "Review the generated payload. The metadata and saved bundle match your selected public components."}</DialogDescription>
         </DialogHeader>
         {step === "metadata" ? (
           <>
             <div className="space-y-4 py-2">
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 flex gap-2">
                 <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-blue-700 dark:text-blue-300">Only agent configurations, skills, and non-secret settings are included. API keys and secrets are automatically stripped.</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">Anything enabled below becomes part of the public <code>.dotagents</code> artifact and publish handoff. Memories and repeat tasks are off by default. API keys and secrets are stripped automatically, but enabled content is still public.</p>
               </div>
               <Fields form={form} set={setForm} />
+              <ComponentSelection components={components} setComponents={setComponents} />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => close(false)}>Cancel</Button>
@@ -128,6 +154,34 @@ function Fields({ form, set }: { form: PublishForm; set: (f: PublishForm) => voi
       <div className="space-y-1.5">
         <Label htmlFor="pub-tags" className="flex items-center gap-1.5 text-sm font-medium"><Tag className="h-3.5 w-3.5" /> Tags</Label>
         <Input id="pub-tags" value={form.tags} onChange={e => set({ ...form, tags: e.target.value })} placeholder="coding, react, productivity (comma-separated)" />
+      </div>
+    </div>
+  )
+}
+
+function ComponentSelection(
+  { components, setComponents }: { components: PublishComponents; setComponents: (components: PublishComponents) => void }
+) {
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <div className="space-y-1">
+        <Label className="text-sm font-medium">Public artifact contents</Label>
+        <p className="text-xs text-muted-foreground">Choose which component groups are included in the shared artifact and handoff metadata.</p>
+      </div>
+      <div className="space-y-3">
+        {COMPONENT_FIELDS.map((field) => (
+          <div key={field.key} className="flex items-start justify-between gap-3 rounded-md border p-3">
+            <div className="space-y-1 pr-4">
+              <div className="text-sm font-medium">{field.label}</div>
+              <p className="text-xs text-muted-foreground">{field.description}</p>
+            </div>
+            <Switch
+              checked={components[field.key]}
+              onCheckedChange={(checked) => setComponents({ ...components, [field.key]: checked })}
+              aria-label={`Include ${field.label} in public bundle`}
+            />
+          </div>
+        ))}
       </div>
     </div>
   )

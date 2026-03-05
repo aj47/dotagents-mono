@@ -511,6 +511,14 @@ const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
   memories: true,
 }
 
+const DEFAULT_PUBLISH_COMPONENTS: Required<BundleComponentSelection> = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: false,
+  memories: false,
+}
+
 function loadSkillsForBundle(layer: AgentsLayerPaths, options?: { skillIds?: string[] }): BundleSkill[] {
   const skillsResult = loadAgentsSkillsLayer(layer)
   const selectedSkillIds = options?.skillIds?.length ? new Set(options.skillIds) : null
@@ -1556,9 +1564,17 @@ export async function generatePublishPayload(
     throw new Error("Publish payload requires author.displayName in publicMetadata")
   }
 
+  const publishOptions = {
+    ...options,
+    components: {
+      ...DEFAULT_PUBLISH_COMPONENTS,
+      ...options.components,
+    },
+  }
+
   const bundle = agentsDirs.length === 1
-    ? await exportBundle(agentsDirs[0], options)
-    : await exportBundleFromLayers(agentsDirs, options)
+    ? await exportBundle(agentsDirs[0], publishOptions)
+    : await exportBundleFromLayers(agentsDirs, publishOptions)
 
   const bundleJson = JSON.stringify(bundle, null, 2)
   const now = new Date().toISOString()
