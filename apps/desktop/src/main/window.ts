@@ -9,6 +9,7 @@ import path from "path"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { RendererHandlers } from "./renderer-handlers"
 import { logApp, logUI } from "./debug"
+import { ensureAppSwitcherPresence, showAndFocusMainWindow } from "./app-switcher"
 import { configStore } from "./config"
 import { getFocusedAppInfo } from "./keyboard"
 import { state, agentProcessManager, suppressPanelAutoShow, isHeadlessMode } from "./state"
@@ -270,10 +271,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
       )
 
       try {
-        app.setActivationPolicy("regular")
-        if (!app.dock?.isVisible?.()) {
-          app.dock?.show()
-        }
+        ensureAppSwitcherPresence("main.hide.recover")
       } catch {
         // best-effort recovery
       }
@@ -317,12 +315,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
           app.setActivationPolicy("accessory")
           app.dock.hide()
         } else {
-          // Defensive recovery: if activation policy drifted to accessory for any
-          // reason, restore regular policy so the app remains Cmd+Tab-able.
-          app.setActivationPolicy("regular")
-          if (!app.dock.isVisible()) {
-            app.dock.show()
-          }
+          ensureAppSwitcherPresence("main.close")
         }
         return
       }
@@ -378,7 +371,7 @@ export function showMainWindow(url?: string) {
   const win = WINDOWS.get("main")
 
   if (win) {
-    win.show()
+    showAndFocusMainWindow(win, "showMainWindow")
     if (url) {
       getRendererHandlers<RendererHandlers>(win.webContents).navigate.send(url)
     }
@@ -721,11 +714,13 @@ export function createPanelWindow(): BrowserWindow | undefined {
 
   win.on("hide", () => {
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
+    ensureAppSwitcherPresence("panel.hide")
   })
 
   // Reassert z-order on lifecycle changes and reset stale focus-hide flag
   win.on("show", () => {
     ensurePanelZOrder(win)
+    ensureAppSwitcherPresence("panel.show")
     // Clear the flag when panel becomes visible through any means.
     // This prevents stale state if user manually shows panel while main is focused.
     clearPanelHiddenByMainFocus()
