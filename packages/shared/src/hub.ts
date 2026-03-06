@@ -44,6 +44,12 @@ export interface HubPublishPayload {
   installUrl: string
 }
 
+export interface HubPublishSubmission {
+  source: "dotagents-desktop"
+  version: 1
+  payload: HubPublishPayload
+}
+
 export const DEFAULT_HUB_BASE_URL = "https://hub.dotagentsprotocol.com"
 
 export function slugifyHubCatalogId(value: string): string {

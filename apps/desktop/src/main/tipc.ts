@@ -4511,6 +4511,35 @@ export const router = {
       })
     }),
 
+  saveHubPublishPayloadFile: t.procedure
+    .input<{
+      catalogId: string
+      payloadJson: string
+    }>()
+    .action(async ({ input }) => {
+      const safeBaseName = (input.catalogId || "hub-publish")
+        .replace(/[^a-z0-9-_]+/gi, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        || "hub-publish"
+
+      const result = await dialog.showSaveDialog({
+        title: "Save Hub Publish Package",
+        defaultPath: `${safeBaseName}.hub-publish.json`,
+        filters: [
+          { name: "Hub Publish Package", extensions: ["json"] },
+          { name: "All Files", extensions: ["*"] },
+        ],
+      })
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true }
+      }
+
+      fs.writeFileSync(result.filePath, input.payloadJson, "utf-8")
+      return { success: true, canceled: false, filePath: result.filePath }
+    }),
+
   previewBundle: t.procedure.action(async () => {
     const { previewBundleFromDialog } = await import("./bundle-service")
     return previewBundleFromDialog()

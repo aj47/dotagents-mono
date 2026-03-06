@@ -8,15 +8,15 @@ import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Badge } from "@renderer/components/ui/badge"
-import { Loader2, Copy, Download, Globe, User, Tag, Info } from "lucide-react"
+import { Loader2, Copy, Download, Globe, User, Tag, Info, AlertTriangle, FileJson } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { buildHubBundleArtifactUrl, slugifyHubCatalogId } from "@dotagents/shared"
+import { buildHubBundleArtifactUrl, slugifyHubCatalogId, type HubPublishSubmission } from "@dotagents/shared"
 import { toast } from "sonner"
 
 interface PublishDialogProps { open: boolean; onOpenChange: (open: boolean) => void }
 interface PublishForm { name: string; catalogId: string; artifactUrl: string; description: string; summary: string; authorName: string; authorHandle: string; authorUrl: string; tags: string }
 interface PublishComponents { agentProfiles: boolean; mcpServers: boolean; skills: boolean; repeatTasks: boolean; memories: boolean }
-interface PublishPreviewState { payloadJson: string; bundleJson: string; installUrl: string }
+interface PublishPreviewState { payloadJson: string; bundleJson: string; installUrl: string; submissionJson: string; catalogId: string }
 const EMPTY: PublishForm = { name: "", catalogId: "", artifactUrl: "", description: "", summary: "", authorName: "", authorHandle: "", authorUrl: "", tags: "" }
 const DEFAULT_PUBLISH_COMPONENTS: PublishComponents = { agentProfiles: true, mcpServers: true, skills: true, repeatTasks: false, memories: false }
 
@@ -76,7 +76,18 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
         publicMetadata: buildMeta(form),
         components,
       })
-      setPreview({ payloadJson: JSON.stringify(r.catalogItem, null, 2), bundleJson: r.bundleJson, installUrl: r.installUrl }); setStep("preview")
+      const submission: HubPublishSubmission = {
+        source: "dotagents-desktop",
+        version: 1,
+        payload: r,
+      }
+      setPreview({
+        payloadJson: JSON.stringify(r.catalogItem, null, 2),
+        bundleJson: r.bundleJson,
+        installUrl: r.installUrl,
+        submissionJson: JSON.stringify(submission, null, 2),
+        catalogId: r.catalogItem.id,
+      }); setStep("preview")
     } catch (e) { toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`) } finally { setLoading(false) }
   }
   const saveFile = async () => {
@@ -85,12 +96,24 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
       if (r.success) toast.success("Bundle saved"); else if (r.canceled) toast.message("Canceled"); else toast.error(r.error || "Failed")
     } catch (e) { toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`) }
   }
+  const saveSubmissionFile = async () => {
+    if (!preview) return
+    try {
+      const r = await tipcClient.saveHubPublishPayloadFile({
+        catalogId: preview.catalogId,
+        payloadJson: preview.submissionJson,
+      })
+      if (r.success) toast.success("Hub publish package saved")
+      else if (r.canceled) toast.message("Canceled")
+      else toast.error("Failed to save Hub publish package")
+    } catch (e) { toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`) }
+  }
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{step === "metadata" ? "Publish to Hub" : "Publish Payload Preview"}</DialogTitle>
-          <DialogDescription>{step === "metadata" ? "Choose what goes into the public artifact, then add listing metadata. Enabled content is public." : "Review the generated payload, artifact URL, and install link. The metadata and saved bundle match your selected public components."}</DialogDescription>
+          <DialogDescription>{step === "metadata" ? "Choose what goes into the public artifact, then add listing metadata. Enabled content is public." : "Review the generated payload, artifact URL, install link, and submission package. Saving here prepares files for Hub submission but does not upload them yet."}</DialogDescription>
         </DialogHeader>
         {step === "metadata" ? (
           <>
@@ -98,6 +121,10 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 flex gap-2">
                 <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-xs text-blue-700 dark:text-blue-300">Anything enabled below becomes part of the public <code>.dotagents</code> artifact and publish handoff. Memories and repeat tasks are off by default. API keys and secrets are stripped automatically, but enabled content is still public. If you leave listing ID or artifact URL blank, DotAgents derives Hub-friendly defaults for you.</p>
+              </div>
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 flex gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">DotAgents does not upload to the Hub yet. This flow prepares a sanitized bundle and submission metadata. Before sharing the install link, make sure the final <code>.dotagents</code> file is actually hosted at the artifact URL you plan to publish.</p>
               </div>
               <Fields form={form} set={setForm} />
               <ComponentSelection components={components} setComponents={setComponents} />
@@ -111,6 +138,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
           <>
             <div className="space-y-4 py-2">
               <PreviewBadges json={preview?.payloadJson || ""} />
+              <SubmissionChecklist />
               <PreviewLinks json={preview?.payloadJson || ""} installUrl={preview?.installUrl || ""} onCopy={copy} />
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Catalog Metadata (JSON)</Label>
@@ -119,9 +147,17 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
                   <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-7 gap-1" onClick={() => copy(preview?.payloadJson || "", "Catalog metadata")}><Copy className="h-3.5 w-3.5" /> Copy</Button>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Hub Submission Package (JSON)</Label>
+                <div className="relative">
+                  <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-auto max-h-[220px] border">{preview?.submissionJson || ""}</pre>
+                  <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-7 gap-1" onClick={() => copy(preview?.submissionJson || "", "Submission package")}><Copy className="h-3.5 w-3.5" /> Copy</Button>
+                </div>
+              </div>
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setStep("metadata")}>← Back</Button>
+              <Button variant="outline" className="gap-2" onClick={saveSubmissionFile}><FileJson className="h-4 w-4" /> Save Hub Package</Button>
               <Button variant="outline" className="gap-2" onClick={() => copy(preview?.bundleJson || "", "Bundle JSON")}><Copy className="h-4 w-4" /> Copy Bundle</Button>
               <Button className="gap-2" onClick={saveFile}><Download className="h-4 w-4" /> Save .dotagents File</Button>
             </DialogFooter>
@@ -129,6 +165,22 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function SubmissionChecklist() {
+  return (
+    <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+      <div className="flex items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-100">
+        <AlertTriangle className="h-4 w-4" />
+        Before publishing to Hub
+      </div>
+      <ul className="list-disc pl-5 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+        <li>Save the <code>.dotagents</code> bundle and upload/host it at the artifact URL.</li>
+        <li>Use the Hub submission package JSON as the metadata handoff for the Hub workflow.</li>
+        <li>Test the desktop install link after the bundle is hosted.</li>
+      </ul>
+    </div>
   )
 }
 
