@@ -38,7 +38,7 @@ function ImportanceBadge({ importance }: { importance: AgentStepSummary["importa
   const { className, icon: Icon } = variants[importance]
   
   return (
-    <Badge className={cn("flex items-center gap-1 text-xs font-medium", className)}>
+    <Badge className={cn("inline-flex max-w-full items-center gap-1 text-xs font-medium capitalize", className)}>
       <Icon className="h-3 w-3" />
       {importance}
     </Badge>
@@ -98,45 +98,49 @@ function SummaryCard({
       )}
     >
       {/* Header */}
-      <div
-        className="flex items-start gap-3 p-3 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <button className="mt-1 text-muted-foreground hover:text-foreground">
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formattedTime}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Step {summary.stepNumber}
-            </span>
-            <ImportanceBadge importance={summary.importance} />
+      <div className="flex flex-wrap items-start gap-2.5 p-3">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-start gap-3 rounded-md text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+        >
+          <span className="mt-0.5 shrink-0 text-muted-foreground">
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 shrink-0" />
+                {formattedTime}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Step {summary.stepNumber}
+              </span>
+              <ImportanceBadge importance={summary.importance} />
+            </div>
+
+            <p className="line-clamp-2 text-sm font-medium leading-snug">{summary.actionSummary}</p>
+
+            {!isExpanded && summary.keyFindings.length > 0 && (
+              <p className="mt-1 break-words text-xs text-muted-foreground">
+                {summary.keyFindings.length} key finding{summary.keyFindings.length > 1 ? "s" : ""}
+              </p>
+            )}
           </div>
-          
-          <p className="text-sm font-medium line-clamp-2">{summary.actionSummary}</p>
-          
-          {!isExpanded && summary.keyFindings.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {summary.keyFindings.length} key finding{summary.keyFindings.length > 1 ? "s" : ""}
-            </p>
-          )}
-        </div>
-        
+        </button>
+
         {/* Save button */}
         <Button
           variant={isSaved ? "ghost" : "outline"}
           size="sm"
           className={cn(
-            "shrink-0 gap-2",
+            "ml-auto shrink-0 gap-1.5 self-start",
             isSaved && "text-green-600 dark:text-green-400"
           )}
           onClick={(e) => {
@@ -163,10 +167,10 @@ function SummaryCard({
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="px-3 pb-3 pt-0 ml-7 space-y-3 border-t">
+        <div className="ml-4 space-y-3 border-t border-border/80 pt-3 sm:ml-6">
           {/* Key Findings */}
           {summary.keyFindings.length > 0 && (
-            <div className="mt-3">
+            <div className="px-3">
               <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                 <Brain className="h-3 w-3" />
                 Key Findings
@@ -175,10 +179,10 @@ function SummaryCard({
                 {summary.keyFindings.map((finding, i) => (
                   <li
                     key={i}
-                    className="text-sm text-foreground/90 flex items-start gap-2"
+                    className="flex items-start gap-2 text-sm text-foreground/90"
                   >
-                    <span className="text-primary mt-1">•</span>
-                    {finding}
+                    <span className="mt-1 shrink-0 text-primary">•</span>
+                    <span className="min-w-0 flex-1 break-words">{finding}</span>
                   </li>
                 ))}
               </ul>
@@ -187,18 +191,18 @@ function SummaryCard({
 
           {/* Next Steps */}
           {summary.nextSteps && (
-            <div>
+            <div className="px-3">
               <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                 <FileText className="h-3 w-3" />
                 Next Steps
               </h4>
-              <p className="text-sm text-foreground/90">{summary.nextSteps}</p>
+              <p className="text-sm text-foreground/90 break-words">{summary.nextSteps}</p>
             </div>
           )}
 
           {/* Decisions Made */}
           {summary.decisionsMade && summary.decisionsMade.length > 0 && (
-            <div>
+            <div className="px-3">
               <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                 <CheckCircle className="h-3 w-3" />
                 Decisions Made
@@ -207,10 +211,10 @@ function SummaryCard({
                 {summary.decisionsMade.map((decision, i) => (
                   <li
                     key={i}
-                    className="text-sm text-foreground/90 flex items-start gap-2"
+                    className="flex items-start gap-2 text-sm text-foreground/90"
                   >
-                    <span className="text-green-500 mt-1">✓</span>
-                    {decision}
+                    <span className="mt-1 shrink-0 text-green-500">✓</span>
+                    <span className="min-w-0 flex-1 break-words">{decision}</span>
                   </li>
                 ))}
               </ul>
@@ -219,10 +223,10 @@ function SummaryCard({
 
           {/* Tags */}
           {summary.tags && summary.tags.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Tag className="h-3 w-3 text-muted-foreground" />
+            <div className="flex flex-wrap items-center gap-2 px-3">
+              <Tag className="h-3 w-3 shrink-0 text-muted-foreground" />
               {summary.tags.map((tag, i) => (
-                <Badge key={i} variant="secondary" className="text-xs">
+                <Badge key={i} variant="secondary" className="max-w-full text-xs break-all">
                   {tag}
                 </Badge>
               ))}
@@ -266,11 +270,16 @@ export function AgentSummaryView({
       {/* Important summaries highlight */}
       {(criticalSummaries.length > 0 || highSummaries.length > 0) && (
         <div className="rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 p-3">
-          <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Important Findings ({criticalSummaries.length + highSummaries.length})
-          </h3>
-          <p className="text-xs text-orange-700 dark:text-orange-300">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-orange-800 dark:text-orange-200">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="truncate">Important Findings</span>
+            </h3>
+            <Badge variant="secondary" className="h-5 shrink-0 bg-orange-100 px-1.5 text-[10px] text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
+              {criticalSummaries.length + highSummaries.length}
+            </Badge>
+          </div>
+          <p className="mt-1 break-words text-xs text-orange-700 dark:text-orange-300">
             {criticalSummaries.length > 0 && `${criticalSummaries.length} critical`}
             {criticalSummaries.length > 0 && highSummaries.length > 0 && ", "}
             {highSummaries.length > 0 && `${highSummaries.length} high importance`}
@@ -296,10 +305,10 @@ export function AgentSummaryView({
 
       {/* Latest summary highlight */}
       {latestSummary && progress && !progress.isComplete && (
-        <div className="sticky bottom-0 pt-2 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="sticky bottom-0 bg-gradient-to-t from-background via-background px-1 pt-2 to-transparent">
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
             <p className="text-xs font-medium text-primary mb-1">Latest Activity</p>
-            <p className="text-sm">{latestSummary.actionSummary}</p>
+            <p className="break-words text-sm leading-snug">{latestSummary.actionSummary}</p>
           </div>
         </div>
       )}

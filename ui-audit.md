@@ -1,5 +1,52 @@
 ## UI Audit Log
 
+### 2026-03-06 — Chunk 15: Sessions summary cards in narrow tiles / zoom
+
+- Area selected: desktop sessions summary tab cards inside `apps/desktop/src/renderer/src/components/agent-summary-view.tsx`
+- Why this chunk: chunk 14 explicitly left the sessions summary/markdown content as the next best follow-up. The highest-value remaining hotspot in the current code was the summary card chrome itself: toggle affordance, metadata row, save action, and the expanded detail gutter when a tile is near the sessions grid minimum width or text is zoomed.
+- Audit method:
+  - reviewed `apps/desktop/DEBUGGING.md`
+  - launched the desktop app with remote debugging enabled via `REMOTE_DEBUGGING_PORT=9353 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9359" pnpm dev -- -d`
+  - inspected the summary-tab call sites in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and the full summary-card implementation in `agent-summary-view.tsx`
+  - cross-checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/ui/MarkdownRenderer.tsx`; mobile renders chat markdown but does not have an equivalent step-summary card view, so no parallel mobile change was required for this chunk
+
+#### Findings
+
+- The summary cards still had a narrow-width / high-zoom pressure point in their header chrome:
+  - the card header packed the chevron affordance, metadata row, two-line action summary, and `Save` button into one non-wrapping row
+  - the toggle affordance was a separate tiny button inside a larger clickable header region, which made the interaction feel less polished than the rest of the sessions surface
+- The expanded summary content also gave up too much horizontal room inside tiles:
+  - the `ml-7` detail gutter was generous for wide layouts but expensive in a `200px`-class tile
+  - finding/decision bullets did not explicitly protect their markers from shrinking, and long text/tags relied on default wrapping rather than explicit width containment
+- The summary-specific highlight cards were also still a bit rigid for compressed widths:
+  - `Important Findings (...)` kept the count in the heading text instead of a compact badge
+  - `Latest Activity` did not explicitly protect long action text with a more forgiving wrapped treatment
+
+#### Changes made
+
+- Reworked `SummaryCard` header chrome in `agent-summary-view.tsx` so it behaves better at narrow widths and under zoom:
+  - replaced the loose clickable `div` + inner chevron button pattern with a single flexing toggle button region and a sibling save action
+  - added a wrapping outer header row plus `min-w-0 flex-1` on the toggle region
+  - let the metadata row wrap cleanly and kept the save action aligned with `ml-auto shrink-0`
+- Reduced summary detail density pressure without redesigning the component:
+  - trimmed the expanded gutter from the old `ml-7` treatment to a smaller responsive indent
+  - added explicit `break-words` / `min-w-0 flex-1` handling for long findings, decisions, next steps, and tags
+  - kept bullets/checkmarks `shrink-0` so markers stay visually stable at zoomed text sizes
+- Polished the summary-tab highlight cards:
+  - split the `Important Findings` count into a compact badge so the title wraps more gracefully
+  - made the descriptive copy and sticky `Latest Activity` content explicitly wrap/break words instead of relying on default flow
+- Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-summary-view.layout.test.ts` for the responsive/accessibility class contract.
+
+#### Verification
+
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.layout.test.ts`
+- Targeted web typecheck: `pnpm --filter @dotagents/desktop typecheck:web`
+
+#### Notes
+
+- Electron-native renderer automation again attached to the shell document instead of the hydrated React tree for this sessions surface, so this chunk combined the documented app startup path with direct inspection of the concrete summary-card implementation.
+- Best next UI audit chunk after this one: a similarly focused pass on `markdown-renderer.tsx` itself for long inline code/links, tables, and think-section density inside session messages at high zoom.
+
 ### 2026-03-06 — Chunk 14: Sessions tile expanded tool output blocks at narrow widths / zoom
 
 - Area selected: desktop sessions tile expanded tool detail/output blocks inside `apps/desktop/src/renderer/src/components/agent-progress.tsx`
