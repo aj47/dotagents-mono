@@ -1,5 +1,3 @@
-# Project — AGENTS.md
-
 ## UI Design Principles
 
 ### Progressive one-line summaries first
