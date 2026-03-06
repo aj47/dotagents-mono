@@ -239,11 +239,33 @@ export function AudioPlayer({
         ? "Audio unavailable"
         : "Generate audio"
 
+  const compactStatusLabel = hasAudio
+    ? duration > 0
+      ? isPlaying
+        ? "Playing audio"
+        : "Audio ready"
+      : "Loading audio…"
+    : isGenerating
+      ? "Generating audio…"
+      : error
+        ? "Audio unavailable"
+        : "Generate audio"
+
+  const compactStatusDetail = hasAudio
+    ? duration > 0
+      ? compactStatusText
+      : "Preparing playback controls"
+    : isGenerating
+      ? "Creating spoken playback"
+      : error
+        ? "See details below"
+        : "Tap play to listen"
+
   if (compact) {
     return (
       <div
         className={cn(
-          "flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5",
+          "flex min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5",
           className
         )}
       >
@@ -252,7 +274,7 @@ export function AudioPlayer({
           size="sm"
           onClick={handlePlayPause}
           disabled={isGenerating}
-          className="h-8 w-8 shrink-0 p-0"
+          className="mt-0.5 h-8 w-8 shrink-0 p-0"
           title={playPauseLabel}
           aria-label={playPauseLabel}
         >
@@ -264,15 +286,20 @@ export function AudioPlayer({
             <Play className="h-4 w-4" />
           )}
         </Button>
-        <span
-          className={cn(
-            "min-w-0 flex-1 text-xs text-muted-foreground",
-            hasAudio ? "font-mono tabular-nums" : "break-words"
-          )}
-          aria-live="polite"
-        >
-          {compactStatusText}
-        </span>
+        <div className="min-w-0 flex-1 space-y-0.5 text-left">
+          <div className="text-xs font-medium leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
+            {compactStatusLabel}
+          </div>
+          <div
+            className={cn(
+              "min-w-0 text-[11px] leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]",
+              hasAudio && duration > 0 && "font-mono tabular-nums"
+            )}
+            aria-live="polite"
+          >
+            {compactStatusDetail}
+          </div>
+        </div>
         <audio ref={audioRef} />
       </div>
     )

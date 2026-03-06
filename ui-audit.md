@@ -2,12 +2,15 @@
 
 ### 2026-03-06 — Chunk 20: Shared compact audio/TTS player chrome under narrow widths and zoom
 
-- Area selected: shared desktop `apps/desktop/src/renderer/src/components/audio-player.tsx`
+- Area selected:
+  - shared desktop `apps/desktop/src/renderer/src/components/audio-player.tsx`
+  - adjacent compact TTS/error call sites in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and `apps/desktop/src/renderer/src/components/session-tile.tsx`
 - Why this chunk: chunk 19 tightened the queue/retry status chrome surrounding compact session footers, which left the shared `AudioPlayer` itself as the next unclaimed pressure point. It is reused inside mid-turn responses, past-response history, and queue/retry flows, so any narrow-width weakness propagates across several sessions surfaces.
 - Audit method:
   - checked `ui-audit.md` first to avoid overlapping the already-started chunks 18 and 19
   - reused `apps/desktop/DEBUGGING.md` plus the repo design guidance/docs (`README.md`, `DEVELOPMENT.md`, `apps/desktop/src/renderer/src/AGENTS.md`) to keep the audit grounded in the Electron renderer constraints
   - inspected `audio-player.tsx` directly and cross-checked where it is embedded in compact session/message chrome
+  - tightened the adjacent desktop TTS/error wrappers in `agent-progress.tsx` and `session-tile.tsx` so the shared player changes were reflected at the call sites too
   - compared it against the adjacent queue/retry and response-history fixes already logged to keep the treatment consistent
 
 #### Findings
@@ -17,6 +20,7 @@
   - compact mode showed no wrap-safe status copy before audio existed, which made the control feel icon-only and harder to parse in dense session footers
   - the full-size variant still used a rigid single-row control layout, so the scrubber/timestamps and mute/volume controls had limited room to reflow when width or zoom tightened
   - the control buttons/sliders lacked explicit accessibility labels, which is a quality issue on top of the visual polish pass
+  - the compact error banners beside assistant-message/session-tile playback controls still assumed short provider errors and did not consistently opt into `min-w-0` containment
 
 #### Changes made
 
@@ -30,11 +34,14 @@
   - kept the primary play button `shrink-0`, the scrubber column `min-w-0 flex-1`, and the volume row bounded with `min-w-0 max-w-full`
   - switched the timestamp row to a wrap-safe layout and widened the volume slider into a bounded flexible control instead of a tiny fixed-width strip
   - added explicit `aria-label` / `title` text for play/pause, mute/unmute, position, and volume controls
-- Added `apps/desktop/src/renderer/src/components/audio-player.layout.test.ts` so this shared component now has direct regression coverage for the compact/full layout contract instead of relying only on downstream session tests.
+- Tightened the desktop TTS call sites in `agent-progress.tsx` and `session-tile.tsx`:
+  - changed the playback/error wrapper to `min-w-0 space-y-1`
+  - updated the red error banners to `break-words` / `overflow-wrap:anywhere` so long provider/network failures stay inside the tile/message width
+- Added `apps/desktop/src/renderer/src/components/audio-player.layout.test.ts` and extended `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` so this shared component and its downstream compact error chrome now have direct regression coverage.
 
 #### Verification
 
-- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts`
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts src/renderer/src/components/agent-progress.tile-layout.test.ts`
 - Targeted web typecheck: `pnpm --filter @dotagents/desktop typecheck:web`
 
 #### Notes

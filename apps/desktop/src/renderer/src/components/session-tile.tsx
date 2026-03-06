@@ -566,7 +566,7 @@ export function SessionTile({
                     </div>
                     {/* TTS Audio Player for last assistant message */}
                     {isLastAssistant && shouldShowTTS && (
-                      <div className="mt-2">
+                      <div className="mt-2 min-w-0 space-y-1">
                         <AudioPlayer
                           audioData={audioData || undefined}
                           text={lastAssistantContent}
@@ -578,7 +578,7 @@ export function SessionTile({
                           onPlayStateChange={setIsTTSPlaying}
                         />
                         {ttsError && (
-                          <div className="mt-1 rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300">
+                          <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
                             <span className="font-medium">Audio generation failed:</span> {ttsError}
                           </div>
                         )}

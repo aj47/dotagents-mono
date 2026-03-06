@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest"
 const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.meta.url), "utf8")
 const acpSessionBadgeSource = readFileSync(new URL("./acp-session-badge.tsx", import.meta.url), "utf8")
 const messageQueuePanelSource = readFileSync(new URL("./message-queue-panel.tsx", import.meta.url), "utf8")
+const audioPlayerSource = readFileSync(new URL("./audio-player.tsx", import.meta.url), "utf8")
+const sessionTileSource = readFileSync(new URL("./session-tile.tsx", import.meta.url), "utf8")
 
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
@@ -165,6 +167,30 @@ describe("agent progress tile layout", () => {
     )
     expect(messageQueuePanelSource).toContain(
       '"ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity"'
+    )
+  })
+
+  it("keeps shared audio player and compact TTS errors readable under width pressure", () => {
+    expect(audioPlayerSource).toContain('const compactStatusText = hasAudio')
+    expect(audioPlayerSource).toContain(
+      '"flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5"'
+    )
+    expect(audioPlayerSource).toContain('className="h-8 w-8 shrink-0 p-0"')
+    expect(audioPlayerSource).toContain(
+      'className={cn("min-w-0 max-w-full space-y-2 rounded-lg bg-muted/50 p-3", className)}'
+    )
+    expect(audioPlayerSource).toContain('className="flex flex-wrap items-center gap-3"')
+    expect(audioPlayerSource).toContain('className="min-w-0 flex-1 space-y-1"')
+    expect(audioPlayerSource).toContain('className="ml-auto flex min-w-0 max-w-full items-center gap-2"')
+    expect(audioPlayerSource).toContain('aria-label="Audio position"')
+    expect(audioPlayerSource).toContain('aria-label="Audio volume"')
+    expect(agentProgressSource).toContain('className="mt-2 min-w-0 space-y-1"')
+    expect(agentProgressSource).toContain(
+      'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
+    )
+    expect(sessionTileSource).toContain('className="mt-2 min-w-0 space-y-1"')
+    expect(sessionTileSource).toContain(
+      'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
     )
   })
 })
