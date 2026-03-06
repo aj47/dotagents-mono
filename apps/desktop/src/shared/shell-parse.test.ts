@@ -46,6 +46,30 @@ describe('parseShellCommand', () => {
     })
   })
 
+  it('should preserve empty quoted arguments', () => {
+    const result = parseShellCommand('cmd "" tail')
+    expect(result).toEqual({
+      command: 'cmd',
+      args: ['', 'tail']
+    })
+  })
+
+  it('should treat tabs as argument separators outside quotes', () => {
+    const result = parseShellCommand('cmd\targ1\t"arg\t2"')
+    expect(result).toEqual({
+      command: 'cmd',
+      args: ['arg1', 'arg\t2']
+    })
+  })
+
+  it('should preserve trailing backslashes inside double quotes', () => {
+    const result = parseShellCommand('echo "C:\\temp\\\\"')
+    expect(result).toEqual({
+      command: 'echo',
+      args: ['C:\\temp\\']
+    })
+  })
+
   it('should handle multiple spaces between arguments', () => {
     const result = parseShellCommand('cmd   arg1    arg2')
     expect(result).toEqual({

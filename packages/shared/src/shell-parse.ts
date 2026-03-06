@@ -13,6 +13,7 @@ export function parseShellCommand(commandString: string): { command: string; arg
   let inSingleQuote = false;
   let inDoubleQuote = false;
   let escaped = false;
+  let tokenStarted = false;
 
   for (let i = 0; i < trimmed.length; i++) {
     const char = trimmed[i];
@@ -24,36 +25,47 @@ export function parseShellCommand(commandString: string): { command: string; arg
         current += "\\" + char;
       }
       escaped = false;
+      tokenStarted = true;
       continue;
     }
 
     if (char === "\\" && inDoubleQuote) {
       escaped = true;
+      tokenStarted = true;
       continue;
     }
 
     if (char === "'" && !inDoubleQuote) {
       inSingleQuote = !inSingleQuote;
+      tokenStarted = true;
       continue;
     }
 
     if (char === '"' && !inSingleQuote) {
       inDoubleQuote = !inDoubleQuote;
+      tokenStarted = true;
       continue;
     }
 
-    if (char === " " && !inSingleQuote && !inDoubleQuote) {
-      if (current) {
+    if (/\s/.test(char) && !inSingleQuote && !inDoubleQuote) {
+      if (tokenStarted) {
         parts.push(current);
         current = "";
+        tokenStarted = false;
       }
       continue;
     }
 
     current += char;
+    tokenStarted = true;
   }
 
-  if (current) {
+  if (escaped) {
+    current += "\\";
+    tokenStarted = true;
+  }
+
+  if (tokenStarted) {
     parts.push(current);
   }
 
