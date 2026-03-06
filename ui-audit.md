@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-03-06 — chunk 7: settings-agents badge floor + setup + panel (panel all clear)
+
+### Sources consulted
+- `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+- `apps/desktop/src/renderer/src/pages/setup.tsx`
+- `apps/desktop/src/renderer/src/pages/panel.tsx`
+
+### Issues found
+
+**settings-agents.tsx — agent card micro-badge cluster**
+- Lines 487–501 (`renderAgentList()`): every agent card showed 4–7 micro-badges (Built-in, Default, Disabled, connection type, model provider, server count, skill count, property count) all at `text-[9px]`.
+- `text-[9px]` is an absolute pixel value — it does not respond to browser font-scale changes. At 100% zoom it renders at exactly 9 CSS pixels, making it extremely difficult to read.
+- The badges also have varying heights (`h-3.5` and `h-4`) with the same absolute text, causing slight visual misalignment in the badge cluster.
+- This matches the same pattern fixed in `agent-capabilities-sidebar.tsx` (chunk 5).
+
+**setup.tsx — no issues**
+- Simple two-item permission wizard. `max-w-screen-md` grid, `flex items-center justify-center` centering, `-mt-20` offset for visual balance. Well-structured; no overflow or font issues.
+
+**panel.tsx — no issues**
+- Uses `PanelResizeWrapper` with dynamic min heights (WAVEFORM_MIN_HEIGHT=150, PROGRESS_MIN_HEIGHT=200, TEXT_INPUT_MIN_HEIGHT=160). The waveform bar count is derived from the measured container width via ResizeObserver, making the visualizer fully responsive. Agent name and continue-conversation title both use `truncate` with explicit `max-w` constraints. Transcription preview uses `line-clamp-2`. No overflow or sizing issues found.
+
+### Changes made
+
+**settings-agents.tsx**
+- Changed all `text-[9px]` → `text-[10px]` on the eight micro-badge types in `renderAgentList()`: Built-in, Default, Disabled, connection type, model provider ID, server count, skill count, and property count badges.
+
+### Verified not broken
+- TypeScript typecheck: `pnpm --filter @dotagents/desktop typecheck` → exit 0.
+
+### Follow-up areas for next chunk
+- Do a final global grep for remaining `text-[9px]` across the entire renderer src to find any last stragglers missed so far.
+- Audit `settings-mcp-tools.tsx` and `settings-capabilities.tsx` for overflow and font issues — not yet fully reviewed.
+- Review `multi-agent-progress-view.tsx` for layout in panel overlay mode when many sessions are running.
+
+
+
+---
+
 ## 2026-03-06 — chunk 6: bundle dialogs + settings-loops + mobile cross-check (all clear)
 
 ### Sources consulted

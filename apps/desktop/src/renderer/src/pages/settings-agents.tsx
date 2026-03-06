@@ -484,21 +484,21 @@ export function SettingsAgents() {
             </CardHeader>
             <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
               <div className="flex gap-1 flex-wrap mb-2.5">
-                {agent.isBuiltIn && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
-                {agent.isDefault && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
-                {!agent.enabled && <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
-                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted/30 font-normal">{agent.connection.type}</Badge>
+                {agent.isBuiltIn && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
+                {agent.isDefault && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
+                {!agent.enabled && <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
+                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal">{agent.connection.type}</Badge>
                 {agent.modelConfig?.mcpToolsProviderId && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 truncate max-w-[80px] bg-muted/30 font-normal" title={agent.modelConfig.mcpToolsProviderId}>{agent.modelConfig.mcpToolsProviderId}</Badge>
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 truncate max-w-[80px] bg-muted/30 font-normal" title={agent.modelConfig.mcpToolsProviderId}>{agent.modelConfig.mcpToolsProviderId}</Badge>
                 )}
                 {(agent.toolConfig?.enabledServers?.length ?? 0) > 0 && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted/30 font-normal"><Server className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />{agent.toolConfig!.enabledServers!.length}</Badge>
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal"><Server className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />{agent.toolConfig!.enabledServers!.length}</Badge>
                 )}
                 {skills.length > 0 && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted/30 font-normal"><Sparkles className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />{(!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault) ? skills.length : (agent.skillsConfig.enabledSkillIds?.length ?? 0)}</Badge>
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal"><Sparkles className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />{(!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault) ? skills.length : (agent.skillsConfig.enabledSkillIds?.length ?? 0)}</Badge>
                 )}
                 {agent.properties && Object.keys(agent.properties).length > 0 && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted/30 font-normal">{Object.keys(agent.properties).length} props</Badge>
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal">{Object.keys(agent.properties).length} props</Badge>
                 )}
               </div>
               <div className="flex items-center gap-1 pt-2 border-t mt-auto">
