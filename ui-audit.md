@@ -1,5 +1,49 @@
 ## UI Audit Log
 
+### 2026-03-06 — Chunk 24: Mobile Settings desktop-management list rows under narrow widths and larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/SettingsScreen.tsx`
+- Why this chunk: chunk 23 fixed the visible top-level mobile Settings controls and explicitly called out the deeper desktop-settings management lists as the next strongest unlogged pressure point. Those rows (profiles / MCP servers / skills / memories / agents / loops) all share the same dense title/meta/action treatment, so one conservative pass could improve several related sub-sections at once.
+- Audit method:
+  - re-read `ui-audit.md` first to keep the work unique
+  - inspected the desktop-settings list sections in `SettingsScreen.tsx` directly (`Profile & Model`, `MCP Servers`, `Skills`, `Memories`, `Agents`, `Agent Loops`)
+  - attempted a live mobile web inspection again via `pnpm --filter @dotagents/mobile web`; the deeper desktop-management lists were still not reachable in the current app state, so the concrete fixes were driven by code inspection of the shared row styles
+  - after the code change, re-ran a live regression check on the visible top-level Settings screen to ensure the shared style updates did not introduce new overflow/clipping
+
+#### Findings
+
+- The management-list rows still had several width/zoom assumptions even after the top-level Settings pass:
+  - profile rows kept the name/default marker and checkmark in a rigid one-line row, so long profile names could crowd the checkmark
+  - the profile import/export buttons assumed two equal inline buttons with no wrap escape hatch, which would be fragile once labels changed to `Importing...` / `Exporting...` or text scaling increased
+  - the shared `serverRow` / `serverInfo` / `serverNameRow` / `agentActions` styles assumed one-line titles plus fixed inline action space, which affects MCP servers, skills, memories, agents, and loops together
+  - agent descriptions and loop metadata were more aggressively truncated than necessary for a mobile settings surface that already allows variable-height rows
+
+#### Changes made
+
+- Hardened profile management rows in `SettingsScreen.tsx`:
+  - made `profileItem` top-align and gap its content instead of assuming a single-line name/checkmark row
+  - made `profileName` shrink-safe with a two-line cap
+  - made the import/export action row wrap-aware, with buttons that keep a consistent tap height and stack cleanly when width gets tight
+- Refined the shared management-list row contract used across desktop-settings sections:
+  - made `serverRow` wrap-safe and top-aligned instead of relying on `justifyContent: 'space-between'`
+  - added `minWidth: 0` / `flexShrink` treatment to the shared info/title text styles so long names and badges can wrap without pushing actions out of bounds
+  - let the agent action cluster stay fixed-width while the text column yields first
+  - widened the agent description and loop metadata to two lines so these rows degrade more gracefully on mobile
+- Minor follow-up from the regression pass: tightened `themeOptionText` slightly so the visible top-level `Appearance` control stays more balanced at ~280px while remaining overflow-safe.
+
+#### Verification
+
+- Targeted mobile typecheck: `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+- Live mobile web regression checks at `http://localhost:8081` after `pnpm --filter @dotagents/mobile web`:
+  - confirmed the deeper desktop-management lists are not reachable in the current app state
+  - re-checked the visible top-level Settings screen around `320px` and `280px` widths to confirm the shared style changes did not introduce horizontal overflow or clipping
+
+#### Notes
+
+- Because the affected management-list sections were not reachable live in the current state, this chunk is primarily a code-inspection-driven hardening pass rather than a full visual runtime audit.
+- Best next UI audit chunk after this one: the mobile nested settings/editor screens (`ConnectionSettingsScreen`, `AgentEditScreen`, `MemoryEditScreen`, `LoopEditScreen`) are still unlogged and now stand out as the next best mobile surfaces to inspect directly.
+
 ### 2026-03-06 — Chunk 23: Mobile Settings top-level controls at narrow widths and larger text
 
 - Area selected:

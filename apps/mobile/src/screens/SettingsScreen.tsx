@@ -1246,7 +1246,7 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={[
                             styles.profileName,
                             currentProfileId === profile.id && styles.profileNameActive,
-                          ]}>
+                          ]} numberOfLines={2}>
                             {profile.name}
                             {profile.isDefault && ' (Default)'}
                           </Text>
@@ -2149,7 +2149,7 @@ export default function SettingsScreen({ navigation }: any) {
                             {profile.connectionType} • {profile.role || 'agent'}
                           </Text>
                           {profile.description && (
-                            <Text style={styles.serverMeta} numberOfLines={1}>{profile.description}</Text>
+                            <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
                           )}
                         </View>
                       </TouchableOpacity>
@@ -2209,7 +2209,7 @@ export default function SettingsScreen({ navigation }: any) {
                             <Text style={styles.serverName}>{loop.name}</Text>
                           </View>
                           <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
-                          <Text style={styles.serverMeta}>
+                          <Text style={styles.serverMeta} numberOfLines={2}>
                             Every {loop.intervalMinutes}min
                             {loop.profileName && ` • ${loop.profileName}`}
                             {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
@@ -2709,7 +2709,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.primary,
     },
     themeOptionText: {
-      fontSize: 14,
+      fontSize: 13,
+      lineHeight: 16,
       color: theme.colors.foreground,
       textAlign: 'center',
     },
@@ -2805,8 +2806,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     profileItem: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      justifyContent: 'flex-start',
+      gap: spacing.sm,
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
       borderRadius: radius.md,
@@ -2821,6 +2823,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     profileName: {
       fontSize: 14,
       color: theme.colors.foreground,
+      flex: 1,
+      flexShrink: 1,
+      lineHeight: 18,
     },
     profileNameActive: {
       fontWeight: '600',
@@ -2830,14 +2835,18 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primary,
       fontSize: 16,
       fontWeight: '600',
+      flexShrink: 0,
+      marginTop: 1,
     },
     profileActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: spacing.sm,
       marginTop: spacing.sm,
     },
     profileActionButton: {
-      flex: 1,
+      flexBasis: 132,
+      flexGrow: 1,
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.md,
       borderRadius: radius.md,
@@ -2845,6 +2854,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
       alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+      minWidth: 132,
     },
     profileActionButtonDisabled: {
       opacity: 0.5,
@@ -2853,6 +2865,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.foreground,
       fontWeight: '500',
+      textAlign: 'center',
     },
     importModalOverlay: {
       flex: 1,
@@ -2937,35 +2950,43 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     serverRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      justifyContent: 'flex-start',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
       paddingVertical: spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
     serverInfo: {
       flex: 1,
-      marginRight: spacing.md,
+      minWidth: 0,
     },
     serverNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
       gap: spacing.xs,
     },
     serverName: {
       fontSize: 14,
       fontWeight: '500',
       color: theme.colors.foreground,
+      flexShrink: 1,
+      lineHeight: 18,
     },
     serverMeta: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: 2,
+      lineHeight: 16,
     },
     statusDot: {
       width: 8,
       height: 8,
       borderRadius: 4,
+      flexShrink: 0,
+      marginTop: 4,
     },
     statusConnected: {
       backgroundColor: '#22c55e', // green-500
@@ -2976,11 +2997,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     // Agent management styles
     agentInfoPressable: {
       flex: 1,
+      minWidth: 0,
     },
     agentActions: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
     },
     agentDeleteButton: {
       padding: spacing.xs,
