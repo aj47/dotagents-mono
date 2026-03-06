@@ -7,6 +7,7 @@
 ```bash
 # Pick any free port. It does NOT need to be 9222.
 # (Different worktrees may already be using common ports.)
+# Optional check: lsof -nP -iTCP:9333 -sTCP:LISTEN
 REMOTE_DEBUGGING_PORT=9333 pnpm dev -- -d
 ```
 
@@ -64,13 +65,19 @@ REMOTE_DEBUGGING_PORT=9222 pnpm dev -- -d
 - Set via `REMOTE_DEBUGGING_PORT` env var (handled in `src/main/index.ts` via `app.commandLine.appendSwitch`)
 - **Do NOT** pass as CLI arg (`pnpm dev -- --remote-debugging-port=9222` will NOT work)
 - Connect with: Chrome → `chrome://inspect` → Configure → add `localhost:9222` → inspect
-- Shows renderer windows (settings page, panel) in Chrome DevTools
+- Shows renderer windows (main app, panel, settings) in Chrome DevTools
 - `http://localhost:9222/json/version` returns browser info
-- `http://localhost:9222/json/list` may return `[]` — this is normal for Electron; use `chrome://inspect` instead
+- `http://localhost:9222/json/list` may show multiple renderer targets (commonly `/` and `/panel`)
+- If you want the main app, inspect the `/` target — the panel target is easy to attach to by mistake
 
-> ⚠️ This protocol does **not** expose page-level targets via `/json/list` in Electron.
-> The `electron_execute_electron-native` tool will report "No Electron targets found" with this protocol.
+> ⚠️ `electron_execute_electron-native` still needs `--inspect`; renderer remote debugging alone is not enough.
 > Use `--inspect` for programmatic automation.
+
+### Practical gotchas
+
+- Use non-default ports when needed; Chrome often already owns common debug ports.
+- If Electron-native attaches to the panel or an empty renderer, reset/reconnect and inspect the `/` target instead.
+- Even on the correct renderer, `window.electron` may be unavailable from some automation contexts because of isolated worlds. If that happens, verify IPC from the inspected page's DevTools console instead of assuming the preload bridge is directly visible.
 
 ### Summary
 

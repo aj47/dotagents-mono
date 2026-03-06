@@ -222,4 +222,106 @@ describe("acp-main-agent", () => {
       ]),
     )
   })
+
+  it("emits userResponse history for ACP respond_to_user calls and prefers it as the final response", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-r1",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "First response" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-r2",
+          title: "Tool: respond_to_user",
+          status: "completed",
+          rawInput: { text: "Final user-facing answer" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "Internal trailing completion text" }
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result.response).toBe("Final user-facing answer")
+
+    const lastStreamingUpdate = [...updates].reverse().find((update) => update.isComplete === false)
+    expect(lastStreamingUpdate).toEqual(expect.objectContaining({
+      userResponse: "Final user-facing answer",
+      userResponseHistory: ["First response"],
+    }))
+
+    const completedUpdate = updates.at(-1)
+    expect(completedUpdate).toEqual(expect.objectContaining({
+      isComplete: true,
+      finalContent: "Final user-facing answer",
+      userResponse: "Final user-facing answer",
+      userResponseHistory: ["First response"],
+    }))
+  })
+
+  it("recognizes humanized ACP respond-to-user tool titles for userResponse rendering", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-humanized-response",
+          title: "Tool: Respond to User",
+          status: "completed",
+          rawInput: { text: "Rendered from humanized tool title" },
+          rawOutput: { success: true },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "Internal fallback" }
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result.response).toBe("Rendered from humanized tool title")
+
+    const completedUpdate = updates.at(-1)
+    expect(completedUpdate).toEqual(expect.objectContaining({
+      userResponse: "Rendered from humanized tool title",
+      finalContent: "Rendered from humanized tool title",
+    }))
+
+    expect(completedUpdate?.conversationHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "assistant",
+          toolCalls: [expect.objectContaining({ name: "respond_to_user" })],
+        }),
+      ]),
+    )
+  })
 })
