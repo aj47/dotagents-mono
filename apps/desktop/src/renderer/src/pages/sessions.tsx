@@ -63,7 +63,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
   const totalCount = conversationHistoryQuery.data?.length ?? 0
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
+    <div className="flex flex-col items-center justify-center px-6 py-8 text-center">
       <div className="rounded-full bg-muted p-4 mb-4">
         <MessageCircle className="h-8 w-8 text-muted-foreground" />
       </div>
@@ -71,12 +71,12 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
       <p className="text-muted-foreground mb-6 max-w-md">
         Start a new agent session using text or voice input. Your sessions will appear here as tiles.
       </p>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4 w-full max-w-lg">
         <AgentSelector
           selectedAgentId={selectedAgentId}
           onSelectAgent={onSelectAgent}
         />
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-2 items-center justify-center">
           <Button onClick={onTextClick} className="gap-2">
             <Plus className="h-4 w-4" />
             Start with Text
@@ -89,24 +89,24 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
             onSelectPrompt={onSelectPrompt}
           />
         </div>
-        {/* Keybind hints - hidden on narrow screens */}
-        <div className="hidden md:flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Keyboard className="h-4 w-4" />
+        {/* Keybind hints - visible on all screens, wraps on narrow */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Keyboard className="h-3.5 w-3.5 shrink-0" />
             <span>Text:</span>
-            <kbd className="px-2 py-0.5 text-xs font-semibold bg-muted border rounded">
+            <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
               {textInputShortcut}
             </kbd>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span>Voice:</span>
-            <kbd className="px-2 py-0.5 text-xs font-semibold bg-muted border rounded">
+            <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
               {voiceInputShortcut}
             </kbd>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span>Dictation:</span>
-            <kbd className="px-2 py-0.5 text-xs font-semibold bg-muted border rounded">
+            <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
               {dictationShortcut}
             </kbd>
           </div>
@@ -115,7 +115,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
       {/* Recent past sessions */}
       {recentSessions.length > 0 && (
-        <div className="mt-8 w-full max-w-md text-left">
+        <div className="mt-8 w-full max-w-lg text-left">
           <div className="flex items-center justify-between mb-2 px-1">
             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
@@ -700,37 +700,37 @@ export function Component() {
       {/* Header with start buttons - outside the scroll area so its height is excluded
           when SessionGrid measures the parent to size tiles. */}
       {hasSessions && (
-        <div className="flex-shrink-0 px-4 py-2 flex items-center justify-between bg-muted/20 border-b">
-          <div className="flex gap-2 items-center">
+        <div className="flex-shrink-0 px-3 py-2 flex flex-wrap items-center gap-2 bg-muted/20 border-b">
+          <div className="flex flex-wrap gap-1.5 items-center min-w-0 flex-1">
             <AgentSelector
               selectedAgentId={selectedAgentId}
               onSelectAgent={setSelectedAgentId}
               compact
             />
-            <Button size="sm" onClick={handleTextClick} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Start with Text
+            <Button size="sm" onClick={handleTextClick} className="gap-1.5">
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Start with Text</span>
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleVoiceStart} className="gap-2">
-              <Mic className="h-4 w-4" />
-              Start with Voice
+            <Button variant="secondary" size="sm" onClick={handleVoiceStart} className="gap-1.5">
+              <Mic className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Start with Voice</span>
             </Button>
             <PredefinedPromptsMenu
               onSelectPrompt={handleSelectPrompt}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {/* Past sessions button */}
             {onOpenPastSessionsDialog && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onOpenPastSessionsDialog}
-                className="gap-2 text-muted-foreground hover:text-foreground"
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
                 title="Past Sessions"
               >
-                <Clock className="h-4 w-4" />
-                Past Sessions
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline">Past Sessions</span>
               </Button>
             )}
             {/* Cycle tile layout mode button */}

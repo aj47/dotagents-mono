@@ -174,8 +174,8 @@ export function Component() {
   }, [saveConfigAsync, navigate])
 
   return (
-    <div className="app-drag-region flex h-dvh items-center justify-center p-10">
-      <div className="w-full max-w-2xl -mt-10">
+    <div className="app-drag-region flex h-dvh overflow-y-auto">
+      <div className="w-full max-w-2xl mx-auto my-auto px-6 py-10">
         {step === "welcome" && (
           <WelcomeStep onNext={() => setStep("api-key")} onSkip={handleSkipOnboarding} />
         )}
