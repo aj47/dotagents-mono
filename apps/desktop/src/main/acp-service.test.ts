@@ -375,6 +375,90 @@ describe("ACP Service", () => {
     })
   })
 
+  describe("getOrCreateSession", () => {
+    it("restarts a ready agent when configured cwd changes before creating a new session", async () => {
+      const workspaceDir = mkdtempSync(join(tmpdir(), "acp-workspace-"))
+      const firstDir = "repo/feature-a"
+      const secondDir = "repo/feature-b"
+      const expectedFirstCwd = join(workspaceDir, firstDir)
+      const expectedSecondCwd = join(workspaceDir, secondDir)
+      mkdirSync(expectedFirstCwd, { recursive: true })
+      mkdirSync(expectedSecondCwd, { recursive: true })
+
+      process.env.DOTAGENTS_WORKSPACE_DIR = workspaceDir
+      ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = firstDir
+
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = secondDir
+
+      const stopSpy = vi.spyOn(acpService, "stopAgent").mockResolvedValue()
+      vi.spyOn(acpService as any, "initializeAgent").mockResolvedValue(undefined)
+      vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-updated-cwd")
+
+      const sessionId = await acpService.getOrCreateSession("test-agent", true)
+
+      expect(sessionId).toBe("session-updated-cwd")
+      expect(stopSpy).toHaveBeenCalledWith("test-agent")
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        2,
+        "test-command",
+        ["--test"],
+        expect.objectContaining({ cwd: expectedSecondCwd })
+      )
+
+      rmSync(workspaceDir, { recursive: true, force: true })
+    })
+  })
+
+  describe("runTask", () => {
+    it("restarts a ready agent when configured cwd changes before forcing a new session", async () => {
+      const workspaceDir = mkdtempSync(join(tmpdir(), "acp-workspace-"))
+      const firstDir = "repo/feature-a"
+      const secondDir = "repo/feature-b"
+      const expectedFirstCwd = join(workspaceDir, firstDir)
+      const expectedSecondCwd = join(workspaceDir, secondDir)
+      mkdirSync(expectedFirstCwd, { recursive: true })
+      mkdirSync(expectedSecondCwd, { recursive: true })
+
+      process.env.DOTAGENTS_WORKSPACE_DIR = workspaceDir
+      ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = firstDir
+
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = secondDir
+
+      const stopSpy = vi.spyOn(acpService, "stopAgent").mockResolvedValue()
+      vi.spyOn(acpService as any, "initializeAgent").mockResolvedValue(undefined)
+      vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-updated-cwd")
+      vi.spyOn(acpService as any, "sendRequest").mockResolvedValue({
+        content: [{ type: "text", text: "done" }],
+      })
+
+      const result = await acpService.runTask({
+        agentName: "test-agent",
+        input: "hello",
+        forceNewSession: true,
+      })
+
+      expect(result).toEqual(expect.objectContaining({
+        success: true,
+        result: "done",
+      }))
+      expect(stopSpy).toHaveBeenCalledWith("test-agent")
+      expect(mockSpawn).toHaveBeenNthCalledWith(
+        2,
+        "test-command",
+        ["--test"],
+        expect.objectContaining({ cwd: expectedSecondCwd })
+      )
+
+      rmSync(workspaceDir, { recursive: true, force: true })
+    })
+  })
+
   describe("getAgentStatus", () => {
     it("should return stopped for unspawned agent", async () => {
       const { acpService } = await import("./acp-service")
