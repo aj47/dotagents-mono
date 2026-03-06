@@ -10,6 +10,8 @@ import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
 import { processTranscriptWithAgentMode } from "./llm"
+import { processTranscriptWithACPAgent } from "./acp-main-agent"
+import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig } from "../shared/types"
@@ -588,7 +590,71 @@ async function runAgent(options: RunAgentOptions): Promise<{
   const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
 
+  const loadFormattedConversationHistory = async () => {
+    const latestConversation = await conversationService.loadConversation(conversationId)
+    return formatConversationHistoryForApi(latestConversation?.messages || [])
+  }
+
   try {
+    if (cfg.mainAgentMode === "acp" && cfg.mainAgentName) {
+      const mainAgentSelection = resolveMainAcpAgentSelection(
+        cfg.mainAgentName,
+        agentProfileService.getAll(),
+        cfg.acpAgents || []
+      )
+
+      if ("error" in mainAgentSelection) {
+        diagnosticsService.logWarning("remote-server", mainAgentSelection.error)
+        return {
+          content: mainAgentSelection.error,
+          conversationId,
+          conversationHistory: await loadFormattedConversationHistory(),
+        }
+      }
+
+      const resolvedMainAgentName = mainAgentSelection.resolvedName
+      if (mainAgentSelection.repairedName && mainAgentSelection.repairedName !== cfg.mainAgentName) {
+        configStore.save({ ...cfg, mainAgentName: resolvedMainAgentName })
+        diagnosticsService.logInfo(
+          "remote-server",
+          `ACP main agent \"${cfg.mainAgentName}\" not found. Auto-switched to \"${resolvedMainAgentName}\".`
+        )
+      }
+
+      const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
+
+      try {
+        const result = await processTranscriptWithACPAgent(prompt, {
+          agentName: resolvedMainAgentName,
+          conversationId,
+          sessionId,
+          runId,
+          onProgress,
+        })
+
+        if (result.response) {
+          await conversationService.addMessageToConversation(conversationId, result.response, "assistant")
+        }
+
+        if (result.success) {
+          agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
+        } else {
+          agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
+        }
+
+        const formattedHistory = await loadFormattedConversationHistory()
+        notifyConversationHistoryChanged()
+
+        return {
+          content: result.response || result.error || "No response from agent",
+          conversationId,
+          conversationHistory: formattedHistory,
+        }
+      } finally {
+        agentSessionStateManager.cleanupSession(sessionId)
+      }
+    }
+
     await mcpService.initialize()
 
     mcpService.registerExistingProcessesWithAgentManager()

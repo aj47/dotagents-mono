@@ -7,6 +7,7 @@ import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
+import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
 import Slider from '@react-native-community/slider';
 
@@ -187,6 +188,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const availableAcpMainAgents = useMemo(
+    () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
+    [remoteSettings, agentProfiles]
+  );
 
   // Profile import/export state
   const [isExportingProfile, setIsExportingProfile] = useState(false);
@@ -1675,9 +1680,9 @@ export default function SettingsScreen({ navigation }: any) {
                 {remoteSettings.mainAgentMode === 'acp' && (
                   <>
                     <Text style={styles.label}>ACP Agent</Text>
-                    {remoteSettings.acpAgents && remoteSettings.acpAgents.length > 0 ? (
+                    {availableAcpMainAgents.length > 0 ? (
                       <View style={styles.providerSelector}>
-                        {remoteSettings.acpAgents.map((agent) => (
+                        {availableAcpMainAgents.map((agent) => (
                           <Pressable
                             key={agent.name}
                             style={[

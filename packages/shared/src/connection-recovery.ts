@@ -107,6 +107,31 @@ export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+export function normalizeApiBaseUrl(baseUrl: string): string {
+  let normalizedUrl = baseUrl.trim();
+  if (!normalizedUrl) return '';
+
+  const hasScheme = normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://');
+  const isLocalAddress = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i.test(
+    normalizedUrl.replace(/^https?:\/\//, '')
+  );
+
+  if (!hasScheme) {
+    normalizedUrl = isLocalAddress ? `http://${normalizedUrl}` : `https://${normalizedUrl}`;
+  }
+
+  normalizedUrl = normalizedUrl.replace(/\/+$/, '');
+
+  try {
+    const parsedUrl = new URL(normalizedUrl);
+    const trimmedPath = parsedUrl.pathname.replace(/\/+$/, '');
+    parsedUrl.pathname = !trimmedPath || trimmedPath === '/' ? '/v1' : trimmedPath;
+    return parsedUrl.toString().replace(/\/+$/, '');
+  } catch {
+    return normalizedUrl;
+  }
+}
+
 export type ConnectionCheckResult = {
   success: boolean;
   error?: string;
@@ -160,24 +185,8 @@ export async function checkServerConnection(
   // Trim the API key for use in requests
   const trimmedApiKey = apiKey.trim();
 
-  // Normalize the base URL
-  let normalizedUrl = baseUrl.trim();
-
-  // Check if scheme is already provided
-  const hasScheme = normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://');
-
-  // Determine if this is a local address (localhost, 127.x.x.x, 192.168.x.x, 10.x.x.x, etc.)
-  const isLocalAddress = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i.test(
-    normalizedUrl.replace(/^https?:\/\//, '')
-  );
-
-  if (!hasScheme) {
-    // Default to http:// for local addresses, https:// for external
-    normalizedUrl = isLocalAddress ? `http://${normalizedUrl}` : `https://${normalizedUrl}`;
-  }
-
-  // Remove trailing slash
-  normalizedUrl = normalizedUrl.replace(/\/+$/, '');
+  // Normalize the base URL, including adding /v1 for root-level OpenAI-compatible endpoints
+  const normalizedUrl = normalizeApiBaseUrl(baseUrl);
 
   // Try the /models endpoint first (OpenAI-compatible)
   const modelsUrl = `${normalizedUrl}/models`;

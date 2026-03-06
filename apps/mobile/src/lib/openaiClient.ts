@@ -4,6 +4,7 @@ import type {
   ConversationHistoryMessage,
   ChatApiResponse
 } from '@dotagents/shared';
+import { normalizeApiBaseUrl } from '@dotagents/shared';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import {
@@ -96,11 +97,11 @@ export class OpenAIClient {
   }
 
   private normalizeBaseUrl(raw: string): string {
-    const trimmed = (raw ?? '').trim();
-    if (!trimmed) {
+    const normalized = normalizeApiBaseUrl(raw ?? '');
+    if (!normalized) {
       throw new Error('OpenAIClient requires a baseUrl');
     }
-    return trimmed.replace(/\/+$/, '');
+    return normalized;
   }
 
   private authHeaders() {

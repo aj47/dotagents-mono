@@ -18,8 +18,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
 import { useConfigContext } from '../store/config';
-import { SettingsApiClient, Profile } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, SettingsApiClient, Profile } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
+import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
+
+interface SelectableProfile extends Profile {
+  selectorMode?: 'profile' | 'acp';
+  selectionValue?: string;
+}
 
 interface AgentSelectorSheetProps {
   visible: boolean;
@@ -35,10 +41,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
   const missingConfigError = 'Configure server URL and API key to switch agents';
 
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectorMode, setSelectorMode] = useState<'profile' | 'acp'>('profile');
 
   const fetchProfiles = useCallback(async () => {
     if (!hasApiConfig) {
@@ -52,9 +59,27 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     setError(null);
 
     try {
-      const client = new SettingsApiClient(config.baseUrl, config.apiKey);
-      const res = await client.getProfiles();
-      setProfiles(res.profiles || []);
+      const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
+      const settings = await client.getSettings();
+
+      if (settings.mainAgentMode === 'acp') {
+        setSelectorMode('acp');
+        const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
+        const mainAgentOptions = getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []);
+        setProfiles(mainAgentOptions.map((option) => ({
+          ...toMainAgentProfile(option),
+          selectorMode: 'acp',
+          selectionValue: option.name,
+        })));
+      } else {
+        setSelectorMode('profile');
+        const res = await client.getProfiles();
+        setProfiles((res.profiles || []).map((profile) => ({
+          ...profile,
+          selectorMode: 'profile',
+          selectionValue: profile.id,
+        })));
+      }
     } catch (err: any) {
       console.warn('[AgentSelectorSheet] Failed to fetch profiles:', err);
       setError(err?.message || 'Failed to load agents');
@@ -69,7 +94,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   }, [visible, fetchProfiles]);
 
-  const handleSelectProfile = async (profile: Profile) => {
+  const handleSelectProfile = async (profile: SelectableProfile) => {
     if (!hasApiConfig) {
       setProfiles([]);
       setError(missingConfigError);
@@ -83,8 +108,13 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     setIsSwitching(true);
     try {
       const client = new SettingsApiClient(config.baseUrl, config.apiKey);
-      await client.setCurrentProfile(profile.id);
-      setCurrentProfile(profile);
+      if (profile.selectorMode === 'acp' && profile.selectionValue) {
+        await client.updateSettings({ mainAgentName: profile.selectionValue });
+        setCurrentProfile(toMainAgentProfile({ name: profile.selectionValue, displayName: profile.name }));
+      } else {
+        await client.setCurrentProfile(profile.id);
+        setCurrentProfile(profile);
+      }
       onClose();
     } catch (err: any) {
       console.error('[AgentSelectorSheet] Failed to switch profile:', err);
@@ -94,7 +124,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   };
 
-  const renderProfile = ({ item }: { item: Profile }) => {
+  const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
     return (
       <TouchableOpacity
@@ -132,7 +162,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       </Pressable>
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.handle} />
-        <Text style={styles.title}>Select Agent</Text>
+        <Text style={styles.title}>{selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}</Text>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -147,7 +177,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </TouchableOpacity>
           </View>
         ) : profiles.length === 0 ? (
-          <Text style={styles.emptyText}>No agents available</Text>
+          <Text style={styles.emptyText}>
+            {selectorMode === 'acp' ? 'No ACP agents available' : 'No agents available'}
+          </Text>
         ) : (
           <FlatList
             data={profiles}
