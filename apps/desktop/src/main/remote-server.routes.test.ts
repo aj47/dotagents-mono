@@ -34,4 +34,11 @@ describe("remote-server route registration", () => {
 
     expect(duplicates).toEqual([])
   })
+
+  it("routes mobile chat requests through ACP main-agent handling when configured", () => {
+    const source = getRemoteServerSource()
+
+    expect(source).toContain('cfg.mainAgentMode === "acp" && cfg.mainAgentName')
+    expect(source).toContain("processTranscriptWithACPAgent")
+  })
 })
