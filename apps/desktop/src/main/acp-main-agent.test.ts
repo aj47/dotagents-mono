@@ -103,6 +103,37 @@ describe("acp-main-agent", () => {
     }))
   })
 
+  it("adds builtin response-tool instructions to ACP prompt context", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      profileSnapshot: {
+        profileName: "augustus",
+        displayName: "Auggie Agent",
+        systemPrompt: "Be helpful",
+        guidelines: "Stay concise",
+      } as any,
+    })
+
+    expect(mockSendPrompt).toHaveBeenCalledWith(
+      "test-agent",
+      "acp-session-1",
+      "hello",
+      expect.stringContaining("respond_to_user"),
+    )
+
+    const promptContext = mockSendPrompt.mock.calls[0]?.[3]
+    expect(promptContext).toContain('injected MCP server "dotagents-builtin"')
+    expect(promptContext).toContain('call "respond_to_user" first with the final user-facing answer')
+    expect(promptContext).toContain('then call "mark_work_complete" with a concise completion summary')
+    expect(promptContext).toContain("System Prompt: Be helpful")
+    expect(promptContext).toContain("Guidelines: Stay concise")
+  })
+
   it("adds ACP content blocks to conversation history progressively instead of only at completion", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<any> = []

@@ -1,5 +1,8 @@
 import Fastify, { FastifyInstance } from "fastify"
 import cors from "@fastify/cors"
+import { Server as MCPServer } from "@modelcontextprotocol/sdk/server/index.js"
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
+import { CallToolRequestSchema, ListToolsRequestSchema, isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 import crypto from "crypto"
 import fs from "fs"
 import os from "os"
@@ -20,6 +23,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
 import { skillsService } from "./skills-service"
 import { memoryService } from "./memory-service"
+import { isBuiltinTool } from "./builtin-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { getAcpSessionForClientSessionToken, getAppSessionForAcpSession } from "./acp-session-state"
@@ -86,6 +90,13 @@ interface AcpMcpRequestContext {
 
 const INVALID_ACP_SESSION_CONTEXT_ERROR = "Unauthorized: invalid ACP session context"
 
+interface InjectedMcpTransportState {
+  server: MCPServer
+  transport: StreamableHTTPServerTransport
+}
+
+const injectedMcpTransportsByToken = new Map<string, Map<string, InjectedMcpTransportState>>()
+
 function getAcpMcpRequestContext(
   acpSessionToken: string | undefined,
 ): AcpMcpRequestContext | undefined {
@@ -106,6 +117,100 @@ function getAcpMcpRequestContext(
     appSessionId,
     profileSnapshot,
   }
+}
+
+function getInjectedBuiltinToolsForAcpSession(
+  acpSessionToken: string | undefined,
+): { requestContext: AcpMcpRequestContext; tools: Array<{ name: string; description: string; inputSchema: unknown }> } | undefined {
+  const requestContext = getAcpMcpRequestContext(acpSessionToken)
+  if (!requestContext) return undefined
+
+  const tools = mcpService.getAvailableToolsForProfile(requestContext.profileSnapshot.mcpServerConfig)
+    .filter((tool) => isBuiltinTool(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }))
+
+  return { requestContext, tools }
+}
+
+function getInjectedMcpTransportSessionMap(acpSessionToken: string): Map<string, InjectedMcpTransportState> {
+  const existing = injectedMcpTransportsByToken.get(acpSessionToken)
+  if (existing) return existing
+
+  const created = new Map<string, InjectedMcpTransportState>()
+  injectedMcpTransportsByToken.set(acpSessionToken, created)
+  return created
+}
+
+function createInjectedMcpServer(acpSessionToken: string): MCPServer {
+  const server = new MCPServer(
+    {
+      name: "dotagents-injected-builtin-tools",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+    },
+  )
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const injectedBuiltinTools = getInjectedBuiltinToolsForAcpSession(acpSessionToken)
+    if (!injectedBuiltinTools) {
+      throw new Error(INVALID_ACP_SESSION_CONTEXT_ERROR)
+    }
+
+    return { tools: injectedBuiltinTools.tools }
+  })
+
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const injectedBuiltinTools = getInjectedBuiltinToolsForAcpSession(acpSessionToken)
+    if (!injectedBuiltinTools) {
+      return {
+        content: [{ type: "text", text: INVALID_ACP_SESSION_CONTEXT_ERROR }],
+        isError: true,
+      }
+    }
+
+    const { name, arguments: args } = request.params
+    if (!name || typeof name !== "string") {
+      return {
+        content: [{ type: "text", text: "Missing or invalid 'name' parameter" }],
+        isError: true,
+      }
+    }
+
+    if (!injectedBuiltinTools.tools.some((tool) => tool.name === name)) {
+      return {
+        content: [{ type: "text", text: `Unknown builtin tool: ${name}` }],
+        isError: true,
+      }
+    }
+
+    const result = await mcpService.executeToolCall(
+      { name, arguments: args || {} } as any,
+      undefined,
+      false,
+      injectedBuiltinTools.requestContext.appSessionId,
+      injectedBuiltinTools.requestContext.profileSnapshot.mcpServerConfig,
+    )
+
+    return result
+      ? {
+        content: result.content,
+        isError: result.isError,
+      }
+      : {
+        content: [{ type: "text", text: "Tool execution returned null" }],
+        isError: true,
+      }
+  })
+
+  return server
 }
 
 // Exact reserved names that collide with internal storage files.
@@ -1967,31 +2072,20 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   })
 
   // MCP Protocol Endpoints - Expose DotAgents builtin tools to external agents
-  // These endpoints implement a simplified MCP-over-HTTP protocol
+  // Support both Streamable HTTP MCP at /mcp/:acpSessionToken and legacy /tools/list,/tools/call shims.
 
   const listInjectedMcpTools = async (
     acpSessionToken: string | undefined,
     reply: any,
   ) => {
     try {
-      const acpMcpRequestContext = getAcpMcpRequestContext(acpSessionToken)
-      if (!acpMcpRequestContext) {
+      const injectedBuiltinTools = getInjectedBuiltinToolsForAcpSession(acpSessionToken)
+      if (!injectedBuiltinTools) {
         diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/list request without valid ACP session context")
         return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
       }
 
-      const { isBuiltinTool } = await import("./builtin-tools")
-
-      // Convert to MCP format
-      const tools = mcpService.getAvailableToolsForProfile(acpMcpRequestContext.profileSnapshot.mcpServerConfig)
-        .filter((tool) => isBuiltinTool(tool.name))
-        .map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        }))
-
-      return reply.send({ tools })
+      return reply.send({ tools: injectedBuiltinTools.tools })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "MCP tools/list error", error)
       return reply.code(500).send({ error: error?.message || "Failed to list tools" })
@@ -2004,8 +2098,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     acpSessionToken: string | undefined,
   ) => {
     try {
-      const acpMcpRequestContext = getAcpMcpRequestContext(acpSessionToken)
-      if (!acpMcpRequestContext) {
+      const injectedBuiltinTools = getInjectedBuiltinToolsForAcpSession(acpSessionToken)
+      if (!injectedBuiltinTools) {
         diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/call request without valid ACP session context")
         return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
       }
@@ -2017,9 +2111,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "Missing or invalid 'name' parameter" })
       }
 
-      const { isBuiltinTool } = await import("./builtin-tools")
-
-      if (!isBuiltinTool(name)) {
+      if (!injectedBuiltinTools.tools.some((tool) => tool.name === name)) {
         return reply.code(400).send({ error: `Unknown builtin tool: ${name}` })
       }
 
@@ -2027,8 +2119,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         { name, arguments: args || {} } as any,
         undefined,
         false,
-        acpMcpRequestContext.appSessionId,
-        acpMcpRequestContext.profileSnapshot.mcpServerConfig,
+        injectedBuiltinTools.requestContext.appSessionId,
+        injectedBuiltinTools.requestContext.profileSnapshot.mcpServerConfig,
       )
 
       if (!result) {
@@ -2047,6 +2139,120 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       })
     }
   }
+
+  const handleInjectedMcpProtocolRequest = async (
+    req: any,
+    reply: any,
+    acpSessionToken: string | undefined,
+  ) => {
+    const token = acpSessionToken?.trim()
+    if (!token) {
+      return reply.code(400).send({ error: "Missing ACP session token" })
+    }
+
+    const injectedBuiltinTools = getInjectedBuiltinToolsForAcpSession(token)
+    if (!injectedBuiltinTools) {
+      diagnosticsService.logWarning("remote-server", `Denied injected MCP ${req.method} request without valid ACP session context`)
+      return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
+    }
+
+    const rawSessionId = req.headers["mcp-session-id"]
+    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId
+    const sessions = getInjectedMcpTransportSessionMap(token)
+
+    try {
+      if (req.method === "POST") {
+        let sessionState = sessionId ? sessions.get(sessionId) : undefined
+
+        if (!sessionState) {
+          if (sessionId) {
+            return reply.code(404).send({
+              jsonrpc: "2.0",
+              error: { code: -32001, message: "Invalid MCP session ID" },
+              id: null,
+            })
+          }
+
+          if (!isInitializeRequest(req.body)) {
+            return reply.code(400).send({
+              jsonrpc: "2.0",
+              error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+              id: null,
+            })
+          }
+
+          const mcpServer = createInjectedMcpServer(token)
+          const transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => crypto.randomUUID(),
+            enableJsonResponse: true,
+            onsessioninitialized: (createdSessionId) => {
+              getInjectedMcpTransportSessionMap(token).set(createdSessionId, {
+                server: mcpServer,
+                transport,
+              })
+            },
+          })
+
+          transport.onclose = async () => {
+            if (transport.sessionId) {
+              sessions.delete(transport.sessionId)
+            }
+            if (sessions.size === 0) {
+              injectedMcpTransportsByToken.delete(token)
+            }
+            await mcpServer.close().catch(() => undefined)
+          }
+
+          await mcpServer.connect(transport)
+          reply.hijack()
+          await transport.handleRequest(req.raw, reply.raw, req.body)
+          return reply
+        }
+
+        reply.hijack()
+        await sessionState.transport.handleRequest(req.raw, reply.raw, req.body)
+        return reply
+      }
+
+      if (!sessionId) {
+        return reply.code(400).send({ error: "Missing MCP session ID" })
+      }
+
+      const sessionState = sessions.get(sessionId)
+      if (!sessionState) {
+        return reply.code(404).send({ error: "Invalid MCP session ID" })
+      }
+
+      reply.hijack()
+      await sessionState.transport.handleRequest(req.raw, reply.raw)
+      return reply
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", `Injected MCP ${req.method} error`, error)
+      if (!reply.sent) {
+        return reply.code(500).send({
+          jsonrpc: "2.0",
+          error: { code: -32603, message: error?.message || "Internal server error" },
+          id: null,
+        })
+      }
+      return reply
+    }
+  }
+
+  fastify.post("/mcp/:acpSessionToken", async (req, reply) => {
+    const params = req.params as { acpSessionToken?: string }
+    return handleInjectedMcpProtocolRequest(req, reply, params?.acpSessionToken)
+  })
+
+  fastify.get("/mcp/:acpSessionToken", async (req, reply) => {
+    const params = req.params as { acpSessionToken?: string }
+    return handleInjectedMcpProtocolRequest(req, reply, params?.acpSessionToken)
+  })
+
+  fastify.delete("/mcp/:acpSessionToken", async (req, reply) => {
+    const params = req.params as { acpSessionToken?: string }
+    return handleInjectedMcpProtocolRequest(req, reply, params?.acpSessionToken)
+  })
 
   // POST /mcp/tools/list - List all available builtin tools
   fastify.post("/mcp/tools/list", async (req, reply) => {

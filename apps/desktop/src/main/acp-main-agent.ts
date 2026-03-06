@@ -22,6 +22,14 @@ import { buildProfileContext } from "./agent-run-utils"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
+const ACP_INJECTED_BUILTIN_SERVER_NAME = "dotagents-builtin"
+const ACP_BUILTIN_TOOL_PROMPT_CONTEXT = [
+  `If the injected MCP server \"${ACP_INJECTED_BUILTIN_SERVER_NAME}\" is available, prefer it for DotAgents builtin user-facing communication tools.`,
+  `When \"${RESPOND_TO_USER_TOOL}\" is available, use it for every user-facing response instead of plain assistant text.`,
+  `When the task is fully complete and \"${MARK_WORK_COMPLETE_TOOL}\" is available, call \"${RESPOND_TO_USER_TOOL}\" first with the final user-facing answer, then call \"${MARK_WORK_COMPLETE_TOOL}\" with a concise completion summary.`,
+  `Only fall back to plain assistant text if those builtin tools are unavailable or fail repeatedly.`,
+].join("\n")
+
 export interface ACPMainAgentOptions {
   /** Name of the ACP agent to use */
   agentName: string
@@ -707,7 +715,7 @@ export async function processTranscriptWithACPAgent(
 
     try {
       // Send the prompt
-      const promptContext = buildProfileContext(profileSnapshot)
+      const promptContext = buildProfileContext(profileSnapshot, ACP_BUILTIN_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
       const { userResponse } = deriveAcpUserResponseState(conversationHistory)
