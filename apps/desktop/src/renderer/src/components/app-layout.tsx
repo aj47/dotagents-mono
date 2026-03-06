@@ -434,7 +434,7 @@ export const Component = () => {
                   <div className="relative flex items-center justify-center">
                     <span className="i-mingcute-chat-3-line"></span>
                     {collapsedActiveSessions.length > 0 && (
-                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[9px] font-semibold text-white">
+                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold text-white">
                         {collapsedActiveSessions.length > 9
                           ? "9+"
                           : collapsedActiveSessions.length}

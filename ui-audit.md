@@ -2,6 +2,69 @@
 
 ---
 
+## 2026-03-06 — chunk 8: global text-[9px] sweep + mcp-tools + capabilities + multi-agent + overflow-auto sweep
+
+### Sources consulted
+- Global grep: `text-[9px]`, `text-[8px]`, `text-[7px]` across all renderer `.tsx`/`.ts`
+- Global grep: bare `overflow-auto` across all renderer `.tsx`/`.ts`
+- `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`
+- `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`
+- `apps/desktop/src/renderer/src/components/multi-agent-progress-view.tsx`
+- `apps/desktop/src/renderer/src/pages/memories.tsx`
+
+### Issues found
+
+**app-layout.tsx — sidebar nav badge straggler**
+- Line 437: The notification badge on the Sessions nav link (showing active session count in collapsed sidebar mode) was `text-[9px]` — the last remaining sub-10px text after chunks 4–7.
+- All other surfaces had already been raised to `text-[10px]` minimum.
+
+**memories.tsx — bare overflow-auto on outer container**
+- Line 419: Outer page container used `overflow-auto` (both axes) instead of `overflow-y-auto overflow-x-hidden`.
+- Although the memories card grid uses constrained widths, a very long memory title or tag string could produce horizontal scroll, leaking content outside the panel. Chunk 3 fixed the header/filter row but missed the outer container declaration.
+
+**settings-mcp-tools.tsx — already clean**
+- Simple `MCPConfigManager` wrapper. Uses `overflow-y-auto overflow-x-hidden` and `min-w-0`. No issues.
+
+**settings-capabilities.tsx — already clean**
+- Two-tab wrapper. Tab bar is `flex items-center` with text labels (no overflow). Content uses `flex-1 min-h-0`. No issues.
+
+**multi-agent-progress-view.tsx — already clean**
+- Tab bar for multiple sessions uses `flex flex-1 gap-1 overflow-x-auto` for horizontal tab scroll, `max-w-[120px] truncate` on session titles, `shrink-0` on the hide-panel button. No overflow issues.
+
+**`overflow-auto` sweep result**
+- `ui/select.tsx`: inside SelectContent dropdown — correct for scrollable option list.
+- `agent-progress.tsx`: multiple `pre` blocks with `overflow-auto` constrained by `max-h-*` — correct for code/output scroll.
+- `mcp-config-manager.tsx`, `mcp-tool-manager.tsx`, `bundle-publish-dialog.tsx`: `pre` code preview blocks — correct.
+- `memories.tsx:419`: **Fixed** (see above).
+
+### Changes made
+
+**app-layout.tsx**
+- Line 437: `text-[9px]` → `text-[10px]` on the active-session count badge in the collapsed sidebar Sessions nav link.
+
+**memories.tsx**
+- Line 419: `overflow-auto` → `overflow-y-auto overflow-x-hidden` on the outer page container.
+
+### Verified not broken
+- TypeScript typecheck: `pnpm --filter @dotagents/desktop typecheck` → exit 0.
+- Global grep for `text-[9px]`, `text-[8px]`, `text-[7px]` across renderer: **zero results** — all sub-10px text has been eliminated.
+
+### Summary: text-[9px] elimination complete
+Across chunks 4–8, every occurrence of `text-[9px]` and the sole `text-[8px]` in the desktop renderer have been raised to a minimum of `text-[10px]`. Affected files:
+- `agent-progress.tsx` (chunks 4 and 8): Copy button, char-count label, OK/ERR badge, Shift+Space/Space kbd elements, pre block explicit sizing
+- `settings-skills.tsx` (chunk 4): header flex-wrap
+- `agent-capabilities-sidebar.tsx` (chunk 5): Skills/MCP/Built-in count badges, server tool expand button, connection type badge (text-[8px]→text-[10px])
+- `settings-agents.tsx` (chunk 7): all eight agent-card micro-badge types
+- `app-layout.tsx` (chunk 8): Sessions nav badge
+
+### Follow-up areas
+- UI audit is now complete for all renderer pages and components reviewed. No further sub-10px text exists. Major layout/overflow issues have been fixed across settings, dialogs, sidebar, and panel.
+- Consider a final visual review of the waveform panel at its minimum width (~312px) to confirm no clip/overflow on narrow screens.
+
+
+
+---
+
 ## 2026-03-06 — chunk 7: settings-agents badge floor + setup + panel (panel all clear)
 
 ### Sources consulted
