@@ -79,9 +79,16 @@ function notifyConversationHistoryChanged(): void {
   }
 }
 
-function getProfileSnapshotForAcpMcpRequest(
+interface AcpMcpRequestContext {
+  appSessionId: string
+  profileSnapshot: SessionProfileSnapshot
+}
+
+const INVALID_ACP_SESSION_CONTEXT_ERROR = "Unauthorized: invalid ACP session context"
+
+function getAcpMcpRequestContext(
   acpSessionToken: string | undefined,
-): SessionProfileSnapshot | undefined {
+): AcpMcpRequestContext | undefined {
   if (!acpSessionToken) return undefined
 
   const acpSessionId = getAcpSessionForClientSessionToken(acpSessionToken)
@@ -90,8 +97,15 @@ function getProfileSnapshotForAcpMcpRequest(
   const appSessionId = getAppSessionForAcpSession(acpSessionId)
   if (!appSessionId) return undefined
 
-  return agentSessionStateManager.getSessionProfileSnapshot(appSessionId)
+  const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(appSessionId)
     ?? agentSessionTracker.getSessionProfileSnapshot(appSessionId)
+
+  if (!profileSnapshot) return undefined
+
+  return {
+    appSessionId,
+    profileSnapshot,
+  }
 }
 
 // Exact reserved names that collide with internal storage files.
@@ -1960,13 +1974,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     reply: any,
   ) => {
     try {
+      const acpMcpRequestContext = getAcpMcpRequestContext(acpSessionToken)
+      if (!acpMcpRequestContext) {
+        diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/list request without valid ACP session context")
+        return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
+      }
+
       const { isBuiltinTool } = await import("./builtin-tools")
-      const profileSnapshot = getProfileSnapshotForAcpMcpRequest(acpSessionToken)
 
       // Convert to MCP format
-      const tools = (profileSnapshot?.mcpServerConfig
-        ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-        : mcpService.getAvailableTools())
+      const tools = mcpService.getAvailableToolsForProfile(acpMcpRequestContext.profileSnapshot.mcpServerConfig)
         .filter((tool) => isBuiltinTool(tool.name))
         .map((tool) => ({
           name: tool.name,
@@ -1987,6 +2004,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     acpSessionToken: string | undefined,
   ) => {
     try {
+      const acpMcpRequestContext = getAcpMcpRequestContext(acpSessionToken)
+      if (!acpMcpRequestContext) {
+        diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/call request without valid ACP session context")
+        return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
+      }
+
       const body = req.body as any
       const { name, arguments: args } = body
 
@@ -2000,20 +2023,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: `Unknown builtin tool: ${name}` })
       }
 
-      const profileSnapshot = getProfileSnapshotForAcpMcpRequest(acpSessionToken)
-      const appSessionId = acpSessionToken
-        ? (() => {
-          const acpSessionId = getAcpSessionForClientSessionToken(acpSessionToken)
-          return acpSessionId ? getAppSessionForAcpSession(acpSessionId) : undefined
-        })()
-        : undefined
-
       const result = await mcpService.executeToolCall(
         { name, arguments: args || {} } as any,
         undefined,
         false,
-        appSessionId,
-        profileSnapshot?.mcpServerConfig,
+        acpMcpRequestContext.appSessionId,
+        acpMcpRequestContext.profileSnapshot.mcpServerConfig,
       )
 
       if (!result) {

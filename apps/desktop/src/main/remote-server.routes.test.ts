@@ -27,6 +27,16 @@ function getDuplicateRoutes(source: string): Array<{ key: string; lines: number[
     .map(([key, lines]) => ({ key, lines }))
 }
 
+function getSection(source: string, startMarker: string, endMarker: string): string {
+  const startIndex = source.indexOf(startMarker)
+  const endIndex = source.indexOf(endMarker)
+
+  expect(startIndex).toBeGreaterThanOrEqual(0)
+  expect(endIndex).toBeGreaterThan(startIndex)
+
+  return source.slice(startIndex, endIndex)
+}
+
 describe("remote-server route registration", () => {
   it("does not register duplicate Fastify method/path pairs", () => {
     const source = getRemoteServerSource()
@@ -44,11 +54,22 @@ describe("remote-server route registration", () => {
 
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
+    const listInjectedMcpToolsSection = getSection(source, "const listInjectedMcpTools = async", "const callInjectedMcpTool = async")
+    const callInjectedMcpToolSection = getSection(source, "const callInjectedMcpTool = async", "// POST /mcp/tools/list")
 
-    expect(source).toContain("getProfileSnapshotForAcpMcpRequest")
+    expect(source).toContain("function getAcpMcpRequestContext")
+    expect(source).toContain("if (!profileSnapshot) return undefined")
     expect(source).toContain('fastify.post("/mcp/:acpSessionToken/tools/list"')
     expect(source).toContain('fastify.post("/mcp/:acpSessionToken/tools/call"')
-    expect(source).toContain("mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)")
-    expect(source).toContain("profileSnapshot?.mcpServerConfig")
+    expect(source).toContain("INVALID_ACP_SESSION_CONTEXT_ERROR")
+    expect(listInjectedMcpToolsSection).toContain("getAcpMcpRequestContext(acpSessionToken)")
+    expect(listInjectedMcpToolsSection).toContain("reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })")
+    expect(listInjectedMcpToolsSection).toContain("mcpService.getAvailableToolsForProfile(acpMcpRequestContext.profileSnapshot.mcpServerConfig)")
+    expect(listInjectedMcpToolsSection).not.toContain("mcpService.getAvailableTools()")
+    expect(callInjectedMcpToolSection).toContain("getAcpMcpRequestContext(acpSessionToken)")
+    expect(callInjectedMcpToolSection).toContain("reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })")
+    expect(callInjectedMcpToolSection).toContain("acpMcpRequestContext.appSessionId")
+    expect(callInjectedMcpToolSection).toContain("acpMcpRequestContext.profileSnapshot.mcpServerConfig")
+    expect(callInjectedMcpToolSection).not.toContain("profileSnapshot?.mcpServerConfig")
   })
 })
