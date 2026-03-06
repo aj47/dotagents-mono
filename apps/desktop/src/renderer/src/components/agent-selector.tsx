@@ -112,25 +112,31 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
           variant="outline"
           size="sm"
           className={cn(
-            "gap-1.5 text-xs font-normal",
+            "min-w-0 max-w-[min(13rem,calc(100vw-2rem))] justify-between gap-1.5 text-xs font-normal",
             compact && "h-7 px-2",
           )}
+          title={displayName}
         >
-          <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="max-w-[120px] truncate">{displayName}</span>
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          <Bot className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
+          <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+      <DropdownMenuContent
+        align="start"
+        className="max-h-[300px] w-[min(24rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-y-auto"
+      >
         {/* Default (no specific agent) */}
         <DropdownMenuItem
           onClick={() => onSelectAgent(null)}
-          className="gap-2"
+          className="min-w-0 items-start gap-2"
         >
-          <Check className={cn("h-3.5 w-3.5", selectedAgentId === null ? "opacity-100" : "opacity-0")} />
-          <div className="flex flex-col">
-            <span className="text-sm">Default Agent</span>
-            <span className="text-xs text-muted-foreground">Use the default agent profile</span>
+          <Check className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", selectedAgentId === null ? "opacity-100" : "opacity-0")} />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <span className="truncate text-sm font-medium">Default Agent</span>
+            <span className="line-clamp-2 text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
+              Use the default agent profile
+            </span>
           </div>
         </DropdownMenuItem>
 
@@ -140,13 +146,15 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
           <DropdownMenuItem
             key={agent.id}
             onClick={() => onSelectAgent(agent.id)}
-            className="gap-2"
+            className="min-w-0 items-start gap-2"
           >
-            <Check className={cn("h-3.5 w-3.5", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
-            <div className="flex flex-col">
-              <span className="text-sm">{agent.displayName || agent.name}</span>
+            <Check className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <span className="truncate text-sm font-medium">{agent.displayName || agent.name}</span>
               {agent.description && (
-                <span className="text-xs text-muted-foreground line-clamp-1">{agent.description}</span>
+                <span className="line-clamp-2 text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
+                  {agent.description}
+                </span>
               )}
             </div>
           </DropdownMenuItem>

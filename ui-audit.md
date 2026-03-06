@@ -1,5 +1,49 @@
 ## UI Audit Log
 
+### 2026-03-06 — Chunk 21: Shared AgentSelector trigger/menu resilience under narrow widths and zoom
+
+- Area selected:
+  - shared desktop `apps/desktop/src/renderer/src/components/agent-selector.tsx`
+  - cross-checked dense call sites in `apps/desktop/src/renderer/src/pages/sessions.tsx` and `apps/desktop/src/renderer/src/components/session-input.tsx`
+- Why this chunk: I checked `ui-audit.md` first and skipped the already-logged shared audio/TTS player work from chunk 20 so this pass stayed unique. `AgentSelector` was still unclaimed, yet it appears in dense session-start headers and input chrome where long names, zoom, and narrow windows create the most pressure.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid overlapping prior chunks
+  - reused `apps/desktop/DEBUGGING.md` plus the repo design guidance/docs (`README.md`, `DEVELOPMENT.md`, `apps/desktop/src/renderer/src/AGENTS.md`) to keep the audit grounded in the Electron renderer constraints and the desktop/mobile cross-check requirement
+  - inspected `agent-selector.tsx` directly and traced its session-start call sites in `pages/sessions.tsx` and `session-input.tsx`
+  - cross-checked the mobile equivalent in `apps/mobile/src/ui/AgentSelectorSheet.tsx`; it already uses a bounded `flex: 1` info column and one-line secondary text, so this pass remained desktop-only
+
+#### Findings
+
+- The desktop selector trigger only truncated the label itself (`max-w-[120px] truncate`) without giving the button a full `min-w-0` / bounded-width contract, so it behaved inconsistently inside dense wrapped headers.
+- The trigger icon and chevron were not explicitly `shrink-0`, which made the compact control more fragile once neighboring buttons and text competed for width.
+- The dropdown menu had no viewport-aware width bound, so long agent names/descriptions had limited room to breathe and could produce an awkwardly cramped or overly wide panel depending on context.
+- The dropdown rows did not consistently declare `min-w-0 flex-1` for the text column or top-align the checkmark, which made long names/descriptions feel cramped under zoom.
+
+#### Changes made
+
+- Refined the shared selector trigger in `agent-selector.tsx`:
+  - added `min-w-0` plus a viewport-aware `max-w-[min(13rem,calc(100vw-2rem))]` contract so the compact selector stays bounded in session headers and text-input chrome
+  - made the label `min-w-0 flex-1 truncate text-left`
+  - marked the bot icon and chevron `shrink-0`
+  - added `title={displayName}` so truncated agent names still reveal their full value on hover
+- Hardened the dropdown menu treatment:
+  - bounded the menu content to `w-[min(24rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)]`
+  - switched items to `min-w-0 items-start gap-2` with top-aligned `Check` icons
+  - made the text column `min-w-0 flex-1 space-y-0.5`
+  - promoted agent names to a stronger truncated title line and widened descriptions to a wrap-safe two-line clamp with `overflow-wrap:anywhere`
+- Added `apps/desktop/src/renderer/src/components/agent-selector.layout.test.ts` so the trigger/menu layout contract now has direct regression coverage.
+
+#### Verification
+
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-selector.layout.test.ts`
+- Regression check: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts src/renderer/src/components/agent-progress.tile-layout.test.ts`
+- Targeted web typecheck: `pnpm --filter @dotagents/desktop typecheck:web`
+
+#### Notes
+
+- This chunk stays desktop/shared-component scoped: the mobile `AgentSelectorSheet` already had a bounded `profileInfo` column and did not need the same trigger/menu fixes.
+- Best next UI audit chunk after this one: the adjacent `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx` is still unlogged and shares the same dense header/dropdown pressure profile as `AgentSelector`.
+
 ### 2026-03-06 — Chunk 20: Shared compact audio/TTS player chrome under narrow widths and zoom
 
 - Area selected:
