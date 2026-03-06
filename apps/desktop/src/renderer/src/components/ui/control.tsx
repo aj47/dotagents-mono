@@ -1,6 +1,7 @@
 import { cn } from "@renderer/lib/utils"
 import React, { useState } from "react"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Info } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
 
 export const Control = ({
   label,
@@ -13,19 +14,20 @@ export const Control = ({
 }) => {
   return (
     <div
-      className={cn("flex items-center justify-between gap-5 py-2", className)}
+      className={cn(
+        "flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5",
+        className,
+      )}
     >
-      <div className="shrink-0">
-        <span className="text-sm font-medium">{label}</span>
+      <div className="min-w-0 sm:max-w-[52%]">
+        <div className="text-sm font-medium leading-5 break-words">{label}</div>
       </div>
-      <div className="flex max-w-[50%] grow items-center justify-end">
+      <div className="flex w-full min-w-0 items-center justify-start sm:max-w-[48%] sm:justify-end">
         {children}
       </div>
     </div>
   )
 }
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
-import { Info } from "lucide-react"
 
 export const ControlLabel = ({
   label,
@@ -39,12 +41,12 @@ export const ControlLabel = ({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm font-medium">{label}</span>
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="text-sm font-medium break-words">{label}</span>
       <TooltipProvider delayDuration={0} disableHoverableContent>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help hover:text-foreground transition-colors" />
+            <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-help transition-colors hover:text-foreground" />
           </TooltipTrigger>
           <TooltipContent
             side="right"
@@ -105,8 +107,10 @@ export const ControlGroup = ({
         <>
           <div className="divide-y rounded-lg border">{children}</div>
           {endDescription && (
-            <div className="mt-2 flex justify-end text-right text-xs text-muted-foreground">
-              <div className="max-w-[70%]">{endDescription}</div>
+            <div className="mt-2 text-xs text-muted-foreground sm:flex sm:justify-end sm:text-right">
+              <div className="w-full break-words whitespace-normal sm:max-w-[70%]">
+                {endDescription}
+              </div>
             </div>
           )}
         </>

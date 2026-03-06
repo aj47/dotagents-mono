@@ -70,6 +70,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { acpService, ACPRunRequest } from "./acp-service"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
@@ -227,65 +228,25 @@ async function processWithAgentMode(
 
   // Check if ACP main agent mode is enabled - route to ACP agent instead of LLM API
   if (config.mainAgentMode === "acp" && config.mainAgentName) {
-    const normalizedMainAgentName = config.mainAgentName.trim().toLowerCase()
-    const spawnableProfileCandidates = agentProfileService
-      .getAll()
-      .filter((profile) =>
-        profile.enabled !== false
-        && (profile.connection.type === "acp" || profile.connection.type === "stdio")
-      )
-
-    let resolvedMainAgentName = config.mainAgentName
-
-    // Resolve to a canonical configured ACP/stdio agent name.
-    // This protects against stale settings after profile migrations/renames.
-    const configuredProfile = spawnableProfileCandidates.find((profile) =>
-      profile.name.trim().toLowerCase() === normalizedMainAgentName
-      || profile.displayName.trim().toLowerCase() === normalizedMainAgentName
+    const mainAgentSelection = resolveMainAcpAgentSelection(
+      config.mainAgentName,
+      agentProfileService.getAll(),
+      config.acpAgents || []
     )
 
-    const legacyAgentMatch = (config.acpAgents || []).find((agent) =>
-      (agent.name.trim().toLowerCase() === normalizedMainAgentName
-        || agent.displayName.trim().toLowerCase() === normalizedMainAgentName)
-      && agent.enabled !== false
-      && agent.connection.type === "stdio"
-    )
+    if ("error" in mainAgentSelection) {
+      logLLM(`[processWithAgentMode] ${mainAgentSelection.error}`)
+      return mainAgentSelection.error
+    }
 
-    if (configuredProfile) {
-      resolvedMainAgentName = configuredProfile.name
-    } else if (legacyAgentMatch) {
-      resolvedMainAgentName = legacyAgentMatch.name
-    } else {
-      const fallbackLegacyAgents = (config.acpAgents || []).filter((agent) =>
-        agent.enabled !== false && agent.connection.type === "stdio"
+    const resolvedMainAgentName = mainAgentSelection.resolvedName
+    if (mainAgentSelection.repairedName && mainAgentSelection.repairedName !== config.mainAgentName) {
+      // Persist the repaired selection so future runs don't fail on stale names.
+      configStore.save({ ...config, mainAgentName: resolvedMainAgentName })
+      logLLM(
+        `[processWithAgentMode] ACP main agent \"${config.mainAgentName}\" not found. ` +
+        `Auto-switched to \"${resolvedMainAgentName}\".`
       )
-
-      const fallbackNames = new Set<string>()
-      const fallbackExternalAgents = [
-        ...spawnableProfileCandidates,
-        ...fallbackLegacyAgents.map((agent) => ({ name: agent.name })),
-      ].filter((agent) => {
-        if (fallbackNames.has(agent.name)) return false
-        fallbackNames.add(agent.name)
-        return true
-      })
-
-      if (fallbackExternalAgents.length === 1) {
-        resolvedMainAgentName = fallbackExternalAgents[0].name
-        // Persist the repaired selection so future runs don't fail on stale names.
-        configStore.save({ ...config, mainAgentName: resolvedMainAgentName })
-        logLLM(
-          `[processWithAgentMode] ACP main agent \"${config.mainAgentName}\" not found. ` +
-          `Auto-switched to \"${resolvedMainAgentName}\".`
-        )
-      } else {
-        const availableNames = fallbackExternalAgents.map((profile) => profile.name)
-        const errorMessage = availableNames.length > 0
-          ? `ACP main agent \"${config.mainAgentName}\" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
-          : `ACP main agent \"${config.mainAgentName}\" is not available and no enabled ACP/stdio agents were found.`
-        logLLM(`[processWithAgentMode] ${errorMessage}`)
-        return errorMessage
-      }
     }
 
     logLLM(`[processWithAgentMode] ACP mode enabled, routing to agent: ${resolvedMainAgentName}`)

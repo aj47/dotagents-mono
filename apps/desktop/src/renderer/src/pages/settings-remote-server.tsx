@@ -246,7 +246,7 @@ export function RemoteServerSettingsGroups({
                     saveConfig({ remoteServerBindAddress: value })
                   }
                 >
-                  <SelectTrigger className="w-[220px]">
+                  <SelectTrigger className="w-full sm:w-[220px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -304,7 +304,7 @@ export function RemoteServerSettingsGroups({
                   value={(cfg.remoteServerLogLevel as any) || "info"}
                   onValueChange={(value: any) => saveConfig({ remoteServerLogLevel: value })}
                 >
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-full sm:w-[160px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -471,7 +471,7 @@ export function RemoteServerSettingsGroups({
                       saveConfig({ cloudflareTunnelMode: value })
                     }}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-full sm:w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -727,7 +727,7 @@ export function RemoteServerSettingsGroups({
 
 export function Component() {
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
       <div className="grid gap-4">
         <RemoteServerSettingsGroups />
       </div>

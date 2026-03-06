@@ -1775,18 +1775,15 @@ class ACPService extends EventEmitter {
   async runTask(request: ACPRunRequest): Promise<ACPRunResponse> {
     const { agentName, input, context, workingDirectory, forceNewSession } = request
 
-    // Ensure agent is running
+    // Ensure agent is running and reconcile any updated working-directory config.
     let instance = this.agents.get(agentName)
-    if (!instance || instance.status !== "ready" || !!workingDirectory) {
-      // Try to spawn it
-      try {
-        await this.spawnAgent(agentName, { workingDirectory })
-        instance = this.agents.get(agentName)
-      } catch (error) {
-        return {
-          success: false,
-          error: `Failed to start agent: ${error instanceof Error ? error.message : String(error)}`,
-        }
+    try {
+      await this.spawnAgent(agentName, { workingDirectory })
+      instance = this.agents.get(agentName)
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to start agent: ${error instanceof Error ? error.message : String(error)}`,
       }
     }
 
@@ -1938,16 +1935,14 @@ class ACPService extends EventEmitter {
    * Throws with a descriptive error if the agent cannot be started or no session can be created.
    */
   async getOrCreateSession(agentName: string, forceNew?: boolean, workingDirectory?: string): Promise<string> {
-    // Ensure agent is spawned and ready
+    // Ensure agent is spawned, ready, and reconciled with the latest working-directory config.
     let instance = this.agents.get(agentName)
-    if (!instance || instance.status !== "ready" || !!workingDirectory) {
-      try {
-        await this.spawnAgent(agentName, { workingDirectory })
-        instance = this.agents.get(agentName)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        throw new Error(`Failed to start ACP agent ${agentName}: ${message}`)
-      }
+    try {
+      await this.spawnAgent(agentName, { workingDirectory })
+      instance = this.agents.get(agentName)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to start ACP agent ${agentName}: ${message}`)
     }
 
     if (!instance || instance.status !== "ready") {

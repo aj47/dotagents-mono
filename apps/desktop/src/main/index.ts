@@ -5,8 +5,8 @@ import {
   createPanelWindow,
   createSetupWindow,
   makePanelWindowClosable,
-  setAppQuitting,
   showMainWindow,
+  setAppQuitting,
   WINDOWS,
 } from "./window"
 import { listenToKeyboardEvents } from "./keyboard"
@@ -20,6 +20,7 @@ import { mcpService } from "./mcp-service"
 import { initDebugFlags, logApp } from "./debug"
 import { initializeDeepLinkHandling } from "./oauth-deeplink-handler"
 import { diagnosticsService } from "./diagnostics"
+import { ensureAppSwitcherPresence } from "./app-switcher"
 
 import { configStore } from "./config"
 import { startRemoteServer, printQRCodeToTerminal, startRemoteServerForced } from "./remote-server"
@@ -561,19 +562,16 @@ app.whenReady().then(async () => {
     const cfg = configStore.get()
 
     if (process.platform === "darwin" && !cfg.hideDockIcon) {
-      // Ensure Cmd+Tab presence and a visible dock icon when app is activated.
-      // This recovers from rare activation-policy drift to "accessory".
-      app.setActivationPolicy("regular")
-      if (!app.dock?.isVisible?.()) {
-        app.dock?.show()
-      }
+      ensureAppSwitcherPresence("app.activate")
     }
 
     if (accessibilityGranted) {
       if (mainWin) {
-        // Window exists (may be hidden on macOS close-to-hide) — just show it
-        mainWin.show()
-        openPendingHubBundleInstall()
+        // Window exists (may be hidden/minimized/behind another app).
+        // Prefer opening any queued Hub install; otherwise restore and focus the main window.
+        if (!openPendingHubBundleInstall()) {
+          showMainWindow()
+        }
       } else {
         // Check if onboarding has been completed
         // Skip for existing users who have already configured models (pre-onboarding installs)

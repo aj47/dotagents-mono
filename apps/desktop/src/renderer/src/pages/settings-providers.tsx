@@ -88,7 +88,7 @@ function ProviderSelector({
       className="px-3"
     >
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -270,7 +270,7 @@ function ParakeetProviderSection({
               value={String(numThreads)}
               onValueChange={(value) => onNumThreadsChange(parseInt(value))}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-full sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -481,7 +481,7 @@ function KittenProviderSection({
                   value={String(voiceId)}
                   onValueChange={(value) => onVoiceIdChange(parseInt(value))}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -723,7 +723,7 @@ function SupertonicProviderSection({
                   value={voice}
                   onValueChange={onVoiceChange}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -749,7 +749,7 @@ function SupertonicProviderSection({
                   value={language}
                   onValueChange={onLanguageChange}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -776,7 +776,7 @@ function SupertonicProviderSection({
                   min={0.5}
                   max={2.0}
                   step={0.05}
-                  className="w-[100px]"
+                  className="w-full sm:w-[100px]"
                   value={speed}
                   onChange={(e) => {
                     const val = parseFloat(e.currentTarget.value)
@@ -801,7 +801,7 @@ function SupertonicProviderSection({
                   min={2}
                   max={10}
                   step={1}
-                  className="w-[100px]"
+                  className="w-full sm:w-[100px]"
                   value={steps}
                   onChange={(e) => {
                     const val = parseInt(e.currentTarget.value)
@@ -933,7 +933,7 @@ export function Component() {
   const weakPreset = getPresetById(weakPresetId)
 
   return (
-    <div className="modern-panel h-full overflow-auto px-6 py-4">
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
 
       <div className="grid gap-4">
         {/* Provider Selection with clear visual hierarchy */}
@@ -1692,7 +1692,7 @@ export function Component() {
                           onValueChange={(value) => saveConfig({ dualModelStrongPresetId: value })}
 
                         >
-                          <SelectTrigger className="w-[200px]">
+                          <SelectTrigger className="w-full sm:w-[200px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1739,7 +1739,7 @@ export function Component() {
                           value={weakPresetId}
                           onValueChange={(value) => saveConfig({ dualModelWeakPresetId: value })}
                         >
-                          <SelectTrigger className="w-[200px]">
+                          <SelectTrigger className="w-full sm:w-[200px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1784,7 +1784,7 @@ export function Component() {
                           saveConfig({ dualModelSummarizationFrequency: value as "every_response" | "major_steps_only" })
                         }
                       >
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1802,7 +1802,7 @@ export function Component() {
                           saveConfig({ dualModelSummaryDetailLevel: value as "compact" | "detailed" })
                         }
                       >
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-full sm:w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

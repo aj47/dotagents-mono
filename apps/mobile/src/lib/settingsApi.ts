@@ -32,6 +32,7 @@ export type {
   Loop,
   LoopsResponse,
 } from '@dotagents/shared';
+import { normalizeApiBaseUrl } from '@dotagents/shared';
 
 // Re-export agent profile types with backward-compatible names
 // The shared package uses Api* prefix to avoid conflicts with desktop's AgentProfile
@@ -117,7 +118,7 @@ export class SettingsApiClient {
   private apiKey: string;
 
   constructor(baseUrl: string, apiKey: string) {
-    this.baseUrl = baseUrl.replace(/\/+$/, '');
+    this.baseUrl = normalizeApiBaseUrl(baseUrl);
     this.apiKey = apiKey;
   }
 

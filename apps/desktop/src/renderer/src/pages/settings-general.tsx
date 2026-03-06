@@ -44,6 +44,7 @@ import {
   formatKeyComboForDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
+import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
 export function Component() {
   const configQuery = useConfigQuery()
@@ -68,7 +69,19 @@ export function Component() {
     staleTime: Infinity,
   })
 
+  const externalAgentsQuery = useQuery({
+    queryKey: ["externalAgents"],
+    queryFn: async () => {
+      return tipcClient.getExternalAgents()
+    },
+    staleTime: 30_000,
+  })
+
   const isLangfuseInstalled = langfuseInstalledQuery.data ?? true // Default to true while loading
+  const selectableMainAcpAgents = getSelectableMainAcpAgents(
+    externalAgentsQuery.data,
+    configQuery.data?.acpAgents
+  )
 
   const openGlobalAgentsFolder = useCallback(async () => {
     try {
@@ -182,7 +195,7 @@ export function Component() {
   if (!configQuery.data) return null
 
   return (
-    <div className="modern-panel h-full overflow-auto px-6 py-4">
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
 
       <div className="grid gap-4">
         {/* Agent Settings */}
@@ -195,7 +208,7 @@ export function Component() {
                 saveConfig({ mainAgentMode: value })
               }}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -207,24 +220,22 @@ export function Component() {
 
           {configQuery.data?.mainAgentMode === "acp" && (
             <>
-              <Control label={<ControlLabel label="ACP Agent" tooltip="Select which configured ACP agent to use as the main agent. The agent must be configured in the ACP Agents settings page." />} className="px-3">
+              <Control label={<ControlLabel label="ACP Agent" tooltip="Select which configured ACP agent to use as the main agent. The agent must be configured in the Agents settings page." />} className="px-3">
                 <Select
                   value={configQuery.data?.mainAgentName || ""}
                   onValueChange={(value: string) => {
                     saveConfig({ mainAgentName: value })
                   }}
                 >
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Select an agent..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {(configQuery.data?.acpAgents || [])
-                      .filter(agent => agent.enabled !== false)
-                      .map(agent => (
-                        <SelectItem key={agent.name} value={agent.name}>
-                          {agent.displayName}
-                        </SelectItem>
-                      ))}
+                    {selectableMainAcpAgents.map(agent => (
+                      <SelectItem key={agent.name} value={agent.name}>
+                        {agent.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Control>
@@ -398,7 +409,7 @@ export function Component() {
                 )
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1031,7 +1042,7 @@ export function Component() {
                 tipcClient.setPanelPosition({ position: value })
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

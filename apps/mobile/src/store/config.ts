@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { normalizeApiBaseUrl } from '@dotagents/shared';
 
 export type AppConfig = {
   apiKey: string;
@@ -28,18 +29,25 @@ const DEFAULTS: AppConfig = {
 
 const STORAGE_KEY = 'app_config_v1';
 
+function normalizeStoredConfig(cfg: AppConfig): AppConfig {
+  return {
+    ...cfg,
+    baseUrl: cfg.baseUrl ? normalizeApiBaseUrl(cfg.baseUrl) : cfg.baseUrl,
+  };
+}
+
 export async function loadConfig(): Promise<AppConfig> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) return DEFAULTS;
   try {
     const parsed = JSON.parse(raw);
-    return { ...DEFAULTS, ...parsed } as AppConfig;
+    return normalizeStoredConfig({ ...DEFAULTS, ...parsed } as AppConfig);
   } catch {}
   return DEFAULTS;
 }
 
 export async function saveConfig(cfg: AppConfig) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeStoredConfig(cfg)));
 }
 
 export function useConfig() {
