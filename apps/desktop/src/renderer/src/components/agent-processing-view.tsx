@@ -92,11 +92,6 @@ export function AgentProcessingView({
 
           <Spinner aria-hidden="true" />
           <span className="sr-only">Processing</span>
-
-          {/* Help text showing keyboard shortcut - visually subtle */}
-          <div className="text-[10px] text-muted-foreground/50">
-            Ctrl+Shift+Escape to stop
-          </div>
         </div>
       )}
 

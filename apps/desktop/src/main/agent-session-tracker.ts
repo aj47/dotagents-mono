@@ -103,7 +103,6 @@ class AgentSessionTracker {
       startTime: Date.now(),
       currentIteration: 0,
       maxIterations: 10,
-      lastActivity: "Starting agent session...",
       isSnoozed: startSnoozed, // Start snoozed by default - no floating panel auto-show
       profileSnapshot, // Capture profile settings at session creation for isolation
     }

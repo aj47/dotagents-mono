@@ -3,7 +3,9 @@ import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Mic, Send, X, Plus } from "lucide-react"
+import { AgentSelector, useSelectedAgentId } from "./agent-selector"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import type { AgentProfile } from "@shared/types"
 
 interface SessionInputProps {
   onTextSubmit: (text: string) => void
@@ -25,6 +27,7 @@ export function SessionInput({
   onShowTextInputChange,
 }: SessionInputProps) {
   const [internalShowTextInput, setInternalShowTextInput] = useState(false)
+  const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
 
   const showTextInput = controlledShowTextInput ?? internalShowTextInput
   const setShowTextInput = (show: boolean) => {
@@ -34,8 +37,41 @@ export function SessionInput({
   const [text, setText] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleSubmit = () => {
+  const applySelectedAgentToNextSession = async () => {
+    try {
+      const agents = await tipcClient.getAgentProfiles()
+      const enabledAgents = (agents as AgentProfile[]).filter((agent) => agent.enabled)
+
+      let agentIdToApply: string | null = selectedAgentId
+      if (agentIdToApply) {
+        const selectedAgent = enabledAgents.find((agent) => agent.id === agentIdToApply)
+        if (!selectedAgent) {
+          setSelectedAgentId(null)
+          agentIdToApply = null
+        }
+      }
+
+      if (!agentIdToApply) {
+        const defaultAgent =
+          enabledAgents.find((agent) => agent.isDefault)
+          ?? enabledAgents.find((agent) => agent.name === "main-agent")
+          ?? enabledAgents[0]
+        agentIdToApply = defaultAgent?.id ?? null
+      }
+
+      if (!agentIdToApply) return true
+
+      const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
+      return !!result?.success
+    } catch {
+      return false
+    }
+  }
+
+  const handleSubmit = async () => {
     if (text.trim() && !isProcessing) {
+      const applied = await applySelectedAgentToNextSession()
+      if (!applied) return
       onTextSubmit(text.trim())
       setText("")
       setShowTextInput(false)
@@ -45,7 +81,7 @@ export function SessionInput({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      void handleSubmit()
     } else if (e.key === "Escape") {
       e.preventDefault()
       setText("")
@@ -59,12 +95,22 @@ export function SessionInput({
   }
 
   const handleVoiceClick = async () => {
+    const applied = await applySelectedAgentToNextSession()
+    if (!applied) return
     onVoiceStart()
   }
 
   if (showTextInput) {
     return (
       <div className={cn("flex items-center gap-2 p-3 bg-card border-b", className)}>
+        <div className="flex items-center gap-2 self-start pt-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Agent</span>
+          <AgentSelector
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={setSelectedAgentId}
+            compact
+          />
+        </div>
         <Textarea
           ref={textareaRef}
           value={text}
@@ -78,7 +124,7 @@ export function SessionInput({
         <div className="flex flex-col gap-1">
           <Button
             size="sm"
-            onClick={handleSubmit}
+            onClick={() => { void handleSubmit() }}
             disabled={!text.trim() || isProcessing}
             className="h-8"
           >
@@ -122,8 +168,15 @@ export function SessionInput({
           <span>{isRecording ? "Recording..." : "Voice"}</span>
         </Button>
       </div>
-      <div className="text-sm text-muted-foreground">
-        Start a new agent session
+      <div className="flex items-center gap-2">
+        <div className="text-sm text-muted-foreground">
+          Start a new agent session
+        </div>
+        <AgentSelector
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
+          compact
+        />
       </div>
     </div>
   )

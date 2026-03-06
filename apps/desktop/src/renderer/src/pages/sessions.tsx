@@ -231,7 +231,7 @@ export function Component() {
 
   // Auto-dismiss the pending tile synchronously via derived state:
   // When a real session starts for the pending conversation, clear the pending state
-  // so we don't briefly show two tiles (the old pending + the new "Initializing..." session).
+  // so we don't briefly show two tiles for the same conversation.
   useEffect(() => {
     if (hasRealActiveSessionForPending) {
       setPendingConversationId(null)
@@ -245,7 +245,7 @@ export function Component() {
       // completed progress entry for the same conversation to avoid showing
       // duplicate tiles (one pending, one completed) for the same conversation.
       // Also hide new active sessions for the same conversation while pending tile
-      // is still visible, to prevent a phantom "Initializing..." tile alongside
+      // is still visible, to prevent a duplicate loading tile alongside
       // the pending tile that already shows conversation history.
       .filter(([_, progress]) => {
         if (pendingConversationId && progress?.conversationId === pendingConversationId) {
@@ -396,8 +396,8 @@ export function Component() {
         ? [{
             id: `pending-start-${pendingConversationId}`,
             type: "thinking",
-            title: "Initializing session",
-            description: "Starting agent session...",
+            title: "Starting follow-up",
+            description: "Waiting for session updates...",
             status: "in_progress",
             timestamp: pendingContinuationStartedAt,
           }]

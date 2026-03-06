@@ -319,8 +319,8 @@ export function TileFollowUpInput({
           variant="ghost"
           className="h-6 w-6 flex-shrink-0"
           disabled={!hasMessageContent || isDisabled}
-          title={isInitializingSession ? "Starting agent session" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-          aria-label={isInitializingSession ? "Starting agent session" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
         >
           {isInitializingSession ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />

@@ -91,7 +91,7 @@ export function Component() {
   const endConversation = useConversationStore((s) => s.endConversation)
 
   // Get currently selected agent for display in waveform recording UI
-  const [selectedAgentId] = useSelectedAgentId()
+  const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
   const { data: agents = [] } = useQuery<AgentProfile[]>({
     queryKey: ["agentProfilesPanel"],
     queryFn: () => tipcClient.getAgentProfiles(),
@@ -747,6 +747,40 @@ export function Component() {
   }, [])
 
   const handleTextSubmit = async (text: string) => {
+    try {
+      const agentProfiles = agents.length > 0
+        ? agents
+        : ((await tipcClient.getAgentProfiles()) as AgentProfile[])
+      const enabledAgents = agentProfiles.filter((agent) => agent.enabled)
+
+      let agentIdToApply: string | null = selectedAgentId
+      if (agentIdToApply) {
+        const selectedAgent = enabledAgents.find((agent) => agent.id === agentIdToApply)
+        if (!selectedAgent) {
+          setSelectedAgentId(null)
+          agentIdToApply = null
+        }
+      }
+
+      if (!agentIdToApply) {
+        const defaultAgent =
+          enabledAgents.find((agent) => agent.isDefault)
+          ?? enabledAgents.find((agent) => agent.name === "main-agent")
+          ?? enabledAgents[0]
+        agentIdToApply = defaultAgent?.id ?? null
+      }
+
+      if (agentIdToApply) {
+        const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
+        if (!result?.success) {
+          throw new Error("setCurrentAgentProfile returned success=false")
+        }
+      }
+    } catch (error) {
+      logUI("[Panel] Failed to apply selected agent before text submit", { selectedAgentId, error })
+      return
+    }
+
     // Capture the conversation ID at submit time - if user explicitly continued a conversation
     // from history, currentConversationId will be set. Otherwise it's null for new inputs.
     const conversationIdForMcp = currentConversationId
@@ -1115,6 +1149,8 @@ export function Component() {
           <TextInputPanel
             ref={textInputPanelRef}
             onSubmit={handleTextSubmit}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={setSelectedAgentId}
             onCancel={() => {
               setShowTextInput(false)
               tipcClient.clearTextInputState({})

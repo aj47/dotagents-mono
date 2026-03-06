@@ -254,6 +254,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
+  const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const handsFree = !!config.handsFree;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
@@ -424,7 +425,7 @@ export default function ChatScreen({ route, navigation }: any) {
           style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           onPress={() => setAgentSelectorVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentProfile?.name || 'Default'}. Tap to change.`}
+          accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
           accessibilityHint="Opens agent selection menu"
         >
           <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chat</Text>
@@ -442,7 +443,7 @@ export default function ChatScreen({ route, navigation }: any) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentProfile?.name || 'Default'} ▼
+              {currentAgentLabel} ▼
             </Text>
           </View>
         </TouchableOpacity>
@@ -3248,6 +3249,21 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
+		          <View style={styles.agentSelectorRow}>
+		            <TouchableOpacity
+		              style={styles.agentSelectorChip}
+		              onPress={() => setAgentSelectorVisible(true)}
+		              activeOpacity={0.8}
+		              accessibilityRole="button"
+		              accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
+		              accessibilityHint="Opens agent selection menu"
+		            >
+		              <Text style={styles.agentSelectorChipLabel}>🤖 Agent</Text>
+		              <Text style={styles.agentSelectorChipValue} numberOfLines={1}>
+		                {currentAgentLabel} ▼
+		              </Text>
+		            </TouchableOpacity>
+		          </View>
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
@@ -3425,6 +3441,34 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderTopWidth: theme.hairline,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
+    },
+    agentSelectorRow: {
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.xs,
+      paddingBottom: 2,
+    },
+    agentSelectorChip: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+    },
+    agentSelectorChipLabel: {
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+      marginRight: 6,
+    },
+    agentSelectorChipValue: {
+      fontSize: 12,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      maxWidth: 220,
     },
     pendingImagesRow: {
       paddingHorizontal: spacing.sm,

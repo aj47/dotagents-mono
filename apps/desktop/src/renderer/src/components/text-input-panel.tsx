@@ -6,6 +6,7 @@ import { AgentProcessingView } from "./agent-processing-view"
 import { AgentProgressUpdate } from "../../../shared/types"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
 import {
   buildMessageWithImages,
@@ -16,6 +17,8 @@ import {
 
 interface TextInputPanelProps {
   onSubmit: (text: string) => void
+  selectedAgentId: string | null
+  onSelectAgent: (agentId: string | null) => void
   onCancel: () => void
   isProcessing?: boolean
   agentProgress?: AgentProgressUpdate | null
@@ -30,6 +33,8 @@ export interface TextInputPanelRef {
 
 export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>(({
   onSubmit,
+  selectedAgentId,
+  onSelectAgent,
   onCancel,
   isProcessing = false,
   agentProgress,
@@ -168,12 +173,22 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
         />
       ) : (
         <div className="flex flex-1 flex-col gap-2">
-          {continueConversationTitle && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 text-xs">
-              <span className="opacity-70">Continuing:</span>
-              <span className="font-medium truncate max-w-[200px]">{continueConversationTitle}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="modern-text-muted text-[11px] uppercase tracking-wide">Agent</span>
+              <AgentSelector
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={onSelectAgent}
+                compact
+              />
             </div>
-          )}
+            {continueConversationTitle && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 text-xs">
+                <span className="opacity-70">Continuing:</span>
+                <span className="font-medium truncate max-w-[200px]">{continueConversationTitle}</span>
+              </div>
+            )}
+          </div>
           <div className="modern-text-muted flex items-center justify-between text-xs">
             <span>Type your message • Enter to send • Shift+Enter for new line • Esc to cancel</span>
             <div className="flex items-center gap-1">

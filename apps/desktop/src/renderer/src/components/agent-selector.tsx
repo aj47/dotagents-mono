@@ -19,6 +19,7 @@ import {
 import { Button } from "./ui/button"
 
 const STORAGE_KEY = "dotagents-selected-agent"
+const STORAGE_EVENT = "dotagents-selected-agent-changed"
 
 function loadSelectedAgentId(): string | null {
   try {
@@ -36,10 +37,37 @@ function saveSelectedAgentId(agentId: string | null): void {
       localStorage.removeItem(STORAGE_KEY)
     }
   } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<string | null>(STORAGE_EVENT, { detail: agentId }))
+  }
 }
 
 export function useSelectedAgentId(): [string | null, (id: string | null) => void] {
   const [selectedId, setSelectedId] = React.useState<string | null>(() => loadSelectedAgentId())
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return undefined
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        setSelectedId(event.newValue)
+      }
+    }
+
+    const handleSelectedAgentChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<string | null>
+      setSelectedId(customEvent.detail ?? null)
+    }
+
+    window.addEventListener("storage", handleStorage)
+    window.addEventListener(STORAGE_EVENT, handleSelectedAgentChanged as EventListener)
+
+    return () => {
+      window.removeEventListener("storage", handleStorage)
+      window.removeEventListener(STORAGE_EVENT, handleSelectedAgentChanged as EventListener)
+    }
+  }, [])
 
   const setAndPersist = React.useCallback((id: string | null) => {
     setSelectedId(id)

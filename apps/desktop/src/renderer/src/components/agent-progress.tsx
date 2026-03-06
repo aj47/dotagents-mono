@@ -1288,12 +1288,16 @@ const formatDelegationStatus = (status: ACPDelegationProgress["status"]): string
 
 const getDelegationSubtitle = (delegation: ACPDelegationProgress, maxLength: number): string => {
   const source = delegation.status === "failed"
-    ? delegation.error ?? delegation.progressMessage ?? delegation.task
+    ? delegation.error ?? delegation.progressMessage
     : delegation.status === "completed"
-      ? delegation.resultSummary ?? delegation.progressMessage ?? delegation.task
-      : delegation.progressMessage ?? delegation.task
+      ? delegation.resultSummary ?? delegation.progressMessage
+      : delegation.progressMessage
 
-  return truncatePreview(source, maxLength) || truncatePreview(delegation.task, maxLength)
+  const conversationPreview = delegation.conversation?.length
+    ? getConversationPreview(delegation.conversation, delegation.agentName, maxLength)
+    : ""
+
+  return truncatePreview(source, maxLength) || conversationPreview || truncatePreview(delegation.task, maxLength)
 }
 
 const getConversationPreview = (
@@ -1622,7 +1626,7 @@ const DelegationBubble: React.FC<{
   delegation: ACPDelegationProgress
   isExpanded?: boolean
   onToggleExpand?: () => void
-}> = ({ delegation, isExpanded = true, onToggleExpand }) => {
+}> = ({ delegation, isExpanded = false, onToggleExpand }) => {
   const { ref: containerRef, isCompact } = useCompactWidth<HTMLDivElement>()
   const [isConversationOpen, setIsConversationOpen] = useState(false)
   const isRunning = delegation.status === 'running' || delegation.status === 'pending' || delegation.status === 'spawning'
@@ -1768,6 +1772,17 @@ const DelegationBubble: React.FC<{
       {/* Content - only shown when expanded */}
       {isExpanded && (
         <div className="px-3 py-3 space-y-3">
+          {/* Collapsible conversation panel - persists after completion */}
+          {hasConversation && (
+            <SubAgentConversationPanel
+              conversation={delegation.conversation!}
+              agentName={delegation.agentName}
+              isOpen={isConversationOpen}
+              onToggle={() => setIsConversationOpen(!isConversationOpen)}
+              isCompact={isCompact}
+            />
+          )}
+
           <div className="space-y-1">
             <div className={cn("text-[11px] font-semibold uppercase tracking-wide", mutedTextColor)}>
               Task
@@ -1811,17 +1826,6 @@ const DelegationBubble: React.FC<{
                 {delegation.error}
               </p>
             </div>
-          )}
-
-          {/* Collapsible conversation panel - persists after completion */}
-          {hasConversation && (
-            <SubAgentConversationPanel
-              conversation={delegation.conversation!}
-              agentName={delegation.agentName}
-              isOpen={isConversationOpen}
-              onToggle={() => setIsConversationOpen(!isConversationOpen)}
-              isCompact={isCompact}
-            />
           )}
 
           {/* Status footer */}
@@ -3206,13 +3210,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           />
                         )
                       } else if (item.kind === "delegation") {
-                        const delegationExpanded = expandedItems[itemKey] ?? true
+                        const delegationExpanded = expandedItems[itemKey] ?? false
                         return (
                           <DelegationBubble
                             key={itemKey}
                             delegation={item.data}
                             isExpanded={delegationExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, true)}
+                            onToggleExpand={() => toggleItemExpansion(itemKey, false)}
                           />
                         )
                       } else {
@@ -3228,8 +3232,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     })}
                   </div>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    Initializing...
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/70" aria-hidden="true" />
+                    <span className="sr-only">Loading agent activity</span>
                   </div>
                 )}
               </div>
@@ -3590,13 +3595,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "delegation") {
-                  const delegationExpanded = expandedItems[itemKey] ?? true
+                  const delegationExpanded = expandedItems[itemKey] ?? false
                   return (
                     <DelegationBubble
                       key={itemKey}
                       delegation={item.data}
                       isExpanded={delegationExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, true)}
+                      onToggleExpand={() => toggleItemExpansion(itemKey, false)}
                     />
                   )
                 } else {
@@ -3612,8 +3617,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               })}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Initializing...
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/70" aria-hidden="true" />
+              <span className="sr-only">Loading agent activity</span>
             </div>
           )}
         </div>
