@@ -86,6 +86,8 @@ const mockConfig = {
   ],
 }
 
+const mockGetByName: any = vi.fn(() => null)
+
 vi.mock("./config", () => ({
   configStore: {
     get: () => mockConfig,
@@ -103,7 +105,7 @@ vi.mock("./debug", () => ({
 // Keep ACP service tests deterministic: use legacy acpAgents config path directly.
 vi.mock("./agent-profile-service", () => ({
   agentProfileService: {
-    getByName: vi.fn(() => null),
+    getByName: mockGetByName,
     getExternalAgents: vi.fn(() => []),
   },
 }))
@@ -121,6 +123,8 @@ describe("ACP Service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetByName.mockReset()
+    mockGetByName.mockReturnValue(null)
     originalWorkspaceEnv = process.env.DOTAGENTS_WORKSPACE_DIR
     delete process.env.DOTAGENTS_WORKSPACE_DIR
     ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = undefined
@@ -259,6 +263,35 @@ describe("ACP Service", () => {
       await expect(acpService.spawnAgent("disabled-agent")).rejects.toThrow(
         "Agent disabled-agent is disabled"
       )
+    })
+
+    it("should spawn an ACP agent defined in agent profiles", async () => {
+      mockGetByName.mockReturnValue({
+        name: "augustus",
+        displayName: "augustus",
+        description: "Augment Code's AI coding assistant with native ACP support",
+        enabled: true,
+        autoSpawn: false,
+        isBuiltIn: false,
+        connection: {
+          type: "acp",
+          command: "auggie",
+          args: ["--acp"],
+        },
+      })
+
+      const { acpService } = await import("./acp-service")
+
+      await acpService.spawnAgent("augustus")
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "auggie",
+        ["--acp"],
+        expect.objectContaining({
+          stdio: ["pipe", "pipe", "pipe"],
+        })
+      )
+      expect(acpService.getAgentStatus("augustus")?.status).toBe("ready")
     })
 
     it("should resolve relative configured cwd from DOTAGENTS_WORKSPACE_DIR", async () => {
