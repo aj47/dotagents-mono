@@ -180,7 +180,7 @@ export function AgentCapabilitiesSidebar() {
           {isSectionOpen("skills") ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
           <Sparkles className="h-3 w-3 shrink-0" />
           <span className="truncate">Skills</span>
-          <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0 h-3.5">{enabledSkillCount}/{skills.length}</Badge>
+          <Badge variant="secondary" className="ml-auto text-[10px] px-1 py-0 h-3.5">{enabledSkillCount}/{skills.length}</Badge>
         </button>
         {isSectionOpen("skills") && (
           <div className="pl-5 space-y-0.5">
@@ -203,7 +203,7 @@ export function AgentCapabilitiesSidebar() {
           {isSectionOpen("servers") ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
           <Server className="h-3 w-3 shrink-0" />
           <span className="truncate">MCP Servers</span>
-          <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0 h-3.5">{enabledServerCount}/{serverNames.length}</Badge>
+          <Badge variant="secondary" className="ml-auto text-[10px] px-1 py-0 h-3.5">{enabledServerCount}/{serverNames.length}</Badge>
         </button>
         {isSectionOpen("servers") && (
           <div className="pl-5 space-y-0.5">
@@ -218,7 +218,7 @@ export function AgentCapabilitiesSidebar() {
                     <Switch className="scale-[0.6]" checked={isServerEnabled(agent, name)} onCheckedChange={() => toggleServer(agent, name)} />
                     <span className="text-[11px] truncate flex-1">{name}</span>
                     {serverToolList.length > 0 && (
-                      <button onClick={() => toggleExpandServer(name)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                      <button onClick={() => toggleExpandServer(name)} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
                         {serverToolList.length}t
                         {isExp ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
                       </button>
@@ -249,7 +249,7 @@ export function AgentCapabilitiesSidebar() {
           {isSectionOpen("builtin") ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
           <Wrench className="h-3 w-3 shrink-0" />
           <span className="truncate">Built-in Tools</span>
-          <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0 h-3.5">{enabledBuiltinCount}/{builtinTools.length}</Badge>
+          <Badge variant="secondary" className="ml-auto text-[10px] px-1 py-0 h-3.5">{enabledBuiltinCount}/{builtinTools.length}</Badge>
         </button>
         {isSectionOpen("builtin") && (
           <div className="pl-5 space-y-0.5">
@@ -330,7 +330,7 @@ export function AgentCapabilitiesSidebar() {
                 >
                   {agent.displayName}
                 </button>
-                <Badge variant="outline" className="ml-auto text-[8px] px-1 py-0 h-3">{agent.connection.type}</Badge>
+                <Badge variant="outline" className="ml-auto text-[10px] px-1 py-0 h-3.5">{agent.connection.type}</Badge>
               </div>
               {expandedAgentId === agent.id && (
                 <div className="pl-3 py-1">

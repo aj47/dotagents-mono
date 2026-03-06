@@ -2,6 +2,48 @@
 
 ---
 
+## 2026-03-06 — chunk 5: agent-capabilities-sidebar micro-fonts + providers overflow
+
+### Sources consulted
+- `apps/desktop/src/renderer/src/components/agent-capabilities-sidebar.tsx`
+- `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx`
+- `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (reviewed, no changes needed)
+
+### Issues found
+
+**agent-capabilities-sidebar.tsx — micro-font badges and expand button**
+- `text-[9px]` on three capability count badges (Skills, MCP Servers, Built-in Tools, lines 183/206/252) — badges showing "3/5" style counts were 9px, barely readable at 100% zoom.
+- `text-[9px]` on the per-server tool-count expand button (line 221) — a button showing e.g. "4t ▸" was 9px absolute with no font scaling.
+- `text-[8px]` on the agent connection type badge (line 333) — this was the smallest text found in the codebase at 8px. At 100% zoom it renders at 8 CSS pixels; with common browser text scaling it still stays fixed at 8px.
+
+**settings-providers-and-models.tsx — horizontal scroll**
+- The outer container used `overflow-auto` which enables both horizontal and vertical scrolling. On wide content inside (e.g., long provider API key input rows), this could create an undesirable horizontal scroll bar instead of wrapping.
+
+**mcp-config-manager.tsx**
+- Reviewed for server row overflow. Server row headers already use `min-w-0 flex-1` with `truncate` on the server name, and `shrink-0` on badge clusters — no changes needed.
+
+### Changes made
+
+**agent-capabilities-sidebar.tsx**
+- Changed `text-[9px]` → `text-[10px]` on the Skills, MCP Servers, and Built-in Tools capability count badges.
+- Changed `text-[9px]` → `text-[10px]` on the per-server tool-count expand button.
+- Changed `text-[8px]` → `text-[10px]` and `h-3` → `h-3.5` on the agent connection type badge. Now consistent with all other micro-badges in the component.
+
+**settings-providers-and-models.tsx**
+- Changed `overflow-auto` → `overflow-y-auto overflow-x-hidden` on the outer container, preventing unintended horizontal scroll while preserving vertical scroll for tall content.
+
+### Verified not broken
+- TypeScript typecheck: `pnpm --filter @dotagents/desktop typecheck` → exit 0.
+
+### Follow-up areas for next chunk
+- Audit the `bundle-export-dialog.tsx`, `bundle-import-dialog.tsx`, and `bundle-publish-dialog.tsx` for dialog sizing/narrow-window clipping.
+- Audit the `settings-loops.tsx` repeat-task page for toolbar overflow and row truncation.
+- Check mobile app (`apps/mobile/src/`) for matching issues per AGENTS.md cross-platform reminder — particularly agent progress display and session management.
+
+
+
+---
+
 ## 2026-03-06 — chunk 4: skills toolbar overflow + text-input hint + agent-progress micro-fonts
 
 ### Sources consulted

@@ -6,7 +6,7 @@ import { Component as ModelsSettings } from "./settings-models"
 
 export function Component() {
   return (
-    <div className="modern-panel h-full overflow-auto px-6 py-4">
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="space-y-8">
         {/* Providers section */}
         <div>
