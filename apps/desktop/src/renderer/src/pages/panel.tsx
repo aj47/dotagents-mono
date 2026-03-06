@@ -28,9 +28,13 @@ const MAX_VISUALIZER_BAR_COUNT = 240
 const WAVEFORM_BAR_WIDTH_PX = 2
 const WAVEFORM_BAR_GAP_PX = 2
 const WAVEFORM_HORIZONTAL_PADDING_PX = 16
+const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 360
 const MIN_WAVEFORM_WIDTH =
-  DEFAULT_VISUALIZER_BAR_COUNT * (WAVEFORM_BAR_WIDTH_PX + WAVEFORM_BAR_GAP_PX) +
-  WAVEFORM_HORIZONTAL_PADDING_PX * 2
+  Math.max(
+    DEFAULT_VISUALIZER_BAR_COUNT * (WAVEFORM_BAR_WIDTH_PX + WAVEFORM_BAR_GAP_PX) +
+      WAVEFORM_HORIZONTAL_PADDING_PX * 2,
+    WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX,
+  )
 const WAVEFORM_MIN_HEIGHT = 150
 const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
 const TEXT_INPUT_MIN_HEIGHT = 160
@@ -1197,16 +1201,16 @@ export function Component() {
                 >
                   {/* Selected agent indicator during recording */}
                   {selectedAgentName && !continueConversationTitle && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 mb-1 rounded bg-primary/10 dark:bg-primary/10 text-primary text-xs">
+                    <div className="mb-1 flex max-w-[calc(100%-2rem)] items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary dark:bg-primary/10">
                       <Bot className="h-3 w-3 shrink-0" />
-                      <span className="font-medium truncate max-w-[180px]">{selectedAgentName}</span>
+                      <span className="min-w-0 truncate font-medium">{selectedAgentName}</span>
                     </div>
                   )}
                   {/* Continue conversation indicator */}
                   {continueConversationTitle && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 mb-1 rounded bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 text-xs">
+                    <div className="mb-1 flex max-w-[calc(100%-2rem)] items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
                       <span className="opacity-70">Continuing:</span>
-                      <span className="font-medium truncate max-w-[200px]">{continueConversationTitle}</span>
+                      <span className="min-w-0 truncate font-medium">{continueConversationTitle}</span>
                     </div>
                   )}
                   {/* Waveform scales with panel size while preserving stable min/max bounds */}
@@ -1245,11 +1249,11 @@ export function Component() {
                   )}
 
                   {/* Submit button and keyboard hint */}
-                  <div className="flex items-center gap-3 mt-1">
+                  <div className="mt-1 flex max-w-[calc(100%-2rem)] flex-wrap items-center justify-center gap-2 px-4 text-center">
                     <button
                       onClick={handleSubmitRecording}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                        "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                         "bg-blue-500 hover:bg-blue-600 text-white",
                         "dark:bg-blue-600 dark:hover:bg-blue-700"
                       )}
@@ -1257,11 +1261,11 @@ export function Component() {
                       <Send className="h-3.5 w-3.5" />
                       <span>Submit</span>
                     </button>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="min-w-0 text-center text-xs leading-relaxed text-muted-foreground">
                       {getSubmitShortcutText.toLowerCase().startsWith("release") ? (
-                        <>or <kbd className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-xs">{getSubmitShortcutText}</kbd></>
+                        <>or <kbd className="inline-flex max-w-full items-center rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{getSubmitShortcutText}</kbd></>
                       ) : (
-                        <>or press <kbd className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-xs">{getSubmitShortcutText}</kbd></>
+                        <>or press <kbd className="inline-flex max-w-full items-center rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{getSubmitShortcutText}</kbd></>
                       )}
                     </span>
                   </div>
