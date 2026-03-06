@@ -1,5 +1,47 @@
 ## UI Audit Log
 
+### 2026-03-06 — Chunk 14: Sessions tile expanded tool output blocks at narrow widths / zoom
+
+- Area selected: desktop sessions tile expanded tool detail/output blocks inside `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- Why this chunk: chunk 13 covered the compact tool execution row chrome and explicitly left the next best follow-up as the message stream’s markdown/code-block density. The most actionable remaining hotspot was the expanded tool output area itself: parameter/result headers, indented detail gutters, and long `pre` blocks under zoom.
+- Audit method:
+  - reviewed `apps/desktop/DEBUGGING.md`
+  - launched the desktop app with remote debugging enabled via `REMOTE_DEBUGGING_PORT=9343 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9349" pnpm dev -- -d`
+  - inspected the expanded tool-detail paths in `agent-progress.tsx` (`ToolExecutionBubble`, `AssistantWithToolsBubble`, and `CompactMessage` fallback tool/result cards)
+  - cross-checked `apps/mobile/src/screens/ChatScreen.tsx`; mobile’s equivalent tool-output surface does not share the tile-width gutter pressure from the desktop sessions grid, so no matching mobile change was required for this chunk
+
+#### Findings
+
+- After chunk 13, the compact tool rows were in better shape, but the expanded tool output blocks still had layout pressure in narrow tiles and at high zoom:
+  - `Parameters` / `Copy` and `Result` / char-count headers still depended on tight single-line layouts in `ToolExecutionBubble`
+  - the shared `AssistantWithToolsBubble` detail area still used a deeper left gutter plus rigid `pre` blocks
+  - fallback `CompactMessage` tool result cards still used `break-all`, which is harsh on readability for long command output, stack traces, and JSON-ish content
+- The issue here was less about top-level tile responsiveness and more about **readability density** inside constrained message content:
+  - long tool output should scroll horizontally when needed, but not force ugly mid-token splitting everywhere
+  - detail chrome should wrap before pushing copy affordances or char counts into cramped edge states
+
+#### Changes made
+
+- Updated expanded tool-detail containers in `agent-progress.tsx` to be more forgiving in narrow tiles:
+  - reduced the left indent from `ml-4` to `ml-3` in the two shared expanded detail gutters
+  - made the `Parameters` / `Copy` and `Result` / char-count rows explicitly wrap with `justify-between gap-1.5`
+  - slightly increased the compact `Copy` button height/padding so it remains easier to hit/read under zoom
+- Updated expanded tool output/code blocks to respect available width without the previous overly aggressive wrapping:
+  - replaced `overflow-auto` with explicit `overflow-x-auto overflow-y-auto`
+  - added `max-w-full` to the relevant `pre` blocks
+  - changed the expanded result/error blocks from `break-all` to `break-words` so long content stays more legible while still preventing runaway overflow
+- Extended `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` so the responsive class contract now also covers the expanded tool-detail chrome/output block treatment.
+
+#### Verification
+
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.tile-layout.test.ts`
+- Targeted web typecheck: `pnpm --filter @dotagents/desktop typecheck:web`
+
+#### Notes
+
+- Electron-native renderer automation again attached to the shell document instead of the hydrated React tree for this surface, so this chunk used documented app startup plus direct inspection of the concrete implementation hotspots.
+- Best next UI audit chunk after this one: a focused pass on rendered markdown inside session messages and summaries (`markdown-renderer.tsx`, tables/images/code fences, and `AgentSummaryView`) for high-zoom density, especially where prose content mixes with cards inside the same tile.
+
 ### 2026-03-06 — Chunk 13: Sessions tile message-stream tool execution rows at narrow widths / zoom
 
 - Area selected: desktop sessions tile chat/message stream tool execution rows inside `apps/desktop/src/renderer/src/components/agent-progress.tsx`

@@ -524,7 +524,7 @@ const CompactMessage: React.FC<{
                           <div className="text-xs font-medium opacity-70 mb-1">
                             Content:
                           </div>
-                          <pre className="rounded bg-muted/30 p-2 overflow-auto text-xs whitespace-pre-wrap break-all max-h-80 scrollbar-thin">
+                          <pre className="rounded bg-muted/30 p-2 text-xs whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-w-full max-h-80 scrollbar-thin">
                             {result.content || "No content returned"}
                           </pre>
                         </div>
@@ -534,7 +534,7 @@ const CompactMessage: React.FC<{
                             <div className="text-xs font-medium text-destructive mb-1">
                               Error Details:
                             </div>
-                            <pre className="rounded bg-destructive/10 p-2 overflow-auto text-xs whitespace-pre-wrap break-all max-h-60 scrollbar-thin">
+                            <pre className="rounded bg-destructive/10 p-2 text-xs whitespace-pre-wrap break-words overflow-x-auto overflow-y-auto max-w-full max-h-60 scrollbar-thin">
                               {result.error}
                             </pre>
                           </div>
@@ -764,46 +764,46 @@ const ToolExecutionBubble: React.FC<{
 
             {/* Expanded details for this tool */}
             {isToolExpanded && (
-              <div className="ml-4 mt-0.5 mb-1 border-l border-border/50 pl-2 space-y-1 text-[10px]">
+              <div className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]">
                 {call.arguments && (
                   <>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="ml-auto h-4 shrink-0 px-1 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="min-w-0 font-medium opacity-70">Parameters</span>
+                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
                         <Copy className="h-2 w-2 mr-0.5" /> Copy
                       </Button>
                     </div>
-                    <pre className="rounded bg-muted/40 p-1.5 overflow-auto whitespace-pre-wrap max-h-32 scrollbar-thin text-[10px]">
+                    <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
                       {JSON.stringify(call.arguments, null, 2)}
                     </pre>
                   </>
                 )}
                 {result && (
                   <>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className={cn(
                         "min-w-0 flex-1 font-medium",
                         result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                       )}>
                         {result.success ? "Result" : "Error"}
                       </span>
-                      <span className="ml-auto shrink-0 whitespace-nowrap opacity-50 text-[10px]">{(result.content?.length || 0).toLocaleString()} chars</span>
+                      <span className="shrink-0 whitespace-nowrap opacity-50 text-[10px]">{(result.content?.length || 0).toLocaleString()} chars</span>
                     </div>
                     {result.error && (
-                      <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
+                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
                         {result.error}
                       </pre>
                     )}
                     {result.content && (
                       <pre className={cn(
-                        "rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px]",
+                        "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
                         result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
                       )}>
                         {result.content}
                       </pre>
                     )}
                     {!result.error && !result.content && (
-                      <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px] bg-muted/40">
+                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
                         No content
                       </pre>
                     )}
@@ -971,43 +971,43 @@ const AssistantWithToolsBubble: React.FC<{
 
           {/* Expanded tool details */}
           {showToolDetails && (
-            <div className="mt-1 space-y-1 ml-4 border-l border-border/50 pl-2">
+            <div className="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2">
               {data.calls.map((call, idx) => {
                 const result = data.results[idx]
                 return (
                   <div key={idx} className="text-[10px] space-y-1">
-                    <div className="font-medium opacity-70">Parameters:</div>
+                    <div className="font-medium opacity-70 break-words">Parameters:</div>
                     {call.arguments && (
-                      <pre className="rounded bg-muted/40 p-1.5 overflow-auto whitespace-pre-wrap max-h-32 scrollbar-thin text-[10px]">
+                      <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
                         {JSON.stringify(call.arguments, null, 2)}
                       </pre>
                     )}
                     {result && (
                       <>
-                        <div className="font-medium opacity-70 flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1.5 font-medium opacity-70">
                           Result:
                           <span className={cn(
-                            "text-[10px] font-semibold",
+                            "shrink-0 text-[10px] font-semibold",
                             result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                           )}>
                             {result.success ? "OK" : "ERR"}
                           </span>
                         </div>
                         {result.error && (
-                          <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
+                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
                             {result.error}
                           </pre>
                         )}
                         {result.content && (
                           <pre className={cn(
-                            "rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px]",
+                            "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
                             result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
                           )}>
                             {result.content}
                           </pre>
                         )}
                         {!result.error && !result.content && (
-                          <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px] bg-muted/40">
+                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
                             No content
                           </pre>
                         )}

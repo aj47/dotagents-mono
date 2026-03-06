@@ -61,6 +61,21 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50"')
     expect(agentProgressSource).toContain('className="mb-1 flex flex-wrap items-center gap-2"')
     expect(agentProgressSource).toContain('className="ml-auto flex shrink-0 flex-wrap items-center gap-2"')
-    expect(agentProgressSource).toContain('className="ml-auto shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
+    expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
+  })
+
+  it("wraps expanded tool detail chrome and caps tool output blocks inside narrow tiles", () => {
+    expect(agentProgressSource).toContain(
+      'className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]"'
+    )
+    expect(agentProgressSource).toContain(
+      'className="flex flex-wrap items-center justify-between gap-1.5"'
+    )
+    expect(agentProgressSource).toContain(
+      'className="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"'
+    )
+    expect(agentProgressSource).toContain(
+      'overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]'
+    )
   })
 })
