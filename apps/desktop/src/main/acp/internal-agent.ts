@@ -219,9 +219,7 @@ function emitSubSessionDelegationProgress(
           : 'failed',
     startTime: subSession.startTime,
     endTime: subSession.endTime,
-    progressMessage: subSession.status === 'running'
-      ? `Depth ${subSession.depth} sub-session processing...`
-      : undefined,
+    progressMessage: undefined,
     resultSummary: subSession.result?.substring(0, 200),
     error: subSession.error,
     conversation,
