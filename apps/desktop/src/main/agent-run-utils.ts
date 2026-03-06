@@ -85,13 +85,10 @@ export function buildProfileContext(
   if (!profile && !existingContext) return undefined
 
   const parts: string[] = []
-  const profileName = !profile
-    ? undefined
-    : "displayName" in profile
-      ? (typeof profile.displayName === "string" && profile.displayName.trim().length > 0
-          ? profile.displayName
-          : profile.profileName)
-      : profile.profileName
+  const displayName = profile && "displayName" in profile && typeof profile.displayName === "string"
+    ? profile.displayName.trim()
+    : ""
+  const profileName = displayName || profile?.profileName
 
   if (existingContext) parts.push(existingContext)
   if (profileName) parts.push(`[Acting as: ${profileName}]`)

@@ -103,6 +103,49 @@ describe("acp-main-agent", () => {
     }))
   })
 
+  it("handles malformed config option choices without throwing", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<{ acpSessionInfo?: Record<string, unknown> }> = []
+
+    mockGetAgentInstance.mockReturnValue({
+      agentInfo: { name: "test-agent", title: "Test Agent", version: "1.0.0" },
+      sessionInfo: {
+        configOptions: [
+          {
+            id: "model",
+            name: "Model",
+            type: "select",
+            currentValue: "sonnet",
+            options: null,
+          },
+          {
+            id: "mode",
+            name: "Mode",
+            type: "select",
+            currentValue: "code",
+            options: "invalid",
+          },
+        ],
+      },
+    })
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(result.success).toBe(true)
+    expect(updates[0]?.acpSessionInfo).toEqual(expect.objectContaining({
+      currentModel: "sonnet",
+      currentMode: "code",
+      availableModels: [],
+      availableModes: [],
+    }))
+  })
+
   it("adds builtin response-tool instructions to ACP prompt context", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
 

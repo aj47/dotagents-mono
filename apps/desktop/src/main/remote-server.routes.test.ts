@@ -60,6 +60,7 @@ describe("remote-server route registration", () => {
 
     expect(source).toContain("function getAcpMcpRequestContext")
     expect(source).toContain("function getInjectedBuiltinToolsForAcpSession")
+    expect(source).toContain("getPendingAppSessionForClientSessionToken")
     expect(source).toContain("if (!profileSnapshot) return undefined")
     expect(source).toContain('fastify.post("/mcp/:acpSessionToken"')
     expect(source).toContain('fastify.get("/mcp/:acpSessionToken"')
@@ -73,6 +74,7 @@ describe("remote-server route registration", () => {
     expect(listInjectedMcpToolsSection).toContain("reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })")
     expect(listInjectedMcpToolsSection).toContain("reply.send({ tools: injectedBuiltinTools.tools })")
     expect(listInjectedMcpToolsSection).not.toContain("mcpService.getAvailableTools()")
+    expect(source).toContain("?? getPendingAppSessionForClientSessionToken(acpSessionToken)")
     expect(callInjectedMcpToolSection).toContain("getInjectedBuiltinToolsForAcpSession(acpSessionToken)")
     expect(callInjectedMcpToolSection).toContain("reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })")
     expect(callInjectedMcpToolSection).toContain("injectedBuiltinTools.requestContext.appSessionId")

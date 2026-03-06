@@ -26,7 +26,11 @@ import { memoryService } from "./memory-service"
 import { isBuiltinTool } from "./builtin-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
-import { getAcpSessionForClientSessionToken, getAppSessionForAcpSession } from "./acp-session-state"
+import {
+  getAcpSessionForClientSessionToken,
+  getAppSessionForAcpSession,
+  getPendingAppSessionForClientSessionToken,
+} from "./acp-session-state"
 import { WINDOWS } from "./window"
 import type { RendererHandlers } from "./renderer-handlers"
 
@@ -103,9 +107,9 @@ function getAcpMcpRequestContext(
   if (!acpSessionToken) return undefined
 
   const acpSessionId = getAcpSessionForClientSessionToken(acpSessionToken)
-  if (!acpSessionId) return undefined
-
-  const appSessionId = getAppSessionForAcpSession(acpSessionId)
+  const appSessionId = (acpSessionId
+    ? getAppSessionForAcpSession(acpSessionId)
+    : undefined) ?? getPendingAppSessionForClientSessionToken(acpSessionToken)
   if (!appSessionId) return undefined
 
   const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(appSessionId)

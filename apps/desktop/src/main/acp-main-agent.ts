@@ -70,12 +70,14 @@ function getConfigOptionByCategory(
 
 function getCurrentConfigOptionLabel(option: ACPConfigOption | undefined): string | undefined {
   if (!option) return undefined
-  return option.options.find((value) => value.value === option.currentValue)?.name || option.currentValue
+  const values = Array.isArray(option.options) ? option.options : []
+  return values.find((value) => value.value === option.currentValue)?.name || option.currentValue
 }
 
 function getConfigOptionChoices(option: ACPConfigOption | undefined): Array<{ id: string; name: string; description?: string }> | undefined {
   if (!option) return undefined
-  return option.options.map((value) => ({
+  const values = Array.isArray(option.options) ? option.options : []
+  return values.map((value) => ({
     id: value.value,
     name: value.name,
     description: value.description,
@@ -536,7 +538,12 @@ export async function processTranscriptWithACPAgent(
       logApp(`[ACP Main] Reusing existing session ${acpSessionId}`)
     } else {
       // Create new session
-      acpSessionId = await acpService.getOrCreateSession(agentName, true)
+      acpSessionId = await acpService.getOrCreateSession(
+        agentName,
+        true,
+        undefined,
+        { appSessionId: sessionId },
+      )
       setSessionForConversation(conversationId, acpSessionId, agentName)
       logApp(`[ACP Main] Created new session ${acpSessionId}`)
     }

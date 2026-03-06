@@ -23,6 +23,14 @@ interface ACPSessionBadgeProps {
   className?: string
 }
 
+function getConfigOptionLabel(option: {
+  currentValue: string
+  options?: Array<{ value: string; name: string }> | unknown
+}): string {
+  const values = Array.isArray(option.options) ? option.options : []
+  return values.find((value) => value.value === option.currentValue)?.name || option.currentValue
+}
+
 /**
  * A compact badge component showing ACP session agent info.
  * Displays agent title/version and model/mode in a compact format.
@@ -60,7 +68,7 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
   if (currentMode) tooltipLines.push(`Mode: ${currentMode}`)
   for (const option of configOptions || []) {
     if (option.id === "model" || option.id === "mode") continue
-    const label = option.options.find((value) => value.value === option.currentValue)?.name || option.currentValue
+    const label = getConfigOptionLabel(option)
     tooltipLines.push(`${option.name}: ${label}`)
   }
 
@@ -103,4 +111,3 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
     </TooltipProvider>
   )
 }
-

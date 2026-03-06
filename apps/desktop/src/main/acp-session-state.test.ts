@@ -21,4 +21,16 @@ describe("acp-session-state", () => {
     expect(sessionState.getAppSessionForAcpSession("acp-token-only")).toBeUndefined()
     expect(sessionState.getAppRunIdForAcpSession("acp-token-only")).toBeUndefined()
   })
+
+  it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setPendingAcpClientSessionTokenMapping("pending-client-token", "app-session-1")
+    expect(sessionState.getPendingAppSessionForClientSessionToken("pending-client-token")).toBe("app-session-1")
+
+    sessionState.clearAcpClientSessionTokenMapping("pending-client-token")
+
+    expect(sessionState.getPendingAppSessionForClientSessionToken("pending-client-token")).toBeUndefined()
+    expect(sessionState.getAcpSessionForClientSessionToken("pending-client-token")).toBeUndefined()
+  })
 })

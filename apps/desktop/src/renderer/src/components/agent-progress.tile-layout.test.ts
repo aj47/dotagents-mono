@@ -44,6 +44,8 @@ describe("agent progress tile layout", () => {
     expect(acpSessionBadgeSource).toContain(
       '"inline-flex max-w-full min-w-0 flex-wrap items-center gap-1.5 cursor-help"'
     )
+    expect(acpSessionBadgeSource).toContain("function getConfigOptionLabel")
+    expect(acpSessionBadgeSource).toContain("Array.isArray(option.options)")
     expect(acpSessionBadgeSource).toContain(
       'className="max-w-full min-w-0 text-[10px] px-1.5 py-0 font-medium"'
     )

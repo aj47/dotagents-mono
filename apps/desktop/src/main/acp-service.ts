@@ -22,8 +22,10 @@ import { agentProfileService } from "./agent-profile-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { logACP, logApp } from "./debug"
 import {
+  clearAcpClientSessionTokenMapping,
   getAppRunIdForAcpSession,
   getAppSessionForAcpSession,
+  setPendingAcpClientSessionTokenMapping,
   setAcpClientSessionTokenMapping,
 } from "./acp-session-state"
 
@@ -1714,7 +1716,10 @@ class ACPService extends EventEmitter {
   /**
    * Create a new ACP session for the agent.
    */
-  private async createSession(agentName: string): Promise<string | undefined> {
+  private async createSession(
+    agentName: string,
+    pendingInjectedMcpContext?: { appSessionId: string },
+  ): Promise<string | undefined> {
     const instance = this.agents.get(agentName)
     if (!instance) {
       return undefined
@@ -1755,6 +1760,9 @@ class ACPService extends EventEmitter {
             ],
           })
           instance.clientSessionToken = clientSessionToken
+          if (pendingInjectedMcpContext?.appSessionId) {
+            setPendingAcpClientSessionTokenMapping(clientSessionToken, pendingInjectedMcpContext.appSessionId)
+          }
           logACP("REQUEST", agentName, "session/new", `Injecting DotAgents builtin tools on port ${port}`)
         }
       }
@@ -1784,6 +1792,9 @@ class ACPService extends EventEmitter {
         if (instance.clientSessionToken) {
           setAcpClientSessionTokenMapping(instance.clientSessionToken, sessionId)
         }
+      } else if (instance.clientSessionToken) {
+        clearAcpClientSessionTokenMapping(instance.clientSessionToken)
+        instance.clientSessionToken = undefined
       }
 
       // Store models from session/new response (Task 2.2)
@@ -1817,6 +1828,10 @@ class ACPService extends EventEmitter {
 
       return sessionId
     } catch {
+      if (instance.clientSessionToken) {
+        clearAcpClientSessionTokenMapping(instance.clientSessionToken)
+        instance.clientSessionToken = undefined
+      }
       return undefined
     }
   }
@@ -1991,7 +2006,12 @@ class ACPService extends EventEmitter {
    *
    * Throws with a descriptive error if the agent cannot be started or no session can be created.
    */
-  async getOrCreateSession(agentName: string, forceNew?: boolean, workingDirectory?: string): Promise<string> {
+  async getOrCreateSession(
+    agentName: string,
+    forceNew?: boolean,
+    workingDirectory?: string,
+    pendingInjectedMcpContext?: { appSessionId: string },
+  ): Promise<string> {
     // Ensure agent is spawned, ready, and reconciled with the latest working-directory config.
     let instance = this.agents.get(agentName)
     try {
@@ -2018,7 +2038,7 @@ class ACPService extends EventEmitter {
     }
 
     // Create or reuse session
-    const sessionId = await this.createSession(agentName)
+    const sessionId = await this.createSession(agentName, pendingInjectedMcpContext)
     if (!sessionId) {
       throw new Error(
         `Failed to create ACP session for agent ${agentName}. ` +
