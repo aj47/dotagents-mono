@@ -603,11 +603,12 @@ apps/desktop/src/main/acp/types.ts
 
 ---
 
-## No Website/Landing Page Found
+## Website / Landing Page
 
-The codebase does not contain a website or landing page. The project is:
+The repo now contains a static website in `website/` for `https://dotagents.app`. The project includes:
 - **Desktop Application**: Electron-based (macOS, Windows, Linux)
 - **Mobile Application**: React Native (Expo)
+- **Website**: Static landing page in `website/`
 - **Documentation**: Markdown files in repo (README.md, DEVELOPMENT.md, agents.md)
 - **External Resources**: Discord, GitHub, techfren.net (referenced but not in repo)
 

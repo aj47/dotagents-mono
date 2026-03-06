@@ -1,0 +1,9 @@
+name = "dotagents-website"
+compatibility_date = "2024-01-01"
+
+[env.production]
+account_id = "9a4725557b2acbac23f3fba92d096149"
+
+# Static assets configuration for Cloudflare Pages
+[assets]
+directory = "./"

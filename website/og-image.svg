@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#0d0d0d"/>
+  <rect x="28" y="28" width="1144" height="574" rx="24" fill="#111111" stroke="#262626" stroke-width="2"/>
+  <rect x="70" y="72" width="420" height="28" rx="14" fill="#141414" stroke="#262626"/>
+  <circle cx="94" cy="86" r="8" fill="#b392f0"/>
+  <text x="116" y="93" fill="#d4d4d4" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">dotagents</text>
+  <text x="72" y="188" fill="#666666" font-family="JetBrains Mono, monospace" font-size="18" letter-spacing="3">VOICE-FIRST AI AGENTS</text>
+  <text x="72" y="280" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="800">Your AI team.</text>
+  <text x="72" y="370" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="800">One voice away.</text>
+  <text x="72" y="448" fill="#9a9a9a" font-family="Inter, Arial, sans-serif" font-size="30">Memory, skills, and tools — controlled by your voice</text>
+  <text x="72" y="494" fill="#9a9a9a" font-family="Inter, Arial, sans-serif" font-size="30">and built on the open .agents standard.</text>
+  <rect x="72" y="530" width="220" height="44" rx="22" fill="#101010" stroke="#9cdcfe"/>
+  <text x="103" y="558" fill="#9cdcfe" font-family="JetBrains Mono, monospace" font-size="20">dotagents.app</text>
+  <rect x="706" y="112" width="420" height="380" rx="20" fill="#101010" stroke="#262626"/>
+  <rect x="706" y="112" width="420" height="54" rx="20" fill="#141414"/>
+  <text x="734" y="145" fill="#666666" font-family="JetBrains Mono, monospace" font-size="16" letter-spacing="2">COMMAND FLOW</text>
+  <text x="734" y="225" fill="#666666" font-family="JetBrains Mono, monospace" font-size="24">$ hold Ctrl+Alt</text>
+  <text x="734" y="286" fill="#9cdcfe" font-family="JetBrains Mono, monospace" font-size="24">You</text>
+  <text x="780" y="286" fill="#d4d4d4" font-family="JetBrains Mono, monospace" font-size="24">: “review the latest PR”</text>
+  <text x="734" y="346" fill="#b392f0" font-family="JetBrains Mono, monospace" font-size="24">dotagents</text>
+  <text x="734" y="394" fill="#4ec9b0" font-family="JetBrains Mono, monospace" font-size="22">├── listens</text>
+  <text x="734" y="432" fill="#d4d4d4" font-family="JetBrains Mono, monospace" font-size="22">├── routes to the right agent</text>
+  <text x="734" y="470" fill="#d4d4d4" font-family="JetBrains Mono, monospace" font-size="22">├── confirms risky actions</text>
+  <text x="734" y="508" fill="#d4d4d4" font-family="JetBrains Mono, monospace" font-size="22">└── returns a usable result</text>
+</svg>

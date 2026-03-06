@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DotAgents — Your AI team. One voice away.</title>
+    <meta name="description" content="DotAgents gives you a team of AI specialists with memory, skills, and tools — controlled by your voice and built on the open .agents standard.">
+    <meta name="keywords" content="DotAgents, AI agents, voice-first AI, .agents protocol, MCP, agent skills, AI team, desktop app, agent hub, open standard">
+    <meta name="author" content="DotAgents">
+    <meta name="robots" content="index, follow">
+    <meta name="application-name" content="DotAgents">
+    <meta name="theme-color" content="#0d0d0d">
+    <meta name="msapplication-TileColor" content="#0d0d0d">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+    <link rel="canonical" href="https://dotagents.app/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dotagents.app/">
+    <meta property="og:title" content="DotAgents — Your AI team. One voice away.">
+    <meta property="og:description" content="Voice-first AI agents with memory, skills, and tools. Download the app, speak naturally, and get results without babysitting servers or runaway automations.">
+    <meta property="og:image" content="https://dotagents.app/og-image.svg">
+    <meta property="og:site_name" content="DotAgents">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://dotagents.app/">
+    <meta property="twitter:title" content="DotAgents — Your AI team. One voice away.">
+    <meta property="twitter:description" content="Voice-first AI agents with memory, skills, and tools. Built on the open .agents standard.">
+    <meta property="twitter:image" content="https://dotagents.app/og-image.svg">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "DotAgents",
+      "description": "Voice-first desktop app for AI agents with memory, skills, tools, and the open .agents standard.",
+      "url": "https://dotagents.app",
+      "downloadUrl": "https://github.com/aj47/dotagents-mono/releases/latest",
+      "operatingSystem": ["macOS", "Windows", "Linux"],
+      "applicationCategory": "ProductivityApplication",
+      "applicationSubCategory": "AI Agent Orchestrator",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "DotAgents"
+      },
+      "codeRepository": "https://github.com/aj47/dotagents-mono",
+      "license": "https://github.com/aj47/dotagents-mono/blob/main/LICENSE",
+      "featureList": [
+        "Voice-first task execution",
+        "Persistent memory across sessions",
+        "Portable skills built on the .agents standard",
+        "MCP tool integration",
+        "Hub-ready .dotagents bundles",
+        "Confirmation before destructive actions"
+      ]
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+            --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+            --color-fg: #d4d4d4;
+            --color-fg-muted: #9a9a9a;
+            --color-fg-dim: #666;
+            --color-bg: #0d0d0d;
+            --color-surface: #141414;
+            --color-border: #262626;
+            --color-border-light: #333333;
+            --color-accent-green: #4ec9b0;
+            --color-accent-blue: #569cd6;
+            --color-accent-amber: #ce9178;
+            --color-accent-rose: #d16969;
+            --color-accent-cyan: #9cdcfe;
+            --color-accent-violet: #b392f0;
+            --color-accent-teal: #73c991;
+            --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            background: var(--color-bg);
+            color: var(--color-fg);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.7;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: auto;
+            pointer-events: none;
+            z-index: -1;
+            filter: blur(60px);
+            opacity: 0.22;
+        }
+        body::before {
+            top: -120px;
+            right: -120px;
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(179,146,240,0.7) 0%, rgba(179,146,240,0) 68%);
+        }
+        body::after {
+            left: -120px;
+            top: 30%;
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(156,220,254,0.45) 0%, rgba(156,220,254,0) 68%);
+        }
+        a { color: inherit; text-decoration: none; }
+        img, video { display: block; max-width: 100%; }
+        .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+        .spec-card {
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            border-radius: 12px;
+            box-shadow: var(--shadow-card);
+            transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+        }
+        .spec-card:hover {
+            transform: translateY(-2px);
+            border-color: #3a3a3a;
+            box-shadow: 0 24px 72px rgba(0, 0, 0, 0.38);
+            background: #171717;
+        }
+        .code-block {
+            background: #101010;
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-color 0.22s ease, box-shadow 0.22s ease;
+        }
+        .code-block:hover {
+            border-color: #343434;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26);
+        }
+        .code-block-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-fg-dim);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+        }
+        .code-block pre {
+            margin: 0;
+            padding: 20px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.75;
+            color: var(--color-fg);
+        }
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--color-border);
+            background: rgba(13, 13, 13, 0.9);
+            backdrop-filter: blur(14px);
+        }
+        .nav-inner {
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-sans);
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+        .brand-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: var(--color-accent-violet);
+            box-shadow: 0 0 24px rgba(179, 146, 240, 0.55);
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+            color: var(--color-fg-muted);
+            font-size: 12px;
+        }
+        .nav-links a:hover { color: var(--color-fg); }
+        .mobile-menu {
+            display: none;
+            position: relative;
+            margin-left: auto;
+            border-top: 0;
+            padding: 0;
+        }
+        .mobile-menu summary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 38px;
+            padding: 0 14px;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            color: var(--color-fg-muted);
+            background: rgba(255, 255, 255, 0.02);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+        .mobile-menu summary:hover {
+            color: #fff;
+            border-color: var(--color-border-light);
+        }
+        .mobile-menu summary::after {
+            content: "+";
+            color: var(--color-accent-cyan);
+            font-size: 16px;
+        }
+        .mobile-menu[open] summary::after {
+            content: "−";
+        }
+        .mobile-menu-panel {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 10px);
+            width: min(320px, calc(100vw - 32px));
+            padding: 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            background: rgba(17, 17, 17, 0.96);
+            box-shadow: var(--shadow-card);
+            gap: 10px;
+            display: none;
+        }
+        .mobile-menu[open] .mobile-menu-panel { display: grid; }
+        .mobile-menu-group {
+            display: grid;
+            gap: 8px;
+        }
+        .mobile-menu-group + .mobile-menu-group {
+            padding-top: 10px;
+            border-top: 1px solid var(--color-border);
+        }
+        .mobile-menu-panel a {
+            display: block;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: var(--color-fg-muted);
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 12px;
+        }
+        .mobile-menu-panel a:hover {
+            color: #fff;
+            border-color: var(--color-border-light);
+        }
+        .section { border-bottom: 1px solid var(--color-border); }
+        .section-inner { padding: 72px 0; }
+        main > .section:nth-of-type(2n) {
+            background: linear-gradient(180deg, rgba(255,255,255,0.015) 0%, rgba(255,255,255,0) 100%);
+        }
+        .eyebrow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            color: var(--color-fg-dim);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            margin-bottom: 18px;
+        }
+        .eyebrow-sep { color: var(--color-border-light); }
+        h1, h2, h3 {
+            margin: 0;
+            color: #fff;
+            font-family: var(--font-sans);
+            letter-spacing: -0.03em;
+        }
+        h1 {
+            font-size: clamp(3rem, 7vw, 5.5rem);
+            line-height: 0.96;
+            margin-bottom: 18px;
+        }
+        h2 {
+            font-size: clamp(1.7rem, 3vw, 2.5rem);
+            line-height: 1.1;
+            margin-bottom: 14px;
+        }
+        h3 {
+            font-size: 1.05rem;
+            line-height: 1.3;
+            margin-bottom: 10px;
+        }
+        .lead {
+            margin: 0;
+            max-width: 760px;
+            color: var(--color-fg-muted);
+            font-family: var(--font-sans);
+            font-size: 18px;
+            line-height: 1.7;
+        }
+        .hero-grid, .two-col, .three-col {
+            display: grid;
+            gap: 24px;
+        }
+        .hero-grid {
+            grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+            align-items: start;
+            margin-bottom: 28px;
+        }
+        .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .button-row, .metric-row, .quick-links, .footer-links { display: flex; flex-wrap: wrap; gap: 12px; }
+        .button-row { margin: 28px 0 20px; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 46px;
+            padding: 0 18px;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            border-color: var(--color-border-light);
+        }
+        .btn-primary {
+            border-color: rgba(156, 220, 254, 0.7);
+            color: #f7fdff;
+            background: linear-gradient(180deg, rgba(156,220,254,0.16) 0%, rgba(156,220,254,0.06) 100%);
+            box-shadow: 0 0 0 1px rgba(156, 220, 254, 0.12) inset, 0 12px 34px rgba(86, 156, 214, 0.16);
+        }
+        .btn-primary:hover {
+            color: #fff;
+            border-color: #fff;
+            background: linear-gradient(180deg, rgba(156,220,254,0.24) 0%, rgba(156,220,254,0.11) 100%);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset, 0 16px 38px rgba(86, 156, 214, 0.22);
+        }
+        .btn-secondary {
+            color: var(--color-fg-muted);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .btn-secondary:hover { color: var(--color-fg); }
+        .metric-pill, .component-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            padding: 7px 12px;
+            color: var(--color-fg-muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .metric-row { margin-top: 8px; }
+        .quick-links { margin-top: 18px; font-size: 12px; }
+        .quick-links a, .accent-link { color: var(--color-accent-cyan); }
+        .quick-links a:hover, .accent-link:hover { color: #fff; }
+        .card-body { padding: 24px; }
+        .card-kicker {
+            margin: 0 0 12px;
+            color: var(--color-fg-dim);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+        }
+        .spec-card h3,
+        .spec-card h2 {
+            color: #f9f9f9;
+        }
+        .muted { color: var(--color-fg-muted); }
+        .dim { color: var(--color-fg-dim); }
+        .accent-cyan { color: var(--color-accent-cyan); }
+        .accent-green { color: var(--color-accent-green); }
+        .accent-blue { color: var(--color-accent-blue); }
+        .accent-amber { color: var(--color-accent-amber); }
+        .accent-violet { color: var(--color-accent-violet); }
+        .accent-teal { color: var(--color-accent-teal); }
+        .hero-video { overflow: hidden; }
+        .hero-video {
+            background:
+                radial-gradient(circle at top right, rgba(179,146,240,0.12), transparent 42%),
+                linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 100%),
+                var(--color-surface);
+            border-color: #34323f;
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(179,146,240,0.08) inset;
+        }
+        .hero-video video {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            background: #090909;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .hero-video .card-body { padding-top: 18px; }
+        .hero-video .card-kicker { color: var(--color-accent-violet); }
+        .stack-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .stack-list li { color: var(--color-fg-muted); }
+        .stack-list li::before {
+            content: "→";
+            color: var(--color-accent-cyan);
+            margin-right: 10px;
+        }
+        .comparison-list {
+            display: grid;
+            gap: 16px;
+            margin: 20px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+        .comparison-list li {
+            display: grid;
+            grid-template-columns: 170px 1fr;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--color-border);
+        }
+        .comparison-list strong { color: #fff; }
+        details {
+            border-top: 1px solid var(--color-border);
+            padding: 18px 0;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        details:last-child { border-bottom: 1px solid var(--color-border); }
+        details[open] {
+            background: rgba(255,255,255,0.015);
+        }
+        summary {
+            cursor: pointer;
+            color: #fff;
+            font-family: var(--font-sans);
+            font-size: 16px;
+            font-weight: 600;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        summary::-webkit-details-marker { display: none; }
+        summary::after {
+            content: "+";
+            color: var(--color-accent-cyan);
+            font-family: var(--font-mono);
+            font-size: 18px;
+            line-height: 1;
+            flex: 0 0 auto;
+        }
+        details[open] summary::after {
+            content: "−";
+        }
+        details p {
+            margin: 12px 0 0;
+            color: var(--color-fg-muted);
+        }
+        .footer { padding: 28px 0 36px; }
+        .footer-top {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            color: var(--color-fg-dim);
+            font-size: 12px;
+        }
+        .final-cta {
+            background:
+                radial-gradient(circle at left top, rgba(156,220,254,0.09), transparent 35%),
+                radial-gradient(circle at right bottom, rgba(179,146,240,0.08), transparent 38%),
+                #151515;
+            border-color: #34323f;
+            box-shadow: 0 28px 84px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(156,220,254,0.06) inset;
+        }
+        .final-cta:hover {
+            border-color: #47425a;
+        }
+        @media (max-width: 980px) {
+            .hero-grid, .two-col, .three-col { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 760px) {
+            .container { padding: 0 16px; }
+            .nav-links { display: none; }
+            .mobile-menu { display: block; }
+            .section-inner { padding: 44px 0; }
+            .comparison-list li { grid-template-columns: 1fr; }
+            h1 {
+                font-size: clamp(2.8rem, 13vw, 3.8rem);
+                line-height: 0.98;
+                margin-bottom: 14px;
+            }
+            h2 {
+                font-size: 1.9rem;
+            }
+            .lead {
+                font-size: 16px;
+                line-height: 1.62;
+            }
+            .hero-grid {
+                gap: 16px;
+                margin-bottom: 18px;
+            }
+            .button-row {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 10px;
+                margin: 20px 0 0;
+            }
+            .btn {
+                width: 100%;
+                min-height: 44px;
+            }
+            .metric-row {
+                gap: 8px;
+            }
+            .metric-pill,
+            .component-pill {
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+            .card-body {
+                padding: 20px;
+            }
+            .spec-card:hover,
+            .code-block:hover {
+                transform: none;
+            }
+            .hero-video video {
+                aspect-ratio: 16 / 9;
+            }
+            .code-block-header {
+                padding: 10px 14px;
+                font-size: 10px;
+                gap: 8px;
+            }
+            .code-block pre {
+                padding: 16px;
+                font-size: 12px;
+            }
+            .code-block pre code {
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+            .quick-links {
+                display: none;
+            }
+            details {
+                padding: 16px 0;
+            }
+            .footer-top,
+            .footer-links {
+                display: grid;
+                gap: 10px;
+                justify-content: start;
+            }
+        }
+        @media (max-width: 420px) {
+            .eyebrow {
+                gap: 8px;
+                font-size: 10px;
+                letter-spacing: 0.14em;
+            }
+            .metric-row {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .metric-pill,
+            .component-pill {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="#top">
+                <span class="brand-dot"></span>
+                <span>dotagents</span>
+            </a>
+            <div class="nav-links">
+                <a href="#overview">overview</a>
+                <a href="#hub">hub</a>
+                <a href="#protocol">protocol</a>
+                <a href="#comparison">comparison</a>
+                <a href="#faq">faq</a>
+                <a href="https://dotagentsprotocol.com" target="_blank" rel="noopener">protocol ↗</a>
+                <a href="https://github.com/aj47/dotagents-mono" target="_blank" rel="noopener">github ↗</a>
+            </div>
+        </div>
+            <details class="mobile-menu">
+                <summary><span>menu</span></summary>
+                <div class="mobile-menu-panel">
+                    <div class="mobile-menu-group">
+                        <a href="#overview">overview</a>
+                        <a href="#hub">hub</a>
+                        <a href="#protocol">protocol</a>
+                        <a href="#comparison">comparison</a>
+                        <a href="#faq">faq</a>
+                    </div>
+                    <div class="mobile-menu-group">
+                        <a href="https://dotagentsprotocol.com" target="_blank" rel="noopener">protocol ↗</a>
+                        <a href="https://github.com/aj47/dotagents-mono" target="_blank" rel="noopener">github ↗</a>
+                    </div>
+                </div>
+            </details>
+    </nav>
+
+    <main>
+        <section id="top" class="section">
+            <div class="container section-inner">
+                <div class="eyebrow">
+                    <span>desktop app</span>
+                    <span class="eyebrow-sep">·</span>
+                    <span>voice-first</span>
+                    <span class="eyebrow-sep">·</span>
+                    <span>built on the .agents standard</span>
+                </div>
+
+                <div class="hero-grid">
+                    <div class="hero-copy">
+                        <h1>Your AI team. One voice away.</h1>
+                        <p class="lead">
+                            DotAgents gives you a team of AI specialists with <span class="accent-green">memory</span>,
+                            <span class="accent-amber">skills</span>, and <span class="accent-blue">tools</span> — controlled by your voice.
+                            Download the app, speak naturally, and get results without babysitting servers, prompts, or runaway automations.
+                        </p>
+
+                        <div class="button-row">
+                            <a class="btn btn-primary" href="https://github.com/aj47/dotagents-mono/releases/latest">Download DotAgents</a>
+                            <a class="btn btn-secondary" href="https://dotagentsprotocol.com/hub" target="_blank" rel="noopener">Explore the Hub</a>
+                            <a class="btn btn-secondary" href="https://www.youtube.com/watch?v=A4oKYCaeaaw" target="_blank" rel="noopener">Watch demo</a>
+                        </div>
+                    </div>
+
+                    <div class="spec-card hero-video">
+                        <div class="code-block-header">
+                            <span>product preview</span>
+                            <span>voice → agent → result</span>
+                        </div>
+                        <video autoplay muted loop playsinline preload="auto" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+                            <source src="speakmcp-web-optimized.webm" type="video/webm">
+                            <source src="speakmcp-web-optimized.mp4" type="video/mp4">
+                            DotAgents desktop preview video.
+                        </video>
+                        <div class="card-body">
+                            <p class="card-kicker">One dot. Every agent.</p>
+                            <p class="muted" style="margin:0;">
+                                Hold to speak. Release to act. Watch agents work with real tools, persistent memory, and confirmation before destructive actions.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-row">
+                    <span class="metric-pill">Voice-first</span>
+                    <span class="metric-pill">Safe by default</span>
+                    <span class="metric-pill">Protocol-powered</span>
+                    <span class="metric-pill">No server required</span>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span>how it feels</span>
+                        <span>command flow</span>
+                    </div>
+                    <pre><code><span class="dim">$</span> hold Ctrl+Alt
+
+<span class="accent-cyan">You</span>: “review the latest PR and summarize what changed”
+
+<span class="accent-violet">dotagents</span>
+├── <span class="accent-green">listens</span>
+├── routes the task to the right agent
+├── calls tools with confirmation when needed
+└── returns a result you can use immediately</code></pre>
+                </div>
+
+                <div class="quick-links">
+                    <a href="#overview">§ overview</a>
+                    <a href="#hub">§ hub</a>
+                    <a href="#protocol">§ protocol</a>
+                    <a href="#comparison">§ comparison</a>
+                    <a href="#faq">§ faq</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="overview" class="section">
+            <div class="container section-inner">
+                <div class="eyebrow">
+                    <span>overview</span>
+                    <span class="eyebrow-sep">·</span>
+                    <span>what it feels like</span>
+                </div>
+                <h2>Hold to speak. Release to act.</h2>
+                <p class="lead">
+                    DotAgents is built for real daily use, not just demos. Give a task by voice, let the right agent handle it, and stay in control the whole time.
+                </p>
+
+                <div class="three-col" style="margin-top:28px;">
+                    <article class="spec-card card-body">
+                        <p class="card-kicker">Voice is the interface</p>
+                        <h3>Speak naturally</h3>
+                        <p class="muted" style="margin:0;">No menu maze. No prompt juggling. Just hold, talk, and go.</p>
+                    </article>
+
+                    <article class="spec-card card-body">
+                        <p class="card-kicker">Your agents remember</p>
+                        <h3>Explain things once</h3>
+                        <p class="muted" style="margin:0;">Skills, memory, and persistent preferences carry forward across sessions.</p>
+                    </article>
+
+                    <article class="spec-card card-body">
+                        <p class="card-kicker">It asks before it acts</p>
+                        <h3>Power with guardrails</h3>
+                        <p class="muted" style="margin:0;">Confirmation flows and safe defaults keep capable agents useful without becoming reckless.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container section-inner">
+                <div class="two-col">
+                    <div>
+                        <div class="eyebrow"><span>what dotagents is</span></div>
+                        <h2>Not one chatbot. A command center for agents.</h2>
+                        <p class="lead" style="font-size:17px; max-width:620px;">
+                            DotAgents brings three things together in one system: a voice-first desktop app, an open protocol, and a portable way to package what works.
+                        </p>
+                    </div>
+
+                    <div class="spec-card card-body">
+                        <ul class="stack-list">
+                            <li><strong>An app</strong> — a voice-first desktop experience for working with AI agents.</li>
+                            <li><strong>A protocol</strong> — the open <span class="accent-cyan">.agents</span> standard for skills, memories, tools, and configuration.</li>
+                            <li><strong>A team</strong> — specialist agents with distinct roles, instructions, and capabilities.</li>
+                            <li><strong>A portable system</strong> — share setups with public-safe <span class="accent-violet">.dotagents</span> bundles.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="hub" class="section">
+            <div class="container section-inner">
+                <div class="eyebrow">
+                    <span>hub</span>
+                    <span class="eyebrow-sep">·</span>
+                    <span>shareable agent setups</span>
+                </div>
+                <div class="two-col">
+                    <div>
+                        <h2>Publish what works. Install in one step.</h2>
+                        <p class="lead" style="font-size:17px; max-width:620px;">
+                            DotAgents bundles can package agents, skills, MCP setup, and other non-secret configuration into a shareable <span class="accent-violet">.dotagents</span> artifact. Safe defaults keep memories and repeat tasks opt-in for public sharing.
+                        </p>
+
+                        <div class="metric-row" style="margin-top:24px;">
+                            <span class="component-pill">Public-safe export</span>
+                            <span class="component-pill">Author + tags</span>
+                            <span class="component-pill">Compatibility metadata</span>
+                            <span class="component-pill">Conflict-aware install</span>
+                        </div>
+
+                        <div class="button-row">
+                            <a class="btn btn-primary" href="https://dotagentsprotocol.com/hub" target="_blank" rel="noopener">Explore the Hub</a>
+                            <a class="btn btn-secondary" href="https://github.com/aj47/dotagents-mono/pull/38" target="_blank" rel="noopener">See the desktop Hub work</a>
+                        </div>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-block-header">
+                            <span>bundle handoff</span>
+                            <span>download → open → preview → install</span>
+                        </div>
+                        <pre><code><span class="dim">$</span> dotagents://install?
+  bundle=https://dotagentsprotocol.com/api/bundles/research-stack.dotagents
+
+<span class="accent-violet">bundle.manifest.publicMetadata</span>
+├── summary: "A shareable agent bundle for the Hub"
+├── author: AJ (@techfren)
+├── tags: productivity, agents
+└── compatibility: macOS desktop
+
+<span class="accent-cyan">desktop flow</span>
+└── open .dotagents → preview contents → resolve conflicts → install</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="protocol" class="section">
+            <div class="container section-inner">
+                <div class="eyebrow">
+                    <span>protocol first</span>
+                    <span class="eyebrow-sep">·</span>
+                    <span>product second</span>
+                </div>
+                <div class="two-col">
+                    <div>
+                        <h2>Built on <span class="accent-cyan">.agents</span>, so your work isn’t trapped in one app.</h2>
+                        <p class="lead" style="font-size:17px; max-width:620px;">
+                            DotAgents is the best way to use the <span class="accent-cyan">.agents</span> standard — but not the only place it works. Skills and agent configuration can move across tools that adopt the same open file-based convention.
+                        </p>
+                    </div>
+
+                    <div class="code-block">
+                        <div class="code-block-header">
+                            <span>.agents/</span>
+                            <span>portable config</span>
+                        </div>
+                        <pre><code>.agents/
+├── <span class="accent-green">agents.md</span>          <span class="dim"># instructions</span>
+├── <span class="accent-blue">mcp.json</span>           <span class="dim"># tool configuration</span>
+├── <span class="accent-blue">models.json</span>        <span class="dim"># model presets</span>
+├── <span class="accent-amber">skills/</span>           <span class="dim"># reusable capabilities</span>
+├── <span class="accent-violet">agents/</span>          <span class="dim"># specialist agent profiles</span>
+├── <span class="accent-teal">tasks/</span>            <span class="dim"># repeat tasks</span>
+└── <span class="accent-rose">memories/</span>         <span class="dim"># persistent context</span></code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="comparison" class="section">
+            <div class="container section-inner">
+                <div class="eyebrow">
+                    <span>comparison</span>
+                    <span class="eyebrow-sep">·</span>
+                    <span>why not diy</span>
+                </div>
+                <h2>Powerful is not enough. It has to be usable.</h2>
+                <p class="lead">
+                    Open-ended autonomy sounds exciting until it becomes expensive, unreliable, and hard to control. DotAgents is built for daily use: observable, deliberate, and safe by default.
+                </p>
+
+                <div class="two-col" style="margin-top:28px;">
+                    <article class="spec-card card-body">
+                        <p class="card-kicker">The product story</p>
+                        <h3>The AI agent you download, not deploy.</h3>
+                        <ul class="comparison-list">
+                            <li><strong>Setup</strong><span>Download the app. Enter your API key. Talk. No Docker, no server stack, no SSH routine.</span></li>
+                            <li><strong>Control</strong><span>Confirmation flows before destructive actions. A kill switch when you need it.</span></li>
+                            <li><strong>Cost</strong><span>Triggered by you, not a background heartbeat quietly burning tokens while you sleep.</span></li>
+                            <li><strong>Memory</strong><span>Persistent context and reusable skills so you don’t have to re-explain yourself every session.</span></li>
+                        </ul>
+                    </article>
+
+                    <article class="spec-card card-body">
+                        <p class="card-kicker">Where the difference shows up</p>
+                        <h3>Built to be used, not babysat.</h3>
+                        <ul class="stack-list">
+                            <li>Watch progress in real time instead of guessing what your agent is doing.</li>
+                            <li>Use the right model for the job without hidden fallback chains.</li>
+                            <li>Share public-safe agent setups without leaking secrets.</li>
+                            <li>Keep your workflow portable with an open standard instead of a silo.</li>
+                        </ul>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="section">
+            <div class="container section-inner">
+                <div class="eyebrow"><span>faq</span></div>
+                <h2>Questions people ask before they download.</h2>
+                <div style="margin-top:24px;">
+                    <details open>
+                        <summary>What is DotAgents?</summary>
+                        <p>DotAgents is a voice-first desktop app for working with AI agents, built on the open <span class="accent-cyan">.agents</span> standard for portable skills, memory, and configuration.</p>
+                    </details>
+                    <details>
+                        <summary>Is this just another chat app?</summary>
+                        <p>No. DotAgents is designed as an orchestrator for specialist agents. Voice is the main interface, and the system is built around reusable skills, memory, tools, and delegation.</p>
+                    </details>
+                    <details>
+                        <summary>How is this different from DIY agent stacks?</summary>
+                        <p>DotAgents is the AI agent you download, not deploy. It avoids the constant setup, maintenance, and runaway behavior that often come with always-on, self-hosted agent systems.</p>
+                    </details>
+                    <details>
+                        <summary>Is it safe to share bundles publicly?</summary>
+                        <p>Public bundle export strips secrets automatically, and sharing defaults are conservative. Memories and repeat tasks are opt-in for public export.</p>
+                    </details>
+                    <details>
+                        <summary>What happens when I open a .dotagents file?</summary>
+                        <p>DotAgents routes it into a preview and conflict-aware import flow so you can inspect what’s being installed before applying changes.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container section-inner">
+                <div class="spec-card card-body final-cta">
+                    <div class="two-col" style="align-items:center;">
+                        <div>
+                            <p class="card-kicker">Final CTA</p>
+                            <h2>Start with one command.</h2>
+                            <p class="lead" style="font-size:17px; max-width:620px; margin-top:0;">
+                                Download DotAgents, give it a task, and see what AI agents feel like when they’re built to be used.
+                            </p>
+                        </div>
+
+                        <div>
+                            <div class="button-row" style="justify-content:flex-start; margin:0 0 12px;">
+                                <a class="btn btn-primary" href="https://github.com/aj47/dotagents-mono/releases/latest">Download DotAgents</a>
+                                <a class="btn btn-secondary" href="https://discord.gg/cK9WeQ7jPq" target="_blank" rel="noopener">Join Discord</a>
+                            </div>
+                            <div class="footer-links">
+                                <a class="accent-link" href="https://dotagentsprotocol.com" target="_blank" rel="noopener">Read the protocol ↗</a>
+                                <a class="accent-link" href="https://dotagentsprotocol.com/hub" target="_blank" rel="noopener">Browse the Hub ↗</a>
+                                <a class="accent-link" href="https://github.com/aj47/dotagents-mono" target="_blank" rel="noopener">GitHub ↗</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-top">
+            <span>dotagents — voice-first AI agents built on the open .agents standard</span>
+            <div class="footer-links">
+                <a href="https://dotagentsprotocol.com" target="_blank" rel="noopener">protocol ↗</a>
+                <a href="https://dotagentsprotocol.com/hub" target="_blank" rel="noopener">hub ↗</a>
+                <a href="https://github.com/aj47/dotagents-mono" target="_blank" rel="noopener">github ↗</a>
+                <a href="https://discord.gg/cK9WeQ7jPq" target="_blank" rel="noopener">discord ↗</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

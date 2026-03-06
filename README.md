@@ -147,6 +147,13 @@ pnpm install && pnpm build-rs && pnpm dev
 
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
 
+For the static marketing site, run:
+
+```bash
+cd website
+python3 -m http.server 4321
+```
+
 ### Architecture
 
 ```
@@ -156,6 +163,7 @@ dotagents-mono/
 │   └── mobile/      # React Native mobile app
 ├── packages/
 │   └── shared/      # Shared utilities, types, and constants
+├── website/         # Static marketing site for dotagents.app
 └── .agents/         # The open standard — skills, memory, commands
 ```
 
