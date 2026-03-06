@@ -1,9 +1,40 @@
-function getErrorText(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === "string") return error
-  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
-    return (error as { message: string }).message
+function getErrorText(error: unknown, seen = new WeakSet<object>()): string {
+  if (error === null || error === undefined) return ""
+
+  if (error instanceof Error) {
+    if (error.message) return error.message
+
+    const causeText = getErrorText((error as Error & { cause?: unknown }).cause, seen)
+    if (causeText) return causeText
   }
+
+  if (typeof error === "string") return error
+
+  if (Array.isArray(error)) {
+    for (const item of error) {
+      const itemText = getErrorText(item, seen)
+      if (itemText) return itemText
+    }
+    return ""
+  }
+
+  if (error && typeof error === "object") {
+    if (seen.has(error)) return ""
+    seen.add(error)
+
+    const candidate = error as {
+      message?: unknown
+      error?: unknown
+      cause?: unknown
+      errors?: unknown
+    }
+
+    for (const value of [candidate.message, candidate.error, candidate.cause, candidate.errors]) {
+      const nestedText = getErrorText(value, seen)
+      if (nestedText) return nestedText
+    }
+  }
+
   return ""
 }
 

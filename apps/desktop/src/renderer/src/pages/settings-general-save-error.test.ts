@@ -14,6 +14,12 @@ describe("getSettingsSaveErrorMessage", () => {
     )
   })
 
+  it("maps read-only config locations to a friendly message", () => {
+    expect(getSettingsSaveErrorMessage(new Error("EROFS: read-only file system"))).toBe(
+      "Couldn't save your settings because the config location is read-only.",
+    )
+  })
+
   it("keeps useful details while stripping the internal prefix", () => {
     expect(
       getSettingsSaveErrorMessage(
@@ -23,6 +29,20 @@ describe("getSettingsSaveErrorMessage", () => {
       ),
     ).toBe(
       "Couldn't save your settings. Could not write the legacy config file (Temporary I/O failure)",
+    )
+  })
+
+  it("unwraps nested backend-shaped error payloads", () => {
+    expect(
+      getSettingsSaveErrorMessage({ error: { message: "Failed to save settings to disk. Could not write .agents file" } }),
+    ).toBe("Couldn't save your settings. Could not write .agents file")
+  })
+
+  it("uses nested causes when the top-level error message is empty", () => {
+    const error = new Error("", { cause: new Error("EACCES: permission denied") })
+
+    expect(getSettingsSaveErrorMessage(error)).toBe(
+      "Couldn't save your settings because DotAgents doesn't have permission to write its config files.",
     )
   })
 })
