@@ -441,12 +441,12 @@ Write your skill instructions here.
     <div className="modern-panel h-full min-w-0 overflow-y-auto overflow-x-hidden px-6 py-4">
       <div className="min-w-0 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Sparkles className="h-5 w-5 shrink-0 text-primary" />
             <h2 className="text-lg font-semibold">Agent Skills</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             {isSelectMode ? (
               <>
                 <Button

@@ -174,8 +174,11 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               <span className="font-medium truncate max-w-[200px]">{continueConversationTitle}</span>
             </div>
           )}
-          <div className="modern-text-muted flex items-center justify-between text-xs">
-            <span>Type your message • Enter to send • Shift+Enter for new line • Esc to cancel</span>
+          <div className="modern-text-muted flex items-center justify-between gap-2 text-xs">
+            <span className="min-w-0 truncate">
+              <span className="hidden sm:inline">Type your message • Enter to send • Shift+Enter for new line • Esc to cancel</span>
+              <span className="sm:hidden">Enter to send • Esc to cancel</span>
+            </span>
             <div className="flex items-center gap-1">
               <PredefinedPromptsMenu
                 onSelectPrompt={(content) => setText(content)}

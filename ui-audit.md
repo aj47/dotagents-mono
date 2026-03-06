@@ -1,5 +1,63 @@
 - UI audit log
 
+---
+
+## 2026-03-06 — chunk 4: skills toolbar overflow + text-input hint + agent-progress micro-fonts
+
+### Sources consulted
+- `apps/desktop/src/renderer/src/pages/settings-skills.tsx`
+- `apps/desktop/src/renderer/src/components/text-input-panel.tsx`
+- `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- Previous chunks 1–3 reviewed to avoid duplication.
+
+### Highest-value area selected
+Three distinct issues in frequently-used surfaces: skills settings toolbar overflow, panel input hint text clipping, and agent-progress micro-font accessibility.
+
+### Issues found
+
+**settings-skills.tsx — header toolbar row**
+- The outer header `flex items-center justify-between` had no `flex-wrap`, no `min-w-0` on the title side.
+- Normal mode toolbar: `Select` + `Open Folder` + `Workspace` + `Scan Folder` + `Import` dropdown = 5 buttons, no wrapping. At typical settings panel widths (~500 px) all 5 buttons + title text have horizontal pressure and would overflow at ~400 px.
+- Select mode toolbar: `Select All/Deselect All` + `Export Bundle (N)` + `Delete (N)` + `Cancel` = 4 buttons with longer text, even tighter. At ~380 px they'd overflow.
+- The button container div only had `flex gap-2` — no `flex-wrap`.
+
+**text-input-panel.tsx — keyboard hint text**
+- Line 177–178: The `flex items-center justify-between text-xs` row contained a full `<span>` with the text "Type your message • Enter to send • Shift+Enter for new line • Esc to cancel" (69 chars).
+- No `min-w-0` or truncation on the span — at narrow panel widths (~280–350 px) this would overflow or push the `PredefinedPromptsMenu`/image button into the gutter.
+
+**agent-progress.tsx — text-[9px] micro-font elements**
+- `text-[9px]` used in 3 places: the "Copy" mini-button in expanded tool details, the char-count label next to "Result"/"Error", and both keyboard shortcut `kbd` badges (`Shift+Space`, `Space`).
+- `text-[9px]` is an absolute pixel size — it does NOT scale with the user's system font scale setting. At any zoom level, these stay at a fixed 9 px which is borderline unreadable even at 100%.
+- The expanded tool details container at `text-[10px]` passes its size to child `pre` blocks that lacked an explicit `text-[10px]`, relying on inheritance — fine in practice but fragile.
+
+### Changes made
+
+**settings-skills.tsx**
+- Changed outer header row to `flex flex-wrap items-center justify-between gap-3`.
+- Added `min-w-0` to the title `div`.
+- Added `shrink-0` to the `Sparkles` icon.
+- Changed both button containers (normal mode and select mode) from `flex gap-2` to `flex flex-wrap justify-end gap-2`, so buttons flow to a second line on narrow widths instead of overflowing.
+
+**text-input-panel.tsx**
+- Added `gap-2` to the hint row flexbox.
+- Wrapped the hint text in `<span className="min-w-0 truncate">` to contain horizontal pressure.
+- Added responsive inner spans: full hint text shown at `sm+`, abbreviated "Enter to send • Esc to cancel" shown below `sm`.
+
+**agent-progress.tsx**
+- Changed `text-[9px]` → `text-[10px]` on the inline "Copy" button text, the char-count label, the OK/ERR result badge, and both keyboard shortcut `kbd` elements (Shift+Space, Space).
+- Added explicit `text-[10px]` to the `pre` blocks inside the expanded tool details div (error, content, "No content"), making the inherited font size explicit and consistent rather than relying on the parent div's inheritance.
+
+### Verified not broken
+- TypeScript typecheck passes: `pnpm --filter @dotagents/desktop typecheck` → exit 0.
+- No layout structure changes that would break existing snapshot tests.
+
+### Follow-up areas for next chunk
+- Audit `settings-models.tsx` / `settings-providers-and-models.tsx` for provider card overflow on narrow panel widths and missing min-w-0 on name columns.
+- Inspect `mcp-config-manager.tsx` for server-row text overflow and narrow-panel clipping of the enable/disable toggle area.
+- Check the `AgentCapabilitiesSidebar` for skill/agent name truncation issues.
+
+
+
 ## 2026-03-06 — chunk 1: settings form responsiveness
 
 ### Sources consulted

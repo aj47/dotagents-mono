@@ -769,11 +769,11 @@ const ToolExecutionBubble: React.FC<{
                   <>
                     <div className="flex items-center justify-between">
                       <span className="font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="h-4 px-1 text-[9px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
+                      <Button size="sm" variant="ghost" className="h-4 px-1 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
                         <Copy className="h-2 w-2 mr-0.5" /> Copy
                       </Button>
                     </div>
-                    <pre className="rounded bg-muted/40 p-1.5 overflow-auto whitespace-pre-wrap max-h-32 scrollbar-thin">
+                    <pre className="rounded bg-muted/40 p-1.5 overflow-auto whitespace-pre-wrap max-h-32 scrollbar-thin text-[10px]">
                       {JSON.stringify(call.arguments, null, 2)}
                     </pre>
                   </>
@@ -787,23 +787,23 @@ const ToolExecutionBubble: React.FC<{
                       )}>
                         {result.success ? "Result" : "Error"}
                       </span>
-                      <span className="opacity-50 text-[9px]">{(result.content?.length || 0).toLocaleString()} chars</span>
+                      <span className="opacity-50 text-[10px]">{(result.content?.length || 0).toLocaleString()} chars</span>
                     </div>
                     {result.error && (
-                      <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
+                      <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
                         {result.error}
                       </pre>
                     )}
                     {result.content && (
                       <pre className={cn(
-                        "rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin",
+                        "rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px]",
                         result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
                       )}>
                         {result.content}
                       </pre>
                     )}
                     {!result.error && !result.content && (
-                      <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin bg-muted/40">
+                      <pre className="rounded p-1.5 overflow-auto whitespace-pre-wrap break-all max-h-32 scrollbar-thin text-[10px] bg-muted/40">
                         No content
                       </pre>
                     )}
@@ -987,7 +987,7 @@ const AssistantWithToolsBubble: React.FC<{
                         <div className="font-medium opacity-70 flex items-center gap-1">
                           Result:
                           <span className={cn(
-                            "text-[9px] font-semibold",
+                            "text-[10px] font-semibold",
                             result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                           )}>
                             {result.success ? "OK" : "ERR"}
@@ -1161,7 +1161,7 @@ const ToolApprovalBubble: React.FC<{
           >
             <XCircle className="h-3 w-3 mr-1" />
             Deny
-            <kbd className="ml-1.5 px-1 py-0.5 text-[9px] font-mono bg-red-100 dark:bg-red-900/50 rounded">Shift+Space</kbd>
+            <kbd className="ml-1.5 px-1 py-0.5 text-[10px] font-mono bg-red-100 dark:bg-red-900/50 rounded">Shift+Space</kbd>
           </Button>
           <Button
             size="sm"
@@ -1184,7 +1184,7 @@ const ToolApprovalBubble: React.FC<{
               <>
                 <Check className="h-3 w-3 mr-1" />
                 Approve
-                <kbd className="ml-1.5 px-1 py-0.5 text-[9px] font-mono bg-green-700 rounded">Space</kbd>
+                <kbd className="ml-1.5 px-1 py-0.5 text-[10px] font-mono bg-green-700 rounded">Space</kbd>
               </>
             )}
           </Button>
