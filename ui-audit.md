@@ -42,6 +42,40 @@
 - Electron renderer automation for this panel surface was unstable after route switching, so this chunk relied on a combination of live app startup verification plus direct implementation audit of the remaining layout hotspot.
 - Best next UI audit chunk after this one: live visual pass on the sessions page at very narrow main-window widths and increased zoom, since the floating panel footer hotspot is now covered.
 
+### 2026-03-06 — Chunk 10: Floating panel compact-width breathing room
+
+- Area selected: desktop floating recording panel width floor (`apps/desktop/src/main/window.ts`, `apps/desktop/src/renderer/src/pages/panel.tsx`)
+- Why this chunk: after the footer-wrap follow-up, a live visual pass still showed the compact floating panel reading as horizontally cramped at its minimum/default recording width.
+- Audit method:
+  - reviewed `apps/desktop/DEBUGGING.md`
+  - launched the desktop app with remote debugging enabled via `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -d`
+  - visually inspected the floating recording panel before and after the sizing change
+  - checked the main-process window sizing logic and the renderer-side mirrored min-width constant
+  - cross-checked mobile impact: no equivalent Electron floating panel surface exists in `apps/mobile`, so no mobile change was needed
+
+#### Findings
+
+- The compact recording panel minimum width was still effectively driven by the raw waveform bar math (`~312px` for 70 bars + gaps + padding).
+- That raw waveform width avoided bar clipping, but it left the panel feeling visually cramped once the recording badge, waveform lane, and submit hint shared the same narrow surface.
+- Live inspection confirmed the issue was more about design polish and breathing room than outright overflow: the panel read like a tight status pill instead of a comfortable voice/listening surface.
+
+#### Changes made
+
+- Added a `360px` minimum content-width floor in `apps/desktop/src/main/window.ts` so the panel window no longer bottoms out at the raw waveform math alone.
+- Kept the renderer-side `MIN_WAVEFORM_WIDTH` logic aligned with the same `360px` floor in `apps/desktop/src/renderer/src/pages/panel.tsx`.
+- Extended the focused panel regression test in `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` to assert the compact-width floor contract in both the renderer and main-process sources.
+
+#### Verification
+
+- Live visual re-check of the running app: the compact recording panel now has noticeably better horizontal breathing room with no obvious clipping, truncation, or spacing regressions.
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts`
+- Desktop typecheck: `pnpm --filter @dotagents/desktop typecheck` still fails due broad pre-existing React/JSX typing issues across unrelated files (`App.tsx`, many `lucide-react` usages, `Toaster`, QR code components, multiple settings pages). No failure pointed at the files changed in this chunk.
+
+#### Notes
+
+- This is a conservative polish fix: it improves the default/minimum footprint without redesigning the panel layout.
+- Best next UI audit chunk after this one: live visual pass on the sessions page at very narrow main-window widths and increased zoom.
+
 ---
 
 

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 const panelSource = readFileSync(new URL("./panel.tsx", import.meta.url), "utf8")
+const mainWindowSource = readFileSync(new URL("../../../main/window.ts", import.meta.url), "utf8")
 
 describe("panel recording layout", () => {
   it("wraps the recording footer controls for narrow widths and zoomed text", () => {
@@ -16,5 +17,14 @@ describe("panel recording layout", () => {
   it("caps recording badges to the available viewport width", () => {
     expect(panelSource).toContain('max-w-[calc(100%-2rem)] items-center gap-1 rounded')
     expect(panelSource).toContain('className="min-w-0 truncate font-medium"')
+  })
+
+  it("keeps a wider compact-width floor for the floating recording panel", () => {
+    expect(panelSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 360")
+    expect(panelSource).toContain("WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX")
+    expect(mainWindowSource).toContain("const WAVEFORM_PANEL_CONTENT_MIN_WIDTH = 360")
+    expect(mainWindowSource).toContain(
+      "return Math.max(waveformWidth, WAVEFORM_PANEL_CONTENT_MIN_WIDTH)"
+    )
   })
 })
