@@ -132,7 +132,7 @@ function QueuedMessageItem({
               }
             }}
           />
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -155,7 +155,7 @@ function QueuedMessageItem({
         </div>
       ) : (
         // View mode
-        <div className="flex items-start gap-2">
+        <div className="flex min-w-0 flex-wrap items-start gap-2">
           {isFailed && (
             <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
           )}
@@ -178,7 +178,7 @@ function QueuedMessageItem({
                 Error: {message.errorMessage}
               </p>
             )}
-            <div className="flex items-center gap-2 mt-1">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <span className={cn(
                 "text-xs",
                 isFailed ? "text-destructive/70" :
@@ -211,7 +211,7 @@ function QueuedMessageItem({
           {/* Hide action buttons when processing */}
           {!isProcessing && (
             <div className={cn(
-              "flex items-center gap-1 flex-shrink-0 transition-opacity",
+              "ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity",
               isFailed ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}>
               {isFailed && (
@@ -305,7 +305,7 @@ export function MessageQueuePanel({
   if (compact) {
     return (
       <div className={cn(
-        "flex items-center gap-2 px-2 py-1.5 text-xs rounded-md",
+        "flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 text-xs",
         isPaused
           ? "bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800"
           : "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800",
@@ -317,49 +317,51 @@ export function MessageQueuePanel({
           <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
         )}
         <span className={cn(
+          "min-w-0 flex-1",
           isPaused ? "text-orange-700 dark:text-orange-300" : "text-amber-700 dark:text-amber-300"
         )}>
           {messages.length} queued{isPaused ? " (paused)" : ""}
         </span>
-        {isPaused ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
-            onClick={() => resumeMutation.mutate()}
-            disabled={resumeMutation.isPending}
-            title="Resume queue execution"
-          >
-            <Play className="h-3 w-3" />
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
-            onClick={() => pauseMutation.mutate()}
-            disabled={pauseMutation.isPending || hasProcessingMessage}
-            title="Pause queue"
-          >
-            <Pause className="h-3 w-3" />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "h-4 w-4",
-            isPaused ? "ml-0" : "ml-auto",
-            isPaused
-              ? "text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
-              : "text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {isPaused ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
+              onClick={() => resumeMutation.mutate()}
+              disabled={resumeMutation.isPending}
+              title="Resume queue execution"
+            >
+              <Play className="h-3 w-3" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              onClick={() => pauseMutation.mutate()}
+              disabled={pauseMutation.isPending || hasProcessingMessage}
+              title="Pause queue"
+            >
+              <Pause className="h-3 w-3" />
+            </Button>
           )}
-          onClick={() => clearMutation.mutate()}
-          disabled={clearMutation.isPending || hasProcessingMessage}
-          title={hasProcessingMessage ? "Cannot clear while processing" : "Clear queue"}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-4 w-4",
+              isPaused
+                ? "text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+                : "text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+            )}
+            onClick={() => clearMutation.mutate()}
+            disabled={clearMutation.isPending || hasProcessingMessage}
+            title={hasProcessingMessage ? "Cannot clear while processing" : "Clear queue"}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
     )
   }
@@ -376,26 +378,26 @@ export function MessageQueuePanel({
     >
       {/* Header */}
       <div className={cn(
-        "flex items-center justify-between px-3 py-2",
+        "flex flex-wrap items-start justify-between gap-2 px-3 py-2",
         !isListCollapsed && "border-b",
         isPaused
           ? "border-orange-200 dark:border-orange-800 bg-orange-100/50 dark:bg-orange-900/30"
           : "border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/30"
       )}>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {isPaused ? (
-            <Pause className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            <Pause className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
           ) : (
-            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           )}
           <span className={cn(
-            "text-sm font-medium",
+            "min-w-0 text-sm font-medium",
             isPaused ? "text-orange-800 dark:text-orange-200" : "text-amber-800 dark:text-amber-200"
           )}>
             {isPaused ? "Queue Paused" : "Queued Messages"} ({messages.length})
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
           {isPaused ? (
             <Button
               variant="ghost"
@@ -464,7 +466,7 @@ export function MessageQueuePanel({
 
       {/* Paused notice */}
       {isPaused && !isListCollapsed && (
-        <div className="px-3 py-2 text-xs text-orange-700 dark:text-orange-300 bg-orange-100/30 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800">
+        <div className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
           Queue was stopped. Click Resume to continue processing queued messages.
         </div>
       )}

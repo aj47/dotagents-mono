@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 
 const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.meta.url), "utf8")
 const acpSessionBadgeSource = readFileSync(new URL("./acp-session-badge.tsx", import.meta.url), "utf8")
+const messageQueuePanelSource = readFileSync(new URL("./message-queue-panel.tsx", import.meta.url), "utf8")
 
 describe("agent progress tile layout", () => {
   it("wraps the tile header chrome for narrow session widths and zoomed text", () => {
@@ -126,6 +127,44 @@ describe("agent progress tile layout", () => {
     )
     expect(agentProgressSource).toContain(
       'className="min-w-0 flex-1 text-xs text-green-700/70 dark:text-green-300/60 line-clamp-2 break-words [overflow-wrap:anywhere]"'
+    )
+  })
+
+  it("wraps retry banners and queue chrome safely in narrow tile footers", () => {
+    expect(agentProgressSource).toContain(
+      'className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30"'
+    )
+    expect(agentProgressSource).toContain(
+      'className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-100/50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/30"'
+    )
+    expect(agentProgressSource).toContain('className="min-w-0 px-3 py-2"')
+    expect(agentProgressSource).toContain('className="flex flex-wrap items-center gap-2"')
+    expect(messageQueuePanelSource).toContain(
+      '"flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 text-xs"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      '"min-w-0 flex-1"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      'className="ml-auto flex shrink-0 items-center gap-1"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      '"flex flex-wrap items-start justify-between gap-2 px-3 py-2"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      'className="flex min-w-0 flex-1 items-center gap-2"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      'className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      'className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      'className="flex min-w-0 flex-wrap items-start gap-2"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      '"ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity"'
     )
   })
 })

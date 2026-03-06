@@ -1250,27 +1250,27 @@ const RetryStatusBanner: React.FC<{
     : `Attempt ${retryInfo.attempt}`
 
   return (
-    <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 overflow-hidden">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-amber-100/50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800">
-        <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-        <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+      <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-100/50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/30">
+        <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <span className="min-w-0 flex-1 text-xs font-medium text-amber-800 dark:text-amber-200">
           {retryInfo.reason}
         </span>
-        <Loader2 className="h-3 w-3 text-amber-600 dark:text-amber-400 animate-spin ml-auto" />
+        <Loader2 className="ml-auto h-3 w-3 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
       </div>
 
       {/* Content */}
-      <div className="px-3 py-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-amber-700 dark:text-amber-300">
+      <div className="min-w-0 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="shrink-0 text-xs text-amber-700 dark:text-amber-300">
             {attemptText}
           </span>
-          <span className="text-xs font-mono font-medium text-amber-900 dark:text-amber-100 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded">
+          <span className="max-w-full min-w-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-mono font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
             Retrying in {countdown}s
           </span>
         </div>
-        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5">
+        <p className="mt-1.5 text-xs text-amber-600 break-words dark:text-amber-400">
           The agent will automatically retry when the API is available.
         </p>
       </div>

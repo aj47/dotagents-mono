@@ -1,37 +1,41 @@
 ## UI Audit Log
 
-### 2026-03-06 — Chunk 18: Mid-turn response bubble and past-response history under narrow widths / zoom
+### 2026-03-06 — Chunk 19: Retry banner and message-queue footer chrome under narrow widths / zoom
 
-- Area selected: `MidTurnUserResponseBubble` and `PastResponseItem` in `apps/desktop/src/renderer/src/components/agent-progress.tsx`
-- Why this chunk: after chunk 17 fixed the adjacent inline tool-approval card, the next most constrained sessions surface in the same area was the green `respond_to_user` / mid-turn response bubble and its expandable past-response history. It sits directly beside markdown content, inline audio controls, and compact history chrome, so it is especially vulnerable to narrow tile widths and font zoom.
+- Area selected:
+  - `RetryStatusBanner` in `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+  - `MessageQueuePanel` in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`
+- Why this chunk: after chunks 17 and 18 tightened the approval and mid-turn response cards, the next most fragile sessions-area surface was the compact status/queue chrome that sits in or near the tile footer. These rows combine status copy, badges, timers, and multiple small actions, which makes them especially likely to clip or collapse badly under narrow tiles and font zoom.
 - Audit method:
-  - continued from the chunk-17 sessions audit without overlapping earlier settings/panel/markdown passes
-  - reviewed the concrete `MidTurnUserResponseBubble` and `PastResponseItem` implementation in `agent-progress.tsx`
-  - cross-checked the mobile `ResponseHistoryPanel` usage in `apps/mobile/src/screens/ChatScreen.tsx`; mobile has related response-history UI but not the same compact green card chrome, so this chunk stayed desktop-only
+  - inspected the inline retry banner implementation in `agent-progress.tsx`
+  - inspected both compact and expanded queue treatments in `message-queue-panel.tsx`
+  - focused specifically on header/action rows, compact queue controls, paused notices, and per-item action pressure in queued-message rows
 
 #### Findings
 
-- The mid-turn response stack had mostly been brought into `min-w-0` territory already, but it still had several layout weak spots that showed up under narrow tiles / zoom:
-  - the green header preview still collapsed to a single truncated line even when a two-line preview would fit better and reveal more of the response
-  - the content column lacked explicit vertical spacing / `text-left` structure, so the header metadata and preview could feel cramped when the trailing TTS control appeared
-  - the trailing TTS pause/generate button was not explicitly `shrink-0`, so it could still compete with the preview at tighter widths
-  - past-response history items were still effectively one-line cards: their collapsed previews used `truncate`, not a more tolerant wrap/clamp pattern
-  - the past-response history item container itself was not explicitly capped with `min-w-0 max-w-full`
-- This was a polish/responsiveness follow-up rather than a functional bug, but it materially improves the readability of `respond_to_user` content in the smallest desktop session layouts.
+- The retry banner still had several one-line assumptions similar to the pre-fix approval card:
+  - reason text, spinner, attempt text, and countdown badge were arranged as if plenty of width were always available
+  - the content row used `justify-between`, which is efficient at medium widths but brittle when badges or zoom consume more space
+- The queue panel was a stronger improvement target than the remaining audio chrome because it had multiple related narrow-width issues in one surface:
+  - compact mode kept the count and actions on a single line with no explicit `min-w-0` / wrap-safe grouping
+  - expanded header actions (`Pause` / `Resume`, `Clear All`, collapse) could easily crowd the title on small tiles
+  - paused notice copy did not explicitly protect long wrapping
+  - queued-message rows used a no-wrap action cluster that could crowd the message preview/meta row
 
 #### Changes made
 
-- Refined the main mid-turn response card:
-  - kept the card/root wrap-safe with `min-w-0 max-w-full`
-  - changed the text column to `space-y-1 text-left`
-  - replaced the one-line collapsed preview with a two-line `line-clamp-2` / `break-words` / `overflow-wrap:anywhere` treatment
-  - marked the trailing TTS control as `shrink-0` so it no longer competes with the preview width
-- Refined past-response history items:
-  - added `min-w-0 max-w-full` containment to the item card
-  - aligned the collapsed row for top-start multi-line preview behavior instead of single-line center alignment
-  - replaced the history preview `truncate` treatment with a two-line clamp that survives long tokens and zoom better
-  - ensured the compact audio-player row stays in a `min-w-0` container when expanded
-- Extended `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` again so the layout contract now covers both the main green mid-turn response header and the nested past-response history cards.
+- Refined the retry banner in `agent-progress.tsx`:
+  - added `min-w-0 max-w-full` containment
+  - made the amber header wrap-safe with `shrink-0` icon/spinner handling and `min-w-0 flex-1` for the reason text
+  - converted the attempt/countdown row from `justify-between` to a wrap-safe flex row
+  - ensured the explanatory copy can break long words cleanly
+- Refined `message-queue-panel.tsx` in both compact and expanded modes:
+  - compact queue row now wraps safely, gives the count label a `min-w-0 flex-1` lane, and groups the small action icons in a separate trailing cluster
+  - expanded queue header now wraps title and actions instead of assuming a single line
+  - paused notice now explicitly supports word-wrapping
+  - queued-message rows now allow action controls to wrap/reflow more gracefully beside long message previews and metadata
+  - edit-mode action buttons also wrap instead of assuming a fixed-width footer row
+- Extended `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` again so the layout contract now covers retry banners plus both compact and expanded queue-panel chrome.
 
 #### Verification
 
@@ -40,8 +44,61 @@
 
 #### Notes
 
-- The sessions-area follow-up queue is now materially reduced: both the inline approval card and the adjacent mid-turn response/history stack have dedicated audit entries, code fixes, and tile-layout regression coverage.
-- Best next UI audit chunk after this one: a deeper pass on compact audio / message-queue / retry-status chrome that appears between or below session content, especially where status banners and action rows stack in the tile footer area.
+- At this point the major non-markdown sessions chrome immediately above/below message content has been covered by three consecutive audit chunks:
+  - tool approval
+  - mid-turn response/history
+  - retry + queue footer/status rows
+- Best next UI audit chunk after this one: a compact audio/status-controls pass (especially inline audio-player/error states and any remaining narrow action rows near follow-up inputs), or a fresh move out of sessions chrome into another top-level desktop surface that has not yet been audited.
+
+### 2026-03-06 — Chunk 18: Mid-turn response bubble and past-response history under narrow widths / zoom
+
+- Area selected: desktop `MidTurnUserResponseBubble` / `PastResponseItem` in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, plus the mobile `apps/mobile/src/ui/ResponseHistoryPanel.tsx` history surface
+- Why this chunk: after chunk 17 fixed the adjacent inline tool-approval card, the next most constrained sessions surface in the same area was the green `respond_to_user` / mid-turn response bubble and its expandable past-response history. It sits directly beside markdown content, inline audio controls, and compact history chrome, so it is especially vulnerable to narrow tile widths and font zoom.
+- Audit method:
+  - reviewed `ui-audit.md` first to avoid overlap with the completed tool-approval pass
+  - reused `apps/desktop/DEBUGGING.md` plus repo guidance/docs (`README.md`, `DEVELOPMENT.md`, `apps/desktop/src/renderer/src/AGENTS.md`) to stay aligned with the Electron-first renderer/mobile split
+  - kept the desktop app running via `REMOTE_DEBUGGING_PORT=9373 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9379" pnpm dev -- -d`
+  - inspected the concrete `MidTurnUserResponseBubble`, `PastResponseItem`, audio-error, and tile/overlay call sites in `agent-progress.tsx`
+  - cross-checked the mobile `ResponseHistoryPanel` header/history layout for the same narrow-width and large-text pressure
+
+#### Findings
+
+- The green mid-turn response/history stack was the next weakest sessions surface adjacent to rendered content:
+  - the outer mid-turn bubble did not explicitly opt into `min-w-0 max-w-full`, so it still depended on parent containment instead of declaring its own narrow-width contract
+  - the header icon / live-TTS control chrome was not fully protected as non-shrinking trailing UI, so it could compete with the title/preview block under tighter widths and zoom
+  - the inline TTS error treatment did not force long provider/network error strings to break cleanly
+  - the `Past Responses (n)` heading kept the count embedded in one uppercase string instead of a wrap-safe badge treatment
+  - collapsed `PastResponseItem` rows still needed stronger `min-w-0` containment around the preview slot so long text would not crowd the chevron/index chrome
+- Mobile had the same class of polish issue in a different layout system:
+  - `ResponseHistoryPanel` assumed a mostly single-line header and timestamp/action row, which could crowd the title badge, chevron, and speak affordance under narrow widths or larger text sizes
+
+#### Changes made
+
+- Hardened the desktop mid-turn response bubble in `agent-progress.tsx`:
+  - added `min-w-0 max-w-full` containment on the outer green card
+  - made the header explicitly `min-w-0 flex-wrap`, kept the message icon `shrink-0`, and anchored the live TTS pause button to the top edge for better small-width stability
+  - added `min-w-0` containment to the expanded content/audio wrapper so the bubble behaves like the other audited session cards
+  - updated the inline TTS error box to `break-words` / `overflow-wrap:anywhere` for long error payloads
+- Reworked the desktop past-response history chrome for better zoom resilience:
+  - split `Past Responses (n)` into a wrap-safe label plus compact count badge
+  - tightened `PastResponseItem` rows with `min-w-0` containment and a flexible preview slot so long previews do not crowd the chevron/index chrome
+  - kept the expanded markdown/audio content inside an explicit `min-w-0` container
+- Polished the mobile `ResponseHistoryPanel` to match the same intent:
+  - made the header left side flexible/wrapping with `minWidth: 0` + `flexShrink`
+  - protected the badge/chevron as non-shrinking trailing chrome
+  - allowed response timestamp/speak rows to wrap cleanly with gap spacing instead of depending on a strict single line
+- Extended `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` so the responsive class contract now also covers the mid-turn response/history surface.
+
+#### Verification
+
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.tile-layout.test.ts`
+- Targeted web typecheck: `pnpm --filter @dotagents/desktop typecheck:web`
+- Targeted mobile typecheck: `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+
+#### Notes
+
+- The renderer automation target still only exposed the shell document rather than hydrated app DOM, so this chunk relied on the documented debug-launch path plus direct inspection of the concrete renderer/mobile implementations.
+- Best next UI audit chunk after this one: the shared compact audio/TTS chrome (`AudioPlayer` and adjacent playback/error controls) now stands out as the next best uninvestigated surface across desktop session bubbles and mobile response history when windows/text scale down and up.
 
 ### 2026-03-06 — Chunk 17: Inline tool approval card under narrow tile / overlay widths and zoom
 
