@@ -1,5 +1,47 @@
 ## UI Audit Log
 
+### 2026-03-06 — Chunk 20: Shared compact audio/TTS player chrome under narrow widths and zoom
+
+- Area selected: shared desktop `apps/desktop/src/renderer/src/components/audio-player.tsx`
+- Why this chunk: chunk 19 tightened the queue/retry status chrome surrounding compact session footers, which left the shared `AudioPlayer` itself as the next unclaimed pressure point. It is reused inside mid-turn responses, past-response history, and queue/retry flows, so any narrow-width weakness propagates across several sessions surfaces.
+- Audit method:
+  - checked `ui-audit.md` first to avoid overlapping the already-started chunks 18 and 19
+  - reused `apps/desktop/DEBUGGING.md` plus the repo design guidance/docs (`README.md`, `DEVELOPMENT.md`, `apps/desktop/src/renderer/src/AGENTS.md`) to keep the audit grounded in the Electron renderer constraints
+  - inspected `audio-player.tsx` directly and cross-checked where it is embedded in compact session/message chrome
+  - compared it against the adjacent queue/retry and response-history fixes already logged to keep the treatment consistent
+
+#### Findings
+
+- The shared player still had a few layout/polish issues once surrounding containers were hardened:
+  - compact mode assumed a one-line icon + timestamp row with no explicit `min-w-0 max-w-full` contract, so it relied on the parent card rather than declaring its own narrow-width behavior
+  - compact mode showed no wrap-safe status copy before audio existed, which made the control feel icon-only and harder to parse in dense session footers
+  - the full-size variant still used a rigid single-row control layout, so the scrubber/timestamps and mute/volume controls had limited room to reflow when width or zoom tightened
+  - the control buttons/sliders lacked explicit accessibility labels, which is a quality issue on top of the visual polish pass
+
+#### Changes made
+
+- Refined compact audio-player chrome in `audio-player.tsx`:
+  - added `min-w-0 max-w-full flex-wrap` containment plus a subtle rounded background so the player behaves like a self-contained compact control rather than a loose inline row
+  - kept the play/generate button `shrink-0`
+  - added a flexible status/time label that shows `Generate audio`, `Generating audio…`, `Loading audio…`, or the current/duration timestamp in a wrap-safe way depending on state
+  - marked the compact status text as `aria-live="polite"` so non-visual users get the same state changes
+- Hardened the full-size player variant:
+  - made the overall control row wrap-safe with explicit `min-w-0 max-w-full`
+  - kept the primary play button `shrink-0`, the scrubber column `min-w-0 flex-1`, and the volume row bounded with `min-w-0 max-w-full`
+  - switched the timestamp row to a wrap-safe layout and widened the volume slider into a bounded flexible control instead of a tiny fixed-width strip
+  - added explicit `aria-label` / `title` text for play/pause, mute/unmute, position, and volume controls
+- Added `apps/desktop/src/renderer/src/components/audio-player.layout.test.ts` so this shared component now has direct regression coverage for the compact/full layout contract instead of relying only on downstream session tests.
+
+#### Verification
+
+- Targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts`
+- Targeted web typecheck: `pnpm --filter @dotagents/desktop typecheck:web`
+
+#### Notes
+
+- This chunk stays desktop/shared-component scoped: mobile has adjacent response-history speak affordances, but not the same reusable `AudioPlayer` control.
+- Best next UI audit chunk after this one: mobile `ResponseHistoryPanel` header/timestamp/speak rows now stand out as the next unclaimed playback-adjacent surface to harden for narrow widths and larger text sizes.
+
 ### 2026-03-06 — Chunk 19: Retry banner and message-queue footer chrome under narrow widths / zoom
 
 - Area selected:

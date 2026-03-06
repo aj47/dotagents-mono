@@ -221,15 +221,40 @@ export function AudioPlayer({
     return `${minutes}:${seconds.toString().padStart(2, "0")}`
   }
 
+  const playPauseLabel = isGenerating
+    ? "Generating audio"
+    : hasAudio
+      ? isPlaying
+        ? "Pause audio"
+        : "Play audio"
+      : "Generate audio"
+
+  const compactStatusText = hasAudio
+    ? duration > 0
+      ? `${formatTime(currentTime)} / ${formatTime(duration)}`
+      : "Loading audio…"
+    : isGenerating
+      ? "Generating audio…"
+      : error
+        ? "Audio unavailable"
+        : "Generate audio"
+
   if (compact) {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
+      <div
+        className={cn(
+          "flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5",
+          className
+        )}
+      >
         <Button
           variant="ghost"
           size="sm"
           onClick={handlePlayPause}
           disabled={isGenerating}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 shrink-0 p-0"
+          title={playPauseLabel}
+          aria-label={playPauseLabel}
         >
           {isGenerating ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -239,25 +264,31 @@ export function AudioPlayer({
             <Play className="h-4 w-4" />
           )}
         </Button>
-        {hasAudio && duration > 0 && (
-          <span className="text-xs text-muted-foreground">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-        )}
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-xs text-muted-foreground",
+            hasAudio ? "font-mono tabular-nums" : "break-words"
+          )}
+          aria-live="polite"
+        >
+          {compactStatusText}
+        </span>
         <audio ref={audioRef} />
       </div>
     )
   }
 
   return (
-    <div className={cn("space-y-2 rounded-lg bg-muted/50 p-3", className)}>
-      <div className="flex items-center gap-3">
+    <div className={cn("min-w-0 max-w-full space-y-2 rounded-lg bg-muted/50 p-3", className)}>
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={handlePlayPause}
           disabled={isGenerating}
-          className="h-10 w-10 p-0"
+          className="h-10 w-10 shrink-0 p-0"
+          title={playPauseLabel}
+          aria-label={playPauseLabel}
         >
           {isGenerating ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -268,7 +299,7 @@ export function AudioPlayer({
           )}
         </Button>
 
-        <div className="flex-1 space-y-1">
+        <div className="min-w-0 flex-1 space-y-1">
           {hasAudio && duration > 0 ? (
             <>
               <Slider
@@ -277,25 +308,28 @@ export function AudioPlayer({
                 step={0.1}
                 onValueChange={handleSeek}
                 className="w-full"
+                aria-label="Audio position"
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+              <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono tabular-nums">{formatTime(currentTime)}</span>
+                <span className="shrink-0 font-mono tabular-nums">{formatTime(duration)}</span>
               </div>
             </>
           ) : (
-            <div className="text-sm text-muted-foreground">
-              {isGenerating ? "Generating audio..." : "Click play to generate audio"}
+            <div className="text-sm text-muted-foreground break-words" aria-live="polite">
+              {isGenerating ? "Generating audio..." : error ? "Audio unavailable. Check the error above and try again." : "Click play to generate audio"}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex min-w-0 max-w-full items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleMute}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 shrink-0 p-0"
+            title={isMuted ? "Unmute audio" : "Mute audio"}
+            aria-label={isMuted ? "Unmute audio" : "Mute audio"}
           >
             {isMuted ? (
               <VolumeX className="h-4 w-4" />
@@ -308,7 +342,8 @@ export function AudioPlayer({
             max={1}
             step={0.1}
             onValueChange={handleVolumeChange}
-            className="w-16"
+            className="min-w-[5rem] max-w-[8rem] flex-1"
+            aria-label="Audio volume"
           />
         </div>
       </div>
