@@ -13,7 +13,7 @@ import {
   writeAgentsLayerFromConfig,
 } from "./agents-files/modular-config"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage, normalizeError } from "./error-utils"
 
 export const dataFolder = path.join(app.getPath("appData"), process.env.APP_ID)
 
@@ -447,6 +447,15 @@ class ConfigStore {
     const loaded = getConfig()
     this.config = syncPresetToLegacyFields(loaded.config) as Config
     return this.get()
+  }
+}
+
+export function trySaveConfig(config: Config): Error | null {
+  try {
+    configStore.save(config)
+    return null
+  } catch (error) {
+    return normalizeError(error, "Failed to save settings to disk")
   }
 }
 

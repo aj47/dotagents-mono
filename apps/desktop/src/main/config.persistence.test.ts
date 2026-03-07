@@ -32,6 +32,8 @@ describe("config persistence", () => {
     process.env.APP_ID = "dotagents-test"
     vi.resetModules()
     vi.clearAllMocks()
+    mockWriteAgentsLayerFromConfig.mockReset()
+    mockSafeWriteJsonFileSync.mockReset()
   })
 
   it("falls back to the legacy config file when writing .agents files fails", async () => {
@@ -90,5 +92,60 @@ describe("config persistence", () => {
     ).toThrow(/Failed to save settings to disk/)
 
     expect(configStore.get()).toEqual(original)
+  })
+
+  describe("trySaveConfig", () => {
+    it("returns null when persistence succeeds", async () => {
+      const { trySaveConfig } = await import("./config")
+      mockWriteAgentsLayerFromConfig.mockClear()
+      mockSafeWriteJsonFileSync.mockClear()
+
+      const result = trySaveConfig({ launchAtLogin: true } as Config)
+
+      expect(result).toBeNull()
+      expect(mockWriteAgentsLayerFromConfig).toHaveBeenCalledTimes(1)
+      expect(mockSafeWriteJsonFileSync).toHaveBeenCalledTimes(1)
+    })
+
+    it("returns an Error when every persistence target fails", async () => {
+      const { trySaveConfig } = await import("./config")
+      mockWriteAgentsLayerFromConfig.mockClear()
+      mockSafeWriteJsonFileSync.mockClear()
+      mockWriteAgentsLayerFromConfig.mockImplementation(() => {
+        throw new Error("EACCES: permission denied")
+      })
+      mockSafeWriteJsonFileSync.mockImplementation(() => {
+        throw new Error("ENOSPC: no space left on device")
+      })
+
+      const result = trySaveConfig({ launchAtLogin: true } as Config)
+
+      expect(result).toBeInstanceOf(Error)
+      expect(result?.message).toMatch(
+        /Failed to save settings to disk\. Could not write the \.agents config files \(EACCES: permission denied\) Could not write the legacy config file \(ENOSPC: no space left on device\)/,
+      )
+    })
+
+    it("leaves the in-memory config unchanged on failure", async () => {
+      const { configStore, trySaveConfig } = await import("./config")
+      const original = configStore.get()
+
+      mockWriteAgentsLayerFromConfig.mockClear()
+      mockSafeWriteJsonFileSync.mockClear()
+      mockWriteAgentsLayerFromConfig.mockImplementation(() => {
+        throw new Error("EACCES: permission denied")
+      })
+      mockSafeWriteJsonFileSync.mockImplementation(() => {
+        throw new Error("EROFS: read-only file system")
+      })
+
+      const result = trySaveConfig({
+        ...original,
+        launchAtLogin: !(original.launchAtLogin ?? false),
+      } as Config)
+
+      expect(result).toBeInstanceOf(Error)
+      expect(configStore.get()).toEqual(original)
+    })
   })
 })
