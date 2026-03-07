@@ -19,6 +19,17 @@ If you also need programmatic CDP automation (`electron_execute_electron-native`
 REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -d
 ```
 
+### Reusing an existing CDP session
+
+If Electron is already running with `REMOTE_DEBUGGING_PORT` enabled, you can reuse that CDP endpoint instead of restarting the app.
+
+```bash
+agent-browser --cdp 9222 get url
+```
+
+- If that succeeds, CDP is already live on that port and you can keep reusing it.
+- Only restart Electron if the current app instance was not launched with remote debugging enabled.
+
 Selective flags:
 | Flag | Description |
 |------|-------------|
