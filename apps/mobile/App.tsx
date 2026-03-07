@@ -301,18 +301,20 @@ function Navigation() {
                 >
                   <Stack.Navigator
                     initialRouteName="Settings"
-                    screenOptions={{
+                    screenOptions={({ route }) => ({
                       headerTitleStyle: { ...theme.typography.h2 },
                       headerStyle: { backgroundColor: theme.colors.card },
                       headerTintColor: theme.colors.foreground,
                       contentStyle: { backgroundColor: theme.colors.background },
-                      headerLeft: () => (
-                        <Image
-                          source={speakMCPIcon}
-                          style={{ width: 28, height: 28, marginLeft: 12, marginRight: 8 }}
-                          resizeMode="contain"
-                        />
-                      ),
+                      headerLeft: route.name === 'Settings'
+                        ? () => (
+                            <Image
+                              source={speakMCPIcon}
+                              style={{ width: 28, height: 28, marginLeft: 12, marginRight: 8 }}
+                              resizeMode="contain"
+                            />
+                          )
+                        : undefined,
                       headerRight: () => (
                         <ConnectionStatusIndicator
                           state={tunnelConnection.connectionInfo.state}
@@ -320,7 +322,7 @@ function Navigation() {
                           compact
                           />
                       ),
-                    }}
+                    })}
                   >
                     <Stack.Screen
                       name="Settings"
