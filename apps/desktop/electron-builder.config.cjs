@@ -358,7 +358,7 @@ module.exports = {
     afterRemove: "build/linux/postrm.sh",
   },
   appImage: {
-    artifactName: "${productName}-${version}.${ext}",
+    artifactName: "${productName}-${version}-${arch}.${ext}",
   },
   npmRebuild: false,
   // After packing, clean up unnecessary files

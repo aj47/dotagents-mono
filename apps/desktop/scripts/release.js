@@ -21,14 +21,18 @@ const desktopDir = process.cwd()
 
 run(`rm -rf dist`, { cwd: desktopDir })
 
-run(`pnpm build-rs`)
+run(`corepack pnpm build-rs`)
 
 if (process.platform === "darwin") {
-  run(`pnpm build:mac --arm64 --publish always`, {
+  run(`corepack pnpm build:mac --arm64 --publish always`, {
+    cwd: desktopDir,
+  })
+} else if (process.platform === "linux") {
+  run(`corepack pnpm build:linux:release`, {
     cwd: desktopDir,
   })
 } else {
-  run(`pnpm build:win --publish always`, {
+  run(`corepack pnpm build:win --publish always`, {
     cwd: desktopDir,
   })
 }
