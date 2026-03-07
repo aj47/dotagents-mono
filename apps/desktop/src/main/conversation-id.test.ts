@@ -19,6 +19,11 @@ describe("conversation-id", () => {
     expect(validateAndSanitizeConversationId("team chat:42")).toBe("team_chat_42")
   })
 
+  it("rejects invalid characters when validating an established conversation ID", () => {
+    expect(getConversationIdValidationError("team:chat")).toBe("Invalid conversation ID format")
+    expect(() => assertSafeConversationId("team:chat")).toThrow("Invalid conversation ID format")
+  })
+
   it("rejects empty, path-like, and null-byte IDs", () => {
     expect(getConversationIdValidationError("")).toBe("Invalid conversation ID: empty value not allowed")
     expect(getConversationIdValidationError("../secrets")).toBe(

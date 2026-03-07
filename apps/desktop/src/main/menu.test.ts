@@ -19,7 +19,7 @@ import { FEEDBACK_URL, createAppMenu } from "./menu"
 describe("app menu", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.IS_MAC = "false"
+    process.env.IS_MAC = false
   })
 
   it("opens Send Feedback in the current repository issue form", () => {

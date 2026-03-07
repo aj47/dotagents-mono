@@ -73,24 +73,23 @@ export function getConversationIdValidationError(conversationId: string): string
   if (conversationId.includes("..") || conversationId.includes("/") || conversationId.includes("\\")) {
     return "Invalid conversation ID: path traversal characters not allowed"
   }
+
+  const storageError = getConversationIdStorageError(conversationId)
+  if (storageError) {
+    return storageError
+  }
+
   if (!CONVERSATION_ID_ALLOWED_CHARS.test(conversationId)) {
     return "Invalid conversation ID format"
   }
 
-  return getConversationIdStorageError(conversationId)
+  return null
 }
 
 export function assertSafeConversationId(conversationId: string): void {
-  if (conversationId.includes("\0")) {
-    throw new Error("Invalid conversation ID: null bytes not allowed")
-  }
-  if (conversationId.includes("..") || conversationId.includes("/") || conversationId.includes("\\")) {
-    throw new Error("Invalid conversation ID: path traversal characters not allowed")
-  }
-
-  const storageError = getConversationIdStorageError(conversationId)
-  if (storageError) {
-    throw new Error(storageError)
+  const validationError = getConversationIdValidationError(conversationId)
+  if (validationError) {
+    throw new Error(validationError)
   }
 }
 
