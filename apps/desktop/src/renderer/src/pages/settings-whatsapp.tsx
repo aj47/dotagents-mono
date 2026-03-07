@@ -353,7 +353,7 @@ export function Component() {
                   setAllowFromDraft(nextDraft)
                   scheduleAllowFromSave(nextDraft)
                 }}
-                onBlur={() => flushAllowFromSave(allowFromDraft)}
+                onBlur={(e) => flushAllowFromSave(e.currentTarget.value)}
                 placeholder={streamerMode ? "••••••••••" : "+14155551234, 98389177934034"}
                 className="w-full"
               />

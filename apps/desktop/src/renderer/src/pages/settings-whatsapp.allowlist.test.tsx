@@ -286,7 +286,7 @@ describe("desktop WhatsApp settings allowlist", () => {
     tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
     input = findInput(tree)
-    input.props.onBlur()
+    input.props.onBlur({ currentTarget: { value: "14155551234, 98389177934034" } })
 
     expect(mutate).toHaveBeenCalledTimes(1)
     expect(mutate).toHaveBeenCalledWith({
@@ -306,5 +306,26 @@ describe("desktop WhatsApp settings allowlist", () => {
     tree = runtime.render(Component, {} as any)
     input = findInput(tree)
     expect(input.props.value).toBe("98389177934034")
+  })
+
+  it("flushes the latest draft on blur even without an intervening rerender", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const input = findInput(tree)
+    input.props.onChange({ currentTarget: { value: "14155551234, +442071838750" } })
+    input.props.onBlur({ currentTarget: { value: "14155551234, +442071838750" } })
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        whatsappAllowFrom: ["14155551234", "+442071838750"],
+      },
+    })
   })
 })
