@@ -103,6 +103,7 @@ type DisplayItem =
     } }
 
 const TILE_TRANSCRIPT_PREVIEW_ITEMS = 6
+const OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS = 12
 
 function extractRespondToUserContentFromArgs(args: unknown): string | null {
   if (!args || typeof args !== "object") return null
@@ -209,11 +210,12 @@ const CompactMessage: React.FC<{
   wasStopped?: boolean
   isExpanded: boolean
   onToggleExpand: () => void
+  deferOffscreenRendering?: boolean
   /** Variant controls TTS auto-play - only 'overlay' variant auto-plays TTS to prevent double playback */
   variant?: "default" | "overlay" | "tile"
   /** Session ID for tracking TTS playback across remounts */
   sessionId?: string
-}> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", sessionId }) => {
+}> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, deferOffscreenRendering = false, variant = "default", sessionId }) => {
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [ttsError, setTtsError] = useState<string | null>(null)
@@ -445,7 +447,14 @@ const CompactMessage: React.FC<{
       getRoleStyle(),
       !isExpanded && shouldCollapse && "hover:bg-muted/20",
       shouldCollapse && "cursor-pointer"
-    )}>
+    )}
+    style={deferOffscreenRendering
+      ? {
+          contentVisibility: "auto",
+          containIntrinsicSize: "auto 160px",
+        }
+      : undefined}
+    >
       <div
         className="flex items-start px-2 py-1 text-left"
         onClick={handleToggleExpand}
@@ -2352,7 +2361,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // (like tool executions which default to expanded)
   // By deriving the current state from prev inside the setter, this is resilient to
   // batched updates (e.g., double-clicks will correctly round-trip)
-  const toggleItemExpansion = (itemKey: string, defaultExpanded: boolean) => {
+  const toggleItemExpansion = useCallback((itemKey: string, defaultExpanded: boolean) => {
     setExpandedItems(prev => {
       // Use prev[itemKey] if it exists (item was explicitly toggled before),
       // otherwise use the default expanded state for this item type
@@ -2364,7 +2373,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         [itemKey]: to,
       }
     })
-  }
+  }, [])
 
   // Kill switch handler - stop only this session, with fallback to global emergency stop
   const handleKillSwitch = async () => {
@@ -2469,7 +2478,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Derive isRespondingToApproval from whether we have a pending response for the current approval
   const isRespondingToApproval = respondingApprovalId === progress?.pendingToolApproval?.approvalId
 
-  const handleApproveToolCall = async () => {
+  const handleApproveToolCall = useCallback(async () => {
     const approvalId = progress?.pendingToolApproval?.approvalId
     console.log(`[Tool Approval UI] handleApproveToolCall called, approvalId=${approvalId}`)
     if (!approvalId) {
@@ -2499,9 +2508,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
     }
-  }
+  }, [progress?.pendingToolApproval?.approvalId])
 
-  const handleDenyToolCall = async () => {
+  const handleDenyToolCall = useCallback(async () => {
     const approvalId = progress?.pendingToolApproval?.approvalId
     console.log(`[Tool Approval UI] handleDenyToolCall called, approvalId=${approvalId}`)
     if (!approvalId) {
@@ -2531,7 +2540,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
     }
-  }
+  }, [progress?.pendingToolApproval?.approvalId])
 
   if (!progress) {
     return null
@@ -2550,163 +2559,163 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     profileName,
     acpSessionInfo,
   } = progress
+  const hasErrors = steps.some(
+    (step) => step.status === "error" || step.toolResult?.error,
+  )
 
   // Detect if agent was stopped by kill switch
   const wasStopped = finalContent?.includes("emergency kill switch") ||
                     steps?.some(step => step.title === "Agent stopped" ||
                                step.description?.includes("emergency kill switch"))
 
-  // Use conversation history if available, otherwise fall back to extracting from steps
-  let messages: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    isComplete: boolean
-    timestamp: number
-    isThinking: boolean
-    toolCalls?: Array<{ name: string; arguments: any }>
-    toolResults?: Array<{ success: boolean; content: string; error?: string }>
-  }> = []
+  // Use conversation history if available, otherwise fall back to extracting from steps.
+  // This stays stable while only the live streaming bubble changes, which avoids
+  // rebuilding the whole transcript model on every streamed chunk.
+  const messages = useMemo(() => {
+    const nextMessages: Array<{
+      role: "user" | "assistant" | "tool"
+      content: string
+      isComplete: boolean
+      timestamp: number
+      isThinking: boolean
+      toolCalls?: Array<{ name: string; arguments: any }>
+      toolResults?: Array<{ success: boolean; content: string; error?: string }>
+    }> = []
 
-  if (conversationHistory && conversationHistory.length > 0) {
-    // Use only the portion of the conversation history that belongs to this session
-    const startIndex =
-      typeof sessionStartIndex === "number" && sessionStartIndex > 0
-        ? Math.min(sessionStartIndex, conversationHistory.length)
-        : 0
-    const historyForSession =
-      startIndex > 0 ? conversationHistory.slice(startIndex) : conversationHistory
+    if (conversationHistory && conversationHistory.length > 0) {
+      const startIndex =
+        typeof sessionStartIndex === "number" && sessionStartIndex > 0
+          ? Math.min(sessionStartIndex, conversationHistory.length)
+          : 0
+      const historyForSession =
+        startIndex > 0 ? conversationHistory.slice(startIndex) : conversationHistory
 
-    // Filter internal nudges from the visible history (fallback for older persisted data).
-    // The main process now marks completion nudges as ephemeral and filters them before
-    // returning or persisting conversation history, but this fallback catches any that
-    // might appear in older conversation data.
-    const isCompletionNudge = (c: string) => {
-      const trimmed = c.trim()
-      // Only filter the exact completion nudge text to avoid false positives
-      return trimmed === INTERNAL_COMPLETION_NUDGE_TEXT
-    }
+      const isCompletionNudge = (c: string) => {
+        const trimmed = c.trim()
+        return trimmed === INTERNAL_COMPLETION_NUDGE_TEXT
+      }
 
-    messages = historyForSession
-      .filter((entry) => !(entry.role === "user" && isCompletionNudge(entry.content)))
-      .map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-        isComplete: true,
-        timestamp: entry.timestamp || Date.now(),
-        isThinking: false,
-        toolCalls: entry.toolCalls,
-        toolResults: entry.toolResults,
-      }))
-
-    // Add any in-progress thinking from current steps (only when not complete)
-    const currentThinkingStep = !isComplete
-      ? steps.find(
-          (step) => step.type === "thinking" && step.status === "in_progress",
-        )
-      : undefined
-    if (currentThinkingStep) {
-      // Don't show assistant message from thinking step when streaming is active
-      // to avoid duplicate content (streaming bubble already shows the text)
-      const isStreaming = progress.streamingContent?.isStreaming
-      const latestAssistantHistoryMessage = [...messages]
-        .reverse()
-        .find(
-          (message) =>
-            message.role === "assistant" &&
-            !message.toolCalls?.length &&
-            !message.toolResults?.length &&
-            message.content.trim().length > 0,
-        )
-      const historyAlreadyContainsThinking = !!(
-        currentThinkingStep.llmContent &&
-        latestAssistantHistoryMessage?.content &&
-        currentThinkingStep.llmContent.endsWith(latestAssistantHistoryMessage.content)
+      nextMessages.push(
+        ...historyForSession
+          .filter((entry) => !(entry.role === "user" && isCompletionNudge(entry.content)))
+          .map((entry) => ({
+            role: entry.role,
+            content: entry.content,
+            isComplete: true,
+            timestamp: entry.timestamp || Date.now(),
+            isThinking: false,
+            toolCalls: entry.toolCalls,
+            toolResults: entry.toolResults,
+          })),
       )
 
-      if (
-        !isStreaming &&
-        !historyAlreadyContainsThinking &&
-        currentThinkingStep.llmContent &&
-        currentThinkingStep.llmContent.trim().length > 0
-      ) {
-        messages.push({
-          role: "assistant",
-          content: currentThinkingStep.llmContent,
-          isComplete: false,
-          timestamp: currentThinkingStep.timestamp,
-          isThinking: false,
-        })
-      } else if (!isStreaming) {
-        // Skip adding a fake "thinking" message for verification steps
-        // These steps don't have LLM content and would hide the actual LLM response
-        const isVerificationStep = currentThinkingStep.title?.toLowerCase().includes("verifying")
-        if (!isVerificationStep) {
-          messages.push({
+      const currentThinkingStep = !isComplete
+        ? steps.find(
+            (step) => step.type === "thinking" && step.status === "in_progress",
+          )
+        : undefined
+      if (currentThinkingStep) {
+        const isStreaming = progress.streamingContent?.isStreaming
+        const latestAssistantHistoryMessage = [...nextMessages]
+          .reverse()
+          .find(
+            (message) =>
+              message.role === "assistant" &&
+              !message.toolCalls?.length &&
+              !message.toolResults?.length &&
+              message.content.trim().length > 0,
+          )
+        const historyAlreadyContainsThinking = !!(
+          currentThinkingStep.llmContent &&
+          latestAssistantHistoryMessage?.content &&
+          currentThinkingStep.llmContent.endsWith(latestAssistantHistoryMessage.content)
+        )
+
+        if (
+          !isStreaming &&
+          !historyAlreadyContainsThinking &&
+          currentThinkingStep.llmContent &&
+          currentThinkingStep.llmContent.trim().length > 0
+        ) {
+          nextMessages.push({
             role: "assistant",
-            content: currentThinkingStep.description || "Agent is thinking...",
+            content: currentThinkingStep.llmContent,
             isComplete: false,
             timestamp: currentThinkingStep.timestamp,
-            isThinking: true,
-          })
-        }
-      }
-    }
-  } else {
-    // Fallback to old behavior - extract from thinking steps
-    steps
-      .filter((step) => step.type === "thinking")
-      .forEach((step) => {
-        if (step.llmContent && step.llmContent.trim().length > 0) {
-          messages.push({
-            role: "assistant",
-            content: step.llmContent,
-            isComplete: step.status === "completed",
-            timestamp: step.timestamp,
             isThinking: false,
           })
-        } else if (step.status === "in_progress" && !isComplete) {
-          // Only show in-progress thinking when task is not complete
-          // Skip verification steps as they would hide the actual LLM response
-          const isVerificationStep = step.title?.toLowerCase().includes("verifying")
+        } else if (!isStreaming) {
+          const isVerificationStep = currentThinkingStep.title?.toLowerCase().includes("verifying")
           if (!isVerificationStep) {
-            messages.push({
+            nextMessages.push({
               role: "assistant",
-              content: step.description || "Agent is thinking...",
+              content: currentThinkingStep.description || "Agent is thinking...",
               isComplete: false,
-              timestamp: step.timestamp,
+              timestamp: currentThinkingStep.timestamp,
               isThinking: true,
             })
           }
         }
-      })
-
-    // Add final content if available and different from last thinking step
-      if (finalContent && finalContent.trim().length > 0) {
-      const lastMessage = messages[messages.length - 1]
-      if (!lastMessage || lastMessage.content !== finalContent) {
-        messages.push({
-          role: "assistant",
-          content: finalContent,
-          isComplete: true,
-          timestamp: Date.now(),
-          isThinking: false,
+      }
+    } else {
+      steps
+        .filter((step) => step.type === "thinking")
+        .forEach((step) => {
+          if (step.llmContent && step.llmContent.trim().length > 0) {
+            nextMessages.push({
+              role: "assistant",
+              content: step.llmContent,
+              isComplete: step.status === "completed",
+              timestamp: step.timestamp,
+              isThinking: false,
+            })
+          } else if (step.status === "in_progress" && !isComplete) {
+            const isVerificationStep = step.title?.toLowerCase().includes("verifying")
+            if (!isVerificationStep) {
+              nextMessages.push({
+                role: "assistant",
+                content: step.description || "Agent is thinking...",
+                isComplete: false,
+                timestamp: step.timestamp,
+                isThinking: true,
+              })
+            }
+          }
         })
+
+      if (finalContent && finalContent.trim().length > 0) {
+        const lastMessage = nextMessages[nextMessages.length - 1]
+        if (!lastMessage || lastMessage.content !== finalContent) {
+          nextMessages.push({
+            role: "assistant",
+            content: finalContent,
+            isComplete: true,
+            timestamp: Date.now(),
+            isThinking: false,
+          })
+        }
       }
     }
-  }
 
-  // Sort by timestamp to ensure chronological order
-  messages.sort((a, b) => a.timestamp - b.timestamp)
+    nextMessages.sort((a, b) => a.timestamp - b.timestamp)
+    return nextMessages
+  }, [conversationHistory, finalContent, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
 
-  const fallbackRespondToUserResponses = progress.userResponse
-    ? []
-    : extractRespondToUserResponsesFromMessages(messages)
-  const effectiveUserResponse = progress.userResponse
-    ?? fallbackRespondToUserResponses[fallbackRespondToUserResponses.length - 1]
-  const effectiveUserResponseHistory = progress.userResponseHistory
-    ?? (fallbackRespondToUserResponses.length > 1
-      ? fallbackRespondToUserResponses.slice(0, -1)
-      : undefined)
+  const fallbackRespondToUserResponses = useMemo(
+    () => (progress.userResponse ? [] : extractRespondToUserResponsesFromMessages(messages)),
+    [messages, progress.userResponse],
+  )
+  const effectiveUserResponse = useMemo(
+    () => progress.userResponse ?? fallbackRespondToUserResponses[fallbackRespondToUserResponses.length - 1],
+    [fallbackRespondToUserResponses, progress.userResponse],
+  )
+  const effectiveUserResponseHistory = useMemo(
+    () => progress.userResponseHistory
+      ?? (fallbackRespondToUserResponses.length > 1
+        ? fallbackRespondToUserResponses.slice(0, -1)
+        : undefined),
+    [fallbackRespondToUserResponses, progress.userResponseHistory],
+  )
   const primaryAgentLabel = acpSessionInfo?.agentTitle
     ?? acpSessionInfo?.agentName
     ?? profileName
@@ -2745,152 +2754,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return Math.abs(hash).toString(36)
   }
 
-  // Stable string hash for IDs (32-bit -> base36)
-  const hashString = (s: string) => {
-    let h = 0
-    for (let i = 0; i < s.length; i++) {
-      h = ((h << 5) - h) + s.charCodeAt(i)
-      h |= 0
-    }
-    return Math.abs(h).toString(36)
-  }
-
-  // Stable message id independent of streaming content; timestamp+role is sufficient
-  const messageStableId = (m: { timestamp: number; role: string; content: string }) => {
-    return `${m.timestamp}-${m.role}`
-  }
-
-  // Build unified display items that combine tool calls with subsequent results
-  const displayItems: DisplayItem[] = []
-  const roleCounters: Record<'user' | 'assistant' | 'tool', number> = { user: 0, assistant: 0, tool: 0 }
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i]
-    if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
-      const next = messages[i + 1]
-      const results = next && next.role === "tool" && next.toolResults ? next.toolResults : []
-      // Create unified assistant + tools item (combines thought and tool execution)
-      const aIndex = ++roleCounters.assistant
-      const execTimestamp = next?.timestamp ?? m.timestamp
-      const toolExecId = generateToolExecutionId(m.toolCalls, execTimestamp)
-
-      // Look for a matching step with executionStats (match by tool name from tool_call steps)
-      // or find the most recent tool_call step with stats
-      const toolCallNames = m.toolCalls.map(c => c.name)
-      const matchingStep = steps?.find(
-        step =>
-          step.type === "tool_call" &&
-          step.executionStats &&
-          (step.title?.includes(toolCallNames[0]) || toolCallNames.some(name => step.title?.includes(name)))
-      )
-
-      // Suppress the LLM's inline thought text when respond_to_user already
-      // provided the user-facing response. The LLM often emits filler like
-      // "(No further action needed — work is already complete)" alongside
-      // completion tool calls, which is redundant noise for both UI and TTS.
-      const hasCompletionTool = m.toolCalls.some(
-        c => c.name === RESPOND_TO_USER_TOOL || c.name === MARK_WORK_COMPLETE_TOOL
-      )
-      const suppressThought = hasCompletionTool && !!effectiveUserResponse
-
-      displayItems.push({
-        kind: "assistant_with_tools",
-        id: `assistant-tools-${aIndex}-${toolExecId}`,
-        data: {
-          thought: suppressThought ? "" : (m.content || ""),
-          timestamp: m.timestamp,
-          isComplete: m.isComplete,
-          calls: m.toolCalls,
-          results,
-          // Attach executionStats from the matching step if found
-          executionStats: matchingStep?.executionStats ? {
-            durationMs: matchingStep.executionStats.durationMs,
-            totalTokens: matchingStep.executionStats.totalTokens,
-            model: matchingStep.subagentId,
-          } : undefined,
-        },
-      })
-      if (next && next.role === "tool" && next.toolResults) {
-        i++ // skip the tool result message, already included
-      }
-    } else if (
-      m.role === "tool" &&
-      m.toolResults &&
-      !(i > 0 && messages[i - 1].role === "assistant" && (messages[i - 1].toolCalls?.length ?? 0) > 0)
-    ) {
-      // Standalone tool result without a preceding assistant call in sequence
-      const tIndex = ++roleCounters.tool
-      displayItems.push({ kind: "tool_execution", id: `exec-standalone-${tIndex}` , data: { timestamp: m.timestamp, calls: [], results: m.toolResults } })
-    } else {
-      // Regular message (user/assistant/tool) with stable ordinal per role
-      const idx = ++roleCounters[m.role]
-      displayItems.push({ kind: "message", id: `msg-${m.role}-${idx}`, data: m })
-    }
-  }
-
-  // NOTE: Tool approval is now rendered separately outside the scroll area for visibility
-  // It is NOT added to displayItems anymore to ensure it stays visible regardless of scroll position
-
-  // Add retry status to display items if present
-  if (progress.retryInfo && progress.retryInfo.isRetrying) {
-    displayItems.push({
-      kind: "retry_status",
-      id: `retry-${progress.retryInfo.startedAt}`,
-      data: progress.retryInfo,
-    })
-  }
-
-  // Add streaming content to display items if present and actively streaming
-  if (progress.streamingContent && progress.streamingContent.isStreaming && progress.streamingContent.text) {
-    const latestAssistantText = [...messages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role === "assistant" &&
-          !message.toolCalls?.length &&
-          !message.toolResults?.length &&
-          message.content.trim().length > 0,
-      )
-    const historyAlreadyContainsStream = !!(
-      latestAssistantText?.content &&
-      progress.streamingContent.text.endsWith(latestAssistantText.content)
-    )
-
-    if (!historyAlreadyContainsStream) {
-      displayItems.push({
-        kind: "streaming",
-        id: "streaming-content",
-        data: progress.streamingContent,
-      })
-    }
-  }
-
-  // Add mid-turn user response to display items if present
-  // This shows the userResponse from respond_to_user tool prominently (both mid-turn and after completion)
-  if (effectiveUserResponse) {
-    displayItems.push({
-      kind: "mid_turn_response",
-      id: "mid-turn-response",
-      data: {
-        userResponse: effectiveUserResponse,
-        pastResponses: effectiveUserResponseHistory,
-      },
-    })
-  }
-
-  // Add delegation progress items from steps
-  for (const step of progress.steps) {
-    if (step.delegation) {
-      displayItems.push({
-        kind: "delegation",
-        id: `delegation-${step.delegation.runId}`,
-        data: step.delegation,
-      })
-    }
-  }
-
-  // Sort all display items by timestamp to ensure delegations appear in chronological order
-  // Items without timestamps (tool_approval, streaming) will be handled separately
-  const getItemTimestamp = (item: DisplayItem): number | null => {
+  function getItemTimestamp(item: DisplayItem): number | null {
     switch (item.kind) {
       case "message":
         return item.data.timestamp
@@ -2905,34 +2769,266 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       case "tool_approval":
       case "streaming":
       case "mid_turn_response":
-        // These represent current state and should stay at the end
         return null
     }
   }
 
-  // Separate items with timestamps from "current state" items (approval, streaming)
-  const timestampedItems = displayItems.filter(item => getItemTimestamp(item) !== null)
-  const currentStateItems = displayItems.filter(item => getItemTimestamp(item) === null)
+  const latestAssistantHistoryMessage = useMemo(
+    () => [...messages]
+      .reverse()
+      .find(
+        (message) =>
+          message.role === "assistant" &&
+          !message.toolCalls?.length &&
+          !message.toolResults?.length &&
+          message.content.trim().length > 0,
+      ),
+    [messages],
+  )
 
-  // Sort timestamped items chronologically
-  timestampedItems.sort((a, b) => {
-    const tsA = getItemTimestamp(a) ?? 0
-    const tsB = getItemTimestamp(b) ?? 0
-    return tsA - tsB
-  })
+  // Build unified display items that combine tool calls with subsequent results.
+  // Timestamped history stays memoized while only current-state items like the
+  // live streaming bubble update per chunk.
+  const timestampedDisplayItems = useMemo(() => {
+    const nextItems: DisplayItem[] = []
+    const roleCounters: Record<'user' | 'assistant' | 'tool', number> = { user: 0, assistant: 0, tool: 0 }
 
-  // Replace displayItems with sorted items, keeping current state items at the end
-  displayItems.length = 0
-  displayItems.push(...timestampedItems, ...currentStateItems)
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i]
+      if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
+        const next = messages[i + 1]
+        const results = next && next.role === "tool" && next.toolResults ? next.toolResults : []
+        const aIndex = ++roleCounters.assistant
+        const execTimestamp = next?.timestamp ?? m.timestamp
+        const toolExecId = generateToolExecutionId(m.toolCalls, execTimestamp)
+        const toolCallNames = m.toolCalls.map(c => c.name)
+        const matchingStep = steps?.find(
+          step =>
+            step.type === "tool_call" &&
+            step.executionStats &&
+            (step.title?.includes(toolCallNames[0]) || toolCallNames.some(name => step.title?.includes(name))),
+        )
+        const hasCompletionTool = m.toolCalls.some(
+          c => c.name === RESPOND_TO_USER_TOOL || c.name === MARK_WORK_COMPLETE_TOOL,
+        )
+        const suppressThought = hasCompletionTool && !!effectiveUserResponse
+
+        nextItems.push({
+          kind: "assistant_with_tools",
+          id: `assistant-tools-${aIndex}-${toolExecId}`,
+          data: {
+            thought: suppressThought ? "" : (m.content || ""),
+            timestamp: m.timestamp,
+            isComplete: m.isComplete,
+            calls: m.toolCalls,
+            results,
+            executionStats: matchingStep?.executionStats ? {
+              durationMs: matchingStep.executionStats.durationMs,
+              totalTokens: matchingStep.executionStats.totalTokens,
+              model: matchingStep.subagentId,
+            } : undefined,
+          },
+        })
+        if (next && next.role === "tool" && next.toolResults) {
+          i++
+        }
+      } else if (
+        m.role === "tool" &&
+        m.toolResults &&
+        !(i > 0 && messages[i - 1].role === "assistant" && (messages[i - 1].toolCalls?.length ?? 0) > 0)
+      ) {
+        const tIndex = ++roleCounters.tool
+        nextItems.push({ kind: "tool_execution", id: `exec-standalone-${tIndex}`, data: { timestamp: m.timestamp, calls: [], results: m.toolResults } })
+      } else {
+        const idx = ++roleCounters[m.role]
+        nextItems.push({ kind: "message", id: `msg-${m.role}-${idx}`, data: m })
+      }
+    }
+
+    if (progress.retryInfo && progress.retryInfo.isRetrying) {
+      nextItems.push({
+        kind: "retry_status",
+        id: `retry-${progress.retryInfo.startedAt}`,
+        data: progress.retryInfo,
+      })
+    }
+
+    for (const step of progress.steps) {
+      if (step.delegation) {
+        nextItems.push({
+          kind: "delegation",
+          id: `delegation-${step.delegation.runId}`,
+          data: step.delegation,
+        })
+      }
+    }
+
+    nextItems.sort((a, b) => {
+      const tsA = getItemTimestamp(a) ?? 0
+      const tsB = getItemTimestamp(b) ?? 0
+      return tsA - tsB
+    })
+
+    return nextItems
+  }, [effectiveUserResponse, messages, progress.retryInfo, progress.steps, steps])
+
+  const currentStateDisplayItems = useMemo(() => {
+    const nextItems: DisplayItem[] = []
+
+    if (progress.streamingContent && progress.streamingContent.isStreaming && progress.streamingContent.text) {
+      const historyAlreadyContainsStream = !!(
+        latestAssistantHistoryMessage?.content &&
+        progress.streamingContent.text.endsWith(latestAssistantHistoryMessage.content)
+      )
+
+      if (!historyAlreadyContainsStream) {
+        nextItems.push({
+          kind: "streaming",
+          id: "streaming-content",
+          data: progress.streamingContent,
+        })
+      }
+    }
+
+    if (effectiveUserResponse) {
+      nextItems.push({
+        kind: "mid_turn_response",
+        id: "mid-turn-response",
+        data: {
+          userResponse: effectiveUserResponse,
+          pastResponses: effectiveUserResponseHistory,
+        },
+      })
+    }
+
+    return nextItems
+  }, [effectiveUserResponse, effectiveUserResponseHistory, latestAssistantHistoryMessage, progress.streamingContent])
+
+  // NOTE: Tool approval is rendered separately outside the scroll area for visibility.
+  const displayItems = useMemo(
+    () => [...timestampedDisplayItems, ...currentStateDisplayItems],
+    [currentStateDisplayItems, timestampedDisplayItems],
+  )
 
   // Determine the last assistant message among display items (by position, not timestamp)
-  const lastAssistantDisplayIndex = (() => {
-    for (let i = displayItems.length - 1; i >= 0; i--) {
-      const it = displayItems[i]
+  const lastAssistantDisplayIndex = useMemo(() => {
+    for (let i = timestampedDisplayItems.length - 1; i >= 0; i--) {
+      const it = timestampedDisplayItems[i]
       if (it.kind === "message" && it.data.role === "assistant") return i
     }
     return -1
-  })()
+  }, [timestampedDisplayItems])
+
+  const renderDisplayItem = useCallback((item: DisplayItem, displayIndex: number, renderVariant: "default" | "overlay" | "tile", deferOffscreenRendering = false) => {
+    const itemKey = item.id
+    const isFinalAssistantMessage = item.kind === "message" && displayIndex === lastAssistantDisplayIndex && isComplete
+    const isExpanded = itemKey in expandedItems
+      ? expandedItems[itemKey]
+      : isFinalAssistantMessage
+    const isLastAssistant = item.kind === "message" && item.data.role === "assistant" && displayIndex === lastAssistantDisplayIndex
+
+    if (item.kind === "message") {
+      return (
+        <CompactMessage
+          key={itemKey}
+          message={item.data}
+          ttsText={isLastAssistant ? effectiveUserResponse : undefined}
+          isLast={isLastAssistant}
+          isComplete={isComplete}
+          hasErrors={hasErrors}
+          wasStopped={wasStopped}
+          isExpanded={isExpanded}
+          onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+          deferOffscreenRendering={deferOffscreenRendering}
+          variant={renderVariant}
+          sessionId={progress.sessionId}
+        />
+      )
+    }
+
+    if (item.kind === "assistant_with_tools") {
+      return (
+        <AssistantWithToolsBubble
+          key={itemKey}
+          data={item.data}
+          isExpanded={isExpanded}
+          onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+        />
+      )
+    }
+
+    if (item.kind === "tool_approval") {
+      return (
+        <ToolApprovalBubble
+          key={itemKey}
+          approval={item.data}
+          onApprove={handleApproveToolCall}
+          onDeny={handleDenyToolCall}
+          isResponding={isRespondingToApproval}
+        />
+      )
+    }
+
+    if (item.kind === "retry_status") {
+      return <RetryStatusBanner key={itemKey} retryInfo={item.data} />
+    }
+
+    if (item.kind === "streaming") {
+      return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
+    }
+
+    if (item.kind === "mid_turn_response") {
+      return (
+        <MidTurnUserResponseBubble
+          key={itemKey}
+          userResponse={item.data.userResponse}
+          pastResponses={item.data.pastResponses}
+          sessionId={progress.sessionId}
+          agentLabel={primaryAgentLabel}
+          variant={renderVariant}
+          isComplete={isComplete}
+          isExpanded={isExpanded}
+          onToggleExpand={() => toggleItemExpansion(itemKey, false)}
+        />
+      )
+    }
+
+    if (item.kind === "delegation") {
+      const delegationExpanded = expandedItems[itemKey] ?? false
+      return (
+        <DelegationBubble
+          key={itemKey}
+          delegation={item.data}
+          isExpanded={delegationExpanded}
+          onToggleExpand={() => toggleItemExpansion(itemKey, false)}
+        />
+      )
+    }
+
+    return (
+      <ToolExecutionBubble
+        key={itemKey}
+        execution={item.data}
+        isExpanded={isExpanded}
+        onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+      />
+    )
+  }, [effectiveUserResponse, expandedItems, handleApproveToolCall, handleDenyToolCall, hasErrors, isComplete, isRespondingToApproval, lastAssistantDisplayIndex, primaryAgentLabel, progress.sessionId, toggleItemExpansion, wasStopped])
+
+  const renderedTimestampedDisplayItems = useMemo(
+    () => timestampedDisplayItems.map((item, index) => renderDisplayItem(
+      item,
+      index,
+      variant,
+      timestampedDisplayItems.length > OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS
+        && index < timestampedDisplayItems.length - OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS,
+    )),
+    [renderDisplayItem, timestampedDisplayItems, variant],
+  )
+  const renderedCurrentStateDisplayItems = useMemo(
+    () => currentStateDisplayItems.map((item, index) => renderDisplayItem(item, timestampedDisplayItems.length + index, variant)),
+    [currentStateDisplayItems, renderDisplayItem, timestampedDisplayItems.length, variant],
+  )
 
   // Reset auto-scroll tracking refs when session changes
   // This prevents stale high-water marks from blocking auto-scroll after a clear/new session
@@ -3060,12 +3156,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
 
   }
-
-  // Check for errors
-  const hasErrors = steps.some(
-    (step) => step.status === "error" || step.toolResult?.error,
-  )
-
   // Get status indicator for tile variant
   const getStatusIndicator = () => {
     const hasPendingApproval = !!progress.pendingToolApproval
@@ -3130,6 +3220,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const hasPendingApproval = !!progress.pendingToolApproval
     const isSnoozed = progress.isSnoozed
     const shouldLimitTileTranscript = !isFocused && !isExpanded
+    const shouldUseCompactTileFooter = !isFocused && !isExpanded
     const tileDisplayItems = shouldLimitTileTranscript
       ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
       : displayItems
@@ -3186,7 +3277,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   e.stopPropagation()
                   onExpand()
                 }}
-                title="Maximize tile"
+                title="Show only this session"
+                aria-label="Show only this session"
               >
                 <Maximize2 className="h-3 w-3" />
               </Button>
@@ -3295,92 +3387,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         Showing latest {tileDisplayItems.length} of {displayItems.length} updates
                       </div>
                     )}
-                    {tileDisplayItems.map((item, index) => {
-                      const itemKey = item.id
-                      const displayIndex = tileDisplayOffset + index
-                      // Final assistant message should be expanded by default when agent is complete
-                      // Tool executions should be collapsed by default to reduce visual clutter
-                      // unless user has explicitly toggled them (itemKey exists in expandedItems)
-                      const isFinalAssistantMessage = item.kind === "message" && displayIndex === lastAssistantDisplayIndex && isComplete
-                      const isExpanded = itemKey in expandedItems
-                        ? expandedItems[itemKey]
-                        : isFinalAssistantMessage // Only final assistant message expanded by default
-                      const isLastAssistant = item.kind === "message" && item.data.role === "assistant" && displayIndex === lastAssistantDisplayIndex
-
-                      if (item.kind === "message") {
-                        return (
-                          <CompactMessage
-                            key={itemKey}
-                            message={item.data}
-                            ttsText={isLastAssistant ? effectiveUserResponse : undefined}
-                            isLast={isLastAssistant}
-                            isComplete={isComplete}
-                            hasErrors={hasErrors}
-                            wasStopped={wasStopped}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
-                            variant="tile"
-                            sessionId={progress.sessionId}
-                          />
-                        )
-                      } else if (item.kind === "assistant_with_tools") {
-                        return (
-                          <AssistantWithToolsBubble
-                            key={itemKey}
-                            data={item.data}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
-                          />
-                        )
-                      } else if (item.kind === "tool_approval") {
-                        return (
-                          <ToolApprovalBubble
-                            key={itemKey}
-                            approval={item.data}
-                            onApprove={handleApproveToolCall}
-                            onDeny={handleDenyToolCall}
-                            isResponding={isRespondingToApproval}
-                          />
-                        )
-                      } else if (item.kind === "retry_status") {
-                        return <RetryStatusBanner key={itemKey} retryInfo={item.data} />
-                      } else if (item.kind === "streaming") {
-                        return <StreamingContentBubble key={itemKey} streamingContent={item.data} />
-                      } else if (item.kind === "mid_turn_response") {
-                        return (
-                          <MidTurnUserResponseBubble
-                            key={itemKey}
-                            userResponse={item.data.userResponse}
-                            pastResponses={item.data.pastResponses}
-                            sessionId={progress.sessionId}
-                            agentLabel={primaryAgentLabel}
-                            variant="tile"
-                            isComplete={isComplete}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                          />
-                        )
-                      } else if (item.kind === "delegation") {
-                        const delegationExpanded = expandedItems[itemKey] ?? false
-                        return (
-                          <DelegationBubble
-                            key={itemKey}
-                            delegation={item.data}
-                            isExpanded={delegationExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                          />
-                        )
-                      } else {
-                        return (
-                          <ToolExecutionBubble
-                            key={itemKey}
-                            execution={item.data}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
-                          />
-                        )
-                      }
-                    })}
+                    {shouldLimitTileTranscript
+                      ? tileDisplayItems.map((item, index) => renderDisplayItem(item, tileDisplayOffset + index, "tile"))
+                      : (
+                        <>
+                          {renderedTimestampedDisplayItems}
+                          {renderedCurrentStateDisplayItems}
+                        </>
+                      )}
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center">
@@ -3414,20 +3428,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
 
             {/* Footer with status info */}
-            <div className="px-3 py-2 border-t bg-muted/20 text-xs text-muted-foreground flex-shrink-0">
+            <div className={cn(
+              "px-3 py-2 border-t text-xs text-muted-foreground flex-shrink-0",
+              shouldUseCompactTileFooter ? "bg-muted/10" : "bg-muted/20"
+            )}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                  {profileName && (
-                    <span className="min-w-0 max-w-full truncate text-[10px] text-primary/70" title={`Profile: ${profileName}`}>
-                      {profileName}
-                    </span>
-                  )}
                   {/* ACP Session info for tile variant */}
                   {acpSessionInfo && (
-                    <ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />
+                    <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
                   )}
                   {/* Model info - only show for non-ACP sessions */}
-                  {!isComplete && modelInfo && !acpSessionInfo && (
+                  {!isComplete && modelInfo && !acpSessionInfo && !shouldUseCompactTileFooter && (
                     <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
                       {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
                     </span>
@@ -3484,8 +3496,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           sessionId={progress.sessionId}
           isSessionActive={!isComplete}
           isInitializingSession={isFollowUpInputInitializing}
-          agentName={profileName}
+          preferCompact={!isFocused && !isExpanded}
           className="flex-shrink-0"
+          onRequestFocus={onFocus}
           onMessageSent={onFollowUpSent}
         />
 
@@ -3667,106 +3680,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         >
           {displayItems.length > 0 ? (
             <div className="space-y-1 p-2">
-              {displayItems.map((item, index) => {
-                const itemKey = item.id || (item.kind === "message"
-                  ? `msg-${messageStableId(item.data as any)}`
-                  : item.kind === "tool_approval"
-                  ? `approval-${(item.data as any).approvalId}`
-                  : `exec-${(item as any).data?.id || (item as any).data?.timestamp}`)
-
-                // Final assistant message should be expanded by default when agent is complete
-                // Tool executions should be collapsed by default to reduce visual clutter
-                // unless user has explicitly toggled it (itemKey exists in expandedItems)
-                const isFinalAssistantMessage = item.kind === "message" && index === lastAssistantDisplayIndex && isComplete
-                const isExpanded = itemKey in expandedItems
-                  ? expandedItems[itemKey]
-                  : isFinalAssistantMessage // Only final assistant message expanded by default
-
-                if (item.kind === "message") {
-                  const isLastAssistant = index === lastAssistantDisplayIndex
-                  return (
-                    <CompactMessage
-                      key={itemKey}
-                      message={item.data}
-                      ttsText={isLastAssistant ? effectiveUserResponse : undefined}
-                      isLast={isLastAssistant}
-                      isComplete={isComplete}
-                      hasErrors={hasErrors}
-                      wasStopped={wasStopped}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
-                      variant={variant}
-                      sessionId={progress.sessionId}
-                    />
-                  )
-                } else if (item.kind === "assistant_with_tools") {
-                  return (
-                    <AssistantWithToolsBubble
-                      key={itemKey}
-                      data={item.data}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
-                    />
-                  )
-                } else if (item.kind === "tool_approval") {
-                  return (
-                    <ToolApprovalBubble
-                      key={itemKey}
-                      approval={item.data}
-                      onApprove={handleApproveToolCall}
-                      onDeny={handleDenyToolCall}
-                      isResponding={isRespondingToApproval}
-                    />
-                  )
-                } else if (item.kind === "retry_status") {
-                  return (
-                    <RetryStatusBanner
-                      key={itemKey}
-                      retryInfo={item.data}
-                    />
-                  )
-                } else if (item.kind === "streaming") {
-                  return (
-                    <StreamingContentBubble
-                      key={itemKey}
-                      streamingContent={item.data}
-                    />
-                  )
-                } else if (item.kind === "mid_turn_response") {
-                  return (
-                    <MidTurnUserResponseBubble
-                      key={itemKey}
-                      userResponse={item.data.userResponse}
-                      pastResponses={item.data.pastResponses}
-                      sessionId={progress.sessionId}
-                      agentLabel={primaryAgentLabel}
-                      variant={variant}
-                      isComplete={isComplete}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                    />
-                  )
-                } else if (item.kind === "delegation") {
-                  const delegationExpanded = expandedItems[itemKey] ?? false
-                  return (
-                    <DelegationBubble
-                      key={itemKey}
-                      delegation={item.data}
-                      isExpanded={delegationExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, false)}
-                    />
-                  )
-                } else {
-                  return (
-                    <ToolExecutionBubble
-                      key={itemKey}
-                      execution={item.data}
-                      isExpanded={isExpanded}
-                      onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
-                    />
-                  )
-                }
-              })}
+              {renderedTimestampedDisplayItems}
+              {renderedCurrentStateDisplayItems}
             </div>
           ) : (
             <div className="flex h-full items-center justify-center">

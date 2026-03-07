@@ -22,4 +22,21 @@ describe("agent progress streaming performance guardrails", () => {
     expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(async (sessionId: string) =>")
     expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(async (sessionId: string) =>")
   })
+
+  it("keeps the historical transcript memoized while streamed chunks update only current-state items", () => {
+    expect(agentProgressSource).toContain("const messages = useMemo(() => {")
+    expect(agentProgressSource).toContain("const timestampedDisplayItems = useMemo(() => {")
+    expect(agentProgressSource).toContain("const renderedTimestampedDisplayItems = useMemo(")
+    expect(agentProgressSource).toContain("const renderedCurrentStateDisplayItems = useMemo(")
+    expect(agentProgressSource).toContain("{renderedTimestampedDisplayItems}")
+    expect(agentProgressSource).toContain("{renderedCurrentStateDisplayItems}")
+  })
+
+  it("defers offscreen transcript message layout while preserving a recent bottom buffer for live scrolling", () => {
+    expect(agentProgressSource).toContain("const OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS = 12")
+    expect(agentProgressSource).toContain("deferOffscreenRendering?: boolean")
+    expect(agentProgressSource).toContain("contentVisibility: \"auto\"")
+    expect(agentProgressSource).toContain("containIntrinsicSize: \"auto 160px\"")
+    expect(agentProgressSource).toContain("index < timestampedDisplayItems.length - OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS")
+  })
 })

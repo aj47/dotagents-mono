@@ -44,6 +44,9 @@
 - [x] Reproduced a fresh ACP delegated-conversation recovery bug in the visible main sessions window by scrolling the inner sub-agent panel upward, clicking `Latest`, and sampling exact bottom-gap / button visibility over subsequent animation frames while new delegated messages continued arriving.
 - [x] Reproduced a fresh shared-session sticky-bottom recovery bug in the visible main sessions window (`http://localhost:5174/`) by scrolling the main session transcript upward during synthetic streaming, returning to within `6/12/24px` of bottom, and sampling exact bottom-gap after the next streamed chunk.
 - [x] Confirmed the shared `AgentProgress` transcript scroller still used a much tighter `5px` bottom-recovery threshold than the ACP delegated-conversation panel (`24px`), even though the shared scroller has no dedicated `Latest` recovery button.
+- [x] Checked long-history focused-session DOM/layout cost in the visible main sessions window by seeding one focused session with `120` user/assistant pairs (`240` history items) and measuring chunk→next-frame delay during synthetic streaming.
+- [x] A/B-tested the focused transcript with offscreen transcript-item `content-visibility` forced off vs on in the live renderer; keeping a recent bottom buffer fully rendered preserved `maxBottomGapPx=0` while older offscreen blocks were deferred.
+- [x] Ruled out one tempting but secondary fix path in this loop: memoizing transcript data/render arrays inside `AgentProgress` alone did not materially change the live focused-session timings until browser-side offscreen rendering work was reduced.
 
 ## Not Yet Checked
 
@@ -52,13 +55,13 @@
 - [ ] Capture a proper Chrome Performance/CPU trace on the visible panel target; CDP CPU-profiler attempts were too heavy/noisy in this loop.
 - [ ] Capture a proper Chrome Performance trace specifically for the ACP delegated sub-agent conversation panel while its inner scroller overflows; this loop used CDP frame/bottom-gap sampling instead.
 - [ ] Check for scroll jumps when switching sessions / panes / routes.
-- [ ] Check whether DOM growth or layout thrash worsens with long histories.
+- [ ] Capture a proper Chrome Performance trace that pins the remaining focused-session cost to a specific layout/paint stack; this loop used live CDP frame timing plus style A/B probes instead.
 - [ ] Capture a live ACP-agent scroll-interruption repro in an overflowing focused session detail, not just shared-renderer source evidence.
 - [ ] Capture a live normal-agent scroll-interruption repro in a stable 1x1/focused session tile with exact bottom-gap samples before/after manual wheel scroll.
 - [ ] Measure wheel / trackpad / keyboard scrolling separately from scripted `scrollTop` changes once a stable overflow harness exists.
 - [ ] Check whether the sessions page-level `scrollIntoView(..., { behavior: 'smooth' })` paths introduce a separate scroll-jump issue while active sessions stream.
 - [ ] Run the same settled-grid repro against a real ACP session mix instead of a synthetic long-history store harness.
-- [ ] Investigate the remaining single-tile baseline cost (`~72ms` avg chunk→next-frame) in the focused/final tile path after the sessions-grid fix.
+- [ ] Investigate the remaining focused long-history single-session cost after offscreen transcript deferral; the current repro still sits around `~338ms` avg chunk→frame for a `240`-item transcript.
 
 ## Reproduced
 
@@ -107,6 +110,12 @@
   - return within `12px`: next streamed chunk reopened a visible `108px` gap
   - return within `24px`: next streamed chunk reopened a visible `120px` gap
 - **Diagnosis:** the shared `AgentProgress` `handleScroll` path only treated `<=5px` from bottom as a recovery. During long streaming, a user could scroll back to what visually looks like the latest content, but if they stopped even slightly above that narrow band the next chunk immediately pushed the viewport far behind again. Unlike the ACP delegated panel, the shared session scroller had no `Latest` button to recover from this state.
+- **Scenario:** visible main sessions window (`http://localhost:5174/`), one focused active session tile with a very long shared transcript (`120` user/assistant pairs = `240` history items), pinned at bottom while synthetic streaming appends 12 chunk updates into `progress.streamingContent`.
+- **Evidence:** after the earlier grid/tile fixes, the focused session still showed large frame delays that scaled with transcript length. Live CDP frame samples plus in-place DOM A/B overrides showed:
+  - offscreen transcript deferral disabled: `avgChunkToFrameMs=360.2`, `p95=368.7`, `max=370.5`, `maxBottomGapPx=0`
+  - offscreen transcript deferral enabled: `avgChunkToFrameMs=338.3`, `p95=345.6`, `max=348.9`, `maxBottomGapPx=0`
+  - broader `content-visibility` experiments that touched *all* transcript items improved timings more but reintroduced bottom-gap drift, so they were rejected for scroll correctness.
+- **Diagnosis:** older transcript messages far above the viewport were still contributing browser layout/paint work while bottom-pinned streaming grew the live message. Selectively deferring offscreen historical message blocks — while keeping a recent trailing buffer fully rendered for sticky-bottom correctness — measurably reduces that long-history shared-session cost without reopening the scroll anchoring bug.
 
 ## Fixed
 
@@ -126,6 +135,8 @@
 - **Renderer change:** updated shared session scroll recovery in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to use a shared `BOTTOM_PIN_TOLERANCE_PX = 24`, matching the ACP delegated scroller’s recovery band instead of the old `5px` threshold.
 - **Renderer change:** when the user re-enters that near-bottom band after scrolling upward, the shared session scroller now flips `shouldAutoScrollRef` immediately and performs a same-frame bottom snap with a `requestAnimationFrame` follow-up, so the very next streamed chunk stays pinned instead of reopening a large gap.
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a shared-session regression assertion covering the near-bottom recovery threshold and bottom snap path.
+- **Renderer change:** added selective offscreen transcript deferral for older historical `CompactMessage` blocks in `apps/desktop/src/renderer/src/components/agent-progress.tsx` via `contentVisibility: "auto"` and `containIntrinsicSize: "auto 160px"`, while keeping the most recent `12` timestamped items fully rendered to preserve sticky-at-bottom behavior during live streaming.
+- **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.performance.test.ts` with a regression assertion locking in the offscreen transcript buffer and `content-visibility` guardrail.
 
 ## Verified
 
@@ -175,6 +186,13 @@
   - normal shared session: returning within `6px`, `12px`, or `24px` of bottom now yielded `afterManualReturn=0px` and `afterNextChunk=0px`
   - ACP-styled shared session: returning within `6px`, `12px`, or `24px` of bottom now yielded `afterManualReturn=0px` and `afterNextChunk=0px`
 - **Interpretation:** the shared top-level session transcript no longer requires a nearly pixel-perfect bottom landing to resume sticky streaming. Normal-agent and ACP-styled shared sessions now recover cleanly when the user scrolls back to “close enough” to the latest content.
+- **Targeted tests:** `pnpm test:run src/renderer/src/components/agent-progress.performance.test.ts src/renderer/src/components/agent-progress.scroll-behavior.test.ts src/renderer/src/components/agent-progress.tile-layout.test.ts` (from `apps/desktop`) ✅
+- **Renderer typecheck:** `pnpm typecheck:web` (from `apps/desktop`) ✅
+- **Same focused long-history probe with live A/B override on the current renderer:**
+  - offscreen deferral disabled: `avgChunkToFrameMs=360.2`, `p95=368.7`, `max=370.5`, `maxBottomGapPx=0`
+  - offscreen deferral enabled: `avgChunkToFrameMs=338.3`, `p95=345.6`, `max=348.9`, `maxBottomGapPx=0`
+  - improvement from enabling the fix in-place: `~6.1%` lower avg chunk→frame delay and `~23.1ms` lower p95 with no measured sticky-bottom regression in this repro.
+- **Interpretation:** focused shared session streaming with very long histories still has remaining cost, but older offscreen transcript blocks were a real layout/paint contributor. Deferring those older blocks yields a measurable responsiveness improvement while keeping the transcript pinned at bottom during streaming.
 
 ## Still Uncertain
 
@@ -182,7 +200,7 @@
 - Whether live end-to-end normal-agent and ACP-agent sessions in the floating panel show the same before/after behavior as the scripted main-window replay, since panel resizing can mask overflow.
 - Whether the shared fix fully resolves the same interruption pattern in a live ACP session with sustained streaming; this loop confirmed the renderer code path but did not capture a clean overflowing ACP live trace.
 - Whether panel auto-resizing is masking a second, separate overflow/anchoring bug in the floating panel itself.
-- Whether the remaining `~72ms` single-tile chunk→frame cost is dominated by the focused tile’s own markdown/layout work, follow-up input layout, or another hot path independent of the sessions grid.
+- Whether the remaining focused-session long-history cost after this fix is now dominated by the live streaming bubble / markdown subtree, bottom-area layout invalidation, or another hot path unrelated to older offscreen transcript items.
 - Whether wheel / trackpad / keyboard input in a live long-running session exhibits any additional shared-session recovery quirks beyond the scripted renderer-store repro that is now fixed.
 
 ## Notes
