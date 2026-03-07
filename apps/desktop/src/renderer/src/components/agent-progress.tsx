@@ -1891,6 +1891,14 @@ const StreamingContentBubble: React.FC<{
 }> = ({ streamingContent }) => {
   if (!streamingContent.text) return null
 
+  const contentNode = streamingContent.isStreaming
+    ? (
+      <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {streamingContent.text}
+      </div>
+    )
+    : <MarkdownRenderer content={streamingContent.text} />
+
   return (
     <div className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 overflow-hidden">
       {/* Header */}
@@ -1906,8 +1914,8 @@ const StreamingContentBubble: React.FC<{
 
       {/* Content */}
       <div className="px-3 py-2">
-        <div className="text-xs text-blue-900 dark:text-blue-100 whitespace-pre-wrap break-words">
-          <MarkdownRenderer content={streamingContent.text} />
+        <div className="text-xs text-blue-900 dark:text-blue-100">
+          {contentNode}
           {streamingContent.isStreaming && (
             <span className="inline-block w-1.5 h-3.5 bg-blue-600 dark:bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />
           )}
