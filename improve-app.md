@@ -8,6 +8,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop main-process session shutdown guardrails (`apps/desktop/src/main/state.ts`).
 - 2026-03-07: Desktop text composer submission resilience (`apps/desktop/src/renderer/src/components/text-input-panel.tsx`).
 - 2026-03-07: Desktop follow-up composer duplicate-submit guardrails (`apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`).
+- 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### 2026-03-07 — Desktop session shutdown guardrails
 - Date:
@@ -88,6 +89,31 @@ Track small, shippable product improvements. Review this file before each iterat
   - inspect whether these follow-up composers should surface clearer user-visible error feedback when async sends fail
   - inspect the mobile `ChatScreen` primary composer separately for similar duplicate-submit risks, since it uses a different send path and was not changed in this pass
 
+### 2026-03-07 — Desktop WhatsApp settings allowlist editing resilience
+- Date:
+  - 2026-03-07
+- Area / screen / subsystem:
+  - desktop WhatsApp settings page in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`
+- Why it was chosen:
+  - the tracker called out settings screens and validation UX as a fresh area that had not been investigated in the recent desktop composer passes
+  - this allowlist field controls which senders are allowed through a remote integration, so sluggish or brittle editing has direct user impact and can also generate unnecessary config writes
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`
+  - `apps/mobile/src/screens/SettingsScreen.tsx` for parity; confirmed mobile already uses a local draft for the same allowlist setting
+  - `apps/desktop/src/main/remote-server.ts` to confirm the allowlist is consumed as config data downstream
+  - related config query/mutation plumbing in `apps/desktop/src/renderer/src/lib/queries.ts`
+- Improvement made:
+  - switched the desktop WhatsApp allowlist input from immediate save-on-every-keystroke behavior to a local draft with a short debounce
+  - flushes any pending allowlist edit on blur so quick tab-away interactions still persist predictably
+  - updated saving to read from the latest config ref before merging, avoiding stale-config overwrites when delayed saves fire after other settings change
+  - added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx`
+- Tests / verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx`
+  - attempted `pnpm --filter @dotagents/desktop exec tsc -p tsconfig.web.json --noEmit`, but the current workspace still has an unrelated pre-existing web typecheck failure in desktop renderer type declarations
+- Follow-up checks:
+  - inspect other desktop settings text inputs that still save on every keystroke to see whether they need the same local-draft pattern
+  - consider small copy polish for WhatsApp allowlist guidance across desktop/mobile if future UX passes revisit this screen
+
 ### Iteration Template
 - Date:
 - Area / screen / subsystem:
@@ -100,7 +126,7 @@ Track small, shippable product improvements. Review this file before each iterat
 ### Backlog of Areas to Inspect
 - Desktop follow-up composers and queued-send edge states
 - Desktop session lifecycle and error states (follow-up: queue/user-response cleanup consistency)
-- Settings screens and validation UX
+- Settings screens and validation UX (remaining text inputs that still save on every keystroke)
 - Agent/task management flows
 - Mobile parity gaps with desktop
 - Shared utility reliability / guardrails
