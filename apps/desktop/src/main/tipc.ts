@@ -12,12 +12,15 @@ import {
   getWindowRendererHandlers,
   setPanelMode,
   getCurrentPanelMode,
+  hideFloatingPanelWindow,
   markManualResize,
+  resetFloatingPanelPositionAndSize,
   setPanelFocusable,
   emergencyStopAgentMode,
   showPanelWindowAndShowTextInput,
   showPanelWindowAndStartMcpRecording,
   WAVEFORM_MIN_HEIGHT,
+    TEXT_INPUT_MIN_WIDTH,
   TEXT_INPUT_MIN_HEIGHT,
   PROGRESS_MIN_HEIGHT,
   MIN_WAVEFORM_WIDTH,
@@ -881,17 +884,13 @@ export const router = {
   }),
 
   hidePanelWindow: t.procedure.action(async () => {
-    const panel = WINDOWS.get("panel")
+    logApp("[hidePanelWindow] Hiding floating panel")
+    hideFloatingPanelWindow()
+  }),
 
-    logApp(`[hidePanelWindow] Called. Panel exists: ${!!panel}, visible: ${panel?.isVisible()}`)
-
-    if (panel) {
-      suppressPanelAutoShow(1000)
-      // Clear the "opened with main" flag since panel is being explicitly hidden
-      clearPanelOpenedWithMain()
-      panel.hide()
-      logApp(`[hidePanelWindow] Panel hidden`)
-    }
+  resetFloatingPanel: t.procedure.action(async () => {
+    resetFloatingPanelPositionAndSize(true)
+    return { success: true }
   }),
 
   resizePanelForAgentMode: t.procedure.action(async () => {
@@ -1254,9 +1253,7 @@ export const router = {
         items.push({
           label: "Close",
           click() {
-            // Clear the "opened with main" flag since panel is being hidden
-            clearPanelOpenedWithMain()
-            panelWindow?.hide()
+            hideFloatingPanelWindow()
           },
         })
       }
@@ -3273,9 +3270,8 @@ export const router = {
         throw new Error("Panel window not found")
       }
 
-      // Apply minimum size constraints (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
-      const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
       const mode = getCurrentPanelMode()
+      const minWidth = mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
       const minHeight =
         mode === "agent"
           ? PROGRESS_MIN_HEIGHT
@@ -3315,7 +3311,7 @@ export const router = {
   savePanelModeSize: t.procedure
     .input<{ mode: "normal" | "agent" | "textInput"; width: number; height: number }>()
     .action(async ({ input }) => {
-      const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
+      const minWidth = input.mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
       const minHeight =
         input.mode === "agent"
           ? PROGRESS_MIN_HEIGHT
@@ -3330,6 +3326,8 @@ export const router = {
 
       if (input.mode === "agent") {
         updatedConfig.panelProgressSize = { width, height }
+      } else if (input.mode === "textInput") {
+        updatedConfig.panelTextInputSize = { width, height }
       } else {
         updatedConfig.panelCustomSize = { width, height }
       }

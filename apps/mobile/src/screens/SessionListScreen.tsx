@@ -12,6 +12,7 @@ import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SessionListItem, isStubSession } from '../types/session';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -632,16 +633,17 @@ export default function SessionListScreen({ navigation }: Props) {
           />
           <TouchableOpacity
             onPress={() => navigation.navigate('Settings')}
-            style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+            style={styles.headerSettingsButton}
             accessibilityRole="button"
-            accessibilityLabel="Settings"
+            accessibilityLabel={createButtonAccessibilityLabel('Open settings')}
+            accessibilityHint="Opens app settings."
           >
             <Text style={{ fontSize: 20, color: theme.colors.foreground }}>⚙️</Text>
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible]);
   const insets = useSafeAreaInsets();
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
@@ -825,7 +827,13 @@ export default function SessionListScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.newButton} onPress={handleCreateSession} accessibilityRole="button" accessibilityLabel="New Chat">
+        <TouchableOpacity
+          style={[styles.newButton, styles.sessionActionTouchTarget]}
+          onPress={handleCreateSession}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('New chat')}
+          accessibilityHint="Creates and opens a new chat."
+        >
           <Text style={styles.newButtonText}>+ New Chat</Text>
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -837,7 +845,13 @@ export default function SessionListScreen({ navigation }: Props) {
             />
           )}
           {sessions.length > 0 && (
-            <TouchableOpacity style={styles.clearButton} onPress={handleClearAll} accessibilityRole="button" accessibilityLabel="Clear All">
+            <TouchableOpacity
+              style={[styles.clearButton, styles.sessionActionTouchTarget]}
+              onPress={handleClearAll}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
+              accessibilityHint="Deletes all chat sessions."
+            >
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
           )}
@@ -941,21 +955,33 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     newButton: {
       backgroundColor: theme.colors.primary,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
       borderRadius: radius.lg,
+    },
+    sessionActionTouchTarget: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
     },
     newButtonText: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
     clearButton: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      borderRadius: radius.lg,
     },
     clearButtonText: {
       color: theme.colors.destructive,
       fontSize: 14,
+    },
+    headerSettingsButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      marginLeft: spacing.xs,
     },
     list: {
       padding: spacing.md,

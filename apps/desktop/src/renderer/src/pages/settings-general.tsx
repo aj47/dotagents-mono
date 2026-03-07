@@ -131,6 +131,31 @@ export function Component() {
     }
   }, [])
 
+  const showFloatingPanelNow = useCallback(async () => {
+    try {
+      await tipcClient.resizePanelToNormal({})
+      await tipcClient.showPanelWindow({})
+      toast.success("Floating panel shown")
+    } catch (error) {
+      console.error("Failed to show floating panel:", error)
+      toast.error("Failed to show floating panel")
+    }
+  }, [])
+
+  const resetFloatingPanel = useCallback(async () => {
+    try {
+      const result = await tipcClient.resetFloatingPanel({})
+      if (result && "success" in result && result.success === false) {
+        toast.error("Failed to reset floating panel")
+        return
+      }
+      toast.success("Floating panel reset to the default position")
+    } catch (error) {
+      console.error("Failed to reset floating panel:", error)
+      toast.error("Failed to reset floating panel")
+    }
+  }, [])
+
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
       saveConfigMutation.mutate({
@@ -1061,14 +1086,23 @@ export function Component() {
           </Control>
 
           <Control label={<ControlLabel label="Auto-Show Floating Panel" tooltip="When enabled, the floating panel automatically appears during agent sessions. When disabled, the panel only appears when manually triggered via hotkeys or menu. You can still access agent progress in the main window." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.floatingPanelAutoShow !== false}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  floatingPanelAutoShow: value,
-                })
-              }}
-            />
+            <div className="space-y-2">
+              <div className="flex justify-start sm:justify-end">
+                <Switch
+                  checked={configQuery.data?.floatingPanelAutoShow !== false}
+                  onCheckedChange={(value) => {
+                    saveConfig({
+                      floatingPanelAutoShow: value,
+                    })
+                  }}
+                />
+              </div>
+              {configQuery.data?.floatingPanelAutoShow === false && (
+                <div className="text-xs text-muted-foreground sm:text-right">
+                  Auto-show is off. Use the quick actions below or the tray menu to bring the floating panel back anytime.
+                </div>
+              )}
+            </div>
           </Control>
 
           <Control label={<ControlLabel label="Hide Panel When Main App Focused" tooltip="When enabled, the floating panel automatically hides when the main DotAgents window is focused. The panel reappears when the main window loses focus." />} className="px-3">
@@ -1080,6 +1114,17 @@ export function Component() {
                 })
               }}
             />
+          </Control>
+
+          <Control label={<ControlLabel label="Quick Actions" tooltip="Useful recovery actions if the floating panel is hidden, off-screen, or just hard to find." />} className="px-3">
+            <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
+              <Button variant="outline" size="sm" onClick={() => void showFloatingPanelNow()}>
+                Show Now
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => void resetFloatingPanel()}>
+                Reset Position & Size
+              </Button>
+            </div>
           </Control>
 
         </ControlGroup>

@@ -202,7 +202,8 @@ const getConfig = (): LoadedConfig => {
     // Panel position defaults
     panelPosition: "top-right",
     panelDragEnabled: true,
-    panelCustomSize: { width: 300, height: 200 },
+    panelCustomSize: undefined,
+    panelTextInputSize: undefined,
     panelProgressSize: undefined,
     // Floating panel auto-show - when true, panel auto-shows during agent sessions
     floatingPanelAutoShow: true,
@@ -333,6 +334,11 @@ const getConfig = (): LoadedConfig => {
   const mergedConfig = hasAnyAgentsFiles
     ? { ...defaultConfig, ...savedConfig, ...mergedAgents }
     : { ...defaultConfig, ...savedConfig }
+
+  const legacyTextInputModeSize = (mergedConfig as any).panelTextInputModeSize
+  if (!mergedConfig.panelTextInputSize && legacyTextInputModeSize) {
+    mergedConfig.panelTextInputSize = legacyTextInputModeSize
+  }
 
   // Migration: Remove deprecated mode-specific panel sizes (these were never used)
   delete (mergedConfig as any).panelNormalModeSize

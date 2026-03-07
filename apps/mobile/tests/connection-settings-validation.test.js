@@ -21,11 +21,11 @@ test('keeps the custom URL validation after the no-key guard', () => {
 });
 
 test('exposes the API key visibility toggle as a button with a larger touch target', () => {
-  assert.match(screenSource, /style=\{styles\.inlineActionButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?Hide API key/);
-  assert.match(screenSource, /inlineActionButton:\s*\{[\s\S]*?minWidth:\s*44,[\s\S]*?minHeight:\s*44,/);
+  assert.match(screenSource, /style=\{styles\.inlineActionButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(showApiKey \? 'Hide API key' : 'Show API key'\)/);
+  assert.match(screenSource, /inlineActionButton:\s*\{[\s\S]*?createMinimumTouchTargetStyle\([\s\S]*?minSize:\s*44,/);
 });
 
 test('exposes the reset action as an accessible button with a descriptive label', () => {
-  assert.match(screenSource, /Reset base URL to default/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
   assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
 });

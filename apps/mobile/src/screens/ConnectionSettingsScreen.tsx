@@ -8,6 +8,11 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Linking from 'expo-linking';
 import { checkServerConnection } from '../lib/connectionRecovery';
 import { useTunnelConnection } from '../store/tunnelConnection';
+import {
+  createButtonAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+  createTextInputAccessibilityLabel,
+} from '../lib/accessibility';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
@@ -222,11 +227,11 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         <View style={styles.labelRow}>
           <Text style={styles.label}>API Key</Text>
           <TouchableOpacity
-            style={styles.inlineActionButton}
             onPress={() => setShowApiKey(!showApiKey)}
+            style={styles.inlineActionButton}
             accessibilityRole="button"
-            accessibilityLabel={showApiKey ? 'Hide API key' : 'Show API key'}
-            accessibilityHint="Toggles whether the API key is visible"
+            accessibilityLabel={createButtonAccessibilityLabel(showApiKey ? 'Hide API key' : 'Show API key')}
+            accessibilityHint={showApiKey ? 'Hides your API key characters' : 'Reveals your API key characters'}
           >
             <Text style={styles.resetText}>{showApiKey ? 'Hide' : 'Show'}</Text>
           </TouchableOpacity>
@@ -237,6 +242,8 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           onChangeText={(t) => setDraft({ ...draft, apiKey: t })}
           placeholder="sk-..."
           placeholderTextColor={theme.colors.mutedForeground}
+          accessibilityLabel={createTextInputAccessibilityLabel('API key')}
+          accessibilityHint="Enter your API key used to connect to your model provider"
           autoCapitalize='none'
           secureTextEntry={!showApiKey}
         />
@@ -244,10 +251,10 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         <View style={styles.labelRow}>
           <Text style={styles.label}>Base URL</Text>
           <TouchableOpacity
-            style={styles.inlineActionButton}
             onPress={resetBaseUrl}
+            style={styles.inlineActionButton}
             accessibilityRole="button"
-            accessibilityLabel="Reset base URL to default"
+            accessibilityLabel={createButtonAccessibilityLabel('Reset base URL to default')}
             accessibilityHint="Restores the default OpenAI-compatible base URL"
           >
             <Text style={styles.resetText}>Reset to default</Text>
@@ -259,6 +266,8 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           onChangeText={(t) => setDraft({ ...draft, baseUrl: t })}
           placeholder='https://api.openai.com/v1'
           placeholderTextColor={theme.colors.mutedForeground}
+          accessibilityLabel={createTextInputAccessibilityLabel('Base URL')}
+          accessibilityHint="Enter the base URL for your OpenAI-compatible server"
           autoCapitalize='none'
         />
 
@@ -353,10 +362,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginTop: spacing.sm,
     },
     inlineActionButton: {
-      minWidth: 44,
-      minHeight: 44,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
       borderRadius: radius.full,
       borderWidth: 1,
       borderColor: theme.colors.border,

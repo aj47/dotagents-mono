@@ -1359,6 +1359,7 @@ export type Config = {
   panelCustomPosition?: { x: number; y: number }
   panelDragEnabled?: boolean
   panelCustomSize?: { width: number; height: number }
+  panelTextInputSize?: { width: number; height: number }
   panelProgressSize?: { width: number; height: number }
 
   // Floating Panel Auto-Show Configuration

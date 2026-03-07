@@ -6,6 +6,7 @@ import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
+import { createMcpServerSwitchAccessibilityLabel, createSwitchAccessibilityLabel } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -1039,6 +1040,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Switch
             value={!!draft.handsFree}
             onValueChange={(v) => setDraft({ ...draft, handsFree: v })}
+            accessibilityLabel={createSwitchAccessibilityLabel('Hands-free Voice Mode')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.handsFree ? theme.colors.primaryForeground : theme.colors.background}
           />
@@ -1049,6 +1051,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Switch
             value={draft.ttsEnabled !== false}
             onValueChange={(v) => setDraft({ ...draft, ttsEnabled: v })}
+            accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.ttsEnabled !== false ? theme.colors.primaryForeground : theme.colors.background}
           />
@@ -1071,6 +1074,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Switch
             value={draft.messageQueueEnabled !== false}
             onValueChange={(v) => setDraft({ ...draft, messageQueueEnabled: v })}
+            accessibilityLabel={createSwitchAccessibilityLabel('Message Queuing')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.messageQueueEnabled !== false ? theme.colors.primaryForeground : theme.colors.background}
           />
@@ -1099,6 +1103,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Switch
             value={notificationsRegistered}
             onValueChange={handleNotificationToggle}
+            accessibilityLabel={createSwitchAccessibilityLabel('Push Notifications')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={notificationsRegistered ? theme.colors.primaryForeground : theme.colors.background}
             disabled={!notificationsSupported || isNotificationLoading}
@@ -1877,6 +1882,7 @@ export default function SettingsScreen({ navigation }: any) {
                     <Switch
                       value={server.enabled}
                       onValueChange={(v) => handleServerToggle(server.name, v)}
+                      accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
                       trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                       thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
                       disabled={server.configDisabled}

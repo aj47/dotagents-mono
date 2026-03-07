@@ -51,6 +51,17 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import {
+  createButtonAccessibilityLabel,
+  createChatComposerAccessibilityHint,
+  createExpandCollapseAccessibilityLabel,
+  createMicControlAccessibilityHint,
+  createMicControlAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+  createSwitchAccessibilityLabel,
+  createTextInputAccessibilityLabel,
+  createVoiceInputLiveRegionAnnouncement,
+} from '../lib/accessibility';
 
 interface PendingImageAttachment {
   id: string;
@@ -62,6 +73,8 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
+const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
+const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -449,26 +462,27 @@ export default function ChatScreen({ route, navigation }: any) {
         </TouchableOpacity>
       ),
       headerLeft: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerActionsRow}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Sessions')}
             accessibilityRole="button"
             accessibilityLabel="Back to chat history"
-            style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+            accessibilityHint="Returns to the chat history list"
+            style={styles.headerEdgeActionButton}
           >
             <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
           </TouchableOpacity>
         </View>
       ),
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerActionsRow}>
           <ConnectionStatusIndicator
             state={connectionInfo.state}
             retryCount={connectionInfo.retryCount}
             compact
           />
           {responding && (
-            <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+            <View style={styles.headerActionButton}>
               <Image
                 source={isDark ? darkSpinner : lightSpinner}
                 style={{ width: 28, height: 28 }}
@@ -480,7 +494,8 @@ export default function ChatScreen({ route, navigation }: any) {
             onPress={handleNewChat}
             accessibilityRole="button"
             accessibilityLabel="Start new chat"
-            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+            accessibilityHint="Creates a new empty conversation"
+            style={styles.headerActionButton}
           >
             <Text style={{ fontSize: 18, color: theme.colors.foreground }}>✚</Text>
           </TouchableOpacity>
@@ -488,7 +503,8 @@ export default function ChatScreen({ route, navigation }: any) {
             onPress={handleKillSwitch}
             accessibilityRole="button"
             accessibilityLabel="Emergency stop - kill all agent sessions"
-            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+            accessibilityHint="Shows a confirmation before stopping all running sessions"
+            style={styles.headerActionButton}
           >
             <View style={{
               width: 28,
@@ -503,9 +519,12 @@ export default function ChatScreen({ route, navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={toggleHandsFree}
-            accessibilityRole="button"
-            accessibilityLabel={`Toggle hands-free (currently ${handsFree ? 'on' : 'off'})`}
-            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+            accessibilityRole="switch"
+            accessibilityLabel={createSwitchAccessibilityLabel('Hands-free voice mode')}
+            accessibilityHint="When enabled, speech is sent automatically after each phrase"
+            accessibilityState={{ checked: handsFree }}
+            aria-checked={handsFree}
+            style={styles.headerActionButton}
           >
             <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18 }}>🎙️</Text>
@@ -527,14 +546,15 @@ export default function ChatScreen({ route, navigation }: any) {
             onPress={() => navigation.navigate('Settings')}
             accessibilityRole="button"
             accessibilityLabel="Settings"
-            style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+            accessibilityHint="Opens app settings"
+            style={styles.headerEdgeActionButton}
           >
             <Text style={{ fontSize: 18, color: theme.colors.foreground }}>⚙️</Text>
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -2120,6 +2140,25 @@ export default function ChatScreen({ route, navigation }: any) {
 	// We intentionally assign during render (not useEffect) so it is available immediately.
 	sendRef.current = send;
 
+	const isWebPlatform = Platform.OS === 'web';
+	const composerAccessibilityHint = createChatComposerAccessibilityHint({
+	  handsFree,
+	  listening,
+	  isWeb: isWebPlatform,
+	});
+	const micControlAccessibilityHint = createMicControlAccessibilityHint({
+	  handsFree,
+	  listening,
+	  willCancel,
+	});
+	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
+	  listening,
+	  handsFree,
+	  willCancel,
+	  liveTranscript,
+	  sttPreview,
+	});
+
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
   const sendComposerInput = useCallback(() => {
@@ -2778,8 +2817,10 @@ export default function ChatScreen({ route, navigation }: any) {
                   <Pressable
                     onPress={() => toggleMessageExpansion(i)}
                     accessibilityRole="button"
+                    accessibilityLabel={createExpandCollapseAccessibilityLabel('message', isExpanded)}
                     accessibilityHint={isExpanded ? 'Collapse message' : 'Expand message'}
                     accessibilityState={{ expanded: isExpanded }}
+                    aria-expanded={isExpanded}
                     style={({ pressed }) => [
                       styles.messageHeader,
                       styles.messageHeaderClickable,
@@ -2834,6 +2875,11 @@ export default function ChatScreen({ route, navigation }: any) {
                         {!isExpanded && (
                           <Pressable
                             onPress={() => toggleMessageExpansion(i)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createExpandCollapseAccessibilityLabel('tool execution details', false)}
+                            accessibilityHint="Expands this tool execution summary"
+                            accessibilityState={{ expanded: false }}
+                            aria-expanded={false}
                             style={({ pressed }) => [
                               styles.toolCallCompactRow,
                               isPending && styles.toolCallCompactPending,
@@ -2906,7 +2952,9 @@ export default function ChatScreen({ route, navigation }: any) {
                                       pressed && styles.toolCallHeaderPressed,
                                     ]}
                                     accessibilityRole="button"
+                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${toolCall.name} tool details`, isToolCallFullyExpanded)}
                                     accessibilityState={{ expanded: isToolCallFullyExpanded }}
+                                    aria-expanded={isToolCallFullyExpanded}
                                     accessibilityHint={isToolCallFullyExpanded ? 'Collapse tool details' : 'Expand to show full input/output'}
                                   >
                                     <Text style={styles.toolName}>{toolCall.name}</Text>
@@ -3280,6 +3328,11 @@ export default function ChatScreen({ route, navigation }: any) {
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
               onPress={toggleTts}
               activeOpacity={0.7}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: ttsEnabled }}
+              accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
+              accessibilityHint="Toggles spoken playback for assistant responses."
+              aria-checked={ttsEnabled}
             >
               <Text style={styles.ttsToggleText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
             </TouchableOpacity>
@@ -3303,19 +3356,37 @@ export default function ChatScreen({ route, navigation }: any) {
               value={input}
               onChangeText={handleInputChange}
               onKeyPress={handleInputKeyPress}
+              accessibilityLabel={createTextInputAccessibilityLabel('Message composer')}
+              accessibilityHint={composerAccessibilityHint}
+              aria-describedby={isWebPlatform ? CHAT_COMPOSER_HINT_NATIVE_ID : undefined}
               placeholder={handsFree ? (listening ? 'Listening…' : 'Type or tap mic') : (listening ? 'Listening…' : 'Type or hold mic')}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
             />
+            {isWebPlatform && (
+              <Text nativeID={CHAT_COMPOSER_HINT_NATIVE_ID} style={styles.visuallyHiddenComposerHint}>
+                {composerAccessibilityHint}
+              </Text>
+            )}
+	            {isWebPlatform && (
+	              <Text
+	                nativeID={CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID}
+	                style={styles.visuallyHiddenComposerHint}
+	                accessibilityLiveRegion="polite"
+	                aria-live="polite"
+	              >
+	                {voiceInputLiveRegionAnnouncement}
+	              </Text>
+	            )}
 	            <TouchableOpacity
 	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
 	              disabled={!composerHasContent}
-	              accessibilityRole="button"
-	              accessibilityLabel="Send message"
-	              accessibilityHint="Sends the current message to the selected agent."
-	              accessibilityState={{ disabled: !composerHasContent }}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Send message')}
+	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
+              accessibilityState={{ disabled: !composerHasContent }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
@@ -3332,6 +3403,11 @@ export default function ChatScreen({ route, navigation }: any) {
                 // @ts-ignore - Web-only CSS to disable long-press selection/callouts
                 Platform.OS === 'web' && { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' },
               ]}
+              accessibilityRole="button"
+              accessibilityLabel={createMicControlAccessibilityLabel()}
+              accessibilityHint={micControlAccessibilityHint}
+              accessibilityState={{ busy: listening }}
+              aria-busy={listening}
               onPressIn={!handsFree ? (e: GestureResponderEvent) => {
 					lastGrantTimeRef.current = Date.now();
 						webPressInSeenRef.current = true;
@@ -3395,7 +3471,16 @@ export default function ChatScreen({ route, navigation }: any) {
 
 function createStyles(theme: Theme, screenHeight: number) {
   const micButtonHeight = Math.round(screenHeight * 0.2);
+  const headerActionButton = createMinimumTouchTargetStyle();
+  const headerEdgeActionButton = createMinimumTouchTargetStyle({ horizontalPadding: 12 });
   return StyleSheet.create({
+    headerActionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    headerActionButton,
+    headerEdgeActionButton,
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {
       paddingLeft: spacing.xs,
@@ -3544,6 +3629,12 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.input,
       flex: 1,
       maxHeight: 120,
+    },
+    visuallyHiddenComposerHint: {
+      position: 'absolute',
+      left: -10000,
+      width: 1,
+      height: 1,
     },
     micWrapper: {
       paddingHorizontal: spacing.sm,
