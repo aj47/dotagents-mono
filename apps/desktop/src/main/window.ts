@@ -691,6 +691,14 @@ export function getCurrentPanelMode(): "normal" | "agent" | "textInput" {
   return _currentPanelMode
 }
 
+function hidePanelTextInputInRenderer() {
+  try {
+    getWindowRendererHandlers("panel")?.hideTextInput.send()
+  } catch (error) {
+    logApp("[hidePanelTextInputInRenderer] Failed to send hideTextInput:", error)
+  }
+}
+
 export function hideFloatingPanelWindow() {
   const panel = WINDOWS.get("panel")
   if (!panel) return
@@ -699,6 +707,7 @@ export function hideFloatingPanelWindow() {
   clearPanelOpenedWithMain()
   clearPanelHiddenByMainFocus()
   state.isTextInputActive = false
+  hidePanelTextInputInRenderer()
 
   if (panel.isVisible()) {
     panel.hide()
@@ -721,6 +730,7 @@ export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
   })
 
   state.isTextInputActive = false
+  hidePanelTextInputInRenderer()
   clearPanelHiddenByMainFocus()
   setPanelMode("normal")
 
