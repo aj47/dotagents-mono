@@ -88,5 +88,17 @@ describe('createMinimumTouchTargetStyle', () => {
       justifyContent: 'center',
     });
   });
+
+  it('respects explicit zero horizontal margin override', () => {
+    expect(createMinimumTouchTargetStyle({ horizontalMargin: 0 })).toEqual({
+      minWidth: 44,
+      minHeight: 44,
+      paddingHorizontal: 6,
+      paddingVertical: 6,
+      marginHorizontal: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+  });
 });
 

@@ -120,3 +120,32 @@ Purpose: track investigation and incremental, shippable improvements to the Expo
   - Improve message-level expand/collapse controls in Chat to reduce keyboard tab friction and add clearer labels.
   - Validate Connection Settings with larger text scaling to ensure inline actions do not wrap/overlap.
 
+### 2026-03-07 - Iteration 5
+- Status: Shipped.
+- Area selected: Sessions list action controls (tap reliability + action semantics).
+- Investigation notes:
+  - Reused existing Expo Web workflow: `pnpm --filter @dotagents/mobile web --port 19007`.
+  - Audited Sessions screen controls with Playwright automation after navigating to Chats.
+  - Measured undersized touch targets before changes:
+    - `+ New Chat`: `110.01 x 32.5`
+    - `Clear All`: `77.72 x 32.5`
+    - Header settings icon: `44 x 38.5`
+  - All controls were labeled and keyboard-focusable, but each missed the `>=44x44` minimum touch target guideline.
+- Change made:
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` to use shared touch-target guardrails via `createMinimumTouchTargetStyle`:
+    - `+ New Chat`, `Clear All`, and header settings now render with minimum `44px` height/width.
+    - Added explicit descriptive button labels/hints for these actions with `createButtonAccessibilityLabel` for stable semantics.
+  - Added targeted regression test in `apps/mobile/src/lib/accessibility.test.ts` to verify explicit `horizontalMargin: 0` overrides are respected by `createMinimumTouchTargetStyle`.
+- Tests/verification:
+  - Ran: `pnpm --filter @dotagents/mobile test src/lib/accessibility.test.ts` ✅ (14 tests).
+  - Ran: `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅.
+  - Re-verified in Expo Web/Playwright after fix:
+    - `+ New Chat`: `102.01 x 44`
+    - `Clear All`: `77.72 x 44`
+    - Header settings icon: `44 x 44`
+    - All now meet `>=44x44` touch target guidance.
+- Next checks:
+  - Improve message-level Chat actions (copy/speak/expand) with clearer labels/hints and keyboard order audit.
+  - Validate large-text/dynamic-type behavior on Sessions list rows and Rapid Fire footer controls.
+  - Audit destructive actions (`Delete Session`, `Clear All`) for confirmation copy consistency and accidental-tap safeguards.
+
