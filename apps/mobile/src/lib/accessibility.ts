@@ -3,6 +3,7 @@ const FALLBACK_SERVER_LABEL = 'Enable MCP server';
 const FALLBACK_BUTTON_LABEL = 'Action button';
 const FALLBACK_INPUT_LABEL = 'Input field';
 const FALLBACK_DISCLOSURE_LABEL = 'details';
+const WEB_SHORTCUT_HINT = 'Use Shift+Enter or Ctrl/Cmd+Enter to send.';
 const DEFAULT_TOUCH_TARGET_SIZE = 44;
 const DEFAULT_TOUCH_TARGET_PADDING = 6;
 const DEFAULT_TOUCH_TARGET_GAP = 2;
@@ -42,6 +43,28 @@ export const createTextInputAccessibilityLabel = (fieldName: string): string => 
     return FALLBACK_INPUT_LABEL;
   }
   return `${normalizedName} input`;
+};
+
+export const createChatComposerAccessibilityHint = ({
+  handsFree,
+  listening,
+  isWeb = false,
+}: {
+  handsFree: boolean;
+  listening: boolean;
+  isWeb?: boolean;
+}): string => {
+  const baseHint = listening
+    ? 'Voice listening is active. Dictated text appears in this message field.'
+    : handsFree
+      ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
+      : 'Type your message or hold the mic to dictate before sending.';
+
+  if (!isWeb) {
+    return baseHint;
+  }
+
+  return `${baseHint} ${WEB_SHORTCUT_HINT}`;
 };
 
 export const createExpandCollapseAccessibilityLabel = (

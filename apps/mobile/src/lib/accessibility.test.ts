@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createButtonAccessibilityLabel,
+  createChatComposerAccessibilityHint,
   createExpandCollapseAccessibilityLabel,
   createMcpServerSwitchAccessibilityLabel,
   createMinimumTouchTargetStyle,
@@ -57,6 +58,32 @@ describe('createTextInputAccessibilityLabel', () => {
 
   it('falls back for empty names', () => {
     expect(createTextInputAccessibilityLabel('   ')).toBe('Input field');
+  });
+});
+
+describe('createChatComposerAccessibilityHint', () => {
+  it('returns listening-specific guidance when voice input is active', () => {
+    expect(
+      createChatComposerAccessibilityHint({ handsFree: true, listening: true }),
+    ).toBe('Voice listening is active. Dictated text appears in this message field.');
+  });
+
+  it('returns hands-free guidance when idle', () => {
+    expect(
+      createChatComposerAccessibilityHint({ handsFree: true, listening: false }),
+    ).toBe('Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.');
+  });
+
+  it('returns standard push-to-talk guidance when hands-free is off', () => {
+    expect(
+      createChatComposerAccessibilityHint({ handsFree: false, listening: false }),
+    ).toBe('Type your message or hold the mic to dictate before sending.');
+  });
+
+  it('appends keyboard submission guidance on web', () => {
+    expect(
+      createChatComposerAccessibilityHint({ handsFree: false, listening: false, isWeb: true }),
+    ).toBe('Type your message or hold the mic to dictate before sending. Use Shift+Enter or Ctrl/Cmd+Enter to send.');
   });
 });
 

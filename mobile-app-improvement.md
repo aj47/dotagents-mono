@@ -177,3 +177,30 @@ Purpose: track investigation and incremental, shippable improvements to the Expo
   - Apply minimum `44x44` touch-target guardrails to Chat message-level actions (`Read aloud`, collapse toggles, and tool disclosure row).
   - Add explicit accessibility label/hint to the Chat composer text input for keyboard/screen-reader clarity.
 
+### 2026-03-07 - Iteration 7
+- Status: Shipped.
+- Area selected: Chat composer text input semantics (stable naming + discoverable hint text).
+- Investigation notes:
+  - Reused existing Expo Web workflow from repo scripts: `pnpm --filter @dotagents/mobile web --port 19007`.
+  - Audited Chat composer input in Expo Web accessibility tree after navigating to Chat.
+  - Confirmed composer `TextInput` was exposed as a `textbox` with no explicit input label or description attributes.
+  - Accessible name was derived from placeholder text only (`Type or hold mic` / `Type or tap mic` / `Listening…`), causing the announced field name to shift with mode state.
+- Change made:
+  - Extended `apps/mobile/src/lib/accessibility.ts` with `createChatComposerAccessibilityHint({ handsFree, listening, isWeb })` for consistent mode-aware hint text and keyboard-send guidance on web.
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` composer input:
+    - Added explicit input label via `createTextInputAccessibilityLabel('Message composer')`.
+    - Added dynamic `accessibilityHint` using the shared helper.
+    - Added web `aria-describedby` linkage to a hidden hint text node (`chat-composer-hint`) so description text is exposed in Expo Web accessibility tooling.
+  - Expanded `apps/mobile/src/lib/accessibility.test.ts` with dedicated tests for `createChatComposerAccessibilityHint`.
+- Tests/verification:
+  - Ran: `pnpm --filter @dotagents/mobile test src/lib/accessibility.test.ts` ✅ (21 tests).
+  - Ran: `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅.
+  - Re-verified in Expo Web automation:
+    - Composer now exposes `aria-label="Message composer input"`.
+    - Composer now exposes `aria-describedby="chat-composer-hint"` with state-aware hint text.
+    - Accessible name remains stable while placeholders change for hands-free state (`Type or hold mic` ↔ `Type or tap mic`).
+- Next checks:
+  - Add explicit live-region semantics for listening/transcription status so voice-state changes are announced without focus changes.
+  - Apply minimum `44x44` touch-target guardrails to Chat message-level actions (`Read aloud`, collapse toggles, and tool disclosure row).
+  - Add a dedicated per-message `Copy` action in Chat with clear labels/hints and keyboard order validation.
+

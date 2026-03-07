@@ -53,9 +53,11 @@ import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import {
   createButtonAccessibilityLabel,
+  createChatComposerAccessibilityHint,
   createExpandCollapseAccessibilityLabel,
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
+  createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
 
 interface PendingImageAttachment {
@@ -68,6 +70,7 @@ interface PendingImageAttachment {
 const MAX_PENDING_IMAGES = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
 const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
+const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -2133,6 +2136,13 @@ export default function ChatScreen({ route, navigation }: any) {
 	// We intentionally assign during render (not useEffect) so it is available immediately.
 	sendRef.current = send;
 
+	const isWebPlatform = Platform.OS === 'web';
+	const composerAccessibilityHint = createChatComposerAccessibilityHint({
+	  handsFree,
+	  listening,
+	  isWeb: isWebPlatform,
+	});
+
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
   const sendComposerInput = useCallback(() => {
@@ -3329,10 +3339,18 @@ export default function ChatScreen({ route, navigation }: any) {
               value={input}
               onChangeText={handleInputChange}
               onKeyPress={handleInputKeyPress}
+              accessibilityLabel={createTextInputAccessibilityLabel('Message composer')}
+              accessibilityHint={composerAccessibilityHint}
+              aria-describedby={isWebPlatform ? CHAT_COMPOSER_HINT_NATIVE_ID : undefined}
               placeholder={handsFree ? (listening ? 'Listening…' : 'Type or tap mic') : (listening ? 'Listening…' : 'Type or hold mic')}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
             />
+            {isWebPlatform && (
+              <Text nativeID={CHAT_COMPOSER_HINT_NATIVE_ID} style={styles.visuallyHiddenComposerHint}>
+                {composerAccessibilityHint}
+              </Text>
+            )}
 	            <TouchableOpacity
 	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
@@ -3578,6 +3596,12 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.input,
       flex: 1,
       maxHeight: 120,
+    },
+    visuallyHiddenComposerHint: {
+      position: 'absolute',
+      left: -10000,
+      width: 1,
+      height: 1,
     },
     micWrapper: {
       paddingHorizontal: spacing.sm,
