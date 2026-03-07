@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
@@ -2268,14 +2268,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const shouldAutoScrollRef = useRef(true)
   const lastMessageCountRef = useRef(0)
   const lastContentLengthRef = useRef(0)
   const lastDisplayItemsCountRef = useRef(0)
   const lastSessionIdRef = useRef<string | undefined>(undefined)
+  const pendingInitialScrollTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const lastDerivedUserResponseLogKeyRef = useRef<string | null>(null)
   const [showKillConfirmation, setShowKillConfirmation] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const { isDark } = useTheme()
+
+  const clearPendingInitialScrollAttempts = useCallback(() => {
+    pendingInitialScrollTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
+    pendingInitialScrollTimeoutsRef.current = []
+  }, [])
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = shouldAutoScroll
+  }, [shouldAutoScroll])
 
   // Tile-specific state - support controlled mode
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false)
@@ -2913,13 +2924,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   useEffect(() => {
     if (progress?.sessionId !== lastSessionIdRef.current) {
       lastSessionIdRef.current = progress?.sessionId
+      clearPendingInitialScrollAttempts()
       lastMessageCountRef.current = 0
       lastContentLengthRef.current = 0
       lastDisplayItemsCountRef.current = 0
       // Also reset auto-scroll state for new sessions
       setShouldAutoScroll(true)
     }
-  }, [progress?.sessionId])
+  }, [clearPendingInitialScrollAttempts, progress?.sessionId])
 
   // Improved auto-scroll logic - tracks displayItems for comprehensive change detection
   useEffect(() => {
@@ -2974,18 +2986,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const scrollContainer = scrollContainerRef.current
     if (!scrollContainer) return
 
+    clearPendingInitialScrollAttempts()
+
     const scrollToBottom = () => {
+      if (!shouldAutoScrollRef.current) return
       scrollContainer.scrollTop = scrollContainer.scrollHeight
     }
 
     // Multiple attempts to ensure scrolling works with dynamic content
     const scrollAttempts = [0, 50, 100, 200]
-    scrollAttempts.forEach((delay) => {
-      setTimeout(() => {
+    pendingInitialScrollTimeoutsRef.current = scrollAttempts.map((delay) => {
+      return setTimeout(() => {
         requestAnimationFrame(scrollToBottom)
       }, delay)
     })
-  }, [displayItems.length > 0])
+
+    return clearPendingInitialScrollAttempts
+  }, [clearPendingInitialScrollAttempts, displayItems.length > 0])
 
   // Make panel focusable when agent completes (overlay variant only)
   // This enables the continue conversation input to receive focus and be interactable
@@ -3010,6 +3027,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
     // If user scrolled up from bottom, stop auto-scroll
     else if (!isAtBottom && shouldAutoScroll) {
+      clearPendingInitialScrollAttempts()
       setShouldAutoScroll(false)
       setIsUserScrolling(true)
     }
