@@ -24,4 +24,11 @@ describe("agent progress scroll behavior", () => {
     expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, progress?.sessionId])")
     expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, displayItems.length > 0])")
   })
+
+  it("pins ACP sub-agent conversation updates without smooth-scroll lag while messages stream in", () => {
+    expect(agentProgressSource).toContain("Keep ACP sub-agent conversation updates pinned in the same paint")
+    expect(agentProgressSource).toContain("if (behavior === \"auto\") {\n      node.scrollTop = node.scrollHeight\n      return\n    }")
+    expect(agentProgressSource).toContain("const hadNewMessages = conversation.length > previousConversationLengthRef.current")
+    expect(agentProgressSource).toContain("scrollToBottom(\"auto\")")
+  })
 })

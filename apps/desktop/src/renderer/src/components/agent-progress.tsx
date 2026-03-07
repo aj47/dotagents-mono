@@ -1537,6 +1537,12 @@ const SubAgentConversationPanel: React.FC<{
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const node = scrollRef.current
     if (!node) return
+
+    if (behavior === "auto") {
+      node.scrollTop = node.scrollHeight
+      return
+    }
+
     node.scrollTo({ top: node.scrollHeight, behavior })
   }
 
@@ -1547,13 +1553,16 @@ const SubAgentConversationPanel: React.FC<{
     setIsPinnedToBottom(distanceFromBottom < 24)
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) return
-    requestAnimationFrame(() => scrollToBottom("auto"))
+    scrollToBottom("auto")
     setIsPinnedToBottom(true)
   }, [isOpen])
 
-  useEffect(() => {
+  // Keep ACP sub-agent conversation updates pinned in the same paint as new
+  // delegated messages arrive. Smooth scrolling here visibly lags behind rapid
+  // conversation updates and leaves the inner session scroller off-bottom.
+  useLayoutEffect(() => {
     const hadNewMessages = conversation.length > previousConversationLengthRef.current
     previousConversationLengthRef.current = conversation.length
 
@@ -1561,7 +1570,7 @@ const SubAgentConversationPanel: React.FC<{
       return
     }
 
-    requestAnimationFrame(() => scrollToBottom("smooth"))
+    scrollToBottom("auto")
   }, [conversation.length, isOpen, isPinnedToBottom])
 
   const visibleMessages = showAll

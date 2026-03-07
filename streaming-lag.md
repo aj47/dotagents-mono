@@ -33,12 +33,16 @@
 - [x] Captured renderer traces for this scroll-lag repro before and after the fix:
   - `apps/desktop/tmp/stream-scroll-before-fix.zip`
   - `apps/desktop/tmp/stream-scroll-after-fix.zip`
+- [x] Inspected the ACP-specific delegated sub-agent conversation scroller in `SubAgentConversationPanel` inside `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed it still had its own pinned-bottom logic separate from the shared session scroller.
+- [x] Verified there is no separate mobile equivalent of this delegated sub-agent conversation panel; the relevant scroll path is desktop-only in this repo.
+- [x] Reproduced a fresh ACP-only scroll lag in the visible main sessions window by scripting delegated conversation messages into the live renderer store and sampling the inner conversation panel bottom-gap over animation frames while pinned at bottom.
 
 ## Not Yet Checked
 
 - [ ] Repro on a live long-streaming ACP-agent session in the visible panel with timing capture, not just completion confirmation.
 - [ ] Compare focused session overlay vs tile/session-grid behavior.
 - [ ] Capture a proper Chrome Performance/CPU trace on the visible panel target; CDP CPU-profiler attempts were too heavy/noisy in this loop.
+- [ ] Capture a proper Chrome Performance trace specifically for the ACP delegated sub-agent conversation panel while its inner scroller overflows; this loop used CDP frame/bottom-gap sampling instead.
 - [ ] Measure behavior after user scrolls upward mid-stream.
 - [ ] Measure sticky-at-bottom recovery when returning to bottom.
 - [ ] Check for scroll jumps when switching sessions / panes / routes.
@@ -68,6 +72,13 @@
   - normal-agent styled probe: `avgGapAfterOneFrame=31.1px`, `maxGapAfterOneFrame=48px`, `nonZeroOneFrameSamples=18/18`, `avgGapAfterTwoFrames=0px`
   - ACP-styled probe: `avgGapAfterOneFrame=39.1px`, `maxGapAfterOneFrame=48px`, `nonZeroOneFrameSamples=18/18`, `avgGapAfterTwoFrames=0px`
 - **Diagnosis:** the shared session auto-scroll hot path in `apps/desktop/src/renderer/src/components/agent-progress.tsx` ran inside `useEffect` and then waited for another `requestAnimationFrame`, so newly streamed content could paint above the fold for one frame before the scroller caught up. This manifested as delayed bottom-pinning / scroll lag during streaming in both normal and ACP session views.
+- **Scenario:** visible main sessions window (`http://localhost:5174/`), focused ACP probe session, delegated sub-agent conversation panel expanded and already pinned at bottom while long delegated messages stream into `delegation.conversation`.
+- **Evidence:** before the fix, the inner delegated conversation scroller visibly lagged behind new messages even though it was pinned at bottom. Exact CDP frame samples from the live renderer showed:
+  - baseline gap before updates: `0px`
+  - after one animation frame: `avgGap=95.6px`, `maxGap=193px`, `nonZeroSamples=12/12`
+  - after three animation frames: `avgGap=90.6px`, `maxGap=184px`, `nonZeroSamples=12/12`
+  - after `120ms`: `avgGap=61.8px`, `maxGap=166px`, `nonZeroSamples=11/12`
+- **Diagnosis:** `SubAgentConversationPanel` used `requestAnimationFrame(() => scrollToBottom("smooth"))` whenever new delegated messages arrived. Under rapid ACP updates, the inner scroller spent multiple frames animating toward the bottom and stayed visibly behind the newest content instead of landing on the latest delegated message in the same paint.
 
 ## Fixed
 
@@ -77,6 +88,8 @@
 - **Test coverage:** added `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` to lock in the timeout cleanup / auto-scroll-guard behavior for the shared session scroller.
 - **Renderer change:** moved the streaming auto-scroll hot path in `apps/desktop/src/renderer/src/components/agent-progress.tsx` from `useEffect` + nested `requestAnimationFrame` to `useLayoutEffect` with an immediate `scrollToBottom()` write, so pinned streaming updates land in the same paint as the content commit.
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a focused assertion that the pinned streaming path stays on `useLayoutEffect` and performs the direct `scrollToBottom()` write.
+- **Renderer change:** updated the ACP-only `SubAgentConversationPanel` scroll path in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to perform same-paint bottom pinning with `useLayoutEffect` and direct `scrollTop = scrollHeight` writes for `"auto"` behavior, instead of scheduling animated smooth scrolling for each delegated message.
+- **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with an ACP-specific regression assertion covering the delegated conversation panel’s same-paint pinning path.
 
 ## Verified
 
@@ -97,6 +110,13 @@
   - normal-agent styled probe: `avgGapAfterOneFrame=0px`, `maxGapAfterOneFrame=0px`, `nonZeroOneFrameSamples=0/18`
   - ACP-styled probe: `avgGapAfterOneFrame=0px`, `maxGapAfterOneFrame=0px`, `nonZeroOneFrameSamples=0/18`
 - **Interpretation:** the shared session view now stays pinned on the very next paint instead of visibly lagging a frame behind streamed content in the measured normal and ACP replay paths.
+- **Targeted test:** `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts` ✅
+- **Renderer typecheck:** `pnpm --filter @dotagents/desktop typecheck:web` ✅
+- **Same ACP delegated-conversation probe after fix (same focused main-window session, same 12 delegated message appends):**
+  - baseline gap before updates: `0px`
+  - after one animation frame: `avgGap≈0px`, `maxGap=0px`, `nonZeroSamples=1/12` (single `-1px` rounding artifact only)
+  - after `120ms`: `avgGap=0px`, `maxGap=0px`, `nonZeroSamples=0/12`
+- **Interpretation:** the ACP delegated sub-agent conversation panel no longer trails the bottom during rapid delegated message streaming; the newest delegated message is effectively visible on the next paint instead of after a long smooth-scroll catch-up.
 
 ## Still Uncertain
 
@@ -104,6 +124,7 @@
 - Whether live end-to-end normal-agent and ACP-agent sessions in the floating panel show the same before/after behavior as the scripted main-window replay, since panel resizing can mask overflow.
 - Whether the shared fix fully resolves the same interruption pattern in a live ACP session with sustained streaming; this loop confirmed the renderer code path but did not capture a clean overflowing ACP live trace.
 - Whether panel auto-resizing is masking a second, separate overflow/anchoring bug in the floating panel itself.
+- Whether the ACP delegated-conversation panel still behaves correctly when the user scrolls upward manually mid-stream and then resumes auto-scroll; this loop only measured the pinned-at-bottom hot path.
 
 ## Notes
 
