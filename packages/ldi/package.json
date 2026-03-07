@@ -1,0 +1,52 @@
+{
+  "name": "@dotagents/ldi",
+  "version": "0.0.1",
+  "description": "Live Desktop Integrator — render any URL as a desktop background layer",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.mjs",
+      "require": "./dist/types.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.33",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  },
+  "files": [
+    "dist",
+    "src",
+    "scripts"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "ldi",
+    "desktop",
+    "background",
+    "dotagents",
+    "cross-platform",
+    "x11",
+    "linux",
+    "macos",
+    "darwin",
+    "windows",
+    "win32"
+  ],
+  "private": true
+}

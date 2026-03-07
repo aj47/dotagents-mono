@@ -1,0 +1,464 @@
+#!/usr/bin/env bash
+# ============================================================================
+# LDI — Live Desktop Integrator
+# Turn any URL into a desktop background layer.
+# https://github.com/newjordan/LDI
+# ============================================================================
+set -euo pipefail
+
+VERSION="0.1.0"
+LDI_DIR="${LDI_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ldi}"
+
+# --- Defaults ---------------------------------------------------------------
+DEFAULT_URL=""
+SLOT="default"
+SETTLE_TIME=4
+RELOWER_INTERVAL=0
+BROWSER_OVERRIDE=""
+EXTRA_CHROME_FLAGS=""
+
+export DISPLAY="${DISPLAY:-:1}"
+
+# --- Paths per slot ---------------------------------------------------------
+slot_pid_file()  { echo "${LDI_DIR}/slots/${1}.pid"; }
+slot_log_file()  { echo "${LDI_DIR}/slots/${1}.log"; }
+slot_meta_file() { echo "${LDI_DIR}/slots/${1}.meta"; }
+slot_data_dir()  { echo "${LDI_DIR}/chrome-data/${1}"; }
+wm_class_for()   { echo "ldi-${1}"; }
+
+# --- Detect screen resolution -----------------------------------------------
+detect_resolution() {
+  local res
+  res=$(xdpyinfo 2>/dev/null | grep "dimensions:" | awk '{print $2}')
+  if [[ -z "$res" ]]; then
+    res="1920x1080"
+  fi
+  echo "$res"
+}
+
+# --- Find browser -----------------------------------------------------------
+find_browser() {
+  if [[ -n "$BROWSER_OVERRIDE" ]]; then
+    if command -v "$BROWSER_OVERRIDE" &>/dev/null; then
+      echo "$BROWSER_OVERRIDE"
+      return 0
+    fi
+    echo "ERROR: Specified browser '$BROWSER_OVERRIDE' not found" >&2
+    return 1
+  fi
+
+  for bin in google-chrome chromium-browser chromium brave-browser; do
+    if command -v "$bin" &>/dev/null; then
+      echo "$bin"
+      return 0
+    fi
+  done
+  echo "ERROR: No Chrome/Chromium browser found. Install one or use --browser." >&2
+  return 1
+}
+
+# --- Find window by WM_CLASS ------------------------------------------------
+find_slot_window() {
+  local class="$1"
+  local found=""
+
+  # Search managed windows for our WM_CLASS
+  while IFS= read -r wid; do
+    [[ -z "$wid" ]] && continue
+    local wm_class
+    wm_class=$(xprop -id "$wid" WM_CLASS 2>/dev/null || true)
+    if echo "$wm_class" | grep -q "\"$class\""; then
+      found="$wid"
+      break
+    fi
+  done < <(xprop -root _NET_CLIENT_LIST 2>/dev/null | grep -oP '0x[0-9a-f]+')
+
+  if [[ -n "$found" ]]; then
+    echo "$found"
+    return 0
+  fi
+
+  # Fallback: search full X11 tree
+  xwininfo -root -tree 2>/dev/null \
+    | grep -i "$class" \
+    | head -1 \
+    | awk '{print $1}'
+}
+
+# --- Apply desktop window hints ---------------------------------------------
+apply_desktop_hints() {
+  local wid="$1"
+  local errors=0
+
+  # Set window type to desktop
+  xprop -id "$wid" \
+    -f _NET_WM_WINDOW_TYPE 32a \
+    -set _NET_WM_WINDOW_TYPE _NET_WM_WINDOW_TYPE_DESKTOP \
+    2>/dev/null || ((errors++))
+
+  # Below all windows
+  wmctrl -i -r "$wid" -b add,below 2>/dev/null || ((errors++))
+
+  # Skip taskbar and pager
+  wmctrl -i -r "$wid" -b add,skip_taskbar,skip_pager 2>/dev/null || ((errors++))
+
+  # Sticky (all workspaces)
+  wmctrl -i -r "$wid" -b add,sticky 2>/dev/null || ((errors++))
+
+  if [[ $errors -gt 0 ]]; then
+    echo "[ldi] WARNING: $errors hint(s) failed to apply (missing wmctrl/xprop?)" >&2
+  fi
+
+  return 0
+}
+
+# --- Check if slot is running -----------------------------------------------
+is_slot_running() {
+  local slot="$1"
+  local pidfile
+  pidfile=$(slot_pid_file "$slot")
+  if [[ -f "$pidfile" ]]; then
+    local pid
+    pid=$(cat "$pidfile" 2>/dev/null)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# --- Commands ---------------------------------------------------------------
+
+cmd_start() {
+  local url="$1"
+  local slot="$2"
+  local class
+  class=$(wm_class_for "$slot")
+  local resolution
+  resolution=$(detect_resolution)
+  local width="${resolution%x*}"
+  local height="${resolution#*x}"
+  local browser
+  browser=$(find_browser) || exit 1
+  local data_dir
+  data_dir=$(slot_data_dir "$slot")
+  local pidfile
+  pidfile=$(slot_pid_file "$slot")
+  local logfile
+  logfile=$(slot_log_file "$slot")
+  local metafile
+  metafile=$(slot_meta_file "$slot")
+
+  # Kill existing if running
+  if is_slot_running "$slot"; then
+    echo "[ldi:$slot] Stopping existing instance..."
+    cmd_stop "$slot"
+    sleep 1
+  fi
+
+  # Ensure directories
+  mkdir -p "${LDI_DIR}/slots" "$data_dir"
+
+  echo "[ldi:$slot] Browser:    $browser"
+  echo "[ldi:$slot] URL:        $url"
+  echo "[ldi:$slot] Resolution: ${width}x${height}"
+  echo "[ldi:$slot] Class:      $class"
+
+  # Build Chrome flags
+  local -a flags=(
+    "--app=$url"
+    "--class=$class"
+    "--window-size=${width},${height}"
+    "--window-position=0,0"
+    "--user-data-dir=$data_dir"
+    "--no-first-run"
+    "--no-default-browser-check"
+    "--disable-extensions"
+    "--disable-sync"
+    "--disable-translate"
+    "--disable-infobars"
+    "--disable-session-crashed-bubble"
+    "--disable-features=TranslateUI"
+    "--autoplay-policy=no-user-gesture-required"
+    "--hide-crash-restore-bubble"
+  )
+
+  # Add extra flags if specified
+  if [[ -n "$EXTRA_CHROME_FLAGS" ]]; then
+    read -ra extra <<< "$EXTRA_CHROME_FLAGS"
+    flags+=("${extra[@]}")
+  fi
+
+  # Launch
+  "$browser" "${flags[@]}" &>"$logfile" &
+  local chrome_pid=$!
+  echo "$chrome_pid" > "$pidfile"
+
+  # Save metadata
+  cat > "$metafile" << EOF
+{
+  "slot": "$slot",
+  "url": "$url",
+  "browser": "$browser",
+  "pid": $chrome_pid,
+  "class": "$class",
+  "resolution": "${width}x${height}",
+  "started": "$(date -Iseconds)",
+  "version": "$VERSION"
+}
+EOF
+
+  echo "[ldi:$slot] Launched (PID $chrome_pid)"
+
+  # Wait for window
+  echo "[ldi:$slot] Waiting ${SETTLE_TIME}s for window..."
+  sleep "$SETTLE_TIME"
+
+  local wid=""
+  local attempts=0
+  while [[ $attempts -lt 10 ]]; do
+    wid=$(find_slot_window "$class")
+    if [[ -n "$wid" ]]; then
+      break
+    fi
+    ((attempts++))
+    sleep 1
+  done
+
+  if [[ -z "$wid" ]]; then
+    echo "[ldi:$slot] ERROR: Window not found after $((SETTLE_TIME + attempts))s" >&2
+    echo "[ldi:$slot] Chrome log:" >&2
+    tail -10 "$logfile" 2>/dev/null >&2
+    return 1
+  fi
+
+  echo "[ldi:$slot] Window found: $wid"
+  apply_desktop_hints "$wid"
+
+  # Verify
+  local wtype
+  wtype=$(xprop -id "$wid" _NET_WM_WINDOW_TYPE 2>/dev/null | grep -o "DESKTOP" || true)
+  local wstate
+  wstate=$(xprop -id "$wid" _NET_WM_STATE 2>/dev/null | grep -o "BELOW" || true)
+
+  if [[ -n "$wtype" && -n "$wstate" ]]; then
+    echo "[ldi:$slot] ✅ Desktop backdrop active (window $wid)"
+  else
+    echo "[ldi:$slot] ⚠️  Hints partially applied — may need manual adjustment" >&2
+  fi
+
+  # Optional relower watchdog (runs in foreground if --relower > 0)
+  if [[ "$RELOWER_INTERVAL" -gt 0 ]]; then
+    echo "[ldi:$slot] Watchdog active (re-lower every ${RELOWER_INTERVAL}s)"
+    while kill -0 "$chrome_pid" 2>/dev/null; do
+      sleep "$RELOWER_INTERVAL"
+      local cur_wid
+      cur_wid=$(find_slot_window "$class")
+      if [[ -n "$cur_wid" ]]; then
+        wmctrl -i -r "$cur_wid" -b add,below 2>/dev/null || true
+      fi
+    done
+    echo "[ldi:$slot] Browser exited, watchdog stopping"
+    rm -f "$pidfile" "$metafile"
+  fi
+}
+
+cmd_stop() {
+  local slot="$1"
+  local pidfile
+  pidfile=$(slot_pid_file "$slot")
+  local class
+  class=$(wm_class_for "$slot")
+
+  if [[ -f "$pidfile" ]]; then
+    local pid
+    pid=$(cat "$pidfile" 2>/dev/null)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      echo "[ldi:$slot] Stopping (PID $pid)"
+      kill "$pid" 2>/dev/null || true
+      sleep 1
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+    rm -f "$pidfile"
+  fi
+
+  # Also kill by class in case PID tracking lost
+  pkill -f "class=${class}" 2>/dev/null || true
+
+  rm -f "$(slot_meta_file "$slot")"
+  echo "[ldi:$slot] Stopped"
+}
+
+cmd_status() {
+  local slot="$1"
+  local pidfile
+  pidfile=$(slot_pid_file "$slot")
+  local class
+  class=$(wm_class_for "$slot")
+
+  if ! is_slot_running "$slot"; then
+    echo "[ldi:$slot] Not running"
+    return 1
+  fi
+
+  local pid
+  pid=$(cat "$pidfile" 2>/dev/null)
+  echo "[ldi:$slot] Running (PID $pid)"
+
+  local metafile
+  metafile=$(slot_meta_file "$slot")
+  if [[ -f "$metafile" ]]; then
+    local url
+    url=$(python3 -c "import json; print(json.load(open('$metafile'))['url'])" 2>/dev/null || echo "?")
+    echo "[ldi:$slot] URL: $url"
+  fi
+
+  local wid
+  wid=$(find_slot_window "$class")
+  if [[ -n "$wid" ]]; then
+    echo "[ldi:$slot] Window: $wid"
+    xprop -id "$wid" _NET_WM_WINDOW_TYPE _NET_WM_STATE 2>/dev/null | sed 's/^/  /'
+  else
+    echo "[ldi:$slot] ⚠️  No window found"
+  fi
+}
+
+cmd_list() {
+  local slots_dir="${LDI_DIR}/slots"
+  if [[ ! -d "$slots_dir" ]]; then
+    echo "No slots configured"
+    return 0
+  fi
+
+  local found=0
+  for metafile in "$slots_dir"/*.meta; do
+    [[ -f "$metafile" ]] || continue
+    local slot
+    slot=$(basename "$metafile" .meta)
+    local status="stopped"
+    if is_slot_running "$slot"; then
+      status="running"
+    fi
+    local url
+    url=$(python3 -c "import json; print(json.load(open('$metafile'))['url'])" 2>/dev/null || echo "?")
+    printf "  %-15s %-10s %s\n" "$slot" "$status" "$url"
+    ((found++))
+  done
+
+  # Also check pid files without meta
+  for pidfile in "$slots_dir"/*.pid; do
+    [[ -f "$pidfile" ]] || continue
+    local slot
+    slot=$(basename "$pidfile" .pid)
+    [[ -f "$slots_dir/${slot}.meta" ]] && continue  # already listed
+    local status="stopped"
+    if is_slot_running "$slot"; then
+      status="running"
+    fi
+    printf "  %-15s %-10s %s\n" "$slot" "$status" "(no metadata)"
+    ((found++))
+  done
+
+  if [[ $found -eq 0 ]]; then
+    echo "No slots found"
+  fi
+}
+
+cmd_restart() {
+  local url="$1"
+  local slot="$2"
+  cmd_stop "$slot"
+  sleep 1
+  cmd_start "$url" "$slot"
+}
+
+# --- CLI parsing -------------------------------------------------------------
+usage() {
+  cat << 'EOF'
+LDI — Live Desktop Integrator
+
+Usage:
+  ldi start [URL] [OPTIONS]    Launch URL as desktop background
+  ldi stop [OPTIONS]           Stop a running backdrop
+  ldi status [OPTIONS]         Check backdrop status
+  ldi list                     List all slots
+  ldi restart [URL] [OPTIONS]  Stop + start
+  ldi version                  Show version
+  ldi help                     Show this help
+
+Options:
+  --slot NAME        Named slot (default: "default")
+  --settle SECS      Wait time for window to appear (default: 4)
+  --relower SECS     Re-lower watchdog interval (0=off)
+  --browser PATH     Override browser binary
+  --display DISP     X11 display (default: $DISPLAY or :1)
+  --chrome-flags F   Extra Chrome flags (quoted string)
+
+Examples:
+  ldi start http://localhost:5173/nld-baseline/index.html
+  ldi start https://www.shadertoy.com/embed/XsXXDn --slot shader
+  ldi stop --slot shader
+  ldi list
+EOF
+}
+
+main() {
+  local command="${1:-help}"
+  shift 2>/dev/null || true
+
+  local positional_url=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --slot)         SLOT="$2"; shift 2 ;;
+      --settle)       SETTLE_TIME="$2"; shift 2 ;;
+      --relower)      RELOWER_INTERVAL="$2"; shift 2 ;;
+      --browser)      BROWSER_OVERRIDE="$2"; shift 2 ;;
+      --display)      export DISPLAY="$2"; shift 2 ;;
+      --chrome-flags) EXTRA_CHROME_FLAGS="$2"; shift 2 ;;
+      -*)             echo "Unknown option: $1" >&2; exit 1 ;;
+      *)              positional_url="$1"; shift ;;
+    esac
+  done
+
+  case "$command" in
+    start)
+      local url="${positional_url:-$DEFAULT_URL}"
+      if [[ -z "$url" ]]; then
+        echo "ERROR: URL required. Usage: ldi start <URL>" >&2
+        exit 1
+      fi
+      cmd_start "$url" "$SLOT"
+      ;;
+    stop)
+      cmd_stop "$SLOT"
+      ;;
+    status)
+      cmd_status "$SLOT"
+      ;;
+    list|ls)
+      cmd_list
+      ;;
+    restart)
+      local url="${positional_url:-$DEFAULT_URL}"
+      if [[ -z "$url" ]]; then
+        echo "ERROR: URL required. Usage: ldi restart <URL>" >&2
+        exit 1
+      fi
+      cmd_restart "$url" "$SLOT"
+      ;;
+    version|-v|--version)
+      echo "LDI v${VERSION}"
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      echo "Unknown command: $command" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

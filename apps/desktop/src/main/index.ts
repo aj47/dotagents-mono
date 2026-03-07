@@ -33,6 +33,7 @@ import {
   checkCloudflaredInstalled,
 } from "./cloudflare-tunnel"
 import { initModelsDevService } from "./models-dev-service"
+import { ldiService } from "./ldi-service"
 import { loopService } from "./loop-service"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
@@ -445,6 +446,16 @@ app.whenReady().then(async () => {
   // Initialize models.dev service (fetches model metadata in background)
   initModelsDevService()
   logApp("Models.dev service initialization started")
+
+  // Initialize LDI service (check platform support, log readiness)
+  ldiService
+    .initialize()
+    .then(() => {
+      logApp("LDI service initialized")
+    })
+    .catch((error) => {
+      logApp("Failed to initialize LDI service:", error)
+    })
 
   // Initialize ACP service (spawns auto-start agents)
   acpService
