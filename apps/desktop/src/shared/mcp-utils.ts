@@ -2,8 +2,9 @@ import { MCPConfig, MCPServerConfig, MCPTransportType } from "./types"
 
 export function inferTransportType(config: MCPServerConfig): MCPTransportType {
   if (config.transport) return config.transport
-  if (!config.url) return "stdio"
-  const lower = config.url.toLowerCase()
+  const normalizedUrl = config.url?.trim()
+  if (!normalizedUrl) return "stdio"
+  const lower = normalizedUrl.toLowerCase()
   if (lower.startsWith("ws://") || lower.startsWith("wss://")) return "websocket"
   return "streamableHttp"
 }

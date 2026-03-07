@@ -49,11 +49,30 @@ describe("normalizeMcpConfig", () => {
     expect(changed).toBe(true)
   })
 
+  it("trims padded urls before inferring transport", () => {
+    const input: MCPConfig = {
+      mcpServers: {
+        wsServer: {
+          url: "  WSS://example.com/mcp  ",
+        },
+      },
+    }
+
+    const { normalized, changed } = normalizeMcpConfig(input)
+
+    expect(normalized.mcpServers.wsServer.transport).toBe("websocket")
+    expect(changed).toBe(true)
+  })
+
 })
 
 describe("inferTransportType", () => {
   it("defaults to stdio when no transport or url is provided", () => {
     expect(inferTransportType({ command: "cmd" })).toBe("stdio")
+  })
+
+  it("defaults to stdio for whitespace-only urls", () => {
+    expect(inferTransportType({ url: "   " })).toBe("stdio")
   })
 
   it("infers websocket when url starts with ws://", () => {
@@ -62,6 +81,10 @@ describe("inferTransportType", () => {
 
   it("infers websocket when url starts with wss://", () => {
     expect(inferTransportType({ url: "wss://example.com/mcp" })).toBe("websocket")
+  })
+
+  it("ignores surrounding whitespace when inferring websocket urls", () => {
+    expect(inferTransportType({ url: "  ws://localhost:8080  " })).toBe("websocket")
   })
 
   it("infers streamableHttp when url starts with http://", () => {
