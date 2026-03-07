@@ -37,7 +37,8 @@ const MIN_WAVEFORM_WIDTH =
   )
 const WAVEFORM_MIN_HEIGHT = 150
 const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
-const TEXT_INPUT_MIN_HEIGHT = 160
+const TEXT_INPUT_MIN_HEIGHT = 180
+const TEXT_INPUT_MIN_WIDTH_PX = 380
 const PROGRESS_MIN_HEIGHT = 200
 
 const clamp = (value: number, min: number, max: number) =>
@@ -727,6 +728,7 @@ export function Component() {
       }
 
       // Show text input and focus
+      lastRequestedModeRef.current = "textInput"
       setShowTextInput(true)
       // Panel window is already shown by the keyboard handler
       // Focus the text input after a short delay to ensure it's rendered
@@ -744,6 +746,7 @@ export function Component() {
 
   useEffect(() => {
     const unlisten = rendererHandlers.hideTextInput.listen(() => {
+      lastRequestedModeRef.current = "normal"
       setShowTextInput(false)
     })
 
@@ -1131,12 +1134,13 @@ export function Component() {
   }, [visualizerBarCount])
 
   const waveformHeight = hasPreviewVisible ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
+  const minWidth = showTextInput ? TEXT_INPUT_MIN_WIDTH_PX : MIN_WAVEFORM_WIDTH
   const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight)
 
   return (
     <PanelResizeWrapper
       enableResize={true}
-      minWidth={MIN_WAVEFORM_WIDTH}
+      minWidth={minWidth}
       minHeight={minHeight}
       className={cn(
         "floating-panel modern-text-strong flex h-screen flex-col text-foreground",

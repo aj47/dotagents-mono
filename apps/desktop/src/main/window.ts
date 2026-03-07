@@ -418,8 +418,8 @@ export const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
 // - Textarea: ~80px minimum for usability
 // - Bottom bar (char count + buttons): ~28px
 // - Padding (p-3 = 12px top + 12px bottom + gap-3 = 12px between)
-// Total: ~160px minimum
-export const TEXT_INPUT_MIN_HEIGHT = 160
+// Total: ~180px minimum once real panel chrome and wrapping are accounted for
+export const TEXT_INPUT_MIN_HEIGHT = 180
 
 // Minimum height for progress/agent view:
 // - Header: ~40px
@@ -444,17 +444,38 @@ const textInputPanelWindowSize = {
   height: 180,
 }
 
+export const TEXT_INPUT_MIN_WIDTH = textInputPanelWindowSize.width
+
+type SavedPanelSizeMode = "waveform" | "progress" | "textInput"
+
+const getPanelMinWidth = (mode: SavedPanelSizeMode | "normal" | "agent" | "textInput") => {
+  if (mode === "textInput") {
+    return TEXT_INPUT_MIN_WIDTH
+  }
+  return Math.max(200, MIN_WAVEFORM_WIDTH)
+}
+
+const getPanelMinHeight = (mode: SavedPanelSizeMode | "normal" | "agent" | "textInput") => {
+  if (mode === "agent" || mode === "progress") {
+    return PROGRESS_MIN_HEIGHT
+  }
+  if (mode === "textInput") {
+    return TEXT_INPUT_MIN_HEIGHT
+  }
+  return WAVEFORM_MIN_HEIGHT
+}
+
 // Get the saved panel size (mode-aware)
-const getSavedPanelSize = (mode?: "waveform" | "progress") => {
+const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
   const config = configStore.get()
 
-  logApp(`[window.ts] getSavedPanelSize - checking config for mode: ${mode || 'default'}...`)
+  logApp(`[window.ts] getSavedPanelSize - checking config for mode: ${mode}...`)
 
   const validateSize = (
     savedSize: { width: number; height: number },
     minHeight: number,
     fallbackSize: { width: number; height: number } = panelWindowSize,
-    minWidth: number = Math.max(200, MIN_WAVEFORM_WIDTH),
+    minWidth: number = getPanelMinWidth(mode),
   ) => {
     const maxWidth = 3000
     const maxHeight = 2000
@@ -493,10 +514,29 @@ const getSavedPanelSize = (mode?: "waveform" | "progress") => {
     return agentPanelWindowSize
   }
 
-  // Waveform/text-input mode uses panelCustomSize
+  if (mode === "textInput") {
+    if (config.panelTextInputSize) {
+      logApp(`[window.ts] Found saved text input size:`, config.panelTextInputSize)
+      return validateSize(config.panelTextInputSize, TEXT_INPUT_MIN_HEIGHT, textInputPanelWindowSize, TEXT_INPUT_MIN_WIDTH)
+    }
+
+    if (config.panelCustomSize) {
+      const migratedTextInputSize = {
+        width: Math.max(config.panelCustomSize.width, TEXT_INPUT_MIN_WIDTH),
+        height: Math.max(config.panelCustomSize.height, TEXT_INPUT_MIN_HEIGHT),
+      }
+      logApp(`[window.ts] No saved text input size; using migrated panel size:`, migratedTextInputSize)
+      return validateSize(migratedTextInputSize, TEXT_INPUT_MIN_HEIGHT, textInputPanelWindowSize, TEXT_INPUT_MIN_WIDTH)
+    }
+
+    logApp(`[window.ts] No saved text input size, using text input default:`, textInputPanelWindowSize)
+    return textInputPanelWindowSize
+  }
+
+  // Waveform mode uses panelCustomSize
   if (config.panelCustomSize) {
     logApp(`[window.ts] Found saved panel size:`, config.panelCustomSize)
-    return validateSize(config.panelCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize)
+    return validateSize(config.panelCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
   }
 
   logApp(`[window.ts] No saved panel size, using default:`, panelWindowSize)
@@ -507,7 +547,32 @@ const getSavedSizeForMode = (mode: "normal" | "agent" | "textInput") => {
   if (mode === "agent") {
     return getSavedPanelSize("progress")
   }
+  if (mode === "textInput") {
+    return getSavedPanelSize("textInput")
+  }
   return getSavedPanelSize("waveform")
+}
+
+function restorePanelSizeForMode(mode: "normal" | "agent" | "textInput", reason = "setPanelMode") {
+  const win = WINDOWS.get("panel")
+  if (!win) return
+
+  try {
+    const [currentWidth, currentHeight] = win.getSize()
+    const savedSize = getSavedSizeForMode(mode)
+    const targetWidth = Math.max(savedSize.width, getPanelMinWidth(mode))
+    const targetHeight = Math.max(savedSize.height, getPanelMinHeight(mode))
+
+    if (currentHeight !== targetHeight || currentWidth !== targetWidth) {
+      logApp(`[${reason}] Restoring ${mode} size from ${currentWidth}x${currentHeight} to ${targetWidth}x${targetHeight}`)
+      win.setSize(targetWidth, targetHeight)
+      notifyPanelSizeChanged(targetWidth, targetHeight)
+      const position = calculatePanelPosition({ width: targetWidth, height: targetHeight }, mode)
+      win.setPosition(position.x, position.y)
+    }
+  } catch (e) {
+    logApp(`[${reason}] Failed to restore panel size for ${mode} mode:`, e)
+  }
 }
 
 const getPanelWindowPosition = (
@@ -592,13 +657,8 @@ function applyPanelMode(mode: "normal" | "agent" | "textInput") {
 
   const now = Date.now()
 
-  const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-  const minHeight =
-    mode === "agent"
-      ? PROGRESS_MIN_HEIGHT
-      : mode === "textInput"
-        ? TEXT_INPUT_MIN_HEIGHT
-        : WAVEFORM_MIN_HEIGHT
+  const minWidth = getPanelMinWidth(mode)
+  const minHeight = getPanelMinHeight(mode)
   try {
     win.setMinimumSize(minWidth, minHeight)
   } catch {}
@@ -622,33 +682,81 @@ export function setPanelMode(mode: "normal" | "agent" | "textInput") {
   _currentPanelMode = mode
   applyPanelMode(mode)
 
-  // When entering agent mode, restore progress-mode dimensions so waveform
-  // resizes cannot leak into the progress layout.
-  if (mode === "agent" && previousMode !== "agent") {
-    const win = WINDOWS.get("panel")
-    if (win) {
-      try {
-        const [currentWidth, currentHeight] = win.getSize()
-        const savedSize = getSavedPanelSize("progress")
-        const targetHeight = Math.max(savedSize.height, PROGRESS_MIN_HEIGHT)
-        const targetWidth = Math.max(savedSize.width, MIN_WAVEFORM_WIDTH)
-        if (currentHeight !== targetHeight || currentWidth !== targetWidth) {
-          logApp(`[setPanelMode] Restoring progress size from ${currentWidth}x${currentHeight} to ${targetWidth}x${targetHeight}`)
-          win.setSize(targetWidth, targetHeight)
-          notifyPanelSizeChanged(targetWidth, targetHeight)
-          // Reposition to maintain the panel's anchor point
-          const position = calculatePanelPosition({ width: targetWidth, height: targetHeight }, "agent")
-          win.setPosition(position.x, position.y)
-        }
-      } catch (e) {
-        logApp("[setPanelMode] Failed to resize panel for agent mode:", e)
-      }
-    }
+  if (mode !== previousMode) {
+    restorePanelSizeForMode(mode)
   }
 }
 
 export function getCurrentPanelMode(): "normal" | "agent" | "textInput" {
   return _currentPanelMode
+}
+
+function hidePanelTextInputInRenderer() {
+  try {
+    getWindowRendererHandlers("panel")?.hideTextInput.send()
+  } catch (error) {
+    logApp("[hidePanelTextInputInRenderer] Failed to send hideTextInput:", error)
+  }
+}
+
+export function hideFloatingPanelWindow() {
+  const panel = WINDOWS.get("panel")
+  if (!panel) return
+
+  suppressPanelAutoShow(1000)
+  clearPanelOpenedWithMain()
+  clearPanelHiddenByMainFocus()
+  state.isTextInputActive = false
+  hidePanelTextInputInRenderer()
+
+  if (panel.isVisible()) {
+    panel.hide()
+  }
+
+  if (getCurrentPanelMode() === "textInput") {
+    setPanelMode("normal")
+  }
+}
+
+export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
+  const config = configStore.get()
+  configStore.save({
+    ...config,
+    panelPosition: "top-right",
+    panelCustomPosition: undefined,
+    panelCustomSize: undefined,
+    panelTextInputSize: undefined,
+    panelProgressSize: undefined,
+  })
+
+  state.isTextInputActive = false
+  hidePanelTextInputInRenderer()
+  clearPanelHiddenByMainFocus()
+  setPanelMode("normal")
+
+  const panel = WINDOWS.get("panel")
+  if (!panel) return
+
+  const resetMode = "normal"
+  const resetSize = getSavedSizeForMode(resetMode)
+  const minWidth = getPanelMinWidth(resetMode)
+  const minHeight = getPanelMinHeight(resetMode)
+  const width = Math.max(resetSize.width, minWidth)
+  const height = Math.max(resetSize.height, minHeight)
+
+  try {
+    panel.setMinimumSize(minWidth, minHeight)
+    panel.setSize(width, height)
+    notifyPanelSizeChanged(width, height)
+    const position = calculatePanelPosition({ width, height }, resetMode)
+    panel.setPosition(position.x, position.y)
+  } catch (error) {
+    logApp("[resetFloatingPanelPositionAndSize] Failed to reset panel:", error)
+  }
+
+  if (showAfterReset) {
+    showPanelWindow()
+  }
 }
 
 
@@ -905,6 +1013,8 @@ export const stopTextInputAndHidePanelWindow = () => {
       clearPanelOpenedWithMain()
       win.hide()
     }
+
+    setPanelMode("normal")
   }
 }
 
@@ -927,6 +1037,7 @@ export const closeAgentModeAndHidePanelWindow = () => {
     getRendererHandlers<RendererHandlers>(win.webContents).clearAgentProgress.send()
     // Suppress auto-show briefly to avoid immediate reopen from any trailing progress
     suppressPanelAutoShow(1000)
+    setPanelMode("normal")
   }
 }
 
@@ -963,34 +1074,6 @@ export const emergencyStopAgentMode = async () => {
 
 export function resizePanelForAgentMode() {
   setPanelMode("agent")
-
-  // Resize panel back to saved size for agent mode
-  // This is needed after resizePanelForWaveform() shrinks it for recording mode.
-  const win = WINDOWS.get("panel")
-  if (!win) return
-
-  try {
-    const savedSize = getSavedPanelSize("progress")
-    const [currentWidth, currentHeight] = win.getSize()
-
-    // Always restore to at least saved size or PROGRESS_MIN_HEIGHT
-    const targetHeight = Math.max(savedSize.height, PROGRESS_MIN_HEIGHT)
-    const targetWidth = Math.max(savedSize.width, MIN_WAVEFORM_WIDTH)
-
-    // Only resize if dimensions actually differ (avoid unnecessary reposition)
-    if (currentHeight !== targetHeight || currentWidth !== targetWidth) {
-      logApp(`[resizePanelForAgentMode] Resizing panel from ${currentWidth}x${currentHeight} to ${targetWidth}x${targetHeight}`)
-      win.setSize(targetWidth, targetHeight)
-      // Notify renderer of the size change
-      notifyPanelSizeChanged(targetWidth, targetHeight)
-
-      // Reposition to maintain the panel's anchor point
-      const position = calculatePanelPosition({ width: targetWidth, height: targetHeight }, "agent")
-      win.setPosition(position.x, position.y)
-    }
-  } catch (e) {
-    logApp("[resizePanelForAgentMode] Failed to resize panel:", e)
-  }
 }
 
 /**
@@ -1001,35 +1084,7 @@ export function resizePanelForAgentMode() {
  * See: https://github.com/aj47/SpeakMCP/issues/840
  */
 export function resizePanelForTextInput() {
-  const win = WINDOWS.get("panel")
-  if (!win) {
-    setPanelMode("textInput")
-    return
-  }
-
-  try {
-    const [currentWidth, currentHeight] = win.getSize()
-    const targetHeight = Math.max(currentHeight, TEXT_INPUT_MIN_HEIGHT)
-    const targetWidth = Math.max(currentWidth, textInputPanelWindowSize.width)
-
-    logApp(`[resizePanelForTextInput] Current size: ${currentWidth}x${currentHeight}, target: ${targetWidth}x${targetHeight}`)
-
-    // Only resize if needed
-    if (currentHeight < TEXT_INPUT_MIN_HEIGHT || currentWidth < textInputPanelWindowSize.width) {
-      win.setSize(targetWidth, targetHeight)
-      // Notify renderer of the size change
-      notifyPanelSizeChanged(targetWidth, targetHeight)
-
-      // Reposition to maintain the panel's anchor point
-      const position = calculatePanelPosition({ width: targetWidth, height: targetHeight }, "textInput")
-      win.setPosition(position.x, position.y)
-    }
-
-    setPanelMode("textInput")
-  } catch (e) {
-    logApp("[resizePanelForTextInput] Failed to resize panel:", e)
-    setPanelMode("textInput")
-  }
+  setPanelMode("textInput")
 }
 
 export function resizePanelToNormal() {

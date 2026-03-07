@@ -2,10 +2,15 @@ import { Menu, Tray } from "electron"
 import path from "path"
 import {
   getWindowRendererHandlers,
+  hideFloatingPanelWindow,
+  resetFloatingPanelPositionAndSize,
+  resizePanelToNormal,
   showMainWindow,
+  showPanelWindow,
   showPanelWindowAndStartRecording,
   stopRecordingAndHidePanelWindow,
 } from "./window"
+import { configStore } from "./config"
 import { state } from "./state"
 
 // Use PNG for macOS and Linux (Waybar/SNI tray), ICO only for Windows
@@ -58,6 +63,52 @@ const buildMenu = (tray: Tray) =>
             },
           },
         ]),
+    {
+      type: "separator",
+    },
+    {
+      label: "Show Floating Panel",
+      click() {
+        resizePanelToNormal()
+        showPanelWindow()
+        if (process.platform === "linux") {
+          updateTrayMenu(tray)
+        }
+      },
+    },
+    {
+      label: "Hide Floating Panel",
+      click() {
+        hideFloatingPanelWindow()
+        if (process.platform === "linux") {
+          updateTrayMenu(tray)
+        }
+      },
+    },
+    {
+      label: "Reset Floating Panel Position & Size",
+      click() {
+        resetFloatingPanelPositionAndSize(true)
+        if (process.platform === "linux") {
+          updateTrayMenu(tray)
+        }
+      },
+    },
+    {
+      type: "checkbox",
+      label: "Auto-Show Floating Panel",
+      checked: configStore.get().floatingPanelAutoShow !== false,
+      click(menuItem) {
+        configStore.save({
+          ...configStore.get(),
+          floatingPanelAutoShow: menuItem.checked,
+        })
+
+        if (process.platform === "linux") {
+          updateTrayMenu(tray)
+        }
+      },
+    },
     {
       label: "View History",
       click() {
