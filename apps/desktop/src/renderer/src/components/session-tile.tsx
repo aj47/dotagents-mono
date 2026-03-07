@@ -28,6 +28,7 @@ import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { AudioPlayer } from "@renderer/components/audio-player"
 import { useConfigQuery } from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
@@ -129,7 +130,7 @@ export function SessionTile({
   const handleCopyMessage = async (e: React.MouseEvent, content: string, messageId: string) => {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(content)
+      await copyTextToClipboard(content)
       setCopiedMessageId(messageId)
       // Clear any existing timeout before setting a new one
       if (copyTimeoutRef.current) {

@@ -10,6 +10,7 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Badge } from "@renderer/components/ui/badge"
 import { Loader2, Copy, Download, Globe, User, Tag, Info, AlertTriangle, FileJson } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { buildHubBundleArtifactUrl, slugifyHubCatalogId, type HubPublishSubmission } from "@dotagents/shared"
 import { toast } from "sonner"
 import {
@@ -75,7 +76,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
     onOpenChange(v)
   }
   const ok = !!(form.name.trim() && form.summary.trim() && form.authorName.trim() && exportableItemsQuery.data)
-  const copy = async (t: string, l: string) => { try { await navigator.clipboard.writeText(t); toast.success(`${l} copied`) } catch { toast.error("Copy failed") } }
+  const copy = async (t: string, l: string) => { try { await copyTextToClipboard(t); toast.success(`${l} copied`) } catch { toast.error("Copy failed") } }
   const generate = async () => {
     setLoading(true)
     try {

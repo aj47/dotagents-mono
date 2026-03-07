@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useConversationStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
 import { useConfigQuery } from "@renderer/lib/queries"
@@ -248,7 +249,7 @@ const CompactMessage: React.FC<{
   const handleCopyResponse = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(message.content)
+      await copyTextToClipboard(message.content)
       setIsCopied(true)
       // Clear any existing timeout before setting a new one
       if (copyTimeoutRef.current) {
@@ -687,7 +688,7 @@ const ToolExecutionBubble: React.FC<{
 }> = ({ execution, isExpanded, onToggleExpand }) => {
   const copy = async (text: string) => {
     try {
-      await navigator.clipboard?.writeText(text)
+      await copyTextToClipboard(text)
     } catch {}
   }
 
@@ -1385,7 +1386,7 @@ const SubAgentConversationMessage: React.FC<{
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(message.content)
+      await copyTextToClipboard(message.content)
       setIsCopied(true)
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
@@ -1525,7 +1526,7 @@ const SubAgentConversationPanel: React.FC<{
       return `[${role}]\n${msg.content}`
     }).join('\n\n---\n\n')
     try {
-      await navigator.clipboard.writeText(fullConversation)
+      await copyTextToClipboard(fullConversation)
     } catch (err) {
       console.error("Failed to copy conversation:", err)
     }

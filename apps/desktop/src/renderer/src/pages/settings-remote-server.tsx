@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -272,7 +273,12 @@ export function RemoteServerSettingsGroups({
                     size="sm"
                     disabled={streamerMode}
                     title={streamerMode ? "Disabled in Streamer Mode" : undefined}
-                    onClick={() => cfg.remoteServerApiKey && !streamerMode && navigator.clipboard.writeText(cfg.remoteServerApiKey)}
+                    onClick={() => {
+                      if (!cfg.remoteServerApiKey || streamerMode) return
+                      void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
+                        console.error("Failed to copy remote server API key", err)
+                      })
+                    }}
                   >
                     {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
                   </Button>
@@ -390,7 +396,9 @@ export function RemoteServerSettingsGroups({
                             onClick={() => {
                               if (streamerMode) return
                               const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
-                              navigator.clipboard.writeText(deepLink)
+                              void copyTextToClipboard(deepLink).catch((err) => {
+                                console.error("Failed to copy deep link", err)
+                              })
                             }}
                           >
                             {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Deep Link"}
@@ -653,7 +661,12 @@ export function RemoteServerSettingsGroups({
                           size="sm"
                           disabled={streamerMode}
                           title={streamerMode ? "Disabled in Streamer Mode" : undefined}
-                          onClick={() => !streamerMode && navigator.clipboard.writeText(`${tunnelStatus.url}/v1`)}
+                          onClick={() => {
+                            if (streamerMode) return
+                            void copyTextToClipboard(`${tunnelStatus.url}/v1`).catch((err) => {
+                              console.error("Failed to copy tunnel URL", err)
+                            })
+                          }}
                         >
                           {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
                         </Button>
@@ -693,7 +706,9 @@ export function RemoteServerSettingsGroups({
                               onClick={() => {
                                 if (streamerMode) return
                                 const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
-                                navigator.clipboard.writeText(deepLink)
+                                void copyTextToClipboard(deepLink).catch((err) => {
+                                  console.error("Failed to copy tunnel deep link", err)
+                                })
                               }}
                             >
                               {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Deep Link"}

@@ -1189,6 +1189,13 @@ export const router = {
       return { success: true }
     }),
 
+  writeClipboard: t.procedure
+    .input<{ text: string }>()
+    .action(async ({ input }) => {
+      clipboard.writeText(input.text ?? "")
+      return { success: true }
+    }),
+
   showContextMenu: t.procedure
     .input<{
       x: number
