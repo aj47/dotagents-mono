@@ -31,4 +31,11 @@ describe("agent progress scroll behavior", () => {
     expect(agentProgressSource).toContain("const hadNewMessages = conversation.length > previousConversationLengthRef.current")
     expect(agentProgressSource).toContain("scrollToBottom(\"auto\")")
   })
+
+  it("snaps the ACP Latest button back to bottom immediately instead of animating recovery", () => {
+    expect(agentProgressSource).toContain("Recover to the latest delegated message immediately")
+    expect(agentProgressSource).toContain("setIsPinnedToBottom(true)")
+    expect(agentProgressSource).toContain("scrollToBottom(\"auto\")")
+    expect(agentProgressSource).not.toContain("setIsPinnedToBottom(true)\n                scrollToBottom(\"smooth\")")
+  })
 })

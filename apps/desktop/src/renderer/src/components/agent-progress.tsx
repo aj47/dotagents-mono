@@ -1648,7 +1648,12 @@ const SubAgentConversationPanel: React.FC<{
               onClick={(e) => {
                 e.stopPropagation()
                 setIsPinnedToBottom(true)
-                scrollToBottom("smooth")
+                // Recover to the latest delegated message immediately.
+                // A smooth animation here leaves the inner scroller hundreds of
+                // pixels behind while streaming continues, and the scroll events
+                // fired mid-animation can incorrectly flip us back out of the
+                // pinned state before the viewport ever reaches the bottom.
+                scrollToBottom("auto")
               }}
               className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2 py-0.5 text-[11px] font-medium text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
             >

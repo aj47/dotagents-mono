@@ -41,6 +41,7 @@
 - [x] Captured settled-grid main-window traces around the 12-tile streaming repro:
   - before: `apps/desktop/tmp/session-stream-many-tiles-before-fix.trace.json`
   - after: `apps/desktop/tmp/session-stream-many-tiles-after-fix.trace.json`
+- [x] Reproduced a fresh ACP delegated-conversation recovery bug in the visible main sessions window by scrolling the inner sub-agent panel upward, clicking `Latest`, and sampling exact bottom-gap / button visibility over subsequent animation frames while new delegated messages continued arriving.
 
 ## Not Yet Checked
 
@@ -48,8 +49,8 @@
 - [ ] Compare focused session overlay vs tile/session-grid behavior.
 - [ ] Capture a proper Chrome Performance/CPU trace on the visible panel target; CDP CPU-profiler attempts were too heavy/noisy in this loop.
 - [ ] Capture a proper Chrome Performance trace specifically for the ACP delegated sub-agent conversation panel while its inner scroller overflows; this loop used CDP frame/bottom-gap sampling instead.
-- [ ] Measure behavior after user scrolls upward mid-stream.
-- [ ] Measure sticky-at-bottom recovery when returning to bottom.
+- [ ] Measure shared/non-ACP behavior after user scrolls upward mid-stream.
+- [ ] Measure shared/non-ACP sticky-at-bottom recovery when returning to bottom.
 - [ ] Check for scroll jumps when switching sessions / panes / routes.
 - [ ] Check whether DOM growth or layout thrash worsens with long histories.
 - [ ] Capture a live ACP-agent scroll-interruption repro in an overflowing focused session detail, not just shared-renderer source evidence.
@@ -86,6 +87,14 @@
   - after three animation frames: `avgGap=90.6px`, `maxGap=184px`, `nonZeroSamples=12/12`
   - after `120ms`: `avgGap=61.8px`, `maxGap=166px`, `nonZeroSamples=11/12`
 - **Diagnosis:** `SubAgentConversationPanel` used `requestAnimationFrame(() => scrollToBottom("smooth"))` whenever new delegated messages arrived. Under rapid ACP updates, the inner scroller spent multiple frames animating toward the bottom and stayed visibly behind the newest content instead of landing on the latest delegated message in the same paint.
+- **Scenario:** visible main sessions window (`http://localhost:5174/`), focused ACP probe session, delegated sub-agent conversation panel overflowed with full history visible; after manually scrolling upward by `~900px`, click the `Latest` button while delegated messages continue arriving every `~180ms`.
+- **Evidence:** before the fix, the `Latest` recovery path did not actually snap back to bottom. Exact live CDP samples from the inner delegated scroller showed:
+  - gap immediately after manual upward scroll: `900px`
+  - gap immediately after clicking `Latest`: `900px`
+  - gap after `72ms` / 8 animation frames: still `888px`
+  - gap after `120ms`: `953px` (new delegated chunk arrived while the smooth animation was still far from bottom)
+  - the `Latest` button reappeared by frame 4 (`~39ms`) because the smooth-scroll animation kept firing scroll events while the viewport was still far from bottom
+- **Diagnosis:** the ACP `Latest` button still called `scrollToBottom("smooth")`. That animated recovery left the inner scroller visibly behind the newest delegated message after the user explicitly requested the latest view, and the mid-animation scroll events could flip `isPinnedToBottom` back to `false` before the animation ever reached the bottom.
 - **Scenario:** visible main sessions window (`http://localhost:5174/`), 12 mounted session tiles with long histories (24 user/assistant pairs per tile), grid fully settled for `2s`, then one active session receives 10 streamed chunk updates through the live renderer store.
 - **Evidence:** before the fix, the grid-level chunk→next-frame delay scaled catastrophically with mounted long-history tiles even after the layout was already settled:
   - 1 tile baseline: `avg=71.8ms`, `max=90.7ms`
@@ -102,6 +111,8 @@
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a focused assertion that the pinned streaming path stays on `useLayoutEffect` and performs the direct `scrollToBottom()` write.
 - **Renderer change:** updated the ACP-only `SubAgentConversationPanel` scroll path in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to perform same-paint bottom pinning with `useLayoutEffect` and direct `scrollTop = scrollHeight` writes for `"auto"` behavior, instead of scheduling animated smooth scrolling for each delegated message.
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with an ACP-specific regression assertion covering the delegated conversation panel’s same-paint pinning path.
+- **Renderer change:** updated the ACP delegated-conversation `Latest` recovery button in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to use the same immediate `scrollToBottom("auto")` path instead of an animated smooth scroll, so resuming auto-scroll after manual upward scrolling lands on the newest delegated message right away.
+- **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a regression assertion that the ACP `Latest` button no longer uses the smooth recovery path.
 - **Renderer change:** memoized regular sessions-page tiles in `apps/desktop/src/renderer/src/pages/sessions.tsx` via `SessionProgressTile` and stabilized the focus/dismiss handlers so unrelated streamed chunks do not need to re-execute every tile component.
 - **Renderer change:** limited non-focused, non-expanded tile transcripts in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to a recent preview (`6` display items) with an explicit "Showing latest … updates" indicator, keeping full transcripts for the focused/maximized tile while shrinking inactive tile DOM during long streams.
 - **Test coverage:** added/extended `apps/desktop/src/renderer/src/components/agent-progress.performance.test.ts` to lock in the sessions-grid memoization and transcript-preview guardrails.
@@ -139,6 +150,15 @@
   - 12 tiles after fix: `avg=162.8ms`, `max=178.4ms`
   - improvement vs prior 12-tile settled probe: `~78.5%` lower avg chunk→next-frame delay (`757.0ms` → `162.8ms`)
 - **Interpretation:** the sessions overview still has some remaining cost, but the long-history multi-tile streaming path no longer stalls for ~0.75s per chunk; inactive tile DOM size was the dominant grid-level jank source in this repro.
+- **Targeted test:** `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts` ✅
+- **Renderer typecheck:** `pnpm --filter @dotagents/desktop typecheck:web` ✅
+- **Same ACP delegated-conversation recovery probe after fix (same main-window target, same `~900px` manual upward scroll, same `~180ms` delegated chunk cadence):**
+  - gap immediately after clicking `Latest`: `~1px` rounding only
+  - gaps over the next 8 animation frames (`~69ms` total): stayed at `~1px` and never reopened a visible gap
+  - gap after `120ms`: `0px`
+  - gap after `240ms`: `0px`
+  - `Latest` stayed hidden after the first frame instead of reappearing mid-recovery
+- **Interpretation:** ACP delegated-session auto-scroll recovery is now immediate when the user clicks `Latest`; the panel no longer spends multiple frames visibly behind the newest delegated message after the explicit recovery action.
 
 ## Still Uncertain
 
@@ -146,7 +166,7 @@
 - Whether live end-to-end normal-agent and ACP-agent sessions in the floating panel show the same before/after behavior as the scripted main-window replay, since panel resizing can mask overflow.
 - Whether the shared fix fully resolves the same interruption pattern in a live ACP session with sustained streaming; this loop confirmed the renderer code path but did not capture a clean overflowing ACP live trace.
 - Whether panel auto-resizing is masking a second, separate overflow/anchoring bug in the floating panel itself.
-- Whether the ACP delegated-conversation panel still behaves correctly when the user scrolls upward manually mid-stream and then resumes auto-scroll; this loop only measured the pinned-at-bottom hot path.
+- Whether the shared/non-ACP session scroller has a separate recovery bug when the user scrolls upward mid-stream and then manually returns to bottom; this loop only fixed the ACP delegated-conversation `Latest` button path.
 - Whether the remaining `~72ms` single-tile chunk→frame cost is dominated by the focused tile’s own markdown/layout work, follow-up input layout, or another hot path independent of the sessions grid.
 
 ## Notes
