@@ -125,7 +125,7 @@ export function PastSessionsDialog({
 
         <div className="space-y-3 min-h-0">
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <div className="relative flex-1">
+            <div className="relative min-w-0 flex-1">
               <Search className="text-muted-foreground absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" />
               <Input
                 value={searchQuery}
@@ -156,7 +156,7 @@ export function PastSessionsDialog({
               <p className="text-xs text-muted-foreground">
                 This action cannot be undone.
               </p>
-              <div className="flex items-center gap-2 justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -236,7 +236,7 @@ export function PastSessionsDialog({
                         </div>
                       </div>
                       {session.preview && (
-                        <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]">
                           {session.preview}
                         </p>
                       )}

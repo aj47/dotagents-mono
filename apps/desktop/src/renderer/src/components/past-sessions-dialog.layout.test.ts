@@ -12,10 +12,22 @@ describe("past sessions dialog layout", () => {
       'className="flex shrink-0 flex-wrap items-center gap-2"',
     )
     expect(pastSessionsDialogSource).toContain(
+      'className="relative min-w-0 flex-1"',
+    )
+    expect(pastSessionsDialogSource).toContain(
       'className="flex flex-wrap items-start gap-2"',
     )
     expect(pastSessionsDialogSource).toContain(
       'className="min-w-0 flex-1 truncate font-medium"',
+    )
+    expect(pastSessionsDialogSource).toContain(
+      'className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"',
+    )
+  })
+
+  it("wraps delete-all confirmation actions instead of clipping them under zoom", () => {
+    expect(pastSessionsDialogSource).toContain(
+      'className="flex flex-wrap items-center justify-end gap-2"',
     )
   })
 
