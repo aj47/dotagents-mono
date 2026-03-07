@@ -25,6 +25,13 @@ describe("agent progress scroll behavior", () => {
     expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, displayItems.length > 0])")
   })
 
+  it("snaps shared session scrolling back to the live stream once the user returns near bottom", () => {
+    expect(agentProgressSource).toContain("const BOTTOM_PIN_TOLERANCE_PX = 24")
+    expect(agentProgressSource).toContain("const isAtBottom = distanceFromBottom <= BOTTOM_PIN_TOLERANCE_PX")
+    expect(agentProgressSource).toContain("scrollContainer.scrollTop = scrollContainer.scrollHeight")
+    expect(agentProgressSource).toContain("the very next chunk reopens a much")
+  })
+
   it("pins ACP sub-agent conversation updates without smooth-scroll lag while messages stream in", () => {
     expect(agentProgressSource).toContain("Keep ACP sub-agent conversation updates pinned in the same paint")
     expect(agentProgressSource).toContain("if (behavior === \"auto\") {\n      node.scrollTop = node.scrollHeight\n      return\n    }")

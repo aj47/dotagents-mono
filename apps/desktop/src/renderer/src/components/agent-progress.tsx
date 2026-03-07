@@ -165,6 +165,7 @@ function extractRespondToUserResponsesFromMessages(
 
 const COLLAPSED_USER_RESPONSE_SCAN_LIMIT = 2048
 const COLLAPSED_USER_RESPONSE_PREVIEW_LIMIT = 160
+const BOTTOM_PIN_TOLERANCE_PX = 24
 
 function buildCollapsedUserResponsePreview(userResponse: string): string {
   const boundedResponse = userResponse.slice(0, COLLAPSED_USER_RESPONSE_SCAN_LIMIT)
@@ -3031,16 +3032,28 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     if (!scrollContainer) return
 
     const { scrollTop, scrollHeight, clientHeight } = scrollContainer
-    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 5 // 5px tolerance
+    const distanceFromBottom = Math.abs(scrollHeight - clientHeight - scrollTop)
+    const isAtBottom = distanceFromBottom <= BOTTOM_PIN_TOLERANCE_PX
 
-    // If user scrolled to bottom, resume auto-scroll
+    // If the user returns close enough to the bottom, treat it as a recovery
+    // back to the live stream and snap fully to the latest content immediately.
+    // A tighter threshold here can leave the shared session scroller stuck a few
+    // pixels above bottom during streaming, so the very next chunk reopens a much
+    // larger visible gap instead of resuming sticky-at-bottom behavior.
     if (isAtBottom && !shouldAutoScroll) {
+      shouldAutoScrollRef.current = true
+      scrollContainer.scrollTop = scrollContainer.scrollHeight
+      requestAnimationFrame(() => {
+        if (!shouldAutoScrollRef.current) return
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      })
       setShouldAutoScroll(true)
       setIsUserScrolling(false)
     }
     // If user scrolled up from bottom, stop auto-scroll
     else if (!isAtBottom && shouldAutoScroll) {
       clearPendingInitialScrollAttempts()
+      shouldAutoScrollRef.current = false
       setShouldAutoScroll(false)
       setIsUserScrolling(true)
     }
