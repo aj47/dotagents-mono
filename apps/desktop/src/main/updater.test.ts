@@ -23,8 +23,14 @@ describe("disabled updater", () => {
 
     expect(MANUAL_RELEASES_URL).toBe("https://github.com/aj47/dotagents-mono/releases")
     expect(showMessageBox).toHaveBeenCalledWith({
+      type: "info",
       title: "Check for Updates",
-      message: `To check for updates, please visit:\n${MANUAL_RELEASES_URL}`,
+      message: "Updates are currently manual.",
+      detail: `To check for updates, please visit:\n${MANUAL_RELEASES_URL}`,
+      buttons: ["OK"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
     })
   })
 })
