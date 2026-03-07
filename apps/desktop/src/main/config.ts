@@ -13,6 +13,7 @@ import {
   writeAgentsLayerFromConfig,
 } from "./agents-files/modular-config"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
+import { getErrorMessage, normalizeError } from "./error-utils"
 
 export const dataFolder = path.join(app.getPath("appData"), process.env.APP_ID)
 
@@ -437,35 +438,71 @@ class ConfigStore {
   }
 
   save(config: Config) {
-    // Sync active preset credentials before saving
-    this.config = syncPresetToLegacyFields(config) as Config
-
-    // Canonical: write modular `.agents` config (global layer)
-    try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      writeAgentsLayerFromConfig(globalLayer, this.config, {
-        maxBackups: 10,
-      })
-    } catch {
-      // best-effort
-    }
-
-    // Shadow: keep legacy config.json updated for backward compatibility
-    try {
-      safeWriteJsonFileSync(configPath, this.config, {
-        backupDir: legacyBackupsFolder,
-        maxBackups: 10,
-        pretty: false,
-      })
-    } catch {
-      // best-effort
-    }
+    const nextConfig = syncPresetToLegacyFields(config) as Config
+    persistConfigToDisk(nextConfig)
+    this.config = nextConfig
   }
 
   reload(): Config {
     const loaded = getConfig()
     this.config = syncPresetToLegacyFields(loaded.config) as Config
     return this.get()
+  }
+}
+
+export function trySaveConfig(config: Config): Error | null {
+  try {
+    configStore.save(config)
+    return null
+  } catch (error) {
+    return normalizeError(error, "Failed to save settings to disk")
+  }
+}
+
+export function persistConfigToDisk(
+  config: Config,
+  options: {
+    agentsDir?: string
+    legacyConfigFilePath?: string
+    backupDir?: string
+    maxBackups?: number
+  } = {},
+): { savedToAgentsLayer: boolean; savedToLegacyConfig: boolean } {
+  const agentsDir = options.agentsDir ?? globalAgentsFolder
+  const legacyConfigFilePath = options.legacyConfigFilePath ?? configPath
+  const backupDir = options.backupDir ?? legacyBackupsFolder
+  const maxBackups = options.maxBackups ?? 10
+
+  let savedToAgentsLayer = false
+  let savedToLegacyConfig = false
+  const failures: string[] = []
+
+  try {
+    const globalLayer = getAgentsLayerPaths(agentsDir)
+    writeAgentsLayerFromConfig(globalLayer, config, { maxBackups })
+    savedToAgentsLayer = true
+  } catch (error) {
+    failures.push(`Could not write the .agents config files (${getErrorMessage(error)})`)
+  }
+
+  try {
+    safeWriteJsonFileSync(legacyConfigFilePath, config, {
+      backupDir,
+      maxBackups,
+      pretty: false,
+    })
+    savedToLegacyConfig = true
+  } catch (error) {
+    failures.push(`Could not write the legacy config file (${getErrorMessage(error)})`)
+  }
+
+  if (!savedToAgentsLayer && !savedToLegacyConfig) {
+    throw new Error(`Failed to save settings to disk. ${failures.join(" ")}`)
+  }
+
+  return {
+    savedToAgentsLayer,
+    savedToLegacyConfig,
   }
 }
 

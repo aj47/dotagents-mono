@@ -38,6 +38,7 @@ import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import { downloadHubBundleToTempFile, findHubBundleInstallBundleUrl } from "./hub-install"
+import { buildHubBundleInstallUrl, resolveStartupMainWindowDecision } from "./startup-routing"
 
 // Check for --qr flag (headless mode with QR code)
 const isQRMode = process.argv.includes("--qr")
@@ -69,10 +70,6 @@ let pendingHubBundleHandoffPath = findHubBundleHandoffFilePath(process.argv)
 const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
-
-function buildHubBundleInstallUrl(filePath: string): string {
-  return `/settings/agents?installBundle=${encodeURIComponent(filePath)}`
-}
 
 function openPendingHubBundleInstall(): boolean {
   if (!pendingHubBundleHandoffPath) return false
@@ -382,29 +379,23 @@ app.whenReady().then(async () => {
   logApp("Serve protocol registered")
 
   if (accessibilityGranted) {
-    // Check if onboarding has been completed
-    // Skip for existing users who have already configured models (pre-onboarding installs)
     const cfg = configStore.get()
-    const hasCustomPresets = cfg.modelPresets && cfg.modelPresets.length > 0
-    const hasSelectedPreset = cfg.currentModelPresetId !== undefined
-    const needsOnboarding = !cfg.onboardingCompleted && !hasCustomPresets && !hasSelectedPreset
+    const launchDecision = resolveStartupMainWindowDecision(cfg, pendingHubBundleHandoffPath)
 
-    if (needsOnboarding) {
-      createMainWindow({ url: "/onboarding" })
+    createMainWindow(launchDecision.url ? { url: launchDecision.url } : undefined)
+
+    if (launchDecision.reason === "onboarding") {
       logApp("Main window created (showing onboarding)")
+    } else if (launchDecision.reason === "hub-install") {
+      logApp("Main window created (opening Hub bundle install)", {
+        filePath: pendingHubBundleHandoffPath,
+      })
     } else {
-      const initialUrl = pendingHubBundleHandoffPath
-        ? buildHubBundleInstallUrl(pendingHubBundleHandoffPath)
-        : undefined
-      createMainWindow(initialUrl ? { url: initialUrl } : undefined)
-      if (initialUrl) {
-        logApp("Main window created (opening Hub bundle install)", {
-          filePath: pendingHubBundleHandoffPath,
-        })
-        pendingHubBundleHandoffPath = null
-      } else {
-        logApp("Main window created")
-      }
+      logApp("Main window created")
+    }
+
+    if (launchDecision.consumedPendingHubBundle) {
+      pendingHubBundleHandoffPath = null
     }
   } else {
     createSetupWindow()
@@ -573,22 +564,11 @@ app.whenReady().then(async () => {
           showMainWindow()
         }
       } else {
-        // Check if onboarding has been completed
-        // Skip for existing users who have already configured models (pre-onboarding installs)
-        const hasCustomPresets = cfg.modelPresets && cfg.modelPresets.length > 0
-        const hasSelectedPreset = cfg.currentModelPresetId !== undefined
-        const needsOnboarding = !cfg.onboardingCompleted && !hasCustomPresets && !hasSelectedPreset
+        const launchDecision = resolveStartupMainWindowDecision(cfg, pendingHubBundleHandoffPath)
 
-        if (needsOnboarding) {
-          createMainWindow({ url: "/onboarding" })
-        } else {
-          const initialUrl = pendingHubBundleHandoffPath
-            ? buildHubBundleInstallUrl(pendingHubBundleHandoffPath)
-            : undefined
-          createMainWindow(initialUrl ? { url: initialUrl } : undefined)
-          if (initialUrl) {
-            pendingHubBundleHandoffPath = null
-          }
+        createMainWindow(launchDecision.url ? { url: launchDecision.url } : undefined)
+        if (launchDecision.consumedPendingHubBundle) {
+          pendingHubBundleHandoffPath = null
         }
       }
     } else {

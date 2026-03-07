@@ -23,7 +23,10 @@ interface ThinkSectionProps {
   onToggle?: () => void
 }
 
-const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
+const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
+  /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
+
+export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
 
   const url = rawUrl.trim().toLowerCase()
@@ -41,18 +44,18 @@ const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   return false
 }
 
-const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
+export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
 
   const url = rawUrl.trim().toLowerCase()
   return (
     url.startsWith("http://") ||
     url.startsWith("https://") ||
-    url.startsWith("data:image/")
+    ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX.test(url)
   )
 }
 
-const markdownUrlTransform = (url: string, key?: string) => {
+export const markdownUrlTransform = (url: string, key?: string) => {
   const isImageSrc = key === "src"
   const isAllowed = isImageSrc
     ? isAllowedMarkdownImageUrl(url)

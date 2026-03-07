@@ -30,6 +30,7 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
+import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ExternalLink, AlertCircle, FolderOpen, FolderUp, FileText } from "lucide-react"
@@ -44,7 +45,6 @@ import {
   formatKeyComboForDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
-import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
 export function Component() {
   const configQuery = useConfigQuery()
@@ -158,20 +158,12 @@ export function Component() {
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
-      saveConfigMutation.mutate(
-        {
-          config: {
-            ...(configQuery.data as any),
-            ...config,
-          },
+      saveConfigMutation.mutate({
+        config: {
+          ...(configQuery.data as any),
+          ...config,
         },
-        {
-          onError: (error) => {
-            console.error("Failed to save config:", error)
-            // TODO: Show user-friendly error notification
-          },
-        },
-      )
+      })
     },
     [saveConfigMutation, configQuery.data],
   )

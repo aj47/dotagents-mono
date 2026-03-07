@@ -37,7 +37,7 @@ import {
   BrowserWindow,
 } from "electron"
 import path from "path"
-import { configStore, recordingsFolder, conversationsFolder } from "./config"
+import { configStore, recordingsFolder, conversationsFolder, trySaveConfig } from "./config"
 import {
   Config,
   RecordingHistoryItem,
@@ -246,7 +246,12 @@ async function processWithAgentMode(
     const resolvedMainAgentName = mainAgentSelection.resolvedName
     if (mainAgentSelection.repairedName && mainAgentSelection.repairedName !== config.mainAgentName) {
       // Persist the repaired selection so future runs don't fail on stale names.
-      configStore.save({ ...config, mainAgentName: resolvedMainAgentName })
+      const saveError = trySaveConfig({ ...config, mainAgentName: resolvedMainAgentName })
+      if (saveError) {
+        logLLM(
+          `[processWithAgentMode] Failed to persist repaired ACP main agent name "${resolvedMainAgentName}": ${saveError.message}`
+        )
+      }
       logLLM(
         `[processWithAgentMode] ACP main agent \"${config.mainAgentName}\" not found. ` +
         `Auto-switched to \"${resolvedMainAgentName}\".`

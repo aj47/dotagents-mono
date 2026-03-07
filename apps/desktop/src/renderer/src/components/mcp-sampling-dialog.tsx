@@ -47,35 +47,43 @@ export default function McpSamplingDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleResponse(false)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[min(32rem,calc(100vw-2rem))]">
         <DialogHeader>
           <DialogTitle>Sampling Request</DialogTitle>
-          <DialogDescription>
-            <span className="font-medium text-foreground">{request.serverName}</span>{" "}
+          <DialogDescription className="break-words [overflow-wrap:anywhere]">
+            <span className="font-medium text-foreground [overflow-wrap:anywhere]">
+              {request.serverName}
+            </span>{" "}
             is requesting to use your AI model
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 text-sm">
           <div className="rounded-md border bg-muted/50 p-3 space-y-2">
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <span className="text-muted-foreground">Messages:</span>
-              <span className="font-medium">{messageCount}</span>
+              <span className="font-medium break-words [overflow-wrap:anywhere]">{messageCount}</span>
             </div>
             {hasSystemPrompt && (
-              <div className="flex justify-between">
+              <div className="flex flex-wrap items-start justify-between gap-2">
                 <span className="text-muted-foreground">System prompt:</span>
-                <span className="font-medium text-green-600">Present</span>
+                <span className="font-medium text-green-600 break-words [overflow-wrap:anywhere]">
+                  Present
+                </span>
               </div>
             )}
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <span className="text-muted-foreground">Max tokens:</span>
-              <span className="font-medium">{request.maxTokens}</span>
+              <span className="font-medium break-words [overflow-wrap:anywhere]">
+                {request.maxTokens}
+              </span>
             </div>
             {request.temperature !== undefined && (
-              <div className="flex justify-between">
+              <div className="flex flex-wrap items-start justify-between gap-2">
                 <span className="text-muted-foreground">Temperature:</span>
-                <span className="font-medium">{request.temperature}</span>
+                <span className="font-medium break-words [overflow-wrap:anywhere]">
+                  {request.temperature}
+                </span>
               </div>
             )}
           </div>
@@ -83,11 +91,11 @@ export default function McpSamplingDialog() {
           {modelHints && modelHints.length > 0 && (
             <div className="rounded-md border bg-muted/50 p-3">
               <div className="text-muted-foreground mb-1">Model preferences:</div>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {modelHints.map((hint, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                    className="inline-flex max-w-full items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary break-words [overflow-wrap:anywhere]"
                   >
                     {hint}
                   </span>
@@ -99,21 +107,27 @@ export default function McpSamplingDialog() {
           {request.modelPreferences && (
             <div className="rounded-md border bg-muted/50 p-3 space-y-1">
               {request.modelPreferences.costPriority !== undefined && (
-                <div className="flex justify-between text-xs">
+                <div className="flex flex-wrap items-start justify-between gap-2 text-xs">
                   <span className="text-muted-foreground">Cost priority:</span>
-                  <span>{request.modelPreferences.costPriority}</span>
+                  <span className="break-words [overflow-wrap:anywhere]">
+                    {request.modelPreferences.costPriority}
+                  </span>
                 </div>
               )}
               {request.modelPreferences.speedPriority !== undefined && (
-                <div className="flex justify-between text-xs">
+                <div className="flex flex-wrap items-start justify-between gap-2 text-xs">
                   <span className="text-muted-foreground">Speed priority:</span>
-                  <span>{request.modelPreferences.speedPriority}</span>
+                  <span className="break-words [overflow-wrap:anywhere]">
+                    {request.modelPreferences.speedPriority}
+                  </span>
                 </div>
               )}
               {request.modelPreferences.intelligencePriority !== undefined && (
-                <div className="flex justify-between text-xs">
+                <div className="flex flex-wrap items-start justify-between gap-2 text-xs">
                   <span className="text-muted-foreground">Intelligence priority:</span>
-                  <span>{request.modelPreferences.intelligencePriority}</span>
+                  <span className="break-words [overflow-wrap:anywhere]">
+                    {request.modelPreferences.intelligencePriority}
+                  </span>
                 </div>
               )}
             </div>

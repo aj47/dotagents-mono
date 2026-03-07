@@ -1,6 +1,4 @@
-import { useConfigQuery } from "@renderer/lib/query-client"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { Config, MCPConfig } from "@shared/types"
 import { MCPConfigManager } from "@renderer/components/mcp-config-manager"
 
@@ -22,22 +20,14 @@ function normalizeCollapsedServers(value: unknown): string[] | undefined {
 }
 
 export function Component() {
-  const queryClient = useQueryClient()
   const configQuery = useConfigQuery()
   const config = configQuery.data || {}
 
-  const saveConfigMutation = useMutation({
-    mutationFn: async (config: Config) => {
-      await tipcClient.saveConfig({ config })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["config"] })
-    },
-  })
+  const saveConfigMutation = useSaveConfigMutation()
 
   const updateConfig = (updates: Partial<Config>) => {
     const newConfig = { ...config, ...updates }
-    saveConfigMutation.mutate(newConfig)
+    saveConfigMutation.mutate({ config: newConfig })
   }
 
   const updateMcpConfig = (mcpConfig: MCPConfig) => {

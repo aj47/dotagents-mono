@@ -14,6 +14,8 @@ import {
   createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
 
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
 function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
   try {
     const parsed = Linking.parse(data);
@@ -72,11 +74,17 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
     // Default to OpenAI URL if baseUrl is empty
     if (!normalizedDraft.baseUrl) {
-      normalizedDraft.baseUrl = 'https://api.openai.com/v1';
+      normalizedDraft.baseUrl = DEFAULT_OPENAI_BASE_URL;
     }
 
-    const hasCustomUrl = normalizedDraft.baseUrl && normalizedDraft.baseUrl.replace(/\/+$/, '') !== 'https://api.openai.com/v1';
+    const hasCustomUrl = normalizedDraft.baseUrl && normalizedDraft.baseUrl.replace(/\/+$/, '') !== DEFAULT_OPENAI_BASE_URL;
     const hasApiKey = normalizedDraft.apiKey && normalizedDraft.apiKey.length > 0;
+
+    // On first-time setup, do not silently save a disconnected default config.
+    if (!isConnected && !hasApiKey) {
+      setConnectionError('Enter an API key or scan a DotAgents QR code before saving');
+      return;
+    }
 
     // Require API key when using a custom server URL
     if (hasCustomUrl && !hasApiKey) {
@@ -174,14 +182,11 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   };
 
   const resetBaseUrl = () => {
-    setDraft(prev => ({ ...prev, baseUrl: 'https://api.openai.com/v1' }));
+    setDraft(prev => ({ ...prev, baseUrl: DEFAULT_OPENAI_BASE_URL }));
   };
 
   // Connection status indicator
-  const isConnected = config.baseUrl && config.apiKey;
-  const connectionStatusText = isConnected
-    ? `Connected to ${config.baseUrl}`
-    : 'Not connected';
+  const isConnected = Boolean(config.baseUrl && config.apiKey);
 
   if (!ready) return null;
 
@@ -250,7 +255,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
             style={styles.inlineActionButton}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel('Reset base URL to default')}
-            accessibilityHint="Restores the default OpenAI-compatible API URL"
+            accessibilityHint="Restores the default OpenAI-compatible base URL"
           >
             <Text style={styles.resetText}>Reset to default</Text>
           </TouchableOpacity>
@@ -363,10 +368,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
         verticalPadding: spacing.xs,
         horizontalMargin: 0,
       }),
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     resetText: {
       fontSize: 12,
       color: theme.colors.primary,
+      fontWeight: '500',
     },
     helperText: {
       fontSize: 12,

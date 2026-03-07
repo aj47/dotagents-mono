@@ -124,8 +124,8 @@ export function PastSessionsDialog({
         </DialogHeader>
 
         <div className="space-y-3 min-h-0">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="relative flex-1">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1">
               <Search className="text-muted-foreground absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" />
               <Input
                 value={searchQuery}
@@ -139,7 +139,7 @@ export function PastSessionsDialog({
               size="sm"
               onClick={() => setShowDeleteAllConfirm(true)}
               disabled={!conversationHistoryQuery.data?.length}
-              className="shrink-0 text-xs h-8 text-muted-foreground hover:text-destructive hover:border-destructive/50"
+              className="h-8 shrink-0 text-xs text-muted-foreground hover:border-destructive/50 hover:text-destructive"
               title="Delete all history"
             >
               <Trash2 className="h-3 w-3 mr-1" />
@@ -156,7 +156,7 @@ export function PastSessionsDialog({
               <p className="text-xs text-muted-foreground">
                 This action cannot be undone.
               </p>
-              <div className="flex items-center gap-2 justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -207,33 +207,36 @@ export function PastSessionsDialog({
                       }
                     }}
                     className={cn(
-                      "group flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors cursor-pointer",
-                      "hover:bg-accent/50",
+                      "group flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                      "hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     )}
                     title={`${session.preview}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`}
                   >
                     <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                     <div className="min-w-0 flex-1 overflow-hidden">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium">
+                      <div className="flex flex-wrap items-start gap-2">
+                        <span className="min-w-0 flex-1 truncate font-medium">
                           {session.title}
                         </span>
-                        {/* Timestamp shown by default, replaced by delete button on hover */}
-                        <span className="text-muted-foreground ml-auto shrink-0 text-[10px] tabular-nums group-hover:hidden">
-                          {formatTimestamp(session.updatedAt)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteSession(session.id, e)}
-                          disabled={deleteConversationMutation.isPending}
-                          className="ml-auto shrink-0 hidden rounded p-0.5 transition-all hover:bg-destructive/20 hover:text-destructive group-hover:block"
-                          title="Delete session"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="ml-auto grid shrink-0 place-items-center self-start">
+                          {/* Timestamp shown by default, replaced by delete button on hover or keyboard focus */}
+                          <span className="text-muted-foreground col-start-1 row-start-1 text-[10px] tabular-nums transition-opacity group-hover:opacity-0 group-focus-within:opacity-0">
+                            {formatTimestamp(session.updatedAt)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteSession(session.id, e)}
+                            disabled={deleteConversationMutation.isPending}
+                            className="col-start-1 row-start-1 rounded p-0.5 opacity-0 pointer-events-none transition-all hover:bg-destructive/20 hover:text-destructive focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+                            title="Delete session"
+                            aria-label={`Delete ${session.title}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                       {session.preview && (
-                        <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]">
                           {session.preview}
                         </p>
                       )}

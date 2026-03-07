@@ -3342,6 +3342,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	                onPress={() => setWillCancelValue(!willCancel)}
 	                activeOpacity={0.7}
 	                accessibilityRole="switch"
+		                aria-checked={willCancel}
 	                accessibilityState={{ checked: willCancel }}
 	                accessibilityLabel="Edit before send"
 	                accessibilityHint="When enabled, releasing the mic inserts the transcript into the input so you can edit before sending."
@@ -3380,10 +3381,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	            <TouchableOpacity
 	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
+	              activeOpacity={0.7}
 	              disabled={!composerHasContent}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Send message')}
-              accessibilityHint="Sends your typed text and any attached images."
+	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
               accessibilityState={{ disabled: !composerHasContent }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
@@ -3665,9 +3667,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
     },
     ttsToggle: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+	      width: 44,
+	      height: 44,
+	      borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.muted,
@@ -3683,9 +3685,13 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     sendButton: {
       backgroundColor: theme.colors.primary,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+      minHeight: 44,
+      minWidth: 64,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
       borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     sendButtonDisabled: {
       opacity: 0.5,

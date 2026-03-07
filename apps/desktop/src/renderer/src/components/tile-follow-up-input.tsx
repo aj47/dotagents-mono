@@ -42,11 +42,13 @@ export function TileFollowUpInput({
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
@@ -93,7 +95,7 @@ export function TileFollowUpInput({
     },
   })
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
     const message = buildMessageWithImages(text, imageAttachments)
     logUI("[TileFollowUpInput] submit requested", {
@@ -103,14 +105,27 @@ export function TileFollowUpInput({
       isSessionActive,
       isInitializingSession,
       isQueueEnabled,
-      pending: sendMutation.isPending,
+      pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current,
     })
 
     // Allow submission if:
     // 1. Not already pending
     // 2. Either session is not active OR queue is enabled
-    if (message && !isInitializingSession && !sendMutation.isPending && (!isSessionActive || isQueueEnabled)) {
-      sendMutation.mutate(message)
+    if (!message || isInitializingSession || sendMutation.isPending || isSubmitting || submitInFlightRef.current) {
+      return
+    }
+    if (isSessionActive && !isQueueEnabled) return
+
+    submitInFlightRef.current = true
+    setIsSubmitting(true)
+
+    try {
+      await sendMutation.mutateAsync(message)
+    } catch (error) {
+      console.error("Failed to submit tile follow-up message:", error)
+    } finally {
+      submitInFlightRef.current = false
+      setIsSubmitting(false)
     }
   }
 
@@ -213,12 +228,20 @@ export function TileFollowUpInput({
 
   // When queue is enabled, allow TEXT input even when session is active
   // When queue is disabled, don't allow input while session is active
-  const isDisabled = isInitializingSession || sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const isDisabled =
+    isInitializingSession ||
+    isSubmitting ||
+    sendMutation.isPending ||
+    (isSessionActive && !isQueueEnabled)
 
   // When queue is enabled, allow voice recording even when session is active
   // The transcript will be queued after transcription completes
   // When queue is disabled, don't allow voice input while session is active
-  const isVoiceDisabled = isInitializingSession || sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const isVoiceDisabled =
+    isInitializingSession ||
+    isSubmitting ||
+    sendMutation.isPending ||
+    (isSessionActive && !isQueueEnabled)
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
 
   // Show appropriate placeholder based on state

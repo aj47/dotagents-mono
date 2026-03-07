@@ -1,11 +1,10 @@
 import React, { useState, useRef } from "react"
+import { applySelectedAgentToNextSession } from "@renderer/lib/apply-selected-agent"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Mic, Send, X, Plus } from "lucide-react"
 import { AgentSelector, useSelectedAgentId } from "./agent-selector"
-import { tipcClient } from "@renderer/lib/tipc-client"
-import type { AgentProfile } from "@shared/types"
 
 interface SessionInputProps {
   onTextSubmit: (text: string) => void
@@ -37,40 +36,12 @@ export function SessionInput({
   const [text, setText] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const applySelectedAgentToNextSession = async () => {
-    try {
-      const agents = await tipcClient.getAgentProfiles()
-      const enabledAgents = (agents as AgentProfile[]).filter((agent) => agent.enabled)
-
-      let agentIdToApply: string | null = selectedAgentId
-      if (agentIdToApply) {
-        const selectedAgent = enabledAgents.find((agent) => agent.id === agentIdToApply)
-        if (!selectedAgent) {
-          setSelectedAgentId(null)
-          agentIdToApply = null
-        }
-      }
-
-      if (!agentIdToApply) {
-        const defaultAgent =
-          enabledAgents.find((agent) => agent.isDefault)
-          ?? enabledAgents.find((agent) => agent.name === "main-agent")
-          ?? enabledAgents[0]
-        agentIdToApply = defaultAgent?.id ?? null
-      }
-
-      if (!agentIdToApply) return true
-
-      const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
-      return !!result?.success
-    } catch {
-      return false
-    }
-  }
-
   const handleSubmit = async () => {
     if (text.trim() && !isProcessing) {
-      const applied = await applySelectedAgentToNextSession()
+      const applied = await applySelectedAgentToNextSession({
+        selectedAgentId,
+        setSelectedAgentId,
+      })
       if (!applied) return
       onTextSubmit(text.trim())
       setText("")
@@ -95,7 +66,10 @@ export function SessionInput({
   }
 
   const handleVoiceClick = async () => {
-    const applied = await applySelectedAgentToNextSession()
+    const applied = await applySelectedAgentToNextSession({
+      selectedAgentId,
+      setSelectedAgentId,
+    })
     if (!applied) return
     onVoiceStart()
   }

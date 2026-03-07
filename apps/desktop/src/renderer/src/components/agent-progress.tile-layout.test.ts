@@ -175,7 +175,7 @@ describe("agent progress tile layout", () => {
   it("keeps shared audio player and compact TTS errors readable under width pressure", () => {
     expect(audioPlayerSource).toContain('const compactStatusText = hasAudio')
     expect(audioPlayerSource).toContain(
-      '"flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5"'
+      '"flex min-w-0 max-w-full flex-wrap items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5"'
     )
     expect(audioPlayerSource).toContain('className="h-8 w-8 shrink-0 p-0"')
     expect(audioPlayerSource).toContain(

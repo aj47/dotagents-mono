@@ -14,7 +14,7 @@ import type {
   ElicitResult,
   ClientCapabilities,
 } from "@modelcontextprotocol/sdk/types.js"
-import { configStore, dataFolder } from "./config"
+import { configStore, dataFolder, trySaveConfig } from "./config"
 import {
   MCPConfig,
   MCPServerConfig,
@@ -241,14 +241,16 @@ export class MCPService {
           // Persist the derived runtimeDisabledServers to configStore
           // This ensures status/reporting paths (e.g., list_mcp_servers, getDetailedToolList)
           // that read from configStore stay in sync with actual runtime state
-          try {
-            const updatedConfig: Config = {
-              ...config,
-              mcpRuntimeDisabledServers: Array.from(this.runtimeDisabledServers),
-            }
-            configStore.save(updatedConfig)
-          } catch (persistError) {
-            // Ignore persistence errors; runtime state will still be respected in-session
+          const updatedConfig: Config = {
+            ...config,
+            mcpRuntimeDisabledServers: Array.from(this.runtimeDisabledServers),
+          }
+          const persistError = trySaveConfig(updatedConfig)
+          if (persistError) {
+            logTools(
+              "Failed to persist derived MCP runtime-disabled servers during startup; continuing with in-memory state",
+              persistError,
+            )
           }
         }
       }
@@ -510,7 +512,13 @@ export class MCPService {
           : baseConfig
 
         if (mcpConfigChanged) {
-          configStore.save(config)
+          const persistError = trySaveConfig(config)
+          if (persistError) {
+            logTools(
+              "Failed to persist normalized MCP config during initialization; continuing with normalized config in memory",
+              persistError,
+            )
+          }
         }
 
         const mcpConfig = config.mcpConfig
@@ -2282,9 +2290,25 @@ export class MCPService {
       // Update the server configuration
       const config = configStore.get()
       if (config.mcpConfig?.mcpServers?.[serverName]) {
-        config.mcpConfig.mcpServers[serverName] = serverConfig
-        configStore.save(config)
-        logTools(`✅ OAuth configuration saved for ${serverName}`)
+        const updatedConfig: Config = {
+          ...config,
+          mcpConfig: {
+            ...config.mcpConfig,
+            mcpServers: {
+              ...config.mcpConfig.mcpServers,
+              [serverName]: serverConfig,
+            },
+          },
+        }
+        const persistError = trySaveConfig(updatedConfig)
+        if (persistError) {
+          logTools(
+            `⚠️ Failed to persist default OAuth configuration for ${serverName}; continuing with in-memory config`,
+            persistError,
+          )
+        } else {
+          logTools(`✅ OAuth configuration saved for ${serverName}`)
+        }
       }
     }
 

@@ -60,6 +60,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build shared package
+        run: pnpm --filter @dotagents/shared build
+
+      - name: Build Rust binary for Linux
+        working-directory: apps/desktop/speakmcp-rs
+        run: |
+          cargo build --release
+          mkdir -p ../resources/bin
+          cp target/release/speakmcp-rs ../resources/bin/
       - name: Build Linux packages
         working-directory: apps/desktop
         run: pnpm run build:linux:release:${{ matrix.arch }}
@@ -97,7 +106,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build shared package
-        run: pnpm --filter @speakmcp/shared build
+        run: pnpm --filter @dotagents/shared build
 
       - name: Build Rust binary for Windows
         working-directory: apps/desktop/speakmcp-rs

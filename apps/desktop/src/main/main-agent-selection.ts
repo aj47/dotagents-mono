@@ -10,6 +10,7 @@ export function resolveMainAcpAgentSelection(
   legacyAgents: ACPAgentConfig[] = []
 ): MainAcpAgentSelection {
   const normalizedMainAgentName = configuredName.trim().toLowerCase()
+  const hasConfiguredName = normalizedMainAgentName.length > 0
 
   const spawnableProfileCandidates = profileAgents.filter((profile) =>
     profile.enabled !== false
@@ -59,7 +60,11 @@ export function resolveMainAcpAgentSelection(
   const availableNames = fallbackExternalAgents.map((profile) => profile.name)
   return {
     error: availableNames.length > 0
-      ? `ACP main agent "${configuredName}" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
-      : `ACP main agent "${configuredName}" is not available and no enabled ACP/stdio agents were found.`,
+      ? hasConfiguredName
+        ? `ACP main agent "${configuredName}" is not available. Configure mainAgentName to one of: ${availableNames.join(", ")}`
+        : `ACP main agent is not configured. Configure mainAgentName to one of: ${availableNames.join(", ")}`
+      : hasConfiguredName
+        ? `ACP main agent "${configuredName}" is not available and no enabled ACP/stdio agents were found.`
+        : "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
   }
 }

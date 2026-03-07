@@ -1,4 +1,11 @@
+import type { LoaderFunctionArgs } from "react-router-dom"
 import { createBrowserRouter, redirect } from "react-router-dom"
+import { getLegacySettingsRedirectPath } from "./lib/legacy-settings-redirect"
+
+const legacySettingsRedirect =
+  (targetPath: string) =>
+  ({ request }: LoaderFunctionArgs) =>
+    redirect(getLegacySettingsRedirectPath(targetPath, request.url))
 
 export const router: ReturnType<typeof createBrowserRouter> =
   createBrowserRouter([
@@ -45,15 +52,15 @@ export const router: ReturnType<typeof createBrowserRouter> =
         },
         {
           path: "settings/mcp-tools",
-          loader: () => redirect("/settings/capabilities"),
+          loader: legacySettingsRedirect("/settings/capabilities"),
         },
         {
           path: "settings/skills",
-          loader: () => redirect("/settings/capabilities"),
+          loader: legacySettingsRedirect("/settings/capabilities"),
         },
         {
           path: "settings/remote-server",
-          loader: () => redirect("/settings"),
+          loader: legacySettingsRedirect("/settings"),
         },
         {
           path: "settings/whatsapp",
@@ -69,23 +76,23 @@ export const router: ReturnType<typeof createBrowserRouter> =
         },
         {
           path: "settings/loops",
-          loader: () => redirect("/settings/repeat-tasks"),
+          loader: legacySettingsRedirect("/settings/repeat-tasks"),
         },
         {
           path: "settings/agent-personas",
-          loader: () => redirect("/settings/agents"),
+          loader: legacySettingsRedirect("/settings/agents"),
         },
         {
           path: "settings/external-agents",
-          loader: () => redirect("/settings/agents"),
+          loader: legacySettingsRedirect("/settings/agents"),
         },
         {
           path: "settings/agent-profiles",
-          loader: () => redirect("/settings/agents"),
+          loader: legacySettingsRedirect("/settings/agents"),
         },
         {
           path: "settings/langfuse",
-          loader: () => redirect("/settings"),
+          loader: legacySettingsRedirect("/settings"),
         },
         {
           path: "memories",

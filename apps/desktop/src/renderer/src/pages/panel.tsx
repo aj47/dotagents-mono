@@ -15,6 +15,7 @@ import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { useTheme } from "@renderer/contexts/theme-context"
+import { applySelectedAgentToNextSession } from "@renderer/lib/apply-selected-agent"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { logUI } from "@renderer/lib/debug"
 import { formatKeyComboForDisplay } from "@shared/key-utils"
@@ -754,38 +755,16 @@ export function Component() {
   }, [])
 
   const handleTextSubmit = async (text: string) => {
-    try {
-      const agentProfiles = agents.length > 0
-        ? agents
-        : ((await tipcClient.getAgentProfiles()) as AgentProfile[])
-      const enabledAgents = agentProfiles.filter((agent) => agent.enabled)
-
-      let agentIdToApply: string | null = selectedAgentId
-      if (agentIdToApply) {
-        const selectedAgent = enabledAgents.find((agent) => agent.id === agentIdToApply)
-        if (!selectedAgent) {
-          setSelectedAgentId(null)
-          agentIdToApply = null
-        }
-      }
-
-      if (!agentIdToApply) {
-        const defaultAgent =
-          enabledAgents.find((agent) => agent.isDefault)
-          ?? enabledAgents.find((agent) => agent.name === "main-agent")
-          ?? enabledAgents[0]
-        agentIdToApply = defaultAgent?.id ?? null
-      }
-
-      if (agentIdToApply) {
-        const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
-        if (!result?.success) {
-          throw new Error("setCurrentAgentProfile returned success=false")
-        }
-      }
-    } catch (error) {
-      logUI("[Panel] Failed to apply selected agent before text submit", { selectedAgentId, error })
-      return
+    const applied = await applySelectedAgentToNextSession({
+      selectedAgentId,
+      setSelectedAgentId,
+      agentProfiles: agents,
+      onError: (error) => {
+        logUI("[Panel] Failed to apply selected agent before text submit", { selectedAgentId, error })
+      },
+    })
+    if (!applied) {
+      return false
     }
 
     // Capture the conversation ID at submit time - if user explicitly continued a conversation
@@ -812,6 +791,8 @@ export function Component() {
       // This prevents message leaking while still supporting explicit continuation.
       conversationId: conversationIdForMcp ?? undefined,
     })
+
+    return true
   }
 
 

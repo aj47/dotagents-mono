@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
@@ -20,6 +20,19 @@ function maskPhoneNumber(phone: string | undefined): string {
   return phone.slice(0, 2) + "*".repeat(phone.length - 4) + phone.slice(-2)
 }
 
+const WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS = 400
+
+function formatWhatsappAllowFrom(values: string[] | undefined): string {
+  return (values || []).join(", ")
+}
+
+function parseWhatsappAllowFromDraft(value: string): string[] {
+  return value
+    .split(",")
+    .map(entry => entry.trim())
+    .filter(Boolean)
+}
+
 interface WhatsAppStatus {
   available: boolean
   connected: boolean
@@ -37,20 +50,60 @@ export function Component() {
   const saveConfigMutation = useSaveConfigMutation()
 
   const cfg = configQuery.data as Config | undefined
+  const cfgRef = useRef<Config | undefined>(cfg)
 
   // WhatsApp connection state
   const [status, setStatus] = useState<WhatsAppStatus | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [qrCodeData, setQrCodeData] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
+  const [allowFromDraft, setAllowFromDraft] = useState(() => formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
+  const allowFromSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    cfgRef.current = cfg
+  }, [cfg])
 
   const saveConfig = useCallback(
     (partial: Partial<Config>) => {
-      if (!cfg) return
-      saveConfigMutation.mutate({ config: { ...cfg, ...partial } })
+      const currentConfig = cfgRef.current
+      if (!currentConfig) return
+      saveConfigMutation.mutate({ config: { ...currentConfig, ...partial } })
     },
-    [cfg, saveConfigMutation],
+    [saveConfigMutation],
   )
+
+  const flushAllowFromSave = useCallback((draft: string) => {
+    if (allowFromSaveTimeoutRef.current) {
+      clearTimeout(allowFromSaveTimeoutRef.current)
+      allowFromSaveTimeoutRef.current = null
+    }
+
+    saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
+  }, [saveConfig])
+
+  const scheduleAllowFromSave = useCallback((draft: string) => {
+    if (allowFromSaveTimeoutRef.current) {
+      clearTimeout(allowFromSaveTimeoutRef.current)
+    }
+
+    allowFromSaveTimeoutRef.current = setTimeout(() => {
+      allowFromSaveTimeoutRef.current = null
+      saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
+    }, WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  useEffect(() => {
+    setAllowFromDraft(formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
+  }, [cfg?.whatsappAllowFrom])
+
+  useEffect(() => {
+    return () => {
+      if (allowFromSaveTimeoutRef.current) {
+        clearTimeout(allowFromSaveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Fetch WhatsApp status periodically
   const fetchStatus = useCallback(async (): Promise<void> => {
@@ -294,19 +347,18 @@ export function Component() {
             >
               <Input
                 type={streamerMode ? "password" : "text"}
-                value={(cfg.whatsappAllowFrom || []).join(", ")}
+                value={allowFromDraft}
                 onChange={(e) => {
-                  const numbers = e.currentTarget.value
-                    .split(",")
-                    .map(s => s.trim().replace(/[^0-9]/g, ""))
-                    .filter(Boolean)
-                  saveConfig({ whatsappAllowFrom: numbers })
+                  const nextDraft = e.currentTarget.value
+                  setAllowFromDraft(nextDraft)
+                  scheduleAllowFromSave(nextDraft)
                 }}
-                placeholder={streamerMode ? "••••••••••" : "14155551234, 98389177934034"}
+                onBlur={(e) => flushAllowFromSave(e.currentTarget.value)}
+                placeholder={streamerMode ? "••••••••••" : "+14155551234, 98389177934034"}
                 className="w-full"
               />
               <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                <p>Enter phone numbers or LIDs separated by commas (numbers only, no + sign)</p>
+                <p>Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.</p>
                 <details className="cursor-pointer">
                   <summary className="text-blue-600 dark:text-blue-400 hover:underline">
                     ℹ️ What are LIDs? How do I find them?

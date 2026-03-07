@@ -11,6 +11,7 @@ import { Button } from "@renderer/components/ui/button"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
 
+import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector, useSelectedAgentId } from "@renderer/components/agent-selector"
@@ -443,43 +444,14 @@ export function Component() {
   }
 
   const applySelectedAgentToNextSession = useCallback(async (options?: { silent?: boolean }) => {
-    try {
-      const agents = await tipcClient.getAgentProfiles()
-      const enabledAgents = (agents as AgentProfile[]).filter((agent) => agent.enabled)
-
-      let agentIdToApply: string | null
-      if (selectedAgentId) {
-        const selectedAgent = enabledAgents.find((agent) => agent.id === selectedAgentId)
-        if (!selectedAgent) {
-          setSelectedAgentId(null)
-          if (!options?.silent) {
-            toast.error("Selected agent is no longer available")
-          }
-          return false
-        }
-        agentIdToApply = selectedAgent.id
-      } else {
-        const defaultAgent =
-          enabledAgents.find((agent) => agent.isDefault)
-          ?? enabledAgents.find((agent) => agent.name === "main-agent")
-          ?? enabledAgents[0]
-        agentIdToApply = defaultAgent?.id ?? null
-      }
-
-      if (!agentIdToApply) return true
-
-      const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
-      if (!result?.success) {
-        throw new Error("setCurrentAgentProfile returned success=false")
-      }
-      return true
-    } catch (error) {
-      logUI("[Sessions] Failed to apply selected agent", { selectedAgentId, error })
-      if (!options?.silent) {
-        toast.error("Failed to apply selected agent")
-      }
-      return false
-    }
+    return applySelectedAgentForNextSession({
+      selectedAgentId,
+      setSelectedAgentId,
+      silent: options?.silent,
+      onError: (error) => {
+        logUI("[Sessions] Failed to apply selected agent", { selectedAgentId, error })
+      },
+    })
   }, [selectedAgentId, setSelectedAgentId])
 
   // Keep the main-process current profile aligned with the selected agent so all

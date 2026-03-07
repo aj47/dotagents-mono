@@ -302,7 +302,7 @@ function main() {
   console.log(`\n[linux-build] Building DotAgents Linux artifacts for ${targetArch}`)
   console.log(`[linux-build] Formats: ${Array.from(formats).join(", ")}`)
 
-  run("npm run prebuild:linux")
+  run("pnpm run prebuild:linux")
   run("npx electron-vite build")
 
   if (formats.has("AppImage")) {

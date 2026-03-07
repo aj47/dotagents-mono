@@ -5,7 +5,6 @@ import { Toaster } from "sonner"
 import { ThemeProvider } from "./contexts/theme-context"
 import { useStoreSync } from "./hooks/use-store-sync"
 
-const Updater = lazy(() => import("./components/updater"))
 const McpElicitationDialog = lazy(() => import("./components/mcp-elicitation-dialog"))
 const McpSamplingDialog = lazy(() => import("./components/mcp-sampling-dialog"))
 
@@ -19,10 +18,6 @@ function App(): JSX.Element {
     <ThemeProvider>
       <StoreInitializer>
         <RouterProvider router={router}></RouterProvider>
-
-        <Suspense>
-          <Updater />
-        </Suspense>
 
         {/* MCP Protocol 2025-11-25 dialogs for elicitation and sampling */}
         <Suspense>

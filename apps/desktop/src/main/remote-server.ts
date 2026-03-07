@@ -9,6 +9,7 @@ import os from "os"
 import path from "path"
 import QRCode from "qrcode"
 import { configStore, recordingsFolder } from "./config"
+import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"
 import { mcpService, MCPToolResult, handleWhatsAppToggle } from "./mcp-service"
@@ -215,73 +216,6 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
   })
 
   return server
-}
-
-// Exact reserved names that collide with internal storage files.
-// Checked against the exact (lowercased) ID — no extension stripping applied,
-// so IDs like "index.v2" or "metadata.backup" are NOT rejected by this set.
-const FILE_RESERVED_IDS = new Set(["index", "metadata"])
-
-// Windows reserved device names (CON, NUL, COM1–COM9, LPT1–LPT9, etc.).
-// Checked against both the exact lowercased ID and the stem before the first dot,
-// because Windows treats "con.txt" and "nul." as reserved filenames too.
-const WINDOWS_DEVICE_NAMES = new Set([
-  "con",
-  "prn",
-  "aux",
-  "nul",
-  "com0",
-  "com1",
-  "com2",
-  "com3",
-  "com4",
-  "com5",
-  "com6",
-  "com7",
-  "com8",
-  "com9",
-  "lpt0",
-  "lpt1",
-  "lpt2",
-  "lpt3",
-  "lpt4",
-  "lpt5",
-  "lpt6",
-  "lpt7",
-  "lpt8",
-  "lpt9",
-])
-
-/**
- * Validate conversation IDs sent over remote HTTP endpoints.
- * Performs null-byte, path-traversal, character-allowlist, and reserved-name checks.
- * This is NOT equivalent to ConversationService.validateConversationId(), which also
- * sanitizes disallowed characters and performs a path.resolve containment check.
- */
-function getConversationIdValidationError(conversationId: string): string | null {
-  if (conversationId.includes("\0")) {
-    return "Invalid conversation ID: null bytes not allowed"
-  }
-  if (conversationId.includes("..") || conversationId.includes("/") || conversationId.includes("\\")) {
-    return "Invalid conversation ID: path traversal characters not allowed"
-  }
-  if (!/^[a-zA-Z0-9_\-@.]+$/.test(conversationId)) {
-    return "Invalid conversation ID format"
-  }
-  // Normalize to lowercase for case-insensitive filesystem compatibility (Windows/macOS).
-  const normalized = conversationId.toLowerCase()
-  // Exact-match check for internal storage file collisions (e.g. index.json, metadata.json).
-  // Extension stripping is NOT applied here so IDs like "index.v2" pass through.
-  if (FILE_RESERVED_IDS.has(normalized)) {
-    return "Invalid conversation ID: reserved name"
-  }
-  // For Windows device names, also strip the first extension (e.g. "con.txt" → "con")
-  // because Windows treats device names with any extension as still reserved.
-  const stem = normalized.includes(".") ? normalized.slice(0, normalized.indexOf(".")) : normalized
-  if (WINDOWS_DEVICE_NAMES.has(normalized) || WINDOWS_DEVICE_NAMES.has(stem)) {
-    return "Invalid conversation ID: reserved name"
-  }
-  return null
 }
 
 /**

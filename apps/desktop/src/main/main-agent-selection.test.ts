@@ -48,4 +48,33 @@ describe("resolveMainAcpAgentSelection", () => {
       error: 'ACP main agent "missing-agent" is not available. Configure mainAgentName to one of: agent-one, agent-two',
     })
   })
+
+  it("returns a clearer configuration error when no ACP main agent has been selected", () => {
+    const result = resolveMainAcpAgentSelection("   ", [
+      {
+        name: "agent-one",
+        displayName: "Agent One",
+        enabled: true,
+        connection: { type: "acp", command: "agent-one" },
+      } as any,
+      {
+        name: "agent-two",
+        displayName: "Agent Two",
+        enabled: true,
+        connection: { type: "stdio", command: "agent-two" },
+      } as any,
+    ])
+
+    expect(result).toEqual({
+      error: "ACP main agent is not configured. Configure mainAgentName to one of: agent-one, agent-two",
+    })
+  })
+
+  it("returns a clearer configuration error when no ACP-capable agents are available", () => {
+    const result = resolveMainAcpAgentSelection("   ", [])
+
+    expect(result).toEqual({
+      error: "ACP main agent is not configured and no enabled ACP/stdio agents were found.",
+    })
+  })
 })

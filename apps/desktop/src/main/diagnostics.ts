@@ -16,6 +16,7 @@ export interface DiagnosticInfo {
   }
   mcp: {
     availableTools: number
+    toolDiscoveryError?: string
     serverStatus: Record<string, { connected: boolean; toolCount: number }>
   }
   errors: Array<{
@@ -116,8 +117,25 @@ class DiagnosticsService {
     // Console logging removed to keep console clean
   }
 
+  private getAvailableToolsSummary(): {
+    availableTools: number
+    toolDiscoveryError?: string
+  } {
+    try {
+      return {
+        availableTools: mcpService.getAvailableTools().length,
+      }
+    } catch (error) {
+      return {
+        availableTools: 0,
+        toolDiscoveryError: error instanceof Error ? error.message : String(error),
+      }
+    }
+  }
+
   async generateDiagnosticReport(): Promise<DiagnosticInfo> {
     const config = configStore.get()
+    const toolSummary = this.getAvailableToolsSummary()
 
     return {
       timestamp: Date.now(),
@@ -130,7 +148,10 @@ class DiagnosticsService {
         mcpServersCount: Object.keys(config.mcpConfig?.mcpServers || {}).length,
       },
       mcp: {
-        availableTools: mcpService.getAvailableTools().length,
+        availableTools: toolSummary.availableTools,
+        ...(toolSummary.toolDiscoveryError
+          ? { toolDiscoveryError: toolSummary.toolDiscoveryError }
+          : {}),
         serverStatus: await this.getServerStatus(),
       },
       errors: [...this.errorLog],

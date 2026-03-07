@@ -16,7 +16,7 @@ import {
 } from "@renderer/lib/message-image-utils"
 
 interface TextInputPanelProps {
-  onSubmit: (text: string) => void
+  onSubmit: (text: string) => void | Promise<boolean | void>
   selectedAgentId: string | null
   onSelectAgent: (agentId: string | null) => void
   onCancel: () => void
@@ -43,9 +43,12 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
 }, ref) => {
   const [text, setText] = useState(initialText || "")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const submitInFlightRef = useRef(false)
   const { isDark } = useTheme()
+  const isBusy = isProcessing || isSubmitting
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -57,7 +60,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }))
 
   useEffect(() => {
-    if (textareaRef.current && !isProcessing) {
+    if (textareaRef.current && !isBusy) {
       textareaRef.current.focus()
 
       const timer1 = setTimeout(() => {
@@ -74,14 +77,26 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       }
     }
     return undefined
-  }, [isProcessing])
+  }, [isBusy])
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const message = buildMessageWithImages(text, imageAttachments)
-    if (message && !isProcessing) {
-      onSubmit(message)
-      setText("")
-      setImageAttachments([])
+    if (!message || isBusy || submitInFlightRef.current) return
+
+    submitInFlightRef.current = true
+    setIsSubmitting(true)
+
+    try {
+      const didSubmit = await onSubmit(message)
+      if (didSubmit !== false) {
+        setText("")
+        setImageAttachments([])
+      }
+    } catch (error) {
+      console.error("Failed to submit text input panel message:", error)
+    } finally {
+      submitInFlightRef.current = false
+      setIsSubmitting(false)
     }
   }
 
@@ -131,7 +146,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      void handleSubmit()
     } else if (e.key === "Escape") {
       e.preventDefault()
       onCancel()
@@ -197,7 +212,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
             <div className="flex items-center gap-1">
               <PredefinedPromptsMenu
                 onSelectPrompt={(content) => setText(content)}
-                disabled={isProcessing}
+                disabled={isBusy}
                 className="h-6 w-6"
               />
               <Button
@@ -205,7 +220,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6"
-                disabled={isProcessing || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+                disabled={isBusy || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
                 onClick={handleImageButtonClick}
                 title="Attach image"
               >
@@ -244,7 +259,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               "bg-transparent focus:border-ring focus:ring-1 focus:ring-ring",
               "placeholder:modern-text-muted",
             )}
-            disabled={isProcessing}
+            disabled={isBusy}
             aria-label="Message input"
           />
           <input
@@ -270,17 +285,19 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            disabled={isProcessing}
+            disabled={isBusy}
             className="rounded px-2 py-1 transition-colors hover:bg-white/10"
           >
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={!hasMessageContent || isProcessing}
+            onClick={() => {
+              void handleSubmit()
+            }}
+            disabled={!hasMessageContent || isBusy}
             className={cn(
               "rounded px-2 py-1 transition-colors",
-              hasMessageContent && !isProcessing
+              hasMessageContent && !isBusy
                 ? "bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
                 : "cursor-not-allowed opacity-50",
             )}

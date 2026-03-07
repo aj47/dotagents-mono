@@ -161,6 +161,31 @@ export const llmRequestAbortManager = {
   },
 }
 
+function abortAndUnregisterSessionControllers(controllers: Set<AbortController>): void {
+  for (const controller of controllers) {
+    llmRequestAbortManager.unregister(controller)
+    try {
+      controller.abort()
+    } catch (_e) {
+      // ignore
+    }
+  }
+  controllers.clear()
+}
+
+function killSessionProcesses(processes: Set<ChildProcess>): void {
+  for (const process of processes) {
+    try {
+      if (!process.killed && process.exitCode === null) {
+        process.kill("SIGKILL")
+      }
+    } catch (_e) {
+      // ignore
+    }
+  }
+  processes.clear()
+}
+
 export const agentSessionStateManager = {
   /**
    * Create a new agent session state
@@ -238,28 +263,11 @@ export const agentSessionStateManager = {
     if (session) {
       session.shouldStop = true
 
-      // Abort all controllers for this session
-      for (const controller of session.abortControllers) {
-        try {
-          controller.abort()
-        } catch (_e) {
-          // ignore
-        }
-      }
-      session.abortControllers.clear()
-
-      // Kill all processes for this session
-      for (const process of session.processes) {
-        try {
-          if (!process.killed && process.exitCode === null) {
-            process.kill("SIGKILL")
-          }
-        } catch (_e) {
-          // ignore
-        }
-      }
-      session.processes.clear()
+      abortAndUnregisterSessionControllers(session.abortControllers)
+      killSessionProcesses(session.processes)
     }
+
+    toolApprovalManager.cancelSessionApprovals(sessionId)
   },
 
   // Stop all sessions
@@ -325,27 +333,9 @@ export const agentSessionStateManager = {
     if (session) {
       rememberSessionRunId(sessionId, session.runId)
 
-      // Abort any remaining controllers
-      for (const controller of session.abortControllers) {
-        try {
-          controller.abort()
-        } catch (_e) {
-          // ignore
-        }
-      }
-      session.abortControllers.clear()
-
-      // Kill any remaining processes
-      for (const process of session.processes) {
-        try {
-          if (!process.killed && process.exitCode === null) {
-            process.kill("SIGKILL")
-          }
-        } catch (_e) {
-          // ignore
-        }
-      }
-      session.processes.clear()
+      abortAndUnregisterSessionControllers(session.abortControllers)
+      killSessionProcesses(session.processes)
+      toolApprovalManager.cancelSessionApprovals(sessionId)
 
       // Remove session
       state.agentSessions.delete(sessionId)
@@ -358,7 +348,10 @@ export const agentSessionStateManager = {
         state.isAgentModeActive = false
         state.agentIterationCount = 0
       }
+      return
     }
+
+    toolApprovalManager.cancelSessionApprovals(sessionId)
   },
 
   // Get count of active sessions

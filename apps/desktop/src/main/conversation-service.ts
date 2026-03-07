@@ -9,6 +9,7 @@ import {
   ConversationHistoryItem,
 } from "../shared/types"
 import { summarizeContent } from "./context-budget"
+import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 
 // Threshold for compacting conversations on load
@@ -510,30 +511,17 @@ export class ConversationService {
    * Used as a guard in write paths where the ID is already established.
    */
   private assertSafeConversationId(conversationId: string): void {
-    if (conversationId.includes("/") || conversationId.includes("\\") || conversationId.includes("..")) {
-      throw new Error(`Invalid conversation ID: contains path separators or traversal sequences`)
-    }
-    if (conversationId.includes("\0")) {
-      throw new Error(`Invalid conversation ID: contains null bytes`)
-    }
+    assertSafeConversationId(conversationId)
   }
 
   /**
    * Validate and sanitize a conversation ID to prevent path traversal attacks.
-   * Rejects IDs containing path separators or other dangerous characters.
+   * Rejects dangerous values and normalizes unsupported characters for storage.
    */
   private validateConversationId(conversationId: string): string {
-    // Reject path separators and parent directory references
-    if (conversationId.includes("/") || conversationId.includes("\\") || conversationId.includes("..")) {
-      throw new Error(`Invalid conversation ID: contains path separators or traversal sequences`)
-    }
-    // Reject null bytes which could truncate paths
-    if (conversationId.includes("\0")) {
-      throw new Error(`Invalid conversation ID: contains null bytes`)
-    }
-    // Sanitize: only allow alphanumeric, underscore, hyphen, at sign, and dot
-    // This covers formats like: conv_123_abc, whatsapp_61406142826@s.whatsapp.net
-    const sanitized = conversationId.replace(/[^a-zA-Z0-9_\-@.]/g, "_")
+    // Sanitize: only allow alphanumeric, underscore, hyphen, at sign, and dot.
+    // This covers formats like: conv_123_abc, whatsapp_61406142826@s.whatsapp.net.
+    const sanitized = validateAndSanitizeConversationId(conversationId)
     // Ensure the sanitized ID doesn't resolve outside conversations folder
     const resolvedPath = path.resolve(conversationsFolder, `${sanitized}.json`)
     if (!resolvedPath.startsWith(path.resolve(conversationsFolder))) {

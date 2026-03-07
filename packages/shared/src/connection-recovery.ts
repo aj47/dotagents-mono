@@ -107,14 +107,14 @@ export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const LOCAL_API_ADDRESS_PATTERN = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|\[(::1|f[cd][0-9a-f]{1,4}:|fe[89ab][0-9a-f]:)[^\]]*\])/i;
+
 export function normalizeApiBaseUrl(baseUrl: string): string {
   let normalizedUrl = baseUrl.trim();
   if (!normalizedUrl) return '';
 
-  const hasScheme = normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://');
-  const isLocalAddress = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i.test(
-    normalizedUrl.replace(/^https?:\/\//, '')
-  );
+  const hasScheme = /^https?:\/\//i.test(normalizedUrl);
+  const isLocalAddress = LOCAL_API_ADDRESS_PATTERN.test(normalizedUrl.replace(/^https?:\/\//i, ''));
 
   if (!hasScheme) {
     normalizedUrl = isLocalAddress ? `http://${normalizedUrl}` : `https://${normalizedUrl}`;
