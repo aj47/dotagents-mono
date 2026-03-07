@@ -1,4 +1,6 @@
-import { MenuItem, dialog } from "electron"
+import { dialog, type MenuItem } from "electron"
+
+export const MANUAL_RELEASES_URL = "https://github.com/aj47/dotagents-mono/releases"
 
 /**
  * Auto-updater is disabled - updates are manual via GitHub releases.
@@ -17,7 +19,7 @@ export async function checkForUpdatesMenuItem(_menuItem: MenuItem) {
   // Auto-updater is disabled - show message directing to GitHub releases
   await dialog.showMessageBox({
     title: "Check for Updates",
-    message: `To check for updates, please visit:\nhttps://github.com/aj47/SpeakMCP/releases`,
+    message: `To check for updates, please visit:\n${MANUAL_RELEASES_URL}`,
   })
 }
 
