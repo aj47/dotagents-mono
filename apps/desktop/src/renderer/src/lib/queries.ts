@@ -4,6 +4,7 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query"
+import { reportConfigSaveError } from "./config-save-error"
 import { tipcClient } from "./tipc-client"
 
 focusManager.setEventListener((handleFocus) => {
@@ -184,6 +185,7 @@ export const useSaveConfigMutation = () =>
         queryKey: ["config"],
       })
     },
+    onError: reportConfigSaveError,
   })
 
 export const useUpdateConfigMutation = () =>
@@ -194,6 +196,7 @@ export const useUpdateConfigMutation = () =>
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config"] })
     },
+    onError: reportConfigSaveError,
   })
 
 export const useLoadMcpConfigFile = () =>

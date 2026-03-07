@@ -1,3 +1,5 @@
+import { toast } from "sonner"
+
 function isGenericSaveSettingsMessage(message: string): boolean {
   return /^failed to save settings to disk[.:]?\s*$/i.test(message.trim())
 }
@@ -93,4 +95,9 @@ export function getSettingsSaveErrorMessage(error: unknown): string {
   return details
     ? `Couldn't save your settings. ${details}`
     : "Couldn't save your settings. Please try again."
+}
+
+export function reportConfigSaveError(error: unknown): void {
+  console.error("Failed to save config:", error)
+  toast.error(getSettingsSaveErrorMessage(error))
 }

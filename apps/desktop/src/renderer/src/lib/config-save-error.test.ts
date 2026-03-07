@@ -1,7 +1,22 @@
-import { describe, expect, it } from "vitest"
-import { getSettingsSaveErrorMessage } from "./settings-general-save-error"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-describe("getSettingsSaveErrorMessage", () => {
+const { toastError } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+}))
+
+vi.mock("sonner", () => ({
+  toast: {
+    error: toastError,
+  },
+}))
+
+import { getSettingsSaveErrorMessage, reportConfigSaveError } from "./config-save-error"
+
+describe("config-save-error", () => {
+  beforeEach(() => {
+    toastError.mockReset()
+  })
+
   it("maps permission errors to a friendly message", () => {
     expect(getSettingsSaveErrorMessage(new Error("EACCES: permission denied"))).toBe(
       "Couldn't save your settings because DotAgents doesn't have permission to write its config files.",
@@ -64,6 +79,18 @@ describe("getSettingsSaveErrorMessage", () => {
 
     expect(getSettingsSaveErrorMessage(error)).toBe(
       "Couldn't save your settings because the config location is read-only.",
+    )
+  })
+
+  it("reports config save failures through the shared toast helper", () => {
+    const error = new Error("ENOSPC: no space left on device")
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    reportConfigSaveError(error)
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to save config:", error)
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't save your settings because your disk is full. Free up some space and try again.",
     )
   })
 })
