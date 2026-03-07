@@ -9,7 +9,7 @@
 ## Checked
 
 - [x] `apps/desktop/DEBUGGING.md` exists and documents `REMOTE_DEBUGGING_PORT` plus renderer target selection in Chrome DevTools.
-- [x] Confirmed `streaming-lag.md` did not exist before this investigation.
+- [x] Confirmed `streaming-lag.md` already existed before this iteration and reviewed it before choosing a new repro.
 - [x] Located likely desktop session streaming/scroll UI code in:
   - `apps/desktop/src/renderer/src/components/agent-progress.tsx`
   - `apps/desktop/src/renderer/src/components/session-tile.tsx`
@@ -28,6 +28,11 @@
 - [x] Reattached to the live Electron renderer over CDP with `agent-browser --cdp 9333` and inspected both the panel target and the main window target during active sessions.
 - [x] Confirmed the panel can auto-resize aggressively enough to hide overflow during some probes, so overflow/scroll correctness is easier to observe from the main sessions window than from the floating panel in this loop.
 - [x] Confirmed the shared session renderer still scheduled four delayed initial scroll-to-bottom retries (`0/50/100/200ms`) after mount / first display item appearance, regardless of whether the user had already scrolled upward.
+- [x] Positively identified the active overflowing session scroller in the main sessions window via `.progress-panel .h-full.overflow-y-auto.scrollbar-hide-until-hover` / `.progress-panel .h-full.overflow-y-auto` DOM probes and recorded exact bottom-gap samples from it.
+- [x] Reproduced a pinned-at-bottom streaming scroll-lag issue in the visible main sessions window for both a normal-agent probe session and an ACP-styled probe session by streaming long text into the live renderer store and sampling bottom-gap after one vs two animation frames.
+- [x] Captured renderer traces for this scroll-lag repro before and after the fix:
+  - `apps/desktop/tmp/stream-scroll-before-fix.zip`
+  - `apps/desktop/tmp/stream-scroll-after-fix.zip`
 
 ## Not Yet Checked
 
@@ -37,7 +42,6 @@
 - [ ] Measure behavior after user scrolls upward mid-stream.
 - [ ] Measure sticky-at-bottom recovery when returning to bottom.
 - [ ] Check for scroll jumps when switching sessions / panes / routes.
-- [ ] Positively identify the exact active session scroll container in DOM probes and record its bottom-gap before/after a streaming replay.
 - [ ] Check whether DOM growth or layout thrash worsens with long histories.
 - [ ] Capture a live ACP-agent scroll-interruption repro in an overflowing focused session detail, not just shared-renderer source evidence.
 - [ ] Capture a live normal-agent scroll-interruption repro in a stable 1x1/focused session tile with exact bottom-gap samples before/after manual wheel scroll.
@@ -59,6 +63,11 @@
 - **Evidence:** `AgentProgress` scheduled four delayed bottom-scroll retries (`0/50/100/200ms`) from the mount/first-item effect and did not cancel them when `handleScroll` detected that the user had left the bottom.
 - **Observed risk window:** the user could scroll up, set `shouldAutoScroll=false`, and still be yanked back toward the bottom by pending retries for up to `~200ms` afterward.
 - **Diagnosis:** the initial retry timers were not tied to the current auto-scroll mode or session lifecycle, so stale retries could keep writing `scrollTop = scrollHeight` after manual scroll interruption.
+- **Scenario:** visible main sessions window (`http://localhost:5174/`), single focused active session tile, chat scroller pinned at bottom while long text streams into `progress.streamingContent` through the live renderer store.
+- **Evidence:** before the fix, the exact active scroller was still measurably off-bottom after the first animation frame on every sampled chunk, then caught up on the second frame. This was reproducible in both shared render paths:
+  - normal-agent styled probe: `avgGapAfterOneFrame=31.1px`, `maxGapAfterOneFrame=48px`, `nonZeroOneFrameSamples=18/18`, `avgGapAfterTwoFrames=0px`
+  - ACP-styled probe: `avgGapAfterOneFrame=39.1px`, `maxGapAfterOneFrame=48px`, `nonZeroOneFrameSamples=18/18`, `avgGapAfterTwoFrames=0px`
+- **Diagnosis:** the shared session auto-scroll hot path in `apps/desktop/src/renderer/src/components/agent-progress.tsx` ran inside `useEffect` and then waited for another `requestAnimationFrame`, so newly streamed content could paint above the fold for one frame before the scroller caught up. This manifested as delayed bottom-pinning / scroll lag during streaming in both normal and ACP session views.
 
 ## Fixed
 
@@ -66,6 +75,8 @@
 - **Test coverage:** added a targeted source-level layout assertion in `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` to lock in the lightweight live-stream path.
 - **Renderer change:** tied initial session auto-scroll retries in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to a new timeout registry plus a live `shouldAutoScrollRef`, so delayed retries are cleared on session changes and cancelled/no-op once the user scrolls away from bottom.
 - **Test coverage:** added `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` to lock in the timeout cleanup / auto-scroll-guard behavior for the shared session scroller.
+- **Renderer change:** moved the streaming auto-scroll hot path in `apps/desktop/src/renderer/src/components/agent-progress.tsx` from `useEffect` + nested `requestAnimationFrame` to `useLayoutEffect` with an immediate `scrollToBottom()` write, so pinned streaming updates land in the same paint as the content commit.
+- **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a focused assertion that the pinned streaming path stays on `useLayoutEffect` and performs the direct `scrollToBottom()` write.
 
 ## Verified
 
@@ -80,12 +91,17 @@
 - **Targeted tests:** `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts src/renderer/src/components/agent-progress.tile-layout.test.ts` ✅
 - **Desktop typecheck:** `pnpm --filter @dotagents/desktop typecheck` ✅
 - **Interpretation:** the shared session scroller no longer keeps stale initial bottom-scroll retries alive after manual upward scrolling, reducing a concrete early-stream scroll-jump / scroll-interruption bug in both tile and overlay `AgentProgress` variants.
+- **Targeted test:** `pnpm --filter @dotagents/desktop test:run src/components/agent-progress.scroll-behavior.test.ts` ✅
+- **Renderer typecheck:** `pnpm --filter @dotagents/desktop typecheck:web` ✅
+- **Same bottom-gap replay after fix (same main-window probe, same active scroller, same 18 sampled chunks):**
+  - normal-agent styled probe: `avgGapAfterOneFrame=0px`, `maxGapAfterOneFrame=0px`, `nonZeroOneFrameSamples=0/18`
+  - ACP-styled probe: `avgGapAfterOneFrame=0px`, `maxGapAfterOneFrame=0px`, `nonZeroOneFrameSamples=0/18`
+- **Interpretation:** the shared session view now stays pinned on the very next paint instead of visibly lagging a frame behind streamed content in the measured normal and ACP replay paths.
 
 ## Still Uncertain
 
 - Whether the remaining frame-gap spike (`116.6ms`) is unrelated background noise, window focus/visibility churn, or a second bottleneck in scroll/layout work.
-- Whether normal-agent and ACP-agent streaming share the same renderer bottleneck end-to-end in the visible panel; this loop only directly measured the normal-agent replay path.
-- Whether auto-scroll in the active session container is perfectly pinned at bottom during long streams; the quick DOM probe did not yet isolate the exact active scroller, so scroll correctness remains unverified rather than cleared.
+- Whether live end-to-end normal-agent and ACP-agent sessions in the floating panel show the same before/after behavior as the scripted main-window replay, since panel resizing can mask overflow.
 - Whether the shared fix fully resolves the same interruption pattern in a live ACP session with sustained streaming; this loop confirmed the renderer code path but did not capture a clean overflowing ACP live trace.
 - Whether panel auto-resizing is masking a second, separate overflow/anchoring bug in the floating panel itself.
 

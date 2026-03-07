@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest"
 const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.meta.url), "utf8")
 
 describe("agent progress scroll behavior", () => {
+  it("pins the active session scroller in the same commit while streaming content grows", () => {
+    expect(agentProgressSource).toContain("useLayoutEffect(() => {")
+    expect(agentProgressSource).toContain("avoids a one-frame lag where new content renders above")
+    expect(agentProgressSource).toContain("if (shouldAutoScroll) {\n        scrollToBottom()\n      }")
+  })
+
   it("cancels delayed initial auto-scroll retries once the user scrolls away from bottom", () => {
     expect(agentProgressSource).toContain("const pendingInitialScrollTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])")
     expect(agentProgressSource).toContain("const clearPendingInitialScrollAttempts = useCallback(() => {")

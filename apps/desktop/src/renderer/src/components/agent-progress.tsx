@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
@@ -2927,8 +2927,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
   }, [clearPendingInitialScrollAttempts, progress?.sessionId])
 
-  // Improved auto-scroll logic - tracks displayItems for comprehensive change detection
-  useEffect(() => {
+  // Keep pinned-to-bottom streaming updates in the same paint as the content commit.
+  // Using useLayoutEffect here avoids a one-frame lag where new content renders above
+  // the fold and the scroll position only catches up on the next animation frame.
+  useLayoutEffect(() => {
     const scrollContainer = scrollContainerRef.current
     if (!scrollContainer) return
 
@@ -2967,10 +2969,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       // Only auto-scroll if we should (user hasn't manually scrolled up)
       if (shouldAutoScroll) {
-        // Use requestAnimationFrame to ensure DOM is updated
-        requestAnimationFrame(() => {
-          scrollToBottom()
-        })
+        scrollToBottom()
       }
     }
   }, [messages.length, shouldAutoScroll, messages, progress.streamingContent?.text, displayItems.length, displayItems])
