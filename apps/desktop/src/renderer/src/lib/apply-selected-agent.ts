@@ -20,7 +20,9 @@ export async function applySelectedAgentToNextSession({
   onError,
 }: ApplySelectedAgentToNextSessionOptions): Promise<boolean> {
   try {
-    const agents = agentProfiles ?? ((await tipcClient.getAgentProfiles()) as AgentProfile[])
+    const agents = agentProfiles && agentProfiles.length > 0
+      ? agentProfiles
+      : ((await tipcClient.getAgentProfiles()) as AgentProfile[])
     const enabledAgents = agents.filter((agent) => agent.enabled)
 
     let agentIdToApply: string | null

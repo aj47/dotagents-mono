@@ -81,4 +81,24 @@ describe("applySelectedAgentToNextSession", () => {
     expect(onError).toHaveBeenCalledTimes(1)
     expect(toastError).toHaveBeenCalledWith("Failed to apply selected agent")
   })
+
+  it("falls back to live agent profiles when a preloaded placeholder array is empty", async () => {
+    getAgentProfiles.mockResolvedValue([
+      { id: "agent-2", name: "main-agent", displayName: "Main", enabled: true },
+    ])
+    setCurrentAgentProfile.mockResolvedValue({ success: true })
+    const setSelectedAgentId = vi.fn()
+
+    const result = await applySelectedAgentToNextSession({
+      selectedAgentId: "agent-2",
+      setSelectedAgentId,
+      agentProfiles: [],
+    })
+
+    expect(result).toBe(true)
+    expect(getAgentProfiles).toHaveBeenCalledOnce()
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-2" })
+    expect(setSelectedAgentId).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
 })
