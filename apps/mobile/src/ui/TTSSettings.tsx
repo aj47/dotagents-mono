@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
+import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
 
 export type Voice = {
   identifier: string;
@@ -35,35 +36,54 @@ export function TTSSettings({
   const [showVoicePicker, setShowVoicePicker] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
 
-  useEffect(() => {
-    loadVoices();
+  const loadVoices = useCallback(async () => {
+    try {
+      const availableVoices = await Speech.getAvailableVoicesAsync();
+      const englishVoices = availableVoices.filter(isEnglishVoice);
+      const voicesForPicker = englishVoices.length > 0 ? englishVoices : availableVoices;
+      const sortedVoices = sortVoicesForTtsPicker(voicesForPicker, {
+        preferGoogleVoices: Platform.OS === 'web',
+      });
+      setVoices(sortedVoices as Voice[]);
+    } catch (error) {
+      console.error('[TTS] Failed to load voices:', error);
+    }
   }, []);
 
   useEffect(() => {
-    if (voiceId && voices.length > 0) {
+    void loadVoices();
+
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const speechSynthesisApi = (globalThis as any).speechSynthesis;
+    if (!speechSynthesisApi?.addEventListener) {
+      return;
+    }
+
+    const handleVoicesChanged = () => {
+      void loadVoices();
+    };
+
+    speechSynthesisApi.addEventListener('voiceschanged', handleVoicesChanged);
+
+    return () => {
+      speechSynthesisApi.removeEventListener?.('voiceschanged', handleVoicesChanged);
+    };
+  }, [loadVoices]);
+
+  useEffect(() => {
+    if (!voiceId) {
+      setSelectedVoice(null);
+      return;
+    }
+
+    if (voices.length > 0) {
       const voice = voices.find(v => v.identifier === voiceId);
       setSelectedVoice(voice || null);
     }
   }, [voiceId, voices]);
-
-  const loadVoices = async () => {
-    try {
-      const availableVoices = await Speech.getAvailableVoicesAsync();
-      // Filter to English voices and sort by quality/name
-      const englishVoices = availableVoices
-        .filter(v => v.language.startsWith('en'))
-        .sort((a, b) => {
-          // Prefer higher quality voices
-          if (a.quality !== b.quality) {
-            return a.quality === 'Enhanced' ? -1 : 1;
-          }
-          return a.name.localeCompare(b.name);
-        });
-      setVoices(englishVoices);
-    } catch (error) {
-      console.error('[TTS] Failed to load voices:', error);
-    }
-  };
 
   const handleVoiceSelect = (voice: Voice | null) => {
     setSelectedVoice(voice);

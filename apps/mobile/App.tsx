@@ -8,7 +8,7 @@ import ConnectionSettingsScreen from './src/screens/ConnectionSettingsScreen';
 import AgentEditScreen from './src/screens/AgentEditScreen';
 import MemoryEditScreen from './src/screens/MemoryEditScreen';
 import LoopEditScreen from './src/screens/LoopEditScreen';
-import { ConfigContext, useConfig, saveConfig } from './src/store/config';
+import { AppConfig, ConfigContext, useConfig, saveConfig } from './src/store/config';
 import { SessionContext, useSessions } from './src/store/sessions';
 import { MessageQueueContext, useMessageQueue } from './src/store/message-queue';
 import { ConnectionManagerContext, useConnectionManagerProvider } from './src/store/connectionManager';
@@ -16,11 +16,13 @@ import { TunnelConnectionContext, useTunnelConnectionProvider } from './src/stor
 import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
-import { View, Image, Text, StyleSheet, AppState, AppStateStatus } from 'react-native';
+import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
+import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
 import * as Linking from 'expo-linking';
+import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 
 
@@ -126,6 +128,60 @@ function Navigation() {
 
     return () => subscription.remove();
   }, [cfg.ready]);
+
+  // On Expo web in Chrome, default to the built-in free Google voice when available.
+  useEffect(() => {
+    if (!cfg.ready || Platform.OS !== 'web' || cfg.config.ttsVoiceId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const applyPreferredWebVoice = async () => {
+      if (cancelled || cfg.config.ttsVoiceId) {
+        return;
+      }
+
+      try {
+        const availableVoices = await Speech.getAvailableVoicesAsync();
+        const preferredVoice = pickPreferredWebGoogleVoice(availableVoices);
+        if (!preferredVoice || cancelled) {
+          return;
+        }
+
+        let nextConfig: AppConfig | null = null;
+        cfg.setConfig((prev) => {
+          if (prev.ttsVoiceId) {
+            return prev;
+          }
+          nextConfig = {
+            ...prev,
+            ttsVoiceId: preferredVoice.identifier,
+          };
+          return nextConfig;
+        });
+
+        if (nextConfig) {
+          await saveConfig(nextConfig);
+        }
+      } catch (error) {
+        console.warn('[TTS] Failed to auto-select a Chrome Google voice:', error);
+      }
+    };
+
+    const speechSynthesisApi = (globalThis as any).speechSynthesis;
+    const handleVoicesChanged = () => {
+      void applyPreferredWebVoice();
+    };
+
+    void applyPreferredWebVoice();
+    speechSynthesisApi?.addEventListener?.('voiceschanged', handleVoicesChanged);
+
+    return () => {
+      cancelled = true;
+      speechSynthesisApi?.removeEventListener?.('voiceschanged', handleVoicesChanged);
+    };
+  }, [cfg.ready, cfg.config.ttsVoiceId, cfg.setConfig]);
 
   // Handle notification taps for deep linking to conversations
   const handleNotificationTap = useCallback((data: NotificationData) => {
