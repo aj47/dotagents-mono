@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createButtonAccessibilityLabel,
   createMcpServerSwitchAccessibilityLabel,
   createSwitchAccessibilityLabel,
 } from './accessibility';
@@ -25,6 +26,20 @@ describe('createMcpServerSwitchAccessibilityLabel', () => {
 
   it('falls back when server name is blank', () => {
     expect(createMcpServerSwitchAccessibilityLabel('')).toBe('Enable MCP server');
+  });
+});
+
+describe('createButtonAccessibilityLabel', () => {
+  it('adds a button suffix for named actions', () => {
+    expect(createButtonAccessibilityLabel('Send message')).toBe('Send message button');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(createButtonAccessibilityLabel('  Attach images  ')).toBe('Attach images button');
+  });
+
+  it('falls back for empty names', () => {
+    expect(createButtonAccessibilityLabel('   ')).toBe('Action button');
   });
 });
 

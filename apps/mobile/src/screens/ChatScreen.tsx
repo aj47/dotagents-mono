@@ -51,6 +51,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import { createButtonAccessibilityLabel, createSwitchAccessibilityLabel } from '../lib/accessibility';
 
 interface PendingImageAttachment {
   id: string;
@@ -3280,6 +3281,11 @@ export default function ChatScreen({ route, navigation }: any) {
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
               onPress={toggleTts}
               activeOpacity={0.7}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: ttsEnabled }}
+              accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
+              accessibilityHint="Toggles spoken playback for assistant responses."
+              aria-checked={ttsEnabled}
             >
               <Text style={styles.ttsToggleText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
             </TouchableOpacity>
@@ -3310,6 +3316,10 @@ export default function ChatScreen({ route, navigation }: any) {
 	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              disabled={!composerHasContent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Send message')}
+              accessibilityHint="Sends your typed text and any attached images."
+              accessibilityState={{ disabled: !composerHasContent }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>

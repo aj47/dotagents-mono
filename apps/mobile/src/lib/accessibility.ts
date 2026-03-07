@@ -1,5 +1,6 @@
 const FALLBACK_SWITCH_LABEL = 'Setting toggle';
 const FALLBACK_SERVER_LABEL = 'Enable MCP server';
+const FALLBACK_BUTTON_LABEL = 'Action button';
 
 const normalizeLabel = (label: string): string => {
   const trimmed = label.trim();
@@ -20,5 +21,13 @@ export const createMcpServerSwitchAccessibilityLabel = (serverName: string): str
     return FALLBACK_SERVER_LABEL;
   }
   return `Enable ${normalizedServerName} MCP server`;
+};
+
+export const createButtonAccessibilityLabel = (actionName: string): string => {
+  const normalizedName = normalizeLabel(actionName);
+  if (!normalizedName) {
+    return FALLBACK_BUTTON_LABEL;
+  }
+  return `${normalizedName} button`;
 };
 
