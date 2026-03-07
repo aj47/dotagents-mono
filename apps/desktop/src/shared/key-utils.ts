@@ -6,12 +6,68 @@ export interface ParsedKeyCombo {
   key: string
 }
 
+function normalizeKeyComboToken(token: string): string {
+  if (token === " ") {
+    return "space"
+  }
+
+  const normalized = token.trim().toLowerCase()
+
+  switch (normalized) {
+    case "control":
+      return "ctrl"
+    case "option":
+      return "alt"
+    case "cmd":
+    case "command":
+    case "windows":
+    case "win":
+    case "super":
+      return "meta"
+    case "esc":
+      return "escape"
+    case "return":
+      return "enter"
+    case "space":
+    case "spacebar":
+      return "space"
+    case "del":
+      return "delete"
+    case "pgup":
+      return "pageup"
+    case "pgdn":
+      return "pagedown"
+    case "arrowup":
+      return "up"
+    case "arrowdown":
+      return "down"
+    case "arrowleft":
+      return "left"
+    case "arrowright":
+      return "right"
+    default:
+      return normalized
+  }
+}
+
+function serializeParsedKeyCombo(parsed: ParsedKeyCombo): string {
+  const parts: string[] = []
+
+  if (parsed.ctrl) parts.push("ctrl")
+  if (parsed.shift) parts.push("shift")
+  if (parsed.alt) parts.push("alt")
+  if (parsed.meta) parts.push("meta")
+  if (parsed.key) parts.push(parsed.key)
+
+  return parts.join("-")
+}
+
 export function parseKeyCombo(combo: string): ParsedKeyCombo {
   if (!combo) {
     return { ctrl: false, shift: false, alt: false, meta: false, key: "" }
   }
 
-  const parts = combo.toLowerCase().split("-")
+  const parts = combo.split("-").map(normalizeKeyComboToken).filter(Boolean)
   const result: ParsedKeyCombo = {
     ctrl: false,
     shift: false,
@@ -32,7 +88,6 @@ export function parseKeyCombo(combo: string): ParsedKeyCombo {
         result.alt = true
         break
       case "meta":
-      case "cmd":
         result.meta = true
         break
       default:
@@ -69,39 +124,13 @@ export function matchesKeyCombo(
   const keyMappings: Record<string, string> = {
     slash: "/",
     comma: ",",
-    space: " ",
-    escape: "escape",
-    enter: "enter",
-    tab: "tab",
-    backspace: "backspace",
-    delete: "delete",
-    arrowup: "up",
-    arrowdown: "down",
-    arrowleft: "left",
-    arrowright: "right",
-    home: "home",
-    end: "end",
-    pageup: "pageup",
-    pagedown: "pagedown",
-    insert: "insert",
-    f1: "f1",
-    f2: "f2",
-    f3: "f3",
-    f4: "f4",
-    f5: "f5",
-    f6: "f6",
-    f7: "f7",
-    f8: "f8",
-    f9: "f9",
-    f10: "f10",
-    f11: "f11",
-    f12: "f12",
+    space: "space",
     fn: "fn",
     function: "fn",
   }
 
-  const normalizedEventKey = keyMappings[eventKey] || eventKey
-  const normalizedComboKey = keyMappings[parsed.key] || parsed.key
+  const normalizedEventKey = normalizeKeyComboToken(keyMappings[eventKey] || eventKey)
+  const normalizedComboKey = normalizeKeyComboToken(keyMappings[parsed.key] || parsed.key)
 
   return normalizedEventKey === normalizedComboKey
 }
@@ -121,7 +150,7 @@ export function formatKeyComboForDisplay(combo: string): string {
     let displayKey = parsed.key
 
     const displayMappings: Record<string, string> = {
-      " ": "Space",
+      space: "Space",
       "/": "/",
       escape: "Esc",
       enter: "Enter",
@@ -163,7 +192,7 @@ export function validateKeyCombo(combo: string): {
   valid: boolean
   error?: string
 } {
-  if (!combo) {
+  if (!combo.trim()) {
     return { valid: false, error: "Key combination cannot be empty" }
   }
 
@@ -191,7 +220,7 @@ export function validateKeyCombo(combo: string): {
     "ctrl-q", // Quit application
   ]
 
-  if (dangerousCombos.includes(combo.toLowerCase())) {
+  if (dangerousCombos.includes(serializeParsedKeyCombo(parsed))) {
     return {
       valid: false,
       error: "This key combination is reserved by the system",
