@@ -18,3 +18,11 @@ test('keeps the chat composer send control at a mobile-friendly minimum touch ta
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*64,/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',/);
 });
+
+test('keeps the chat composer accessory controls at a mobile-friendly touch target size', () => {
+  assert.match(screenSource, /ttsToggle:\s*\{[\s\S]*?width:\s*44,[\s\S]*?height:\s*44,[\s\S]*?borderRadius:\s*22,/);
+});
+
+test('exposes the edit-before-send toggle state to Expo Web accessibility APIs', () => {
+  assert.match(screenSource, /accessibilityRole="switch"[\s\S]*?aria-checked=\{willCancel\}[\s\S]*?accessibilityState=\{\{ checked: willCancel \}\}/);
+});

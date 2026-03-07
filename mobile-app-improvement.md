@@ -8,6 +8,37 @@
 
 ## Recent Iterations
 
+### 2026-03-07 — Iteration 5: enlarge chat composer accessory controls and expose edit-toggle state on web
+
+- Status: completed
+- Area:
+  - chat composer accessory controls in `apps/mobile/src/screens/ChatScreen.tsx`
+  - live flow inspected in Expo Web: `Settings -> Go to Chats -> New Chat`
+- Why this area:
+  - iteration 4 already improved the adjacent `Send` control, and its follow-up notes called out the neighboring composer accessories as still too small.
+  - fresh Expo Web inspection confirmed a concrete accessibility/usability issue: `Attach images` and `Edit before send` were only about `32x32`, and `Edit before send` did not expose its toggled state in the web accessibility tree.
+- What was investigated:
+  - current accessory control markup and shared sizing styles in `ChatScreen.tsx`
+  - live Expo Web DOM/accessibility output for `Attach images` and `Edit before send` before changing code
+- Findings:
+  - both accessory controls were undersized for mobile touch targets at roughly `32x32`
+  - `Edit before send` changed visual styling when toggled, but Expo Web did not emit `aria-checked`, so assistive tech could not reliably detect its on/off state
+- Change made:
+  - increased the shared chat composer accessory control size from `32x32` to `44x44`
+  - added explicit `aria-checked` wiring to the `Edit before send` switch so Expo Web exposes its live checked state
+  - extended `apps/mobile/tests/chat-composer-accessibility.test.js` with coverage for the accessory control touch-target size and edit-toggle accessibility state
+- Verification:
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/navigation-header.test.js apps/mobile/tests/connection-settings-validation.test.js`
+  - live Expo Web verification at `http://localhost:8093`:
+    - confirmed `Attach images` renders at `44x44`
+    - confirmed `Edit before send` renders at `44x44`
+    - confirmed `Edit before send` exposes `aria-checked="false"` / `"true"` and updates the accessibility tree state when toggled
+- Follow-up checks:
+  - investigate the adjacent chat composer TTS toggle, which shares the larger touch target now but still lacks an explicit accessibility label/state pass
+  - investigate the unrelated Settings warning after reconnecting: `⚠️ Failed to load: settings`
+  - investigate the Expo Web runtime errors noted in earlier passes, especially `normalizeApiBaseUrl is not a function` and `Unexpected text node ... child of a <View>`
+
 ### 2026-03-07 — Iteration 4: make the chat composer Send control accessible on mobile web
 
 - Status: completed

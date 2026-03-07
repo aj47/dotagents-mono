@@ -3289,6 +3289,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	                onPress={() => setWillCancelValue(!willCancel)}
 	                activeOpacity={0.7}
 	                accessibilityRole="switch"
+		                aria-checked={willCancel}
 	                accessibilityState={{ checked: willCancel }}
 	                accessibilityLabel="Edit before send"
 	                accessibilityHint="When enabled, releasing the mic inserts the transcript into the input so you can edit before sending."
@@ -3575,9 +3576,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
     },
     ttsToggle: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+	      width: 44,
+	      height: 44,
+	      borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.muted,
