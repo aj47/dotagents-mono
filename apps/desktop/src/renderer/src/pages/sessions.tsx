@@ -44,6 +44,91 @@ function formatTimestamp(timestamp: number): string {
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
+const SessionProgressTile = React.memo(function SessionProgressTile({
+  sessionId,
+  progress,
+  index,
+  isCollapsed,
+  isFocused,
+  isExpanded,
+  isDragTarget,
+  isDragging,
+  showTileMaximize,
+  onFocusSession,
+  onDismissSession,
+  onCollapsedChange,
+  onMaximizeTile,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  setSessionRef,
+}: {
+  sessionId: string
+  progress: AgentProgressUpdate
+  index: number
+  isCollapsed: boolean
+  isFocused: boolean
+  isExpanded: boolean
+  isDragTarget: boolean
+  isDragging: boolean
+  showTileMaximize: boolean
+  onFocusSession: (sessionId: string) => Promise<void>
+  onDismissSession: (sessionId: string) => Promise<void>
+  onCollapsedChange: (sessionId: string, collapsed: boolean) => void
+  onMaximizeTile: (sessionId?: string) => void
+  onDragStart: (sessionId: string, index: number) => void
+  onDragOver: (index: number) => void
+  onDragEnd: () => void
+  setSessionRef: (sessionId: string, el: HTMLDivElement | null) => void
+}) {
+  const handleFocus = useCallback(() => {
+    void onFocusSession(sessionId)
+  }, [onFocusSession, sessionId])
+
+  const handleDismiss = useCallback(() => {
+    void onDismissSession(sessionId)
+  }, [onDismissSession, sessionId])
+
+  const handleCollapsed = useCallback((collapsed: boolean) => {
+    onCollapsedChange(sessionId, collapsed)
+  }, [onCollapsedChange, sessionId])
+
+  const handleExpand = useCallback(() => {
+    onMaximizeTile(sessionId)
+  }, [onMaximizeTile, sessionId])
+
+  const handleRef = useCallback((el: HTMLDivElement | null) => {
+    setSessionRef(sessionId, el)
+  }, [sessionId, setSessionRef])
+
+  return (
+    <div ref={handleRef}>
+      <SessionTileWrapper
+        sessionId={sessionId}
+        index={index}
+        isCollapsed={isCollapsed}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        isDragTarget={isDragTarget}
+        isDragging={isDragging}
+      >
+        <AgentProgress
+          progress={progress}
+          variant="tile"
+          isFocused={isFocused}
+          onFocus={handleFocus}
+          onDismiss={handleDismiss}
+          isCollapsed={isCollapsed}
+          onCollapsedChange={handleCollapsed}
+          onExpand={showTileMaximize ? handleExpand : undefined}
+          isExpanded={isExpanded}
+        />
+      </SessionTileWrapper>
+    </div>
+  )
+})
+
 function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionClick, onOpenPastSessionsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
   onTextClick: () => void
   onVoiceClick: () => void
@@ -176,6 +261,9 @@ export function Component() {
   const [tileLayoutMode, setTileLayoutMode] = useState<TileLayoutMode>("1x2")
 
   const sessionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const setSessionRef = useCallback((sessionId: string, el: HTMLDivElement | null) => {
+    sessionRefs.current[sessionId] = el
+  }, [])
 
   const handleCollapsedChange = useCallback((sessionId: string, collapsed: boolean) => {
     setCollapsedSessions(prev => ({
@@ -541,7 +629,7 @@ export function Component() {
     await tipcClient.showPanelWindowWithTextInput({ initialText: content })
   }
 
-  const handleFocusSession = async (sessionId: string) => {
+  const handleFocusSession = useCallback(async (sessionId: string) => {
     setFocusedSessionId(sessionId)
     // Also show the panel window with this session focused
     try {
@@ -551,10 +639,10 @@ export function Component() {
     } catch (error) {
       console.error("Failed to show panel window:", error)
     }
-  }
+  }, [setFocusedSessionId])
 
-  const handleDismissSession = async (sessionId: string) => {
-    const progress = agentProgressById.get(sessionId)
+  const handleDismissSession = useCallback(async (sessionId: string) => {
+    const progress = useAgentStore.getState().agentProgressById.get(sessionId)
     logUI('[Sessions] Dismiss/hide session clicked:', {
       sessionId,
       status: progress?.isComplete ? 'complete' : 'active',
@@ -563,7 +651,7 @@ export function Component() {
     })
     await tipcClient.clearAgentSessionProgress({ sessionId })
     queryClient.invalidateQueries({ queryKey: ["agentSessions"] })
-  }
+  }, [queryClient])
 
   // Drag and drop handlers
   const handleDragStart = useCallback((sessionId: string, _index: number) => {
@@ -822,33 +910,26 @@ export function Component() {
                 const isCollapsed = collapsedSessions[sessionId] ?? false
                 const adjustedIndex = hasPendingTile ? index + 1 : index
                 return (
-                  <div
+                  <SessionProgressTile
                     key={sessionId}
-                    ref={(el) => { sessionRefs.current[sessionId] = el }}
-                  >
-                    <SessionTileWrapper
-                      sessionId={sessionId}
-                      index={adjustedIndex}
-                      isCollapsed={isCollapsed}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDragEnd={handleDragEnd}
-                      isDragTarget={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId}
-                      isDragging={draggedSessionId === sessionId}
-                    >
-                      <AgentProgress
-                        progress={progress}
-                        variant="tile"
-                        isFocused={focusedSessionId === sessionId}
-                        onFocus={() => handleFocusSession(sessionId)}
-                        onDismiss={() => handleDismissSession(sessionId)}
-                        isCollapsed={isCollapsed}
-                        onCollapsedChange={(collapsed) => handleCollapsedChange(sessionId, collapsed)}
-                        onExpand={showTileMaximize ? () => handleMaximizeTile(sessionId) : undefined}
-                        isExpanded={tileLayoutMode === "1x1"}
-                      />
-                    </SessionTileWrapper>
-                  </div>
+                    sessionId={sessionId}
+                    progress={progress}
+                    index={adjustedIndex}
+                    isCollapsed={isCollapsed}
+                    isFocused={focusedSessionId === sessionId}
+                    isExpanded={tileLayoutMode === "1x1"}
+                    isDragTarget={dragTargetIndex === adjustedIndex && draggedSessionId !== sessionId}
+                    isDragging={draggedSessionId === sessionId}
+                    showTileMaximize={showTileMaximize}
+                    onFocusSession={handleFocusSession}
+                    onDismissSession={handleDismissSession}
+                    onCollapsedChange={handleCollapsedChange}
+                    onMaximizeTile={handleMaximizeTile}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    setSessionRef={setSessionRef}
+                  />
                 )
               })}
             </SessionGrid>

@@ -102,6 +102,8 @@ type DisplayItem =
       pastResponses?: string[]
     } }
 
+const TILE_TRANSCRIPT_PREVIEW_ITEMS = 6
+
 function extractRespondToUserContentFromArgs(args: unknown): string | null {
   if (!args || typeof args !== "object") return null
 
@@ -2333,7 +2335,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const currentConversationId = useConversationStore((s) => s.currentConversationId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
-  const agentProgressById = useAgentStore((s) => s.agentProgressById)
 
   // Get queued messages for this conversation (used in overlay variant)
   const queuedMessages = useMessageQueue(progress?.conversationId)
@@ -2432,6 +2433,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const handleClose = async () => {
     try {
       const thisId = progress?.sessionId
+      // Avoid subscribing every AgentProgress instance to the full progress map.
+      // During streaming, that broad selector forces unrelated tiles with long
+      // histories to re-render on every chunk even though this branch only runs
+      // when the user clicks close.
+      const agentProgressById = useAgentStore.getState().agentProgressById
       const hasOtherVisible = thisId
         ? Array.from(agentProgressById?.values() ?? []).some(p => p && p.sessionId !== thisId && !p.isSnoozed)
         : false
@@ -3105,6 +3111,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
     const isSnoozed = progress.isSnoozed
+    const shouldLimitTileTranscript = !isFocused && !isExpanded
+    const tileDisplayItems = shouldLimitTileTranscript
+      ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
+      : displayItems
+    const hiddenTileItemCount = displayItems.length - tileDisplayItems.length
+    const tileDisplayOffset = displayItems.length - tileDisplayItems.length
     return (
       <div
         onClick={onFocus}
@@ -3258,18 +3270,24 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 onScroll={handleScroll}
                 className="h-full overflow-y-auto scrollbar-hide-until-hover"
               >
-                {displayItems.length > 0 ? (
+                {tileDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">
-                    {displayItems.map((item, index) => {
+                    {hiddenTileItemCount > 0 && (
+                      <div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
+                        Showing latest {tileDisplayItems.length} of {displayItems.length} updates
+                      </div>
+                    )}
+                    {tileDisplayItems.map((item, index) => {
                       const itemKey = item.id
+                      const displayIndex = tileDisplayOffset + index
                       // Final assistant message should be expanded by default when agent is complete
                       // Tool executions should be collapsed by default to reduce visual clutter
                       // unless user has explicitly toggled them (itemKey exists in expandedItems)
-                      const isFinalAssistantMessage = item.kind === "message" && index === lastAssistantDisplayIndex && isComplete
+                      const isFinalAssistantMessage = item.kind === "message" && displayIndex === lastAssistantDisplayIndex && isComplete
                       const isExpanded = itemKey in expandedItems
                         ? expandedItems[itemKey]
                         : isFinalAssistantMessage // Only final assistant message expanded by default
-                      const isLastAssistant = item.kind === "message" && item.data.role === "assistant" && index === lastAssistantDisplayIndex
+                      const isLastAssistant = item.kind === "message" && item.data.role === "assistant" && displayIndex === lastAssistantDisplayIndex
 
                       if (item.kind === "message") {
                         return (
