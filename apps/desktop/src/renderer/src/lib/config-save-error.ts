@@ -17,6 +17,9 @@ function getErrorText(error: unknown, seen = new WeakSet<object>()): string {
   if (error === null || error === undefined) return ""
 
   if (error instanceof Error) {
+    if (seen.has(error)) return ""
+    seen.add(error)
+
     const message = error.message.trim()
     const nestedText = getNestedErrorText(
       [
@@ -31,6 +34,11 @@ function getErrorText(error: unknown, seen = new WeakSet<object>()): string {
     }
 
     if (nestedText) return nestedText
+
+    const wrappedErrorText = getErrorText((error as Error & { error?: unknown }).error, seen)
+    if (wrappedErrorText) return wrappedErrorText
+
+    return ""
   }
 
   if (typeof error === "string") return error
