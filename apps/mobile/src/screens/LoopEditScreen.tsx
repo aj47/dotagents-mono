@@ -122,6 +122,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [profileReloadNonce, setProfileReloadNonce] = useState(0);
+  const [didAutoClearMissingProfile, setDidAutoClearMissingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasSeenScreenFocusRef = useRef(false);
@@ -231,6 +232,26 @@ export default function LoopEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const handleSelectProfile = useCallback((profileId: string) => {
+    setDidAutoClearMissingProfile(false);
+    updateField('profileId', profileId);
+  }, [updateField]);
+
+  useEffect(() => {
+    if (!settingsClient || isLoadingProfiles || profileLoadError || !formData.profileId) {
+      return;
+    }
+
+    const hasMatchingProfile = profiles.some(profile => profile.id === formData.profileId);
+    if (hasMatchingProfile) {
+      setDidAutoClearMissingProfile(false);
+      return;
+    }
+
+    setDidAutoClearMissingProfile(true);
+    setFormData(prev => prev.profileId ? { ...prev, profileId: '' } : prev);
+  }, [formData.profileId, isLoadingProfiles, profileLoadError, profiles, settingsClient]);
+
   const renderSwitchVisual = (enabled: boolean) => {
     if (Platform.OS === 'web') {
       return (
@@ -278,6 +299,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
     setIsSaving(true);
     setError(null);
     try {
+      const normalizedProfileId = formData.profileId && (isLoadingProfiles || profileLoadError || profiles.some(profile => profile.id === formData.profileId))
+        ? formData.profileId
+        : undefined;
+
       if (isEditing && effectiveLoopId) {
         const updatePayload: LoopUpdateRequest = {
           name,
@@ -285,7 +310,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           intervalMinutes,
           enabled: formData.enabled,
           runOnStartup: formData.runOnStartup,
-          profileId: formData.profileId || undefined,
+          profileId: normalizedProfileId,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
       } else {
@@ -295,7 +320,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           intervalMinutes,
           enabled: formData.enabled,
           runOnStartup: formData.runOnStartup,
-          profileId: formData.profileId || undefined,
+          profileId: normalizedProfileId,
         };
         await settingsClient.createLoop(createPayload);
       }
@@ -305,7 +330,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     } finally {
       setIsSaving(false);
     }
-  }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
+  }, [effectiveLoopId, formData, isEditing, isLoadingProfiles, navigation, profileLoadError, profiles, settingsClient]);
 
   const trimmedName = formData.name.trim();
   const trimmedPrompt = formData.prompt.trim();
@@ -313,8 +338,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
   const showProfileLoadingNotice = !!settingsClient && isLoadingProfiles;
   const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
-  const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length > 0 && !formData.profileId;
+  const showMissingSelectedProfileNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && didAutoClearMissingProfile && profiles.length > 0;
+  const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length > 0 && !formData.profileId && !showMissingSelectedProfileNotice;
   const showNoSavedProfilesNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
+  const noSavedProfilesNoticeText = didAutoClearMissingProfile
+    ? 'The previously selected profile is no longer available. This loop can still run with No profile, or you can create an agent now and come back to assign it here.'
+    : 'No saved profiles yet. This loop can still run with No profile, or you can create an agent now and come back to assign it here.';
   const saveValidationMessage = !trimmedName && !trimmedPrompt
     ? 'Add a name and prompt to enable saving.'
     : !trimmedName
@@ -465,7 +494,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       <View style={styles.profileOptions}>
         <TouchableOpacity
           style={[styles.profileOption, !formData.profileId && styles.profileOptionActive]}
-          onPress={() => updateField('profileId', '')}
+          onPress={() => handleSelectProfile('')}
           accessibilityRole="button"
           accessibilityLabel={createButtonAccessibilityLabel('Select no profile')}
           accessibilityHint="Keeps this loop unassigned so it runs without a specific saved profile."
@@ -484,7 +513,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           <TouchableOpacity
             key={profile.id}
             style={[styles.profileOption, formData.profileId === profile.id && styles.profileOptionActive]}
-            onPress={() => updateField('profileId', profile.id)}
+            onPress={() => handleSelectProfile(profile.id)}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${profile.displayName} profile`)}
             accessibilityHint="Assigns this loop to run with the selected saved profile."
@@ -528,13 +557,20 @@ export default function LoopEditScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
       )}
+      {showMissingSelectedProfileNotice && (
+        <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
+          <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>
+            Your previously selected profile is no longer available. This loop will save with No profile until you choose another.
+          </Text>
+        </View>
+      )}
       {showNoProfileSelectedHelper && (
         <Text style={styles.helperText}>No profile selected. This loop will run without a saved profile until you choose one.</Text>
       )}
       {showNoSavedProfilesNotice && (
         <View style={styles.profileNoticeContainer}>
           <Text style={styles.profileNoticeText}>
-            No saved profiles yet. This loop can still run with No profile, or you can create an agent now and come back to assign it here.
+            {noSavedProfilesNoticeText}
           </Text>
           <TouchableOpacity
             style={styles.profileNoticeActionButton}

@@ -115,13 +115,23 @@ test('LoopEditScreen keeps long profile chips stable on narrow screens', () => {
 
 test('LoopEditScreen explains when no saved profiles are available to assign', () => {
   assert.match(loopEditSource, /const \[profileLoadError, setProfileLoadError\] = useState<string \| null>\(null\);/);
+  assert.match(loopEditSource, /const \[didAutoClearMissingProfile, setDidAutoClearMissingProfile\] = useState\(false\);/);
   assert.match(loopEditSource, /setProfileLoadError\(null\);[\s\S]*?settingsClient\.getAgentProfiles\(\)/);
   assert.match(loopEditSource, /setProfileLoadError\(err\.message \|\| 'Failed to load agent profiles'\);/);
   assert.match(loopEditSource, /const showNoSavedProfilesNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length === 0;/);
+  assert.match(loopEditSource, /const noSavedProfilesNoticeText = didAutoClearMissingProfile[\s\S]*?The previously selected profile is no longer available\. This loop can still run with No profile, or you can create an agent now and come back to assign it here\.[\s\S]*?No saved profiles yet\. This loop can still run with No profile, or you can create an agent now and come back to assign it here\./);
   assert.match(loopEditSource, /const handleCreateAgentProfile = useCallback\(\(\) => \{[\s\S]*?navigation\.navigate\('AgentEdit'\);[\s\S]*?\}, \[navigation\]\);/);
-  assert.match(loopEditSource, /showNoSavedProfilesNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?No saved profiles yet\. This loop can still run with No profile, or you can create an agent now and come back to assign it here\.[\s\S]*?style=\{styles\.profileNoticeActionButton\}[\s\S]*?onPress=\{handleCreateAgentProfile\}[\s\S]*?createButtonAccessibilityLabel\('Create agent'\)[\s\S]*?Create Agent[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(loopEditSource, /showNoSavedProfilesNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?<Text style=\{styles\.profileNoticeText\}>[\s\S]*?\{noSavedProfilesNoticeText\}[\s\S]*?<\/Text>[\s\S]*?style=\{styles\.profileNoticeActionButton\}[\s\S]*?onPress=\{handleCreateAgentProfile\}[\s\S]*?createButtonAccessibilityLabel\('Create agent'\)[\s\S]*?Create Agent[\s\S]*?<\/View>[\s\S]*?\)/);
   assert.match(loopEditSource, /profileNoticeActionButton:\s*\{[\s\S]*?\.\.\.noticeActionTouchTarget,[\s\S]*?alignSelf:\s*'stretch',[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '26',[\s\S]*?justifyContent:\s*'center'/);
   assert.match(loopEditSource, /profileNoticeActionButtonText:\s*\{[\s\S]*?fontSize:\s*14,[\s\S]*?fontWeight:\s*'600',[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?textAlign:\s*'center'/);
+});
+
+test('LoopEditScreen clears missing saved-profile assignments after a successful reload', () => {
+  assert.match(loopEditSource, /const handleSelectProfile = useCallback\(\(profileId: string\) => \{[\s\S]*?setDidAutoClearMissingProfile\(false\);[\s\S]*?updateField\('profileId', profileId\);[\s\S]*?\}, \[updateField\]\);/);
+  assert.match(loopEditSource, /useEffect\(\(\) => \{[\s\S]*?if \(!settingsClient \|\| isLoadingProfiles \|\| profileLoadError \|\| !formData\.profileId\) \{[\s\S]*?return;[\s\S]*?\}[\s\S]*?const hasMatchingProfile = profiles\.some\(profile => profile\.id === formData\.profileId\);[\s\S]*?if \(hasMatchingProfile\) \{[\s\S]*?setDidAutoClearMissingProfile\(false\);[\s\S]*?return;[\s\S]*?\}[\s\S]*?setDidAutoClearMissingProfile\(true\);[\s\S]*?setFormData\(prev => prev\.profileId \? \{ \.\.\.prev, profileId: '' \} : prev\);[\s\S]*?\}, \[formData\.profileId, isLoadingProfiles, profileLoadError, profiles, settingsClient\]\);/);
+  assert.match(loopEditSource, /const showMissingSelectedProfileNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && didAutoClearMissingProfile && profiles\.length > 0;/);
+  assert.match(loopEditSource, /const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length > 0 && !formData\.profileId && !showMissingSelectedProfileNotice;/);
+  assert.match(loopEditSource, /showMissingSelectedProfileNotice && \([\s\S]*?Your previously selected profile is no longer available\. This loop will save with No profile until you choose another\.[\s\S]*?\)/);
 });
 
 test('LoopEditScreen makes profile loading feel in-progress instead of passive helper text', () => {
@@ -133,7 +143,7 @@ test('LoopEditScreen makes profile loading feel in-progress instead of passive h
 });
 
 test('LoopEditScreen explains when the loop is intentionally left unassigned', () => {
-  assert.match(loopEditSource, /const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length > 0 && !formData\.profileId;/);
+  assert.match(loopEditSource, /const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length > 0 && !formData\.profileId && !showMissingSelectedProfileNotice;/);
   assert.match(loopEditSource, /showNoProfileSelectedHelper && \([\s\S]*?No profile selected\. This loop will run without a saved profile until you choose one\.[\s\S]*?\)/);
 });
 
@@ -160,6 +170,12 @@ test('LoopEditScreen refreshes saved profiles when returning from nested agent c
   assert.match(loopEditSource, /const hasSeenScreenFocusRef = useRef\(false\);/);
   assert.match(loopEditSource, /navigation\.addListener\('focus', \(\) => \{[\s\S]*?if \(!settingsClient\) return;[\s\S]*?if \(!hasSeenScreenFocusRef\.current\) \{[\s\S]*?hasSeenScreenFocusRef\.current = true;[\s\S]*?return;[\s\S]*?\}[\s\S]*?setProfileReloadNonce\(prev => prev \+ 1\);[\s\S]*?\}\);/);
   assert.match(loopEditSource, /return unsubscribe;[\s\S]*?\}, \[navigation, settingsClient\]\);/);
+});
+
+test('LoopEditScreen normalizes unavailable saved-profile ids before saving', () => {
+  assert.match(loopEditSource, /const normalizedProfileId = formData\.profileId && \(isLoadingProfiles \|\| profileLoadError \|\| profiles\.some\(profile => profile\.id === formData\.profileId\)\)[\s\S]*?\? formData\.profileId[\s\S]*?: undefined;/);
+  assert.match(loopEditSource, /const updatePayload: LoopUpdateRequest = \{[\s\S]*?profileId: normalizedProfileId,[\s\S]*?\};/);
+  assert.match(loopEditSource, /const createPayload: LoopCreateRequest = \{[\s\S]*?profileId: normalizedProfileId,[\s\S]*?\};/);
 });
 
 test('LoopEditScreen previews interval minutes with readable cadence labels', () => {

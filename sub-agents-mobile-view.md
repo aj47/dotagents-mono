@@ -4516,3 +4516,56 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that changing connection type visibly clears the irrelevant fields and keeps `ACP` ↔ `Stdio` command fields intact.
   - Live-test an edit scenario that switches `Remote → ACP` and `ACP → Internal`, save each time, then reopen the agent to confirm hidden values no longer linger unexpectedly.
   - After that live pass, continue with the next highest-signal local sub-agent mobile issue instead of revisiting this connection-state fix without fresh evidence.
+
+### 2026-03-08 — Iteration 103: clear stale loop profile assignments after profile refreshes
+
+- Status: shipped locally with focused regression coverage; live Expo / simulator validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iterations 100–102, to avoid reworking the recent profile-empty-state and agent-connection passes without new evidence
+  - `apps/mobile/package.json` and the existing mobile workflow constraints already documented here
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - `apps/mobile/src/lib/settingsApi.ts`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection still was not practical because the mobile install remains missing in this worktree.
+  - Reconfirmed the blocker with a focused command:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING && pnpm --filter @dotagents/mobile exec expo --version` → `APPS_MOBILE_NODE_MODULES_MISSING`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed mobile-state review plus focused Node-based regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - `LoopEditScreen` refreshes saved profiles when the screen regains focus after nested agent creation.
+  - Source review showed that if the currently assigned `profileId` no longer exists in the refreshed profile list, the form kept that stale hidden id in state.
+  - On mobile, that weakens state clarity: no chip appears selected, the generic `No profile selected` helper does not appear, and save could silently preserve an invisible profile assignment.
+- Issue selected:
+  - The mobile loop editor could keep and save a stale hidden profile assignment after saved profiles changed, making the profile section visually misleading on narrow screens.
+- Assumptions / tradeoffs:
+  - Assumed users benefit more from trustworthy visible state than from silently preserving a profile id they can no longer see or select.
+  - Only clear missing profile assignments after a successful profile reload; if profiles are still loading or the reload failed, preserve the current value because the app does not yet have enough evidence to invalidate it.
+  - Kept the fix local to `LoopEditScreen` instead of introducing cross-surface normalization until live validation is available.
+- Decision:
+  - Auto-clear missing `profileId` values after a successful profile refresh.
+  - Surface a dedicated warning when the previous selection disappeared so the user understands why the loop is now unassigned.
+  - Reuse the same normalization during save so an invisible stale profile id cannot slip through even if the UI state and the save action happen close together.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - track when a missing saved-profile assignment was auto-cleared,
+    - reset that warning state when the user explicitly selects `No profile` or picks another profile,
+    - clear stale `profileId` values after successful profile reloads,
+    - show a warning notice when the previous profile is no longer available,
+    - tailor the empty-profile notice copy when the screen had to clear a missing profile,
+    - normalize `profileId` in create/update payloads so unavailable saved profiles are not preserved invisibly.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for:
+    - auto-clearing missing saved-profile assignments,
+    - showing the unavailable-profile warning state,
+    - normalizing saved payloads away from unavailable profile ids.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection ⚠️ blocked because `apps/mobile/node_modules` is missing and `pnpm --filter @dotagents/mobile exec expo --version` fails with `Command "expo" not found`
+- Remaining nearby issues noted, not addressed this iteration:
+  - This new unavailable-profile warning still needs a real narrow-screen pass to confirm it reads clearly without crowding the profile chips or the `Create Agent` empty-state action.
+  - The return flow after creating a brand-new agent still keeps explicit user choice; live use should confirm whether auto-selecting the newly created profile would help or feel too presumptive.
+  - The loop edit flow still lacks screenshot-backed validation for keyboard overlap, safe-area spacing, and save-button balance on small devices.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that returning to `LoopEdit` after profile changes visibly clears missing assignments and shows the new warning copy.
+  - Live-test a delete-or-remove scenario: open a loop with an assigned profile, remove that profile elsewhere, return, and confirm the loop becomes visibly unassigned instead of silently keeping the stale id.
+  - After that live pass, evaluate the next highest-signal mobile issue in the loop editor instead of revisiting this stale-profile fix without fresh evidence.
