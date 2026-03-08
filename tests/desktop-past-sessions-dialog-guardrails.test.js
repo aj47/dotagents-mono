@@ -8,6 +8,11 @@ const source = fs.readFileSync(
   'utf8'
 );
 
+const appLayoutSource = fs.readFileSync(
+  path.join(__dirname, '..', 'apps', 'desktop', 'src', 'renderer', 'src', 'components', 'app-layout.tsx'),
+  'utf8'
+);
+
 test('past sessions single-delete asks for confirmation and keeps retry guidance inline', () => {
   assert.match(source, /confirm\(`Delete "\$\{session\.title\}"\? This session will be removed from Past Sessions\.`\)/);
   assert.match(source, /const \[deleteSessionError, setDeleteSessionError\] = useState<PastSessionListItem \| null>\(null\)/);
@@ -53,4 +58,20 @@ test('past sessions search empty state explains there are no matches and offers 
   assert.match(source, /No sessions match/);
   assert.match(source, /Clear search/);
   assert.match(source, /onClick=\{\(\) => setSearchQuery\(""\)\}/);
+});
+
+test('past sessions dialog autofocuses search and restores focus to the launcher on dismiss', () => {
+  assert.match(source, /const searchInputRef = useRef<HTMLInputElement \| null>\(null\)/);
+  assert.match(source, /const handleDialogOpenAutoFocus = \(event: Event\) => \{\s*event\.preventDefault\(\)\s*searchInputRef\.current\?\.focus\(\)/);
+  assert.match(source, /const handleDialogCloseAutoFocus = \(event: Event\) => \{\s*const restoreFocusTarget = restoreFocusRef\?\.current\s*if \(!restoreFocusTarget\?\.isConnected\) \{\s*return\s*\}\s*event\.preventDefault\(\)\s*restoreFocusTarget\.focus\(\)/);
+  assert.match(source, /onOpenAutoFocus=\{handleDialogOpenAutoFocus\}/);
+  assert.match(source, /onCloseAutoFocus=\{handleDialogCloseAutoFocus\}/);
+  assert.match(source, /ref=\{searchInputRef\}/);
+});
+
+test('past sessions opener captures the currently focused launcher before opening the dialog', () => {
+  assert.match(appLayoutSource, /const pastSessionsDialogTriggerRef = useRef<HTMLElement \| null>\(null\)/);
+  assert.match(appLayoutSource, /const handleOpenPastSessionsDialog = useCallback\(\(\) => \{\s*pastSessionsDialogTriggerRef\.current =\s*document\.activeElement instanceof HTMLElement \? document\.activeElement : null\s*setPastSessionsDialogOpen\(true\)/);
+  assert.match(appLayoutSource, /restoreFocusRef=\{pastSessionsDialogTriggerRef\}/);
+  assert.ok((appLayoutSource.match(/handleOpenPastSessionsDialog/g) || []).length >= 4);
 });

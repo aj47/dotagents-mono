@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { useNavigate } from "react-router-dom"
 import dayjs from "dayjs"
 import { AlertTriangle, CheckCircle2, Clock, Loader2, Search, Trash2 } from "lucide-react"
@@ -55,14 +55,17 @@ function getConversationHistoryQueryErrorMessage(error: unknown): string {
 export function PastSessionsDialog({
   open,
   onOpenChange,
+  restoreFocusRef,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  restoreFocusRef?: RefObject<HTMLElement | null>
 }) {
   const navigate = useNavigate()
   const conversationHistoryQuery = useConversationHistoryQuery(open)
   const deleteConversationMutation = useDeleteConversationMutation()
   const deleteAllConversationsMutation = useDeleteAllConversationsMutation()
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [pastSessionsCount, setPastSessionsCount] = useState(
@@ -173,9 +176,28 @@ export function PastSessionsDialog({
     void conversationHistoryQuery.refetch()
   }
 
+  const handleDialogOpenAutoFocus = (event: Event) => {
+    event.preventDefault()
+    searchInputRef.current?.focus()
+  }
+
+  const handleDialogCloseAutoFocus = (event: Event) => {
+    const restoreFocusTarget = restoreFocusRef?.current
+    if (!restoreFocusTarget?.isConnected) {
+      return
+    }
+
+    event.preventDefault()
+    restoreFocusTarget.focus()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm w-[calc(100%-2rem)] overflow-hidden grid-cols-1">
+      <DialogContent
+        className="max-w-sm w-[calc(100%-2rem)] overflow-hidden grid-cols-1"
+        onOpenAutoFocus={handleDialogOpenAutoFocus}
+        onCloseAutoFocus={handleDialogCloseAutoFocus}
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -191,6 +213,7 @@ export function PastSessionsDialog({
             <div className="relative min-w-0 flex-1">
               <Search className="text-muted-foreground absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" />
               <Input
+                ref={searchInputRef}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search past sessions..."

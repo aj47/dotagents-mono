@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
@@ -48,6 +48,7 @@ export const Component = () => {
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
+  const pastSessionsDialogTriggerRef = useRef<HTMLElement | null>(null)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
     useSidebar()
@@ -141,6 +142,12 @@ export const Component = () => {
     },
     [isEmergencyStopping, setFocusedSessionId],
   )
+
+  const handleOpenPastSessionsDialog = useCallback(() => {
+    pastSessionsDialogTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setPastSessionsDialogOpen(true)
+  }, [])
 
   const handleCollapsedSessionClick = useCallback(
     (sessionId: string) => {
@@ -266,6 +273,7 @@ export const Component = () => {
       <PastSessionsDialog
         open={pastSessionsDialogOpen}
         onOpenChange={setPastSessionsDialogOpen}
+        restoreFocusRef={pastSessionsDialogTriggerRef}
       />
 
       <div className="flex h-dvh">
@@ -404,7 +412,7 @@ export const Component = () => {
 
                 <button
                   type="button"
-                  onClick={() => setPastSessionsDialogOpen(true)}
+                  onClick={handleOpenPastSessionsDialog}
                   className={cn(
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     pastSessionsDialogOpen
@@ -548,7 +556,7 @@ export const Component = () => {
             <div className="scrollbar-none mt-2 min-h-0 flex-1 overflow-y-auto">
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
-                onOpenPastSessionsDialog={() => setPastSessionsDialogOpen(true)}
+                onOpenPastSessionsDialog={handleOpenPastSessionsDialog}
               />
 
               {/* Agents Section - capability management */}
@@ -628,7 +636,7 @@ export const Component = () => {
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             <Outlet
               context={{
-                onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+                onOpenPastSessionsDialog: handleOpenPastSessionsDialog,
                 sidebarWidth,
               }}
             />
