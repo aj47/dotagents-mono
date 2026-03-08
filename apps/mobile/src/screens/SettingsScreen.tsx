@@ -64,6 +64,14 @@ function buildRemoteSettingsInputDrafts(settings: Settings | null): Record<strin
   };
 }
 
+function getSectionLoadErrorMessage(sectionLabel: string, error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return `Couldn't load ${sectionLabel}. ${error.message.trim()}`;
+  }
+
+  return `Couldn't load ${sectionLabel}. Pull to refresh and try again.`;
+}
+
 // OpenAI TTS Voice Options
 const OPENAI_TTS_VOICES = [
   { label: 'Alloy', value: 'alloy' },
@@ -260,6 +268,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [skillsLoadError, setSkillsLoadError] = useState<string | null>(null);
+  const [memoriesLoadError, setMemoriesLoadError] = useState<string | null>(null);
+  const [agentProfilesLoadError, setAgentProfilesLoadError] = useState<string | null>(null);
+  const [loopsLoadError, setLoopsLoadError] = useState<string | null>(null);
   const availableAcpMainAgents = useMemo(
     () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -406,11 +418,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchSkills = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingSkills(true);
+    setSkillsLoadError(null);
     try {
       const res = await settingsClient.getSkills();
       setSkills(res.skills);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch skills:', error);
+      setSkillsLoadError(getSectionLoadErrorMessage('skills', error));
     } finally {
       setIsLoadingSkills(false);
     }
@@ -420,11 +434,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchMemories = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingMemories(true);
+    setMemoriesLoadError(null);
     try {
       const res = await settingsClient.getMemories();
       setMemories(res.memories);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch memories:', error);
+      setMemoriesLoadError(getSectionLoadErrorMessage('memories', error));
     } finally {
       setIsLoadingMemories(false);
     }
@@ -434,11 +450,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchAgentProfiles = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingAgentProfiles(true);
+    setAgentProfilesLoadError(null);
     try {
       const res = await settingsClient.getAgentProfiles();
       setAgentProfiles(res.profiles);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch agent profiles:', error);
+      setAgentProfilesLoadError(getSectionLoadErrorMessage('agents', error));
     } finally {
       setIsLoadingAgentProfiles(false);
     }
@@ -448,11 +466,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchLoops = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingLoops(true);
+    setLoopsLoadError(null);
     try {
       const res = await settingsClient.getLoops();
       setLoops(res.loops);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch loops:', error);
+      setLoopsLoadError(getSectionLoadErrorMessage('agent loops', error));
     } finally {
       setIsLoadingLoops(false);
     }
@@ -2153,6 +2173,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="skills" title="Skills">
                 {isLoadingSkills ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : skillsLoadError && skills.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{skillsLoadError}</Text>
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
@@ -2174,6 +2196,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {skillsLoadError && skills.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{skillsLoadError}</Text>
+                )}
                 <Text style={styles.helperText}>
                   Toggle skills for the current profile
                 </Text>
@@ -2185,6 +2210,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="memories" title="Memories">
                 {isLoadingMemories ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : memoriesLoadError && memories.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{memoriesLoadError}</Text>
                 ) : memories.length === 0 ? (
                   <Text style={styles.helperText}>No memories saved</Text>
                 ) : (
@@ -2224,6 +2251,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {memoriesLoadError && memories.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{memoriesLoadError}</Text>
+                )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
                   onPress={() => handleMemoryEdit()}
@@ -2241,6 +2271,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agents" title="Agents">
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : agentProfilesLoadError && agentProfiles.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{agentProfilesLoadError}</Text>
                 ) : agentProfiles.length === 0 ? (
                   <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
@@ -2309,6 +2341,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {agentProfilesLoadError && agentProfiles.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{agentProfilesLoadError}</Text>
+                )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
                   onPress={() => handleAgentProfileEdit()}
@@ -2326,6 +2361,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agentLoops" title="Agent Loops">
                 {isLoadingLoops ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : loopsLoadError && loops.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{loopsLoadError}</Text>
                 ) : loops.length === 0 ? (
                   <Text style={styles.helperText}>No agent loops configured</Text>
                 ) : (
@@ -2397,6 +2434,9 @@ export default function SettingsScreen({ navigation }: any) {
                       </View>
                     </View>
                   ))
+                )}
+                {loopsLoadError && loops.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{loopsLoadError}</Text>
                 )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
@@ -2839,6 +2879,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: -spacing.xs,
+    },
+    errorHelperText: {
+      color: theme.colors.destructive,
     },
     input: {
       ...theme.input,
