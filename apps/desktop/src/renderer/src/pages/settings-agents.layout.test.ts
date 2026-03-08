@@ -64,4 +64,14 @@ describe("settings agents page layout", () => {
     expect(settingsAgentsSource.match(/className="flex items-start gap-2"/g)).toHaveLength(2)
     expect(settingsAgentsSource).not.toContain('className="flex items-center gap-4 pt-2"')
   })
+
+  it("lets long MCP server names wrap before the row actions crowd them out", () => {
+    expect(settingsAgentsSource).toContain('className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-3 py-2"')
+    expect(settingsAgentsSource).toContain('className="flex min-w-0 flex-1 items-start gap-3"')
+    expect(settingsAgentsSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-2"')
+    expect(settingsAgentsSource).toContain('min-w-0 break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]')
+    expect(settingsAgentsSource).toContain('className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1"')
+    expect(settingsAgentsSource).toContain('className="shrink-0 text-[10px] px-1.5"')
+    expect(settingsAgentsSource).not.toContain('className={`font-medium text-sm truncate ${!enabled ? "text-muted-foreground" : ""}`}')
+  })
 })

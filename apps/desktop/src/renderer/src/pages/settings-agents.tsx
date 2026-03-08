@@ -798,22 +798,22 @@ export function SettingsAgents() {
                       const enabled = isServerEnabled(name)
                       return (
                         <div key={name} className="rounded-md border bg-card">
-                          <div className="flex items-center justify-between px-3 py-2">
-                            <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-3 py-2">
+                            <div className="flex min-w-0 flex-1 items-start gap-3">
                               <Switch checked={enabled} onCheckedChange={() => toggleServer(name)} />
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className={`font-medium text-sm truncate ${!enabled ? "text-muted-foreground" : ""}`}>{name}</span>
+                              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                                <span className={`min-w-0 break-words text-sm font-medium leading-tight [overflow-wrap:anywhere] ${!enabled ? "text-muted-foreground" : ""}`}>{name}</span>
                                 {info?.connected
-                                  ? <Badge variant="secondary" className="text-[10px] px-1.5">connected</Badge>
-                                  : <Badge variant="outline" className="text-[10px] px-1.5">offline</Badge>
+                                  ? <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5">connected</Badge>
+                                  : <Badge variant="outline" className="shrink-0 text-[10px] px-1.5">offline</Badge>
                                 }
                               </div>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1">
                               <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit server" onClick={() => navigate("/settings/capabilities")}>
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </Button>
-                              <button type="button" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded" onClick={() => toggleExpandServer(name)}>
+                              <button type="button" className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground" onClick={() => toggleExpandServer(name)}>
                                 <span>{serverToolList.length} tools</span>
                                 {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                               </button>

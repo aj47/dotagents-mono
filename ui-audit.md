@@ -1,5 +1,59 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 86: Desktop agent-editor MCP server rows hid long server identity behind one-line ellipsis under constrained width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-agents.tsx` (`Settings → Agents` → edit/create agent → `Capabilities` tab → `MCP Servers` per-server rows)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched create-agent top hierarchy and bundle-import component rows unless a concrete follow-up justified it.
+  - Chunk 31 explicitly left the `settings-agents.tsx` `MCP Servers` per-row action strip as a strong next follow-up once a fresh live pass was practical.
+  - The live desktop settings route was still inspectable, and this sub-surface exposed a clearer user-impact problem than another source-only sweep: the differentiating part of long MCP server names disappeared exactly where users decide which server to enable or inspect.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `mobile-app-improvement.md`, and `apps/desktop/src/renderer/src/AGENTS.md` before choosing the next area
+  - used live browser automation against `http://localhost:5173/settings/agents` and, because the route expects Electron preload APIs, mounted the real settings page with a lightweight preload-style mock instead of guessing from source alone
+  - stress-tested the agent editor `Capabilities → MCP Servers` rows around `760×900` and `620×800` with root text forced to `24px`, focusing on long realistic MCP server names
+  - captured live screenshot-backed evidence in `tmp/ui-audit/settings-agents-mcp-row-wrap-check.png` and measured representative mounted rows before editing source
+  - cross-checked current source in `settings-agents.tsx` and confirmed the row still used a rigid single-line split (`flex items-center justify-between`, nested `truncate` label, and fixed inline action strip)
+  - after patching source, re-checked the live route and confirmed the active `:5173` runtime is serving another worktree (`streaming-lag-loop`), so I treated it as pre-fix/stale runtime evidence only and used a DOM prototype of the exact class treatment for visual validation
+  - cross-checked mobile scope and kept this desktop-only: `apps/mobile/src/screens/AgentEditScreen.tsx` does not expose the same desktop MCP server-management row pattern
+
+#### Findings
+
+- Before the fix, the desktop agent-editor `MCP Servers` rows had one concrete readability/disambiguation issue with clear user impact:
+  - each row forced the switch, long server name, status badge, edit button, and tool-count action into one rigid horizontal lane
+  - in live inspection at about `620×800` with `24px` root text, representative long names such as `incident-hub-primary-production` and `customer-escalations-europe-west` were already clipped to ellipsis while the trailing action strip still held about `138px`
+  - the live measurements showed representative name lanes around `clientWidth/scrollWidth ≈ 113/312` and `133/332`, confirming that the server identity was the only thing allowed to collapse
+  - practical impact: when several MCP servers share similar prefixes, users can more easily enable, edit, or expand the wrong server because the row keeps the actions visible while hiding the distinguishing tail of the server name
+
+#### Changes made
+
+- Hardened only the desktop MCP server rows in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`:
+  - changed the row container from a rigid single-line split to `flex-wrap` / `items-start` with explicit horizontal and vertical gaps
+  - gave the left identity lane a dedicated `min-w-0 flex-1` wrap-safe path so the server name can use available width before competing with the action strip
+  - replaced the server-name `truncate` treatment with wrap-safe text (`break-words`, `leading-tight`, `[overflow-wrap:anywhere]`) and made the status badge explicitly `shrink-0`
+  - moved the edit + tool-count controls into a separate `ml-auto ... shrink-0 flex-wrap` lane so the actions remain visible without forcing the name into one-line ellipsis
+- Extended `apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts` with focused source-contract coverage for the MCP server row wrap behavior
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.layout.test.ts` *(blocked: `vitest` was not found because this worktree still has no local desktop dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe MCP server row classes, removal of the old `truncate` label contract, and the focused regression test coverage ✅
+- Live desktop evidence before the fix on `http://localhost:5173/settings/agents`:
+  - screenshot: `tmp/ui-audit/settings-agents-mcp-row-wrap-check.png`
+  - runtime row still rendered with the old classes (`flex items-center justify-between`, `font-medium text-sm truncate`, `flex items-center gap-1`), matching the observed ellipsis behavior under stress
+- Live DOM prototype verification of the intended fix under the same stressed conditions:
+  - before prototype: representative long-name label `clientWidth = 204`, `scrollWidth = 1294`, `white-space = nowrap`, approximate `1` line, actions still visible
+  - after applying the same row/name/action treatment in the mounted DOM: label `clientWidth = scrollWidth = 287`, `white-space = normal`, `overflow-wrap = anywhere`, approximate `6` lines, actions still visible
+  - this confirmed the intended fix removes one-line ellipsis while preserving the action strip inside the row bounds
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-agents.tsx apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the active `:5173` desktop runtime is currently serving another worktree (`streaming-lag-loop`), so I did **not** claim literal post-edit runtime confirmation from this checkout. I paired live pre-fix evidence with a DOM prototype of the exact class treatment and direct source verification for the shipped code.
+- This chunk is desktop-only: the mobile `AgentEditScreen` does not expose this multi-control MCP server row.
+- Tradeoff/rationale: unusually long server names may now use multiple lines under stress, but that is a safer product tradeoff than keeping destructive/state-changing controls visible while hiding which server row they belong to.
+- Best next UI audit chunk after this one: move away from the just-touched agent-editor MCP rows unless this worktree gets its own rebuilt live renderer; the next strongest target is another fresh desktop or mobile empty/loading/error or dense-controls surface with current-runtime evidence.
+
 ### 2026-03-08 — Chunk 85: Desktop bundle import component rows crushed labels into awkward mid-word breaks under stressed dialog width + larger text
 
 - Area selected:
