@@ -5172,3 +5172,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that switching between chats with existing response history resets the panel to collapsed and stops any in-progress playback indicator.
   - Capture screenshot-backed evidence for two conversations with response history so the before/after state reset is verified with real narrow-screen constraints.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this response-history reset without fresh evidence.
+
+## Iteration 117 - Keep mobile edit-flow save actions visibly labeled while saving
+
+- Date: 2026-03-08
+- Summary: Improved state clarity in the mobile `AgentEdit` and `LoopEdit` forms by keeping explicit busy labels inside the primary save CTA instead of collapsing those buttons to a spinner-only state.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent queue/history/settings work without a fresh, local issue.
+  - Re-checked `apps/mobile/src/screens/AgentEditScreen.tsx`, `apps/mobile/src/screens/LoopEditScreen.tsx`, and `apps/mobile/tests/sub-agent-edit-mobile.test.js` because the edit flows were the clearest remaining mobile surface where a small state-clarity improvement could still ship safely.
+  - Chose a save-state issue that had not already been logged: the primary CTA had strong disabled/busy semantics, but the visible button content still dropped to only a spinner once saving began.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with a focused command:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING && pnpm --filter @dotagents/mobile exec expo --version` → `APPS_MOBILE_NODE_MODULES_MISSING`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed form-state review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Both `AgentEditScreen` and `LoopEditScreen` already disabled their primary save buttons appropriately and exposed `busy` state through accessibility metadata.
+  - Once saving started, the visible button content changed from `Save Changes` / `Create Agent` / `Save Loop` / `Create Loop` to only a centered spinner.
+  - On mobile that made the highest-salience CTA feel less explicit at the moment users most need confirmation that the app is actively saving the form they just submitted.
+- Issue identified:
+  - Spinner-only save CTAs weakened mobile state clarity in the sub-agent edit flows, especially on long forms where users may have already scrolled away from the surrounding context.
+- Decision and rationale:
+  - Keep the existing save-button layout, disabled-state behavior, accessibility hints, and form flow unchanged.
+  - Do not redesign the footer or add new progress banners while live validation is blocked.
+  - Make the smallest local fix instead: preserve the current spinner, but pair it with an explicit busy label inside each save button so the CTA still reads as `Saving agent…`, `Creating agent…`, `Saving loop…`, or `Creating loop…`.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - derive `saveButtonBusyText` from create vs. edit mode,
+    - render the spinner and busy label together inside a centered `saveButtonContent` row,
+    - keep the existing idle labels (`Save Changes` / `Create Agent`) unchanged.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` with the same busy-label pattern for `Saving loop…` / `Creating loop…` while preserving the existing idle labels.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new busy labels and shared centered save-button content styling in both edit flows.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed preserving a visible saving label is more reassuring on mobile than a spinner-only state, even though the surrounding button width may grow slightly while saving.
+  - Kept the new busy text short and entity-specific to improve clarity without turning the primary CTA into a multi-line progress message.
+  - This improves source-backed save-state feedback, but it still needs live confirmation that the busy labels stay visually balanced on narrow screens and do not crowd nearby form content.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The edit flows still need screenshot-backed review overall, including how the newly labeled saving state feels with the keyboard open and the form scrolled near the footer.
+  - A live end-to-end pass is still needed for returning from nested routes like `ConnectionSettings` or `AgentEdit` to confirm save-state feedback remains clear after navigation.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new save busy labels remain legible and balanced inside both edit-form CTAs on a narrow screen.
+  - Capture screenshot-backed evidence for both `AgentEdit` and `LoopEdit` while saving so the spinner + label combination can be judged with real mobile width constraints.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this save-state clarification without fresh evidence.

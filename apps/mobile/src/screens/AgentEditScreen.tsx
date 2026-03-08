@@ -288,6 +288,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       : isEditing
         ? 'Saves your changes to this agent.'
         : 'Creates this agent with the current settings.';
+  const saveButtonBusyText = isEditing ? 'Saving agent…' : 'Creating agent…';
   const handleOpenConnectionSettings = useCallback(() => {
     navigation.navigate('ConnectionSettings');
   }, [navigation]);
@@ -598,7 +599,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
         accessibilityState={{ disabled: isSaveDisabled, busy: isSaving }}
       >
         {isSaving ? (
-          <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
+          <View style={styles.saveButtonContent}>
+            <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
+            <Text style={styles.saveButtonText}>{saveButtonBusyText}</Text>
+          </View>
         ) : (
           <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Create Agent'}</Text>
         )}
@@ -835,6 +839,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: spacing.md,
       borderRadius: radius.md,
       alignItems: 'center',
+    },
+    saveButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
     },
     saveButtonDisabled: {
       opacity: 0.7,

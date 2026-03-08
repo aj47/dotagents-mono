@@ -378,6 +378,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       : isEditing
         ? 'Saves your changes to this loop.'
         : 'Creates this loop with the current settings.';
+  const saveButtonBusyText = isEditing ? 'Saving loop…' : 'Creating loop…';
   const getLoopInputAccessibilityProps = (fieldName: string, hint: string) => ({
     accessibilityLabel: createTextInputAccessibilityLabel(fieldName),
     accessibilityHint: hint,
@@ -630,7 +631,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
         accessibilityHint={saveButtonAccessibilityHint}
         accessibilityState={{ disabled: isSaveDisabled, busy: isSaving }}
       >
-        {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
+        {isSaving ? (
+          <View style={styles.saveButtonContent}>
+            <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
+            <Text style={styles.saveButtonText}>{saveButtonBusyText}</Text>
+          </View>
+        ) : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -815,6 +821,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     profileOptionText: { color: theme.colors.foreground, fontSize: 13, maxWidth: '100%', flexShrink: 1 },
     profileOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
+    saveButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
     saveButtonDisabled: { opacity: 0.7 },
     saveButtonText: { color: theme.colors.primaryForeground, fontSize: 16, fontWeight: '600' },
   });

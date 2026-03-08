@@ -277,6 +277,12 @@ test('AgentEditScreen gives the primary save action explicit mobile button seman
   assert.match(agentEditSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{saveButtonAccessibilityLabel\}[\s\S]*?accessibilityHint=\{saveButtonAccessibilityHint\}[\s\S]*?accessibilityState=\{\{ disabled: isSaveDisabled, busy: isSaving \}\}/);
 });
 
+test('AgentEditScreen keeps a visible busy label inside the primary save action while saving', () => {
+  assert.match(agentEditSource, /const saveButtonBusyText = isEditing \? 'Saving agent…' : 'Creating agent…';/);
+  assert.match(agentEditSource, /\{isSaving \? \([\s\S]*?<View style=\{styles\.saveButtonContent\}>[\s\S]*?<ActivityIndicator color=\{theme\.colors\.primaryForeground\} size="small" \/>[\s\S]*?<Text style=\{styles\.saveButtonText\}>\{saveButtonBusyText\}<\/Text>[\s\S]*?<\/View>[\s\S]*?\) : \([\s\S]*?<Text style=\{styles\.saveButtonText\}>\{isEditing \? 'Save Changes' : 'Create Agent'\}<\/Text>/);
+  assert.match(agentEditSource, /saveButtonContent:\s*\{[\s\S]*?flexDirection:\s*'row'[\s\S]*?alignItems:\s*'center'[\s\S]*?justifyContent:\s*'center'[\s\S]*?gap:\s*spacing\.sm/);
+});
+
 test('LoopEditScreen wraps the enabled switch in a named mobile-sized control', () => {
   assert.match(loopEditSource, /const switchTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(loopEditSource, /Platform\.OS === 'web'[\s\S]*?styles\.switchTrack/);
@@ -313,6 +319,12 @@ test('LoopEditScreen gives the primary save action explicit mobile button semant
   assert.match(loopEditSource, /settingsClient && saveValidationMessage && \([\s\S]*?styles\.saveHelperText[\s\S]*?\{saveValidationMessage\}[\s\S]*?\)/);
   assert.match(loopEditSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{saveButtonAccessibilityLabel\}[\s\S]*?accessibilityHint=\{saveButtonAccessibilityHint\}[\s\S]*?accessibilityState=\{\{ disabled: isSaveDisabled, busy: isSaving \}\}/);
   assert.match(loopEditSource, /saveHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
+test('LoopEditScreen keeps a visible busy label inside the primary save action while saving', () => {
+  assert.match(loopEditSource, /const saveButtonBusyText = isEditing \? 'Saving loop…' : 'Creating loop…';/);
+  assert.match(loopEditSource, /\{isSaving \? \([\s\S]*?<View style=\{styles\.saveButtonContent\}>[\s\S]*?<ActivityIndicator color=\{theme\.colors\.primaryForeground\} size="small" \/>[\s\S]*?<Text style=\{styles\.saveButtonText\}>\{saveButtonBusyText\}<\/Text>[\s\S]*?<\/View>[\s\S]*?\) : <Text style=\{styles\.saveButtonText\}>\{isEditing \? 'Save Loop' : 'Create Loop'\}<\/Text>\}/);
+  assert.match(loopEditSource, /saveButtonContent:\s*\{[\s\S]*?flexDirection:\s*'row'[\s\S]*?alignItems:\s*'center'[\s\S]*?justifyContent:\s*'center'[\s\S]*?gap:\s*spacing\.sm/);
 });
 
 test('LoopEditScreen surfaces missing server config in a dedicated blocking notice', () => {
