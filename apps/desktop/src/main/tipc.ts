@@ -1586,73 +1586,80 @@ export const router = {
       pcmRecording?: ArrayBuffer
     }>()
     .action(async ({ input }) => {
-      const config = configStore.get()
-      let transcript: string
+      try {
+        const config = configStore.get()
+        let transcript: string
 
-      if (config.sttProviderId === "parakeet") {
-        if (!parakeetStt.isModelReady()) {
-          return { text: "" }
-        }
-        await parakeetStt.initializeRecognizer(config.parakeetNumThreads)
-        // Use pcmRecording if provided, otherwise skip preview for Parakeet
-        // (WebM buffer would fail validation)
-        if (!input.pcmRecording) {
-          return { text: "" }
-        }
-        transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
-      } else {
-        const form = new FormData()
-        form.append(
-          "file",
-          new File([input.recording], "recording.webm", { type: "audio/webm" }),
-        )
-        form.append(
-          "model",
-          config.sttProviderId === "groq" ? "whisper-large-v3-turbo" : "whisper-1",
-        )
-        form.append("response_format", "json")
-
-        if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
-          form.append("prompt", config.groqSttPrompt.trim())
-        }
-
-        const languageCode = config.sttProviderId === "groq"
-          ? config.groqSttLanguage || config.sttLanguage
-          : config.openaiSttLanguage || config.sttLanguage;
-
-        if (languageCode && languageCode !== "auto") {
-          form.append("language", languageCode)
-        }
-
-        const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
-        const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
-
-        const transcriptResponse = await fetch(
-          config.sttProviderId === "groq"
-            ? `${groqBaseUrl}/audio/transcriptions`
-            : `${openaiBaseUrl}/audio/transcriptions`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.sttProviderId === "groq" ? config.groqApiKey : config.openaiApiKey}`,
-            },
-            body: form,
-          },
-        )
-
-        if (!transcriptResponse.ok) {
-          const errBody = await transcriptResponse.text().catch(() => "<unreadable>")
-          console.error(
-            `[transcribeChunk] API error ${transcriptResponse.status} ${transcriptResponse.statusText}: ${errBody}`,
+        if (config.sttProviderId === "parakeet") {
+          if (!parakeetStt.isModelReady()) {
+            return { text: "" }
+          }
+          await parakeetStt.initializeRecognizer(config.parakeetNumThreads)
+          // Use pcmRecording if provided, otherwise skip preview for Parakeet
+          // (WebM buffer would fail validation)
+          if (!input.pcmRecording) {
+            return { text: "" }
+          }
+          transcript = await parakeetStt.transcribe(input.pcmRecording, 16000)
+        } else {
+          const form = new FormData()
+          form.append(
+            "file",
+            new File([input.recording], "recording.webm", { type: "audio/webm" }),
           )
-          return { text: "" }
+          form.append(
+            "model",
+            config.sttProviderId === "groq" ? "whisper-large-v3-turbo" : "whisper-1",
+          )
+          form.append("response_format", "json")
+
+          if (config.sttProviderId === "groq" && config.groqSttPrompt?.trim()) {
+            form.append("prompt", config.groqSttPrompt.trim())
+          }
+
+          const languageCode = config.sttProviderId === "groq"
+            ? config.groqSttLanguage || config.sttLanguage
+            : config.openaiSttLanguage || config.sttLanguage;
+
+          if (languageCode && languageCode !== "auto") {
+            form.append("language", languageCode)
+          }
+
+          const groqBaseUrl = config.groqBaseUrl || "https://api.groq.com/openai/v1"
+          const openaiBaseUrl = config.openaiBaseUrl || "https://api.openai.com/v1"
+
+          const transcriptResponse = await fetch(
+            config.sttProviderId === "groq"
+              ? `${groqBaseUrl}/audio/transcriptions`
+              : `${openaiBaseUrl}/audio/transcriptions`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${config.sttProviderId === "groq" ? config.groqApiKey : config.openaiApiKey}`,
+              },
+              body: form,
+            },
+          )
+
+          if (!transcriptResponse.ok) {
+            const errBody = await transcriptResponse.text().catch(() => "<unreadable>")
+            const message = `${transcriptResponse.status} ${transcriptResponse.statusText} ${errBody}`.trim()
+            console.error(
+              `[transcribeChunk] API error ${transcriptResponse.status} ${transcriptResponse.statusText}: ${errBody}`,
+            )
+            return { text: "", error: message }
+          }
+
+          const json: { text: string } = await transcriptResponse.json()
+          transcript = json.text || ""
         }
 
-        const json: { text: string } = await transcriptResponse.json()
-        transcript = json.text || ""
+        return { text: transcript }
+      } catch (error) {
+        const message = getErrorMessage(error, "Live transcription preview failed")
+        console.error("[transcribeChunk] Preview request failed:", error)
+        return { text: "", error: message }
       }
-
-      return { text: transcript }
     }),
 
   createTextInput: t.procedure
