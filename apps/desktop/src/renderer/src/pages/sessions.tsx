@@ -72,6 +72,9 @@ function formatTimestamp(timestamp: number): string {
 
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
+const PENDING_LOADING_TILE_STATUS_LABEL = "Opening conversation…"
+const PENDING_LOADING_TILE_HELPER_TEXT =
+  "Loading previous messages and restoring this session tile."
 const RECENT_SESSION_ROW_CLASS_NAME =
   "hover:bg-accent/50 group flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors"
 const RECENT_SESSION_TITLE_CLASS_NAME =
@@ -1734,12 +1737,27 @@ export function Component() {
                 isDragTarget={false}
                 isDragging={false}
               >
-                <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4">
-                  <div className="border-border/60 flex items-center gap-2 border-b pb-3">
-                    <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-                    <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+                <div
+                  className="border-border bg-card flex h-full flex-col rounded-xl border p-4"
+                  role="status"
+                  aria-live="polite"
+                  aria-label={PENDING_LOADING_TILE_STATUS_LABEL}
+                >
+                  <div className="border-border/60 flex min-w-0 items-start gap-3 border-b pb-3">
+                    <Loader2
+                      className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0 animate-spin"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="text-sm font-medium leading-snug break-words [overflow-wrap:anywhere]">
+                        {PENDING_LOADING_TILE_STATUS_LABEL}
+                      </div>
+                      <p className="text-muted-foreground text-xs leading-relaxed break-words [overflow-wrap:anywhere]">
+                        {PENDING_LOADING_TILE_HELPER_TEXT}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-4 space-y-2" aria-hidden="true">
                     <div className="bg-muted/70 h-3 w-full animate-pulse rounded" />
                     <div className="bg-muted/70 h-3 w-5/6 animate-pulse rounded" />
                     <div className="bg-muted/70 h-3 w-2/3 animate-pulse rounded" />

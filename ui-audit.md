@@ -1,5 +1,51 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 72: Desktop root pending continuation loading tile looked like an anonymous placeholder instead of a real status state
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/sessions.tsx` (root sessions page → pending continuation loading tile shown before the conversation history resolves)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched empty-state recent sessions, providers shell, WhatsApp connection card, General accordion chrome, sidebar sessions, and recent `agent-progress` sub-surfaces.
+  - Multiple recent chunks had left an unreviewed root loading / pending state as the strongest fresh candidate.
+  - I first tried the preferred live-inspection paths, but they were blocked in this environment, so the right non-thrashy move was a small source-driven fix on a still-unlogged user-facing loading state.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `visible-ui.md`, `apps/mobile/README.md`, and renderer `AGENTS.md` before picking the next area
+  - attempted live browser inspection at `http://localhost:5174/`, `http://localhost:5174/settings/general`, and `http://localhost:5174/onboarding`
+  - captured blocker evidence at `/private/tmp/ui-audit/localhost-5174.png` plus DOM dump `/private/tmp/ui-audit/live-dom.html`
+  - confirmed those browser routes currently fail before mount because the served renderer expects the Electron preload bridge (`window.electron.ipcRenderer`) and the reachable Vite target appears to belong to another worktree, not this checkout
+  - attempted Electron-native inspection via `electron_execute_electron-native`, but no inspectable Electron target was running with `--inspect`
+  - pivoted to direct source inspection of the root pending-loading tile in `sessions.tsx` and compared it against nearby desktop loading-state patterns that already expose visible status copy (`panel.tsx`, `agent-processing-view.tsx`, `audio-player.tsx`, `model-selector.tsx`)
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SessionListScreen.tsx` uses a separate full-screen loading state (`Loading chats...`) rather than this desktop pending-continuation tile pattern
+
+#### Findings
+
+- Before the fix, the desktop root pending continuation loading tile had one concrete visually neglected state with clear user impact:
+  - when a prior conversation was selected but its pending conversation query had not resolved yet, the root page rendered only a spinner plus anonymous pulse bars inside the temporary tile
+  - unlike neighboring desktop loading states in the repo, this tile exposed no visible heading, no helper copy, and no explicit status announcement; the only information on-screen was generic skeleton chrome
+  - practical impact: if reopening a conversation takes more than a moment, the tile reads more like a blank placeholder or broken card than a clear “we’re opening your conversation” state, which weakens trust and makes short waits feel more ambiguous than they need to
+
+#### Changes made
+
+- Hardened only the desktop root pending-loading tile in `apps/desktop/src/renderer/src/pages/sessions.tsx` with the smallest effective state-treatment fix:
+  - added visible status copy (`Opening conversation…`) and a short helper line (`Loading previous messages and restoring this session tile.`)
+  - made the tile a polite live status region with `role="status"`, `aria-live="polite"`, and a matching `aria-label`
+  - changed the loading header row to a wrap-safe `min-w-0 items-start` layout so the status text behaves cleanly under narrow widths or larger text
+  - kept the existing pulse bars as secondary visual scaffolding, but marked that skeleton block `aria-hidden` so assistive technology gets the meaningful status copy instead of decorative placeholders
+- Added `apps/desktop/src/renderer/src/pages/sessions.pending-loading-layout.test.ts` with focused source-contract coverage for the new visible loading-state copy and status semantics
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.pending-loading-layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new pending-loading status/helper constants, `role="status"`, `aria-live="polite"`, matching `aria-label`, wrap-safe header row, helper typography, `aria-hidden` skeleton block, and focused regression test coverage ✅
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/sessions.tsx apps/desktop/src/renderer/src/pages/sessions.pending-loading-layout.test.ts` ✅
+
+#### Notes
+
+- Important blocker/rationale: practical live renderer inspection was attempted first, but the reachable browser target crashed before mount with `Cannot read properties of undefined (reading 'ipcRenderer')`, and `electron_execute_electron-native` could not attach because no Electron process was running with `--inspect`. I therefore treated this chunk as source-driven with explicit blocker evidence instead of thrashing on runtime setup.
+- Mobile cross-check: no parallel mobile change was needed because `SessionListScreen.tsx` does not expose this desktop root pending-continuation tile; its loading state is a separate full-screen spinner + label treatment.
+- Tradeoff/rationale: the loading tile now spends a little more vertical space on visible status copy, but that is a safer tradeoff than showing users an unlabeled placeholder during a conversation-resume wait.
+- Best next UI audit chunk after this one: once a real Electron renderer from this checkout is available, re-check the root sessions page for literal screenshot-backed confirmation of the pending-loading tile and then move to another fresh root state such as a pending approval / retry / error surface rather than revisiting recent title-overflow fixes.
+
 ### 2026-03-08 — Chunk 71: Desktop root empty-state recent sessions hid too much session identity under narrow width + larger text
 
 - Area selected:
