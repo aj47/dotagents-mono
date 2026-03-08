@@ -1,5 +1,49 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 153 - Explain that disabled mobile agents pause auto-spawn
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not churn the just-touched selector recovery copy or disabled agent-row preview work without a new issue.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/AgentEditScreen.tsx`, `apps/mobile/tests/sub-agent-edit-mobile.test.js`, and desktop ACP startup logic because the mobile edit flow still had one local state-clarity gap available after the earlier switch-target and row-level auto-start passes.
+  - Confirmed from desktop source that command-based auto-start only applies while the agent is enabled:
+    - `apps/desktop/src/main/acp-service.ts` initializes only agents where `enabled !== false && autoSpawn`
+    - the same service rejects `spawnAgent(...)` when `agentConfig.enabled === false`
+  - Tried again to recover live-validation confidence, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `AgentEditScreen` already used wrapped mobile-sized switches for `Enabled` and `Auto Spawn`.
+  - But the helper copy still presented those two controls as if they were independent: `Enabled` only described chooser visibility, while `Auto Spawn` always said the agent starts automatically when DotAgents starts.
+  - On a narrow edit form, a disabled command-based agent with `Auto Spawn` still turned on could therefore read like it would auto-start, even though desktop runtime logic treats disabled agents as non-spawnable.
+- Issue identified:
+  - The mobile agent edit flow left the enabled/auto-spawn dependency implicit, weakening state clarity exactly where users configure that behavior.
+- Decision and rationale:
+  - Keep the existing edit-form layout, wrapped switch controls, and persisted `autoSpawn` value unchanged.
+  - Avoid a riskier behavior change like auto-clearing `autoSpawn` on disable while live validation is blocked.
+  - Make the smallest effective fix instead: derive state-aware helper and accessibility copy so the form explicitly says auto-spawn is paused while disabled and reminds users that auto-spawn only runs when the agent is enabled.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to derive:
+    - `enabledSwitchHelperText` / `enabledSwitchAccessibilityHint`, which now mention the enabled dependency when `autoSpawn` is on
+    - `autoSpawnHelperText` / `autoSpawnAccessibilityHint`, which now switch between normal auto-start copy and a disabled-state explanation
+  - Wired those derived strings into the existing `Enabled` and `Auto Spawn` switch rows without changing layout or save behavior.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new state-aware helper/hint contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that preserving the dormant `autoSpawn` preference while making its disabled-state effect explicit is safer than auto-resetting the value in a source-backed-only iteration.
+  - Kept the fix to copy only so it stays shippable and low-risk even without fresh narrow-screen screenshots.
+  - This remains a source-backed improvement and still needs live confirmation that the longer helper text stays balanced beside the toggle on very narrow screens.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that a disabled command-based agent now reads as `Auto Spawn is paused...` instead of implying it will still auto-start.
+  - Check both disabled states (`autoSpawn` on and off) to confirm the helper copy feels informative without making the switch rows look too text-heavy.
+  - If live validation shows the extra sentence is too long, prefer a wording trim before changing the interaction model.
+
 ## Iteration 152 - Point empty profile-mode recovery toward the actual mobile profile controls
 
 - Date: 2026-03-08

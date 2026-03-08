@@ -273,6 +273,22 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const builtInWarningText = supportsAutoSpawn
     ? '⚠️ Built-in agents keep their name, connection, and prompts. You can still update guidelines, enabled, and auto spawn.'
     : '⚠️ Built-in agents keep their name, connection, and prompts. You can still update guidelines and enabled state.';
+  const enabledSwitchHelperText = supportsAutoSpawn && formData.autoSpawn
+    ? 'Show this agent in delegation and ACP main-agent choices. Auto Spawn only runs while this agent is enabled.'
+    : 'Show this agent in delegation and ACP main-agent choices';
+  const enabledSwitchAccessibilityHint = supportsAutoSpawn && formData.autoSpawn
+    ? 'Shows or hides this agent in delegation and ACP main-agent choices. Auto Spawn only runs while this agent is enabled.'
+    : 'Shows or hides this agent in delegation and ACP main-agent choices.';
+  const autoSpawnHelperText = !formData.enabled
+    ? formData.autoSpawn
+      ? 'Auto Spawn is paused while this agent is disabled. Enable it to let DotAgents start it automatically again.'
+      : 'Enable this agent if you want DotAgents to start it automatically.'
+    : 'Start this command-based agent automatically when DotAgents starts';
+  const autoSpawnAccessibilityHint = !formData.enabled
+    ? formData.autoSpawn
+      ? 'Auto Spawn is paused while this agent is disabled. Enable it to let DotAgents start it automatically again.'
+      : 'Enable this agent if you want DotAgents to start it automatically.'
+    : 'Starts this command-based agent automatically when DotAgents starts.';
   const hasDisplayName = formData.displayName.trim().length > 0;
   const saveValidationMessage = !hasDisplayName
     ? 'Add a display name to enable saving.'
@@ -541,14 +557,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
       <View style={styles.switchRow}>
         <View style={styles.switchLabelGroup}>
           <Text style={styles.switchLabel}>Enabled</Text>
-          <Text style={styles.switchHelperText}>Show this agent in delegation and ACP main-agent choices</Text>
+          <Text style={styles.switchHelperText}>{enabledSwitchHelperText}</Text>
         </View>
         <TouchableOpacity
           style={styles.switchButton}
           onPress={() => updateField('enabled', !formData.enabled)}
           accessibilityRole="switch"
           accessibilityLabel={createSwitchAccessibilityLabel('Agent enabled')}
-          accessibilityHint="Shows or hides this agent in delegation and ACP main-agent choices."
+          accessibilityHint={enabledSwitchAccessibilityHint}
           accessibilityState={{ checked: formData.enabled }}
           activeOpacity={0.7}
         >
@@ -566,14 +582,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <View style={styles.switchRow}>
           <View style={styles.switchLabelGroup}>
             <Text style={styles.switchLabel}>Auto Spawn</Text>
-            <Text style={styles.switchHelperText}>Start this command-based agent automatically when DotAgents starts</Text>
+            <Text style={styles.switchHelperText}>{autoSpawnHelperText}</Text>
           </View>
           <TouchableOpacity
             style={styles.switchButton}
             onPress={() => updateField('autoSpawn', !formData.autoSpawn)}
             accessibilityRole="switch"
             accessibilityLabel={createSwitchAccessibilityLabel('Auto spawn')}
-            accessibilityHint="Starts this command-based agent automatically when DotAgents starts."
+            accessibilityHint={autoSpawnAccessibilityHint}
             accessibilityState={{ checked: formData.autoSpawn }}
             activeOpacity={0.7}
           >

@@ -52,7 +52,9 @@ test('AgentEditScreen only exposes auto spawn for command-based agents and clear
   assert.match(agentEditSource, /const supportsAutoSpawn = showCommandFields;/);
   assert.match(agentEditSource, /const handleConnectionTypeChange = useCallback\(\(connectionType: ConnectionType\) => \{[\s\S]*?setFormData\(prev => \{[\s\S]*?connectionType,[\s\S]*?autoSpawn: connectionType === 'acp' \|\| connectionType === 'stdio' \? prev\.autoSpawn : false,[\s\S]*?\};[\s\S]*?\}\);/);
   assert.match(agentEditSource, /onPress=\{\(\) => handleConnectionTypeChange\(ct\.value\)\}/);
-  assert.match(agentEditSource, /\{supportsAutoSpawn && \([\s\S]*?<Text style=\{styles\.switchLabel\}>Auto Spawn<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Start this command-based agent automatically when DotAgents starts<\/Text>[\s\S]*?accessibilityHint="Starts this command-based agent automatically when DotAgents starts\."[\s\S]*?\)\}/);
+  assert.match(agentEditSource, /const autoSpawnHelperText = !formData\.enabled[\s\S]*?formData\.autoSpawn[\s\S]*?'Auto Spawn is paused while this agent is disabled\. Enable it to let DotAgents start it automatically again\.'[\s\S]*?'Enable this agent if you want DotAgents to start it automatically\.'[\s\S]*?: 'Start this command-based agent automatically when DotAgents starts';/);
+  assert.match(agentEditSource, /const autoSpawnAccessibilityHint = !formData\.enabled[\s\S]*?formData\.autoSpawn[\s\S]*?'Auto Spawn is paused while this agent is disabled\. Enable it to let DotAgents start it automatically again\.'[\s\S]*?'Enable this agent if you want DotAgents to start it automatically\.'[\s\S]*?: 'Starts this command-based agent automatically when DotAgents starts\.';/);
+  assert.match(agentEditSource, /\{supportsAutoSpawn && \([\s\S]*?<Text style=\{styles\.switchLabel\}>Auto Spawn<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>\{autoSpawnHelperText\}<\/Text>[\s\S]*?accessibilityHint=\{autoSpawnAccessibilityHint\}[\s\S]*?\)\}/);
   assert.doesNotMatch(agentEditSource, /Start agent automatically on app launch|app launches\./);
 });
 
@@ -263,8 +265,10 @@ test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', 
 });
 
 test('AgentEditScreen explains what the Enabled switch controls in sub-agent flows', () => {
-  assert.match(agentEditSource, /<Text style=\{styles\.switchLabel\}>Enabled<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Show this agent in delegation and ACP main-agent choices<\/Text>/);
-  assert.match(agentEditSource, /accessibilityHint="Shows or hides this agent in delegation and ACP main-agent choices\."/);
+  assert.match(agentEditSource, /const enabledSwitchHelperText = supportsAutoSpawn && formData\.autoSpawn[\s\S]*?'Show this agent in delegation and ACP main-agent choices\. Auto Spawn only runs while this agent is enabled\.'[\s\S]*?: 'Show this agent in delegation and ACP main-agent choices';/);
+  assert.match(agentEditSource, /const enabledSwitchAccessibilityHint = supportsAutoSpawn && formData\.autoSpawn[\s\S]*?'Shows or hides this agent in delegation and ACP main-agent choices\. Auto Spawn only runs while this agent is enabled\.'[\s\S]*?: 'Shows or hides this agent in delegation and ACP main-agent choices\.';/);
+  assert.match(agentEditSource, /<Text style=\{styles\.switchLabel\}>Enabled<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>\{enabledSwitchHelperText\}<\/Text>/);
+  assert.match(agentEditSource, /accessibilityHint=\{enabledSwitchAccessibilityHint\}/);
   assert.match(agentEditSource, /switchRow:\s*\{[\s\S]*?alignItems:\s*'flex-start'/);
   assert.match(agentEditSource, /switchHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*2,[\s\S]*?lineHeight:\s*17/);
 });
