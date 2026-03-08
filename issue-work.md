@@ -3273,3 +3273,37 @@
   - If mobile users still need more trust detail for unopened desktop chats, consider whether the row/badge copy should explicitly call out represented totals even before opening the session.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice outside `#58`; if no sharper candidate emerges, a reasonable next follow-up is `#57` post-restore/default-slot activation polish rather than more mobile history plumbing.
+
+##### Issue #57 — Restore flow now offers one-click activation for restored bundle slots
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` after the prior `#58` commit and refreshed the still-open repo issues again before choosing the next slice.
+  - `#54` remains blocked on external ChatGPT subscription feasibility, while `#57` still had one explicit, already-documented trust gap with a tight local implementation path: restoring into a slot repopulated files, but did not help users activate that slot afterward.
+  - This directly matched the latest `#57` ledger follow-up about post-restore slot activation/default-slot polish and cleanly advanced the issue’s “easy multi-bundle swapping without config loss” direction.
+- Investigation:
+  - Re-read issue `#57` and its slot-oriented owner comment, especially the requirement that slot workflows support easy rollback/switching without destructive merges.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, and `apps/desktop/src/main/tipc.ts`.
+  - Confirmed the restore dialog already defaulted back to the original slot target when safe, but after a successful restore it only showed the normal success toast plus backup reveal action.
+  - Confirmed there was no source path that offered a direct `activate restored slot` follow-up even though `tipcClient.setActiveBundleSlot(...)` already existed and Settings → Capabilities already exposed slot activation separately.
+- Important assumptions:
+  - Assumption: offering a one-click activation action after restore is safer than auto-switching slots immediately.
+  - Why acceptable: it preserves the current non-destructive restore behavior, keeps workspace/runtime state explicit, and still closes the usability gap called out in the ledger.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the affected restore + bundle-slot management flow is desktop/Electron-only and mobile has no equivalent Settings → Capabilities surface.
+- Changes implemented:
+  - Added a `getImportTargetSlotId(...)` helper in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so the dialog can reliably infer the concrete slot id for restore/import targets instead of only formatting slot labels.
+  - Added restore-specific derived state that detects when a restore is targeting a non-active slot and surfaces a pre-restore note explaining that DotAgents will offer a one-click activation afterward.
+  - Added a restore-success follow-up toast with an `Activate Slot {slotId}` action that calls `tipcClient.setActiveBundleSlot(...)`, shows success/failure feedback, and reuses `onImportComplete()` so runtime/settings queries refresh after activation.
+  - Extended the dependency-free renderer source tests in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to lock the new restore-slot activation path in place.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Decide whether slot-targeted imports (not just restores) should eventually offer the same one-click activation affordance when users intentionally import into a new/inactive slot.
+  - If runtime trust copy still feels too subtle, consider surfacing the same post-restore activation state in Recent backups rows or success summaries, not only the toast flow.
+  - Re-run full desktop renderer/package validation once the missing desktop dependency baseline in this worktree is restored.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice outside both `#57` and `#58`; if no sharper candidate appears, the next honest `#57` follow-up is symmetric slot-activation affordances for import-targeted new slots rather than more restore copy.

@@ -63,16 +63,24 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
 
 test('bundle import dialog surfaces backup provenance when restoring an automatic snapshot', () => {
   assert.match(dialogSource, /interface BundleManifest \{[\s\S]*backup\?: BundleImportBackupMetadata/);
+  assert.match(dialogSource, /function getImportTargetSlotId\([\s\S]*slotState\?: BundleSlotState \| null,[\s\S]*\): string \| null/);
   assert.match(dialogSource, /function getBackupTargetSlotLabel\([\s\S]*backup\?: BundleImportBackupMetadata,[\s\S]*slotState\?: BundleSlotState \| null,[\s\S]*\): string \| null/);
   assert.match(dialogSource, /function formatBackupImportResultSummary\(summary\?: ImportResultSummary\): string \| null/);
   assert.match(dialogSource, /function formatBackupProvenance\([\s\S]*Created before importing \$\{backup\.sourceBundleName\} into \$\{targetLabel\}\./);
   assert.match(dialogSource, /function doesRestoreTargetDiffer\([\s\S]*normalizeImportTargetPath\(backup\.targetAgentsDir\)/);
   assert.match(dialogSource, /const backupMetadata = manifest\?\.backup/);
   assert.match(dialogSource, /const backupProvenance = formatBackupProvenance\(backupMetadata, bundleSlotState\)/);
+  assert.match(dialogSource, /const importTargetSlotId = getImportTargetSlotId\(importTarget, bundleSlotState\)/);
+  assert.match(dialogSource, /const shouldOfferPostRestoreSlotActivation = successVerb === "restored"[\s\S]*bundleSlotState\?\.activeSlotId !== importTargetSlotId/);
+  assert.match(dialogSource, /const handleActivateImportedSlot = async \(slotId: string\) => \{[\s\S]*tipcClient\.setActiveBundleSlot\(\{ slotId \}\)/);
+  assert.match(dialogSource, /toast\.success\(`Activated restored bundle slot "\$\{slotId\}"`\)/);
+  assert.match(dialogSource, /toast\.info\([\s\S]*Restore wrote files back into bundle slot "\$\{importTargetSlotId\}", but it is not the active runtime slot yet\./);
+  assert.match(dialogSource, /label: `Activate Slot \$\{importTargetSlotId\}`/);
   assert.match(dialogSource, /<Label>Backup provenance<\/Label>/);
   assert.match(dialogSource, /This bundle was created as a pre-import snapshot on \{new Date\(manifest\.createdAt\)\.toLocaleString\(\)\}\. \{backupProvenance\}/);
   assert.match(dialogSource, /Original snapshot target: <span className="font-medium text-foreground">\{formatBackupTargetLabel\(backupMetadata, bundleSlotState\)\}<\/span>/);
   assert.match(dialogSource, /This restore is currently pointed at \{formatImportTargetLabel\(importTarget, bundleSlotState\)\} instead of the original snapshot target\./);
+  assert.match(dialogSource, /This restore will repopulate bundle slot "\{importTargetSlotId\}" but keep the current runtime slot unchanged\. After restore, DotAgents will offer a one-click action to activate it\./);
   assert.match(dialogSource, /This restore is defaulting back to the original snapshot target recorded in the backup\./);
 });
 

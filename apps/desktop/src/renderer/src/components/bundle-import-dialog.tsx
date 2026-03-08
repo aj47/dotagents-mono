@@ -331,7 +331,7 @@ function normalizeImportTargetPath(value: string): string {
   return value.replace(/\\/g, "/").replace(/\/+$/, "")
 }
 
-function getImportTargetSlotLabel(
+function getImportTargetSlotId(
   importTarget?: BundlePreview["importTarget"],
   slotState?: BundleSlotState | null,
 ): string | null {
@@ -343,8 +343,17 @@ function getImportTargetSlotLabel(
   const matchingSlot = slotState?.slots.find(
     (slot) => normalizeImportTargetPath(slot.slotDir) === normalizedTargetDir,
   )
-  const inferredSlotId = matchingSlot?.id
+
+  return matchingSlot?.id
     ?? normalizedTargetDir.split("/").filter(Boolean).pop()
+    ?? null
+}
+
+function getImportTargetSlotLabel(
+  importTarget?: BundlePreview["importTarget"],
+  slotState?: BundleSlotState | null,
+): string | null {
+  const inferredSlotId = getImportTargetSlotId(importTarget, slotState)
 
   if (!inferredSlotId) {
     return "Bundle slot"
@@ -978,6 +987,19 @@ export function BundleImportDialog({
             }
           )
         }
+        if (shouldOfferPostRestoreSlotActivation && importTargetSlotId) {
+          toast.info(
+            `Restore wrote files back into bundle slot "${importTargetSlotId}", but it is not the active runtime slot yet.`,
+            {
+              action: {
+                label: `Activate Slot ${importTargetSlotId}`,
+                onClick: () => {
+                  void handleActivateImportedSlot(importTargetSlotId)
+                },
+              },
+            }
+          )
+        }
         onImportComplete()
         handleClose()
       } else {
@@ -1059,6 +1081,21 @@ export function BundleImportDialog({
   )
   const backupProvenance = formatBackupProvenance(backupMetadata, bundleSlotState)
   const restoreTargetDiffersFromBackupOrigin = doesRestoreTargetDiffer(importTarget, backupMetadata)
+  const importTargetSlotId = getImportTargetSlotId(importTarget, bundleSlotState)
+  const shouldOfferPostRestoreSlotActivation = successVerb === "restored"
+    && Boolean(importTargetSlotId)
+    && bundleSlotState?.activeSlotId !== importTargetSlotId
+
+  const handleActivateImportedSlot = async (slotId: string) => {
+    try {
+      await tipcClient.setActiveBundleSlot({ slotId })
+      toast.success(`Activated restored bundle slot "${slotId}"`)
+      onImportComplete()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to activate restored bundle slot: ${errorMessage}`)
+    }
+  }
 
   useEffect(() => {
     if (!showImportTargetSelector || hasEditedNewSlotId) return
@@ -1240,6 +1277,11 @@ export function BundleImportDialog({
                     {restoreTargetDiffersFromBackupOrigin && importTarget && (
                       <p className="text-[11px] text-amber-700">
                         This restore is currently pointed at {formatImportTargetLabel(importTarget, bundleSlotState)} instead of the original snapshot target. If you meant to roll back a slot-specific import, activate that slot from Settings → Capabilities → Bundle slots before restoring.
+                      </p>
+                    )}
+                    {!restoreTargetDiffersFromBackupOrigin && shouldOfferPostRestoreSlotActivation && importTargetSlotId && (
+                      <p className="text-[11px] text-sky-700">
+                        This restore will repopulate bundle slot "{importTargetSlotId}" but keep the current runtime slot unchanged. After restore, DotAgents will offer a one-click action to activate it.
                       </p>
                     )}
                     {!restoreTargetDiffersFromBackupOrigin && importTargetMode === "backup-origin" && (
