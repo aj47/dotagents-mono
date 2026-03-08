@@ -2893,3 +2893,37 @@
   - If the Hub inspector later exposes dependency metadata or richer MCP grouping, extend the current-state docs with that trust signal rather than leaving it implied.
   - Avoid reopening broader bundle-roadmap prose unless another concrete local docs/spec sync need appears.
 - Next recommended issue work item: refresh the open issues again and prefer the next concrete runtime-repro desktop bug or reliability slice; keep `#54` blocked until provider/auth feasibility materially changes, and only revisit docs if another just-landed trust default needs syncing.
+
+##### Issue #57 — Recent backup list now identifies slot-targeted backups by slot name
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest recommendation to refresh open issues before continuing any existing thread.
+  - Refreshed current open issues and re-read issue `#57` plus its newer slot-oriented owner comment; the best remaining small trust UX slice was richer backup provenance rather than broader conflict/import refactoring.
+  - This was a narrow, reviewable desktop-only improvement with direct rollback value: recent backups created from slot-targeted imports should tell the user which slot they protect.
+- Investigation:
+  - Re-read issue `#57` and its trust-track comments, especially the follow-up requirement around easy multi-bundle swapping and slot awareness.
+  - Inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed the `Recent backups` card only rendered a generic `Bundle slot` label even when `backup.targetAgentsDir` clearly pointed at a specific slot directory.
+  - Confirmed `apps/desktop/src/main/bundle-service.ts` already stores enough backup provenance for a small UI-only fix (`targetLayer` + `targetAgentsDir`), so this slice did not need a new backend contract.
+  - Confirmed the same page already queries live slot metadata via `tipcClient.getBundleSlotState()`, giving the renderer enough context to resolve a backup path back to a known slot id and mark the currently active slot when applicable.
+- Important assumptions:
+  - Assumption: inferring the slot name from the stored `targetAgentsDir` is acceptable for this slice instead of expanding backup metadata with a separate explicit `slotId` field.
+  - Why acceptable: the slot directory path is already persisted in backup metadata, current slot state exposes the canonical slot directories, and this keeps the change renderer-local and reviewable.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the affected UI is the desktop-only `Settings -> Capabilities` bundle backup/slot surface, with no equivalent mobile affordance today.
+- Changes implemented:
+  - Updated the local `RecentBackup` type in `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` so backup metadata now correctly recognizes `targetLayer: "slot"`.
+  - Added renderer helpers to normalize backup target paths, resolve slot-targeted backups against the live bundle-slot list, and fall back to the target directory basename when the slot is no longer present.
+  - Updated the recent-backups summary line so slot-targeted backups now render as `Bundle slot "{slotId}"`, and append `(active)` when the backup matches the currently active slot.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with source assertions covering the slot-aware backup label helper, the `slot` target-layer type, and the updated UI wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Carry even richer provenance into the recent-backups list if needed (for example, imported/skipped counts or a conflict summary from the originating import plan).
+  - Consider persisting an explicit `slotId` in backup metadata later if backup provenance needs to survive renamed/moved slot directories more robustly.
+  - Keep aligning slot-targeted import/restore affordances with any future Hub install trust flow so bundle origin and rollback remain equally clear.
+- Next recommended issue work item: refresh the open issues again and prefer another concrete desktop reliability/UX slice; if staying on `#57`, the next honest increment is richer backup/import provenance rather than broader new abstractions.

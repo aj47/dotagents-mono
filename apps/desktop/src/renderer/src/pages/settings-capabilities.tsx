@@ -34,7 +34,7 @@ interface RecentBackup {
   modifiedAt: number
   backup?: {
     kind: "pre-import-snapshot"
-    targetLayer: "global" | "workspace" | "custom"
+    targetLayer: "global" | "workspace" | "slot" | "custom"
     targetAgentsDir?: string
   }
   components: {
@@ -73,14 +73,45 @@ function formatBackupComponentSummary(components: RecentBackup["components"]): s
   return parts.length > 0 ? parts.join(" · ") : "Empty backup"
 }
 
-function formatBackupTargetLabel(backup: RecentBackup["backup"]): string {
+function normalizeBackupPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/\/+$/, "")
+}
+
+function getBackupSlotLabel(
+  backup: RecentBackup["backup"],
+  slotState?: BundleSlotState,
+): string | null {
+  if (backup?.targetLayer !== "slot" || !backup.targetAgentsDir) {
+    return null
+  }
+
+  const normalizedTargetDir = normalizeBackupPath(backup.targetAgentsDir)
+  const matchingSlot = slotState?.slots.find(
+    (slot) => normalizeBackupPath(slot.slotDir) === normalizedTargetDir,
+  )
+  const inferredSlotId = matchingSlot?.id
+    ?? normalizedTargetDir.split("/").filter(Boolean).pop()
+
+  if (!inferredSlotId) {
+    return "Bundle slot"
+  }
+
+  return slotState?.activeSlotId === inferredSlotId
+    ? `Bundle slot "${inferredSlotId}" (active)`
+    : `Bundle slot "${inferredSlotId}"`
+}
+
+function formatBackupTargetLabel(
+  backup: RecentBackup["backup"],
+  slotState?: BundleSlotState,
+): string {
   switch (backup?.targetLayer) {
     case "global":
       return "Global layer"
     case "workspace":
       return "Workspace layer"
     case "slot":
-      return "Bundle slot"
+      return getBackupSlotLabel(backup, slotState) ?? "Bundle slot"
     case "custom":
       return "Custom layer"
     default:
@@ -344,7 +375,7 @@ export function Component() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{backup.manifestName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {new Date(backup.createdAt).toLocaleString()} · {formatBackupTargetLabel(backup.backup)} · {formatBackupComponentSummary(backup.components)}
+                      {new Date(backup.createdAt).toLocaleString()} · {formatBackupTargetLabel(backup.backup, bundleSlotState)} · {formatBackupComponentSummary(backup.components)}
                     </p>
                     {backup.manifestDescription && (
                       <p className="truncate text-xs text-muted-foreground/80">{backup.manifestDescription}</p>
