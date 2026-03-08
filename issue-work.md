@@ -3674,3 +3674,37 @@
   - When desktop dependency installation is available, add a true renderer or component-level runtime test around the full-history section dividers instead of relying only on source assertions.
 
 - Next recommended issue work item: stay bug-first if `#55` can be validated more directly in a prepared desktop environment; otherwise keep taking narrow UX/reliability slices from the remaining desktop/website issues where local source tests and targeted validation are available.
+
+##### Issue #58 — Full-history section labels now include preserved and active-window message counts
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and refreshed issue `#58` details/comments before changing anything.
+  - The issue and owner scope-lock comment both emphasize making summarized versus active history clearly legible in the UI, and the newest local full-history viewer already had the right structure to support one more small provenance improvement.
+  - Chose a count-focused follow-up because the preserved-history and active-window dividers were present, but neither divider yet told the user *how many* messages belonged to each section.
+- Investigation:
+  - Re-read issue `#58`, its labels (`enhancement`, `ui`, `conversation-history`), and the owner comment calling for a clear `Show Full History` affordance with honest summarized-vs-active provenance.
+  - Inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the stored-history banner already described message counts globally, but the two inline section dividers still only used generic copy.
+  - Confirmed the same divider rendering path is shared by the tile and standard/overlay transcript variants, making this a small renderer-only change.
+  - Checked mobile parity before editing; mobile still has no equivalent preserved full-history viewer surface, so no mobile change was needed for this slice.
+- Important assumptions:
+  - Assumption: adding message counts directly into the existing divider labels is preferable to introducing new badge components or a larger visual redesign.
+  - Why acceptable: it strengthens provenance with the smallest possible UI change and keeps the full-history viewer readable.
+  - Assumption: `activeWindowMessageCount` is the right count to show at the active-context boundary.
+  - Why acceptable: that count reflects the recent stored messages that still belong to the active LLM context, while summary blocks remain explained separately in the banner above.
+- Changes implemented:
+  - Updated `fullHistoryEarlierSectionLabel` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to include the preserved earlier-message count with locale formatting.
+  - Added `fullHistoryActiveSectionLabel` so the active-context divider now includes the active recent-message count with correct singular/plural wording.
+  - Reused the new active-context label in both the tile and standard/overlay full-history transcript render paths.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` to cover the new count-aware divider strings.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Did not re-run broader desktop package/typecheck commands in this iteration because earlier ledger entries already established this worktree is missing the installed desktop dependency baseline.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If users still need stronger provenance cues, consider a slightly richer visual grouping (for example, section count badges or subtle card treatments) now that the count text is present.
+  - When desktop dependencies are available, add a real renderer/runtime assertion around the full-history divider labels instead of relying only on source-level checks.
+
+- Next recommended issue work item: stay bug-first if `#55` can be validated more directly in a prepared Electron environment; otherwise prefer another narrow, source-confirmed desktop or website UX/reliability slice over speculative provider work.

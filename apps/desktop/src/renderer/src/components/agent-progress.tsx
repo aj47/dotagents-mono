@@ -2822,8 +2822,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     : 0
 
   const fullHistoryEarlierSectionLabel = hiddenEarlierHistoryCount > 0
-    ? `The next ${hiddenEarlierHistoryCount} stored message${hiddenEarlierHistoryCount === 1 ? " is" : "s are"} preserved on disk and currently outside the active LLM context.`
+    ? `Preserved earlier history · ${hiddenEarlierHistoryCount.toLocaleString()} stored message${hiddenEarlierHistoryCount === 1 ? "" : "s"}. These messages are kept on disk and currently outside the active LLM context.`
     : null
+
+  const fullHistoryActiveSectionLabel = activeWindowMessageCount > 0
+    ? `Active context window starts here · ${activeWindowMessageCount.toLocaleString()} recent stored message${activeWindowMessageCount === 1 ? " still belongs" : "s still belong"} to the active LLM context.`
+    : "Active context window starts here."
 
   const fullHistoryBoundaryIndex =
     hasStoredEarlierHistory && activeWindowMessageCount > 0
@@ -3693,7 +3697,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             )}
                             {fullHistoryBoundaryIndex !== null && index === fullHistoryBoundaryIndex && (
                               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-300">
-                                Active context window starts here.
+                                {fullHistoryActiveSectionLabel}
                               </div>
                             )}
                             {renderDisplayItem(item, index, "tile")}
@@ -4088,7 +4092,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       )}
                       {fullHistoryBoundaryIndex !== null && index === fullHistoryBoundaryIndex && (
                         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-300">
-                          Active context window starts here.
+                          {fullHistoryActiveSectionLabel}
                         </div>
                       )}
                       {renderDisplayItem(item, index, variant)}
