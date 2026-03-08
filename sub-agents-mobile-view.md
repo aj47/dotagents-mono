@@ -1,5 +1,47 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 137 - Demote optional agent descriptions so mobile agent rows scan faster
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-touched ACP entry-point wording and edit-screen switch alignment without new evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-agent-actions-mobile.test.js` because `Settings > Agents` still had older notes about cramped row density and description grouping.
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed `Settings > Agents` rows already separated the agent name/badges from the operational metadata line (`Internal • Delegation`, etc.).
+  - The optional `profile.description` still rendered with the exact same `serverMeta` treatment and a two-line clamp.
+  - On narrow screens, that made UI-only descriptive copy compete with the more important connection/role state and kept rows taller than necessary in an already dense mobile list.
+- Issue identified:
+  - Optional agent descriptions carried too much visual weight in the mobile agents list, weakening information hierarchy and scan speed.
+- Decision and rationale:
+  - Keep the agent row layout, badges, edit affordance, switch/delete rail, and metadata wording unchanged.
+  - Do not remove descriptions entirely; they still provide helpful context when present.
+  - Make the smallest local hierarchy fix instead: treat the description as a true preview line with lighter styling and a tighter one-line clamp so operational state stays primary.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - move optional agent descriptions from the generic `serverMeta` style to a dedicated `agentDescriptionPreview` style,
+    - reduce the preview emphasis with a smaller font and explicit preview spacing,
+    - clamp the description to one line with tail truncation.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new preview style and one-line clamp.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the agent description is secondary preview copy because users can tap into the edit screen for the full text, while the list itself should prioritize status and availability.
+  - Accepted a stricter one-line clamp in exchange for more stable row height and faster scanning on narrow screens.
+  - This remains a source-backed improvement and still needs live confirmation that the shorter preview feels informative enough beside badges and the action rail.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that agent rows now keep connection/role metadata visually primary while the description still reads as helpful preview copy.
+  - Check a long agent name plus badges plus description together so the new one-line preview can be judged against real narrow-screen pressure.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence instead of revisiting this description-hierarchy tweak without screenshots or simulator confirmation.
+
 ## Iteration 136 - Keep ACP mobile entry points explicit about the main-agent role
 
 - Date: 2026-03-08

@@ -101,3 +101,8 @@ test('keeps long agent names stable when built-in and disabled badges are presen
   assert.match(settingsSource, /agentRowName:\s*\{[\s\S]*?flexGrow:\s*1,[\s\S]*?minWidth:\s*0/);
   assert.match(settingsSource, /agentRowBadges:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?flexWrap:\s*'wrap',[\s\S]*?gap:\s*spacing\.xs,[\s\S]*?flexShrink:\s*0/);
 });
+
+test('keeps optional agent descriptions visually secondary and tightly clamped on mobile', () => {
+  assert.match(settingsSource, /\{profile\.description && \([\s\S]*?<Text style=\{styles\.agentDescriptionPreview\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{profile\.description\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
+  assert.match(settingsSource, /agentDescriptionPreview:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*spacing\.xs,[\s\S]*?lineHeight:\s*15/);
+});

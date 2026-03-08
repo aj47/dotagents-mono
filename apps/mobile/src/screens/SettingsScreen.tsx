@@ -2570,7 +2570,9 @@ export default function SettingsScreen({ navigation }: any) {
                             {formatAgentConnectionTypeLabel(profile.connectionType)} • {formatAgentRoleLabel(profile.role)}
                           </Text>
                           {profile.description && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
+                            <Text style={styles.agentDescriptionPreview} numberOfLines={1} ellipsizeMode="tail">
+                              {profile.description}
+                            </Text>
                           )}
                           {renderInlineEditAffordance()}
                         </View>
@@ -3628,6 +3630,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       marginTop: 2,
       lineHeight: 16,
+    },
+    agentDescriptionPreview: {
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
+      lineHeight: 15,
     },
     loopStartupMeta: {
       color: theme.colors.primary,
