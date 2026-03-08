@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Switch,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
@@ -37,6 +39,36 @@ const defaultFormData: LoopFormData = {
   profileId: '',
 };
 
+const LOOP_FORM_FIELDS: Array<keyof LoopFormData> = [
+  'name',
+  'prompt',
+  'intervalMinutes',
+  'enabled',
+  'profileId',
+];
+
+function cloneLoopFormData(formData: LoopFormData): LoopFormData {
+  return { ...formData };
+}
+
+function toLoopFormData(loop?: Loop | null): LoopFormData {
+  if (!loop) {
+    return cloneLoopFormData(defaultFormData);
+  }
+
+  return {
+    name: loop.name,
+    prompt: loop.prompt,
+    intervalMinutes: String(loop.intervalMinutes),
+    enabled: loop.enabled,
+    profileId: loop.profileId || '',
+  };
+}
+
+function hasLoopFormChanges(currentFormData: LoopFormData, baselineFormData: LoopFormData): boolean {
+  return LOOP_FORM_FIELDS.some(field => currentFormData[field] !== baselineFormData[field]);
+}
+
 export default function LoopEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -47,22 +79,14 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const effectiveLoopId = loopId ?? loopFromRoute?.id;
   const isEditing = !!effectiveLoopId;
 
-  const [formData, setFormData] = useState<LoopFormData>(() =>
-    loopFromRoute
-      ? {
-        name: loopFromRoute.name,
-        prompt: loopFromRoute.prompt,
-        intervalMinutes: String(loopFromRoute.intervalMinutes),
-        enabled: loopFromRoute.enabled,
-        profileId: loopFromRoute.profileId || '',
-      }
-      : defaultFormData
-  );
+  const [formData, setFormData] = useState<LoopFormData>(() => toLoopFormData(loopFromRoute));
+  const [formBaseline, setFormBaseline] = useState<LoopFormData>(() => toLoopFormData(loopFromRoute));
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipDiscardPromptRef = useRef(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -76,6 +100,23 @@ export default function LoopEditScreen({ navigation, route }: any) {
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit Loop' : 'Create Loop' });
   }, [isEditing, navigation]);
+
+  useEffect(() => {
+    if (loopFromRoute) {
+      const routeFormData = toLoopFormData(loopFromRoute);
+      setFormData(routeFormData);
+      setFormBaseline(routeFormData);
+      skipDiscardPromptRef.current = false;
+      return;
+    }
+
+    if (!isEditing) {
+      const emptyFormData = cloneLoopFormData(defaultFormData);
+      setFormData(emptyFormData);
+      setFormBaseline(emptyFormData);
+      skipDiscardPromptRef.current = false;
+    }
+  }, [isEditing, loopFromRoute]);
 
   useEffect(() => {
     if (isEditing && !loopFromRoute && !settingsClient) {
@@ -121,13 +162,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
           setError('Loop not found');
           return;
         }
-        setFormData({
-          name: loop.name,
-          prompt: loop.prompt,
-          intervalMinutes: String(loop.intervalMinutes),
-          enabled: loop.enabled,
-          profileId: loop.profileId || '',
-        });
+        const loadedFormData = toLoopFormData(loop);
+        setFormData(loadedFormData);
+        setFormBaseline(loadedFormData);
+        skipDiscardPromptRef.current = false;
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -144,6 +182,58 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const updateField = useCallback(<K extends keyof LoopFormData>(key: K, value: LoopFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
+
+  const hasUnsavedChanges = hasLoopFormChanges(formData, formBaseline);
+  const loopDraftLabel = formData.name.trim() ? `"${formData.name.trim()}"` : 'this loop';
+
+  const confirmDiscardChanges = useCallback((onDiscard: () => void) => {
+    const discardMessage = isEditing
+      ? `Discard your changes to ${loopDraftLabel}? Your unsaved edits will be lost.`
+      : 'Discard this new loop draft? Your unsaved changes will be lost.';
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (typeof confirmFn === 'function') {
+        if (confirmFn(discardMessage)) {
+          onDiscard();
+        }
+        return;
+      }
+    }
+
+    Alert.alert('Unsaved Changes', discardMessage, [
+      {
+        text: 'Keep Editing',
+        style: 'cancel',
+      },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: onDiscard,
+      },
+    ]);
+  }, [isEditing, loopDraftLabel]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (event: any) => {
+      if (skipDiscardPromptRef.current || !hasUnsavedChanges) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (isSaving) {
+        return;
+      }
+
+      confirmDiscardChanges(() => {
+        skipDiscardPromptRef.current = true;
+        navigation.dispatch(event.data.action);
+      });
+    });
+
+    return unsubscribe;
+  }, [confirmDiscardChanges, hasUnsavedChanges, isSaving, navigation]);
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
@@ -186,6 +276,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         };
         await settingsClient.createLoop(createPayload);
       }
+      skipDiscardPromptRef.current = true;
       navigation.goBack();
     } catch (err: any) {
       setError(err.message || 'Failed to save loop');
@@ -275,6 +366,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
 
+      {hasUnsavedChanges && !isSaving && (
+        <View style={styles.draftWarningContainer}>
+          <Text style={styles.draftWarningText}>You have unsaved changes. Save before leaving this screen to keep this draft.</Text>
+        </View>
+      )}
+
       <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
       </TouchableOpacity>
@@ -290,6 +387,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
+    draftWarningContainer: {
+      marginTop: spacing.lg,
+      backgroundColor: theme.colors.primary + '12',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '2e',
+      borderRadius: radius.md,
+      padding: spacing.md,
+    },
+    draftWarningText: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
+    },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },

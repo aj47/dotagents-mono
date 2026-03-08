@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile `LoopEditScreen` draft-loss guardrails in `apps/mobile/src/screens/LoopEditScreen.tsx`, with the proven mobile discard-confirmation pattern reviewed in `apps/mobile/src/screens/AgentEditScreen.tsx`, loop edit entry wiring cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, loop create/update shapes rechecked in `apps/mobile/src/lib/settingsApi.ts`, focused source-level coverage added in new `apps/mobile/tests/loop-edit-discard-guardrails.test.js`, targeted verification run locally via `node --test apps/mobile/tests/loop-edit-discard-guardrails.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Mobile `AgentEditScreen` draft-loss guardrails in `apps/mobile/src/screens/AgentEditScreen.tsx`, with settings-to-editor navigation reviewed in `apps/mobile/src/screens/SettingsScreen.tsx`, adjacent mobile edit-screen patterns rechecked in `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`, agent-profile request/update shapes cross-checked in `apps/mobile/src/lib/settingsApi.ts`, focused source-level coverage added in new `apps/mobile/tests/agent-edit-discard-guardrails.test.js`, targeted verification run locally via `node --test apps/mobile/tests/agent-edit-discard-guardrails.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Shared/mobile abort-classification reliability in `packages/shared/src/connection-recovery.ts` and `apps/mobile/src/lib/openaiClient.ts`, with mobile teardown/cancellation flows reviewed in `apps/mobile/src/lib/sessionConnectionManager.ts` and nearby connection guardrails rechecked in `apps/mobile/tests/connection-settings-validation.test.js`, focused source-level coverage added in new `apps/mobile/tests/openai-client-cancel-guardrails.test.js`, shared retry-classifier coverage extended in `apps/desktop/src/shared/connection-recovery.test.ts`, and targeted verification run locally via `node --experimental-strip-types --input-type=module -e ...`, `node --test apps/mobile/tests/openai-client-cancel-guardrails.test.js apps/mobile/tests/connection-settings-validation.test.js`, plus `git diff --check`.
 - 2026-03-08: Desktop Cloudflare tunnel shutdown cleanup parity in `apps/desktop/src/main/index.ts`, with tunnel process lifecycle reviewed in `apps/desktop/src/main/cloudflare-tunnel.ts`, remote-server start/stop behavior rechecked in `apps/desktop/src/main/remote-server.ts`, focused QR-mode source guardrails added in new `tests/desktop-qr-mode-cleanup-guardrails.test.js`, existing shutdown source guardrails extended in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, shared helper runtime coverage re-run in `tests/desktop-shutdown-cleanup-runtime.test.js`, and targeted verification run locally via `node --test`, `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`, plus `git diff --check`.
@@ -100,7 +101,8 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked
 - 2026-03-08: Mobile `AgentEditScreen` draft-loss protection in `apps/mobile/src/screens/AgentEditScreen.tsx` still needs live Expo/native validation once the mobile toolchain is available, especially to confirm iOS swipe-back, Android hardware back, and React Navigation header-back all show one calm discard confirmation and that the inline unsaved-changes note does not crowd the save CTA on smaller screens.
-- 2026-03-08: Mobile `LoopEditScreen` and `MemoryEditScreen` appear to share the same unguarded navigate-away pattern that `AgentEditScreen` had before this pass, so they remain good follow-up candidates once this narrower agent-edit improvement has been validated.
+- 2026-03-08: Mobile `LoopEditScreen` draft-loss protection in `apps/mobile/src/screens/LoopEditScreen.tsx` still needs live Expo/native validation once the mobile toolchain is available, especially to confirm iOS swipe-back, Android hardware back, and React Navigation header-back show one calm discard confirmation and that the new inline unsaved-changes note does not crowd the save CTA on smaller screens.
+- 2026-03-08: Mobile `MemoryEditScreen` still appears to share the same unguarded navigate-away pattern that `AgentEditScreen` and `LoopEditScreen` had before their passes, so it remains the next local edit-screen follow-up once this narrower loop-edit improvement has been validated.
 - 2026-03-08: Desktop shared shutdown cleanup now structurally includes Cloudflare tunnel teardown plus dedicated `--qr` signal/startup-failure cleanup in `apps/desktop/src/main/index.ts`, but live validation with a real `cloudflared` child process is still needed to confirm Ctrl+C / `SIGTERM` tear down the spawned tunnel promptly and that no late tunnel stderr/close events create confusing post-exit logging.
 - 2026-03-08: Desktop shared shutdown cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts` still needs live Electron / lifecycle-level validation once a runnable desktop target or fuller main-process harness is available, especially to confirm real `before-quit` re-entry, `SIGTERM` wiring, and slow collaborator teardown still behave predictably when the shared helper is exercised through the app’s actual quit paths rather than the isolated helper tests.
 - 2026-03-08: Desktop queued-message action-failure feedback in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` still needs live Electron validation once a runnable renderer target is available, especially to confirm compact-panel error banners stay readable, `Retry & Resume` plus inline error copy do not compete visually when the head item is failed, and preserved edit drafts feel trustworthy after a rejected save.
@@ -134,6 +136,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile `LoopEditScreen` in `apps/mobile/src/screens/LoopEditScreen.tsx` now tracks a saved baseline, intercepts dirty `beforeRemove` navigation with an explicit discard confirmation, bypasses that prompt after successful save, and shows an inline unsaved-changes reminder near the save CTA, so creating or editing a loop no longer silently loses typed name/prompt/schedule/profile changes on header-back, gesture-back, or hardware-back flows. Tradeoff: this pass intentionally stayed scoped to loop editing rather than broadening into the separate `MemoryEditScreen`, which appears to need the same pattern in a later iteration.
 - 2026-03-08: Mobile `AgentEditScreen` in `apps/mobile/src/screens/AgentEditScreen.tsx` now tracks a saved baseline, intercepts dirty `beforeRemove` navigation with an explicit discard confirmation, bypasses that prompt after successful save, and shows an inline unsaved-changes reminder near the save CTA, so creating or editing an agent no longer silently loses typed profile/prompt/connection changes on header-back, gesture-back, or hardware-back flows. Tradeoff: this pass intentionally stayed scoped to agent editing rather than broadening into the separate memory/loop edit screens, which appear to need the same pattern in later iterations.
 - 2026-03-08: Shared/mobile connection recovery now treats `AbortError` instances as non-retryable in `packages/shared/src/connection-recovery.ts`, and the mobile fetch-streaming chat path in `apps/mobile/src/lib/openaiClient.ts` now preserves explicit `Request cancelled` teardown aborts instead of rewriting every abort into `Connection timeout: no data received`, so app-driven cleanup/unmounts no longer look like transient network failures that deserve retry loops or misleading timeout messaging; tradeoff: this pass intentionally assumes non-heartbeat fetch aborts are intentional cancellation/teardown and stays narrowly scoped to abort classification rather than broadening into a larger mobile recovery-manager refactor.
 - 2026-03-08: Desktop shutdown cleanup now stops Cloudflare tunnel child processes alongside agent runtime, ACP, MCP, and remote-server cleanup via the shared `getShutdownCleanupTasks()` list in `apps/desktop/src/main/index.ts`, and `--qr` mode now exits through a guarded graceful-cleanup path on startup failure, Ctrl+C, and `SIGTERM` instead of calling `process.exit(...)` immediately. Tradeoff: this pass intentionally keeps the existing cleanup helper/task architecture and focuses on child-process teardown parity rather than refactoring all startup modes into a larger shared bootstrap abstraction.
@@ -221,6 +224,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/loop-edit-discard-guardrails.test.js` after the mobile LoopEdit draft-loss guardrails pass
+- 2026-03-08: `git diff --check` after the mobile LoopEdit draft-loss guardrails pass
 - 2026-03-08: `node --test apps/mobile/tests/agent-edit-discard-guardrails.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js` after the mobile AgentEdit draft-loss guardrails pass
 - 2026-03-08: `git diff --check` after the mobile AgentEdit draft-loss guardrails pass
 - 2026-03-08: `node --experimental-strip-types --input-type=module -e "import { isRetryableError } from './packages/shared/src/connection-recovery.ts'; ..."` after the shared/mobile abort-classification reliability pass
@@ -437,6 +442,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this `LoopEditScreen` draft-loss guardrails pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this `AgentEditScreen` draft-loss guardrails pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Fresh live desktop UI inspection for the next remote-server settings pass is still blocked in this environment because `electron_execute` cannot list a renderer target (`Failed to list CDP targets. Make sure Electron is running with --inspect flag`), so the highest-value follow-up remains queued until a runnable Electron target is available.
 - 2026-03-08: Live desktop UI inspection for this queued-message action-failure feedback pass was blocked because no Electron renderer/CDP target is available in this environment (`electron_execute` returns `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -518,7 +524,8 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Mobile `AgentEditScreen` discard-confirm cadence / save-CTA density live validation (`apps/mobile/src/screens/AgentEditScreen.tsx`)
-- Mobile `LoopEditScreen` and `MemoryEditScreen` draft-loss parity (`apps/mobile/src/screens/LoopEditScreen.tsx`, `apps/mobile/src/screens/MemoryEditScreen.tsx`)
+- Mobile `LoopEditScreen` discard-confirm cadence / save-CTA density live validation (`apps/mobile/src/screens/LoopEditScreen.tsx`)
+- Mobile `MemoryEditScreen` draft-loss parity (`apps/mobile/src/screens/MemoryEditScreen.tsx`)
 - Mobile chat teardown / navigate-away live validation for explicit cancellation vs timeout copy (`apps/mobile/src/lib/openaiClient.ts`, `apps/mobile/src/screens/ChatScreen.tsx`)
 - Desktop queued-message recovery UX live validation / compact-banner readability (`apps/desktop/src/renderer/src/components/message-queue-panel.tsx`)
 - Desktop Memories edit dialog live validation / save-failure cadence check (`apps/desktop/src/renderer/src/pages/memories.tsx`)
@@ -530,8 +537,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Mobile `LoopEditScreen` now has source-level dirty-draft guardrails, so the freshest adjacent follow-up is live Expo/native validation of header-back, gesture-back, and Android hardware-back discard flows plus small-screen layout density around the new inline warning/save CTA.
+- Mobile `MemoryEditScreen` appears to share the same unguarded draft-loss risk that `AgentEditScreen` and `LoopEditScreen` had before their passes, so the next local mobile follow-up is to lift the now-proven discard pattern into that screen.
 - Mobile `AgentEditScreen` now has source-level dirty-draft guardrails, so the freshest adjacent follow-up is live Expo/native validation of header-back, gesture-back, and Android hardware-back discard flows plus small-screen layout density around the new inline warning/save CTA.
-- Mobile `LoopEditScreen` and `MemoryEditScreen` appear to share the same unguarded draft-loss risk that `AgentEditScreen` had before this pass, so the next local mobile follow-up is to lift the now-proven discard pattern into those screens one at a time.
 - Mobile fetch-stream cancellation now preserves `Request cancelled` instead of misclassifying teardown as timeout, so the freshest adjacent follow-up is live Expo/native validation of chat navigate-away, session handoff, and app-background teardown to confirm intentional aborts stop quietly while real heartbeat stalls still surface timeout recovery copy.
 - Desktop shutdown cleanup now includes Cloudflare tunnel teardown and `--qr` graceful-exit guardrails, so the freshest adjacent follow-up is live signal/process validation with a real remote server plus `cloudflared` child to confirm `before-quit`, `--qr`, and headless exits all leave no lingering listener/tunnel processes and that post-signal logging stays clean.
 - Desktop shared shutdown cleanup now has dependency-light runtime coverage for timeout and per-task failure isolation, so the freshest adjacent follow-up is lifecycle-level validation of the real Electron quit paths (`before-quit`, `SIGTERM`, remote-server startup failure, and slow cleanup collaborators) once a runnable desktop target or fuller main-process harness is available.
@@ -3221,6 +3229,30 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - live-validate iOS swipe-back, Android hardware back, and header-back discard behavior once Expo/native tooling is available
   - carry the same discard-safety pattern into `LoopEditScreen` or `MemoryEditScreen` in a later pass after confirming this narrower agent-edit improvement feels right
+
+### 2026-03-08 — Mobile LoopEditScreen draft-loss guardrails
+- Area / screen / subsystem:
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+- Why it was chosen:
+  - `improve-app.md` still listed mobile loop editing as an unchecked parity gap after the fresh `AgentEditScreen` pass, and loop drafts are especially easy to lose because users often tweak name, prompt, interval, and profile together before backing out.
+- What was inspected:
+  - ledger history in `improve-app.md` to avoid revisiting a just-touched area without new value
+  - the existing discard-safety pattern in `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - loop edit entry wiring in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - loop create/update types in `apps/mobile/src/lib/settingsApi.ts`
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `Command "expo" not found` in this dependency-light worktree)*
+- Improvement made:
+  - added a local form baseline plus explicit dirty-state detection for loop drafts
+  - intercepted React Navigation `beforeRemove` so dirty create/edit loop drafts now require an explicit discard confirmation before leaving
+  - bypassed the discard prompt after a successful save so save → back remains smooth
+  - added a small inline unsaved-changes reminder near the save CTA so the risk is visible before dismissal
+  - assumptions / tradeoffs: this pass assumes `beforeRemove` is the narrowest reliable interception point for header/gesture/hardware back flows and intentionally stays scoped to `LoopEditScreen` instead of broadening into `MemoryEditScreen` in the same iteration
+- Tests / verification:
+  - `node --test apps/mobile/tests/loop-edit-discard-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - live-validate iOS swipe-back, Android hardware back, and header-back discard behavior once Expo/native tooling is available
+  - carry the same discard-safety pattern into `MemoryEditScreen` in a later pass after confirming this narrower loop-edit improvement feels right
 
 ### Iteration Template
 - Date:
