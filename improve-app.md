@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile per-message TTS playback failure feedback in `apps/mobile/src/screens/ChatScreen.tsx`, including `expo-speech` per-message `Speech.speak(...)` / `onError` handling, inline mobile error-banner patterns already used in `ChatScreen`, new source-level coverage in `apps/mobile/tests/chat-message-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop compact TTS/audio playback failure feedback in `apps/desktop/src/renderer/src/components/audio-player.tsx`, with `ttsManager.playExclusive(...)` behavior reviewed in `apps/desktop/src/renderer/src/lib/tts-manager.ts`, compact TTS usage in `apps/desktop/src/renderer/src/components/agent-progress.tsx` / `apps/desktop/src/renderer/src/components/session-tile.tsx` inspected to confirm the shared component was the smallest leverage point, mobile `expo-speech` parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change in this pass because mobile uses a separate OS speech stack and needs its own dedicated playback-feedback follow-up), focused source-level coverage added in `tests/desktop-audio-player-feedback.test.js`, and live desktop inspection attempted but blocked because no Electron/CDP target is available in this environment.
 - 2026-03-08: Desktop floating-panel live transcription preview chunk failures in `apps/desktop/src/renderer/src/pages/panel.tsx`, with preview IPC behavior reviewed in `apps/desktop/src/main/tipc.ts`, compact inline warning patterns cross-checked in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` / `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, mobile voice-preview error logging reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change in this pass because mobile uses a separate recognition stack and needs its own dedicated UX follow-up), and live desktop inspection attempted but blocked because this worktree is missing `node_modules` / `tsup` for `pnpm dev`.
 - 2026-03-08: Mobile `ChatScreen` voice-start failure feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with native/web start-failure branches reviewed, `createVoiceInputLiveRegionAnnouncement` in `apps/mobile/src/lib/accessibility.ts` extended for accessible error announcements, focused source-level coverage added in `apps/mobile/tests/chat-voice-start-feedback.test.js`, and live mobile-web inspection attempted but blocked because this worktree is missing Expo / `node_modules`.
@@ -63,10 +64,12 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Mobile per-message read-aloud retry/error states still need live device or Expo-web validation once the mobile toolchain is available, especially for invalid voice selection, empty-text messages, and repeated retry from the same message card.
 - 2026-03-08: Desktop compact TTS/audio playback feedback still needs live Electron validation once a runnable target is available, especially for blocked auto-play, interrupted manual playback, and media decode/network failure states inside compact message cards.
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile `ChatScreen` per-message read-aloud no longer fails silently—message-level `Speech.speak(...)` failures now clear stale error state before retry, map empty-text and voice/playback failures into inline message warnings, change the speaker button into a retry affordance after a failed attempt, and use a compact live-region banner beside the affected assistant message instead of leaving the speaker icon looking inert; tradeoff: this pass intentionally stays scoped to manual per-message read-aloud and does not yet add parallel feedback for automatic response TTS playback.
 - 2026-03-08: Desktop compact TTS/audio playback now turns auto-play, manual play, and media-element playback failures into inline warning copy with a local `Retry play` action, maps common blocked/interrupted/unsupported cases into clearer recovery guidance, clears stale playback errors when a new clip loads or playback succeeds, and updates compact status text so read-aloud controls no longer look idle when playback actually failed; tradeoff: this pass intentionally stays desktop-only because mobile read-aloud uses Expo/OS speech APIs rather than the shared `AudioPlayer` HTML audio path.
 - 2026-03-08: Desktop floating-panel live transcription preview now turns chunk-transcription failures into compact inline warning copy instead of console-only stalls, surfaces missing-auth / rate-limit / network cases with distinct guidance, keeps automatic chunk retries alive by not advancing the preview pointer on failed attempts, and expands the waveform-preview height for warning states so users can tell preview paused without confusing it for a full recording failure; tradeoff: this pass intentionally stays lightweight by reusing the existing auto-retry loop instead of adding a manual retry/settings CTA until live Electron validation is available.
 - 2026-03-08: Mobile `ChatScreen` now turns voice-input start failures into visible inline recovery guidance near the composer, clears stale failure state before each new mic attempt, translates native/web permission + unavailable-module + unsupported-browser/dev-build cases into actionable copy, and announces those failures through the shared voice live-region helper so mic taps no longer fail silently; tradeoff: this pass stays intentionally scoped to startup failures and leaves mid-session recognition dropouts / preview stalls for a later voice-input follow-up.
@@ -121,6 +124,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/chat-message-tts-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/ChatScreen.tsx`
+- 2026-03-08: `git diff --check` after the mobile per-message TTS feedback pass
+- 2026-03-08: attempted `pnpm --filter @dotagents/mobile exec expo --version` (blocked: `expo: command not found` because this worktree does not have mobile dependencies installed)
 - 2026-03-08: `node --test tests/desktop-audio-player-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/audio-player.tsx`
 - 2026-03-08: `git diff --check` after the desktop compact TTS/audio playback feedback pass
@@ -254,6 +261,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this per-message TTS feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `expo: command not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this compact TTS/audio playback feedback pass was blocked because no Electron renderer/CDP target is available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this `ChatScreen` voice-start feedback pass was blocked because `pnpm --filter @dotagents/mobile web` failed with `expo: command not found` and PNPM warned that local `node_modules` is missing, so this iteration relied on source inspection, targeted source-level tests, and direct `typescript.transpileModule` syntax checks.
 - 2026-03-08: Live desktop UI inspection for this floating-panel recording-start feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -308,13 +316,14 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop mobile per-message TTS playback failure feedback (`apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/ui/TTSSettings.tsx`)
+- Mobile automatic response TTS failure feedback for streaming/final assistant speech in `apps/mobile/src/screens/ChatScreen.tsx`
 - Desktop `AgentProgress` transcript expansion/tab persistence across focused-session changes (`apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/pages/panel.tsx`)
 - Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
+- Once a runnable mobile target is available, live-check the new mobile message-level read-aloud warning/retry state across invalid voice selection, empty-text messages, and repeated retry from the same assistant card
+- Mobile automatic response TTS failure feedback is the most adjacent follow-up now that manual message-level read-aloud no longer fails silently
 - Once a runnable Electron target is available, live-check the desktop compact audio player across blocked auto-play, retry after a blocked/interrupted play request, and broken media states to confirm the new warning hierarchy feels clear inside real session cards
-- Mobile per-message TTS playback failure feedback is the most adjacent follow-up now that desktop HTML-audio playback no longer fails silently
 - Once a runnable Electron target is available, live-check the desktop floating panel across denied microphone permission, no microphone present, busy microphone, normal dictation start, and MCP continue-recording start so the new recording-failure guidance can be validated in the real UI
 - Desktop floating-panel live transcription preview chunk failures are the most adjacent voice-input product follow-up now that both desktop and mobile recording-start failures surface visible recovery guidance
 - Once a runnable Electron target is available, live-check desktop `AgentProgress` while switching between sessions with the transcript/tools tabs open, expanded items, and the stop confirmation recently used to confirm the remaining per-session view state feels consistent in the real UI
@@ -2067,6 +2076,37 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Electron target is available, live-check blocked auto-play, retry after interruption, and broken-audio cases in both compact and expanded read-aloud surfaces to confirm the warning copy is clear without feeling noisy
   - inspect mobile per-message TTS playback failure feedback next so the Expo speech path gains comparable visible recovery cues
+
+### 2026-03-08 — Mobile per-message TTS playback failure feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile message-level read-aloud affordance in `apps/mobile/src/screens/ChatScreen.tsx`
+  - focused source-level regression coverage in `apps/mobile/tests/chat-message-tts-feedback.test.js`
+- Why it was chosen:
+  - after the desktop `AudioPlayer` pass, the ledger still showed the adjacent mobile read-aloud surface as unchecked, and source review confirmed per-message `Speech.speak(...)` failures still only cleared `speakingMessageIndex` with no visible recovery guidance
+  - this had clear user value because the small speaker icon is easy to tap repeatedly; without feedback, users cannot tell whether nothing was readable, the selected voice is unavailable, or speech playback simply failed to start
+  - the implementation path was local: `ChatScreen` already owns the message-level read-aloud button and already has established inline warning styles for nearby failure states
+- What was inspected:
+  - `apps/mobile/src/screens/ChatScreen.tsx` around `speakMessage(...)`, the per-message speaker button, and existing inline banner patterns such as `voiceStartError`
+  - existing source-level mobile test patterns in `apps/mobile/tests/chat-voice-start-feedback.test.js` and `apps/mobile/tests/chat-composer-accessibility.test.js` to keep verification lightweight and consistent with this dependency-less worktree
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version`, which failed because `expo` is not installed in this worktree
+- Improvement made:
+  - added message-level TTS error state plus a helper that maps empty-text, voice-selection, and generic playback failures into concise user-facing guidance
+  - cleared stale read-aloud errors before each new tap, surfaced failures inline beside the affected assistant message, and marked the speaker affordance as a retry action after a failed attempt
+  - added a compact live-region banner for the failed message so the warning is discoverable without moving users away from the exact read-aloud control that needs retrying
+- Assumptions / tradeoffs / rationale:
+  - kept the change scoped to manual per-message read-aloud because the automatic response-TTS path uses separate `Speech.speak(...)` calls and deserves its own pass if we want comparable feedback there
+  - reused existing inline banner/error styling patterns from `ChatScreen` instead of introducing a new toast/modal system, because a local warning next to the failed speaker control is the smallest effective UX improvement
+  - accepted source-level verification for this pass because live Expo/mobile inspection is blocked in this worktree without installed dependencies
+- Tests / verification:
+  - `node --test apps/mobile/tests/chat-message-tts-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/ChatScreen.tsx`
+  - `git diff --check`
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version` (blocked: `expo: command not found`)
+- Follow-up checks:
+  - once a runnable mobile target is available, live-check invalid voice selection, empty-text read-aloud, repeated retry from the same message card, and the error-to-success transition after a retry
+  - inspect automatic response-TTS failure feedback next so mobile auto-read-aloud gains comparable visible recovery cues
 
 ### Iteration Template
 - Date:

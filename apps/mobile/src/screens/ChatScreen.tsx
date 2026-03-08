@@ -194,6 +194,61 @@ const getVoiceStartErrorDetails = (
   };
 };
 
+type MessageTtsErrorOptions = {
+  voiceId?: string | null;
+  reason?: 'empty_text';
+};
+
+const getMessageTtsErrorDetails = (
+  error: unknown,
+  { voiceId, reason }: MessageTtsErrorOptions = {},
+) => {
+  const rawMessage = error instanceof Error
+    ? error.message || error.name
+    : typeof error === 'string'
+      ? error
+      : error == null
+        ? 'Unknown read aloud error'
+        : String(error);
+  const normalizedMessage = rawMessage.toLowerCase();
+
+  if (reason === 'empty_text') {
+    return {
+      title: 'Nothing to read aloud',
+      message: 'This message does not contain readable text yet.',
+    };
+  }
+
+  if (
+    normalizedMessage.includes('voice') &&
+    (normalizedMessage.includes('not found') ||
+      normalizedMessage.includes('unavailable') ||
+      normalizedMessage.includes('invalid'))
+  ) {
+    return {
+      title: 'Voice unavailable',
+      message: voiceId
+        ? 'The selected voice could not start read aloud. Tap the speaker again or choose another voice in TTS Settings.'
+        : 'This voice could not start read aloud. Tap the speaker again to retry.',
+    };
+  }
+
+  if (normalizedMessage.includes('language') || normalizedMessage.includes('locale')) {
+    return {
+      title: 'Voice unavailable',
+      message:
+        'This message could not be read with the current language or voice settings. Tap the speaker again or choose another voice in TTS Settings.',
+    };
+  }
+
+  return {
+    title: 'Read aloud unavailable',
+    message: voiceId
+      ? 'Read aloud could not start with the selected voice. Tap the speaker again or choose another voice in TTS Settings.'
+      : 'Read aloud could not start. Tap the speaker again to retry.',
+  };
+};
+
 const inferImageMimeType = (asset: {
   mimeType?: string | null;
   fileName?: string | null;
@@ -737,11 +792,13 @@ export default function ChatScreen({ route, navigation }: any) {
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
+	  const [messageTtsError, setMessageTtsError] = useState<(ReturnType<typeof getMessageTtsErrorDetails> & { index: number }) | null>(null);
   // Ref to track the intended speaking index, preventing race conditions
   // when Speech.stop()'s onStopped fires after a new Speech.speak() starts
   const intendedSpeakingIndexRef = useRef<number | null>(null);
 
   const speakMessage = useCallback((index: number, content: string) => {
+	    setMessageTtsError(null);
     if (speakingMessageIndex === index) {
       // Toggle off - stop speaking
       intendedSpeakingIndexRef.current = null;
@@ -755,6 +812,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const processedText = preprocessTextForTTS(content);
     if (!processedText) {
       intendedSpeakingIndexRef.current = null;
+	      setMessageTtsError({ index, ...getMessageTtsErrorDetails(null, { reason: 'empty_text' }) });
       return;
     }
     setSpeakingMessageIndex(index);
@@ -766,9 +824,10 @@ export default function ChatScreen({ route, navigation }: any) {
         intendedSpeakingIndexRef.current = null;
         setSpeakingMessageIndex(null);
       },
-      onError: () => {
+	      onError: (speechError) => {
         intendedSpeakingIndexRef.current = null;
         setSpeakingMessageIndex(null);
+	        setMessageTtsError({ index, ...getMessageTtsErrorDetails(speechError, { voiceId: config.ttsVoiceId }) });
       },
       onStopped: () => {
         // Only clear if this callback is for the current intended message,
@@ -781,7 +840,13 @@ export default function ChatScreen({ route, navigation }: any) {
     if (config.ttsVoiceId) {
       speechOptions.voice = config.ttsVoiceId;
     }
-    Speech.speak(processedText, speechOptions);
+	    try {
+	      Speech.speak(processedText, speechOptions);
+	    } catch (speechError) {
+	      intendedSpeakingIndexRef.current = null;
+	      setSpeakingMessageIndex(null);
+	      setMessageTtsError({ index, ...getMessageTtsErrorDetails(speechError, { voiceId: config.ttsVoiceId }) });
+	    }
   }, [speakingMessageIndex, config.ttsRate, config.ttsPitch, config.ttsVoiceId]);
 
   // Auto-scroll state and ref for mobile chat
@@ -3208,22 +3273,47 @@ export default function ChatScreen({ route, navigation }: any) {
 
                 {/* Per-message Read Aloud button for assistant messages with content (#1078) */}
                 {m.role === 'assistant' && m.content && m.content.trim().length > 0 && config.ttsEnabled !== false && (
-                  <TouchableOpacity
-                    onPress={() => speakMessage(i, m.content!)}
-                    style={[
-                      styles.speakButton,
-                      speakingMessageIndex === i && styles.speakButtonActive,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={speakingMessageIndex === i ? 'Stop reading' : 'Read aloud'}
-                  >
-                    <Text style={[
-                      styles.speakButtonText,
-                      speakingMessageIndex === i && styles.speakButtonTextActive,
-                    ]}>
-                      {speakingMessageIndex === i ? '⏹' : '🔊'}
-                    </Text>
-                  </TouchableOpacity>
+	                  <>
+	                    <TouchableOpacity
+	                      onPress={() => speakMessage(i, m.content!)}
+	                      style={[
+	                        styles.speakButton,
+	                        speakingMessageIndex === i && styles.speakButtonActive,
+	                        messageTtsError?.index === i && styles.speakButtonError,
+	                      ]}
+	                      accessibilityRole="button"
+	                      accessibilityLabel={
+	                        speakingMessageIndex === i
+	                          ? 'Stop reading'
+	                          : messageTtsError?.index === i
+	                            ? 'Retry read aloud'
+	                            : 'Read aloud'
+	                      }
+	                      accessibilityHint={
+	                        messageTtsError?.index === i
+	                          ? 'Retries spoken playback for this message.'
+	                          : 'Reads this assistant message aloud.'
+	                      }
+	                    >
+	                      <Text style={[
+	                        styles.speakButtonText,
+	                        speakingMessageIndex === i && styles.speakButtonTextActive,
+	                        messageTtsError?.index === i && styles.speakButtonTextError,
+	                      ]}>
+	                        {speakingMessageIndex === i ? '⏹' : '🔊'}
+	                      </Text>
+	                    </TouchableOpacity>
+	                    {messageTtsError?.index === i && (
+	                      <View
+	                        style={styles.messageTtsBanner}
+	                        accessibilityLiveRegion="polite"
+	                        aria-live="polite"
+	                      >
+	                        <Text style={styles.messageTtsBannerTitle}>{messageTtsError.title}</Text>
+	                        <Text style={styles.messageTtsBannerText}>{messageTtsError.message}</Text>
+	                      </View>
+	                    )}
+	                  </>
                 )}
               </View>
             );
@@ -4315,6 +4405,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     speakButtonActive: {
       backgroundColor: hexToRgba(theme.colors.primary, 0.15),
     } as const,
+	    speakButtonError: {
+	      backgroundColor: hexToRgba(theme.colors.destructive, 0.12),
+	      borderColor: hexToRgba(theme.colors.destructive, 0.24),
+	      borderWidth: 1,
+	    } as const,
     speakButtonText: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
@@ -4322,5 +4417,27 @@ function createStyles(theme: Theme, screenHeight: number) {
     speakButtonTextActive: {
       color: theme.colors.primary,
     } as const,
+	    speakButtonTextError: {
+	      color: theme.colors.destructive,
+	    } as const,
+	    messageTtsBanner: {
+	      marginTop: spacing.xs,
+	      paddingHorizontal: spacing.sm,
+	      paddingVertical: spacing.xs,
+	      borderRadius: radius.sm,
+	      borderWidth: 1,
+	      borderColor: hexToRgba(theme.colors.destructive, 0.24),
+	      backgroundColor: hexToRgba(theme.colors.destructive, 0.08),
+	    } as const,
+	    messageTtsBannerTitle: {
+	      fontSize: 12,
+	      fontWeight: '600',
+	      color: theme.colors.foreground,
+	    } as const,
+	    messageTtsBannerText: {
+	      marginTop: 2,
+	      fontSize: 11,
+	      color: theme.colors.mutedForeground,
+	    } as const,
   });
 }
