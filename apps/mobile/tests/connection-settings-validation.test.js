@@ -29,3 +29,11 @@ test('exposes the reset action as an accessible button with a descriptive label'
   assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
   assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
 });
+
+test('shows saved connection status from the tunnel connection manager instead of only checking saved credentials', () => {
+  assert.match(screenSource, /const \{[\s\S]*connectionInfo,[\s\S]*isInitialized: isTunnelConnectionInitialized/);
+  assert.match(screenSource, /const displayConnectionState = !hasSavedConnectionConfig/);
+  assert.match(screenSource, /<ConnectionStatusIndicator[\s\S]*state=\{displayConnectionState\}[\s\S]*retryCount=\{connectionInfo\.retryCount\}[\s\S]*compact/);
+  assert.match(screenSource, /getConnectionStatusText\(displayConnectionState, connectionInfo\.retryCount\)/);
+  assert.match(screenSource, /const connectionStatusUrl = connectionInfo\.baseUrl \?\? config\.baseUrl/);
+});

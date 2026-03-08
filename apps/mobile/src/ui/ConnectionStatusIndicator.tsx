@@ -9,6 +9,23 @@ export interface ConnectionStatusIndicatorProps {
   compact?: boolean;
 }
 
+export function getConnectionStatusText(state: TunnelConnectionState, retryCount: number = 0): string {
+  switch (state) {
+    case 'connected':
+      return 'Connected';
+    case 'connecting':
+      return 'Connecting...';
+    case 'reconnecting':
+      return retryCount > 0 ? `Reconnecting (${retryCount})...` : 'Reconnecting...';
+    case 'disconnected':
+      return 'Disconnected';
+    case 'failed':
+      return 'Connection failed';
+    default:
+      return 'Unknown';
+  }
+}
+
 /**
  * Visual indicator for tunnel connection status.
  * Shows a colored dot and optional status text.
@@ -20,6 +37,7 @@ export function ConnectionStatusIndicator({
 }: ConnectionStatusIndicatorProps) {
   const { theme } = useTheme();
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  const statusText = getConnectionStatusText(state, retryCount);
 
   const isPulsing = state === 'connecting' || state === 'reconnecting';
 
@@ -62,25 +80,8 @@ export function ConnectionStatusIndicator({
     }
   };
 
-  const getStatusText = (): string => {
-    switch (state) {
-      case 'connected':
-        return 'Connected';
-      case 'connecting':
-        return 'Connecting...';
-      case 'reconnecting':
-        return retryCount > 0 ? `Reconnecting (${retryCount})...` : 'Reconnecting...';
-      case 'disconnected':
-        return 'Disconnected';
-      case 'failed':
-        return 'Connection failed';
-      default:
-        return 'Unknown';
-    }
-  };
-
   return (
-    <View style={[styles.container, compact && styles.containerCompact]} accessibilityLabel={getStatusText()} accessibilityRole="text">
+    <View style={[styles.container, compact && styles.containerCompact]} accessibilityLabel={statusText} accessibilityRole="text">
       <View style={styles.dotContainer}>
         <View
           style={[
@@ -100,7 +101,7 @@ export function ConnectionStatusIndicator({
       </View>
       {!compact && (
         <Text style={[styles.text, { color: theme.colors.mutedForeground }]}>
-          {getStatusText()}
+          {statusText}
         </Text>
       )}
     </View>

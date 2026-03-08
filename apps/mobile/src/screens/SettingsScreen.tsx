@@ -5,6 +5,7 @@ import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
+import { useTunnelConnection } from '../store/tunnelConnection';
 import { usePushNotifications } from '../lib/pushNotifications';
 import {
   createButtonAccessibilityLabel,
@@ -14,6 +15,7 @@ import {
 } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
+import { ConnectionStatusIndicator, getConnectionStatusText } from '../ui/ConnectionStatusIndicator';
 import { TTSSettings } from '../ui/TTSSettings';
 import Slider from '@react-native-community/slider';
 
@@ -203,6 +205,7 @@ export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
+  const { connectionInfo, isInitialized: isTunnelConnectionInitialized } = useTunnelConnection();
   const [draft, setDraft] = useState<AppConfig>(config);
   const { setCurrentProfile: setProfileContext } = useProfile();
 
@@ -289,6 +292,18 @@ export default function SettingsScreen({ navigation }: any) {
   const inputTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const hasSavedConnectionConfig = Boolean(config.baseUrl && config.apiKey);
+  const connectionCardState = !hasSavedConnectionConfig
+    ? 'disconnected'
+    : !isTunnelConnectionInitialized && connectionInfo.state === 'disconnected'
+      ? 'connecting'
+      : connectionInfo.state;
+  const connectionCardTitle = !hasSavedConnectionConfig
+    ? 'Not connected'
+    : !isTunnelConnectionInitialized && connectionInfo.state === 'disconnected'
+      ? 'Checking saved connection...'
+      : getConnectionStatusText(connectionCardState, connectionInfo.retryCount);
+  const connectionCardUrl = connectionInfo.baseUrl ?? config.baseUrl;
 
   // Create settings API client when we have valid credentials
   const settingsClient = useMemo(() => {
@@ -1067,20 +1082,18 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.connectionCardContent}>
             <View style={styles.connectionCardLeft}>
               <View style={styles.connectionStatusRow}>
-                <View style={[
-                  styles.statusDot,
-                  { width: 10, height: 10, borderRadius: 5 },
-                  config.baseUrl && config.apiKey
-                    ? styles.statusConnected
-                    : { backgroundColor: '#ef4444' }
-                ]} />
+                <ConnectionStatusIndicator
+                  state={connectionCardState}
+                  retryCount={connectionInfo.retryCount}
+                  compact
+                />
                 <Text style={styles.connectionCardTitle}>
-                  {config.baseUrl && config.apiKey ? 'Connected' : 'Not connected'}
+                  {connectionCardTitle}
                 </Text>
               </View>
-              {config.baseUrl && (
+              {connectionCardUrl && (
                 <Text style={styles.connectionCardUrl} numberOfLines={2}>
-                  {config.baseUrl}
+                  {connectionCardUrl}
                 </Text>
               )}
             </View>

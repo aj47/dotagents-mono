@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile connection status / verification UX in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/store/tunnelConnection.ts`, and `apps/mobile/src/ui/ConnectionStatusIndicator.tsx`.
 - 2026-03-08: Shared shell-command parsing / formatting reliability for desktop MCP stdio server configuration in `packages/shared/src/shell-parse.ts`, `apps/desktop/src/shared/shell-parse.ts`, and `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`.
 - 2026-03-08: Desktop memories search flow in `apps/desktop/src/renderer/src/pages/memories.tsx`, plus mobile memories-management parity review in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`.
 - 2026-03-08: Desktop repeat-task creation flow in `apps/desktop/src/renderer/src/pages/settings-loops.tsx` plus main-process repeat-task persistence in `apps/desktop/src/main/loop-service.ts` / `apps/desktop/src/main/agents-files/tasks.ts`, with mobile loop-creation parity review in `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts`.
@@ -18,6 +19,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Mobile connection surfaces now reflect actual tunnel connection state (checking, reconnecting, failed, disconnected) instead of showing a misleading generic “Connected” whenever credentials are merely saved.
 - 2026-03-08: Desktop MCP stdio server command editing/testing now round-trips quoted paths, escaped spaces, empty args, and Windows-style paths safely via shared shell-command formatting/parsing guardrails.
 - 2026-03-08: Desktop memories search now debounces backend queries, keeps search results keyed to the settled query, and shows inline loading feedback so fast typing no longer spams searches or risks stale-result flashes.
 - 2026-03-08: Desktop repeat-task creation now uses collision-safe readable IDs, so creating a second task with the same name no longer silently overwrites the first task file/config entry.
@@ -27,6 +29,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/settings-connection-card-mobile.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/shared/shell-parse.test.ts` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: attempted `pnpm --filter @dotagents/shared build` (blocked: `tsup` unavailable because this worktree has no installed dependencies / `node_modules`).
 - 2026-03-08: `git diff --check`
@@ -45,12 +49,47 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Mobile memories management flows
-- Remote/mobile connection settings verification UX
 
 ### Next Highest-Value Targets
 - Inspect mobile memories management flows for the next localized UX/reliability improvement that does not overlap the recent desktop settings and shared-utility passes
-- Inspect remote/mobile connection settings verification UX for the next small trust-building resilience win
 - Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Mobile connection status truthfulness on settings surfaces
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile connection settings in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - mobile settings connection card in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - tunnel state source in `apps/mobile/src/store/tunnelConnection.ts`
+  - shared mobile status component in `apps/mobile/src/ui/ConnectionStatusIndicator.tsx`
+- Why it was chosen:
+  - the ledger explicitly called out remote/mobile connection verification UX as a fresh area that had not been investigated recently
+  - the current mobile UI treated any saved `baseUrl` + `apiKey` as “Connected”, which can mislead users during initial setup, reconnects, or failures even though the app already tracks richer tunnel state
+  - the opportunity had clear user value and a small local implementation path because the tunnel state store and indicator component already existed
+- What was inspected:
+  - `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/src/store/tunnelConnection.ts`
+  - `apps/mobile/src/lib/tunnelConnectionManager.ts`
+  - `apps/mobile/src/ui/ConnectionStatusIndicator.tsx`
+  - existing mobile source-level tests in `apps/mobile/tests/connection-settings-validation.test.js`
+  - attempted live product inspection was not practical in this workspace because prior iterations already confirmed dependencies are missing, so this pass relied on source review plus focused source-level regression checks
+- Improvement made:
+  - both the mobile Settings connection card and Connection screen status card now read the real tunnel connection state instead of inferring “connected” from saved credentials alone
+  - these surfaces now show more truthful statuses such as checking saved connection, reconnecting, disconnected, or connection failed
+  - both surfaces use the current tunnel/base URL when available so the shown endpoint stays aligned with the connection manager’s latest known state
+  - the connection settings screen now also surfaces any current tunnel error detail inline beneath the saved-connection status card
+  - extracted a small `getConnectionStatusText(...)` helper from the existing mobile status indicator so status wording stays consistent across header badges and settings surfaces
+- Assumptions / tradeoffs / rationale:
+  - kept the change UI-only and reused the existing tunnel state manager instead of changing connection or persistence logic, because the main issue here was misleading status communication rather than broken connectivity itself
+  - treated an uninitialized tunnel manager with saved credentials as a temporary “checking saved connection” state to avoid a jarring false-disconnected flash during app startup
+  - kept the copy lightweight and status-oriented instead of adding a larger troubleshooting flow, so this remains a small shippable trust-building improvement
+- Tests / verification:
+  - `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/settings-connection-card-mobile.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - inspect mobile memories management flows for the next non-overlapping localized UX/reliability improvement
+  - once a runnable mobile environment is available, live-check the updated connection copy/states during reconnect and failure scenarios to confirm the wording feels right on-device
 
 ### 2026-03-08 — Desktop MCP stdio shell-command round-trip guardrails
 - Date:

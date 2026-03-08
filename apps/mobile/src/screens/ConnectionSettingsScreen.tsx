@@ -8,6 +8,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Linking from 'expo-linking';
 import { checkServerConnection } from '../lib/connectionRecovery';
 import { useTunnelConnection } from '../store/tunnelConnection';
+import { ConnectionStatusIndicator, getConnectionStatusText } from '../ui/ConnectionStatusIndicator';
 import {
   createButtonAccessibilityLabel,
   createMinimumTouchTargetStyle,
@@ -47,7 +48,12 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
-  const { connect: tunnelConnect, disconnect: tunnelDisconnect } = useTunnelConnection();
+  const {
+    connectionInfo,
+    isInitialized: isTunnelConnectionInitialized,
+    connect: tunnelConnect,
+    disconnect: tunnelDisconnect,
+  } = useTunnelConnection();
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -185,8 +191,21 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
     setDraft(prev => ({ ...prev, baseUrl: DEFAULT_OPENAI_BASE_URL }));
   };
 
-  // Connection status indicator
-  const isConnected = Boolean(config.baseUrl && config.apiKey);
+  const hasSavedConnectionConfig = Boolean(config.baseUrl && config.apiKey);
+  const displayConnectionState = !hasSavedConnectionConfig
+    ? 'disconnected'
+    : !isTunnelConnectionInitialized && connectionInfo.state === 'disconnected'
+      ? 'connecting'
+      : connectionInfo.state;
+  const connectionStatusText = !hasSavedConnectionConfig
+    ? 'Not connected'
+    : !isTunnelConnectionInitialized && connectionInfo.state === 'disconnected'
+      ? 'Checking saved connection...'
+      : getConnectionStatusText(displayConnectionState, connectionInfo.retryCount);
+  const connectionStatusUrl = connectionInfo.baseUrl ?? config.baseUrl;
+  const connectionStatusDetail = !hasSavedConnectionConfig
+    ? 'Add an API key or scan a DotAgents QR code to connect.'
+    : connectionInfo.errorMessage;
 
   if (!ready) return null;
 
@@ -199,15 +218,22 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         {/* Connection Status */}
         <View style={styles.statusCard}>
           <View style={styles.statusRow}>
-            <View style={[styles.statusDot, isConnected ? styles.statusConnected : styles.statusDisconnected]} />
+            <ConnectionStatusIndicator
+              state={displayConnectionState}
+              retryCount={connectionInfo.retryCount}
+              compact
+            />
             <Text style={styles.statusText}>
-              {isConnected ? 'Connected' : 'Not connected'}
+              {connectionStatusText}
             </Text>
           </View>
-          {isConnected && (
+          {connectionStatusUrl && (
             <Text style={styles.statusUrl} numberOfLines={1}>
-              {config.baseUrl}
+              {connectionStatusUrl}
             </Text>
+          )}
+          {connectionStatusDetail && (
+            <Text style={styles.statusDetail}>{connectionStatusDetail}</Text>
           )}
         </View>
 
@@ -330,23 +356,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       gap: spacing.sm,
     },
-    statusDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-    },
-    statusConnected: {
-      backgroundColor: '#22c55e',
-    },
-    statusDisconnected: {
-      backgroundColor: '#ef4444',
-    },
     statusText: {
       fontSize: 16,
       fontWeight: '600',
       color: theme.colors.foreground,
     },
     statusUrl: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
+    },
+    statusDetail: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: spacing.xs,
