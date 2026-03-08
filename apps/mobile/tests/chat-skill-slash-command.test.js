@@ -26,6 +26,9 @@ test('chat screen loads skills, shows slash suggestions, and expands exact slash
   assert.match(chatScreenSource, /Slash Commands/);
 	  assert.match(chatScreenSource, /Tap a slash command to insert it, then keep typing your request\./);
   assert.match(chatScreenSource, /Skill: \{matchedSlashSkill\.name\}/);
+  assert.match(chatScreenSource, /const shouldShowSlashComposerHint =/);
+  assert.match(chatScreenSource, /Tip: type "\/" for skills\./);
+  assert.match(chatScreenSource, /Type slash to browse skills for this agent\./);
   assert.match(chatScreenSource, /availableSkills\.length === 0/);
 	  assert.match(chatScreenSource, /No enabled skills found for this agent yet\. Keep typing to send a normal message, or switch agents to try other skills\./);
 	  assert.match(chatScreenSource, /No skills match \\\`\/\$\{slashCommandState\.query\}\\\` for this agent\. Try another slash command or keep typing to send a normal message\./);

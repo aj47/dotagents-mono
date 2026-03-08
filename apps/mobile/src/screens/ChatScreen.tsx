@@ -2304,6 +2304,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	const matchedSlashSkill = slashCommandState?.exactSkill ?? null;
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+  const shouldShowSlashComposerHint =
+    availableSkills.length > 0
+    && !isLoadingSkills
+    && !slashCommandState?.shouldShowSuggestions
+    && !matchedSlashSkill
+    && !composerHasContent;
+  const composerAssistiveHint = shouldShowSlashComposerHint
+    ? `${composerAccessibilityHint} Type slash to browse skills for this agent.`
+    : composerAccessibilityHint;
 
 	  const sendComposerInput = useCallback(async () => {
 	    let composerText = input;
@@ -3584,6 +3593,11 @@ export default function ChatScreen({ route, navigation }: any) {
 		              <Text style={styles.activeSlashSkillText}>Skill: {matchedSlashSkill.name}</Text>
 		            </View>
 		          )}
+		          {shouldShowSlashComposerHint && (
+		            <View style={styles.slashComposerHint}>
+		              <Text style={styles.slashComposerHintText}>Tip: type "/" for skills.</Text>
+		            </View>
+		          )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
@@ -3629,7 +3643,7 @@ export default function ChatScreen({ route, navigation }: any) {
               onChangeText={handleInputChange}
               onKeyPress={handleInputKeyPress}
               accessibilityLabel={createTextInputAccessibilityLabel('Message composer')}
-              accessibilityHint={composerAccessibilityHint}
+	              accessibilityHint={composerAssistiveHint}
               aria-describedby={isWebPlatform ? CHAT_COMPOSER_HINT_NATIVE_ID : undefined}
               placeholder={handsFree ? (listening ? 'Listening…' : 'Type or tap mic') : (listening ? 'Listening…' : 'Type or hold mic')}
               placeholderTextColor={theme.colors.mutedForeground}
@@ -3637,7 +3651,7 @@ export default function ChatScreen({ route, navigation }: any) {
             />
             {isWebPlatform && (
               <Text nativeID={CHAT_COMPOSER_HINT_NATIVE_ID} style={styles.visuallyHiddenComposerHint}>
-                {composerAccessibilityHint}
+	                {composerAssistiveHint}
               </Text>
             )}
 	            {isWebPlatform && (
@@ -4065,6 +4079,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 12,
       fontWeight: '600',
       color: theme.colors.primary,
+    },
+    slashComposerHint: {
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.xs,
+      alignSelf: 'flex-start',
+    },
+    slashComposerHintText: {
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+      fontWeight: '500',
     },
     inputRow: {
       flexDirection: 'row',

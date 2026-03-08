@@ -3809,3 +3809,37 @@
   - Once the mobile dependency baseline is restored, add a real component/runtime assertion around the slash help and empty-state branches instead of relying only on source checks.
 
 - Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` is still not directly reproducible in this worktree, keep choosing similarly narrow, source-confirmed UX/reliability slices rather than speculative provider work.
+
+##### Issue #53 — Mobile composer now shows a compact idle slash-command hint
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest documented `#53` follow-up instead of reopening the heavier `#57`/`#58` tracks again.
+  - Refreshed the current open issues and stayed bug-first conceptually, but `#55` still was not directly reproducible with trustworthy validation in this worktree, while this `#53` slice had a concrete, user-visible mobile UX gap with lightweight verification.
+  - Chose a narrowly scoped discoverability improvement because the mobile slash-command behavior already works, and the remaining gap was helping users notice it before they start typing.
+- Investigation:
+  - Revisited issue `#53` and confirmed the acceptance criteria still focus on intuitive inline skill invocation with visible UI affordances.
+  - Inspected `apps/mobile/src/screens/ChatScreen.tsx` and confirmed the mobile composer already showed the slash suggestion strip and active `Skill:` chip only after the user started a slash command, but the idle composer state still relied entirely on the voice-first placeholder text.
+  - Reviewed the most recent ledger guidance and confirmed the explicit remaining follow-up was a compact inline `/` hint near the composer that would not compete with the existing placeholder.
+  - Checked `apps/mobile/src/lib/accessibility.ts` plus `apps/mobile/tests/chat-composer-accessibility.test.js` to ensure any visible hint would not silently degrade the existing accessibility contract.
+- Important assumptions:
+  - Assumption: the hint should only appear when the composer is idle and the current agent actually has enabled slash-eligible skills.
+  - Why acceptable: that keeps the UI quiet during normal typing, avoids promising commands where none exist, and makes the hint feel contextual rather than noisy.
+  - Assumption: appending slash guidance to the composer accessibility hint only when the visible hint is shown is sufficient for this slice.
+  - Why acceptable: it keeps the accessibility contract aligned with the visible state without broadening the shared helper API for a narrow UX pass.
+- Changes implemented:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to compute `shouldShowSlashComposerHint` when the composer is empty, skills are available, slash suggestions are not already open, and no slash skill is currently active.
+  - Added a compact inline hint near the mobile composer: `Tip: type "/" for skills.`
+  - Appended matching screen-reader/web hint text (`Type slash to browse skills for this agent.`) to the existing composer accessibility hint only while that inline hint is visible.
+  - Extended `apps/mobile/tests/chat-skill-slash-command.test.js` with dependency-free assertions covering the new idle hint and the paired assistive copy.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/chat-skill-slash-command.test.js apps/mobile/tests/chat-composer-accessibility.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Did not re-run broader mobile TypeScript/Expo validation in this iteration because the existing ledger already established this worktree still lacks the mobile dependency baseline (`expo/tsconfig.base` and related Expo/mobile types), and this slice was fully covered by targeted source tests.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - If mobile slash usage needs even more discoverability, consider a tappable inline affordance that opens slash suggestions directly instead of only hinting via text.
+  - Once the mobile dependency baseline is restored, add a real component/runtime assertion for the idle slash hint rather than relying only on source checks.
+
+- Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` is still not directly reproducible here, prefer a fresh, equally narrow issue slice outside the now-heavily-worked `#53` track.
