@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop onboarding save resilience in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, with onboarding step transitions and config-save wiring reviewed in that file, shared save-error helpers cross-checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, lightweight regression-test patterns reviewed in `tests/desktop-settings-providers-credentials-feedback.test.js` and other `tests/desktop-*.test.js` files, mobile parity checked in `apps/mobile/src/` (no equivalent first-run desktop onboarding flow exists there), focused source-level coverage added in `tests/desktop-onboarding-save-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available), and desktop renderer typecheck attempted via `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this dependency-light worktree is missing the shared tsconfig package / `node_modules`).
 - 2026-03-08: Desktop remote-server settings draft-save resilience in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server field wiring reviewed in that file, shared config-save mutation/error behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts` and `apps/desktop/src/renderer/src/lib/config-save-error.ts`, local-draft test patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`, mobile parity reviewed in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile surface exists because mobile connects to a desktop-hosted server rather than authoring desktop remote-server or Cloudflare tunnel settings), targeted source-level coverage extended in `tests/desktop-remote-server-settings-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
 - 2026-03-08: Desktop sessions pending past-session continuation failure visibility in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with the pending conversation query / synthetic tile / startup-timeout flow reviewed in that file, nearby inline retry/warning patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent pending continuation tile exists there because mobile opens session history directly instead of staging a desktop continuation tile), focused source-level coverage added in `tests/desktop-sessions-pending-continuation-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available in this environment).
 - 2026-03-08: Mobile `ChatScreen` image-attachment feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with the React Native / Expo image-picker flow reviewed in that file, the existing desktop inline attachment-feedback copy pattern cross-checked in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`, adjacent mobile composer/banner accessibility patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-image-attachment-feedback.test.js`, adjacent `ChatScreen` composer / TTS / emergency-stop coverage re-run in `apps/mobile/tests/chat-composer-accessibility.test.js`, `apps/mobile/tests/chat-kill-switch-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
@@ -87,6 +88,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop onboarding first-run save feedback still needs live Electron validation once a runnable renderer target is available, especially to confirm `Skipping...` / `Saving...` / `Starting...` states feel calm, the inline error banner hierarchy reads clearly on welcome/API-key/agent steps, and onboarding completion really persists when config query data is still cold on first launch.
 - 2026-03-08: Desktop remote-server settings draft-save flow still needs live Electron validation once a runnable target is available, especially to confirm port/CORS edits feel calm while typing, blank-port blur normalization is unsurprising, and named-tunnel `Start Tunnel` correctly reflects the visible draft fields without waiting for a config refetch.
 - 2026-03-08: Desktop sessions pending continuation recovery feedback still needs live Electron validation once a runnable target is available, especially to confirm the standalone load-failure tile, inline startup-timeout warning, retry/dismiss actions, and focus-layout behavior remain clear when other active sessions already occupy the grid.
 - 2026-03-08: Mobile `ChatScreen` image-attachment warning/retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline banner, `Choose again` / `Add more` actions, attach-button pending spinner, and thumbnail density remain clear on compact screens and large text.
@@ -113,6 +115,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop onboarding in `apps/desktop/src/renderer/src/pages/onboarding.tsx` now loads the latest config before saving when the cached query data is still empty, adds local pending labels plus inline retry guidance for API-key save / skip / completion actions, and keeps users on the same step with their draft intact when first-run persistence fails, so onboarding no longer risks silently advancing without actually saving or failing with only background console/toast clues; tradeoff: this pass intentionally stays scoped to the existing onboarding step actions instead of redesigning the broader first-run flow or the separate Exa-install subflow.
 - 2026-03-08: Desktop remote-server settings now keep local drafts for port, CORS origins, and named Cloudflare tunnel fields, debounce config writes, flush on blur, merge delayed saves against the latest config snapshot, and let `Start Tunnel` use the visible named-tunnel draft immediately instead of waiting for persisted config.
 - 2026-03-08: Desktop `Sessions` now keeps failed past-session continuation attempts visible in `apps/desktop/src/renderer/src/pages/sessions.tsx`, replacing toast-only disappearance with a retryable recovery tile when a saved conversation cannot be reopened and an inline timeout warning that leaves the saved conversation open when follow-up session startup stalls, so continuing an old chat no longer feels like the session vanished with no local next step; tradeoff: this pass intentionally stops short of preserving the unsent follow-up draft across startup timeout because that draft currently lives inside the existing per-tile composer and widening that state scope would be a larger refactor.
 - 2026-03-08: Mobile `ChatScreen` image attachments in `apps/mobile/src/screens/ChatScreen.tsx` now replace stacked native alerts with inline composer feedback that aggregates partial-success / failure details, preserves successfully added thumbnails in place, disables duplicate picker launches while selection is already in progress, and offers contextual `Choose again` / `Add more` recovery actions, so attachment problems no longer disappear behind dismissible dialogs or leave users guessing whether any selected images were kept; tradeoff: this pass intentionally keeps the existing Expo image-picker + base64 attachment pipeline and compact thumbnail strip instead of broadening into upload/compression refactors.
@@ -191,6 +194,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-onboarding-save-feedback.test.js` after the desktop onboarding save-resilience pass
+- 2026-03-08: `pnpm --filter @dotagents/desktop typecheck:web` after the desktop onboarding save-resilience pass *(blocked: dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved because this worktree is missing installed desktop dependencies / `node_modules`)*
+- 2026-03-08: `git diff --check` after the desktop onboarding save-resilience pass
 - 2026-03-08: `node --test tests/desktop-remote-server-settings-feedback.test.js` after the desktop remote-server draft-save resilience pass
 - 2026-03-08: `git diff --check` after the desktop remote-server draft-save resilience pass
 - 2026-03-08: `node --test apps/mobile/tests/chat-image-attachment-feedback.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js` after the mobile ChatScreen image-attachment feedback pass
@@ -383,6 +389,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this onboarding save-resilience pass was blocked because `electron_execute` could not inspect a renderer target in this environment, so this iteration relied on source inspection plus targeted source-level verification.
+- 2026-03-08: Focused desktop renderer typecheck for this onboarding save-resilience pass is blocked in this worktree because `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve dependency-provided tsconfig files (`@electron-toolkit/tsconfig/tsconfig.web.json`) while local `node_modules` is missing.
 - 2026-03-08: Live desktop UI inspection for this remote-server draft-save resilience pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this ChatScreen image-attachment feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this ChatScreen emergency-stop pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
@@ -1354,6 +1362,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once an Electron target is available, live-check dirty-skill dismissal via backdrop click, Escape, and the corner close button to confirm the confirmation cadence feels right
   - inspect the desktop agent editor next for similar unsaved-change / destructive-reset risks, especially preset application and cancel flows
+
+### 2026-03-08 — Desktop onboarding save resilience and first-run feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop onboarding flow in `apps/desktop/src/renderer/src/pages/onboarding.tsx`
+  - reviewed shared save-error helpers in `apps/desktop/src/renderer/src/lib/config-save-error.ts`
+  - reviewed lightweight source-test patterns in `tests/desktop-settings-providers-credentials-feedback.test.js` and adjacent `tests/desktop-*.test.js`
+  - checked mobile parity in `apps/mobile/src/` and confirmed there is no equivalent first-run desktop onboarding flow there, so no mobile change was needed
+- Why it was chosen:
+  - this was a fresh high-leverage desktop surface that had not already been investigated recently in the ledger
+  - onboarding is the first-run path for API-key setup and completion persistence, so silent save failures here have outsized user impact
+  - source review showed the onboarding save helpers returned early when `configQuery.data` was still empty, which meant first-launch actions could advance the UI without actually saving anything
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/onboarding.tsx` around `saveConfig`, `saveConfigAsync`, the API-key step, welcome-step skip action, and final onboarding completion action
+  - `apps/desktop/src/renderer/src/lib/config-save-error.ts` to reuse existing human-readable save-failure copy instead of inventing a new error style
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - onboarding config saves now fall back to `tipcClient.getConfig()` when cached query data is still cold, so first-run save actions no longer silently no-op just because the config query has not hydrated yet
+  - the welcome-step `Skip Tutorial`, API-key `Continue`, and final `Start Using …` action now expose local pending labels (`Skipping...`, `Saving...`, `Starting...`) and disable conflicting buttons while persistence is in flight
+  - API-key save and onboarding-completion failures now render inline recovery guidance on the current step, keeping the user oriented instead of relying on background console/toast signals alone
+  - failed API-key saves explicitly tell the user their draft is still there, while failed skip/finish saves keep the user on the same step with a retryable explanation
+  - added focused dependency-free regression coverage in `tests/desktop-onboarding-save-feedback.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the fix local to onboarding step actions rather than widening into a broader onboarding redesign, because the concrete user problem was silent or poorly signposted persistence failure in an otherwise functional flow
+  - reused the existing settings save-error helper so onboarding failure copy stays aligned with the rest of the desktop settings experience
+  - accepted source-level verification for this iteration because both live Electron inspection and desktop dependency-backed typecheck/test runs are constrained in the current worktree
+- Tests / verification:
+  - `node --test tests/desktop-onboarding-save-feedback.test.js`
+  - attempted `pnpm --filter @dotagents/desktop typecheck:web`, but the current worktree is missing installed desktop dependencies and could not resolve `@electron-toolkit/tsconfig/tsconfig.web.json`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check the new inline pending/error hierarchy on the welcome, API-key, and agent steps
+  - once desktop dependencies are installed, rerun `pnpm --filter @dotagents/desktop typecheck:web` and a focused desktop test run around onboarding-related renderer pages
 
 ### 2026-03-08 — Desktop Groq STT prompt draft/save resilience
 - Date:

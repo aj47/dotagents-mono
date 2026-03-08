@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@renderer/components/ui/select"
+import { getSettingsSaveErrorMessage, reportConfigSaveError } from "@renderer/lib/config-save-error"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { Config } from "@shared/types"
@@ -20,6 +21,7 @@ import { KeyRecorder } from "@renderer/components/key-recorder"
 import { getDictationShortcutDisplay, getMcpToolsShortcutDisplay } from "@shared/key-utils"
 
 type OnboardingStep = "welcome" | "api-key" | "dictation" | "agent" | "complete"
+type OnboardingPendingAction = "save-api-key" | "skip-onboarding" | "complete-onboarding"
 
 export function Component() {
   const [step, setStep] = useState<OnboardingStep>("welcome")
@@ -29,35 +31,71 @@ export function Component() {
   const [dictationResult, setDictationResult] = useState<string | null>(null)
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null)
   const [micError, setMicError] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<OnboardingPendingAction | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const navigate = useNavigate()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const recorderRef = useRef<Recorder | null>(null)
 
+  const getConfigForSave = useCallback(async () => {
+    const baseConfig = configQuery.data ?? await tipcClient.getConfig()
+    return baseConfig
+  }, [configQuery.data])
+
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
-      if (!configQuery.data) return
-      saveConfigMutation.mutate({
-        config: {
-          ...configQuery.data,
-          ...config,
-        },
-      })
+      void (async () => {
+        try {
+          const baseConfig = await getConfigForSave()
+          saveConfigMutation.mutate({
+            config: {
+              ...baseConfig,
+              ...config,
+            },
+          })
+        } catch (error) {
+          reportConfigSaveError(error)
+        }
+      })()
     },
-    [saveConfigMutation, configQuery.data]
+    [getConfigForSave, saveConfigMutation]
   )
 
   const saveConfigAsync = useCallback(
     async (config: Partial<Config>) => {
-      if (!configQuery.data) return
+      const baseConfig = await getConfigForSave()
       await saveConfigMutation.mutateAsync({
         config: {
-          ...configQuery.data,
+          ...baseConfig,
           ...config,
         },
       })
     },
-    [saveConfigMutation, configQuery.data]
+    [getConfigForSave, saveConfigMutation]
+  )
+
+  const runPendingAction = useCallback(
+    async (action: OnboardingPendingAction, work: () => Promise<void>) => {
+      setPendingAction(action)
+      setActionError(null)
+
+      try {
+        await work()
+      } catch (error) {
+        const saveError = getSettingsSaveErrorMessage(error)
+        console.error(`Onboarding action failed: ${action}`, error)
+
+        if (action === "save-api-key") {
+          setActionError(`${saveError} Your API key is still here, so you can try again.`)
+        } else {
+          setActionError(`${saveError} You're still on this step, so you can try again.`)
+        }
+      } finally {
+        setPendingAction((current) => current === action ? null : current)
+      }
+    },
+    [],
   )
 
   // Transcription mutation
@@ -118,25 +156,32 @@ export function Component() {
     }
   }, [])
 
+  useEffect(() => {
+    setActionError(null)
+  }, [step])
+
   const handleSaveApiKey = useCallback(async () => {
     if (!apiKey.trim()) return
 
-    // Save Groq API key and set Groq as the default provider for STT, chat, and TTS
-    // Wait for config to save before advancing to ensure transcription uses the new provider
-    // Set recommended models: gpt-oss-120b for agent tasks
-    await saveConfigAsync({
-      groqApiKey: apiKey.trim(),
-      sttProviderId: "groq",
-      transcriptPostProcessingProviderId: "groq",
-      mcpToolsProviderId: "groq",
-      mcpToolsGroqModel: "openai/gpt-oss-120b",
-      ttsProviderId: "groq",
-    })
+    await runPendingAction("save-api-key", async () => {
+      // Save Groq API key and set Groq as the default provider for STT, chat, and TTS
+      // Wait for config to save before advancing to ensure transcription uses the new provider
+      // Set recommended models: gpt-oss-120b for agent tasks
+      await saveConfigAsync({
+        groqApiKey: apiKey.trim(),
+        sttProviderId: "groq",
+        transcriptPostProcessingProviderId: "groq",
+        mcpToolsProviderId: "groq",
+        mcpToolsGroqModel: "openai/gpt-oss-120b",
+        ttsProviderId: "groq",
+      })
 
-    setStep("dictation")
-  }, [apiKey, saveConfigAsync])
+      setStep("dictation")
+    })
+  }, [apiKey, runPendingAction, saveConfigAsync])
 
   const handleSkipApiKey = useCallback(() => {
+    setActionError(null)
     setStep("dictation")
   }, [])
 
@@ -164,28 +209,49 @@ export function Component() {
   }, [])
 
   const handleCompleteOnboarding = useCallback(async () => {
-    await saveConfigAsync({ onboardingCompleted: true })
-    navigate("/")
-  }, [saveConfigAsync, navigate])
+    await runPendingAction("complete-onboarding", async () => {
+      await saveConfigAsync({ onboardingCompleted: true })
+      navigate("/")
+    })
+  }, [navigate, runPendingAction, saveConfigAsync])
 
   const handleSkipOnboarding = useCallback(async () => {
-    await saveConfigAsync({ onboardingCompleted: true })
-    navigate("/")
-  }, [saveConfigAsync, navigate])
+    await runPendingAction("skip-onboarding", async () => {
+      await saveConfigAsync({ onboardingCompleted: true })
+      navigate("/")
+    })
+  }, [navigate, runPendingAction, saveConfigAsync])
+
+  const isSavingApiKey = pendingAction === "save-api-key"
+  const isSkippingOnboarding = pendingAction === "skip-onboarding"
+  const isCompletingOnboarding = pendingAction === "complete-onboarding"
 
   return (
     <div className="app-drag-region flex h-dvh overflow-y-auto">
       <div className="w-full max-w-2xl mx-auto my-auto px-6 py-10">
         {step === "welcome" && (
-          <WelcomeStep onNext={() => setStep("api-key")} onSkip={handleSkipOnboarding} />
+          <WelcomeStep
+            onNext={() => {
+              setActionError(null)
+              setStep("api-key")
+            }}
+            onSkip={handleSkipOnboarding}
+            isSkipping={isSkippingOnboarding}
+            actionError={actionError}
+          />
         )}
         {step === "api-key" && (
           <ApiKeyStep
             apiKey={apiKey}
-            onApiKeyChange={setApiKey}
+            onApiKeyChange={(value) => {
+              setApiKey(value)
+              setActionError(null)
+            }}
             onNext={handleSaveApiKey}
             onSkip={handleSkipApiKey}
             onBack={() => setStep("welcome")}
+            isSaving={isSavingApiKey}
+            actionError={actionError}
           />
         )}
         {step === "dictation" && (
@@ -211,6 +277,8 @@ export function Component() {
             config={configQuery.data}
             onSaveConfig={saveConfig}
             onSaveConfigAsync={saveConfigAsync}
+            isCompletingOnboarding={isCompletingOnboarding}
+            actionError={actionError}
           />
         )}
       </div>
@@ -218,8 +286,29 @@ export function Component() {
   )
 }
 
+function OnboardingActionError({ message }: { message: string | null }) {
+  if (!message) return null
+
+  return (
+    <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+      <span className="i-mingcute-warning-fill mr-2"></span>
+      {message}
+    </div>
+  )
+}
+
 // Welcome Step
-function WelcomeStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
+function WelcomeStep({
+  onNext,
+  onSkip,
+  isSkipping,
+  actionError,
+}: {
+  onNext: () => void
+  onSkip: () => void
+  isSkipping: boolean
+  actionError: string | null
+}) {
   return (
     <div className="text-center">
       <div className="mb-6">
@@ -231,12 +320,13 @@ function WelcomeStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => voi
       <p className="text-lg text-muted-foreground mb-8">
         Let's get you set up with voice dictation and AI-powered tools in just a few steps.
       </p>
+      <OnboardingActionError message={actionError} />
       <div className="flex flex-col gap-3 items-center">
-        <Button size="lg" onClick={onNext} className="w-64">
+        <Button size="lg" onClick={onNext} className="w-64" disabled={isSkipping}>
           Get Started
         </Button>
-        <Button variant="ghost" onClick={onSkip} className="text-muted-foreground">
-          Skip Tutorial
+        <Button variant="ghost" onClick={onSkip} className="text-muted-foreground" disabled={isSkipping}>
+          {isSkipping ? "Skipping..." : "Skip Tutorial"}
         </Button>
       </div>
     </div>
@@ -250,12 +340,16 @@ function ApiKeyStep({
   onNext,
   onSkip,
   onBack,
+  isSaving,
+  actionError,
 }: {
   apiKey: string
   onApiKeyChange: (value: string) => void
   onNext: () => void
   onSkip: () => void
   onBack: () => void
+  isSaving: boolean
+  actionError: string | null
 }) {
   return (
     <div>
@@ -288,16 +382,17 @@ function ApiKeyStep({
           </p>
         </div>
       </div>
+      <OnboardingActionError message={actionError} />
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} disabled={isSaving}>
           Back
         </Button>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={onSkip}>
+          <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
             Skip for Now
           </Button>
-          <Button onClick={onNext} disabled={!apiKey.trim()}>
-            Continue
+          <Button onClick={onNext} disabled={!apiKey.trim() || isSaving}>
+            {isSaving ? "Saving..." : "Continue"}
           </Button>
         </div>
       </div>
@@ -509,12 +604,16 @@ function AgentStep({
   config,
   onSaveConfig,
   onSaveConfigAsync,
+  isCompletingOnboarding,
+  actionError,
 }: {
   onComplete: () => void
   onBack: () => void
   config: Config | undefined
   onSaveConfig: (config: Partial<Config>) => void
   onSaveConfigAsync: (config: Partial<Config>) => Promise<void>
+  isCompletingOnboarding: boolean
+  actionError: string | null
 }) {
   const [isInstallingExa, setIsInstallingExa] = useState(false)
   const [exaInstalled, setExaInstalled] = useState(false)
@@ -812,12 +911,15 @@ function AgentStep({
       </div>
 
       <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} disabled={isCompletingOnboarding}>
           Back
         </Button>
-        <Button onClick={onComplete} size="lg">
-          Start Using {process.env.PRODUCT_NAME}
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          <OnboardingActionError message={actionError} />
+          <Button onClick={onComplete} size="lg" disabled={isCompletingOnboarding}>
+            {isCompletingOnboarding ? "Starting..." : `Start Using ${process.env.PRODUCT_NAME}`}
+          </Button>
+        </div>
       </div>
     </div>
   )
