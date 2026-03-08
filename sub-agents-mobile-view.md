@@ -635,3 +635,50 @@
   - Restore the mobile install in this worktree and re-run Expo Web against the edit flows to visually confirm the chip sizing/selection treatment.
   - Inspect whether edit-screen switches should become row-level wrapped controls for clearer mobile touch targets.
   - Smoke-test long saved profile names in `LoopEditScreen` after live validation is available again.
+
+### 2026-03-08 — Iteration 15: wrap edit-flow switches in named mobile controls
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen` switch rows (`Enabled`, `Auto Spawn`)
+  - `LoopEditScreen` switch row (`Enabled`)
+  - wrapped mobile switch pattern already used in `SettingsScreen`
+- Live inspection / workflow status:
+  - Reconfirmed the worktree is still missing the mobile install:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because `expo/tsconfig.base` and Expo/React Native packages are unavailable
+  - Because of that missing install, Expo Web and device/simulator validation remain blocked for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the main edit-flow toggles still used plain native `Switch` controls:
+    - `AgentEditScreen` → `Enabled`, `Auto Spawn`
+    - `LoopEditScreen` → `Enabled`
+  - Unlike the recently improved settings surfaces, those controls did not have explicit named switch semantics or a shared minimum `44px` touch-target wrapper.
+- Issue selected:
+  - The edit-flow on/off controls remained the weakest mobile affordances in the sub-agents experience, making key state changes easier to mis-tap and less clear for assistive technology.
+- Decision:
+  - Keep the existing edit-screen layout and text unchanged.
+  - Reuse the same conservative wrapped-switch approach already proven in `SettingsScreen`.
+  - Avoid a new shared component while live validation is blocked; make the fix locally in the two edit screens only.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - wrap `Enabled` and `Auto Spawn` in explicit `TouchableOpacity` switch controls,
+    - add named switch labels/hints and checked-state semantics,
+    - add a shared `44px` minimum touch target for the switch button,
+    - render a web-only visual switch track/thumb so the hidden inner native `Switch` does not create duplicate semantics on web.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - wrap the `Enabled` control in the same named/tappable switch treatment,
+    - add the same `44px` touch-target guardrail and web-safe switch visual.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new edit-flow switch semantics and touch-target styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native packages in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved edit-flow switch treatment still needs live confirmation on Expo Web or a native device once dependencies are restored.
+  - Long saved profile names in `LoopEditScreen` still need a narrow-screen pass now that the profile chips and switches are stronger.
+  - The edit screens still have not had a full screenshot-backed mobile pass since the install went missing.
+- Next checks:
+  - Restore the mobile install in this worktree, then re-run Expo Web and confirm the new edit-flow switch treatment on a narrow viewport.
+  - Smoke-test long saved profile names in `LoopEditScreen` once live validation is available again.
+  - Continue with the next highest-signal local issue only after a fresh live pass re-establishes which sub-agent mobile surface now has the most friction.

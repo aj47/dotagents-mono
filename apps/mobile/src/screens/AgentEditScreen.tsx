@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createSwitchAccessibilityLabel } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
 
@@ -165,6 +165,31 @@ export default function AgentEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const renderSwitchVisual = (enabled: boolean) => {
+    if (Platform.OS === 'web') {
+      return (
+        <View
+          style={[styles.switchTrack, enabled && styles.switchTrackActive]}
+          accessible={false}
+        >
+          <View
+            style={[styles.switchThumb, enabled && styles.switchThumbActive]}
+            accessible={false}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <Switch
+        accessible={false}
+        value={enabled}
+        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+        thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+      />
+    );
+  };
+
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
 
   // Check if connection fields should be shown
@@ -325,26 +350,50 @@ export default function AgentEditScreen({ navigation, route }: any) {
       />
 
       <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Enabled</Text>
-        <Switch
-          value={formData.enabled}
-          onValueChange={v => updateField('enabled', v)}
-          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-          thumbColor={formData.enabled ? theme.colors.primaryForeground : theme.colors.background}
-        />
+        <View style={styles.switchLabelGroup}>
+          <Text style={styles.switchLabel}>Enabled</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.switchButton}
+          onPress={() => updateField('enabled', !formData.enabled)}
+          accessibilityRole="switch"
+          accessibilityLabel={createSwitchAccessibilityLabel('Agent enabled')}
+          accessibilityHint="Turns this agent on or off."
+          accessibilityState={{ checked: formData.enabled }}
+          activeOpacity={0.7}
+        >
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {renderSwitchVisual(formData.enabled)}
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.switchRow}>
-        <View>
+        <View style={styles.switchLabelGroup}>
           <Text style={styles.switchLabel}>Auto Spawn</Text>
           <Text style={styles.switchHelperText}>Start agent automatically on app launch</Text>
         </View>
-        <Switch
-          value={formData.autoSpawn}
-          onValueChange={v => updateField('autoSpawn', v)}
-          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-          thumbColor={formData.autoSpawn ? theme.colors.primaryForeground : theme.colors.background}
-        />
+        <TouchableOpacity
+          style={styles.switchButton}
+          onPress={() => updateField('autoSpawn', !formData.autoSpawn)}
+          accessibilityRole="switch"
+          accessibilityLabel={createSwitchAccessibilityLabel('Auto spawn')}
+          accessibilityHint="Starts this agent automatically when the app launches."
+          accessibilityState={{ checked: formData.autoSpawn }}
+          activeOpacity={0.7}
+        >
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {renderSwitchVisual(formData.autoSpawn)}
+          </View>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
@@ -367,6 +416,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   const selectionChipTouchTarget = createMinimumTouchTargetStyle({
     minSize: 44,
     horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
+  const switchTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.xs,
     verticalPadding: spacing.xs,
     horizontalMargin: 0,
   });
@@ -452,9 +508,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: spacing.md,
       paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    switchLabelGroup: {
+      flex: 1,
+      minWidth: 0,
     },
     switchLabel: {
       fontSize: 14,
@@ -465,6 +526,36 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: 2,
+    },
+    switchButton: {
+      ...switchTouchTarget,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    switchTrack: {
+      width: 36,
+      height: 20,
+      borderRadius: radius.full,
+      padding: 2,
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+    },
+    switchTrackActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    switchThumb: {
+      width: 16,
+      height: 16,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.background,
+      transform: [{ translateX: 0 }],
+    },
+    switchThumbActive: {
+      backgroundColor: theme.colors.primaryForeground,
+      transform: [{ translateX: 16 }],
     },
     saveButton: {
       marginTop: spacing.xl,

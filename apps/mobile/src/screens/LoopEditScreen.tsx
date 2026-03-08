@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Switch,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
@@ -20,7 +21,7 @@ import {
   LoopUpdateRequest,
 } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createSwitchAccessibilityLabel } from '../lib/accessibility';
 
 type LoopFormData = {
   name: string;
@@ -146,6 +147,31 @@ export default function LoopEditScreen({ navigation, route }: any) {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const renderSwitchVisual = (enabled: boolean) => {
+    if (Platform.OS === 'web') {
+      return (
+        <View
+          style={[styles.switchTrack, enabled && styles.switchTrackActive]}
+          accessible={false}
+        >
+          <View
+            style={[styles.switchThumb, enabled && styles.switchThumbActive]}
+            accessible={false}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <Switch
+        accessible={false}
+        value={enabled}
+        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+        thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+      />
+    );
+  };
+
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
       setError('Configure Base URL and API key in Settings before saving');
@@ -247,13 +273,26 @@ export default function LoopEditScreen({ navigation, route }: any) {
       />
 
       <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Enabled</Text>
-        <Switch
-          value={formData.enabled}
-          onValueChange={value => updateField('enabled', value)}
-          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-          thumbColor={formData.enabled ? theme.colors.primaryForeground : theme.colors.background}
-        />
+        <View style={styles.switchLabelGroup}>
+          <Text style={styles.switchLabel}>Enabled</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.switchButton}
+          onPress={() => updateField('enabled', !formData.enabled)}
+          accessibilityRole="switch"
+          accessibilityLabel={createSwitchAccessibilityLabel('Loop enabled')}
+          accessibilityHint="Turns this loop schedule on or off."
+          accessibilityState={{ checked: formData.enabled }}
+          activeOpacity={0.7}
+        >
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {renderSwitchVisual(formData.enabled)}
+          </View>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.label}>Agent Profile (optional)</Text>
@@ -301,6 +340,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     horizontalMargin: 0,
   });
 
+  const switchTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.xs,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: { padding: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -310,8 +356,37 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
-    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchLabelGroup: { flex: 1, minWidth: 0 },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
+    switchButton: {
+      ...switchTouchTarget,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    switchTrack: {
+      width: 36,
+      height: 20,
+      borderRadius: radius.full,
+      padding: 2,
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+    },
+    switchTrackActive: { backgroundColor: theme.colors.primary },
+    switchThumb: {
+      width: 16,
+      height: 16,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.background,
+      transform: [{ translateX: 0 }],
+    },
+    switchThumbActive: {
+      backgroundColor: theme.colors.primaryForeground,
+      transform: [{ translateX: 16 }],
+    },
     profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     profileOption: {
       ...selectionChipTouchTarget,
