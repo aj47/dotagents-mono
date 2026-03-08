@@ -220,6 +220,10 @@
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` plus `apps/desktop/src/main/state.ts` that desktop `respondToToolApproval` resolves to `{ success: boolean }`, and `toolApprovalManager.respondToApproval(...)` returns `false` when the approval id is already missing/stale.
 - [x] 2026-03-08: Searched `apps/mobile/src` again and found no equivalent `respondToToolApproval` / `pendingToolApproval` surface, so this stale-approval fix remains desktop-only.
 
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` and confirmed the visible floating panel drag bar still relied on `onMouseDown={handleMouseDown}` plus `tipcClient.getPanelPosition()` / `updatePanelPosition(...)` / `savePanelCustomPosition(...)` for its custom drag + persistence flow.
+- [x] 2026-03-08: Confirmed the same drag bar previously set `WebkitAppRegion: disabled ? "no-drag" : "drag"` on that exact interactive `<div>`, while Electron drag regions suppress normal pointer interaction; that meant the custom `onMouseDown` drag-start handler could be skipped on the active desktop panel surface.
+- [x] 2026-03-08: Compared this desktop floating-panel drag bar against `apps/mobile/src`; mobile has no equivalent floating frameless panel or drag-bar component, so this fix is desktop-only rather than a shared renderer/mobile behavior change.
+
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
 - [ ] Current desktop/mobile logs or reproducible failing tests tied to user-facing regressions once the environment blocker is cleared.
@@ -488,6 +492,11 @@
   - `apps/desktop/src/renderer/src/components/session-tile.tsx` had the same boolean-contract gap for its tile `Approve` / `Deny` buttons, so a stale approval click could disable the tile actions with no visible explanation until some unrelated progress update arrived.
   - The main-process contract in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/state.ts` explicitly returns `false` when the approval no longer exists, so this was a real user-facing desktop approval-flow bug rather than speculative cleanup.
 
+- [x] **Desktop floating panel drag bar could behave like a dead drag target because its custom drag handler lived inside an Electron drag region (directly confirmed in source/docs):**
+  - In `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx`, the visible floating panel handle used `onMouseDown={handleMouseDown}` to read the current panel position and start a renderer-driven `mousemove` → `tipcClient.updatePanelPosition(...)` / `savePanelCustomPosition(...)` flow.
+  - The same element previously styled itself with `WebkitAppRegion: disabled ? "no-drag" : "drag"`, but Electron drag regions are not normal interactive DOM hit targets, so the component was mixing native frameless-window dragging semantics with a custom pointer-event-driven drag-start contract on the same node.
+  - Because `PanelDragBar` is mounted at the top of the live desktop `/panel` window, this could make the primary floating-panel reposition affordance appear unresponsive and prevent custom-position persistence from ever starting.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so MCP server-status polling now tracks loading/error state, logs rejected status refreshes, and surfaces retryable initial/partial failure banners instead of swallowing the failure completely.
 - [x] Updated the MCP server status badges so missing status is now distinguished as `Checking...` during the first poll and `Unavailable` after a failed load, while later poll failures preserve the last successful state instead of regressing everything to a misleading `Disconnected` badge.
@@ -681,6 +690,9 @@
  - [x] Updated `apps/desktop/src/renderer/src/components/session-tile.tsx` with the same stale-result guard so tile approval buttons reset their local responding state and surface visible failure feedback when the approval was already resolved elsewhere.
  - [x] Extended `apps/desktop/src/renderer/src/components/tool-approval.feedback.test.ts` with focused source-level assertions that both desktop approval surfaces now guard `if (!result.success)` and keep the stale-approval error message in source.
 
+- [x] Updated `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` so the floating panel drag handle now always uses `WebkitAppRegion: "no-drag"`, keeping the handle interactive for its existing custom `onMouseDown` / `mousemove` / `savePanelCustomPosition(...)` drag-persistence flow instead of delegating to Electron's native drag region hit testing.
+- [x] Added `apps/desktop/src/renderer/src/components/panel-drag-bar.layout.test.ts` with focused source-level assertions locking in the interactive `onMouseDown` contract, the persisted custom-position path, and the explicit `WebkitAppRegion: "no-drag"` guardrail.
+
 ### Verified
 - [x] Manual source verification: `mcp-config-manager.tsx` now keeps `isLoadingServerStatus` / `hasLoadedServerStatus` / `serverStatusLoadError`, clears the error on successful polls, and renders explicit `Checking...` / `Unavailable` / `Disconnected` server badges instead of collapsing unknown status into disconnected.
 - [x] Dependency-free Node file-read assertions passed for `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts`, confirming the new MCP server-status feedback strings and regression test case are present.
@@ -865,6 +877,10 @@
  - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `agent-progress.tsx`, `session-tile.tsx`, and `tool-approval.feedback.test.ts`, confirming the new false-result guard, stale-approval message, and regression assertions are present in source.
  - [x] Repository diff sanity check: `git diff --check` completed cleanly after the stale tool-approval false-result fix.
 
+- [x] Manual source verification: `PanelDragBar` still starts dragging from `onMouseDown={handleMouseDown}` and persists the final position with `savePanelCustomPosition(...)`, but now keeps the visible handle in `WebkitAppRegion: "no-drag"` with an inline reminder that Electron drag regions ignore pointer events.
+- [x] Dependency-free verification: a plain `node` file-read assertion script passed for `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` and `apps/desktop/src/renderer/src/components/panel-drag-bar.layout.test.ts`, confirming the new `no-drag` contract, interactive drag handler, and regression-test expectations are present in source.
+- [x] Repository diff sanity check: `git diff --check -- apps/desktop/src/renderer/src/components/panel-drag-bar.tsx apps/desktop/src/renderer/src/components/panel-drag-bar.layout.test.ts` completed cleanly after the floating-panel drag-bar fix.
+
 ### Blocked
 - [x] Targeted automated verification for this MCP server-status feedback fix is blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
 - [x] Desktop renderer type-check verification for this MCP server-status feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` fails because `node_modules` is missing, `@electron-toolkit/tsconfig/tsconfig.web.json` cannot be found, and the local `tsconfig.web.json` cannot fully resolve in this worktree yet.
@@ -932,8 +948,12 @@
 
 - [x] Targeted automated verification for this stale tool-approval false-result fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
+- [x] Targeted automated verification for this floating-panel drag-bar fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-drag-bar.layout.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Live desktop reproduction for this floating-panel drag-bar bug is blocked by the same missing renderer tooling in this worktree: `pnpm --filter @dotagents/desktop exec vite --version` and `pnpm --filter @dotagents/desktop exec electron-vite --version` both fail with `Command "vite" not found` / `Command "electron-vite" not found`, so I could not bring up the panel under the documented Electron remote-debugging workflow in this iteration.
+
 ### Still Uncertain
 - [ ] Whether the MCP Servers section should eventually surface the same style of page-level partial-warning feedback for OAuth status refresh failures too, or whether the existing per-server OAuth fallback/error copy is sufficient once live desktop validation is available.
+- [ ] Whether any adjacent floating-panel or frameless desktop controls still mix Electron `WebkitAppRegion: "drag"` with pointer-event-driven handlers elsewhere in the renderer, once a runnable environment is available for broader frameless-window validation.
 - [ ] Whether the same explicit `mutateAsync`/save-confirmed UX should eventually cover the background `saveModelWithPreset(...)` model-selector path in `model-preset-manager.tsx`, once desktop dependencies are available for broader live validation.
 - [ ] Whether the MCP Servers section should eventually preserve last-known nonzero tool counts with an explicit stale badge instead of collapsing to the safer `Tools unavailable` label whenever a later tool-list refresh fails and returns no rows, once live desktop validation is available.
 - [ ] Whether the remote-server tunnel status panel should eventually suppress or deduplicate its inline `Error: ...` copy when the same failure is already shown via the new click-time toast, once live desktop validation is available.
@@ -1081,6 +1101,9 @@
 - The new tool-approval issue is a boolean-contract mismatch rather than another thrown-error path: the renderer now handled rejected approval IPC calls, but it still treated resolved `{ success: false }` responses as success even though the main process uses that value to mean `approval is already gone`.
 - Converting stale false-results into the existing error/reset path is the smallest safe fix because it preserves the current approval UI, avoids introducing a new cross-window state abstraction, and immediately prevents the user-facing `Processing...` dead-end on the active desktop approval surfaces.
 
+- The floating-panel issue is a direct contract mismatch between Electron window-drag regions and this component's own implementation: `PanelDragBar` was not using native frameless dragging; it was using a custom pointer-driven drag lifecycle that needs `onMouseDown` / `mousemove` events to fire on the handle itself.
+- For that implementation, forcing the visible handle into `WebkitAppRegion: "no-drag"` is the smallest safe fix because it preserves the existing IPC throttling, screen-constrained movement, and custom-position persistence without widening into main-process window-drag refactors.
+
 ### Assumptions
 - Assumption: using inline retry banners plus `Checking...` / `Unavailable` badges for MCP server-status failures is acceptable because this page already functions as a diagnostics surface, while toast spam on every 1-second poll failure would be noisy and less actionable.
 - Assumption: keeping the session restored while surfacing a partial-success toast is acceptable because `unsnoozeAgentSession(...)` already succeeded before the panel-focus sync step ran, so rolling back local snooze/focus state would misrepresent the backend session state more than it would help.
@@ -1142,6 +1165,8 @@
 - Assumption: using an inline loading/error/retry card for the initial MCP tool-list fetch is acceptable because this failure happens while the settings page itself is loading, the error is page-scoped rather than action-scoped, and an inline retry affordance is less noisy and more informative than a toast for first-render failures.
 - Assumption: refreshing `loops` / `loop-statuses` and showing an error toast when `deleteLoop(...)` resolves to `{ success: false }` is acceptable because the current false-return path means the task id is stale or already missing, so syncing the visible list is more honest than pretending the delete succeeded.
 - Assumption: surfacing `This tool approval is no longer pending.` through the existing approval-failure toast/reset path is acceptable because the main-process contract already distinguishes that stale state, and resetting the local in-flight flag is safer than inventing a new renderer-side approval-clear mechanism in this loop.
+
+- Assumption: keeping the floating panel drag handle permanently in `WebkitAppRegion: "no-drag"` is acceptable because this component already implements its own pointer-driven window movement and persistence, while native Electron drag-region behavior would fight that contract rather than add useful fallback behavior.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` and live-verify desktop Settings → MCP Servers by forcing both an initial `getMcpServerStatus()` failure and a later poll failure, confirming the UI now shows `Checking...` / `Unavailable` / `Couldn't refresh MCP server status.` instead of incorrectly collapsing those cases into `Disconnected`.
@@ -1221,3 +1246,5 @@
 - After that, inspect adjacent MCP settings diagnostics (especially OAuth-status refresh in `mcp-config-manager.tsx`) for any remaining console-only state failures.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` and live-verify deleting a repeat task after it was removed elsewhere to confirm desktop now refreshes the list and shows the new stale-task error instead of `Task deleted`.
 - After that, inspect whether adjacent repeat-task actions (`triggerLoop`, `startLoop`, `stopLoop`) should also treat explicit `{ success: false }` results as user-visible failures for full loop-management consistency.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-drag-bar.layout.test.ts` and live-verify dragging the floating `/panel` window under the documented Electron remote-debugging workflow, confirming the handle now starts the custom drag path and persists the final custom position instead of acting like a dead drag target.
+- After that, inspect adjacent frameless desktop surfaces for any other controls that combine Electron drag regions with explicit pointer handlers, especially if they also depend on click/mousedown events to start custom window movement.
