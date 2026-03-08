@@ -56,6 +56,7 @@ import {
   Power,
   PowerOff,
   Wrench,
+  AlertTriangle,
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry } from "@shared/types"
@@ -93,6 +94,18 @@ function getLogFetchErrorMessage(error: unknown): string {
   }
 
   return "Please try again."
+}
+
+function getToolLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please check your MCP server configuration and try again."
 }
 
 function getOAuthStatusFallback(serverConfig?: MCPServerConfig): OAuthStatusSummary {
@@ -973,6 +986,8 @@ export function MCPConfigManager({
   })
   // Tool management state
   const [tools, setTools] = useState<DetailedTool[]>([])
+  const [isLoadingTools, setIsLoadingTools] = useState(true)
+  const [toolsLoadError, setToolsLoadError] = useState<string | null>(null)
   const [toolSearchQuery, setToolSearchQuery] = useState("")
   const [showDisabledTools, setShowDisabledTools] = useState(true)
   // Initialize expandedTools (servers in Tools section) - all expanded by default except those persisted as collapsed
@@ -1210,17 +1225,29 @@ export function MCPConfigManager({
   }, [servers, expandedLogs])
 
   // Fetch tools function - defined as useCallback so it can be reused
-  const fetchTools = useCallback(async () => {
+  const fetchTools = useCallback(async ({ showLoadingIndicator = false }: { showLoadingIndicator?: boolean } = {}) => {
+    if (showLoadingIndicator) {
+      setIsLoadingTools(true)
+    }
+
     try {
       const toolList = await tipcClient.getMcpDetailedToolList({})
       setTools(toolList as DetailedTool[])
-    } catch (error) {}
+      setToolsLoadError(null)
+    } catch (error) {
+      console.error("[MCPConfigManager] Failed to load tool list:", error)
+      setToolsLoadError(getToolLoadErrorMessage(error))
+    } finally {
+      setIsLoadingTools(false)
+    }
   }, [])
 
   // Fetch tools periodically
   useEffect(() => {
-    fetchTools()
-    const interval = setInterval(fetchTools, 5000) // Update every 5 seconds
+    void fetchTools({ showLoadingIndicator: true })
+    const interval = setInterval(() => {
+      void fetchTools()
+    }, 5000) // Update every 5 seconds
 
     return () => clearInterval(interval)
   }, [fetchTools])
@@ -1802,6 +1829,9 @@ export function MCPConfigManager({
   const totalToolsCount = toolsFromEnabledServers.length
   const enabledToolsCount = toolsFromEnabledServers.filter((t) => t.enabled).length
   const disabledToolsCount = totalToolsCount - enabledToolsCount
+  const showInitialToolsLoading = isLoadingTools && tools.length === 0
+  const showEmptyToolsLoadFailure = Boolean(toolsLoadError && tools.length === 0)
+  const showPartialToolsLoadFailure = Boolean(toolsLoadError && tools.length > 0)
 
   // State for collapsible sections
   const [toolsSectionExpanded, setToolsSectionExpanded] = useState(true)
@@ -1956,70 +1986,109 @@ export function MCPConfigManager({
             <Wrench className="h-4 w-4" />
             <span className="font-medium">Tools</span>
             <Badge variant="secondary" className="text-xs">
-              {enabledToolsCount}/{totalToolsCount} enabled
+              {showEmptyToolsLoadFailure
+                ? "Unavailable"
+                : `${enabledToolsCount}/${totalToolsCount} enabled`}
             </Badge>
           </div>
         </div>
 
         {toolsSectionExpanded && (
           <CardContent className="border-t pt-4">
-            {/* Tool Search and Filter Controls */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div className="flex flex-1 items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search tools..."
-                    value={toolSearchQuery}
-                    onChange={(e) => setToolSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
+            {showInitialToolsLoading ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-8 text-center text-sm text-muted-foreground">
+                <Spinner className="h-5 w-5" />
+                <p>Loading MCP tools...</p>
+              </div>
+            ) : showEmptyToolsLoadFailure ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                <AlertTriangle className="h-10 w-10 text-destructive/70" />
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Failed to load MCP tools</p>
+                  <p className="max-w-md text-sm text-muted-foreground [overflow-wrap:anywhere]">{toolsLoadError}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowDisabledTools(!showDisabledTools)}
-                  className="shrink-0 gap-2"
+                  onClick={() => void fetchTools({ showLoadingIndicator: true })}
+                  className="gap-2"
                 >
-                  {showDisabledTools ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                  {showDisabledTools ? "Hide Disabled" : "Show All"}
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
                 </Button>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleAllTools(true)}
-                  className="shrink-0 gap-1"
-                >
-                  <Power className="h-3 w-3" />
-                  All ON
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleAllTools(false)}
-                  className="shrink-0 gap-1"
-                >
-                  <PowerOff className="h-3 w-3" />
-                  All OFF
-                </Button>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Tool Search and Filter Controls */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                  <div className="flex flex-1 items-center gap-3">
+                    <div className="relative flex-1 max-w-sm">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search tools..."
+                        value={toolSearchQuery}
+                        onChange={(e) => setToolSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDisabledTools(!showDisabledTools)}
+                      className="shrink-0 gap-2"
+                    >
+                      {showDisabledTools ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      {showDisabledTools ? "Hide Disabled" : "Show All"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleAllTools(true)}
+                      className="shrink-0 gap-1"
+                    >
+                      <Power className="h-3 w-3" />
+                      All ON
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleAllTools(false)}
+                      className="shrink-0 gap-1"
+                    >
+                      <PowerOff className="h-3 w-3" />
+                      All OFF
+                    </Button>
+                  </div>
+                </div>
 
-            {/* Tools List - Grouped by Server with Collapsible Groups */}
-            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
-              {getAllFilteredTools().length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  {totalToolsCount === 0
-                    ? "No tools available. Connect a server to see its tools."
-                    : "No tools match your search"}
-                </div>
-              ) : (
+                {showPartialToolsLoadFailure && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-amber-700 dark:text-amber-200">Couldn't refresh MCP tools.</p>
+                      <p className="text-xs text-amber-700/80 dark:text-amber-200/80 [overflow-wrap:anywhere]">Showing the last successful tool list. {toolsLoadError}</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => void fetchTools()}>
+                      <RotateCcw className="h-4 w-4" />
+                      Retry
+                    </Button>
+                  </div>
+                )}
+
+                {/* Tools List - Grouped by Server with Collapsible Groups */}
+                <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
+                  {getAllFilteredTools().length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {totalToolsCount === 0
+                        ? "No tools available. Connect a server to see its tools."
+                        : "No tools match your search"}
+                    </div>
+                  ) : (
                 // Group filtered tools by server
                 (Object.entries(
                   getAllFilteredTools().reduce((acc, tool) => {
@@ -2157,8 +2226,10 @@ export function MCPConfigManager({
                     )}
                   </div>
                 )})
-              )}
-            </div>
+                  )}
+                </div>
+              </>
+            )}
           </CardContent>
         )}
       </Card>

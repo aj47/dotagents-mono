@@ -222,6 +222,10 @@
 
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
 
+ - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and confirmed the integrated desktop `fetchTools()` path still wrapped `tipcClient.getMcpDetailedToolList({})` in an empty `catch {}`, so tool-load failures fell back to the default `tools = []` state with no visible distinction from a genuine zero-tools configuration.
+ - [x] 2026-03-08: Confirmed the same `MCPConfigManager` Tools section renders `0/0 enabled`, `Unavailable`-free badges, and the empty copy `No tools available. Connect a server to see its tools.` from `totalToolsCount === 0`, which directly misreports a rejected tool-list refresh as an honest empty state.
+ - [x] 2026-03-08: Compared this integrated desktop surface against `apps/mobile/src/screens/SettingsScreen.tsx`; mobile exposes MCP server toggles but no equivalent detailed per-tool manager, so this honesty/load-state fix is desktop-only.
+
 ### Reproduced
 - [x] **Desktop Model Preset Manager could show false success and discard dialog state before settings were actually saved (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` wrapped config writes in a local `saveConfig(...)` helper that used `saveConfigMutation.mutate(...)`, then immediately called `toast.success(...)` for preset switching and for create/update/delete actions.
@@ -458,6 +462,11 @@
    - In `apps/desktop/src/main/tipc.ts`, `deleteLoop` forwards the main-process boolean result as `{ success: loopService.deleteLoop(input.loopId) }`, and `apps/desktop/src/main/loop-service.ts` returns `false` when the task no longer exists.
    - That meant a stale desktop `Delete task` click could claim success even though no repeat task was actually removed, which is misleading on an active settings-management surface.
 
+ - [x] **Desktop integrated MCP Tools section could misreport tool-load failures as “no tools available” (directly confirmed in source):**
+   - In `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`, the polled `fetchTools()` helper previously caught `getMcpDetailedToolList({})` failures with an empty `catch`, leaving the component at its default `tools = []` state even when the fetch had actually failed.
+   - The visible Tools section then rendered the same empty-state copy used for a genuine zero-tools setup (`No tools available. Connect a server to see its tools.`), and its badge still implied a normal `0/0 enabled` state rather than surfacing that tool data was unavailable.
+   - Because this manager is the integrated desktop `MCP Tools & Servers` surface, users could be told there were no tools configured when the renderer had simply failed to load them.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` so explicit preset switch/create/update/delete actions now await `saveConfigMutation.mutateAsync(...)` via a new `saveConfigAsync(...)` helper before showing success feedback, and create/update dialogs now stay open until the config write actually succeeds.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/model-preset-manager.save-feedback.test.ts` that locks in the awaited save ordering for preset switch/create/update/delete actions.
@@ -639,6 +648,9 @@
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-loops.tsx` so the desktop repeat-task `Delete task` flow now checks `deleteLoop(...).success`, refreshes the loop queries on stale/missing-task results, and shows `This task no longer exists. Refreshed the task list.` instead of a false success toast.
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` with focused regression coverage for the stale delete-result path, locking in the new false-result guard and query refresh behavior.
 
+ - [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so the integrated Tools section now tracks `isLoadingTools` and `toolsLoadError`, shows explicit first-load loading/error/retry states, preserves the last successful tool list on later refresh failures, and changes the empty-failure badge from a misleading zero-count state to `Unavailable`.
+ - [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused regression assertions that lock in the new MCP tool-list loading/error state and the `Unavailable` badge branch.
+
 ### Verified
 - [x] Manual source verification: `model-preset-manager.tsx` now defines `saveConfigAsync(...)`, awaits it in the visible preset switch/create/update/delete handlers, and only closes/reset dialogs after the awaited save resolves.
 - [x] Targeted dependency-free verification command passed: a plain `node` assertion script checked the new awaited save helper plus the success-toast/dialog-close ordering in `model-preset-manager.tsx` and the new regression test expectations in `model-preset-manager.save-feedback.test.ts`.
@@ -809,6 +821,10 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the repeat-task delete false-success fix.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
+ - [x] Manual source verification: `mcp-config-manager.tsx` now defines `getToolLoadErrorMessage(...)`, tracks `isLoadingTools` / `toolsLoadError`, renders `Loading MCP tools...` and `Failed to load MCP tools` instead of the old false empty state, and keeps a `Showing the last successful tool list.` warning for later refresh failures.
+ - [x] Low-cost automated sanity check: a plain `node` file-read assertion script passed for `mcp-config-manager.tsx` and `mcp-config-manager.server-diagnostics-feedback.test.ts`, confirming the new tool-load state wiring, visible copy, and regression assertions are present in source.
+ - [x] Repository diff sanity check: `git diff --check` completed cleanly after the integrated MCP tool-load state fix.
+
 ### Blocked
 - [x] Targeted automated verification for this preset-save feedback fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/model-preset-manager.save-feedback.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop test tooling is still unavailable here.
 - [x] Full automated regression execution for this partial capabilities warning fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, and the repo root still reports `root-node_modules-missing`.
@@ -869,6 +885,8 @@
 - [x] Targeted automated verification for this MCP OAuth status resilience fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails in `pretest` because `packages/shared` cannot find `tsup` (`sh: tsup: command not found`), which confirms `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this desktop repeat-task delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
+ - [x] Targeted automated verification for this integrated MCP tool-load state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+
 ### Still Uncertain
 - [ ] Whether the same explicit `mutateAsync`/save-confirmed UX should eventually cover the background `saveModelWithPreset(...)` model-selector path in `model-preset-manager.tsx`, once desktop dependencies are available for broader live validation.
 - [ ] Whether the MCP Servers section should eventually preserve last-known nonzero tool counts with an explicit stale badge instead of collapsing to the safer `Tools unavailable` label whenever a later tool-list refresh fails and returns no rows, once live desktop validation is available.
@@ -911,12 +929,16 @@
 - [ ] Whether the adjacent `refreshOAuthStatus(...)` failure path in `mcp-config-manager.tsx` should also surface explicit inline status instead of staying console-only once desktop settings can be exercised live.
 - [ ] Whether adjacent desktop repeat-task actions that also depend on boolean TIPC results (`triggerLoop`, `startLoop`, `stopLoop`) should gain the same explicit false-result feedback once loop management can be exercised in a runnable environment.
 
+ - [ ] Whether the integrated `MCPConfigManager` Tools section should eventually show a compact stale-data badge near the tool counts instead of the current warning banner + `Unavailable` empty-failure badge once live desktop polling behavior can be exercised.
+
 ### Diagnosis / Rationale
 - The new Settings → Agents bug is a partial-load honesty bug, not another full-page loading-state bug: the page already differentiated total tool-list failure from empty data, but it still treated the MCP server cards and partially loaded built-in tool sections as if `getMcpDetailedToolList()` had succeeded, which could falsely communicate `0 tools` or silently stale capability toggles.
 - The agent-capabilities issue is a page-scoped load-state correctness bug: rejected capabilities fetches were indistinguishable from a genuine empty configuration, so the editor could falsely tell users they had no skills, no MCP servers, or no built-in tools when the page had actually failed to load.
 - The WhatsApp issue is an action-feedback correctness bug: the main process intentionally distinguishes action failures (`{ success: false, error }`) from background status polling, but the renderer previously collapsed both into one `statusError` field and then cleared that field as a side effect of the follow-up refresh.
 - Splitting action failures from poll failures is the smallest safe fix because it preserves the existing layout and polling behavior while making the user-visible error contract match the backend contract instead of accidentally overwriting it.
 - Reusing compact inline loading/error/retry UI is the smallest safe fix because the failure happens during page data loading rather than a one-off action, `mcp-tool-manager.tsx` already establishes the same repo-local pattern, and the successful capabilities-editing flow stays unchanged.
+- The integrated desktop `MCP Tools & Servers` page had the same partial-load honesty bug in miniature: rejected `getMcpDetailedToolList()` reads were being rendered as if there were simply zero tools, which is especially misleading on a settings surface meant to diagnose MCP configuration.
+- Adding a local tool-load state plus first-load/refresh-failure branches is the smallest safe fix because it preserves the existing tool toggles and polling behavior, avoids clearing the last good list on transient failures, and reuses patterns already established elsewhere in the repo.
 - The desktop Skills issue is another clear boolean-contract mismatch on a visible management action: `Delete` is user-initiated, but the renderer previously equated any resolved `deleteSkill(...)` promise with success even though the main-process contract explicitly uses `false` to mean “nothing was deleted.”
 - Checking `didDelete`, refreshing the `skills` query on false results, and surfacing a visible error toast is the smallest safe fix because it preserves the current delete workflow/UI, keeps successful deletes unchanged, and resynchronizes stale skill lists without widening into unrelated skills-page cleanup.
 - The desktop AgentSelector issue is a primary entry-point load-state bug: when profile loading failed, the agent picker vanished from session-start surfaces and looked indistinguishable from “there are no agents to choose from.”

@@ -35,4 +35,16 @@ describe("desktop MCP config manager server diagnostics", () => {
     expect(source).toContain("const oauthState = serverConfig ? oauthStatus[name] ?? getOAuthStatusFallback(serverConfig) : undefined")
     expect(source).toContain("await refreshOAuthStatus(name)")
   })
+
+  it("distinguishes MCP tool-list load failures from a real empty tools state", () => {
+    expect(source).toContain("const [isLoadingTools, setIsLoadingTools] = useState(true)")
+    expect(source).toContain("const [toolsLoadError, setToolsLoadError] = useState<string | null>(null)")
+    expect(source).toContain("console.error(\"[MCPConfigManager] Failed to load tool list:\", error)")
+    expect(source).toContain("setToolsLoadError(getToolLoadErrorMessage(error))")
+    expect(source).toContain("showEmptyToolsLoadFailure")
+    expect(source).toContain("Loading MCP tools...")
+    expect(source).toContain("Failed to load MCP tools")
+    expect(source).toContain("Showing the last successful tool list.")
+    expect(source).toContain('? "Unavailable"')
+  })
 })
