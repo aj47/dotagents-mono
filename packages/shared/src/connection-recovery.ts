@@ -67,6 +67,10 @@ export function calculateBackoff(
 }
 
 export function isRetryableError(error: Error | string): boolean {
+  if (typeof error !== 'string' && error.name === 'AbortError') {
+    return false;
+  }
+
   const message = typeof error === 'string' ? error : error.message;
   const lowered = message.toLowerCase();
 

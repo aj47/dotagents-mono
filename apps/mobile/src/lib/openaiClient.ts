@@ -89,6 +89,7 @@ export class OpenAIClient {
   private onConnectionStatusChange?: OnConnectionStatusChange;
   private activeEventSource: EventSource | null = null;
   private activeAbortController: AbortController | null = null;
+  private activeAbortReason: string | null = null;
   private activeXhr: XMLHttpRequest | null = null;
 
   constructor(cfg: OpenAIConfig) {
@@ -155,6 +156,7 @@ export class OpenAIClient {
   }
 
   cleanup(): void {
+    this.activeAbortReason = 'Request cancelled';
     this.activeAbortController?.abort();
     this.activeAbortController = null;
     this.activeEventSource?.close();
@@ -686,12 +688,14 @@ export class OpenAIClient {
   ): Promise<ChatResponse> {
     const recovery = this.recoveryManager;
     const abortController = new AbortController();
+    const timeoutMessage = 'Connection timeout: no data received';
     this.activeAbortController = abortController;
     let heartbeatAborted = false;
 
     recovery?.startHeartbeat(() => {
       console.log('[OpenAIClient] Web heartbeat missed, aborting stalled stream');
       heartbeatAborted = true;
+      this.activeAbortReason = timeoutMessage;
       abortController.abort();
     });
 
@@ -759,7 +763,7 @@ export class OpenAIClient {
           }
         } catch (readError: any) {
           if (heartbeatAborted || readError.name === 'AbortError') {
-            throw new Error('Connection timeout: no data received');
+            throw new Error(this.activeAbortReason ?? timeoutMessage);
           }
           throw readError;
         }
@@ -813,12 +817,14 @@ export class OpenAIClient {
       return { content: finalContent, conversationId, conversationHistory };
     } catch (error: any) {
       if (heartbeatAborted || error.name === 'AbortError') {
-        recovery?.markDisconnected('Connection timeout: no data received');
-        throw new Error('Connection timeout: no data received');
+        const abortMessage = this.activeAbortReason ?? timeoutMessage;
+        recovery?.markDisconnected(abortMessage);
+        throw new Error(abortMessage);
       }
       throw error;
     } finally {
       recovery?.stopHeartbeat();
+      this.activeAbortReason = null;
       this.activeAbortController = null;
     }
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeApiBaseUrl } from "@dotagents/shared"
+import { isRetryableError, normalizeApiBaseUrl } from "@dotagents/shared"
 
 describe("normalizeApiBaseUrl", () => {
   it("adds scheme and /v1 for bare local remote-server URLs", () => {
@@ -33,5 +33,18 @@ describe("normalizeApiBaseUrl", () => {
   it("keeps public IPv6 endpoints on https by default", () => {
     expect(normalizeApiBaseUrl("[2606:4700:4700::1111]"))
       .toBe("https://[2606:4700:4700::1111]/v1")
+  })
+})
+
+describe("isRetryableError", () => {
+  it("does not retry AbortError instances", () => {
+    const abortError = new Error("The operation was aborted")
+    abortError.name = "AbortError"
+
+    expect(isRetryableError(abortError)).toBe(false)
+  })
+
+  it("still retries transient network failures", () => {
+    expect(isRetryableError(new Error("Network request failed"))).toBe(true)
   })
 })
