@@ -22,6 +22,14 @@ type TTSSettingsProps = {
   onPitchChange: (pitch: number) => void;
 };
 
+function getVoiceLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return `Couldn't load available voices. ${error.message.trim()}`;
+  }
+
+  return "Couldn't load available voices. You can still use System Default.";
+}
+
 export function TTSSettings({
   voiceId,
   rate,
@@ -35,6 +43,7 @@ export function TTSSettings({
   const [voices, setVoices] = useState<Voice[]>([]);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
+  const [voicesLoadError, setVoicesLoadError] = useState<string | null>(null);
 
   const loadVoices = useCallback(async () => {
     try {
@@ -45,8 +54,10 @@ export function TTSSettings({
         preferGoogleVoices: Platform.OS === 'web',
       });
       setVoices(sortedVoices as Voice[]);
+      setVoicesLoadError(null);
     } catch (error) {
       console.error('[TTS] Failed to load voices:', error);
+      setVoicesLoadError(getVoiceLoadErrorMessage(error));
     }
   }, []);
 
@@ -118,6 +129,10 @@ export function TTSSettings({
           <Text style={styles.chevron}>▼</Text>
         </TouchableOpacity>
       </View>
+
+      {voicesLoadError && (
+        <Text style={[styles.helperText, styles.errorText]}>{voicesLoadError}</Text>
+      )}
 
       {/* Speech Rate */}
       <View style={styles.sliderRow}>
@@ -193,6 +208,12 @@ export function TTSSettings({
                   System Default
                 </Text>
               </TouchableOpacity>
+
+              {voices.length === 0 && (
+                <Text style={[styles.voiceListMessage, voicesLoadError ? styles.errorText : styles.voiceListMutedText]}>
+                  {voicesLoadError || 'No specific voices available right now.'}
+                </Text>
+              )}
 
               {voices.map((voice) => (
                 <TouchableOpacity
@@ -282,6 +303,14 @@ const createStyles = (theme: Theme) =>
       fontSize: 14,
       color: theme.colors.mutedForeground,
     },
+    helperText: {
+      fontSize: 13,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
+    },
+    errorText: {
+      color: theme.colors.destructive,
+    },
     slider: {
       width: '100%',
       height: 40,
@@ -329,6 +358,14 @@ const createStyles = (theme: Theme) =>
     },
     voiceList: {
       padding: spacing.md,
+    },
+    voiceListMessage: {
+      fontSize: 14,
+      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.sm,
+    },
+    voiceListMutedText: {
+      color: theme.colors.mutedForeground,
     },
     voiceItem: {
       flexDirection: 'row',
