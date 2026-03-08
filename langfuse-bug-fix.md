@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1771713524892_s4fckyh7n | session_1771713524893_ttnm6sh50, session_1771713542868_kydy6y6qo | fix implemented | User asked how to restart the SpeakMCP macOS app. The first run emitted raw tool-call artifacts (`<function_calls>...`, `[Calling tools: ...]`, even a lone `[`), attempted bogus proxy-prefixed tool names like `proxy_speakmcp-settings:execute_command`, and ended with `output: null`; only a later retry fell back to manual instructions. Root repo issue found: the native-tool-call reminder guard only caught full `[Calling tools: ...]` placeholders / SDK marker tokens, not truncated placeholder fragments or raw XML function-call scaffolding, so malformed tool-call text could slip through as if it were normal assistant content. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh follow-up evidence) | session_1772916139885_8wx8su8xa | fix implemented | User asked `we have enough starters, what else would be highest impact. gather lots of context about overall goals etc`; the run still replied with another starter-pack recommendation and verification marked the answer complete even though the user explicitly asked for broader context-grounded analysis and had already ruled out `more starters` as the immediate next move. Root repo issue found: the completion-verifier prompt did not explicitly reject answers that skipped a requested research/context-gathering step or ignored an explicit user constraint/premise. |
 | 2026-03-08 | conv_1772472232055_lpgo0dg11 | session_1772472232057_4ajhc3jv9 | fix implemented | Unlogged aborted-run evidence: user input `debug beta 1772472232053` ended with `output: null`, `wasAborted: true`, and only one `Streaming LLM Call` observation with no error status and no output. Root repo issue found: the streaming helpers could treat a stop-before-first-chunk as an empty success (`makeLLMCallWithStreaming`) or a generic empty-response error (`makeLLMCallWithStreamingAndTools`) instead of an explicit abort, making kill-switch finalization ambiguous and low-signal. |
 | 2026-03-08 | conv_1772237314285_vmw9q84l4 | session_1772237314287_0o7pppwnt | fix implemented (desktop smoke blocked) | User asked `check my youtube studio analytics`; the run immediately delegated to `Web Browser` with `waitForResult: true`, the `delegate_to_agent` span never finished (`endTime: null`), and the parent trace still ended `output: null`. Root repo issue found: synchronous internal delegation had no fail-fast timeout/cancellation path, so a hung internal specialist could stall the parent run indefinitely. |
@@ -1613,6 +1614,42 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test exits successfully
   - debugging-guided live verification per `apps/desktop/DEBUGGING.md` was not required for this verifier-prompt change after trace reconstruction plus focused unit coverage
 
+### 2026-03-08 — Raw tool-call scaffolding should not count as normal assistant content
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1771713524892_s4fckyh7n`
+  - failing trace: `session_1771713524893_ttnm6sh50`
+    - user input: `I went to somehow restart this weekend CP Macos app speak mCP Mac OS app how can I do that`
+    - trace outcome: `output: null`
+    - observations showed the model emitting raw tool-call scaffolding instead of clean content/tool use, including:
+      - XML tool-call markup beginning with `<function_calls><invoke name="speakmcp-settings:execute_command">...`
+      - failed tool attempts for bogus proxy-prefixed names like `proxy_speakmcp-settings:execute_command` and `proxy_iterm:write_to_terminal`
+      - no successful single-run answer before the trace died
+  - recovery trace in the same conversation: `session_1771713542868_kydy6y6qo`
+    - a later run still showed placeholder-ish tool-call text (`[Calling tools: iterm:write_to_terminal]`) and even a lone `[` in `Streaming LLM Call` output before eventually falling back to manual restart instructions
+    - the user therefore did not get the intended restart help in a single run
+- Repo reconstruction:
+  - `apps/desktop/src/main/agent-run-utils.ts` already had heuristics to detect raw SDK tool markers (`<|tool_call_begin|>...`) and closed pseudo placeholders like `[Calling tools: ...]`.
+  - however, it did not treat truncated placeholder fragments (for example `[` or `[Calling tools:`) as tool-call leakage.
+  - it also did not treat raw XML function-call scaffolding like `<function_calls>` / `<invoke name=...>` as a signal to re-nudge the model back onto native tool calling.
+  - in the agent loop, those gaps matter because `needsNativeToolCallingReminder(...)` is the guard that decides whether malformed tool-call text should be corrected instead of being treated as ordinary assistant content.
+- Concrete root cause:
+  - the malformed-tool-call detector was too narrow.
+  - it only caught complete bracket placeholders and SDK marker tokens, so partial/truncated tool-call text or XML function-call markup could slip through the loop as if it were legitimate assistant output.
+- Minimal fix applied:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - treat a lone `[` and truncated `[Calling tools...` / `[Tool...` prefixes as tool-call placeholder responses
+    - treat raw `<function_calls>` / `<invoke ...>` XML scaffolding as requiring the native-tool-calling reminder path
+  - `apps/desktop/src/main/agent-run-utils.test.ts`
+    - added regressions covering truncated placeholder fragments and XML function-call scaffolding
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts`
+  - ✅ passed (`27 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
+  - debugging-guided live verification from `apps/desktop/DEBUGGING.md` was not required for this helper-only correction after trace reconstruction plus focused unit coverage
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1639,6 +1676,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh follow-up ACP delegation trace on the same specialist (for example `Recap Discord` followed by `post it!`) to confirm the delegated output now comes from a new session instead of resurfacing stale prior-turn results.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
+- Recheck a fresh malformed-tool-call trace (especially raw `<function_calls>` XML, `[Calling tools: ...` fragments, or a lone `[` after tool work) to confirm the loop now immediately re-nudges native tool calling instead of treating those artifacts as normal assistant content.
 - Recheck a fresh post-tool follow-up generation trace (search/tool result → second model turn) after the next desktop smoke run, to confirm Langfuse no longer records `Invalid prompt: The messages do not match the ModelMessage[] schema.` and the user receives the final answer in the same run.
 - Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
 - Recheck a fresh capability/introspection trace (for example asking why tools were `cut off` or whether a server/agent is available) to confirm the agent now inspects `list_mcp_servers` / `list_server_tools` / `list_running_agents` / `list_agent_profiles` first instead of speculating.

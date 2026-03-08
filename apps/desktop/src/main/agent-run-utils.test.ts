@@ -242,6 +242,20 @@ describe("agent-run-utils", () => {
       expect(needsNativeToolCallingReminder("[Calling tools: iterm:read_terminal_output]")).toBe(true)
     })
 
+    it("flags truncated pseudo tool placeholders for correction", () => {
+      expect(isToolCallPlaceholderResponse("[")).toBe(true)
+      expect(isToolCallPlaceholderResponse("[Calling tools:")).toBe(true)
+      expect(needsNativeToolCallingReminder("[Calling tools:")).toBe(true)
+    })
+
+    it("flags raw XML function-call scaffolding for correction", () => {
+      expect(
+        needsNativeToolCallingReminder(
+          "<function_calls>\n<invoke name=\"speakmcp-settings:execute_command\">",
+        ),
+      ).toBe(true)
+    })
+
     it("does not flag normal assistant text", () => {
       expect(isToolCallPlaceholderResponse("Done — the page shows the updated address.")).toBe(false)
       expect(needsNativeToolCallingReminder("Done — the page shows the updated address.")).toBe(false)

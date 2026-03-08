@@ -225,7 +225,9 @@ export function normalizeProgressHeuristicText(content: string): string {
 
 export function isToolCallPlaceholderResponse(content: string): boolean {
   const trimmed = content.trim()
-  return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
+  return trimmed === "["
+    || /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
+    || /^\[(?:Calling tools?|Tool|Tools?)(?::[^\]]*)?$/i.test(trimmed)
 }
 
 export function needsNativeToolCallingReminder(content: string): boolean {
@@ -233,6 +235,7 @@ export function needsNativeToolCallingReminder(content: string): boolean {
   if (!trimmed) return false
 
   return /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(trimmed)
+    || /<(?:function_calls|invoke)(?:\s|>|$)/i.test(trimmed)
     || isToolCallPlaceholderResponse(trimmed)
 }
 
