@@ -34,7 +34,12 @@ import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
-import type { ConversationCompactionMetadata } from '../lib/settingsApi';
+import type { ConversationCompactionMetadata, Skill, SkillDetail } from '../lib/settingsApi';
+import {
+  expandSlashCommandText,
+  getSlashCommandState,
+  replaceSlashCommandSelection,
+} from '../lib/skillSlashCommands';
 import { fetchFullConversation } from '../lib/syncService';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
@@ -630,6 +635,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		else console.log(`[Voice ${seq}] ${msg}`);
 	}, []);
 	  const [input, setInput] = useState('');
+	  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+	  const [skillDetailsById, setSkillDetailsById] = useState<Record<string, SkillDetail>>({});
+	  const [isLoadingSkills, setIsLoadingSkills] = useState(false);
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [listening, setListening] = useState(false);
@@ -853,6 +861,53 @@ export default function ChatScreen({ route, navigation }: any) {
       console.warn('[ChatScreen] Failed to hydrate stored full history:', err);
     }
   }, [config.apiKey, config.baseUrl, withSummaryMetadata]);
+
+  const loadAvailableSkills = useCallback(async () => {
+    if (!config.baseUrl || !config.apiKey) {
+      setAvailableSkills([]);
+      setSkillDetailsById({});
+      return;
+    }
+
+    setIsLoadingSkills(true);
+    try {
+      const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
+      const skillsResponse = await client.getSkills();
+      setAvailableSkills(skillsResponse.skills.filter((skill) => skill.enabledForProfile && skill.enabled));
+    } catch (error) {
+      console.warn('[ChatScreen] Failed to load mobile slash-command skills:', error);
+      setAvailableSkills([]);
+    } finally {
+      setIsLoadingSkills(false);
+    }
+  }, [config.apiKey, config.baseUrl]);
+
+  useEffect(() => {
+    void loadAvailableSkills();
+  }, [currentProfile?.id, loadAvailableSkills]);
+
+  const loadSkillDetail = useCallback(async (skillId: string) => {
+    const cachedDetail = skillDetailsById[skillId];
+    if (cachedDetail) {
+      return cachedDetail;
+    }
+    if (!config.baseUrl || !config.apiKey) {
+      return null;
+    }
+
+    try {
+      const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
+      const detail = await client.getSkill(skillId);
+      setSkillDetailsById((current) => ({
+        ...current,
+        [skillId]: detail,
+      }));
+      return detail;
+    } catch (error) {
+      console.warn(`[ChatScreen] Failed to load skill detail for ${skillId}:`, error);
+      return null;
+    }
+  }, [config.apiKey, config.baseUrl, skillDetailsById]);
 
   // Load messages when currentSession changes (fixes #470)
   useEffect(() => {
@@ -2240,14 +2295,33 @@ export default function ChatScreen({ route, navigation }: any) {
 	  liveTranscript,
 	  sttPreview,
 	});
+	const slashCommandState = useMemo(() => getSlashCommandState(input, availableSkills), [availableSkills, input]);
+	const matchedSlashSkill = slashCommandState?.exactSkill ?? null;
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
 
-  const sendComposerInput = useCallback(() => {
-    const composedMessage = buildMessageWithPendingImages(input, pendingImages);
+	  const sendComposerInput = useCallback(async () => {
+	    let composerText = input;
+
+	    if (matchedSlashSkill) {
+	      const skillDetail = skillDetailsById[matchedSlashSkill.id] ?? await loadSkillDetail(matchedSlashSkill.id);
+	      if (!skillDetail) {
+	        Alert.alert('Unable to load skill', `Could not load instructions for ${matchedSlashSkill.name}.`);
+	        return;
+	      }
+	      composerText = expandSlashCommandText(input, skillDetail);
+	    }
+
+	    const composedMessage = buildMessageWithPendingImages(composerText, pendingImages);
     if (!composedMessage.trim()) return;
     void send(composedMessage, { fromComposer: true });
-  }, [input, pendingImages, send]);
+	  }, [input, loadSkillDetail, matchedSlashSkill, pendingImages, send, skillDetailsById]);
+
+	  const handleSelectSlashSkill = useCallback((skill: Skill) => {
+	    setInput((current) => replaceSlashCommandSelection(current, skill));
+	    void loadSkillDetail(skill.id);
+	    setTimeout(() => inputRef.current?.focus(), 0);
+	  }, [loadSkillDetail]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -3458,6 +3532,44 @@ export default function ChatScreen({ route, navigation }: any) {
 			              </TouchableOpacity>
 			            </View>
 			          )}
+		          {slashCommandState?.shouldShowSuggestions && (
+		            <View style={styles.slashSuggestionsPanel}>
+		              <Text style={styles.slashSuggestionsLabel}>Slash Commands</Text>
+		              {isLoadingSkills ? (
+		                <Text style={styles.slashSuggestionsEmpty}>Loading skills…</Text>
+		              ) : slashCommandState.suggestions.length === 0 ? (
+		                <Text style={styles.slashSuggestionsEmpty}>No enabled skills found for this agent yet.</Text>
+		              ) : (
+		                <ScrollView
+		                  horizontal
+		                  showsHorizontalScrollIndicator={false}
+		                  contentContainerStyle={styles.slashSuggestionsRow}
+		                >
+		                  {slashCommandState.suggestions.map((skill) => (
+		                    <TouchableOpacity
+		                      key={skill.id}
+		                      style={styles.slashSuggestionChip}
+		                      onPress={() => handleSelectSlashSkill(skill)}
+		                      activeOpacity={0.8}
+		                      accessibilityRole="button"
+		                      accessibilityLabel={`Insert slash command for ${skill.name}`}
+		                      accessibilityHint="Adds the slash command to the composer so you can keep typing your request."
+		                    >
+		                      <Text style={styles.slashSuggestionCommand}>/{skill.id}</Text>
+		                      <Text style={styles.slashSuggestionDescription} numberOfLines={1}>
+		                        {skill.description}
+		                      </Text>
+		                    </TouchableOpacity>
+		                  ))}
+		                </ScrollView>
+		              )}
+		            </View>
+		          )}
+		          {matchedSlashSkill && (
+		            <View style={styles.activeSlashSkillChip}>
+		              <Text style={styles.activeSlashSkillText}>Skill: {matchedSlashSkill.name}</Text>
+		            </View>
+		          )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
@@ -3880,6 +3992,61 @@ function createStyles(theme: Theme, screenHeight: number) {
     sttPreviewText: {
       ...theme.typography.body,
       color: theme.colors.foreground,
+    },
+    slashSuggestionsPanel: {
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.xs,
+      gap: spacing.xs,
+    },
+    slashSuggestionsLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.colors.mutedForeground,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    slashSuggestionsRow: {
+      gap: spacing.xs,
+      paddingBottom: 2,
+    },
+    slashSuggestionChip: {
+      maxWidth: 220,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      gap: 2,
+    },
+    slashSuggestionCommand: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    slashSuggestionDescription: {
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+    },
+    slashSuggestionsEmpty: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+    },
+    activeSlashSkillChip: {
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.xs,
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: hexToRgba(theme.colors.primary, 0.25),
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+    },
+    activeSlashSkillText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.primary,
     },
     inputRow: {
       flexDirection: 'row',

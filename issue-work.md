@@ -1845,3 +1845,41 @@
   - Prefer a fresh issue or a different small `#58` slice next rather than stacking many more micro-polishes on the same viewer without a stronger user signal.
 
 - Next recommended issue work item: prefer a fresh open issue slice next if one has a clear local repro, otherwise take only another equally self-contained `#58` provenance/reliability increment.
+
+##### Issue #53 — Mobile composer slash commands for enabled skills
+
+- Selection rationale:
+  - Re-reviewed the currently open issues and the latest ledger guidance, which recommended a fresh issue slice rather than another `#58` micro-follow-up unless a new high-confidence gap appeared.
+  - `#53` still had a clear, user-visible follow-up with a local implementation path: desktop composers already supported slash-triggered skill discovery and inline invocation, while mobile had neither autocomplete nor an active-skill indicator despite already talking to the same remote settings server.
+- Investigation:
+  - Re-read open issue `#53`, confirmed there were still no issue comments narrowing the implementation beyond slash-triggered discovery, optional arguments, and visible indication of the active skill.
+  - Inspected `apps/mobile/src/screens/ChatScreen.tsx` and confirmed the mobile composer had no slash-command UI or submit-time skill expansion.
+  - Inspected `apps/mobile/src/lib/settingsApi.ts`, `apps/mobile/src/screens/SettingsScreen.tsx`, and `apps/desktop/src/main/remote-server.ts` to confirm mobile already fetched skill summaries from `GET /v1/skills`, but had no per-skill detail endpoint for retrieving full instructions when a slash command needed to expand before send.
+- Important assumptions:
+  - Assumption: adding a small mobile slash picker is an acceptable `#53` slice even though the original issue started desktop-first.
+  - Why acceptable: the issue’s acceptance criteria are phrased around inline invocation UX, not renderer-only behavior, and mobile already shares the same profile-aware skills backend.
+  - Assumption: fetching full instructions lazily via a new `GET /v1/skills/:id` endpoint is preferable to bloating the existing skills list response.
+  - Why acceptable: mobile only needs full instructions when a user actually selects or submits an exact slash command, so a detail endpoint keeps the list response lightweight and matches the narrow scope of this iteration.
+  - Assumption: filtering to `enabledForProfile && enabled` skills is the right mobile behavior.
+  - Why acceptable: that matches the existing mobile settings semantics, which already treat skill enablement as current-profile-specific and expose globally disabled skills separately.
+- Changes implemented:
+  - Added `apps/mobile/src/lib/skillSlashCommands.ts` to centralize mobile slash-command parsing, suggestion matching, selection replacement, and submit-time prompt expansion.
+  - Extended `apps/mobile/src/lib/settingsApi.ts` with a `SkillDetail` type plus `getSkill(skillId)` so mobile can fetch full instructions only when needed.
+  - Extended `apps/desktop/src/main/remote-server.ts` with `GET /v1/skills/:id` and aligned `GET /v1/skills` to include `enabled`, letting mobile fetch profile-aware skill details safely.
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to load enabled skills, render a `Slash Commands` suggestion strip when the composer starts with `/`, show an active `Skill: …` chip for exact matches, preload selected skill details, and expand exact slash commands into the inline-invocation contract before send.
+  - Added `apps/mobile/tests/chat-skill-slash-command.test.js` to lock in the new mobile composer wiring, API client method, and remote-server endpoint contract.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-skill-slash-command.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - Result: still blocked by the current mobile worktree/tooling baseline rather than this slice (`expo/tsconfig.base` missing plus broad missing Expo/React Native module/type setup and JSX config errors across the package).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - If mobile slash usage proves valuable, consider adding keyboard or list-selection affordances beyond tap-only chip selection.
+  - Consider promoting the slash-command helper contract into a broader shared package only if another non-desktop surface needs the same parsing logic; this pass kept the change narrow and mobile-local.
+  - Re-run broader mobile type/build validation once the Expo/TypeScript toolchain is restored in this worktree.
+
+- Next recommended issue work item: prefer a fresh open issue slice next unless `#53` receives explicit follow-up feedback, since the remaining work there now trends toward broader mobile UX polish rather than another tiny shippable contract fix.

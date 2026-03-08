@@ -2260,6 +2260,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           id: s.id,
           name: s.name,
           description: s.description,
+          enabled: s.enabled,
           enabledForProfile: enabledSkillIds.includes(s.id),
           source: s.source,
           createdAt: s.createdAt,
@@ -2270,6 +2271,37 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get skills", error)
       return reply.code(500).send({ error: "Failed to get skills" })
+    }
+  })
+
+  // GET /v1/skills/:id - Fetch a single skill with instructions for slash command expansion
+  fastify.get("/v1/skills/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const skills = skillsService.getSkills()
+      const skill = skills.find(s => s.id === params.id)
+      if (!skill) {
+        return reply.code(404).send({ error: "Skill not found" })
+      }
+
+      const currentProfile = agentProfileService.getCurrentProfile()
+      const allEnabledByDefault = !currentProfile?.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault
+      const enabledSkillIds = allEnabledByDefault ? skills.map(s => s.id) : (currentProfile?.skillsConfig?.enabledSkillIds || [])
+
+      return reply.send({
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        instructions: skill.instructions,
+        enabled: skill.enabled,
+        enabledForProfile: enabledSkillIds.includes(skill.id),
+        source: skill.source,
+        createdAt: skill.createdAt,
+        updatedAt: skill.updatedAt,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get skill", error)
+      return reply.code(500).send({ error: "Failed to get skill" })
     }
   })
 

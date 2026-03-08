@@ -35,6 +35,10 @@ export type {
 } from '@dotagents/shared';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
 
+export interface SkillDetail extends Skill {
+  instructions: string;
+}
+
 // Re-export agent profile types with backward-compatible names
 // The shared package uses Api* prefix to avoid conflicts with desktop's AgentProfile
 export type {
@@ -257,6 +261,10 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getSkills(): Promise<SkillsResponse> {
     return this.request<SkillsResponse>('/skills');
+  }
+
+  async getSkill(skillId: string): Promise<SkillDetail> {
+    return this.request<SkillDetail>(`/skills/${encodeURIComponent(skillId)}`);
   }
 
   async toggleSkillForProfile(skillId: string): Promise<{ success: boolean; skillId: string; enabledForProfile: boolean }> {
