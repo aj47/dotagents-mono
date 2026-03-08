@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
@@ -43,6 +43,48 @@ const defaultFormData: AgentFormData = {
   autoSpawn: false,
 };
 
+const AGENT_FORM_FIELDS: Array<keyof AgentFormData> = [
+  'displayName',
+  'description',
+  'systemPrompt',
+  'guidelines',
+  'connectionType',
+  'connectionCommand',
+  'connectionArgs',
+  'connectionBaseUrl',
+  'connectionCwd',
+  'enabled',
+  'autoSpawn',
+];
+
+function cloneAgentFormData(formData: AgentFormData): AgentFormData {
+  return { ...formData };
+}
+
+function toAgentFormData(profile?: AgentProfileFull | null): AgentFormData {
+  if (!profile) {
+    return cloneAgentFormData(defaultFormData);
+  }
+
+  return {
+    displayName: profile.displayName || '',
+    description: profile.description || '',
+    systemPrompt: profile.systemPrompt || '',
+    guidelines: profile.guidelines || '',
+    connectionType: profile.connection?.type || profile.connectionType || 'internal',
+    connectionCommand: profile.connection?.command || '',
+    connectionArgs: profile.connection?.args?.join(' ') || '',
+    connectionBaseUrl: profile.connection?.baseUrl || '',
+    connectionCwd: profile.connection?.cwd || '',
+    enabled: profile.enabled,
+    autoSpawn: profile.autoSpawn || false,
+  };
+}
+
+function hasAgentFormChanges(currentFormData: AgentFormData, baselineFormData: AgentFormData): boolean {
+  return AGENT_FORM_FIELDS.some(field => currentFormData[field] !== baselineFormData[field]);
+}
+
 export default function AgentEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -50,11 +92,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const agentId = route.params?.agentId as string | undefined;
   const isEditing = !!agentId;
 
-  const [formData, setFormData] = useState<AgentFormData>(defaultFormData);
+  const [formData, setFormData] = useState<AgentFormData>(() => cloneAgentFormData(defaultFormData));
+  const [formBaseline, setFormBaseline] = useState<AgentFormData>(() => cloneAgentFormData(defaultFormData));
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalProfile, setOriginalProfile] = useState<AgentProfileFull | null>(null);
+  const skipDiscardPromptRef = useRef(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -65,6 +109,16 @@ export default function AgentEditScreen({ navigation, route }: any) {
     return null;
   }, [config.baseUrl, config.apiKey]);
 
+  useEffect(() => {
+    if (!isEditing) {
+      const emptyFormData = cloneAgentFormData(defaultFormData);
+      setOriginalProfile(null);
+      setFormData(emptyFormData);
+      setFormBaseline(emptyFormData);
+      skipDiscardPromptRef.current = false;
+    }
+  }, [isEditing]);
+
   // Fetch existing profile if editing
   useEffect(() => {
     if (isEditing && settingsClient && agentId) {
@@ -73,20 +127,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
       settingsClient.getAgentProfile(agentId)
         .then(res => {
           const profile = res.profile;
+          const loadedFormData = toAgentFormData(profile);
           setOriginalProfile(profile);
-          setFormData({
-            displayName: profile.displayName || '',
-            description: profile.description || '',
-            systemPrompt: profile.systemPrompt || '',
-            guidelines: profile.guidelines || '',
-            connectionType: profile.connection?.type || profile.connectionType || 'internal',
-            connectionCommand: profile.connection?.command || '',
-            connectionArgs: profile.connection?.args?.join(' ') || '',
-            connectionBaseUrl: profile.connection?.baseUrl || '',
-            connectionCwd: profile.connection?.cwd || '',
-            enabled: profile.enabled,
-            autoSpawn: profile.autoSpawn || false,
-          });
+          setFormData(loadedFormData);
+          setFormBaseline(loadedFormData);
+          skipDiscardPromptRef.current = false;
         })
         .catch(err => {
           console.error('[AgentEdit] Failed to fetch profile:', err);
@@ -102,6 +147,58 @@ export default function AgentEditScreen({ navigation, route }: any) {
       title: isEditing ? 'Edit Agent' : 'Create Agent',
     });
   }, [navigation, isEditing]);
+
+  const hasUnsavedChanges = hasAgentFormChanges(formData, formBaseline);
+  const agentDraftLabel = formData.displayName.trim() ? `"${formData.displayName.trim()}"` : 'this agent';
+
+  const confirmDiscardChanges = useCallback((onDiscard: () => void) => {
+    const discardMessage = isEditing
+      ? `Discard your changes to ${agentDraftLabel}? Your unsaved edits will be lost.`
+      : 'Discard this new agent draft? Your unsaved changes will be lost.';
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (typeof confirmFn === 'function') {
+        if (confirmFn(discardMessage)) {
+          onDiscard();
+        }
+        return;
+      }
+    }
+
+    Alert.alert('Unsaved Changes', discardMessage, [
+      {
+        text: 'Keep Editing',
+        style: 'cancel',
+      },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: onDiscard,
+      },
+    ]);
+  }, [agentDraftLabel, isEditing]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (event: any) => {
+      if (skipDiscardPromptRef.current || !hasUnsavedChanges) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (isSaving) {
+        return;
+      }
+
+      confirmDiscardChanges(() => {
+        skipDiscardPromptRef.current = true;
+        navigation.dispatch(event.data.action);
+      });
+    });
+
+    return unsubscribe;
+  }, [confirmDiscardChanges, hasUnsavedChanges, isSaving, navigation]);
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) return;
@@ -151,6 +248,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         };
         await settingsClient.createAgentProfile(createData);
       }
+      skipDiscardPromptRef.current = true;
       navigation.goBack();
     } catch (err: any) {
       console.error('[AgentEdit] Failed to save:', err);
@@ -341,6 +439,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
         />
       </View>
 
+      {hasUnsavedChanges && !isSaving && (
+        <View style={styles.draftWarningContainer}>
+          <Text style={styles.draftWarningText}>You have unsaved changes. Save before leaving this screen to keep this draft.</Text>
+        </View>
+      )}
+
       <TouchableOpacity
         style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
         onPress={handleSave}
@@ -391,6 +495,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     warningText: {
       color: '#f59e0b',
       fontSize: 14,
+    },
+    draftWarningContainer: {
+      marginTop: spacing.lg,
+      backgroundColor: theme.colors.primary + '12',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '2e',
+      borderRadius: radius.md,
+      padding: spacing.md,
+    },
+    draftWarningText: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
     },
     label: {
       fontSize: 14,
