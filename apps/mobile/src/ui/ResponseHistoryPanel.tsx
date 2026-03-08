@@ -38,6 +38,18 @@ const hasMarkdownImagePreview = (text: string) => /!\[[^\]]*\]\((?:data:image[^)
 
 const hasEmbeddedImagePreview = (text: string) => /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/i.test(text);
 
+function buildSpeakableResponseText(responseText: string): string {
+  const textWithoutImages = responseText
+    .replace(/!\[[^\]]*\]\((?:data:image[^)]*|[^)]*)\)/gi, ' ')
+    .replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, ' ');
+  const processedText = preprocessTextForTTS(textWithoutImages).trim();
+  const meaningfulSpeechText = processedText
+    .replace(/\[(?:code block|web link|email address)\]/gi, ' ')
+    .replace(/[^A-Za-z0-9]+/g, '');
+
+  return meaningfulSpeechText.length > 0 ? processedText : '';
+}
+
 function formatResponseAccessibilityContext(text: string, timestampLabel: string): string {
   const normalizedText = text.replace(/\s+/g, ' ').trim();
   if (!normalizedText) return `from ${timestampLabel}`;
@@ -197,7 +209,7 @@ export function ResponseHistoryPanel({
     return null;
   }
 
-  const handleSpeak = (text: string, index: number) => {
+  const handleSpeak = (processedText: string, index: number) => {
     // If already speaking this message, stop it
     if (speakingIndex === index) {
       nextSpeechRequestId();
@@ -210,7 +222,6 @@ export function ResponseHistoryPanel({
     const requestId = nextSpeechRequestId();
     Speech.stop();
 
-    const processedText = preprocessTextForTTS(text);
     if (!processedText) {
       safeSetSpeakingIndex(null);
       return;
@@ -408,6 +419,10 @@ export function ResponseHistoryPanel({
     speakButtonActive: {
       backgroundColor: `${theme.colors.primary}18`,
     },
+    speakButtonDisabled: {
+      backgroundColor: `${theme.colors.mutedForeground}12`,
+      opacity: 0.55,
+    },
     separator: {
       height: 1,
       backgroundColor: theme.colors.border,
@@ -483,6 +498,8 @@ export function ResponseHistoryPanel({
             const responseKey = `${response.timestamp}-${originalIndex}`;
             const responseTimestampLabel = formatTime(response.timestamp, false);
             const responseAccessibilityContext = formatResponseAccessibilityContext(response.text, responseTimestampLabel);
+            const responseSpeakableText = buildSpeakableResponseText(response.text);
+            const canSpeakResponse = responseSpeakableText.length > 0;
             const responsePreview = buildCollapsedResponsePreview(response.text);
             const shouldCollapseResponse = shouldCollapseResponseByDefault(response.text);
             const isResponseExpanded = shouldCollapseResponse
@@ -513,24 +530,33 @@ export function ResponseHistoryPanel({
                         ) : null}
                       </View>
                       <TouchableOpacity
-                        style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
-                        onPress={() => handleSpeak(response.text, originalIndex)}
+                        style={[
+                          styles.speakButton,
+                          isSpeaking && styles.speakButtonActive,
+                          !canSpeakResponse && styles.speakButtonDisabled,
+                        ]}
+                        onPress={() => handleSpeak(responseSpeakableText, originalIndex)}
+                        disabled={!canSpeakResponse}
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(
-                          isSpeaking
+                          !canSpeakResponse
+                            ? `Speech unavailable for response ${responseAccessibilityContext}`
+                            : isSpeaking
                             ? `Stop speaking response ${responseAccessibilityContext}`
                             : `Speak response ${responseAccessibilityContext} aloud`
                         )}
-                        accessibilityHint={isSpeaking
-                          ? 'Stops text to speech for this agent response.'
-                          : isLatest
-                            ? 'Reads the latest agent response aloud with text to speech.'
-                            : 'Reads this agent response aloud with text to speech.'}
-                        accessibilityState={{ selected: isSpeaking }}
-                        activeOpacity={0.7}
+                        accessibilityHint={!canSpeakResponse
+                          ? 'This response only contains images or unsupported content, so there is nothing useful to read aloud.'
+                          : isSpeaking
+                            ? 'Stops text to speech for this agent response.'
+                            : isLatest
+                              ? 'Reads the latest agent response aloud with text to speech.'
+                              : 'Reads this agent response aloud with text to speech.'}
+                        accessibilityState={{ selected: isSpeaking, disabled: !canSpeakResponse }}
+                        activeOpacity={canSpeakResponse ? 0.7 : 1}
                       >
                         <Ionicons
-                          name={isSpeaking ? 'stop-circle' : 'volume-medium'}
+                          name={!canSpeakResponse ? 'volume-mute' : isSpeaking ? 'stop-circle' : 'volume-medium'}
                           size={18}
                           color={isSpeaking ? theme.colors.primary : theme.colors.mutedForeground}
                         />

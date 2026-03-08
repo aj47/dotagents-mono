@@ -1,5 +1,53 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 134 - Disable unusable response-history speech controls for image-only rows
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-updated `ResponseHistoryPanel` header, badge, row-wrap, and older-row preview behavior without new evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree, ending with `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules because the mobile install is missing
+- Current behavior observed before the fix:
+  - Source review of `apps/mobile/src/ui/ResponseHistoryPanel.tsx` showed every response-history row still rendered an active speak button, even though the same panel already special-cased image-heavy/image-only content for preview behavior.
+  - The speak action relied on `preprocessTextForTTS(...)` at press time, so rows with only images or otherwise unsupported content could still advertise a tappable audio affordance with little or no meaningful speech output.
+  - On mobile, that weakened state clarity because the control looked actionable even when the row had nothing useful to read aloud.
+- Issue identified:
+  - Response-history rows exposed a misleading speech affordance for image-only or otherwise non-speakable delegated responses.
+- Decision and rationale:
+  - Keep speech support for normal text responses and avoid redesigning the row layout while live validation is blocked.
+  - Make the smallest state-clarity fix instead: derive speakable text up front, strip image payloads first, and present the control as visibly unavailable when the row has no meaningful speech content.
+  - Prefer a disabled mute-state button over removing the control entirely so row actions remain spatially consistent across the history list.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - add `buildSpeakableResponseText(...)` so image payloads and placeholder-only speech output do not count as meaningful TTS content,
+    - disable the per-row speak control when no meaningful speech content remains,
+    - switch unavailable rows to a muted visual state plus explicit disabled accessibility semantics and hint text.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the disabled speech-control contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `node --test apps/mobile/tests/chat-response-history-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+  - Mobile typecheck re-validation ⚠️ still blocked by the same missing install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+- Assumptions and tradeoffs:
+  - Assumed a disabled-but-visible action is clearer on mobile than silently leaving a dead-end speak button active for image-only rows.
+  - Chose a local speakability heuristic instead of broader TTS pipeline changes so the improvement stays isolated to mobile response-history affordances.
+  - This remains a source-backed improvement and still needs live confirmation that the muted disabled button reads clearly enough beside `More` / `Less` on very narrow screens.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `ResponseHistoryPanel` still lacks fresh screenshot-backed validation after the recent header-summary, badge, row-wrap, preview-collapse, and now disabled-speech-control improvements.
+  - A live pass is still needed to confirm disabled mute buttons feel self-explanatory and do not compete with row-expansion controls on narrow screens.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that image-only response rows show a clearly disabled mute control while text responses still speak normally.
+  - Capture screenshot-backed evidence for mixed response-history states (text row speakable, image-only row muted/disabled, older long row previewed) so action clarity can be judged on a narrow viewport.
+  - After that live pass, continue with the next highest-signal local sub-agent mobile issue instead of revisiting this speech-affordance change without fresh evidence.
+
 ## Iteration 133 - Collapse older long response-history rows to previews by default
 
 - Date: 2026-03-08
