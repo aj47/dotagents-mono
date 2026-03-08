@@ -8,6 +8,233 @@ import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syn
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function sanitizeStoredMessage(
+  value: unknown,
+  fallbackTimestamp: number,
+): { message: Session['messages'][number] | null; changed: boolean } {
+  if (!isRecord(value)) {
+    return { message: null, changed: true };
+  }
+
+  const id = typeof value.id === 'string' && value.id.trim().length > 0 ? value.id.trim() : null;
+  const role = value.role;
+  const content = typeof value.content === 'string' ? value.content : null;
+
+  if (!id || (role !== 'user' && role !== 'assistant' && role !== 'tool') || content === null) {
+    return { message: null, changed: true };
+  }
+
+  let changed = value.id !== id || !isFiniteNumber(value.timestamp);
+  const message: Session['messages'][number] = {
+    id,
+    role,
+    content,
+    timestamp: isFiniteNumber(value.timestamp) ? value.timestamp : fallbackTimestamp,
+  };
+
+  if (Array.isArray(value.toolCalls)) {
+    message.toolCalls = value.toolCalls;
+  } else if (value.toolCalls !== undefined) {
+    changed = true;
+  }
+
+  if (Array.isArray(value.toolResults)) {
+    message.toolResults = value.toolResults;
+  } else if (value.toolResults !== undefined) {
+    changed = true;
+  }
+
+  return { message, changed };
+}
+
+function sanitizeStoredMetadata(value: unknown): {
+  metadata: Session['metadata'] | undefined;
+  changed: boolean;
+} {
+  if (value === undefined) {
+    return { metadata: undefined, changed: false };
+  }
+  if (!isRecord(value)) {
+    return { metadata: undefined, changed: true };
+  }
+
+  const model = typeof value.model === 'string' && value.model.trim().length > 0 ? value.model : undefined;
+  const totalTokens = isFiniteNumber(value.totalTokens) ? value.totalTokens : undefined;
+  const metadata = model !== undefined || totalTokens !== undefined
+    ? { ...(model !== undefined ? { model } : {}), ...(totalTokens !== undefined ? { totalTokens } : {}) }
+    : undefined;
+
+  return {
+    metadata,
+    changed:
+      metadata === undefined
+        ? Object.keys(value).length > 0
+        : value.model !== model || value.totalTokens !== totalTokens,
+  };
+}
+
+function sanitizeStoredServerMetadata(value: unknown): {
+  serverMetadata: Session['serverMetadata'] | undefined;
+  changed: boolean;
+} {
+  if (value === undefined) {
+    return { serverMetadata: undefined, changed: false };
+  }
+  if (!isRecord(value)) {
+    return { serverMetadata: undefined, changed: true };
+  }
+
+  const messageCount = isFiniteNumber(value.messageCount)
+    ? Math.max(0, Math.floor(value.messageCount))
+    : null;
+  const lastMessage = typeof value.lastMessage === 'string' ? value.lastMessage : '';
+  const preview = typeof value.preview === 'string' ? value.preview : '';
+
+  if (messageCount === null) {
+    return { serverMetadata: undefined, changed: true };
+  }
+
+  return {
+    serverMetadata: { messageCount, lastMessage, preview },
+    changed:
+      value.messageCount !== messageCount ||
+      value.lastMessage !== lastMessage ||
+      value.preview !== preview,
+  };
+}
+
+function sanitizeStoredSession(
+  value: unknown,
+  fallbackTimestamp: number,
+): { session: Session | null; changed: boolean } {
+  if (!isRecord(value)) {
+    return { session: null, changed: true };
+  }
+
+  const id = typeof value.id === 'string' && value.id.trim().length > 0 ? value.id.trim() : null;
+  if (!id) {
+    return { session: null, changed: true };
+  }
+
+  let changed = value.id !== id;
+  const rawMessages = Array.isArray(value.messages) ? value.messages : [];
+  if (!Array.isArray(value.messages)) {
+    changed = true;
+  }
+
+  const messages: Session['messages'] = [];
+  rawMessages.forEach((message, index) => {
+    const sanitized = sanitizeStoredMessage(message, fallbackTimestamp + index);
+    changed = changed || sanitized.changed;
+    if (sanitized.message) {
+      messages.push(sanitized.message);
+    }
+  });
+
+  const firstUserMessage = messages.find(message => message.role === 'user');
+  const title =
+    typeof value.title === 'string' && value.title.trim().length > 0
+      ? value.title
+      : firstUserMessage?.content
+        ? generateSessionTitle(firstUserMessage.content)
+        : 'New Chat';
+  if (value.title !== title) {
+    changed = true;
+  }
+
+  const metadataResult = sanitizeStoredMetadata(value.metadata);
+  const serverMetadataResult = sanitizeStoredServerMetadata(value.serverMetadata);
+  changed = changed || metadataResult.changed || serverMetadataResult.changed;
+
+  const createdAtCandidate = isFiniteNumber(value.createdAt) ? value.createdAt : undefined;
+  const updatedAtCandidate = isFiniteNumber(value.updatedAt) ? value.updatedAt : undefined;
+  const fallbackFromMessages = messages[messages.length - 1]?.timestamp ?? fallbackTimestamp;
+  const createdAt = createdAtCandidate ?? updatedAtCandidate ?? fallbackFromMessages;
+  const updatedAt = Math.max(updatedAtCandidate ?? createdAt, createdAt);
+  if (createdAtCandidate !== createdAt || updatedAtCandidate !== updatedAt) {
+    changed = true;
+  }
+
+  const serverConversationId =
+    typeof value.serverConversationId === 'string' && value.serverConversationId.trim().length > 0
+      ? value.serverConversationId.trim()
+      : undefined;
+  if (value.serverConversationId !== serverConversationId) {
+    changed = true;
+  }
+
+  return {
+    session: {
+      id,
+      title,
+      createdAt,
+      updatedAt,
+      messages,
+      ...(serverConversationId ? { serverConversationId } : {}),
+      ...(metadataResult.metadata ? { metadata: metadataResult.metadata } : {}),
+      ...(serverMetadataResult.serverMetadata ? { serverMetadata: serverMetadataResult.serverMetadata } : {}),
+    },
+    changed,
+  };
+}
+
+function sanitizeStoredSessions(value: unknown): { sessions: Session[]; changed: boolean } {
+  if (!Array.isArray(value)) {
+    return { sessions: [], changed: value !== undefined };
+  }
+
+  const seenSessionIds = new Set<string>();
+  const sessions: Session[] = [];
+  let changed = false;
+  const fallbackTimestampBase = Date.now();
+
+  value.forEach((session, index) => {
+    const sanitized = sanitizeStoredSession(session, fallbackTimestampBase + index * 1000);
+    changed = changed || sanitized.changed;
+    if (!sanitized.session) {
+      return;
+    }
+
+    if (seenSessionIds.has(sanitized.session.id)) {
+      changed = true;
+      return;
+    }
+
+    seenSessionIds.add(sanitized.session.id);
+    sessions.push(sanitized.session);
+  });
+
+  return { sessions, changed };
+}
+
+function normalizeStoredCurrentSessionId(id: string | null): string | null {
+  return typeof id === 'string' && id.trim().length > 0 ? id.trim() : null;
+}
+
+function resolveStoredCurrentSessionId(
+  sessions: Session[],
+  currentSessionId: string | null,
+): string | null {
+  const normalizedCurrentSessionId = normalizeStoredCurrentSessionId(currentSessionId);
+  if (sessions.length === 0) {
+    return null;
+  }
+  if (!normalizedCurrentSessionId) {
+    return sessions[0].id;
+  }
+  return sessions.some(session => session.id === normalizedCurrentSessionId)
+    ? normalizedCurrentSessionId
+    : sessions[0].id;
+}
+
 export interface SessionStore {
   sessions: Session[];
   currentSessionId: string | null;
@@ -48,8 +275,30 @@ async function loadSessions(): Promise<Session[]> {
   try {
     const raw = await AsyncStorage.getItem(SESSIONS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {}
+
+    try {
+      const parsed = JSON.parse(raw);
+      const { sessions, changed } = sanitizeStoredSessions(parsed);
+
+      if (changed) {
+        console.warn('[sessions] Stored sessions were invalid or outdated; rewriting sanitized data');
+        await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      }
+
+      return sessions;
+    } catch (error) {
+      console.warn('[sessions] Failed to parse stored sessions; clearing corrupt data', error);
+
+      try {
+        await AsyncStorage.removeItem(SESSIONS_KEY);
+      } catch (storageError) {
+        console.warn('[sessions] Failed to clear corrupt stored sessions', storageError);
+      }
+    }
+  } catch (error) {
+    console.warn('[sessions] Failed to load stored sessions', error);
+  }
+
   return [];
 }
 
@@ -59,8 +308,18 @@ async function saveSessions(sessions: Session[]): Promise<void> {
 
 async function loadCurrentSessionId(): Promise<string | null> {
   try {
-    return await AsyncStorage.getItem(CURRENT_SESSION_KEY);
-  } catch {}
+    const storedId = await AsyncStorage.getItem(CURRENT_SESSION_KEY);
+    const normalizedId = normalizeStoredCurrentSessionId(storedId);
+
+    if (storedId !== normalizedId) {
+      console.warn('[sessions] Stored current session ID was invalid; clearing it');
+      await saveCurrentSessionId(normalizedId);
+    }
+
+    return normalizedId;
+  } catch (error) {
+    console.warn('[sessions] Failed to load current session ID', error);
+  }
   return null;
 }
 
@@ -103,13 +362,24 @@ export function useSessions(): SessionStore {
         loadSessions(),
         loadCurrentSessionId(),
       ]);
+      const recoveredCurrentId = resolveStoredCurrentSessionId(loadedSessions, loadedCurrentId);
+
+      if (recoveredCurrentId !== loadedCurrentId) {
+        console.warn('[sessions] Recovering current session selection from stored data');
+        try {
+          await saveCurrentSessionId(recoveredCurrentId);
+        } catch (error) {
+          console.warn('[sessions] Failed to persist recovered current session ID', error);
+        }
+      }
+
       // Update refs synchronously BEFORE setting state to prevent stale refs
       // This fixes the race condition where createNewSession could read empty sessionsRef.current
       // if called immediately after mount (before the useEffect that syncs refs from state runs)
       sessionsRef.current = loadedSessions;
-      currentSessionIdRef.current = loadedCurrentId;
+      currentSessionIdRef.current = recoveredCurrentId;
       setSessions(loadedSessions);
-      setCurrentSessionIdState(loadedCurrentId);
+      setCurrentSessionIdState(recoveredCurrentId);
       setReady(true);
     })();
   }, []);
