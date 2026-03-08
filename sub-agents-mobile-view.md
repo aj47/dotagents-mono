@@ -4054,3 +4054,47 @@
   - Restore the mobile install in this worktree, then verify with Expo Web or a simulator that same-minute response rows now announce clearly distinct playback controls.
   - Compare several short responses arriving within one minute to confirm the preview-based labels reduce ambiguity without feeling noisy.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history playback labeling again without new evidence.
+
+### 2026-03-08 — Iteration 93: preserve repeated agent replies in mobile response history
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - focused response-history regression coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Reconfirmed the current worktree blocker before validation:
+    - `test -d node_modules && echo root-present || echo root-missing` → `root-missing`
+    - `pnpm --filter @dotagents/mobile web -- --help` → `expo: command not found` plus `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review of `ChatScreen` showed `extractRespondToUserHistory()` used a session-wide `seenResponses` set when rebuilding saved `respond_to_user` history.
+  - The live progress handlers also skipped any response text already present anywhere in `respondToUserHistory` via `prev.some((entry) => entry.text === responseText)`.
+  - On mobile, that meant repeated agent replies such as `Done.` or `Opening settings.` disappeared from the response history after their first appearance, even when they happened again later in the same session.
+- Issue selected:
+  - The response-history panel under-reported repeated agent replies, weakening delegation transparency and making the mobile activity trail less trustworthy.
+- Decision:
+  - Keep the visible `ResponseHistoryPanel` layout unchanged so this stays a low-risk, state-accuracy improvement.
+  - Preserve repeated replies when they recur later in a session, but still collapse immediate duplicates so streaming updates do not create noisy back-to-back clones.
+  - Reuse one helper for both saved-history extraction and live progress updates so the mobile response trail behaves consistently.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - add `appendRespondToUserHistoryEntry()` as a shared helper that trims content and skips only consecutive duplicate entries,
+    - reuse that helper when rebuilding saved / lazy-loaded `respond_to_user` history,
+    - reuse the same helper for live progress updates instead of deduplicating against the full session history.
+  - Added `apps/mobile/tests/chat-response-history-mobile.test.js` with focused source-level regression coverage for the new helper and the removal of the old session-wide dedupe paths.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-response-history-mobile.test.js` ✅
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --help` ⚠️ blocked because local `expo` is unavailable and this worktree has no installed `node_modules`
+- Remaining nearby issues noted, not addressed this iteration:
+  - This round improves response-history accuracy, but it still needs a live pass once Expo is restored to confirm repeated short replies remain visually distinguishable on very narrow screens.
+  - The response-history list still relies on timestamp plus badges for most visible hierarchy, so same-minute rows with similarly short text may still need a live visual check later.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify with Expo Web or a simulator that repeated agent replies now remain visible in the response history when they recur later in the same conversation.
+  - Live-test several short repeated responses such as `Done.` across separated turns to confirm the new consecutive-only dedupe avoids both false drops and noisy duplicate bursts.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history dedupe again without new evidence.

@@ -189,11 +189,26 @@ const resolveMessageTimestamps = (messages: RespondToUserHistorySourceMessage[])
   return resolved as number[];
 };
 
+type RespondToUserHistoryEntry = { text: string; timestamp: number };
+
+const appendRespondToUserHistoryEntry = (
+  history: RespondToUserHistoryEntry[],
+  responseText: string,
+  timestamp: number
+): RespondToUserHistoryEntry[] => {
+  const trimmedResponseText = responseText.trim();
+  if (!trimmedResponseText) return history;
+
+  const previousEntry = history[history.length - 1];
+  if (previousEntry?.text === trimmedResponseText) return history;
+
+  return [...history, { text: trimmedResponseText, timestamp }];
+};
+
 const extractRespondToUserHistory = (
   messages: RespondToUserHistorySourceMessage[]
-): Array<{ text: string; timestamp: number }> => {
-  const history: Array<{ text: string; timestamp: number }> = [];
-  const seenResponses = new Set<string>();
+): RespondToUserHistoryEntry[] => {
+  let history: RespondToUserHistoryEntry[] = [];
   const resolvedTimestamps = resolveMessageTimestamps(messages);
 
   for (const [index, message] of messages.entries()) {
@@ -204,10 +219,9 @@ const extractRespondToUserHistory = (
     for (const call of message.toolCalls) {
       if (call.name !== RESPOND_TO_USER_TOOL) continue;
       const responseText = extractRespondToUserContentFromArgs(call.arguments);
-      if (!responseText || seenResponses.has(responseText)) continue;
+      if (!responseText) continue;
 
-      seenResponses.add(responseText);
-      history.push({ text: responseText, timestamp: messageTimestamp });
+      history = appendRespondToUserHistoryEntry(history, responseText, messageTimestamp);
     }
   }
 
@@ -1589,12 +1603,8 @@ export default function ChatScreen({ route, navigation }: any) {
         if (update.userResponse || update.spokenContent) {
           const responseText = update.userResponse || update.spokenContent;
           if (responseText && responseText !== lastUserResponse) {
-            // Add to respond_to_user history (deduplicate across entire history)
-            setRespondToUserHistory((prev) => {
-              // Check if text already exists anywhere in history (not just last item)
-              if (prev.some((entry) => entry.text === responseText)) return prev;
-              return [...prev, { text: responseText, timestamp: Date.now() }];
-            });
+            // Keep repeated replies when they recur later, while skipping immediate duplicates.
+            setRespondToUserHistory((prev) => appendRespondToUserHistoryEntry(prev, responseText, Date.now()));
           }
           lastUserResponse = update.userResponse || update.spokenContent;
         }
@@ -2022,12 +2032,8 @@ export default function ChatScreen({ route, navigation }: any) {
         if (update.userResponse || update.spokenContent) {
           const responseText = update.userResponse || update.spokenContent;
           if (responseText && responseText !== lastUserResponse) {
-            // Add to respond_to_user history (deduplicate across entire history)
-            setRespondToUserHistory((prev) => {
-              // Check if text already exists anywhere in history (not just last item)
-              if (prev.some((entry) => entry.text === responseText)) return prev;
-              return [...prev, { text: responseText, timestamp: Date.now() }];
-            });
+            // Keep repeated replies when they recur later, while skipping immediate duplicates.
+            setRespondToUserHistory((prev) => appendRespondToUserHistoryEntry(prev, responseText, Date.now()));
           }
           lastUserResponse = update.userResponse || update.spokenContent;
         }
