@@ -3240,24 +3240,24 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           className="flex flex-wrap items-start gap-2 px-3 py-2 border-b bg-muted/30 flex-shrink-0 cursor-pointer"
           onClick={handleToggleCollapse}
         >
-          <div className="flex min-w-0 flex-1 items-start gap-2">
+          <div className="flex min-w-[min(100%,10rem)] flex-[1_1_10rem] items-start gap-2">
             <div className="shrink-0 pt-0.5">
               {getStatusIndicator()}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate font-medium text-sm">
+              <span className="font-medium text-sm leading-tight line-clamp-2 break-words [overflow-wrap:anywhere]">
                 {getTitle()}
               </span>
               {/* Agent name indicator in header */}
               {profileName && (
-                <span className="flex items-center gap-1 text-[10px] text-primary/70">
+                <span className="flex items-center gap-1 text-xs leading-4 text-primary/70">
                   <Bot className="h-2.5 w-2.5 shrink-0" />
                   <span className="truncate">{profileName}</span>
                 </span>
               )}
             </div>
           </div>
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+          <div className="ml-auto flex shrink-0 max-w-full flex-wrap items-center justify-end gap-1">
             {hasPendingApproval && (
               <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
                 Approval

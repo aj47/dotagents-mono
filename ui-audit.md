@@ -1,5 +1,56 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 66: Desktop agent-progress tile header title could collapse away entirely under cramped width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided unrelated surfaces already reviewed recently unless there was a clear live follow-up reason.
+  - Chunk 65 had just finished the same live `agent-progress` surface and left room for another narrow-width/font-scale pass on a different sub-area with real session data.
+  - The reusable Electron renderer on `:9333` was still available, making this a better evidence-backed target than guessing from source on a colder screen.
+  - I also kept clear of `model-preset-manager.tsx`, which still has unrelated uncommitted work in this checkout.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, and the existing `agent-progress.tile-layout.test.ts` source-contract coverage before changing code
+  - used `agent-browser --cdp 9333` against the live Electron renderer at `http://localhost:5174/`
+  - stressed the active Sessions tile at `620×670` with larger root text (`24px`), captured `tmp/ui-audit/sessions-root-620x670-root24-current.png`, and measured the mounted header DOM directly
+  - prototyped a minimum-width + wrapped-title treatment live in the mounted DOM, then captured `tmp/ui-audit/agent-progress-header-title-620x670-root24-prototype.png` before editing source
+  - cross-checked mobile equivalents and kept the patch desktop-only because this specific session-tile header pattern does not exist in the native chat screen
+
+#### Findings
+
+- Before the fix, the desktop session tile header had one concrete visibility issue with clear user impact:
+  - in the live completed tile at `620×670` with `24px` root text, the action cluster stayed on the first row and squeezed the title lane down to nothing
+  - the mounted DOM measured the header at about `198px` wide, the action cluster at `120px`, the left-side identity lane at only `30px`, and the title column itself at **`0px` width**
+  - practical impact: the session title could disappear entirely in a cramped/zoomed window, leaving only the status dot and action buttons, so users lost the quickest way to identify which session tile they were looking at
+
+#### Changes made
+
+- Hardened the desktop tile header in `apps/desktop/src/renderer/src/components/agent-progress.tsx` with the smallest effective reflow:
+  - gave the left identity lane a real flex basis/minimum share via `min-w-[min(100%,10rem)] flex-[1_1_10rem]` so it does not collapse to zero before the actions wrap
+  - changed the title from one-line `truncate` treatment to a two-line wrapped, line-clamped title with `leading-tight`, `break-words`, and `overflow-wrap:anywhere`
+  - promoted the optional agent-name microcopy from fixed `text-[10px]` to scalable `text-xs leading-4`
+  - marked the action cluster as `shrink-0` so the wrap behavior is explicit and predictable
+- Updated `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` so the narrow-header source-contract test now asserts the new title-lane and wrapped-title classes
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop test -- --run apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` *(blocked: the app pretest runs `build:shared`, and this worktree has no local dependencies / `node_modules`; `tsup` was not found)*
+- Dependency-free source-contract verification: a Node script confirmed the new header classes are present in `agent-progress.tsx` and that the focused regression test was updated accordingly ✅
+- Live Electron evidence before the fix at `http://localhost:5174/`:
+  - screenshot: `tmp/ui-audit/sessions-root-620x670-root24-current.png`
+  - DOM measurement: header `198px`, actions `120px`, left lane `30px`, title column `0px`
+- Live DOM prototype verification of the intended fix:
+  - after applying the same layout direction directly in the mounted DOM, the same header re-measured at about `162px` for the left lane and `126px` for the title column, with the title visible across two lines
+  - screenshot: `tmp/ui-audit/agent-progress-header-title-620x670-root24-prototype.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/agent-progress.tsx apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I treated the live pass as pre-fix evidence + DOM prototyping rather than claiming a rebuilt post-edit product confirmation from this worktree.
+- Mobile cross-check: the closest mobile analogue lives in `apps/mobile/src/screens/SessionListScreen.tsx`, but it is a separate native list-item pattern rather than this desktop tile header, so I did not apply parity changes blindly.
+- Tradeoff/rationale: allowing the title to take up to two lines can make the tile header slightly taller, but that is the safer tradeoff versus hiding the session identity entirely under real narrow/zoomed constraints.
+- Best next UI audit chunk after this one: move to a fresh live-inspectable surface such as `pendingToolApproval` cards, an unreviewed loading/empty state, or a mobile screen that can be exercised via Expo web.
+
 ### 2026-03-08 — Chunk 65: Desktop agent-progress tool detail blocks stayed at fixed microcopy under larger text scaling
 
 - Area selected:
