@@ -1845,12 +1845,23 @@ export default function SettingsScreen({ navigation }: any) {
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Message Queue</Text>
-                  <Switch
-                    value={remoteSettings.mcpMessageQueueEnabled ?? true}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpMessageQueueEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpMessageQueueEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpMessageQueueEnabled', !(remoteSettings.mcpMessageQueueEnabled ?? true))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Message Queue')}
+                    accessibilityHint="Queues incoming messages while the agent is already working on another step."
+                    accessibilityState={{ checked: remoteSettings.mcpMessageQueueEnabled ?? true }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpMessageQueueEnabled ?? true)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
 
                 <View style={styles.row}>
@@ -1879,22 +1890,44 @@ export default function SettingsScreen({ navigation }: any) {
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Verify Completion</Text>
-                  <Switch
-                    value={remoteSettings.mcpVerifyCompletionEnabled ?? true}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpVerifyCompletionEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpVerifyCompletionEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpVerifyCompletionEnabled', !(remoteSettings.mcpVerifyCompletionEnabled ?? true))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Verify Completion')}
+                    accessibilityHint="Checks whether the agent actually finished the task before stopping."
+                    accessibilityState={{ checked: remoteSettings.mcpVerifyCompletionEnabled ?? true }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpVerifyCompletionEnabled ?? true)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Final Summary</Text>
-                  <Switch
-                    value={remoteSettings.mcpFinalSummaryEnabled ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpFinalSummaryEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpFinalSummaryEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpFinalSummaryEnabled', !(remoteSettings.mcpFinalSummaryEnabled ?? false))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Final Summary')}
+                    accessibilityHint="Generates a summary after the agent finishes the task."
+                    accessibilityState={{ checked: remoteSettings.mcpFinalSummaryEnabled ?? false }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpFinalSummaryEnabled ?? false)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.helperText}>
                   Generate a summary after completing a task

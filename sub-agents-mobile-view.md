@@ -1381,3 +1381,47 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the wrapped `Unlimited Iterations` control reads and taps consistently with the surrounding improved `Agent Settings` switches.
   - After live validation returns, compare `Message Queue`, `Verify Completion`, and `Final Summary` against the now-improved `Unlimited Iterations`, builtin-tools, and tool-approval rows to see which remaining mismatch is most noticeable on mobile.
   - Re-establish live inspection before taking on the next sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 32: align the remaining Agent Settings toggles with the mobile switch pattern
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the Expo / React Native install (`expo/tsconfig.base` not found plus unresolved mobile dependencies)
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `Message Queue`, `Verify Completion`, and `Final Summary` still used plain native `Switch` controls inside `Settings > Agent Settings`.
+  - Nearby sub-agent-specific rows in the same section (`Inject Builtin Tools`, `Require Tool Approval`, `Unlimited Iterations`) had already been upgraded to the wrapped mobile switch treatment with explicit naming and a `44px` target baseline.
+- Issue selected:
+  - The last three plain `Agent Settings` toggles felt visually and semantically older than the surrounding improved controls, weakening touch confidence and state clarity in a dense mobile sub-agent section.
+- Decision:
+  - Keep the current row order, wording, and helper text unchanged.
+  - Do not broaden the fix outside this small `Agent Settings` cluster while live validation is blocked.
+  - Make the smallest local consistency fix: wrap `Message Queue`, `Verify Completion`, and `Final Summary` in the same named/tappable switch pattern already used by the neighboring improved rows.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the plain `Switch` controls for `Message Queue`, `Verify Completion`, and `Final Summary` with `TouchableOpacity` switch wrappers,
+    - reuse `agentSettingsSwitchButton` for the `44px` mobile touch-target baseline,
+    - add explicit switch labels, hints, and checked-state semantics for each row,
+    - reuse `renderActionRailSwitchVisual(...)` so the inner visual switch stays out of the web accessibility tree.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the three newly wrapped rows.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Expo Web / device re-validation ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The now-aligned `Agent Settings` switch cluster still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - The same section still mixes improved wrapped switches with older non-sub-agent controls elsewhere in Settings, but those should be re-ranked only after live inspection returns.
+  - The currently blocked mobile install continues to limit screenshot-backed prioritization, so follow-up changes should remain source-backed and conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `Message Queue`, `Verify Completion`, and `Final Summary` now read and tap consistently with the surrounding wrapped `Agent Settings` toggles.
+  - Once live validation returns, reassess whether any `Agent Settings` row still stands out as the highest-friction mismatch or whether the next issue has moved back to another sub-agent surface.
+  - Keep future iterations grounded in fresh live evidence again as soon as Expo Web or a simulator becomes available in this worktree.
