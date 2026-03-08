@@ -39,3 +39,12 @@ test('session list lets users filter chats by compacted versus partial history s
   assert.match(sessionListSource, /style=\{\[\s*styles\.historyFilterChip,/);
   assert.match(sessionListSource, /data=\{filteredSessions\}/);
 });
+
+test('session list shows active-versus-total history counts when a compacted chat has hidden earlier messages', () => {
+  assert.match(sessionListSource, /type SessionHistoryCountSummary = \{/);
+  assert.match(sessionListSource, /const getSessionHistoryCountSummary = \(/);
+  assert.match(sessionListSource, /representedCount <= session\.messageCount/);
+  assert.match(sessionListSource, /label: `\$\{session\.messageCount\.toLocaleString\(\)\} active · \$\{representedCount\.toLocaleString\(\)\} total`/);
+  assert.match(sessionListSource, /historyCountSummary\?\.accessibilityLabel/);
+  assert.match(sessionListSource, /historyCountSummary\?\.label/);
+});

@@ -3173,3 +3173,36 @@
   - Re-run real mobile TypeScript / Expo verification once the missing Expo config and dependency baseline is restored in this worktree.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, concrete bug or UX slice outside both `#57` and `#58`; if `#58` continues, the next honest mobile follow-up is richer row details or a persisted filter preference rather than more storage plumbing.
+
+##### Issue #58 — Mobile session list shows active-vs-total history counts for compacted chats
+
+- Selection rationale:
+  - I refreshed the current open issues and first checked fresher alternatives outside `#58`, but `#54` still looks blocked on external ChatGPT subscription feasibility and the mobile `#53` slash-command gap had already been covered in the current branch/codepath.
+  - That made the previously documented `#58` mobile follow-up (“richer row details”) the most concrete, non-thrashy next slice with immediate user value.
+- Investigation:
+  - Re-reviewed `apps/mobile/src/screens/SessionListScreen.tsx` and confirmed the mobile list already showed `History compacted` / `History partial` badges plus filter chips, but compacted rows still only exposed a coarse hint like `48 stored`.
+  - Confirmed the row meta line still fell back to plain `messageCount`, while compacted sessions also carry `compaction.representedMessageCount`, which is the better source for explaining how much earlier history exists beyond the active window.
+  - Confirmed by source inspection that locally loaded compacted chats can have `item.messageCount < item.compaction.representedMessageCount`, so the list had enough information to show clearer `active vs total` context without adding new backend fields.
+- Important assumptions:
+  - Assumption: showing `active · total` summary text only when `representedMessageCount` is greater than the visible message count is the right first detail slice.
+  - Why acceptable: it keeps the UI quiet for normal chats, improves the exact confusing case (`this chat has more stored history than the active window shows`), and avoids inventing new terminology or list density for sessions where no extra context exists.
+  - Assumption: stub sessions loaded only from the desktop conversation index can keep their existing summary until a future server payload exposes the active-window count separately.
+  - Why acceptable: the current list payload does not reliably distinguish active-window count from represented total for unopened desktop stubs, so pretending otherwise would be misleading.
+- Changes implemented:
+  - Added `SessionHistoryCountSummary` and `getSessionHistoryCountSummary(...)` in `apps/mobile/src/screens/SessionListScreen.tsx`.
+  - When a compacted or partial-history chat has more represented history than visible active messages, the mobile row meta now shows concise copy like `11 active · 48 total` instead of only the visible-window message count.
+  - Folded the same active-vs-total explanation into the row accessibility label so screen-reader users get the extra history context too.
+  - Extended `apps/mobile/tests/session-list-history-badges.test.js` with source-level regression assertions covering the new count-summary helper and wiring.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/session-list-history-badges.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Note: did not re-run the broad mobile TypeScript command here because the previous `#58` mobile iteration already established this worktree is blocked by missing Expo/mobile baseline dependencies (`expo/tsconfig.base`, Expo/React Native typings), and this slice added no new dependency surface.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Persist the selected mobile history filter across screen revisits if usage justifies it.
+  - If users need the same count detail for unopened desktop stub sessions on mobile, extend the server/list payload to include active-window count separately from represented total.
+  - Re-run real mobile TypeScript / Expo verification once the missing Expo config and dependency baseline is restored in this worktree.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, concrete bug/UX slice outside `#58`; if `#58` continues, the next honest mobile step is persisted filter preference or richer stub-session count metadata rather than another storage/backend rewrite.

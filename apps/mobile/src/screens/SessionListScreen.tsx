@@ -33,6 +33,11 @@ type SessionHistoryBadgeInfo = {
 
 type SessionHistoryFilter = 'all' | 'compacted' | 'partial';
 
+type SessionHistoryCountSummary = {
+  label: string;
+  accessibilityLabel: string;
+};
+
 const getSessionHistoryFilter = (
   session: Pick<SessionListItem, 'compaction'>,
 ): Exclude<SessionHistoryFilter, 'all'> | null => {
@@ -73,6 +78,20 @@ const getSessionHistoryBadge = (
       ? `History compacted. ${storedCount.toLocaleString()} stored raw messages remain available outside the active context window.`
       : 'History compacted. Earlier raw history is preserved outside the active context window.',
     tone: 'primary',
+  };
+};
+
+const getSessionHistoryCountSummary = (
+  session: Pick<SessionListItem, 'messageCount' | 'compaction'>,
+): SessionHistoryCountSummary | null => {
+  const representedCount = session.compaction?.representedMessageCount;
+  if (!representedCount || representedCount <= session.messageCount) {
+    return null;
+  }
+
+  return {
+    label: `${session.messageCount.toLocaleString()} active · ${representedCount.toLocaleString()} total`,
+    accessibilityLabel: `${session.messageCount.toLocaleString()} messages remain in the active context window, representing ${representedCount.toLocaleString()} total messages in this chat.`,
   };
 };
 
@@ -896,10 +915,12 @@ export default function SessionListScreen({ navigation }: Props) {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
     const historyBadge = getSessionHistoryBadge(item);
+    const historyCountSummary = getSessionHistoryCountSummary(item);
     const sessionAccessibilityParts = [
       `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`,
       isStub ? 'from desktop' : null,
       historyBadge?.accessibilityLabel,
+      historyCountSummary?.accessibilityLabel,
     ].filter(Boolean);
 
     return (
@@ -951,7 +972,8 @@ export default function SessionListScreen({ navigation }: Props) {
           </View>
         )}
         <Text style={styles.sessionMeta}>
-          {item.messageCount} message{item.messageCount !== 1 ? 's' : ''}
+          {historyCountSummary?.label
+            ?? `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
           {isStub ? ' · from desktop' : ''}
         </Text>
       </TouchableOpacity>
