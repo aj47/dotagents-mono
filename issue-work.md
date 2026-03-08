@@ -563,3 +563,33 @@
   - Re-run desktop web typecheck once the missing `@electron-toolkit/tsconfig` dependency/config issue in this worktree is resolved.
 
 - Next recommended issue work item: either finish `#58` by extending the same provenance affordance into the live overlay surface, or pivot to a fresh issue only if it has a tighter local repro path than the remaining `#58` polish.
+
+##### Issue #58 — Conversation History: Preserve full data on disk & UI access, exclude from LLM context
+
+- Selection rationale:
+  - The previous `#58` iteration landed lazy preserved-history hydration for live tiles and explicitly called out the desktop overlay as the next smallest remaining provenance gap.
+  - Since the overlay shares the same `AgentProgress` transcript state but uses a separate render path, this was a tight follow-up that could deliver more consistency without touching backend storage or progress emission.
+- Investigation:
+  - Re-read the updated ledger entry and inspected the default/overlay branch in `apps/desktop/src/renderer/src/components/agent-progress.tsx`.
+  - Confirmed the overlay path still rendered only the active `displayItems` transcript and had no access to the existing `Show Full History` affordance even after the new lazy hydration logic was added for tiles.
+  - Confirmed the shared component state already had everything needed for an overlay slice: hydrated `fullHistoryDisplayItems`, summary counts, compaction metadata, divider index, and the `showFullHistory` toggle state.
+- Important assumptions:
+  - Assumption: matching the tile provenance affordance in the overlay is acceptable even if the exact visual layout is not pixel-identical.
+  - Why acceptable: the issue’s requirement is functional clarity and access to preserved history; reusing the same labels, warnings, and boundary copy across both live surfaces reduces user confusion and keeps the slice reviewable.
+- Changes implemented:
+  - Expanded the shared preserved-history gating in `apps/desktop/src/renderer/src/components/agent-progress.tsx` so both `tile` and `overlay` variants can lazily hydrate disk-backed history when summarized blocks are present.
+  - Added the same history banner / loading / retry / legacy-warning treatment to the overlay transcript surface.
+  - Enabled the overlay chat view to switch between the active context transcript and the hydrated full-history transcript, including the existing `Active context window starts here.` divider.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with an additional regression assertion covering the overlay full-history path.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Known blocker carried forward: desktop web typecheck remains unavailable in this worktree because `@electron-toolkit/tsconfig/tsconfig.web.json` is missing, so no new typecheck signal was available for this follow-up either.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether default/non-overlay desktop progress surfaces should expose the same preserved-history affordance, or whether tile + overlay now sufficiently cover live-session UX.
+  - Consider deduplicating the banner rendering if more history-aware surfaces are added later, but avoid abstraction churn unless a third consumer appears.
+  - Re-run desktop web typecheck once the missing `@electron-toolkit/tsconfig` dependency/config issue in this worktree is resolved.
+
+- Next recommended issue work item: either wrap up `#58` with any final polish only if a concrete UX gap remains after manual desktop review, or pivot to a fresh issue with a clearer new repro path.

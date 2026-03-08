@@ -2729,8 +2729,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [visibleConversationHistory],
   )
 
+  const supportsStoredHistoryViewer = variant === "tile" || variant === "overlay"
+
   const shouldHydrateStoredHistory =
-    variant === "tile" &&
+    supportsStoredHistoryViewer &&
     !!progress.conversationId &&
     summaryBlockCount > 0 &&
     !(fullConversationHistory?.length)
@@ -2823,7 +2825,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isHydratingStoredHistory ||
     hasStoredHistoryLoadError
 
-  const isShowingStoredFullHistory = variant === "tile" && showFullHistory && hasStoredEarlierHistory
+  const isShowingStoredFullHistory =
+    supportsStoredHistoryViewer && showFullHistory && hasStoredEarlierHistory
 
   const fallbackRespondToUserResponses = useMemo(
     () => (progress.userResponse ? [] : extractRespondToUserResponsesFromMessages(messages)),
@@ -3737,6 +3740,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }
 
   // Default/Overlay variant rendering
+  const overlayTranscriptHasContent = isShowingStoredFullHistory
+    ? fullHistoryDisplayItems.length > 0
+    : displayItems.length > 0
+
   return (
     <div
       className={cn(containerClasses, "min-h-0", className)}
@@ -3883,15 +3890,94 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       {/* Message Stream - Left-aligned content (Chat Tab) */}
       <div className={cn("relative flex-1 min-h-0", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
+        {variant === "overlay" && shouldShowStoredHistoryBanner && (
+          <div className="border-b border-border/40 bg-muted/20 px-3 py-2">
+            {hasStoredEarlierHistory ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                  <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[10px] uppercase tracking-wide">
+                    History
+                  </Badge>
+                  <span className="min-w-0 truncate">
+                    {isShowingStoredFullHistory
+                      ? `Showing ${storedHistoryMessageCount ?? representedHistoryMessageCount} stored messages from disk.`
+                      : summaryBlockCount > 0
+                        ? `${hiddenEarlierHistoryCount} earlier message${hiddenEarlierHistoryCount === 1 ? "" : "s"} currently represented by ${summaryBlockCount} summary block${summaryBlockCount === 1 ? "" : "s"} in the active context.`
+                        : `${hiddenEarlierHistoryCount} earlier message${hiddenEarlierHistoryCount === 1 ? "" : "s"} summarized out of the active context.`}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setShowFullHistory((current) => !current)}
+                >
+                  {isShowingStoredFullHistory ? "Show Active Window" : "Show Full History"}
+                </Button>
+              </div>
+            ) : hasLegacyPartialHistoryWarning ? (
+              <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>Earlier summarized history is unavailable for this legacy session.</span>
+              </div>
+            ) : isHydratingStoredHistory ? (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+                <span>Checking for preserved full history on disk…</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-amber-700 dark:text-amber-300">
+                <div className="flex min-w-0 items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Couldn&apos;t load preserved full history from disk.</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => {
+                    void storedConversationQuery.refetch()
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className="h-full overflow-y-auto"
         >
-          {displayItems.length > 0 ? (
+          {overlayTranscriptHasContent ? (
             <div className="space-y-1 p-2">
-              {renderedTimestampedDisplayItems}
-              {renderedCurrentStateDisplayItems}
+              {isShowingStoredFullHistory ? (
+                <>
+                  <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                    Showing full history from disk. {hiddenEarlierHistoryCount > 0 && summaryBlockCount > 0
+                      ? `${hiddenEarlierHistoryCount} earlier stored message${hiddenEarlierHistoryCount === 1 ? "" : "s"} ${hiddenEarlierHistoryCount === 1 ? "is" : "are"} currently represented by ${summaryBlockCount} summary block${summaryBlockCount === 1 ? "" : "s"} in the active LLM context.`
+                      : "Messages above the divider may be summarized out of the current LLM context."}
+                  </div>
+                  {fullHistoryDisplayItems.map((item, index) => (
+                    <React.Fragment key={item.id}>
+                      {fullHistoryBoundaryIndex !== null && index === fullHistoryBoundaryIndex && (
+                        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-300">
+                          Active context window starts here.
+                        </div>
+                      )}
+                      {renderDisplayItem(item, index, variant)}
+                    </React.Fragment>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {renderedTimestampedDisplayItems}
+                  {renderedCurrentStateDisplayItems}
+                </>
+              )}
             </div>
           ) : (
             <div className="flex h-full items-center justify-center">
