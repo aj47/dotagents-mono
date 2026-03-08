@@ -5595,3 +5595,52 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new run CTA is comfortably tappable, aligned, and clearly distinguishable from the delete action on a narrow screen.
   - Capture screenshot-backed evidence of both idle and pending loop rows so the `play-outline + Run now` treatment can be judged against the `Running…` busy state for width churn.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this run-CTA polish without fresh evidence.
+
+## Iteration 126 - Clamp failed queue error details so blocked rows stay scannable on mobile
+
+- Date: 2026-03-08
+- Summary: Improved blocked-queue readability on mobile by truncating long failed-row error details by default in `MessageQueuePanel` while still revealing the full error when the row is expanded.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent queue-header, queue-gutter, and loop-action changes without a fresh local issue.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx` and `apps/mobile/tests/message-queue-panel-mobile.test.js` because the queue panel remains an active sub-agent activity surface and still lacked a compact treatment for long failure text.
+  - Confirmed the ledger already covered failed-row wording, row actions, edit-state failure context, and history-lock notes, but had not yet addressed unclamped inline error text in the default row view.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed hierarchy review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Source review showed failed queued rows rendered `Error: ...` inline with no `numberOfLines` clamp.
+  - The same component already treated edit-mode failure context more conservatively with a two-line `Last error: ...` clamp.
+  - On a narrow mobile queue row, a long backend error could therefore dominate the blocked row, push the actual queued message farther down the card, and make the retry/remove controls feel less visually anchored.
+- Issue identified:
+  - Failed queued rows exposed too much secondary failure detail by default, weakening mobile scanability and information hierarchy in the sub-agent activity panel.
+- Decision and rationale:
+  - Keep the existing queue row layout, failed-row copy, retry/remove actions, and edit-state behavior unchanged.
+  - Do not redesign the blocked-row presentation or add a separate error disclosure while live validation is blocked.
+  - Make the smallest local hierarchy fix instead: clamp inline failure text to two lines by default, reuse the existing row expander to reveal the full details, and broaden that expander so long errors remain fully reachable even when the queued message text itself is short.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - treat a row as expandable when either the queued message text or the failure text is long,
+    - clamp inline `Error: ...` text to two lines with tail truncation when collapsed,
+    - reveal the full error detail when the row is expanded,
+    - update the expand/collapse hint from `full queued message text` to `full queued message details` so the semantics match the broader content.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new failed-row error clamp and the widened `hasExpandableDetails` expander condition.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+  - Expo Web / simulator re-validation ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed users primarily need to notice that a queued row failed and what action to take before they need every character of the backend error on-screen at once.
+  - Reused the existing `More` / `Less` disclosure instead of adding a second failure-specific expander, which keeps the row controls stable on narrow screens.
+  - This remains a source-backed improvement and still needs live confirmation that the clamped error text plus expanded full-detail state feel balanced on a real narrow viewport.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that row actions, header summaries, responsive sizing, and failed-row detail density have all evolved without fresh Expo confirmation in this worktree.
+  - A live pass is still needed to confirm the shared `More` disclosure stays discoverable when it appears because of a long error instead of a long queued message body.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that failed queued rows now keep the queued message, failure reason, and retry/remove controls in a better visual balance on a narrow screen.
+  - Capture screenshot-backed evidence of a short failed queued message with a long backend error so the new two-line clamp and expanded full-detail state can be judged in context.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this failed-row hierarchy tweak without fresh evidence.

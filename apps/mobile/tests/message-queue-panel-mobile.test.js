@@ -91,10 +91,18 @@ test('explains when a queued row is already in chat history and therefore not ed
 
 test('gives the queued-message expander disclosure semantics with a mobile touch target', () => {
   assert.match(queuePanelSource, /const expandButtonTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(queuePanelSource, /const hasLongErrorMessage = Boolean\(message\.errorMessage && message\.errorMessage\.length > 100\);/);
+  assert.match(queuePanelSource, /const hasExpandableDetails = isLongMessage \|\| hasLongErrorMessage;/);
   assert.match(queuePanelSource, /expandButton:\s*\{[\s\S]*?\.\.\.expandButtonTouchTarget[\s\S]*?borderRadius:\s*999/);
+  assert.match(queuePanelSource, /\{hasExpandableDetails && \([\s\S]*?<TouchableOpacity[\s\S]*?style=\{styles\.expandButton\}/);
   assert.match(queuePanelSource, /createExpandCollapseAccessibilityLabel\(`queued message details for \$\{queuedMessageAccessibilityContext\}`, isExpanded\)/);
-  assert.match(queuePanelSource, /accessibilityHint="Shows or hides the full queued message text\."/);
+  assert.match(queuePanelSource, /accessibilityHint="Shows or hides the full queued message details\."/);
   assert.match(queuePanelSource, /accessibilityState=\{\{ expanded: isExpanded \}\}/);
+});
+
+test('keeps failed queue error details compact by default while preserving full access when expanded', () => {
+  assert.match(queuePanelSource, /errorText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?lineHeight:\s*16,[\s\S]*?color:\s*`\$\{theme\.colors\.destructive\}CC`,[\s\S]*?marginTop:\s*4/);
+  assert.match(queuePanelSource, /\{isFailed && message\.errorMessage && \([\s\S]*?<Text[\s\S]*?style=\{styles\.errorText\}[\s\S]*?numberOfLines=\{isExpanded \? undefined : 2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?>[\s\S]*?Error: \{message\.errorMessage\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
 });
 
 test('gives queued-message edit actions mobile-sized targets and explicit save/cancel semantics', () => {

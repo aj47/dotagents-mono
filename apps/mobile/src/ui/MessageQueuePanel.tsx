@@ -113,6 +113,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   };
 
   const isLongMessage = message.text.length > 100;
+  const hasLongErrorMessage = Boolean(message.errorMessage && message.errorMessage.length > 100);
+  const hasExpandableDetails = isLongMessage || hasLongErrorMessage;
   const isFailed = message.status === 'failed';
   const isProcessing = message.status === 'processing';
   const isAddedToHistory = message.addedToHistory === true;
@@ -172,6 +174,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     },
     errorText: {
       fontSize: 12,
+      lineHeight: 16,
       color: `${theme.colors.destructive}CC`,
       marginTop: 4,
     },
@@ -393,7 +396,13 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             {message.text}
           </Text>
           {isFailed && message.errorMessage && (
-            <Text style={styles.errorText}>Error: {message.errorMessage}</Text>
+            <Text
+              style={styles.errorText}
+              numberOfLines={isExpanded ? undefined : 2}
+              ellipsizeMode="tail"
+            >
+              Error: {message.errorMessage}
+            </Text>
           )}
           {historyLockDetailText && (
             <Text
@@ -409,13 +418,13 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             <Text style={styles.metaText}>
               {queueMetaText}
             </Text>
-            {isLongMessage && (
+            {hasExpandableDetails && (
               <TouchableOpacity
                 style={styles.expandButton}
                 onPress={() => setIsExpanded(!isExpanded)}
                 accessibilityRole="button"
                 accessibilityLabel={createExpandCollapseAccessibilityLabel(`queued message details for ${queuedMessageAccessibilityContext}`, isExpanded)}
-                accessibilityHint="Shows or hides the full queued message text."
+                accessibilityHint="Shows or hides the full queued message details."
                 accessibilityState={{ expanded: isExpanded }}
                 activeOpacity={0.7}
               >
