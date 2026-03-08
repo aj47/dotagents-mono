@@ -1,5 +1,55 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 70: Desktop providers page let its top-level settings cards expand off the right edge under narrow widths + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-providers.tsx` (`Settings → Models` / providers page shell, especially the top-level `Provider Selection` stack)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched WhatsApp, General accordion, sidebar sessions, `agent-progress`, Past Sessions, and recent mobile surfaces.
+  - A reusable live Electron renderer was available on `http://localhost:5174/settings/providers`, making this a better evidence-backed pass than another source-only guess.
+  - The recent providers work had focused on narrower sub-surfaces (preset manager/header chrome), leaving the page-level container behavior under stressed width/text scaling as a fresh follow-up.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `visible-ui.md`, and mobile workflow guidance before choosing the next area
+  - used live browser inspection against the running Electron renderer at `http://localhost:5174/settings/providers`
+  - stress-tested the page at `620×670` with larger root text (`24px`), captured screenshot-backed evidence in `tmp/ui-audit/settings-providers-grid-overflow-before-620x670-root24.png`, and measured the mounted providers stack directly in the DOM before editing source
+  - inspected the DOM ancestor chain and confirmed the overflow originated inside the page’s top-level providers stack rather than the outer app shell alone
+  - prototyped an explicit single-column/shrink-safe layout directly in the mounted DOM and captured `tmp/ui-audit/settings-providers-grid-overflow-prototype-620x670-root24.png`
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SettingsScreen.tsx` uses a separate native provider/settings layout instead of this desktop page shell
+
+#### Findings
+
+- Before the fix, the desktop providers page had one concrete narrow-width/layout issue with clear user impact:
+  - in live inspection at `620×670` with `24px` root text, the top-level providers stack only had about `320px` of available width inside the settings lane, but its first card still expanded to about `528px`
+  - the representative `Provider Selection` card’s right edge measured about `766px` inside a `620px` viewport, so a meaningful chunk of the card was mounted off-screen to the right
+  - the root cause was the page’s bare `div.grid.gap-4`: with no explicit column contract, the implicit grid tracked to max-content width instead of honoring the actual content lane under stress
+  - practical impact: key provider-selection controls can become partially clipped or force awkward horizontal pressure exactly when users narrow the desktop window or increase text size to make settings easier to read
+
+#### Changes made
+
+- Hardened only the top-level desktop providers stack in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` with the smallest effective layout fix:
+  - changed the page wrapper from `grid gap-4` to `grid grid-cols-1 gap-4 min-w-0`
+  - this gives the page an explicit single-column contract and a shrink-safe width floor so each settings card sizes to the real content lane instead of its max-content width
+- Extended `apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts` with focused source-contract coverage for the new single-column, shrink-safe providers stack
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-providers.layout.test.ts` *(blocked: the app pretest runs `build:shared`, but this worktree still has no local dependencies / `node_modules`; `tsup` was not found and `vitest` could not run)*
+- Dependency-free source-contract verification: `node -e "..."` confirmed the new `grid grid-cols-1 gap-4 min-w-0` contract is present in `settings-providers.tsx` and the focused regression test is present in `settings-providers.layout.test.ts` ✅
+- Live desktop evidence before the fix at `http://localhost:5174/settings/providers`:
+  - screenshot: `tmp/ui-audit/settings-providers-grid-overflow-before-620x670-root24.png`
+  - DOM measurement: providers stack width about `320px`, scroll width about `528px`; first card width about `528px`; first card right edge about `766px` in a `620px` viewport
+- Live DOM prototype verification of the intended fix:
+  - after applying the same single-column/shrink-safe treatment directly in the mounted DOM, the same first card collapsed from about `528px` wide to about `320px`, and its right edge moved from about `766px` to about `558px`, back inside the viewport
+  - screenshot: `tmp/ui-audit/settings-providers-grid-overflow-prototype-620x670-root24.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-providers.tsx apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I treated the live renderer as pre-fix evidence plus DOM prototyping rather than claiming a rebuilt post-edit product confirmation from this worktree.
+- Mobile cross-check: no parallel mobile code change was needed because the mobile app’s `SettingsScreen` uses a separate native settings layout rather than this desktop providers-page shell.
+- Tradeoff/rationale: this page now commits to a single shrink-safe column sooner, which may preserve more vertical stacking under stressed widths, but that is a safer tradeoff than letting whole provider cards mount partially off-screen.
+- Best next UI audit chunk after this one: move to another fresh live-inspectable surface instead of revisiting providers again immediately; strong candidates are an unreviewed loading/error state, a pending-approval/session state on desktop root, or a mobile screen once a live Expo path is practical.
+
 ### 2026-03-08 — Chunk 69: Desktop WhatsApp connection card used a fixed QR footprint and awkward wrapped actions under narrow settings widths
 
 - Area selected:

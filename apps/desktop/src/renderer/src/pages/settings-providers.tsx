@@ -950,7 +950,7 @@ export function Component() {
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
 
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4 min-w-0">
         {/* Provider Selection with clear visual hierarchy */}
         <ControlGroup title="Provider Selection">
           <div className="px-3 py-2 bg-muted/30 border-b">

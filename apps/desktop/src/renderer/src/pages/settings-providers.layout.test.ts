@@ -7,6 +7,10 @@ const settingsProvidersSource = readFileSync(
 )
 
 describe("settings providers page layout", () => {
+  it("keeps the top-level provider sections in a single shrink-safe column", () => {
+    expect(settingsProvidersSource).toContain('className="grid grid-cols-1 gap-4 min-w-0"')
+  })
+
   it("wraps provider section headers and active-usage badges safely", () => {
     const headerRowMatches = settingsProvidersSource.match(
       /className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted\/30"/g,
