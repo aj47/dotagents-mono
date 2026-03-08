@@ -1225,27 +1225,31 @@ export function Component() {
               </Control>
 
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
-                <Input
-                  type="text"
-                  value={configQuery.data?.langfuseBaseUrl ?? ""}
-                  onChange={(e) => saveConfig({ langfuseBaseUrl: e.currentTarget.value || undefined })}
-                  placeholder="https://cloud.langfuse.com (default)"
-                  className="w-full sm:w-[360px] max-w-full min-w-0"
-                />
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Use this for self-hosted Langfuse instances. Leave empty for Langfuse Cloud.
+                <div className="flex w-full min-w-0 flex-col items-start gap-1 sm:max-w-[360px]">
+                  <Input
+                    type="text"
+                    value={configQuery.data?.langfuseBaseUrl ?? ""}
+                    onChange={(e) => saveConfig({ langfuseBaseUrl: e.currentTarget.value || undefined })}
+                    placeholder="https://cloud.langfuse.com (default)"
+                    className="w-full min-w-0"
+                  />
+                  <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                    Use this for self-hosted Langfuse instances. Leave empty for Langfuse Cloud.
+                  </div>
                 </div>
               </Control>
 
               {/* Status indicator */}
               {configQuery.data?.langfusePublicKey && configQuery.data?.langfuseSecretKey && (
                 <Control label="Status" className="px-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400">Configured</span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Traces will be sent to Langfuse for each agent session.
+                  <div className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                      <span className="text-sm text-green-600 dark:text-green-400">Configured</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                      Traces will be sent to Langfuse for each agent session.
+                    </div>
                   </div>
                 </Control>
               )}

@@ -1,5 +1,45 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 37: Desktop Langfuse helper/status rows in settings-general under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-general.tsx` (`Langfuse Observability` subsection)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the recently touched provider/MCP/loop/setup surfaces and chose a fresh settings subsection instead. The Langfuse rows were still under-reviewed, and they had a compact helper/status pattern that depended on the shared `Control` layout in a way that looked brittle once the settings column narrows or font zoom increases.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating the most recent settings work
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - checked runtime readiness again before choosing the area: root, desktop, and mobile `node_modules` are still absent, so live Electron and Expo inspection are not practical in this worktree right now
+  - inspected the shared desktop settings row contract in `apps/desktop/src/renderer/src/components/ui/control.tsx`, then inspected the Langfuse `Base URL` and `Status` rows in `settings-general.tsx` with narrow settings-column constraints and zoom pressure in mind
+  - cross-checked the mobile settings surfaces (`apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`) and found no direct mobile equivalent for this desktop-only Langfuse configuration UI
+
+#### Findings
+
+- Before the fix, the Langfuse subsection still had one concrete desktop layout issue with clear user impact:
+  - the `Base URL` control passed both the input and its helper copy directly into the shared `Control` value slot, even though that slot is a horizontal flex row
+  - the `Status` control did the same with the green configured badge row plus the follow-up explanation text
+  - under narrower settings widths or larger font zoom, the explanatory text had to compete horizontally with the primary control chrome instead of stacking beneath it intentionally, making the guidance feel cramped and easier to miss
+
+#### Changes made
+
+- Hardened the Langfuse subsection in `apps/desktop/src/renderer/src/pages/settings-general.tsx` with a small, local layout fix:
+  - wrapped the `Base URL` input and helper copy in a `min-w-0` vertical container capped to the existing 360px field width so the helper text now sits beneath the input instead of beside it
+  - wrapped the `Status` badge row and explanation in a matching vertical container, and made the badge row `flex-wrap` safe so the state label keeps a deliberate narrow-width fallback
+  - made both helper/explanatory text blocks explicitly wrap-safe with `break-words` / `[overflow-wrap:anywhere]`
+- Added `apps/desktop/src/renderer/src/pages/settings-general.layout.test.ts` so this Langfuse row contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/settings-general.tsx` confirmed the new stacked Langfuse container and wrap-safe text classes are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-general.tsx apps/desktop/src/renderer/src/pages/settings-general.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- This chunk is desktop-only: there is no matching mobile Langfuse configuration screen using the same shared `Control` row layout, so no parallel mobile code change was needed.
+- Tradeoff/rationale: kept the Langfuse information architecture intact instead of redesigning observability settings; the fix only restores the expected vertical relationship between the primary control and its supporting guidance.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect the Langfuse subsection with tracing enabled, a custom base URL, and increased font zoom.
+- Best next UI audit chunk after this one: stay in `settings-general.tsx` for the shortcuts toggle/select rows and disabled-state helper copy, or move to another fresh desktop surface once runtime dependencies are available for live confirmation.
+
 ### 2026-03-08 — Chunk 36: Desktop provider accordion headers and active-usage badges under narrow settings widths and zoom
 
 - Area selected:
