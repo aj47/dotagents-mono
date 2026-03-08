@@ -3636,3 +3636,41 @@
   - Only after that decision should the repo add a new provider type to shared constants/config/runtime paths.
 
 - Next recommended issue work item: return to bug-first or trust/UX work on the already-concrete website/desktop issues unless new evidence lands for `#54`; if `#54` is revisited, start with an architecture note or spec decision rather than code.
+
+##### Issue #58 — Full-history view now labels the preserved earlier section before the active-window divider
+
+- Selection rationale:
+  - After the `#54` blocker note, re-read `issue-work.md` again and looked for the next smallest user-facing slice among still-open concrete issues.
+  - `#55` remained bug-first in theory, but direct Electron reproduction is still relatively setup-heavy in this worktree, while `#58` had a very clear, local follow-up available in the already-landed full-history viewer.
+  - Chose a narrow provenance improvement instead of more compaction plumbing: when users switch to stored full history, they already see the active-window divider, but the older preserved section above it still had no explicit inline label of its own.
+- Investigation:
+  - Re-read the `#58` issue framing and the current `agent-progress.tsx` full-history rendering for tile and standard/overlay variants.
+  - Confirmed the UI already showed:
+    - a compacted-history status badge,
+    - a full-history toggle,
+    - a full-history banner, and
+    - an `Active context window starts here.` divider.
+  - Confirmed the missing cue was specifically the *top* preserved section label: users could infer the meaning from the banner, but the earlier on-disk messages themselves were not explicitly bracketed as a section before the active-window divider.
+  - Checked mobile parity before editing desktop UI; the mobile app currently has chat/response surfaces but no equivalent stored full-history viewer, so no mobile change was needed for this slice.
+- Important assumptions:
+  - Assumption: adding a lightweight section label ahead of the preserved earlier messages is a valid `#58` follow-up even though the issue already had a general banner and summary badges.
+  - Why acceptable: the issue is about making summarized vs active history legible, and a dedicated divider improves that provenance signal without changing data flow or visual hierarchy broadly.
+  - Assumption: this should remain desktop-only for now.
+  - Why acceptable: there is no mobile full-history viewer surface to keep in sync yet.
+- Changes implemented:
+  - Added `fullHistoryEarlierSectionLabel` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` so full-history mode now explicitly announces when the next block of messages is preserved on disk but outside the active LLM context.
+  - Rendered the new preserved-history section label at the top of the stored earlier-message section in both tile and standard/overlay transcript variants.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` to cover the new label text and confirm the preserved-history divider is rendered in both transcript paths.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop typecheck:web` ⚠️ blocked by missing local desktop web dependencies/config base in this worktree (`@electron-toolkit/tsconfig/tsconfig.web.json` not found; pnpm also warned that local `node_modules` are missing).
+  - Chose not to install dependencies because that would change local state and requires explicit permission.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If users still need stronger provenance cues, consider visually grouping the preserved section and active context section with slightly different border treatments or count badges.
+  - When desktop dependency installation is available, add a true renderer or component-level runtime test around the full-history section dividers instead of relying only on source assertions.
+
+- Next recommended issue work item: stay bug-first if `#55` can be validated more directly in a prepared desktop environment; otherwise keep taking narrow UX/reliability slices from the remaining desktop/website issues where local source tests and targeted validation are available.

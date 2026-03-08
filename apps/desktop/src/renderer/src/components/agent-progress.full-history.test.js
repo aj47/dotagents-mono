@@ -29,8 +29,12 @@ test('tile transcript exposes a full-history toggle and legacy partial warning',
   assert.match(agentProgressSource, /currently represented by \$\{summaryBlockCount\} summary block/)
   assert.match(agentProgressSource, /Showing \$\{storedHistoryMessageCount \?\? representedHistoryMessageCount\} stored messages from disk\./)
   assert.match(agentProgressSource, /Showing full history from disk/)
+  assert.match(agentProgressSource, /The next \$\{hiddenEarlierHistoryCount\} stored message\$\{hiddenEarlierHistoryCount === 1 \? " is" : "s are"\} preserved on disk and currently outside the active LLM context\./)
   assert.match(agentProgressSource, /Active context window starts here\./)
   assert.match(agentProgressSource, /Earlier summarized history is unavailable for this legacy session\./)
+
+  const earlierSectionDividerMatches = agentProgressSource.match(/fullHistoryEarlierSectionLabel && index === 0 && \(/g) ?? []
+  assert.equal(earlierSectionDividerMatches.length, 2)
 })
 
 test('summary messages are visually distinguished inline in the active transcript', () => {

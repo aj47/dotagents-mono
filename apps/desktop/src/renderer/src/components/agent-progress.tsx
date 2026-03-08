@@ -2821,6 +2821,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     ? Math.max(0, visibleFullConversationHistory.length - activeWindowMessageCount)
     : 0
 
+  const fullHistoryEarlierSectionLabel = hiddenEarlierHistoryCount > 0
+    ? `The next ${hiddenEarlierHistoryCount} stored message${hiddenEarlierHistoryCount === 1 ? " is" : "s are"} preserved on disk and currently outside the active LLM context.`
+    : null
+
   const fullHistoryBoundaryIndex =
     hasStoredEarlierHistory && activeWindowMessageCount > 0
       ? visibleFullConversationHistory.length - activeWindowMessageCount
@@ -3682,6 +3686,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         </div>
                         {fullHistoryDisplayItems.map((item, index) => (
                           <React.Fragment key={item.id}>
+                            {fullHistoryEarlierSectionLabel && index === 0 && (
+                              <div className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[11px] text-sky-700 dark:text-sky-300">
+                                {fullHistoryEarlierSectionLabel}
+                              </div>
+                            )}
                             {fullHistoryBoundaryIndex !== null && index === fullHistoryBoundaryIndex && (
                               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-300">
                                 Active context window starts here.
@@ -4072,6 +4081,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   </div>
                   {fullHistoryDisplayItems.map((item, index) => (
                     <React.Fragment key={item.id}>
+                      {fullHistoryEarlierSectionLabel && index === 0 && (
+                        <div className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[11px] text-sky-700 dark:text-sky-300">
+                          {fullHistoryEarlierSectionLabel}
+                        </div>
+                      )}
                       {fullHistoryBoundaryIndex !== null && index === fullHistoryBoundaryIndex && (
                         <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-300">
                           Active context window starts here.
