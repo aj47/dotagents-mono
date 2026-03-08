@@ -16,7 +16,7 @@ test('repeat task deletion uses row-level confirmation and retry state instead o
   assert.match(settingsSource, /Retry delete/)
   assert.match(settingsSource, /Deleting\.\.\./)
   assert.match(settingsSource, /The task is still shown below until deletion succeeds\./)
-  assert.doesNotMatch(settingsSource, /confirm\(/)
+  assert.doesNotMatch(settingsSource, /const handleDelete = async \(loop: LoopConfig\) => \{[\s\S]*?confirm\(/)
 })
 
 test('repeat task deletion handles false delete results explicitly and disables row controls while pending', () => {

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task editor draft-loss guardrails in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with the current repeat-task editor and action wiring reviewed there, the proven dirty-draft desktop pattern cross-checked in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, focused source-level coverage added in new `tests/desktop-settings-loops-draft-guardrails.test.js`, adjacent delete guardrails tightened in `tests/desktop-settings-loops-delete-guardrails.test.js`, and targeted verification run locally via `node --test tests/desktop-settings-loops-draft-guardrails.test.js tests/desktop-settings-loops-delete-guardrails.test.js` plus `git diff --check`.
 - 2026-03-08: Desktop ACP session revival stale `respond_to_user` cleanup in `apps/desktop/src/main/acp-main-agent.ts` and new `apps/desktop/src/main/acp-user-response.ts`, with ACP conversation-history loading/progress emission reviewed in `apps/desktop/src/main/acp-main-agent.ts`, renderer reused-session handling cross-checked in `apps/desktop/src/renderer/src/stores/agent-store.ts` to confirm the sharper leak lived in ACP main-process state derivation, package-native unit coverage added in new `apps/desktop/src/main/acp-user-response.test.ts`, dependency-light source guardrails added in new `tests/desktop-acp-user-response-scope.test.js`, targeted verification run locally via `node --test tests/desktop-acp-user-response-scope.test.js` plus `git diff --check`, and package-native Vitest verification attempted via `pnpm --filter @dotagents/desktop exec vitest run src/main/acp-user-response.test.ts` *(blocked because this dependency-light worktree does not have `vitest` / desktop `node_modules` installed)*.
 - 2026-03-08: Desktop follow-up composer voice-start / stop-action failure feedback in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with the current follow-up submit/stop/voice flows reviewed in those components, desktop recording-start guidance cross-checked in `apps/desktop/src/renderer/src/pages/panel.tsx` / `tests/desktop-panel-recording-start-feedback.test.js`, mobile inline parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` / `apps/mobile/tests/chat-voice-start-feedback.test.js` / `apps/mobile/tests/chat-kill-switch-feedback.test.js`, focused source-level guardrails added in new `tests/desktop-follow-up-action-feedback.test.js`, adjacent follow-up guardrails re-run in `tests/desktop-composer-image-attachment-feedback.test.js` and `tests/desktop-overlay-follow-up-session-scope.test.js`, targeted verification run locally via `node --test tests/desktop-follow-up-action-feedback.test.js tests/desktop-composer-image-attachment-feedback.test.js tests/desktop-overlay-follow-up-session-scope.test.js` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target / `--inspect` renderer in this environment).
 - 2026-03-08: Mobile `MemoryEditScreen` draft-loss guardrails in `apps/mobile/src/screens/MemoryEditScreen.tsx`, with the proven mobile discard-confirmation patterns reviewed in `apps/mobile/src/screens/AgentEditScreen.tsx` and `apps/mobile/src/screens/LoopEditScreen.tsx`, memory edit entry wiring cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, memory create/update shapes rechecked in `apps/mobile/src/lib/settingsApi.ts`, focused source-level coverage added in new `apps/mobile/tests/memory-edit-discard-guardrails.test.js`, targeted verification run locally via `node --test apps/mobile/tests/memory-edit-discard-guardrails.test.js apps/mobile/tests/settings-memory-actions-mobile.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
@@ -3337,6 +3338,28 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - when desktop dependencies are available again, run the new `apps/desktop/src/main/acp-user-response.test.ts` package-native unit test under Vitest for stronger behavioral coverage
   - live-reproduce an interrupted ACP follow-up / queued-send recovery flow in an inspectable desktop runtime to confirm stale `respond_to_user` bubbles no longer reappear after session reuse
+
+### 2026-03-08 — Desktop repeat-task editor draft-loss guardrails
+- Area / screen / subsystem:
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+- Why it was chosen:
+  - after the ACP session-lifecycle pass, `improve-app.md` still listed agent/task-management flows as open territory, and the desktop repeat-task editor was a clear trust gap: users could type a task draft, then lose it by hitting `Cancel` or starting a new task without any warning.
+- What was inspected:
+  - ledger history in `improve-app.md` to avoid overlapping with the freshly completed ACP/session-lifecycle work
+  - current repeat-task create/edit flow in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - the proven desktop dirty-draft guardrail pattern in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - adjacent repeat-task delete guardrails in `tests/desktop-settings-loops-delete-guardrails.test.js` to keep the new draft confirmation from weakening existing delete protections
+- Improvement made:
+  - added a loop-draft baseline plus explicit dirty-state detection so the repeat-task editor can tell when users have unsaved changes
+  - added confirmation before canceling a dirty draft, starting a new task over an in-progress draft, or replacing the current draft with another task edit target
+  - added a compact inline unsaved-changes reminder inside the editor so the risk is visible before a dismiss/replace action happens
+  - assumptions / tradeoffs: this pass keeps the fix local to the repeat-task editor instead of introducing a shared editor abstraction, uses the repo’s existing desktop `confirm(...)` pattern for consistency with adjacent settings editors, and prioritizes preventing silent draft loss over broader task-editor redesign
+- Tests / verification:
+  - `node --test tests/desktop-settings-loops-draft-guardrails.test.js tests/desktop-settings-loops-delete-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - live-validate the repeat-task draft confirmation flow once an inspectable desktop runtime is available, especially the header `Add Task` action while a dirty draft is open
+  - continue the agent/task-management sweep for any remaining desktop settings editors that still replace local drafts without a confirmation step
 
 ### Iteration Template
 - Date:

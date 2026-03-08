@@ -108,9 +108,35 @@ function getLoopMutationErrorMessage(error: unknown, fallback: string): string {
   return /[.!?]$/.test(message) ? message : `${message}.`
 }
 
+function cloneEditingLoop(loop: EditingLoop): EditingLoop {
+  return { ...loop }
+}
+
+function toEditingLoop(loop: LoopConfig): EditingLoop {
+  return {
+    id: loop.id,
+    name: loop.name,
+    prompt: loop.prompt,
+    intervalMinutes: loop.intervalMinutes,
+    enabled: loop.enabled,
+    runOnStartup: loop.runOnStartup ?? false,
+  }
+}
+
+function hasLoopDraftChanges(editing: EditingLoop | null, baseline: EditingLoop | null): boolean {
+  if (!editing || !baseline) return false
+
+  return editing.name !== baseline.name
+    || editing.prompt !== baseline.prompt
+    || editing.intervalMinutes !== baseline.intervalMinutes
+    || editing.enabled !== baseline.enabled
+    || editing.runOnStartup !== baseline.runOnStartup
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
+  const [editingBaseline, setEditingBaseline] = useState<EditingLoop | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -175,32 +201,51 @@ export function SettingsLoops() {
     }))
   }
 
+  const closeEditor = () => {
+    setEditing(null)
+    setEditingBaseline(null)
+    setIsCreating(false)
+  }
+
+  const isEditingDirty = hasLoopDraftChanges(editing, editingBaseline)
+  const editingLabel = editingBaseline?.name.trim() || editing?.name.trim() || "this task"
+
   const handleCreate = () => {
+    if (isEditingDirty && !confirm("Start a new task and replace your current draft? Your unsaved changes will be overwritten.")) {
+      return
+    }
+
     setDeleteConfirmId(null)
     setDeleteErrorById({})
     setIsCreating(true)
-    setEditing({ ...emptyLoop })
+    const nextEditing = cloneEditingLoop(emptyLoop)
+    setEditing(nextEditing)
+    setEditingBaseline(cloneEditingLoop(nextEditing))
   }
 
   const handleCancel = () => {
+    if (isEditingDirty && !confirm(isCreating
+      ? "Discard this new task draft? Your unsaved changes will be lost."
+      : `Discard your changes to \"${editingLabel}\"? Your unsaved edits will be lost.`)) {
+      return
+    }
+
     setDeleteConfirmId(null)
     setDeleteErrorById({})
-    setEditing(null)
-    setIsCreating(false)
+    closeEditor()
   }
 
   const handleEdit = (loop: LoopConfig) => {
+    if (isEditingDirty && !confirm(`Discard your current draft and edit \"${loop.name}\" instead? Your unsaved changes will be overwritten.`)) {
+      return
+    }
+
     setDeleteConfirmId(null)
     setDeleteErrorById({})
     setIsCreating(false)
-    setEditing({
-      id: loop.id,
-      name: loop.name,
-      prompt: loop.prompt,
-      intervalMinutes: loop.intervalMinutes,
-      enabled: loop.enabled,
-      runOnStartup: loop.runOnStartup ?? false,
-    })
+    const nextEditing = toEditingLoop(loop)
+    setEditing(nextEditing)
+    setEditingBaseline(cloneEditingLoop(nextEditing))
   }
 
   const handleDelete = async (loop: LoopConfig) => {
@@ -259,8 +304,7 @@ export function SettingsLoops() {
     try {
       await tipcClient.saveLoop({ loop: loopData })
       queryClient.invalidateQueries({ queryKey: ["loops"] })
-      setEditing(null)
-      setIsCreating(false)
+      closeEditor()
       toast.success(isCreating ? "Task created" : "Task updated")
 
       // Start/stop loop based on enabled state
@@ -732,6 +776,11 @@ export function SettingsLoops() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {isEditingDirty && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+              You have unsaved changes. Save before leaving or replacing this task draft.
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input
