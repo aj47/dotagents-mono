@@ -27,3 +27,22 @@ test('past sessions clear-all failures stay inline inside the destructive confir
   assert.match(source, /Couldn't delete your past sessions yet\. Your history is still available, so you can try again\./);
   assert.match(source, /\{deleteAllErrorMessage && \(/);
 });
+
+test('past sessions distinguish blocking load failures from refresh failures and keep retry local', () => {
+  assert.match(source, /const isLoadingPastSessions = conversationHistoryQuery\.isLoading && !conversationHistoryQuery\.data/);
+  assert.match(source, /const hasPastSessionsLoadError = conversationHistoryQuery\.isError && !conversationHistoryQuery\.data/);
+  assert.match(source, /const hasPastSessionsRefreshError = conversationHistoryQuery\.isError && allPastSessions\.length > 0/);
+  assert.match(source, /Past sessions couldn&apos;t refresh/);
+  assert.match(source, /titles and previews may be stale until refresh succeeds\./);
+  assert.match(source, /Couldn&apos;t load past sessions/);
+  assert.match(source, /void conversationHistoryQuery\.refetch\(\)/);
+  assert.ok((source.match(/Retry loading/g) || []).length >= 2);
+});
+
+test('past sessions search empty state explains there are no matches and offers clear search', () => {
+  assert.match(source, /const trimmedSearchQuery = searchQuery\.trim\(\)/);
+  assert.match(source, /const hasSearchQuery = trimmedSearchQuery\.length > 0/);
+  assert.match(source, /No sessions match/);
+  assert.match(source, /Clear search/);
+  assert.match(source, /onClick=\{\(\) => setSearchQuery\(""\)\}/);
+});

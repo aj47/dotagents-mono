@@ -41,6 +41,16 @@ function formatTimestamp(timestamp: number): string {
   return date.format("MMM D")
 }
 
+function getConversationHistoryQueryErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+  return "The latest refresh did not finish, so past sessions may be temporarily out of date."
+}
+
 export function PastSessionsDialog({
   open,
   onOpenChange,
@@ -77,16 +87,22 @@ export function PastSessionsDialog({
     setPastSessionsCount(INITIAL_PAST_SESSIONS)
   }, [open, searchQuery])
 
+  const allPastSessions = conversationHistoryQuery.data ?? []
+  const trimmedSearchQuery = searchQuery.trim()
+  const hasSearchQuery = trimmedSearchQuery.length > 0
+  const isLoadingPastSessions = conversationHistoryQuery.isLoading && !conversationHistoryQuery.data
+  const hasPastSessionsLoadError = conversationHistoryQuery.isError && !conversationHistoryQuery.data
+  const hasPastSessionsRefreshError = conversationHistoryQuery.isError && allPastSessions.length > 0
+
   const filteredPastSessions = useMemo(() => {
-    const all = conversationHistoryQuery.data ?? []
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return all
-    return all.filter(
+    const q = trimmedSearchQuery.toLowerCase()
+    if (!q) return allPastSessions
+    return allPastSessions.filter(
       (session) =>
         session.title.toLowerCase().includes(q) ||
         session.preview.toLowerCase().includes(q),
     )
-  }, [conversationHistoryQuery.data, searchQuery])
+  }, [allPastSessions, trimmedSearchQuery])
 
   const visiblePastSessions = useMemo(
     () => filteredPastSessions.slice(0, pastSessionsCount),
@@ -148,6 +164,12 @@ export function PastSessionsDialog({
         "Couldn't delete your past sessions yet. Your history is still available, so you can try again.",
       )
     }
+  }
+
+  const handleRetryLoadPastSessions = () => {
+    setDeleteSessionError(null)
+    setDeleteAllErrorMessage(null)
+    void conversationHistoryQuery.refetch()
   }
 
   return (
@@ -265,20 +287,89 @@ export function PastSessionsDialog({
             </div>
           )}
 
-          <div className="max-h-[50vh] sm:max-h-[60vh] space-y-1 overflow-y-auto pr-1">
-            {conversationHistoryQuery.isLoading ? (
-              <div className="text-muted-foreground flex items-center gap-2 px-2 py-2 text-xs">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Loading sessions...</span>
+          {hasPastSessionsRefreshError && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 space-y-2" role="alert">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Past sessions couldn&apos;t refresh</p>
+                  <p className="text-xs text-muted-foreground">
+                    The last loaded sessions are still shown below, but titles and previews may be stale until refresh succeeds.
+                  </p>
+                  <p className="break-words text-xs text-amber-700 dark:text-amber-300">
+                    {getConversationHistoryQueryErrorMessage(conversationHistoryQuery.error)}
+                  </p>
+                </div>
               </div>
-            ) : conversationHistoryQuery.isError ? (
-              <p className="text-destructive px-2 py-2 text-xs">
-                Failed to load sessions
-              </p>
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleRetryLoadPastSessions}
+                  disabled={conversationHistoryQuery.isFetching}
+                >
+                  Retry loading
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="max-h-[50vh] sm:max-h-[60vh] space-y-1 overflow-y-auto pr-1">
+            {isLoadingPastSessions ? (
+              <div className="flex flex-col items-center justify-center gap-2 px-3 py-6 text-center">
+                <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Loading past sessions...</span>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Checking your saved conversation history.
+                </p>
+              </div>
+            ) : hasPastSessionsLoadError ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-3" role="alert">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">Couldn&apos;t load past sessions</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your saved history is still on disk, but this dialog can&apos;t list it until loading succeeds.
+                      </p>
+                      <p className="break-words text-xs text-destructive">
+                        {getConversationHistoryQueryErrorMessage(conversationHistoryQuery.error)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleRetryLoadPastSessions}
+                      disabled={conversationHistoryQuery.isFetching}
+                    >
+                      Retry loading
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : visiblePastSessions.length === 0 ? (
-              <p className="text-muted-foreground px-2 py-2 text-xs">
-                No past sessions
-              </p>
+              <div className="flex flex-col items-center justify-center gap-2 px-3 py-6 text-center">
+                <p className="text-muted-foreground text-xs">
+                  {hasSearchQuery
+                    ? `No sessions match "${trimmedSearchQuery}".`
+                    : "No past sessions yet."}
+                </p>
+                {hasSearchQuery && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                )}
+              </div>
             ) : (
               <>
                 {visiblePastSessions.map((session) => (
