@@ -1038,3 +1038,35 @@
   - Consider whether compacted-history badges should expose a richer tooltip/popover if users need more detail than the current concise titles.
 
 - Next recommended issue work item: either continue `#58` with sidebar history provenance parity, or pivot back to `#25` / another fresh issue if a tighter locally verifiable trust or UX slice is available.
+
+##### Issue #58 — Active agents sidebar provenance badge parity
+
+- Selection rationale:
+  - The most concrete remaining `#58` inconsistency after the recent Sessions-page and Past Sessions provenance work was the desktop active-agents sidebar, which still listed past sessions without showing whether history was compacted or partially unrecoverable.
+  - This was a small, user-facing trust slice with a clear local renderer implementation path.
+- Investigation:
+  - Re-read issue `#58` and its scope-locking comment to confirm that visually differentiating summarized/partial history is still part of the intended UX acceptance.
+  - Inspected `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` and confirmed past sidebar rows only rendered archive icon + title, using a narrowed local `ConversationHistoryItem` shape that dropped `compaction` metadata entirely.
+  - Confirmed the sidebar prioritizes `recentSessions` runtime rows ahead of persisted history rows, which meant even conversations with stored compaction metadata could lose provenance badges when a recent runtime row with the same `conversationId` won deduplication.
+  - Reused the existing shared badge contract in `apps/desktop/src/renderer/src/lib/conversation-history-badges.ts` rather than introducing another renderer-specific mapping.
+- Important assumptions:
+  - Assumption: extending provenance badges to the desktop active-agents sidebar is a valid standalone `#58` slice even though mobile session lists still do not show the same history-state badges.
+  - Why acceptable: the issue and nearby landed work are centered on desktop conversation-history affordances, and the mobile app has a different session-list surface rather than an equivalent active-agents sidebar to keep in lockstep here.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` to import the shared `ConversationHistoryItem` type plus `getConversationHistoryBadge(...)` and `Badge`, removing the local drifted history-item shape.
+  - Added sidebar `historyItem` tracking so past-session rows can carry persisted history metadata alongside the display session object.
+  - Added `conversationHistoryById` enrichment so recent runtime sessions inherit persisted compaction metadata when their `conversationId` matches a stored conversation-history entry, preserving badges even when runtime rows win deduplication.
+  - Rendered the shared `History compacted` / `History partial` badges inline on sidebar past-session rows.
+  - Added `apps/desktop/src/renderer/src/components/active-agents-sidebar.history-badges.test.js`, a dependency-free regression test covering shared-helper reuse and the runtime-to-persisted metadata enrichment path.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/active-agents-sidebar.history-badges.test.js apps/desktop/src/renderer/src/pages/sessions.recent-history-badges.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Consider whether the mobile session list should also expose compacted/partial provenance now that several desktop history surfaces do.
+  - If workspace dependencies are restored in this worktree, replace the current source-level verification with targeted desktop renderer Vitest/typecheck coverage for the sidebar.
+  - Consider richer provenance affordances (for example, tooltip detail or popover summaries) if users need more than the current compact badge labels.
+
+- Next recommended issue work item: stay on `#58` only if there is another narrow provenance surface to align, otherwise pivot to a fresh high-value issue such as `#25` or another clearly local desktop reliability/UX slice.

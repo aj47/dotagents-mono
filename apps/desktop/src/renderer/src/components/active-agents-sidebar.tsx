@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { Badge } from "@renderer/components/ui/badge"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { getConversationHistoryBadge } from "@renderer/lib/conversation-history-badges"
 import {
   ChevronDown,
   ChevronRight,
@@ -16,6 +18,7 @@ import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
 import { useNavigate } from "react-router-dom"
+import type { ConversationHistoryItem } from "@shared/types"
 
 interface AgentSession {
   id: string
@@ -36,16 +39,11 @@ interface AgentSessionsResponse {
   recentSessions: AgentSession[]
 }
 
-interface ConversationHistoryItem {
-  id: string
-  title: string
-  updatedAt: number
-}
-
 interface SidebarSession {
   session: AgentSession
   isPast: boolean
   key: string
+  historyItem?: ConversationHistoryItem
 }
 
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
@@ -99,6 +97,10 @@ export function ActiveAgentsSidebar({
   const conversationHistory =
     (conversationHistoryQuery.data as ConversationHistoryItem[] | undefined) ||
     []
+  const conversationHistoryById = useMemo(
+    () => new Map(conversationHistory.map((item) => [item.id, item])),
+    [conversationHistory],
+  )
 
   const allPastSessions = useMemo(() => {
     const items: SidebarSession[] = []
@@ -109,7 +111,11 @@ export function ActiveAgentsSidebar({
     )
     const seenFallbackIds = new Set<string>()
 
-    const addPastSession = (session: AgentSession, keyPrefix: string) => {
+    const addPastSession = (
+      session: AgentSession,
+      keyPrefix: string,
+      historyItem?: ConversationHistoryItem,
+    ) => {
       const conversationId = session.conversationId
       if (conversationId) {
         if (seenConversationIds.has(conversationId)) return
@@ -123,12 +129,19 @@ export function ActiveAgentsSidebar({
         session,
         isPast: true,
         key: `${keyPrefix}:${session.id}`,
+        historyItem,
       })
     }
 
     // Recent runtime sessions first so just-finished agents stay near the top.
     for (const session of recentSessions) {
-      addPastSession(session, "recent")
+      addPastSession(
+        session,
+        "recent",
+        session.conversationId
+          ? conversationHistoryById.get(session.conversationId)
+          : undefined,
+      )
     }
 
     // Fill with persisted conversation history.
@@ -141,11 +154,11 @@ export function ActiveAgentsSidebar({
         startTime: historyItem.updatedAt,
         endTime: historyItem.updatedAt,
       }
-      addPastSession(mappedSession, "history")
+      addPastSession(mappedSession, "history", historyItem)
     }
 
     return items
-  }, [activeSessions, conversationHistory, recentSessions])
+  }, [activeSessions, conversationHistory, conversationHistoryById, recentSessions])
 
   const minimumPastSessionsNeeded = useMemo(
     () => Math.max(MIN_VISIBLE_SIDEBAR_SESSIONS - activeSessions.length, 0),
@@ -406,7 +419,7 @@ export function ActiveAgentsSidebar({
           className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1"
           onScroll={handleSidebarSessionsScroll}
         >
-          {sidebarSessions.map(({ session, isPast, key }) => {
+          {sidebarSessions.map(({ session, isPast, key, historyItem }) => {
             const isFocused = focusedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
             const hasPendingApproval =
@@ -417,6 +430,10 @@ export function ActiveAgentsSidebar({
               : (sessionProgress?.isSnoozed ?? session.isSnoozed ?? false)
 
             if (isPast) {
+              const historyBadge = historyItem
+                ? getConversationHistoryBadge(historyItem)
+                : null
+
               // Past agent row — archive icon, no action buttons
               return (
                 <div
@@ -438,9 +455,20 @@ export function ActiveAgentsSidebar({
                 >
                   {/* Archive icon for past agents */}
                   <Archive className="h-3 w-3 shrink-0 opacity-50" />
-                  <p className="flex-1 truncate">
-                    {session.conversationTitle || "Untitled session"}
-                  </p>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+                    <p className="min-w-0 flex-1 truncate">
+                      {session.conversationTitle || "Untitled session"}
+                    </p>
+                    {historyBadge && (
+                      <Badge
+                        variant="outline"
+                        className={cn("shrink-0 text-[9px]", historyBadge.className)}
+                        title={historyBadge.title}
+                      >
+                        {historyBadge.label}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               )
             }
