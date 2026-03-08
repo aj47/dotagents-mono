@@ -23,6 +23,16 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(screenSource, /ttsToggle:\s*\{[\s\S]*?width:\s*44,[\s\S]*?height:\s*44,[\s\S]*?borderRadius:\s*22,/);
 });
 
+test('keeps the composer agent selector chip comfortably tappable on mobile', () => {
+  assert.match(screenSource, /composerAgentSelectorTouchTarget = createMinimumTouchTargetStyle\([\s\S]*?horizontalMargin: 0[\s\S]*?\)/);
+  assert.match(screenSource, /agentSelectorChip:\s*\{[\s\S]*?\.\.\.composerAgentSelectorTouchTarget/);
+});
+
+test('lets the composer agent selector label use available row width before truncating', () => {
+  assert.match(screenSource, /agentSelectorChip:\s*\{[\s\S]*?maxWidth:\s*'100%'/);
+  assert.match(screenSource, /agentSelectorChipValue:\s*\{[\s\S]*?flexShrink:\s*1,/);
+});
+
 test('exposes the edit-before-send toggle state to Expo Web accessibility APIs', () => {
   assert.match(screenSource, /accessibilityRole="switch"[\s\S]*?aria-checked=\{willCancel\}[\s\S]*?accessibilityState=\{\{ checked: willCancel \}\}/);
 });

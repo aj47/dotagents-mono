@@ -3467,6 +3467,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     verticalPadding: 4,
     horizontalMargin: 0,
   });
+  const composerAgentSelectorTouchTarget = createMinimumTouchTargetStyle({
+    horizontalPadding: spacing.sm,
+    verticalPadding: 6,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     headerActionsRow: {
       flexDirection: 'row',
@@ -3558,11 +3563,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingBottom: 2,
     },
     agentSelectorChip: {
+      ...composerAgentSelectorTouchTarget,
       alignSelf: 'flex-start',
+      maxWidth: '100%',
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 6,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -3578,7 +3583,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 12,
       color: theme.colors.primary,
       fontWeight: '600',
-      maxWidth: 220,
+      flexShrink: 1,
     },
     pendingImagesRow: {
       paddingHorizontal: spacing.sm,

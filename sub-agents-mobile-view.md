@@ -333,3 +333,45 @@
   - Bring the chat composer `🤖 Agent` chip up to a comfortable mobile tap target without bloating the composer row.
   - Reduce `Agent Loops` card density with a small hierarchy tweak that preserves the current controls.
   - Smoke-test the header selector with a longer agent name to confirm truncation and layout remain stable.
+
+### 2026-03-08 — Iteration 8: raise the chat composer agent chip to the mobile touch baseline
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `ChatScreen` composer-level agent selector
+  - existing composer accessibility tests in `apps/mobile/tests/chat-composer-accessibility.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Navigated to `Chats` → `+ New Chat` and inspected the composer-level `🤖 Agent` chip.
+  - Measured the live chip at roughly `167x32`, below the `44px` mobile touch-target baseline.
+  - Confirmed the chip sat inside a wider row, so the visible control felt smaller than the surrounding composer affordances.
+- Issue selected:
+  - The composer-level agent switcher looked like lightweight metadata instead of a primary control because its pill stayed below comfortable mobile tap height.
+- Decision:
+  - Keep the existing chip UI and placement above the composer row.
+  - Do not redesign the composer or add another button.
+  - Make the local fix in `ChatScreen` only: reuse the shared minimum-touch-target helper and let long agent names use available width before truncating.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - add a dedicated `composerAgentSelectorTouchTarget` based on `createMinimumTouchTargetStyle(...)`,
+    - apply that shared mobile touch-target styling to `agentSelectorChip`,
+    - allow the chip to use the full row width with `maxWidth: '100%'`,
+    - replace the hard `220px` text cap with `flexShrink: 1` so the agent label truncates later and more naturally.
+  - Updated `apps/mobile/tests/chat-composer-accessibility.test.js` to cover the new touch-target wiring and width/truncation behavior.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - composer agent chip height now `44px`
+    - current label `Main Agent ▼` remained fully visible with no truncation at `390px` width
+    - the chip still visually fits the existing composer layout without adding a new control or row redesign
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Agent Loops` cards still stack prompt text and metadata densely on narrow screens.
+  - The composer chip is now tall enough, but the surrounding row still leaves non-chip dead space that could be revisited if mis-taps persist.
+  - A deliberately long agent name still needs a smoke test in both the header selector and the composer chip.
+- Next checks:
+  - Reduce `Agent Loops` card density with a small hierarchy tweak that preserves the current controls.
+  - Smoke-test the header selector and composer chip with a longer agent name to confirm truncation stays stable.
+  - Revisit whether the entire composer selector row should become tappable if live evidence still shows missed taps.
