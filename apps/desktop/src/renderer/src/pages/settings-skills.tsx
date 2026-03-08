@@ -23,7 +23,7 @@ import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package } from "lucide-react"
+import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, AlertTriangle } from "lucide-react"
 
 type SkillDraft = Pick<AgentSkill, "name" | "description" | "instructions">
 
@@ -65,6 +65,10 @@ export function Component() {
   const [gitHubRepoInput, setGitHubRepoInput] = useState("")
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set())
+  const [deleteConfirmSkill, setDeleteConfirmSkill] = useState<AgentSkill | null>(null)
+  const [deleteSkillError, setDeleteSkillError] = useState<string | null>(null)
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null)
 
   const skillsQuery = useQuery({
     queryKey: ["skills"],
@@ -82,6 +86,9 @@ export function Component() {
   })
 
   const skills = skillsQuery.data || []
+  const selectedSkills = skills.filter((skill) => selectedSkillIds.has(skill.id))
+  const selectedSkillCount = selectedSkills.length
+  const deleteSkillLabel = deleteConfirmSkill ? `"${deleteConfirmSkill.name}"` : "this skill"
 
   // Listen for skills folder changes from the main process (file watcher)
   useEffect(() => {
@@ -118,6 +125,18 @@ export function Component() {
     setEditingSkillBaseline(null)
   }
 
+  const closeDeleteSkillDialog = () => {
+    if (deleteSkillMutation.isPending) return
+    setDeleteConfirmSkill(null)
+    setDeleteSkillError(null)
+  }
+
+  const closeBulkDeleteDialog = () => {
+    if (deleteSkillsMutation.isPending) return
+    setBulkDeleteConfirm(false)
+    setBulkDeleteError(null)
+  }
+
   const createSkillMutation = useMutation({
     mutationFn: async ({ name, description, instructions }: { name: string; description: string; instructions: string }) => {
       return await tipcClient.createSkill({ name, description, instructions })
@@ -150,30 +169,11 @@ export function Component() {
     mutationFn: async (id: string) => {
       return await tipcClient.deleteSkill({ id })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["skills"] })
-      toast.success("Skill deleted successfully")
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete skill: ${error.message}`)
-    },
   })
 
   const deleteSkillsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       return await tipcClient.deleteSkills({ ids })
-    },
-    onSuccess: (results) => {
-      queryClient.invalidateQueries({ queryKey: ["skills"] })
-      const succeeded = results.filter((r) => r.success).length
-      const failed = results.filter((r) => !r.success).length
-      if (succeeded > 0) toast.success(`Deleted ${succeeded} skill(s)`)
-      if (failed > 0) toast.error(`Failed to delete ${failed} skill(s)`)
-      setSelectedSkillIds(new Set())
-      setIsSelectMode(false)
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete skills: ${error.message}`)
     },
   })
 
@@ -438,16 +438,88 @@ export function Component() {
   }
 
   const handleDeleteSkill = (skill: AgentSkill) => {
-    if (confirm(`Are you sure you want to delete the skill "${skill.name}"?`)) {
-      deleteSkillMutation.mutate(skill.id)
-    }
+    if (deleteSkillMutation.isPending || deleteSkillsMutation.isPending) return
+    setDeleteSkillError(null)
+    setDeleteConfirmSkill(skill)
   }
 
   const handleDeleteSelected = () => {
-    if (selectedSkillIds.size === 0) return
-    const count = selectedSkillIds.size
-    if (confirm(`Are you sure you want to delete ${count} skill(s)?`)) {
-      deleteSkillsMutation.mutate(Array.from(selectedSkillIds))
+    if (selectedSkillCount === 0 || deleteSkillsMutation.isPending || deleteSkillMutation.isPending) return
+    setBulkDeleteError(null)
+    setBulkDeleteConfirm(true)
+  }
+
+  const handleConfirmDeleteSkill = async () => {
+    if (!deleteConfirmSkill || deleteSkillMutation.isPending) return
+
+    const skill = deleteConfirmSkill
+    setDeleteSkillError(null)
+
+    try {
+      const deleted = await deleteSkillMutation.mutateAsync(skill.id)
+      if (!deleted) {
+        throw new Error(`Couldn't delete "${skill.name}" yet. The skill is still available, so you can try again.`)
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["skills"] })
+      setDeleteConfirmSkill(null)
+      toast.success(`Deleted "${skill.name}"`)
+    } catch (error) {
+      console.error("[SettingsSkills] Failed to delete skill", error)
+      setDeleteConfirmSkill(skill)
+      setDeleteSkillError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : `Couldn't delete "${skill.name}" yet. The skill is still available, so you can try again.`,
+      )
+    }
+  }
+
+  const handleConfirmDeleteSelected = async () => {
+    if (selectedSkillCount === 0 || deleteSkillsMutation.isPending) {
+      if (selectedSkillCount === 0) {
+        setBulkDeleteConfirm(false)
+        setBulkDeleteError(null)
+      }
+      return
+    }
+
+    const idsToDelete = selectedSkills.map((skill) => skill.id)
+    setBulkDeleteError(null)
+
+    try {
+      const results = await deleteSkillsMutation.mutateAsync(idsToDelete)
+      queryClient.invalidateQueries({ queryKey: ["skills"] })
+
+      const succeeded = results.filter((result) => result.success).length
+      const failedResults = results.filter((result) => !result.success)
+
+      if (succeeded > 0) {
+        toast.success(`Deleted ${succeeded} skill(s)`)
+      }
+
+      if (failedResults.length === 0) {
+        setSelectedSkillIds(new Set())
+        setIsSelectMode(false)
+        setBulkDeleteConfirm(false)
+        return
+      }
+
+      const failedIds = new Set(failedResults.map((result) => result.id))
+      setSelectedSkillIds(failedIds)
+      setBulkDeleteError(
+        failedResults.length === 1
+          ? "Couldn't delete 1 selected skill yet. That skill stays selected so you can retry."
+          : `Couldn't delete ${failedResults.length} selected skills yet. They stay selected so you can retry.`,
+      )
+      toast.error(`Failed to delete ${failedResults.length} skill(s)`)
+    } catch (error) {
+      console.error("[SettingsSkills] Failed to delete selected skills", error)
+      setBulkDeleteError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Couldn't delete the selected skills yet. They stay selected so you can retry.",
+      )
     }
   }
 
@@ -550,14 +622,14 @@ Write your skill instructions here.
                   size="sm"
                   className="gap-1.5"
                   onClick={handleDeleteSelected}
-                  disabled={selectedSkillIds.size === 0 || deleteSkillsMutation.isPending}
+                    disabled={selectedSkillCount === 0 || deleteSkillsMutation.isPending || deleteSkillMutation.isPending}
                 >
                   {deleteSkillsMutation.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Trash2 className="h-3 w-3" />
                   )}
-                  Delete {selectedSkillIds.size > 0 ? `(${selectedSkillIds.size})` : "Selected"}
+                    Delete {selectedSkillCount > 0 ? `(${selectedSkillCount})` : "Selected"}
                 </Button>
                 <Button
                   variant="ghost"
@@ -741,6 +813,7 @@ Write your skill instructions here.
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEditSkill(skill)}
+                      disabled={deleteSkillMutation.isPending || deleteSkillsMutation.isPending}
                     >
                       <Pencil className="h-3 w-3" />
                     </Button>
@@ -750,6 +823,7 @@ Write your skill instructions here.
                       onClick={() => openSkillFileMutation.mutate(skill.id)}
                       title="Reveal skill file in Finder/Explorer"
                       aria-label="Reveal skill file"
+                      disabled={deleteSkillMutation.isPending || deleteSkillsMutation.isPending}
                     >
                       <FileText className="h-3 w-3" />
                     </Button>
@@ -757,6 +831,7 @@ Write your skill instructions here.
                       variant="ghost"
                       size="sm"
                       onClick={() => exportSkillMutation.mutate(skill.id)}
+                      disabled={deleteSkillMutation.isPending || deleteSkillsMutation.isPending}
                     >
                       <Download className="h-3 w-3" />
                     </Button>
@@ -764,6 +839,7 @@ Write your skill instructions here.
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteSkill(skill)}
+                      disabled={deleteSkillMutation.isPending || deleteSkillsMutation.isPending}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -886,6 +962,93 @@ Write your skill instructions here.
               </Button>
               <Button onClick={handleUpdateSkill} disabled={updateSkillMutation.isPending}>
                 {updateSkillMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!deleteConfirmSkill}
+          onOpenChange={(open) => {
+            if (open) return
+            closeDeleteSkillDialog()
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Delete Skill
+              </DialogTitle>
+              <DialogDescription>
+                {`Are you sure you want to delete ${deleteSkillLabel}? This removes the skill from your available library. This action cannot be undone.`}
+              </DialogDescription>
+            </DialogHeader>
+            {deleteSkillError && (
+              <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                {deleteSkillError}
+              </p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={closeDeleteSkillDialog} disabled={deleteSkillMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="gap-2"
+                onClick={handleConfirmDeleteSkill}
+                disabled={deleteSkillMutation.isPending}
+              >
+                {deleteSkillMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {deleteSkillError ? "Retry delete skill" : "Delete skill"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={bulkDeleteConfirm}
+          onOpenChange={(open) => {
+            if (open) {
+              setBulkDeleteConfirm(true)
+              return
+            }
+            closeBulkDeleteDialog()
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                {selectedSkillCount === 1 ? "Delete 1 Skill" : `Delete ${selectedSkillCount} Skills`}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedSkillCount === 1
+                  ? "Are you sure you want to delete the selected skill? This action cannot be undone."
+                  : `Are you sure you want to delete ${selectedSkillCount} selected skills? This action cannot be undone.`}
+              </DialogDescription>
+            </DialogHeader>
+            {bulkDeleteError && (
+              <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                {bulkDeleteError}
+              </p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={closeBulkDeleteDialog} disabled={deleteSkillsMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="gap-2"
+                onClick={handleConfirmDeleteSelected}
+                disabled={deleteSkillsMutation.isPending}
+              >
+                {deleteSkillsMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {bulkDeleteError
+                  ? "Retry delete selected"
+                  : selectedSkillCount === 1
+                    ? "Delete 1 Skill"
+                    : `Delete ${selectedSkillCount} Skills`}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop skills delete guardrails in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, with `deleteSkill` / `deleteSkills` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/skills-service.ts`, adjacent destructive-action patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile delete surface exists there because mobile currently exposes skill toggling but not desktop skill authoring/deletion), focused source-level coverage added in `tests/desktop-settings-skills-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
 - 2026-03-08: Desktop main-process emergency-stop best-effort failure isolation in `apps/desktop/src/main/emergency-stop.ts`, with session-state ownership reviewed in `apps/desktop/src/main/state.ts`, tracker/queue/user-response cleanup behavior cross-checked in `apps/desktop/src/main/agent-session-tracker.ts`, `apps/desktop/src/main/message-queue-service.ts`, and `apps/desktop/src/main/session-user-response-store.ts`, focused source-level guardrail coverage added in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree does not have `node_modules` / `vitest` available.
 - 2026-03-08: Desktop modular config (`.agents`) path/source clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with layer-resolution behavior reviewed in `apps/desktop/src/main/tipc.ts`, `apps/desktop/src/main/config.ts`, and `apps/desktop/src/main/agents-files/modular-config.ts`, adjacent folder/source copy reviewed in `apps/desktop/src/renderer/src/pages/settings-skills.tsx` / `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile `.agents` filesystem UI exists there because mobile settings are remote/server-backed rather than local workspace-backed), focused source-level coverage extended in `tests/desktop-settings-general-agent-mode-shortcuts.test.js`, and live desktop inspection attempted via `electron_execute` (renderer target available but only an unhydrated blank `#root` shell at `http://localhost:5174/`, so no meaningful product UI could be inspected).
 - 2026-03-08: Desktop main-agent ACP selection guidance in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with eligible-agent filtering reviewed in `apps/desktop/src/renderer/src/pages/settings-general-main-agent-options.ts`, runtime selection failure messaging reviewed in `apps/desktop/src/main/main-agent-selection.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/mainAgentOptions.ts` (no equivalent change needed because mobile already surfaces a `No ACP agents available` helper state inside `Agent Settings`), focused source-level coverage extended in `tests/desktop-settings-general-agent-mode-shortcuts.test.js`, and live desktop inspection attempted via `electron_execute` (renderer target available but only an unhydrated blank `#root` shell at `http://localhost:5174/`, so no meaningful product UI could be inspected).
@@ -75,6 +76,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop `Settings → Skills` single/bulk delete dialogs still need live Electron validation once a runnable target is available, especially to confirm the destructive-modal cadence, partial-failure retry copy, and selection-preservation behavior feel clear in select mode without making bulk cleanup cumbersome.
 - 2026-03-08: Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity still needs live Electron validation once the renderer mounts real product content, especially to confirm the new `Active prompt layer` summary, Skills/Memories path density, and `Reveal Active …` labels stay understandable without making the advanced section feel overly busy.
 - 2026-03-08: Desktop `Settings → General` ACP main-agent warnings still need live Electron validation once the renderer mounts real product content, especially to confirm the warning-card density, disabled picker, and `Open Agents Settings` / `Use API Mode` recovery actions feel clear beside the adjacent `Inject DotAgents Tools` control when there are zero, one, or newly re-enabled ACP agents.
 - 2026-03-08: Desktop repeat-task inline delete confirmation / retry UI still needs live Electron validation once the renderer mounts real product content, especially to confirm the row-level confirm card does not overcrowd compact task rows and the destructive-action hierarchy feels obvious beside Run/File/Edit controls.
@@ -90,6 +92,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop `Settings → Skills` now replaces one-shot browser `confirm(...)` deletion with recoverable single and bulk confirmation dialogs, treats false `deleteSkill(...)` results as failures instead of success, keeps failed bulk deletions selected for retry, and disables conflicting actions while delete mutations are in flight, so skill cleanup no longer silently succeeds or drops the user's selection after a partial failure; tradeoff: this pass intentionally stays scoped to deletion and leaves the earlier draft-discard confirmation flow as a separate follow-up decision.
 - 2026-03-08: Desktop emergency stop now isolates per-session failures in `apps/desktop/src/main/emergency-stop.ts`, so one broken approval cancel, queue pause, progress emit, or tracker update can no longer short-circuit the rest of the kill-switch pass, and session cleanup now snapshots session IDs before mutating `state.agentSessions` while treating response-store + state cleanup as best-effort per session; tradeoff: this pass intentionally stays scoped to the existing kill-switch path and stops short of broader ACP-subsystem refactors.
 - 2026-03-08: Desktop `Settings → General` modular config (`.agents`) now makes the active prompt/editing layer explicit, translates workspace detection into human-readable source copy, surfaces separate Skills and Memories folders for both global and workspace layers, and renames the prompt reveal actions to target the active files, so users are less likely to edit the wrong location when a workspace `.agents` overlay is present; tradeoff: this pass stays scoped to clarity inside General settings and intentionally stops short of adding new filesystem actions or a broader modular-config editor.
 - 2026-03-08: Desktop `Settings → General` now turns ACP main-agent dead-end states into actionable guidance: the ACP agent picker disables with a `No ACP agents available` placeholder when no enabled ACP/stdio agents exist, ACP mode now explains when no agent is ready or when the saved selection is unavailable, and inline quick actions let users jump straight to Agents settings or switch back to API mode, so choosing ACP mode no longer leaves users in a blank dropdown with no clue how to recover; tradeoff: this pass intentionally stays scoped to guidance and recovery inside General settings rather than auto-switching modes or redesigning the broader Agents setup flow.
@@ -156,6 +159,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-skills-unsaved-changes.test.js tests/desktop-settings-skills-delete-guardrails.test.js`
+- 2026-03-08: `git diff --check` after the desktop skills delete-guardrails pass
 - 2026-03-08: `node --test tests/desktop-emergency-stop-guardrails.test.js`
 - 2026-03-08: `git diff --check` after the desktop emergency-stop best-effort isolation pass
 - 2026-03-08: `node --test tests/desktop-settings-general-agent-mode-shortcuts.test.js` after the desktop modular-config path/source clarity pass
@@ -432,7 +437,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
 - Once a runnable Electron target is available, live-check the desktop bundle export/publish dialogs to confirm the new discard warning and pending-action guardrails feel right during backdrop click, Escape, titlebar close, preview back, and file-save flows
 - Once a runnable Electron target is available, live-check the desktop agent editor dirty-cancel, Quick Setup overwrite, advanced reset, and pending-save behavior to confirm the confirmation cadence feels right
-- Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
+- Once a runnable Electron target is available, live-check the desktop skills create/edit/delete flows to confirm the discard warning, new single/bulk delete dialog cadence, partial-failure retry copy, and selection-preservation behavior feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the desktop overlay follow-up composer across session switching plus late success/failure/image-read completions to confirm stale drafts/errors no longer leak across focused sessions in the actual UI
 
@@ -2393,6 +2398,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - add dedicated behavioral coverage for `emergencyStopAll()` once the desktop Vitest toolchain is available in this worktree
   - inspect whether `acpClientService.cancelAllRuns()` should also be wrapped in best-effort isolation so ACP-wide cancellation cannot block later emergency-stop cleanup
+
+### 2026-03-08 — Desktop skills delete guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop skills management in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`
+  - reviewed skill deletion return semantics in `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/main/skills-service.ts`
+  - reviewed adjacent destructive-action patterns in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`
+  - checked mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx`
+- Why it was chosen:
+  - the recent skills pass only covered draft-loss / discard safety, leaving deletion as the highest-value unresolved risk on the same surface
+  - source review found three concrete problems: single delete still used a blocking browser `confirm(...)`, false `deleteSkill(...)` results were treated like success, and bulk deletion cleared selection even when some deletions failed
+  - the fix had clear user value, stayed local to one page, and could reuse existing destructive-action guardrail patterns already established elsewhere in the desktop app
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-skills.tsx` mutation wiring, select mode, and row actions
+  - `apps/desktop/src/main/tipc.ts` `deleteSkill` / `deleteSkills` procedures to confirm the renderer really receives `false` and per-id partial-success results
+  - `apps/desktop/src/main/skills-service.ts` to confirm `deleteSkill(id)` intentionally returns `boolean` instead of throwing on every failure
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx` for existing retry-friendly destructive-action UX patterns
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile currently supports skill toggling only, not a comparable delete UI, so no mobile parity change was needed in this pass
+  - attempted live desktop inspection first, but `electron_execute` was blocked because no Electron/CDP target is available in this environment
+- Improvement made:
+  - replaced both single-skill and bulk-skill browser-confirm deletion with recoverable confirmation dialogs
+  - single delete now treats a false `deleteSkill(...)` result as a real failure, keeps the dialog open, and offers a `Retry delete skill` action instead of toasting success
+  - bulk delete now preserves only the failed skill IDs in selection, keeps select mode active, and offers dialog-level retry copy so a partial failure no longer wipes the user’s selection context
+  - disabled conflicting row and toolbar actions while delete mutations are in flight to reduce overlapping state changes during destructive actions
+  - added focused source-level regression coverage in `tests/desktop-settings-skills-delete-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - used dialogs instead of inline row-level confirmation because the skill rows are compact and bulk delete already originates from a toolbar action, so a shared modal pattern kept the change smaller and clearer
+  - kept the change desktop-only because mobile does not currently expose a comparable skill deletion workflow
+  - intentionally scoped this pass to delete safety/recovery rather than revisiting the separate draft-discard `confirm(...)` flow from the earlier skills dialog iteration
+- Tests / verification:
+  - `node --test tests/desktop-settings-skills-unsaved-changes.test.js tests/desktop-settings-skills-delete-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check single delete, bulk delete, partial bulk failure, and retry-to-success flows in the real desktop settings UI
+  - decide in a later pass whether the remaining skills draft-discard confirmations should stay lightweight or move to the same custom dialog pattern
 
 ### Iteration Template
 - Date:
