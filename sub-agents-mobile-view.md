@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 162 - Make expanded mobile tool details readable without zooming
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-shipped multi-tool summary, expanded header wrap, or result-header wrap work without new evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-tool-execution-mobile.test.js`, staying on the delegated tool-execution surface because the expanded detail body still had a mobile readability gap after iterations 155, 159, 160, and 161 improved touch targets, summary scope, and header wrapping.
+  - Tried again to recover live validation in this worktree before closing the change.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the expanded tool detail body still rendered `Input` / `Output` labels at `8px` uppercase text.
+  - The input payload, output body, and error body were also still rendered at `8px` monospace with only `3px` inner padding.
+  - On narrow screens, that left the most important delegated-activity details readable only at unusually small text sizes even after the surrounding headers and disclosure affordances had been improved.
+- Issue identified:
+  - Expanded mobile tool details still used extra-small code and label typography, weakening readability right when users drill into sub-agent activity for specifics.
+- Decision and rationale:
+  - Keep the existing expanded card structure, scroll behavior, disclosure model, and success/error semantics unchanged.
+  - Avoid a broader redesign of tool detail layout while live validation remains blocked.
+  - Make the smallest effective fix instead: raise the detail labels and monospace content into the same 10px readability band already used by nearby mobile result metadata, with a small line-height and padding bump so the content is easier to scan without materially increasing card density.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` so expanded tool `Input` / `Output` labels now use `10px` text with explicit line height.
+  - Increased `toolParamsCode`, `toolResultCode`, and `toolResultErrorText` from `8px` to `10px`, added explicit `lineHeight: 15`, and increased their inner padding from `3` to `4`.
+  - Increased `toolResponsePendingText` and `toolResultErrorLabel` into the same readability range so pending/error states stay visually aligned with the rest of the expanded detail body.
+  - Updated `apps/mobile/tests/chat-tool-execution-mobile.test.js` with focused regression coverage for the expanded-detail typography contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-tool-execution-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that modestly increasing detail typography is higher value on mobile than preserving the previous denser 8px tool body styling.
+  - Kept the change style-only so it remains low risk and easy to verify with source-backed tests while live inspection is unavailable.
+  - This still needs live confirmation that the slightly larger monospace blocks feel more readable without making tool-heavy transcripts feel too tall.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that expanded tool input/output/error bodies are comfortably readable around ~320px width without horizontal crowding.
+  - Capture screenshot-backed evidence for one long JSON input and one long error result so the new type scale can be judged in context.
+  - If live validation shows the expanded cards now feel too dense, prefer trimming code-block padding before changing the type scale again.
+
 ## Iteration 161 - Let expanded mobile tool headers wrap before long names get squeezed
 
 - Date: 2026-03-08

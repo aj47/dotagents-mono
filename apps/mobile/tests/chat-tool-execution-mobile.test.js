@@ -46,3 +46,12 @@ test('lets expanded tool result metadata wrap cleanly before the output header g
   assert.match(chatScreenSource, /toolResultCharCount:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?marginLeft: 'auto',[\s\S]*?flexShrink: 0/);
   assert.match(chatScreenSource, /toolResultBadge:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?flexShrink: 0/);
 });
+
+test('keeps expanded tool input and output content readable on narrow mobile screens', () => {
+  assert.match(chatScreenSource, /toolSectionLabel:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?textTransform: 'uppercase'/);
+  assert.match(chatScreenSource, /toolParamsCode:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 15,[\s\S]*?padding: 4,[\s\S]*?borderRadius: radius\.sm/);
+  assert.match(chatScreenSource, /toolResponsePendingText:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 15,[\s\S]*?fontStyle: 'italic'/);
+  assert.match(chatScreenSource, /toolResultCode:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 15,[\s\S]*?padding: 4,[\s\S]*?borderRadius: radius\.sm/);
+  assert.match(chatScreenSource, /toolResultErrorLabel:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?fontWeight: '500'/);
+  assert.match(chatScreenSource, /toolResultErrorText:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 15,[\s\S]*?padding: 4,[\s\S]*?borderRadius: radius\.sm/);
+});
