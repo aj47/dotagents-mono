@@ -222,7 +222,7 @@ function formatAgentRoleLabel(role?: AgentProfile['role']): 'Profile' | 'Delegat
 }
 
 function formatAgentRowSecondaryText(profile: AgentProfile): string | null {
-  if (profile.autoSpawn && (profile.connectionType === 'acp' || profile.connectionType === 'stdio')) {
+  if (profile.enabled && profile.autoSpawn && (profile.connectionType === 'acp' || profile.connectionType === 'stdio')) {
     return 'Starts automatically with DotAgents';
   }
 

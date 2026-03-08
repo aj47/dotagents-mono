@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 151 - Stop disabled mobile agent rows from advertising auto-start
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-touched selector terminology and recovery-state work without fresh evidence.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/tests/settings-agent-actions-mobile.test.js`, `apps/mobile/src/screens/AgentEditScreen.tsx`, and the desktop ACP startup logic because the mobile Agents list still had one narrow state-clarity conflict available after the earlier disabled-badge and auto-start-preview passes.
+  - Confirmed from desktop source that auto-spawn depends on `enabled` during startup (`apps/desktop/src/main/acp-service.ts` initializes only agents where `enabled !== false && autoSpawn`).
+  - Tried again to recover live-validation confidence, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `Settings > Agents` already surfaced a visible `Disabled` badge in mobile rows.
+  - The same row-preview helper still preferred `Starts automatically with DotAgents` whenever `autoSpawn` was set on an ACP / Stdio agent, even if that agent was disabled.
+  - On a narrow screen, that produced a contradictory row state: the user could see `Disabled` and `Starts automatically with DotAgents` together even though startup behavior only applies when the agent is enabled.
+- Issue identified:
+  - Disabled command-based agents could still advertise auto-start in the mobile Agents list, weakening state clarity right in the highest-density sub-agent overview.
+- Decision and rationale:
+  - Keep the existing row layout, badge system, and single-line preview slot unchanged.
+  - Avoid a broader copy redesign while live validation is blocked.
+  - Make the smallest effective fix instead: only show the auto-start preview when the agent is both command-based and enabled, then fall back to the optional description for disabled rows.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` so `formatAgentRowSecondaryText(profile)` now requires `profile.enabled` before returning `Starts automatically with DotAgents`.
+  - Left the existing description fallback intact so disabled rows can still show useful secondary context without implying that a disabled agent will auto-start.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new `profile.enabled && profile.autoSpawn` contract and to guard against the old contradictory preview condition.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that, once an agent is disabled, avoiding contradictory startup copy is more valuable on mobile than preserving visibility into a dormant `autoSpawn` flag.
+  - Chose not to add a second disabled-state sentence like `Auto-start off while disabled` because the row already has a dedicated `Disabled` badge and only one compact preview line.
+  - This remains a source-backed improvement and still needs live confirmation that disabled rows now read as calmer and less contradictory in mixed agent lists.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that disabled ACP / Stdio agents no longer show the auto-start preview while enabled auto-start agents still do.
+  - Compare a disabled auto-start agent with and without a description to confirm the fallback behavior still feels informative on a narrow row.
+  - If live validation shows disabled rows now feel too sparse, prefer a small follow-up preview refinement before changing the row structure.
+
 ## Iteration 150 - Make selector recovery states say profile when mobile users are switching profiles
 
 - Date: 2026-03-08

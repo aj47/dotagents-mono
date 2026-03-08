@@ -105,7 +105,8 @@ test('keeps long agent names stable when built-in and disabled badges are presen
 });
 
 test('uses the agent preview line for auto-start state before falling back to optional descriptions on mobile', () => {
-  assert.match(settingsSource, /function formatAgentRowSecondaryText\(profile: AgentProfile\): string \| null \{[\s\S]*?profile\.autoSpawn && \(profile\.connectionType === 'acp' \|\| profile\.connectionType === 'stdio'\)[\s\S]*?return 'Starts automatically with DotAgents';[\s\S]*?const description = profile\.description\?\.trim\(\);[\s\S]*?return description \? description : null;[\s\S]*?\}/);
+  assert.match(settingsSource, /function formatAgentRowSecondaryText\(profile: AgentProfile\): string \| null \{[\s\S]*?profile\.enabled && profile\.autoSpawn && \(profile\.connectionType === 'acp' \|\| profile\.connectionType === 'stdio'\)[\s\S]*?return 'Starts automatically with DotAgents';[\s\S]*?const description = profile\.description\?\.trim\(\);[\s\S]*?return description \? description : null;[\s\S]*?\}/);
+  assert.doesNotMatch(settingsSource, /function formatAgentRowSecondaryText\(profile: AgentProfile\): string \| null \{[\s\S]*?if \(profile\.autoSpawn && \(profile\.connectionType === 'acp' \|\| profile\.connectionType === 'stdio'\)\) \{/);
   assert.match(settingsSource, /const agentSecondaryPreview = formatAgentRowSecondaryText\(profile\);/);
   assert.match(settingsSource, /\{agentSecondaryPreview && \([\s\S]*?<Text style=\{styles\.agentSecondaryPreview\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{agentSecondaryPreview\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
   assert.match(settingsSource, /agentSecondaryPreview:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*spacing\.xs,[\s\S]*?lineHeight:\s*15/);
