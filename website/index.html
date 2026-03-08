@@ -359,6 +359,14 @@
             transform: translateY(-1px);
             border-color: var(--color-border-light);
         }
+        .btn[aria-disabled="true"] {
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
+            transform: none;
+            filter: saturate(0.7);
+        }
         .btn-primary {
             border-color: rgba(156, 220, 254, 0.7);
             color: #f7fdff;
@@ -1476,7 +1484,7 @@
             </div>
 
             <div class="hub-modal-footer">
-                <a id="modal-install-btn" class="btn btn-primary" href="#">Install bundle →</a>
+                <a id="modal-install-btn" class="btn btn-primary" aria-disabled="true" tabindex="-1" title="Wait for the bundle preview to finish loading before installing.">Install bundle →</a>
                 <a class="btn btn-secondary" href="https://hub.dotagentsprotocol.com" target="_blank" rel="noopener">Open full hub ↗</a>
                 <div id="modal-footer-meta" class="hub-modal-footer-meta"></div>
             </div>
@@ -1987,6 +1995,23 @@
             modalContent.innerHTML = ''
             modalBundleMeta.innerHTML = ''
             modalFooterMeta.innerHTML = ''
+            setModalInstallButtonState({ disabled: true })
+        }
+
+        function setModalInstallButtonState({ disabled = true, bundleUrl = '' } = {}) {
+            if (!modalInstallBtn) return
+            modalInstallBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false')
+            modalInstallBtn.tabIndex = disabled ? -1 : 0
+            modalInstallBtn.title = disabled
+                ? 'Wait for the bundle preview to finish loading before installing.'
+                : 'Install this bundle in DotAgents.'
+
+            if (disabled || !bundleUrl) {
+                modalInstallBtn.removeAttribute('href')
+                return
+            }
+
+            modalInstallBtn.href = `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
         }
 
         function cancelBundleRequest() {
@@ -2021,6 +2046,7 @@
         function closeModal() {
             if (modal.hidden) return
             cancelBundleRequest()
+            setModalInstallButtonState({ disabled: true })
             modal.hidden = true
             document.body.style.overflow = ''
             if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
@@ -2046,7 +2072,6 @@
                 if (!bundleUrl) return
 
                 modalBundleName.textContent = bundleName
-                modalInstallBtn.href = `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
                 resetModalState()
                 openModal()
                 const { requestId, abortController } = beginBundleRequest()
@@ -2091,6 +2116,7 @@
                     }
 
                     modalContent.innerHTML = renderBundle(bundle)
+                    setModalInstallButtonState({ disabled: false, bundleUrl })
                     modalLoading.hidden = true
                     modalContent.hidden = false
                     finishBundleRequest(requestId, abortController)

@@ -3526,3 +3526,41 @@
   - If future trust cues are added, prefer lightweight provenance/dependency badges over widening the modal into a full bundle manager.
 
 - Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` still lacks stronger direct validation, prefer another fresh source-confirmed UX/reliability slice outside the recent `#57` / `#58` threads rather than reworking already-advanced bundle/history flows.
+
+##### Issue #56 — Bundle inspector disables install action until preview finishes loading
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and refreshed the still-open repo issues before choosing the next slice.
+  - Avoided returning to the heavier `#57` / `#58` tracks and took the smallest remaining trust/UX follow-up already called out in the previous `#56` entry: prevent users from acting on the install CTA while bundle preview content is still loading.
+  - This stayed local to `website/index.html`, directly improved the inspect-before-install trust surface, and was easy to verify in a real browser.
+- Investigation:
+  - Re-read issue `#56` and its owner comment, then re-inspected `website/index.html` and `website/website-hub-inspector.test.js`.
+  - Confirmed by source inspection that opening the inspector immediately assigned the modal install URL before any fetch completed, so the primary CTA remained actionable while the preview body was still in its loading state.
+  - Confirmed this was a user-facing trust gap rather than a cosmetic nit: the modal is explicitly intended to help users inspect bundle contents before installing, so letting install remain hot during fetch undermined that flow.
+- Important assumptions:
+  - Assumption: for this slice, the install button should remain disabled not only during loading but also after a fetch failure.
+  - Why acceptable: if the preview could not be loaded, keeping install disabled is the safer trust default than encouraging installation without a visible preview.
+  - Assumption: a visual + semantic disable (`aria-disabled`, no `href`, no focusability, muted styling) is sufficient; no extra explanatory copy is required yet.
+  - Why acceptable: the existing loading spinner/error state already explains why content is unavailable, and the goal here was a narrow trust-focused behavior fix rather than modal-copy redesign.
+- Changes implemented:
+  - Added disabled styling for `.btn[aria-disabled="true"]` in `website/index.html` so the install CTA is visibly de-emphasized and non-clickable while unavailable.
+  - Updated the modal install anchor markup to start disabled by default with `aria-disabled="true"`, `tabindex="-1"`, and a tooltip explaining that preview loading must finish first.
+  - Added `setModalInstallButtonState(...)` in `website/index.html` so the modal clears the install `href` while loading or closed, then restores the `dotagents://install?...` target only after a successful preview fetch.
+  - Kept the install action disabled on fetch failure by relying on the reset/disabled state instead of assigning the install URL early.
+  - Extended `website/website-hub-inspector.test.js` with dependency-free source assertions covering the disabled styling, install-button state helper, removed `href` while loading, and re-enable-after-success path.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Completed: local browser smoke via `python3 -m http.server 4312 -d website` + browser automation against `http://127.0.0.1:4312` with an injected delayed `fetch` for bundle requests ✅
+    - Confirmed `#modal-install-btn` stayed disabled during loading (`aria-disabled="true"`, no `href`, `tabIndex=-1`, `pointer-events: none`).
+    - Confirmed the button re-enabled only after the preview fetch resolved, at which point it gained the expected `dotagents://install?bundle=...` URL.
+    - Confirmed the modal still closed cleanly afterward.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - Consider whether the disabled install state should surface a short inline helper message in the footer if users still find the muted CTA ambiguous.
+  - If the inspector eventually previews larger or multi-file bundles, consider showing lightweight provenance/details in the footer before enabling install so the transition from loading → ready is even clearer.
+  - Keep the same loading/disabled semantics if the landing page later reuses this inspector for a broader bundle catalog.
+
+- Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` still cannot be validated more directly in Electron, prefer another fresh, source-confirmed desktop or website UX/reliability slice over reopening the larger `#57` / `#58` tracks immediately.
