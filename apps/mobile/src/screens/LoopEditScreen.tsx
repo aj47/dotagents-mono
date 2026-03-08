@@ -338,6 +338,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
   const showProfileLoadingNotice = !!settingsClient && isLoadingProfiles;
   const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
+  const hasStaleProfileOptions = showProfileLoadErrorNotice && profiles.length > 0;
+  const profileLoadErrorNoticeText = hasStaleProfileOptions
+    ? 'Saved profiles couldn\'t refresh right now. The list below is from the last successful load, so retry before changing this assignment. You can still choose No profile.'
+    : 'Saved profiles couldn\'t load right now. You can still save this loop with No profile, or retry loading them.';
   const showMissingSelectedProfileNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && didAutoClearMissingProfile && profiles.length > 0;
   const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length > 0 && !formData.profileId && !showMissingSelectedProfileNotice;
   const showNoSavedProfilesNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
@@ -512,12 +516,21 @@ export default function LoopEditScreen({ navigation, route }: any) {
         {profiles.map(profile => (
           <TouchableOpacity
             key={profile.id}
-            style={[styles.profileOption, formData.profileId === profile.id && styles.profileOptionActive]}
+            style={[
+              styles.profileOption,
+              formData.profileId === profile.id && styles.profileOptionActive,
+              hasStaleProfileOptions && styles.profileOptionDisabled,
+            ]}
             onPress={() => handleSelectProfile(profile.id)}
+            disabled={hasStaleProfileOptions}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${profile.displayName} profile`)}
-            accessibilityHint="Assigns this loop to run with the selected saved profile."
-            accessibilityState={{ selected: formData.profileId === profile.id }}
+            accessibilityHint={
+              hasStaleProfileOptions
+                ? 'Saved profiles are shown from the last successful load. Retry loading them before changing this assignment.'
+                : 'Assigns this loop to run with the selected saved profile.'
+            }
+            accessibilityState={{ selected: formData.profileId === profile.id, disabled: hasStaleProfileOptions }}
             activeOpacity={0.7}
           >
             <Text
@@ -543,7 +556,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       {showProfileLoadErrorNotice && (
         <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
           <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>
-            Saved profiles couldn't load right now. You can still save this loop with No profile, or retry loading them.
+            {profileLoadErrorNoticeText}
           </Text>
           <TouchableOpacity
             style={styles.profileNoticeRetryButton}
@@ -779,6 +792,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderRadius: radius.md,
     },
     profileOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    profileOptionDisabled: { opacity: 0.6 },
     profileOptionText: { color: theme.colors.foreground, fontSize: 13, maxWidth: '100%', flexShrink: 1 },
     profileOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },

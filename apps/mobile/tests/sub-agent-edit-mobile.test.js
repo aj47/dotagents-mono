@@ -103,7 +103,7 @@ test('LoopEditScreen makes profile chips mobile-sized buttons with selected-stat
   assert.match(loopEditSource, /createButtonAccessibilityLabel\('Select no profile'\)/);
   assert.match(loopEditSource, /createButtonAccessibilityLabel\(`Use \$\{profile\.displayName\} profile`\)/);
   assert.match(loopEditSource, /accessibilityState=\{\{ selected: !formData\.profileId \}\}/);
-  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id \}\}/);
+  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: hasStaleProfileOptions \}\}/);
 });
 
 test('LoopEditScreen keeps long profile chips stable on narrow screens', () => {
@@ -158,11 +158,21 @@ test('LoopEditScreen keeps profile load failures local to the Agent Profile sect
   assert.match(loopEditSource, /\}, \[settingsClient, profileReloadNonce\]\);/);
   assert.match(loopEditSource, /const handleRetryProfiles = useCallback\(\(\) => \{[\s\S]*?if \(isLoadingProfiles \|\| !settingsClient\) return;[\s\S]*?setProfileReloadNonce\(prev => prev \+ 1\);[\s\S]*?\}, \[isLoadingProfiles, settingsClient\]\);/);
   assert.match(loopEditSource, /const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;/);
-  assert.match(loopEditSource, /showProfileLoadErrorNotice && \([\s\S]*?style=\{\[styles\.profileNoticeContainer, styles\.profileNoticeWarningContainer\]\}[\s\S]*?Saved profiles couldn't load right now\. You can still save this loop with No profile, or retry loading them\.[\s\S]*?style=\{styles\.profileNoticeRetryButton\}[\s\S]*?onPress=\{handleRetryProfiles\}[\s\S]*?createButtonAccessibilityLabel\('Retry loading saved profiles'\)[\s\S]*?Attempts to load saved profiles for this loop again\.[\s\S]*?Retry profiles[\s\S]*?\)/);
+  assert.match(loopEditSource, /const hasStaleProfileOptions = showProfileLoadErrorNotice && profiles\.length > 0;/);
+  assert.match(loopEditSource, /const profileLoadErrorNoticeText = hasStaleProfileOptions[\s\S]*?Saved profiles couldn\\'t refresh right now\. The list below is from the last successful load, so retry before changing this assignment\. You can still choose No profile\.[\s\S]*?Saved profiles couldn\\'t load right now\. You can still save this loop with No profile, or retry loading them\./);
+  assert.match(loopEditSource, /showProfileLoadErrorNotice && \([\s\S]*?style=\{\[styles\.profileNoticeContainer, styles\.profileNoticeWarningContainer\]\}[\s\S]*?\{profileLoadErrorNoticeText\}[\s\S]*?style=\{styles\.profileNoticeRetryButton\}[\s\S]*?onPress=\{handleRetryProfiles\}[\s\S]*?createButtonAccessibilityLabel\('Retry loading saved profiles'\)[\s\S]*?Attempts to load saved profiles for this loop again\.[\s\S]*?Retry profiles[\s\S]*?\)/);
   assert.match(loopEditSource, /const noticeActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(loopEditSource, /profileNoticeRetryButton:\s*\{[\s\S]*?\.\.\.noticeActionTouchTarget,[\s\S]*?alignSelf:\s*'flex-start'/);
   assert.match(loopEditSource, /profileNoticeWarningContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.destructive \+ '12',[\s\S]*?borderColor:\s*theme\.colors\.destructive \+ '24'/);
   assert.doesNotMatch(loopEditSource, /setError\(err\.message \|\| 'Failed to load agent profiles'\);/);
+});
+
+test('LoopEditScreen disables stale saved-profile chips until profile refresh succeeds', () => {
+  assert.match(loopEditSource, /style=\{\[[\s\S]*?styles\.profileOption,[\s\S]*?formData\.profileId === profile\.id && styles\.profileOptionActive,[\s\S]*?hasStaleProfileOptions && styles\.profileOptionDisabled,[\s\S]*?\]\}/);
+  assert.match(loopEditSource, /disabled=\{hasStaleProfileOptions\}/);
+  assert.match(loopEditSource, /accessibilityHint=\{[\s\S]*?hasStaleProfileOptions[\s\S]*?Saved profiles are shown from the last successful load\. Retry loading them before changing this assignment\.[\s\S]*?Assigns this loop to run with the selected saved profile\.[\s\S]*?\}/);
+  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: hasStaleProfileOptions \}\}/);
+  assert.match(loopEditSource, /profileOptionDisabled:\s*\{[\s\S]*?opacity:\s*0\.6/);
 });
 
 test('LoopEditScreen refreshes saved profiles when returning from nested agent creation', () => {

@@ -4569,3 +4569,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that returning to `LoopEdit` after profile changes visibly clears missing assignments and shows the new warning copy.
   - Live-test a delete-or-remove scenario: open a loop with an assigned profile, remove that profile elsewhere, return, and confirm the loop becomes visibly unassigned instead of silently keeping the stale id.
   - After that live pass, evaluate the next highest-signal mobile issue in the loop editor instead of revisiting this stale-profile fix without fresh evidence.
+
+## Iteration 104 - Disable stale saved-profile chips after reload failures
+
+- Date: 2026-03-08
+- Summary: Prevented the mobile `LoopEdit` profile picker from leaving stale saved-profile chips interactive after a refresh failure, while keeping the current assignment visible and `No profile` available as the safe fallback.
+- Review-before-change notes:
+  - Re-read the latest `sub-agents-mobile-view.md` entries first to avoid reworking the recent missing-profile normalization pass from Iteration 103.
+  - Confirmed from source that `LoopEditScreen` reloads profiles on focus return, records `profileLoadError`, and currently leaves the prior `profiles` array rendered when that refresh fails.
+  - Re-confirmed the worktree limitation before validation: `apps/mobile/node_modules` is still missing here, so Expo Web / simulator inspection remains unavailable in this checkout.
+- Current behavior observed from source inspection:
+  - `LoopEditScreen` shows a warning notice when profile reload fails, but the previously loaded saved-profile chips remain visible and tappable in the same section.
+  - Because the chips stayed interactive, the mobile UI could present a known out-of-date saved-profile list immediately after a failed refresh from a nested edit flow.
+  - The stale-state risk is highest after returning from creating, renaming, or deleting agent profiles elsewhere, where the visible chip set may no longer match the server truth.
+- Issue identified:
+  - The Agent Profile section mixed two conflicting states on narrow screens: an error warning that the latest profile list failed to refresh, and still-active chips that looked safe to choose.
+  - That weakens state clarity and could lead users to act on stale options during mobile edit flows.
+- Decision and rationale:
+  - Keep the previous chips visible so the current assignment does not suddenly disappear from the screen after a failed refresh.
+  - Disable those saved-profile chips until reload succeeds, instead of clearing them entirely, so the UI stays transparent about the last known state without inviting edits against stale data.
+  - Keep `No profile` enabled so users still have an immediate safe action if they intentionally want the loop unassigned.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - derive `hasStaleProfileOptions` whenever a profile load error exists alongside a previously loaded profile list,
+    - swap the generic error copy for stale-aware wording that explicitly says the visible list is from the last successful load,
+    - disable saved-profile chips while that stale state is active,
+    - add disabled accessibility state/hinting for those chips,
+    - apply a muted visual treatment so stale options read as unavailable for change rather than currently actionable.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused coverage for:
+    - the new stale-profile error messaging,
+    - disabled state on saved-profile chips during a failed refresh,
+    - the corresponding accessibility semantics and muted styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing Expo/mobile install and config chain (`expo/tsconfig.base` missing, React Native / Expo modules unresolved, `apps/mobile/node_modules` absent)
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because the mobile install is not present
+- Assumptions and tradeoffs:
+  - Assumed preserving visibility of the last selected saved profile is better than abruptly clearing it after a transient refresh failure.
+  - Chose not to auto-clear `formData.profileId` on refresh failure because the current code intentionally preserves existing assignments until a successful refresh proves the profile is gone.
+  - Chose not to auto-select any other profile or force `No profile`; the smallest safe improvement here is to block interaction with stale choices while making the state explicit.
+- Remaining nearby issues noted, not addressed this iteration:
+  - This stale-state presentation still needs a real device or Expo Web pass to confirm the warning copy and muted chips remain readable without feeling visually “disabled but broken” on very narrow screens.
+  - The `Retry profiles` action and `No profile` chip now carry more of the recovery flow; live validation should confirm those two controls remain easy to notice and tap one-handed.
+  - The broader loop edit flow still lacks screenshot-backed confirmation for keyboard overlap, safe-area spacing, and save-button balance on smaller devices in this worktree.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or simulator that a failed return refresh leaves the previous selected chip visible-but-disabled, keeps `No profile` usable, and reads clearly on a narrow screen.
+  - Live-test a return flow where a saved profile is added, renamed, or deleted elsewhere and the refresh fails, confirming the UI now blocks stale chip selection instead of inviting it.
+  - After that live pass, look for the next highest-signal local issue in `LoopEditScreen` or adjacent sub-agent mobile edit flows rather than revisiting this state-clarity fix without fresh evidence.
