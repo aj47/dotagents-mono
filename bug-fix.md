@@ -161,6 +161,9 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` and confirmed the visible failed-message `Retry` button still awaited `tipcClient.retryQueuedMessage(...)` without checking its boolean result or surfacing any visible error feedback.
 - [x] 2026-03-08: Confirmed `retryQueuedMessage` in `apps/desktop/src/main/tipc.ts` returns `false` when `messageQueueService.resetToPending(...)` cannot retry the item, so the renderer could silently no-op on a stale/already-changed queued message.
 - [x] 2026-03-08: Confirmed `MessageQueuePanel` is mounted inside the active desktop `AgentProgress` tile and overlay in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, so this silent retry failure affects a live queue-recovery workflow rather than dead UI.
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` after the retry-only fix and confirmed the visible `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume` actions still lacked user-visible failure handling.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/message-queue-service.ts` that `removeFromQueue(...)`, `updateMessageText(...)`, and `clearQueue(...)` can return `false` for stale/processing/already-added queue states, so those desktop actions could still silently no-op during normal queue races.
+- [x] 2026-03-08: Reviewed the mobile queue path in `apps/mobile/src/ui/MessageQueuePanel.tsx` and `apps/mobile/src/screens/ChatScreen.tsx`; mobile uses direct local-store callbacks rather than the desktop TIPC/main-process contract, so I kept this iteration scoped to the confirmed desktop renderer bug instead of widening to a second platform flow.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -336,6 +339,11 @@
    - `apps/desktop/src/main/tipc.ts` returns `false` when `messageQueueService.resetToPending(...)` cannot retry the target item, so a stale or already-changed failed queue entry could ignore the user's click with no toast, banner, or inline explanation.
    - `MessageQueuePanel` is mounted in both the desktop overlay and tile `AgentProgress` surfaces, so this bug affects a live queue-recovery path for blocked conversations rather than dead code.
 
+- [x] **Desktop queue-management actions beyond Retry could still fail silently (directly confirmed in source):**
+   - In `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, the visible `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume` actions still either ignored backend failure signals or had no `onError` toast/banner feedback at all.
+   - `apps/desktop/src/main/message-queue-service.ts` returns `false` when `removeFromQueue(...)`, `updateMessageText(...)`, or `clearQueue(...)` lose a race against processing/history changes, so those clicks could visibly do nothing even though the user initiated a core recovery action.
+   - `MessageQueuePanel` is mounted in both the desktop overlay and tile `AgentProgress` surfaces, so these silent failures affect the live queue-management workflow rather than dead UI.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
 - [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers import `sonner` and expose a visible `Failed to send follow-up message` error path.
@@ -480,6 +488,9 @@
 
 - [x] Updated `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` so failed queued-message retries now treat `retryQueuedMessage(...) === false` as a real failure, preserve console logging, and surface visible `toast.error(...)` feedback instead of silently no-oping.
 - [x] Added `apps/desktop/src/renderer/src/components/message-queue-panel.feedback.test.ts` with focused source-level assertions that lock in the retry-result check, stale-message error, and visible toast feedback contract.
+- [x] Updated `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` so failed `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume` actions now preserve console logging but also surface visible `toast.error(...)` feedback instead of failing silently.
+- [x] Taught the desktop queue panel to convert `removeFromMessageQueue(...) === false`, `updateQueuedMessageText(...) === false`, and `clearMessageQueue(...) === false` into explicit user-facing errors (`no longer removable`, `can no longer be edited`, `wait for the current message to finish`) rather than silent no-ops.
+- [x] Expanded `apps/desktop/src/renderer/src/components/message-queue-panel.feedback.test.ts` with focused source-level assertions that lock in the broader queue-action feedback contract for `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume`.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -596,6 +607,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now imports `toast` from `sonner`, converts `retryQueuedMessage(...) === false` into `This queued message is no longer retryable.`, and surfaces visible `Failed to retry queued message. ...` feedback on failed retry actions.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `message-queue-panel.tsx` and `message-queue-panel.feedback.test.ts`, confirming the retry-result check, stale-message error string, visible toast text, and regression file are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop queued-message retry feedback fix and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now converts stale `Remove` / queued-message `Save` / `Clear All` results into explicit errors, and each visible queue-management action (`Remove`, `Save`, `Clear All`, `Pause`, `Resume`, `Retry`) now has a user-visible `toast.error(...)` failure path instead of staying console-only.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `message-queue-panel.tsx` and `message-queue-panel.feedback.test.ts`, confirming the new remove/save/clear stale-state strings plus pause/resume failure toasts are present in source and covered by the regression file.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the broader desktop queue-action feedback fix and regression test update.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -640,6 +654,8 @@
 
 - [x] Targeted automated verification for this desktop queued-message retry feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
+- [x] Targeted automated verification for this broader desktop queue-action feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the post-success `AgentProgress` `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -667,6 +683,7 @@
 - [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
 - [ ] Whether the sampling dialog should eventually expose a clearer in-flight approval state (for example button text/spinner) while an approved request is executing, rather than only disabling the buttons during submission.
+- [ ] Whether the mobile `MessageQueuePanel` / `ChatScreen` queue-action callbacks should also surface visible failure feedback for local-store `remove`, `update`, `retry`, and `clear` failures once the mobile queue flow can be exercised in a runnable environment.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -787,6 +804,7 @@
 - Assumption: closing the sampling dialog only for the `resolveSampling(...) === false` stale-request case is acceptable because the main-process request is already gone at that point, while keeping the dialog open on thrown IPC failures preserves the user's chance to retry a transient failure.
 
 - Assumption: surfacing `This queued message is no longer retryable.` when `retryQueuedMessage(...)` returns `false` is acceptable because the underlying service only returns `false` when the message is missing or no longer in `failed` state, and both cases mean the visible `Retry` action cannot actually proceed.
+- Assumption: keeping this pass desktop-only is acceptable because the confirmed bug and fixed contracts depend on the desktop `MessageQueuePanel`'s TIPC/main-process failure semantics, while mobile uses a separate local-store queue flow that should be validated as its own follow-up rather than widened speculatively.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -842,5 +860,5 @@
 - After that, inspect whether any other desktop MCP approval/consent surfaces still close stale requests or swallow rejected responses without visible feedback.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` and live-verify that forcing a panel-focus failure from the Sessions page restores the previously focused tile and surfaces the new error toast instead of leaving the wrong tile selected.
 - After that, inspect whether the other Sessions page panel-launch actions (`Start typing`, `Start voice`, predefined prompts) still need the same visible failure treatment for full sessions-page consistency.
-- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` and live-verify the desktop queue `Retry` button by forcing both a stale queued-message state and a rejected retry IPC call to confirm the new toast appears instead of a silent no-op.
-- After that, inspect whether adjacent desktop queue actions (`Remove`, `Clear All`, `Pause`, `Resume`) still need the same visible failure treatment when their boolean/IPC contracts fail.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` and live-verify the desktop queue `Retry`, `Remove`, `Save`, `Clear All`, `Pause`, and `Resume` actions by forcing both stale queue state and rejected IPC calls to confirm each now surfaces the new toast instead of silently no-oping.
+- After that, inspect whether the mobile queue-management callbacks in `apps/mobile/src/screens/ChatScreen.tsx` should gain matching visible failure feedback for local-store false-return paths.
