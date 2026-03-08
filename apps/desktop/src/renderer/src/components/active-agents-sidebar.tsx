@@ -50,6 +50,8 @@ interface SidebarSession {
 
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
+const SIDEBAR_SESSION_TITLE_CLASS_NAME =
+  "min-w-0 flex-1 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 
@@ -407,6 +409,7 @@ export function ActiveAgentsSidebar({
           onScroll={handleSidebarSessionsScroll}
         >
           {sidebarSessions.map(({ session, isPast, key }) => {
+            const sessionTitle = session.conversationTitle || "Untitled session"
             const isFocused = focusedSessionId === session.id
             const sessionProgress = agentProgressById.get(session.id)
             const hasPendingApproval =
@@ -438,8 +441,8 @@ export function ActiveAgentsSidebar({
                 >
                   {/* Archive icon for past agents */}
                   <Archive className="h-3 w-3 shrink-0 opacity-50" />
-                  <p className="flex-1 truncate">
-                    {session.conversationTitle || "Untitled session"}
+                  <p className={SIDEBAR_SESSION_TITLE_CLASS_NAME} title={sessionTitle}>
+                    {sessionTitle}
                   </p>
                 </div>
               )
@@ -455,6 +458,9 @@ export function ActiveAgentsSidebar({
 
             // Get agent/profile name from progress data
             const agentName = sessionProgress?.profileName
+            const displaySessionTitle = hasPendingApproval
+              ? `⚠ ${sessionTitle}`
+              : sessionTitle
 
             return (
               <div
@@ -479,8 +485,9 @@ export function ActiveAgentsSidebar({
                 />
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <p
+                    title={displaySessionTitle}
                     className={cn(
-                      "truncate",
+                      SIDEBAR_SESSION_TITLE_CLASS_NAME,
                       hasPendingApproval
                         ? "text-amber-700 dark:text-amber-300"
                         : isSnoozed
@@ -488,9 +495,7 @@ export function ActiveAgentsSidebar({
                           : "text-foreground",
                     )}
                   >
-                    {hasPendingApproval
-                      ? `⚠ ${session.conversationTitle}`
-                      : session.conversationTitle}
+                    {displaySessionTitle}
                   </p>
                   {/* Agent name indicator */}
                   {agentName && (

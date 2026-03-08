@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 67: Desktop sidebar sessions list made distinct conversations look identical under cramped width + larger zoom
+
+- Area selected:
+  - desktop root sessions sidebar `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched `agent-progress`, `Past Sessions`, `settings-general`, and `Memories` surfaces unless there was a concrete follow-up reason.
+  - `model-preset-manager.tsx` still has unrelated uncommitted work in this checkout, so I deliberately stayed away from that file family.
+  - A live Electron renderer was available on `http://localhost:5174/`, and the root page exposed a fresh, high-frequency navigation surface with real session data instead of another source-only pass.
+- Audit method:
+  - re-read `ui-audit.md`, `visible-ui.md`, `apps/desktop/DEBUGGING.md`, and the repo desktop/mobile workflow guidance before changing code
+  - used live browser inspection against the running Electron renderer at `http://localhost:5174/`
+  - stressed the root sessions page at `680×900` with approximate `125%` zoom, captured `tmp/ui-audit/root-680-zoom125-electron.png` and `tmp/ui-audit/sidebar-sessions-180x220-680w-zoom125.png`, and measured the mounted sidebar rows directly in the DOM before editing source
+  - prototyped the intended two-line clamp + hover-title treatment directly in the mounted DOM, then captured `tmp/ui-audit/sidebar-before-expanded-680x900-zoom125.png` and `tmp/ui-audit/sidebar-after-prototype-680x900-zoom125.png`
+  - cross-checked mobile and kept the patch desktop-only because `apps/mobile/src/screens/SessionListScreen.tsx` is a separate full-width list pattern that already exposes the full title via row accessibility labels instead of this compact desktop sidebar lane
+
+#### Findings
+
+- Before the fix, the desktop left `Sessions` sidebar had one concrete navigation issue with clear user impact:
+  - past and active session titles were both rendered with rigid one-line `truncate` treatment and no full-title hover fallback
+  - in live inspection at `680×900` with approximate `125%` zoom, the sidebar column was about `176px` wide, the visible sessions list was about `151px` wide, each visible row was about `133px` wide, and long-title text only received about `88px` of usable width
+  - representative title nodes measured `clientWidth = 88` against `scrollWidth = 430` for `Write 200 numbered bullet points...` and `scrollWidth = 338` for `What should I do next. I lost the last convo`
+  - multiple sessions therefore collapsed to the same visible prefix, making different conversations look identical at a glance, and the mounted title nodes had no `title` attribute to recover the full label on hover
+  - this matters because the sidebar is a quick-switch navigation surface; when distinct sessions cannot be told apart, users are more likely to reopen or focus the wrong conversation
+
+#### Changes made
+
+- Hardened the desktop sidebar session rows in `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` with the smallest effective identity fix:
+  - introduced a shared `SIDEBAR_SESSION_TITLE_CLASS_NAME` with `min-w-0`, `leading-snug`, `line-clamp-2`, `break-words`, and `[overflow-wrap:anywhere]`
+  - changed past-session titles from one-line truncation to the new compact two-line treatment and added `title={sessionTitle}` for hover disclosure
+  - changed active-session titles to the same two-line treatment, preserving the pending-approval warning prefix through `displaySessionTitle`
+  - added `title={displaySessionTitle}` so the exact visible label is recoverable on hover even when the sidebar stays narrow
+- Added `apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts` with focused source-contract coverage for the new sidebar title layout/disclosure behavior
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: a Node script confirmed the shared sidebar title class, past/active title disclosure, removal of the old one-line truncate contract, and focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5174/`:
+  - screenshots: `tmp/ui-audit/root-680-zoom125-electron.png`, `tmp/ui-audit/sidebar-sessions-180x220-680w-zoom125.png`, `tmp/ui-audit/sidebar-before-expanded-680x900-zoom125.png`
+  - in the stressed sidebar, long titles only had about `88px` of visible width and no `title` fallback, so several rows became visually ambiguous
+- Live DOM prototype verification of the intended fix:
+  - after applying the same two-line clamp + `title` treatment directly in the mounted DOM, long-title rows grew from about `36px` to about `53px` tall and the title text block grew from about `24px` to about `41px`, revealing materially more distinguishing text without widening the sidebar
+  - the visible sessions list grew from about `229px` to about `307px` tall for the sampled rows, which was an acceptable density tradeoff for making the rows more identifiable
+  - screenshot: `tmp/ui-audit/sidebar-after-prototype-680x900-zoom125.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I treated the live pass as pre-fix evidence + DOM prototyping rather than claiming a rebuilt post-edit product confirmation from this worktree.
+- Important caveat: some long conversation titles in the live DOM already appeared to include literal trailing `...` from upstream data, so this layout fix improves the amount of identity that can be shown/recovered in the sidebar but cannot restore title detail that was already shortened before render.
+- Tradeoff/rationale: the sidebar list now spends a little more vertical space per long row, but that is a safer tradeoff than keeping multiple different conversations visually indistinguishable in a primary navigation surface.
+- Best next UI audit chunk after this one: move to another fresh live-inspectable root surface such as pending approval cards, a loading/empty state, or a separate mobile screen once Expo Web or another live runtime path is practical.
+
 ### 2026-03-08 — Chunk 66: Desktop agent-progress tile header title could collapse away entirely under cramped width + larger text
 
 - Area selected:
