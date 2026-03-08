@@ -2829,6 +2829,66 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const isShowingStoredFullHistory =
     supportsStoredHistoryViewer && showFullHistory && hasStoredEarlierHistory
 
+  const historyStatusBadge = useMemo(() => {
+    if (isShowingStoredFullHistory) {
+      return {
+        label: "Full history",
+        title: `Showing ${storedHistoryMessageCount ?? representedHistoryMessageCount} stored messages from disk.`,
+        className: "border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
+      }
+    }
+
+    if (hasLegacyPartialHistoryWarning) {
+      return {
+        label: "History partial",
+        title: "Earlier summarized history is unavailable for this legacy session.",
+        className: "border-amber-500/40 text-amber-700 dark:text-amber-300",
+      }
+    }
+
+    if (isHydratingStoredHistory) {
+      return {
+        label: "Checking history",
+        title: "Checking for preserved full history on disk.",
+        className: "border-muted-foreground/30 text-muted-foreground",
+      }
+    }
+
+    if (hasStoredHistoryLoadError) {
+      return {
+        label: "History warning",
+        title: "Couldn't load preserved full history from disk.",
+        className: "border-amber-500/40 text-amber-700 dark:text-amber-300",
+      }
+    }
+
+    if (summaryBlockCount > 0 || hasStoredEarlierHistory) {
+      const title = summaryBlockCount > 0
+        ? hiddenEarlierHistoryCount > 0
+          ? `${hiddenEarlierHistoryCount} earlier stored message${hiddenEarlierHistoryCount === 1 ? " is" : "s are"} currently represented by ${summaryBlockCount} summary block${summaryBlockCount === 1 ? "" : "s"} in the active context.`
+          : `${summaryBlockCount} summary block${summaryBlockCount === 1 ? "" : "s"} currently represent earlier conversation history in the active context.`
+        : "Earlier stored history exists outside the active context. Use Show Full History to inspect it."
+
+      return {
+        label: "History compacted",
+        title,
+        className: "border-primary/40 text-primary",
+      }
+    }
+
+    return null
+  }, [
+    hasLegacyPartialHistoryWarning,
+    hasStoredEarlierHistory,
+    hasStoredHistoryLoadError,
+    hiddenEarlierHistoryCount,
+    isHydratingStoredHistory,
+    isShowingStoredFullHistory,
+    representedHistoryMessageCount,
+    storedHistoryMessageCount,
+    summaryBlockCount,
+  ])
+
   const fallbackRespondToUserResponses = useMemo(
     () => (progress.userResponse ? [] : extractRespondToUserResponsesFromMessages(messages)),
     [messages, progress.userResponse],
@@ -3393,6 +3453,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             </div>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+            {historyStatusBadge && (
+              <Badge
+                variant="outline"
+                className={cn("shrink-0 text-xs", historyStatusBadge.className)}
+                title={historyStatusBadge.title}
+              >
+                {historyStatusBadge.label}
+              </Badge>
+            )}
             {hasPendingApproval && (
               <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
                 Approval
@@ -3766,6 +3835,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           {wasStopped && (
             <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
               Terminated
+            </Badge>
+          )}
+          {historyStatusBadge && (
+            <Badge
+              variant="outline"
+              className={cn("shrink-0 px-1.5 py-0.5 text-xs", historyStatusBadge.className)}
+              title={historyStatusBadge.title}
+            >
+              {historyStatusBadge.label}
             </Badge>
           )}
         </div>

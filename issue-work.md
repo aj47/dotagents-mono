@@ -782,3 +782,33 @@
   - Re-run broader desktop Vitest/typecheck once this worktree has the missing dependency/tooling baseline restored.
 
 - Next recommended issue work item: either keep closing small consistency/polish gaps on `#53` only if a real user-facing mismatch remains, or pivot back to `#58` for any remaining ACP/live-session history provenance work since that issue still maps more directly to current trust/UX priorities.
+
+##### Issue #58 — Conversation History: persistent header provenance badges
+
+- Selection rationale:
+  - The broader `#58` history viewer/storage work is already in place in this branch, and the clearest remaining user-facing gap was discoverability: summarized-vs-active history state only appeared inside the transcript banner, not in the always-visible session chrome.
+- Investigation:
+  - Re-read issue `#58` and its scope-locking comment, especially the requirement to visibly differentiate summarized history from the active context window.
+  - Re-inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the UI already showed `Show Full History`, the active-window divider, and legacy partial warnings inside transcript panels, but nothing in the tile/default/overlay headers signaled history state before the transcript was opened or expanded.
+  - Checked the desktop-renderer `AGENTS.md` cross-platform reminder and confirmed mobile has no equivalent stored-history/session-chrome affordance today, so a mirrored mobile change would be a separate design decision rather than part of this narrow desktop slice.
+- Important assumptions:
+  - Assumption: adding a compact provenance badge to the existing desktop session headers is a valid `#58` slice even without changing the transcript content itself.
+  - Why acceptable: it directly advances the issue's `visually differentiate summarized vs active` requirement with minimal UI churn and improves discoverability for collapsed tiles and glanceable live sessions.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: mobile does not currently expose the same full-history viewer or session-header status surface that this badge augments on desktop.
+- Changes implemented:
+  - Added a derived `historyStatusBadge` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` that summarizes compacted/full/partial/checking/error history states using the existing stored-history signals.
+  - Rendered the new provenance badge in both the tile header and the default/overlay header so history state stays visible even when the transcript body is collapsed or scrolled away.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with source-level assertions covering the new badge labels and header wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Consider whether ACP-specific session chrome needs richer provenance wording if ACP resume/bootstrap semantics diverge further from the standard conversation path.
+  - Consider adding a lightweight tooltip/popover or help copy if users need more context than the compact badge title provides.
+  - Re-run broader desktop Vitest/typecheck once this worktree has the missing dependency/tooling baseline restored.
+
+- Next recommended issue work item: either keep tightening `#58` with ACP/live-session provenance polish if a concrete mismatch remains, or pivot to a fresh issue with a similarly strong local repro path instead of the still-speculative `#54`.

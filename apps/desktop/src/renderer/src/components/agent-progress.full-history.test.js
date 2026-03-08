@@ -32,6 +32,16 @@ test('tile transcript exposes a full-history toggle and legacy partial warning',
   assert.match(agentProgressSource, /Earlier summarized history is unavailable for this legacy session\./)
 })
 
+test('header surfaces compacted-history provenance badges outside the transcript area', () => {
+  assert.match(agentProgressSource, /const historyStatusBadge = useMemo\(\(\) =>/)
+  assert.match(agentProgressSource, /History compacted/)
+  assert.match(agentProgressSource, /Full history/)
+  assert.match(agentProgressSource, /History partial/)
+  assert.match(agentProgressSource, /Checking history/)
+  assert.match(agentProgressSource, /History warning/)
+  assert.match(agentProgressSource, /title=\{historyStatusBadge\.title\}/)
+})
+
 test('live tiles lazily hydrate preserved history from disk when only summaries are in memory', () => {
   assert.match(agentProgressSource, /useConversationQuery/)
   assert.match(agentProgressSource, /variant === "tile" \|\| variant === "overlay" \|\| variant === "default"/)
