@@ -105,9 +105,12 @@ test('keeps long agent names stable when built-in and disabled badges are presen
 });
 
 test('uses the agent preview line for auto-start state before falling back to optional descriptions on mobile', () => {
-  assert.match(settingsSource, /function formatAgentRowSecondaryText\(profile: AgentProfile\): string \| null \{[\s\S]*?profile\.enabled && profile\.autoSpawn && \(profile\.connectionType === 'acp' \|\| profile\.connectionType === 'stdio'\)[\s\S]*?return 'Starts automatically with DotAgents';[\s\S]*?const description = profile\.description\?\.trim\(\);[\s\S]*?return description \? description : null;[\s\S]*?\}/);
+  assert.match(settingsSource, /function shouldPreferAgentOperationalPreview\(profile: AgentProfile\): boolean \{[\s\S]*?return profile\.enabled && profile\.autoSpawn && \(profile\.connectionType === 'acp' \|\| profile\.connectionType === 'stdio'\);[\s\S]*?\}/);
+  assert.match(settingsSource, /function formatAgentRowSecondaryText\(profile: AgentProfile\): string \| null \{[\s\S]*?if \(shouldPreferAgentOperationalPreview\(profile\)\) \{[\s\S]*?return 'Starts automatically with DotAgents';[\s\S]*?const description = profile\.description\?\.trim\(\);[\s\S]*?return description \? description : null;[\s\S]*?\}/);
   assert.doesNotMatch(settingsSource, /function formatAgentRowSecondaryText\(profile: AgentProfile\): string \| null \{[\s\S]*?if \(profile\.autoSpawn && \(profile\.connectionType === 'acp' \|\| profile\.connectionType === 'stdio'\)\) \{/);
+  assert.match(settingsSource, /function getAgentRowSecondaryPreviewLineCount\(profile: AgentProfile\): 1 \| 2 \{[\s\S]*?return shouldPreferAgentOperationalPreview\(profile\) \? 2 : 1;[\s\S]*?\}/);
   assert.match(settingsSource, /const agentSecondaryPreview = formatAgentRowSecondaryText\(profile\);/);
-  assert.match(settingsSource, /\{agentSecondaryPreview && \([\s\S]*?<Text style=\{styles\.agentSecondaryPreview\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{agentSecondaryPreview\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
+  assert.match(settingsSource, /const agentSecondaryPreviewLineCount = getAgentRowSecondaryPreviewLineCount\(profile\);/);
+  assert.match(settingsSource, /\{agentSecondaryPreview && \([\s\S]*?<Text style=\{styles\.agentSecondaryPreview\} numberOfLines=\{agentSecondaryPreviewLineCount\} ellipsizeMode="tail">[\s\S]*?\{agentSecondaryPreview\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
   assert.match(settingsSource, /agentSecondaryPreview:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*spacing\.xs,[\s\S]*?lineHeight:\s*15/);
 });

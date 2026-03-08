@@ -189,9 +189,17 @@ function formatLoopLastRunLabel(timestamp: number): string {
   })}`;
 }
 
+function shouldPreferLoopAssignmentPreview(loop: Loop): boolean {
+  return Boolean(loop.profileName);
+}
+
 function formatLoopRowSecondaryText(loop: Loop): string {
-  if (loop.profileName) return `Runs with ${loop.profileName}`;
+  if (shouldPreferLoopAssignmentPreview(loop)) return `Runs with ${loop.profileName}`;
   return loop.prompt;
+}
+
+function getLoopRowSecondaryPreviewLineCount(loop: Loop): 1 | 2 {
+  return shouldPreferLoopAssignmentPreview(loop) ? 2 : 1;
 }
 
 function formatAgentConnectionTypeLabel(connectionType: AgentProfile['connectionType']): 'Internal' | 'ACP' | 'Stdio' | 'Remote' {
@@ -221,13 +229,21 @@ function formatAgentRoleLabel(role?: AgentProfile['role']): 'Profile' | 'Delegat
   }
 }
 
+function shouldPreferAgentOperationalPreview(profile: AgentProfile): boolean {
+  return profile.enabled && profile.autoSpawn && (profile.connectionType === 'acp' || profile.connectionType === 'stdio');
+}
+
 function formatAgentRowSecondaryText(profile: AgentProfile): string | null {
-  if (profile.enabled && profile.autoSpawn && (profile.connectionType === 'acp' || profile.connectionType === 'stdio')) {
+  if (shouldPreferAgentOperationalPreview(profile)) {
     return 'Starts automatically with DotAgents';
   }
 
   const description = profile.description?.trim();
   return description ? description : null;
+}
+
+function getAgentRowSecondaryPreviewLineCount(profile: AgentProfile): 1 | 2 {
+  return shouldPreferAgentOperationalPreview(profile) ? 2 : 1;
 }
 
 function normalizeAgentLookupName(name?: string): string {
@@ -2642,6 +2658,7 @@ export default function SettingsScreen({ navigation }: any) {
                     const isSelectedMainAgentProfile = selectedMainAgentLookupName.length > 0
                       && normalizeAgentLookupName(profile.name) === selectedMainAgentLookupName;
                     const agentSecondaryPreview = formatAgentRowSecondaryText(profile);
+                    const agentSecondaryPreviewLineCount = getAgentRowSecondaryPreviewLineCount(profile);
                     const agentEditHint = isSelectedMainAgentProfile
                       ? 'Opens this agent so you can review and change its settings. This is the current main agent for new chats in ACP mode.'
                       : 'Opens this agent so you can review and change its settings.';
@@ -2698,7 +2715,7 @@ export default function SettingsScreen({ navigation }: any) {
                             {formatAgentConnectionTypeLabel(profile.connectionType)} • {formatAgentRoleLabel(profile.role)}
                           </Text>
                           {agentSecondaryPreview && (
-                            <Text style={styles.agentSecondaryPreview} numberOfLines={1} ellipsizeMode="tail">
+                            <Text style={styles.agentSecondaryPreview} numberOfLines={agentSecondaryPreviewLineCount} ellipsizeMode="tail">
                               {agentSecondaryPreview}
                             </Text>
                           )}
@@ -2771,6 +2788,7 @@ export default function SettingsScreen({ navigation }: any) {
                   loops.map((loop) => {
                     const isLoopRunPending = pendingLoopRunIds.includes(loop.id);
                     const loopStatusLabel = getLoopStatusLabel(loop);
+                    const loopSecondaryPreviewLineCount = getLoopRowSecondaryPreviewLineCount(loop);
                     const loopStatusHint = loop.isRunning
                       ? 'This loop is running right now.'
                       : loop.enabled
@@ -2838,7 +2856,7 @@ export default function SettingsScreen({ navigation }: any) {
                             ) : null}
                             {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
                           </Text>
-                          <Text style={styles.loopSecondaryPreview} numberOfLines={1} ellipsizeMode="tail">
+                          <Text style={styles.loopSecondaryPreview} numberOfLines={loopSecondaryPreviewLineCount} ellipsizeMode="tail">
                             {formatLoopRowSecondaryText(loop)}
                           </Text>
                           {renderInlineEditAffordance()}

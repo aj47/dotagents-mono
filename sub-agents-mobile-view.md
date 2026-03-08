@@ -1,5 +1,48 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 163 - Let operational mobile sub-agent previews use two lines
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not rework the just-shipped chat/tool-detail typography passes without new evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/tests/settings-agent-actions-mobile.test.js`, and `apps/mobile/tests/settings-loop-metadata-mobile.test.js`, moving back to the `Settings > Agents` / `Agent Loops` overview because the latest ledger iterations had been concentrated on chat/tool execution details.
+  - Re-tested whether live Expo validation was practical in this worktree before closing the change.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the mobile agent and loop secondary preview slots were still hard-clamped to `numberOfLines={1}`.
+  - Earlier iterations had intentionally used that compact clamp for lower-priority free-form preview copy like optional agent descriptions and loop prompts.
+  - But those same preview slots now also carry more operational text such as `Starts automatically with DotAgents` and `Runs with {profileName}`.
+  - On narrow screens, that meant important startup/assignment context could be tail-truncated by a density rule that was originally tuned for less critical copy.
+- Issue identified:
+  - Mobile sub-agent overview rows still treated operational preview state like low-priority description text, weakening state clarity when long `Runs with …` or auto-start summaries were the key differentiator between rows.
+- Decision and rationale:
+  - Keep the existing row layout, action rails, metadata line, and overall compact list density unchanged.
+  - Avoid broadly expanding all preview text, since the earlier single-line clamp still makes sense for free-form descriptions and prompts.
+  - Make the smallest useful fix instead: only let operational previews use a two-line budget while leaving free-form preview text on the existing one-line clamp.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to add `shouldPreferAgentOperationalPreview(...)` / `getAgentRowSecondaryPreviewLineCount(...)` and use a two-line preview only when the agent row is showing the auto-start status sentence.
+  - Updated the same file to add `shouldPreferLoopAssignmentPreview(...)` / `getLoopRowSecondaryPreviewLineCount(...)` and use a two-line preview only when the loop row is showing `Runs with {profileName}` assignment context.
+  - Kept optional agent descriptions and loop prompt previews on the original single-line clamp so the dense settings lists do not grow across the board.
+  - Updated focused regression coverage in:
+    - `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+    - `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed a small row-height increase is worth it when the preview is carrying operational state users may need to distinguish at a glance.
+  - Kept free-form description/prompt text compact so this does not undo the earlier hierarchy work that intentionally demoted less critical preview copy.
+  - This remains a source-backed improvement and still needs live confirmation that two-line operational previews feel clearer without making mixed agent/loop lists feel too tall on very narrow screens.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long `Runs with …` and `Starts automatically …` previews now stay understandable around ~320px width without crowding the action rail.
+  - Capture screenshot-backed evidence for one loop with a long assigned profile name and one auto-start agent row so the new two-line operational preview budget can be judged in context.
+  - If live validation shows the rows now feel too tall, prefer tightening preview wording before changing the selective two-line rule.
+
 ## Iteration 162 - Make expanded mobile tool details readable without zooming
 
 - Date: 2026-03-08
