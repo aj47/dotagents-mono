@@ -26,6 +26,14 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).not.toContain('className="truncate font-medium text-sm"')
   })
 
+  it("gives the tile header agent identity a compact readable chip instead of whisper-light metadata text", () => {
+    expect(agentProgressSource).toContain('title={`Agent: ${profileName}`}')
+    expect(agentProgressSource).toContain(
+      'className="inline-flex max-w-full items-center gap-1 self-start rounded-md border border-border/50 bg-background/70 px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground"'
+    )
+    expect(agentProgressSource).toContain('<Bot className="h-3 w-3 shrink-0 opacity-70" />')
+  })
+
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex flex-wrap items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"')

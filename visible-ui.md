@@ -306,3 +306,41 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
 - Remaining opportunities:
   - once this worktree can launch directly, capture a true after-state screenshot of the compare tiles and confirm the two-line header still feels calm when approval badges or extra tile actions are present
   - if live validation still shows compare tiles feeling hard to distinguish, the next likely local improvement is strengthening the low-contrast agent/model metadata row without adding more top chrome
+
+### Iteration 2026-03-08 / 09
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and cross-worktree live-after limitation documented
+- Screen / area reviewed: desktop compare-mode session tiles, specifically the tiny agent-identity row beneath the tile title
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/#/settings/general` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - confirmed the running Electron/Vite instance again belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace, so true after-state HMR validation of this worktree was not available
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-09-main-metadata.png`
+  - live DOM-backed inspection at a realistic `900x670` renderer size showed the first visible compare tile at about `338px` wide with its agent identity rendered as a bare `main-agent` line measuring about `172x15px`
+  - the metadata row used `10px` text with computed color `rgba(23, 23, 23, 0.7)`, so the acting agent read more like whisper-light footnote text than part of the tile's primary identity
+- Issues found:
+  - the tile header exposed the acting agent too weakly, which slowed side-by-side scanning when multiple compare tiles were visible
+  - the understated treatment also weakened transparency about which agent was currently acting in each tile, especially once titles became denser and more descriptive
+- Assumptions:
+  - this is desktop-only; codebase inspection found no equivalent mobile compare-tile header pattern, while `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx` use separate agent-selector surfaces rather than desktop progress tiles
+  - the title should remain the dominant header element, so the fix should strengthen agent identity without adding another loud badge or moving model details into the header
+  - a compact chip is an acceptable density tradeoff because the tile header already reserves a second line beneath the title
+- Design rationale:
+  - make the acting agent readable enough to support trust and quick recognition, not just hover recovery
+  - use a subdued chip treatment so the agent label feels intentionally grouped and legible without competing with the conversation title or trailing controls
+  - keep the change local to the existing tile header structure instead of redesigning the whole compare tile
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so the tile-header `profileName` renders as a compact identity chip with a subtle border/background, slightly larger icon/text, and `title={\`Agent: ${profileName}\`}` hover recovery
+  - updated `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` to lock in the new chip treatment and prevent the old whisper-light metadata presentation from returning
+- Verification:
+  - live before-state screenshot + DOM measurement via CDP against the main renderer target
+  - targeted source-level test passed against this worktree using the sibling worktree's installed tooling without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts`
+  - live after-state approximation by applying an in-memory DOM patch that mirrors the intended chip styling, then capturing `tmp/visible-ui-after-2026-03-08-09-main-metadata.png`; the sampled agent row changed from about `172x15px` plain text to about `92x18px` chip-style metadata with `11px` medium-weight text, a soft background, and a visible border
+  - `git diff --check`
+- After-state observation:
+  - `tmp/visible-ui-after-2026-03-08-09-main-metadata.png`
+  - the DOM-simulated tile header reads more deliberately: the acting agent now looks like part of the tile identity instead of an easy-to-miss afterthought below the title
+  - the chip stayed compact enough that the tile header still reads as content-first chrome rather than badge-heavy chrome
+- Remaining opportunities:
+  - once this worktree can launch directly, capture a true after-state screenshot of the compare tiles and confirm the new chip remains calm alongside approval badges and longer agent names
+  - after this pass, prefer moving away from the compare-tile header unless live screenshots still show it as the clearest blocker; the next likely compare-tile candidate would be the footer model/provider row, not more header chrome

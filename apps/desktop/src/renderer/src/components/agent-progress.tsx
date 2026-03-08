@@ -3255,8 +3255,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </span>
               {/* Agent name indicator in header */}
               {profileName && (
-                <span className="flex items-center gap-1 text-[10px] text-primary/70">
-                  <Bot className="h-2.5 w-2.5 shrink-0" />
+                <span
+                  className="inline-flex max-w-full items-center gap-1 self-start rounded-md border border-border/50 bg-background/70 px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground"
+                  title={`Agent: ${profileName}`}
+                >
+                  <Bot className="h-3 w-3 shrink-0 opacity-70" />
                   <span className="truncate">{profileName}</span>
                 </span>
               )}
