@@ -1,5 +1,60 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 61: Desktop settings-general Langfuse credential rows were squeezed into an unnecessarily narrow mid-width value lane
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-general.tsx` (`Settings` → `General` → `Langfuse Observability` → `Public Key` / `Secret Key` / adjacent long-value rows)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the most recently touched `Memories`, providers, MCP, and agent-settings surfaces.
+  - `Settings → General` had not been the most recent focus, but a live pass on the fresh `Langfuse Observability` subsection immediately exposed a stronger issue than another source-only sweep.
+  - This was a good follow-up to the older Langfuse helper/status pass because the live renderer showed a different failure mode: not copy wrapping, but credential-entry rows staying awkwardly narrow before the page fully stacked.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting a just-audited area without a concrete follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used live browser automation against the running desktop renderer at `http://localhost:5174/settings/general`
+  - expanded `General`, `Modular config (.agents)`, `Shortcuts`, `Panel Position`, and `Langfuse Observability`, then stressed the live page at `1100×1400`, `760×1400`, and `760×1400` with `125%` zoom
+  - captured screenshot-backed evidence in `tmp/ui-audit/settings-general-wide-expanded.png`, `tmp/ui-audit/settings-general-tight-expanded.png`, `tmp/ui-audit/settings-general-langfuse-wide.png`, `tmp/ui-audit/settings-general-langfuse-tight-zoom125.png`, `tmp/ui-audit/settings-general-langfuse-before-760-zoom125.png`, and `tmp/ui-audit/settings-general-langfuse-after-760-zoom125.png`
+  - measured the mounted Langfuse credential rows directly in the DOM before editing source, then prototyped a row-scoped wider value-lane split in the mounted DOM before choosing the final patch
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` renders the Langfuse fields as stacked full-width mobile inputs rather than this shared desktop `Control` two-column split
+
+#### Findings
+
+- Before the fix, the desktop `Langfuse Observability` credential rows had one concrete mid-width usability issue with clear user impact:
+  - the `Public Key` and `Secret Key` rows still inherited the shared `Control` two-column split, which capped the value lane at roughly `48%` even though these are long credential fields
+  - in live inspection at `760px` width, each credential input only had about `226px` of visible width while its content needed about `304px`, leaving about `78px` hidden inside the field unless users horizontally scrolled within the input
+  - at `760px` with `125%` zoom, each input fell to about `216px` of visible width while still needing about `304px`
+  - at `620px`, the page finally stacked and the same inputs jumped back to about `366px` wide, which confirmed this was a mid-breakpoint layout problem rather than an unavoidable space limit
+  - this matters because users setting up Langfuse often need to verify or compare long keys by sight; compressing the inputs in the mid-width range makes pasted credentials harder to review, correct, and trust
+
+#### Changes made
+
+- Hardened the Langfuse long-value rows in `apps/desktop/src/renderer/src/pages/settings-general.tsx` with the smallest effective layout fix verified live:
+  - added a local `langfuseWideValueControlClassName` row override that widens the shared desktop `Control` split to a `30% / 70%` label/value balance on `sm+` widths
+  - applied that wider value-lane treatment to the `Public Key`, `Secret Key`, `Base URL`, and `Status` rows so the section stays visually consistent instead of widening only two isolated rows
+  - kept the existing information architecture intact: no labels, fields, or helper copy were moved or redesigned beyond giving long Langfuse values more of the row before the page fully stacks
+- Extended `apps/desktop/src/renderer/src/pages/settings-general.layout.test.ts` with focused source-contract coverage for the wider Langfuse value-lane treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.layout.test.ts` *(blocked: `vitest` not found in this worktree’s filtered desktop exec path)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `langfuseWideValueControlClassName`, exactly four Langfuse row usages, and the focused regression test coverage are present
+- Live desktop renderer evidence before the fix at `http://localhost:5174/settings/general`:
+  - screenshots: `tmp/ui-audit/settings-general-langfuse-tight-zoom125.png`, `tmp/ui-audit/settings-general-langfuse-before-760-zoom125.png`
+  - at `760px` width, `Public Key` / `Secret Key` inputs measured about `226px` visible width with about `304px` of content width
+  - at `760px` + `125%` zoom, both inputs measured about `216px` visible width with about `304px` of content width
+- Live DOM prototype verification of the intended fix:
+  - after widening just the Langfuse long-value rows in the mounted DOM, the `Public Key` / `Secret Key` value lane increased from about `234px` to about `321px`
+  - the actual inputs increased from about `216px` to about `304px`, and internal clipping pressure dropped from about `88px` to `0px`
+  - screenshot: `tmp/ui-audit/settings-general-langfuse-after-760-zoom125.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-general.tsx apps/desktop/src/renderer/src/pages/settings-general.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the currently running `localhost:5174` renderer belongs to another worktree (`streaming-lag-loop`), so I did not claim a literal rebuilt post-edit product pass from this checkout. I paired live pre-fix evidence with a DOM prototype of the exact row-width treatment and direct source verification of the patch instead.
+- This chunk is desktop-only: mobile already renders the Langfuse fields in a stacked full-width form and does not share the desktop `Control` row split that caused this issue.
+- Tradeoff/rationale: the Langfuse long-value rows now claim more horizontal space than ordinary toggle/select rows before the page stacks, but that is an intentional and safer tradeoff than making credential-entry fields narrower than necessary in the middle desktop range.
+- Best next UI audit chunk after this one: move away from `settings-general` unless another fresh live follow-up appears; the next strongest target is another top-level desktop or mobile screen with direct runtime evidence rather than another speculative settings tweak.
+
 ### 2026-03-08 — Chunk 60: Desktop memory-card controls were inconsistent, tiny, and anonymous in the live list chrome
 
 - Area selected:

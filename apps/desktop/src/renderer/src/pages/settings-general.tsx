@@ -207,6 +207,8 @@ export function Component() {
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const langfuseWideValueControlClassName =
+    "px-3 [&>div:first-child]:sm:max-w-[30%] [&>div:last-child]:sm:max-w-[70%]"
 
 
   if (!configQuery.data) return null
@@ -1204,7 +1206,10 @@ export function Component() {
 
           {configQuery.data?.langfuseEnabled && (
             <>
-              <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
+              <Control
+                label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />}
+                className={langfuseWideValueControlClassName}
+              >
                 <Input
                   type="text"
                   value={configQuery.data?.langfusePublicKey ?? ""}
@@ -1214,7 +1219,10 @@ export function Component() {
                 />
               </Control>
 
-              <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
+              <Control
+                label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />}
+                className={langfuseWideValueControlClassName}
+              >
                 <Input
                   type="password"
                   value={configQuery.data?.langfuseSecretKey ?? ""}
@@ -1224,7 +1232,10 @@ export function Component() {
                 />
               </Control>
 
-              <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
+              <Control
+                label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />}
+                className={langfuseWideValueControlClassName}
+              >
                 <div className="flex w-full min-w-0 flex-col items-start gap-1 sm:max-w-[360px]">
                   <Input
                     type="text"
@@ -1241,7 +1252,7 @@ export function Component() {
 
               {/* Status indicator */}
               {configQuery.data?.langfusePublicKey && configQuery.data?.langfuseSecretKey && (
-                <Control label="Status" className="px-3">
+                <Control label="Status" className={langfuseWideValueControlClassName}>
                   <div className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-block h-2 w-2 rounded-full bg-green-500" />

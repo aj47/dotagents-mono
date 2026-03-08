@@ -22,6 +22,21 @@ describe("settings general page layout", () => {
     )
   })
 
+  it("gives Langfuse credential and URL rows a wider value lane before the page fully stacks", () => {
+    expect(settingsGeneralSource).toContain(
+      'const langfuseWideValueControlClassName =',
+    )
+    expect(settingsGeneralSource).toContain(
+      '"px-3 [&>div:first-child]:sm:max-w-[30%] [&>div:last-child]:sm:max-w-[70%]"',
+    )
+
+    const langfuseWideRowMatches = settingsGeneralSource.match(
+      /className=\{langfuseWideValueControlClassName\}/g,
+    )
+
+    expect(langfuseWideRowMatches).toHaveLength(4)
+  })
+
   it("lets shortcut toggle and select rows wrap instead of overflowing their value lane under zoom", () => {
     const wrapSafeShortcutRows = settingsGeneralSource.match(
       /className="flex flex-wrap items-start gap-2"/g,
