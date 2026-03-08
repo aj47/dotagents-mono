@@ -1,5 +1,41 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 26: Mobile Loop editor profile chips under narrow widths and larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/LoopEditScreen.tsx`
+- Why this chunk: chunk 25 explicitly called out the still-unlogged mobile editor surfaces as the best next audit target. `LoopEditScreen` is a focused editor with clear narrow-width pressure in one local area, so it was the best place for a small, high-signal improvement without overlapping the recent Settings work.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid overlap with prior chunks
+  - reused `apps/desktop/DEBUGGING.md`, `AGENTS.md`, and `DEVELOPMENT.md` for the repo’s Electron/mobile debugging workflow and design guidance
+  - attempted live Expo Web inspection via `pnpm --filter @dotagents/mobile web -- --port 8081`, but this worktree is still missing local mobile dependencies / `expo`, so runtime inspection was blocked
+  - inspected `LoopEditScreen.tsx` directly and compared its profile-chip treatment against recent mobile narrow-width fixes that already use the shared minimum-touch-target and shrink-safe text patterns
+
+#### Findings
+
+- Before the fix, the optional `Agent Profile` chips in `LoopEditScreen` still assumed short one-line names and a roomy width:
+  - profile chips had no explicit minimum touch-target treatment
+  - long custom agent names rendered as a single unconstrained line inside each chip, which would make the selection row feel fragile under narrow widths or larger text
+  - because the chips wrap as whole units, a long profile name could monopolize row width without a better local text contract
+
+#### Changes made
+
+- Hardened `apps/mobile/src/screens/LoopEditScreen.tsx` with a local chip-only fix:
+  - reused `createMinimumTouchTargetStyle(...)` for the profile chips so they stay more comfortably tappable on mobile
+  - capped each chip to `maxWidth: '100%'` and kept it aligned to its wrapped row
+  - allowed agent-profile labels to use up to two lines with explicit line height, centered text, and `flexShrink` so longer custom names degrade more gracefully instead of pushing the chip out of bounds
+- Added `apps/mobile/tests/loop-edit-screen-layout.test.js` so this mobile layout contract now has focused regression coverage.
+
+#### Verification
+
+- Targeted regression tests: `node --test apps/mobile/tests/loop-edit-screen-layout.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+- Attempted targeted mobile typecheck: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked by missing local mobile dependencies / Expo TS base config in this worktree)*
+
+#### Notes
+
+- Live mobile verification remains blocked in this worktree until the local mobile dependencies are installed; this chunk is therefore source-inspection-driven with source-contract tests rather than screenshot-backed runtime evidence.
+- Best next UI audit chunk after this one: `AgentEditScreen` now stands out as the next strongest unlogged mobile editor surface, especially its connection-type chips and switch rows under narrow widths / larger text.
+
 ### 2026-03-08 — Chunk 25: Mobile Connection settings status card and inline actions under narrow widths / larger text
 
 - Area selected:

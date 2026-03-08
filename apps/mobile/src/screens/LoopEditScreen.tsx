@@ -19,6 +19,7 @@ import {
   LoopCreateRequest,
   LoopUpdateRequest,
 } from '../lib/settingsApi';
+import { createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 
 type LoopFormData = {
@@ -269,7 +270,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
             style={[styles.profileOption, formData.profileId === profile.id && styles.profileOptionActive]}
             onPress={() => updateField('profileId', profile.id)}
           >
-            <Text style={[styles.profileOptionText, formData.profileId === profile.id && styles.profileOptionTextActive]}>{profile.displayName}</Text>
+            <Text
+              style={[styles.profileOptionText, formData.profileId === profile.id && styles.profileOptionTextActive]}
+              numberOfLines={2}
+            >
+              {profile.displayName}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -283,6 +289,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const profileOptionTouchTarget = createMinimumTouchTargetStyle({
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: { padding: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -295,9 +307,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
     profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    profileOption: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+    profileOption: { ...profileOptionTouchTarget, maxWidth: '100%', alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md },
     profileOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    profileOptionText: { color: theme.colors.foreground, fontSize: 13 },
+    profileOptionText: { color: theme.colors.foreground, fontSize: 13, lineHeight: 18, textAlign: 'center', flexShrink: 1 },
     profileOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
     saveButtonDisabled: { opacity: 0.7 },
