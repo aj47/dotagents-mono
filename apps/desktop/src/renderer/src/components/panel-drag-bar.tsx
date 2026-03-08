@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
+import { GripHorizontal } from "lucide-react"
 
 interface PanelDragBarProps {
   className?: string
@@ -123,11 +123,15 @@ export function PanelDragBar({
       {/* Drag handle visual indicator */}
       <div
         className={cn(
-          "flex items-center justify-center transition-opacity duration-200",
-          disabled ? "opacity-30" : "opacity-60 hover:opacity-80",
+          "flex items-center justify-center rounded-full border border-black/10 bg-black/5 px-2 py-0.5 shadow-sm transition-all duration-200 dark:border-white/10 dark:bg-white/5",
+          disabled
+            ? "opacity-30"
+            : isDragging
+              ? "border-blue-400/40 bg-blue-500/10 opacity-90"
+              : "opacity-70 hover:border-blue-400/40 hover:bg-blue-500/5 hover:opacity-90",
         )}
       >
-        <LoadingSpinner size="sm" />
+        <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/80" />
       </div>
     </div>
   )

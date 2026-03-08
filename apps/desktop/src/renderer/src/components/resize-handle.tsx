@@ -245,11 +245,34 @@ export function ResizeHandle({
     }
   }
 
+  const getIndicatorClasses = () => {
+    switch (position) {
+      case 'top-left':
+        return "left-0.5 top-0.5 h-2.5 w-2.5 rounded-tl-sm border-l border-t"
+      case 'top-right':
+        return "right-0.5 top-0.5 h-2.5 w-2.5 rounded-tr-sm border-r border-t"
+      case 'bottom-left':
+        return "bottom-0.5 left-0.5 h-2.5 w-2.5 rounded-bl-sm border-b border-l"
+      case 'bottom-right':
+        return "bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-br-sm border-b border-r"
+      case 'top':
+        return "left-1/2 top-0 h-0 w-10 -translate-x-1/2 border-t"
+      case 'bottom':
+        return "bottom-0 left-1/2 h-0 w-10 -translate-x-1/2 border-b"
+      case 'left':
+        return "left-0 top-1/2 h-10 -translate-y-1/2 border-l"
+      case 'right':
+        return "right-0 top-1/2 h-10 -translate-y-1/2 border-r"
+      default:
+        return ""
+    }
+  }
+
   return (
     <div
       ref={handleRef}
       className={cn(
-        "transition-colors duration-200",
+        "group/resize-handle transition-colors duration-200",
         getPositionClasses(),
         getSizeClasses(),
         getCursorClass(),
@@ -266,7 +289,18 @@ export function ResizeHandle({
         userSelect: "none",
       }}
     >
-
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute transition-colors duration-200",
+          getIndicatorClasses(),
+          disabled
+            ? "border-black/10 dark:border-white/10"
+            : isResizing
+              ? "border-blue-400/80"
+              : "border-black/15 dark:border-white/20 group-hover/resize-handle:border-blue-400/60",
+        )}
+      />
     </div>
   )
 }

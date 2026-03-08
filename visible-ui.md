@@ -228,3 +228,42 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
   - once this worktree can launch, capture a true after-state screenshot of the sidebar and confirm the extra row height still feels efficient when many archived sessions are visible
   - if the sidebar still feels hard to scan after this, the next likely improvement is giving archived rows a subtle timestamp or recency cue without reintroducing horizontal crowding
 
+
+### Iteration 2026-03-08 / 07
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and cross-worktree live-after limitation documented
+- Screen / area reviewed: desktop floating `/panel` window chrome, specifically the drag bar and resize affordances in the idle voice-input panel
+- Renderer target used:
+  - attached to the Electron renderer panel page at `http://localhost:5173/panel` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - confirmed the running Electron/Vite instance belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace, so true after-state HMR validation was not available here
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-07-panel.png`
+  - live DOM-backed inspection showed the drag bar spanning about `658x24px`, but its only visible indicator was a centered `24x24` image with alt text `Loading...`, which read more like perpetual activity than a move affordance
+  - the bottom-right corner handle was present as a `16x16` hit area and the right edge handle as an `8x755` hit area, but both rendered `bg-transparent` until hover, so the panel looked almost non-resizable at rest
+- Issues found:
+  - the panel's visible chrome implied loading more than dragging because the header used a spinner-like glyph as its resting affordance
+  - resize capability depended too heavily on accidental hover discovery because the hit zones were functionally invisible in the default resting UI
+- Assumptions:
+  - the floating Electron panel is desktop-only, so no parallel mobile edit is needed; `apps/mobile/src/` has no equivalent floating draggable/resizable panel surface
+  - subtle always-visible cues are enough here; the panel should advertise move/resize affordances without turning into heavy chrome
+  - the blue hover/active feedback should remain stronger than the resting-state markers so interaction still feels responsive once discovered
+- Design rationale:
+  - replace the misleading spinner-like drag cue with a neutral grip that reads as draggable before interaction
+  - keep resize affordances discoverable with small corner/edge markers instead of full borders or louder decorative chrome
+  - improve trust and predictability in a utilitarian overlay by making manipulation affordances visible in the idle state
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` to replace the persistent `LoadingSpinner` indicator with a compact `GripHorizontal` pill that reads as a drag handle instead of background activity
+  - updated `apps/desktop/src/renderer/src/components/resize-handle.tsx` to add subtle visible corner/edge marker segments while preserving the existing hover and active resize feedback
+  - added `apps/desktop/src/renderer/src/components/panel-affordances.layout.test.ts` to lock in the new grip-based drag cue and visible resize-marker pattern
+- Verification:
+  - live before-state screenshot + DOM measurements via CDP against the `/panel` renderer target
+  - targeted source-level test passed against this worktree using the sibling worktree's installed tooling without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/panel-affordances.layout.test.ts`
+  - live after-state approximation by applying an in-memory DOM patch that mirrors the intended chrome update, then capturing `tmp/visible-ui-after-2026-03-08-07-panel.png`; the simulated drag indicator became a visible `32x20` grip pill and the resize markers appeared as persistent `~40px` edge segments plus corner L-marks instead of invisible hover-only zones
+  - `git diff --check`
+- After-state observation:
+  - `tmp/visible-ui-after-2026-03-08-07-panel.png`
+  - the DOM-simulated panel reads more clearly as a movable utility window: the top bar now suggests dragging rather than loading, and the panel edges/corners quietly signal that the window can be resized without requiring the user to fail once first
+  - expected visible effect once this worktree itself is launched: the floating panel should feel more legible and controllable in its resting idle state while preserving the existing low-chrome look
+- Remaining opportunities:
+  - once this worktree can launch directly, capture a true after-state screenshot of `/panel` to confirm the new markers remain calm in both light and dark themes
+  - if the panel still feels under-explained after this, the next local candidate is clarifying the empty/idle interior state so it communicates readiness rather than looking blank
