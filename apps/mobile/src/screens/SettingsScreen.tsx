@@ -1855,12 +1855,23 @@ export default function SettingsScreen({ navigation }: any) {
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Require Tool Approval</Text>
-                  <Switch
-                    value={remoteSettings.mcpRequireApprovalBeforeToolCall ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpRequireApprovalBeforeToolCall', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpRequireApprovalBeforeToolCall ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpRequireApprovalBeforeToolCall', !(remoteSettings.mcpRequireApprovalBeforeToolCall ?? false))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Require Tool Approval')}
+                    accessibilityHint="Requires approval before an agent can execute an MCP tool."
+                    accessibilityState={{ checked: remoteSettings.mcpRequireApprovalBeforeToolCall ?? false }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpRequireApprovalBeforeToolCall ?? false)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.helperText}>
                   Require approval before executing MCP tools

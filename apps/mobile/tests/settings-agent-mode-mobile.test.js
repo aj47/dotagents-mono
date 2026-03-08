@@ -33,3 +33,12 @@ test('wraps Inject Builtin Tools in a named mobile-sized switch control', () => 
   assert.match(settingsSource, /agentSettingsSwitchButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget[\s\S]*?alignSelf:\s*'center'/);
   assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.acpInjectBuiltinTools \?\? true\)/);
 });
+
+test('wraps Require Tool Approval in the same named mobile-sized switch control', () => {
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Require Tool Approval<\/Text>[\s\S]*?style=\{styles\.agentSettingsSwitchButton\}/);
+  assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('mcpRequireApprovalBeforeToolCall', !\(remoteSettings\.mcpRequireApprovalBeforeToolCall \?\? false\)\)\}/);
+  assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\('Require Tool Approval'\)/);
+  assert.match(settingsSource, /accessibilityHint="Requires approval before an agent can execute an MCP tool\."/);
+  assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpRequireApprovalBeforeToolCall \?\? false \}\}/);
+  assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.mcpRequireApprovalBeforeToolCall \?\? false\)/);
+});

@@ -1205,3 +1205,45 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Inject Builtin Tools` now reads and taps consistently with the surrounding `Agent Settings` controls.
   - After live validation returns, compare the remaining `Agent Settings` switches against the now-improved chips and builtin-tools toggle to see whether any further mismatch is still noticeable on mobile.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 28: make the tool-approval toggle match the stronger mobile switch pattern
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the mobile install / `expo/tsconfig.base` / Expo + React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 27 improved `Inject Builtin Tools`, but the nearby `Require Tool Approval` row still used a plain native `Switch`.
+  - That left one of the higher-consequence delegation controls with weaker mobile semantics and a less explicit hit target than the surrounding improved sub-agent controls.
+- Issue selected:
+  - The `Require Tool Approval` toggle still looked and behaved like an older, smaller control inside an otherwise stronger `Agent Settings` section, reducing state clarity for an important approval gate on mobile.
+- Decision:
+  - Keep the existing `Agent Settings` layout and helper copy.
+  - Do not sweep all remaining settings switches in this iteration.
+  - Make the smallest local fix in `SettingsScreen`: wrap only `Require Tool Approval` in the same named, tappable switch pattern already used for `Inject Builtin Tools` and other improved sub-agent surfaces.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the plain `Require Tool Approval` `Switch` with a `TouchableOpacity` switch wrapper,
+    - reuse `agentSettingsSwitchButton` for the `44px` mobile touch-target baseline,
+    - add explicit switch label/hint/state metadata,
+    - reuse the existing web-safe `renderActionRailSwitchVisual(...)` so the inner visual control stays out of the web accessibility tree.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new tool-approval switch semantics and wrapped control contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved `Require Tool Approval` toggle still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - Nearby `Agent Settings` rows such as `Message Queue`, `Verify Completion`, `Final Summary`, and `Unlimited Iterations` still use plain native `Switch` controls, but they should be revisited only after live validation confirms the remaining mismatch is still noticeable.
+  - Broader `Agent Settings` polish should continue to wait for fresh visual evidence instead of expanding source-only tweaks too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `Require Tool Approval` now reads and taps consistently with the surrounding `Agent Settings` controls.
+  - After live validation returns, compare the remaining `Agent Settings` switches against the now-improved chips, builtin-tools toggle, and tool-approval toggle to see whether any further mismatch is still noticeable on mobile.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
