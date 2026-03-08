@@ -3,7 +3,7 @@
  * Used in ChatScreen and SessionListScreen headers to allow quick agent switching.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   View,
@@ -154,6 +154,20 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     ? `Switching to ${pendingProfileName}…`
     : 'Switching agents…';
 
+  const orderedProfiles = useMemo(() => {
+    if (profiles.length <= 1) return profiles;
+    const currentProfileId = currentProfile?.id;
+    if (!currentProfileId) return profiles;
+
+    const currentProfileIndex = profiles.findIndex(profile => profile.id === currentProfileId);
+    if (currentProfileIndex <= 0) return profiles;
+
+    const reorderedProfiles = profiles.slice();
+    const [currentProfileOption] = reorderedProfiles.splice(currentProfileIndex, 1);
+
+    return currentProfileOption ? [currentProfileOption, ...reorderedProfiles] : profiles;
+  }, [profiles, currentProfile?.id]);
+
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
     const isPending = pendingProfileId === item.id;
@@ -296,7 +310,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           </View>
         ) : (
           <FlatList
-            data={profiles}
+            data={orderedProfiles}
             renderItem={renderProfile}
             keyExtractor={(item) => item.id}
             style={styles.list}

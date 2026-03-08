@@ -2527,3 +2527,41 @@
 - Next checks:
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that ACP mode clearly explains how to recover when no enabled ACP agents are available.
   - Compare this notice against other blocking or empty states in sub-agent settings so severity and hierarchy stay consistent on mobile.
+
+### 2026-03-08 — Iteration 59: pin the current agent to the top of the mobile selector
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the selector already marked the active row with a `Current` badge.
+  - But that state only helped if the active row happened to be visible in the current scroll position.
+  - On a longer mobile agent list, users could still open the sheet and need to scan or scroll before finding the current selection.
+- Issue selected:
+  - The mobile agent selector did not keep the current state visible by default, weakening state clarity in a compact, high-salience sheet.
+- Decision:
+  - Keep the current selector layout, badges, empty state, and switching-state treatments unchanged.
+  - Do not add another summary banner or extra copy while live validation is blocked.
+  - Make the smallest local hierarchy fix: preserve the server-provided order for other rows, but move the current agent to the top so the existing `Current` badge is visible immediately.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive `orderedProfiles` with `useMemo(...)`,
+    - keep the current profile first when it exists in the returned selector list,
+    - leave the remaining rows in their prior order.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new current-first ordering contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the current-first ordering feels intuitive in both profile mode and ACP mode.
+  - If live validation later shows users still miss the active state, the next step may need a compact header summary instead of more row-level styling.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that opening the selector always shows the active agent first without creating confusing reorder jumps.
+  - Check a long list in both profile mode and ACP mode to confirm the new ordering improves orientation without making the rest of the list feel unstable.

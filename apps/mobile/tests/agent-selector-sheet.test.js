@@ -95,3 +95,8 @@ test('marks the tapped selector row as pending while an agent switch is in fligh
   assert.match(sheetSource, /profileItemBlocked:\s*\{[\s\S]*?opacity:\s*0\.6/);
   assert.match(sheetSource, /profilePendingBadge:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?gap:\s*spacing\.xs,[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '2E'/);
 });
+
+test('keeps the current agent at the top of the selector list so state is visible without scrolling', () => {
+  assert.match(sheetSource, /const orderedProfiles = useMemo\(\(\) => \{[\s\S]*?if \(profiles\.length <= 1\) return profiles;[\s\S]*?const currentProfileId = currentProfile\?\.id;[\s\S]*?if \(!currentProfileId\) return profiles;[\s\S]*?const currentProfileIndex = profiles\.findIndex\(profile => profile\.id === currentProfileId\);[\s\S]*?if \(currentProfileIndex <= 0\) return profiles;[\s\S]*?const reorderedProfiles = profiles\.slice\(\);[\s\S]*?const \[currentProfileOption\] = reorderedProfiles\.splice\(currentProfileIndex, 1\);[\s\S]*?return currentProfileOption \? \[currentProfileOption, \.\.\.reorderedProfiles\] : profiles;[\s\S]*?\}, \[profiles, currentProfile\?\.id\]\);/);
+  assert.match(sheetSource, /<FlatList[\s\S]*?data=\{orderedProfiles\}/);
+});
