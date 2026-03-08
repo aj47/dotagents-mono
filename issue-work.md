@@ -439,3 +439,35 @@
   - Continue exposing the preserved-history vs active-window distinction in more live-session surfaces if users need the same clarity outside pending past-session tiles.
 
 - Next recommended issue work item: stay on `#58` for ACP/history-path alignment or live-session history provenance polish, unless a newly-opened bug with clearer repro and smaller scope appears first.
+
+##### Issue #58 — Conversation History: stronger summary provenance in desktop full-history view
+
+- Selection rationale:
+  - After landing the storage/context split on the resume path, the next small acceptance-criteria gap on `#58` was making the relationship between stored earlier history and active summary context more explicit in the UI, without expanding the scope to new history surfaces.
+- Investigation:
+  - Re-read issue `#58` and its scope comment, focusing on the requirement that summarized segments be clearly marked so users can understand what is active context versus what is only preserved on disk.
+  - Re-inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the past-session `Show Full History` view already had the toggle and divider, but its copy was still generic (`Showing the stored on-disk transcript`) and did not explicitly say how many earlier stored messages were being represented by summary context.
+  - Re-checked `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` and confirmed there was already a cheap dependency-free source test to extend for this provenance wording.
+  - Considered mobile parity per `apps/desktop/src/renderer/src/AGENTS.md` and confirmed no matching mobile full-history toggle surface exists today, so this exact viewer-copy slice remains desktop-only.
+- Important assumptions:
+  - Assumption: strengthening the existing desktop history copy is a worthwhile standalone slice even without introducing a separate visual badge component or expanding the feature to live sessions/mobile.
+  - Why acceptable: it directly improves user trust and auditability on the only current full-history viewer surface, while keeping the change narrow and reviewable.
+  - Assumption: count-based provenance text is sufficient for this slice.
+  - Why acceptable: users now see both the stored transcript count and how many earlier stored messages are represented by summary blocks, which is the core trust signal the issue asked for.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` to compute summary-block count plus stored/represented history counts for the existing tile transcript history affordance.
+  - Updated the active-window history copy to explicitly say when earlier stored messages are currently represented by summary blocks.
+  - Updated the `Show Full History` info panel to explain how many earlier stored messages are represented by the active LLM summary context before the `Active context window starts here.` divider.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with targeted assertions for the new provenance wording.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether live-session/resumed-session surfaces also need the same stored-history provenance affordance, beyond the current past-session desktop viewer.
+  - Decide whether ACP-backed history bootstrap needs an explicit compaction-aware contract or whether its existing session-state model is sufficient.
+  - Consider richer summary visual treatment later (for example, dedicated summary badges/cards) if the copy-only approach proves too subtle.
+
+- Next recommended issue work item: either continue `#58` with ACP/history-path alignment or pivot to a fresh issue such as `#55`/`#57` if a clearer small repro emerges first.

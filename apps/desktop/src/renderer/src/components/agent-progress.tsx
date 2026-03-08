@@ -2742,6 +2742,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [visibleConversationHistory],
   )
 
+  const summaryBlockCount = useMemo(
+    () => visibleConversationHistory.filter((entry) => entry.isSummary).length,
+    [visibleConversationHistory],
+  )
+
   const hasStoredEarlierHistory =
     visibleFullConversationHistory.length > 0 &&
     visibleFullConversationHistory.length > activeWindowMessageCount
@@ -2754,6 +2759,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     hasStoredEarlierHistory && activeWindowMessageCount > 0
       ? visibleFullConversationHistory.length - activeWindowMessageCount
       : null
+
+  const storedHistoryMessageCount =
+    conversationCompaction?.storedRawMessageCount
+    ?? (visibleFullConversationHistory.length > 0 ? visibleFullConversationHistory.length : undefined)
+
+  const representedHistoryMessageCount =
+    conversationCompaction?.representedMessageCount
+    ?? Math.max(visibleConversationHistory.length, visibleFullConversationHistory.length)
 
   const hasLegacyPartialHistoryWarning =
     !hasStoredEarlierHistory &&
@@ -3452,8 +3465,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         </Badge>
                         <span className="min-w-0 truncate">
                           {isShowingStoredFullHistory
-                            ? "Showing the stored on-disk transcript."
-                            : `${hiddenEarlierHistoryCount} earlier message${hiddenEarlierHistoryCount === 1 ? "" : "s"} summarized out of the active context.`}
+                            ? `Showing ${storedHistoryMessageCount ?? representedHistoryMessageCount} stored messages from disk.`
+                            : summaryBlockCount > 0
+                              ? `${hiddenEarlierHistoryCount} earlier message${hiddenEarlierHistoryCount === 1 ? "" : "s"} currently represented by ${summaryBlockCount} summary block${summaryBlockCount === 1 ? "" : "s"} in the active context.`
+                              : `${hiddenEarlierHistoryCount} earlier message${hiddenEarlierHistoryCount === 1 ? "" : "s"} summarized out of the active context.`}
                         </span>
                       </div>
                       <Button
@@ -3484,7 +3499,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     {isShowingStoredFullHistory ? (
                       <>
                         <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
-                          Showing full history from disk. Messages above the divider may be summarized out of the current LLM context.
+                          Showing full history from disk. {hiddenEarlierHistoryCount > 0 && summaryBlockCount > 0
+                            ? `${hiddenEarlierHistoryCount} earlier stored message${hiddenEarlierHistoryCount === 1 ? "" : "s"} ${hiddenEarlierHistoryCount === 1 ? "is" : "are"} currently represented by ${summaryBlockCount} summary block${summaryBlockCount === 1 ? "" : "s"} in the active LLM context.`
+                            : "Messages above the divider may be summarized out of the current LLM context."}
                         </div>
                         {fullHistoryDisplayItems.map((item, index) => (
                           <React.Fragment key={item.id}>

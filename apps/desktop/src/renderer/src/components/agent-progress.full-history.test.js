@@ -25,6 +25,8 @@ test('pending past sessions forward raw history and compaction data into progres
 test('tile transcript exposes a full-history toggle and legacy partial warning', () => {
   assert.match(agentProgressSource, /Show Full History/)
   assert.match(agentProgressSource, /Show Active Window/)
+  assert.match(agentProgressSource, /currently represented by \$\{summaryBlockCount\} summary block/)
+  assert.match(agentProgressSource, /Showing \$\{storedHistoryMessageCount \?\? representedHistoryMessageCount\} stored messages from disk\./)
   assert.match(agentProgressSource, /Showing full history from disk/)
   assert.match(agentProgressSource, /Active context window starts here\./)
   assert.match(agentProgressSource, /Earlier summarized history is unavailable for this legacy session\./)
