@@ -46,19 +46,24 @@ import {
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
-const LANGFUSE_INPUT_SAVE_DEBOUNCE_MS = 400
+const GENERAL_TEXT_INPUT_SAVE_DEBOUNCE_MS = 400
 
-type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
+type GeneralTextDraftKey =
+  | "langfusePublicKey"
+  | "langfuseSecretKey"
+  | "langfuseBaseUrl"
+  | "transcriptPostProcessingPrompt"
 
-function getLangfuseDrafts(config?: Partial<Config>) {
+function getGeneralTextDrafts(config?: Partial<Config>) {
   return {
     langfusePublicKey: config?.langfusePublicKey ?? "",
     langfuseSecretKey: config?.langfuseSecretKey ?? "",
     langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
+    transcriptPostProcessingPrompt: config?.transcriptPostProcessingPrompt ?? "",
   }
 }
 
-function getOptionalStringConfigUpdate<Key extends LangfuseDraftKey>(
+function getOptionalStringConfigUpdate<Key extends GeneralTextDraftKey>(
   key: Key,
   value: string,
 ): Pick<Config, Key> {
@@ -73,13 +78,14 @@ export function Component() {
 
   const saveConfigMutation = useSaveConfigMutation()
   const configRef = useRef<Config | undefined>(configQuery.data as Config | undefined)
-  const [langfuseDrafts, setLangfuseDrafts] = useState(() =>
-    getLangfuseDrafts(configQuery.data as Config | undefined),
+  const [generalTextDrafts, setGeneralTextDrafts] = useState(() =>
+    getGeneralTextDrafts(configQuery.data as Config | undefined),
   )
-  const langfuseSaveTimeoutsRef = useRef<Record<LangfuseDraftKey, ReturnType<typeof setTimeout> | null>>({
+  const generalTextSaveTimeoutsRef = useRef<Record<GeneralTextDraftKey, ReturnType<typeof setTimeout> | null>>({
     langfusePublicKey: null,
     langfuseSecretKey: null,
     langfuseBaseUrl: null,
+    transcriptPostProcessingPrompt: null,
   })
 
   // Check if langfuse package is installed
@@ -198,12 +204,12 @@ export function Component() {
     [saveConfigMutation],
   )
 
-  const flushLangfuseDraft = useCallback(
-    (key: LangfuseDraftKey, value: string) => {
-      const timeout = langfuseSaveTimeoutsRef.current[key]
+  const flushGeneralTextDraft = useCallback(
+    (key: GeneralTextDraftKey, value: string) => {
+      const timeout = generalTextSaveTimeoutsRef.current[key]
       if (timeout) {
         clearTimeout(timeout)
-        langfuseSaveTimeoutsRef.current[key] = null
+        generalTextSaveTimeoutsRef.current[key] = null
       }
 
       saveConfig(getOptionalStringConfigUpdate(key, value))
@@ -211,15 +217,15 @@ export function Component() {
     [saveConfig],
   )
 
-  const scheduleLangfuseSave = useCallback(
-    (key: LangfuseDraftKey, value: string) => {
-      const timeout = langfuseSaveTimeoutsRef.current[key]
+  const scheduleGeneralTextSave = useCallback(
+    (key: GeneralTextDraftKey, value: string) => {
+      const timeout = generalTextSaveTimeoutsRef.current[key]
       if (timeout) clearTimeout(timeout)
 
-      langfuseSaveTimeoutsRef.current[key] = setTimeout(() => {
-        langfuseSaveTimeoutsRef.current[key] = null
+      generalTextSaveTimeoutsRef.current[key] = setTimeout(() => {
+        generalTextSaveTimeoutsRef.current[key] = null
         saveConfig(getOptionalStringConfigUpdate(key, value))
-      }, LANGFUSE_INPUT_SAVE_DEBOUNCE_MS)
+      }, GENERAL_TEXT_INPUT_SAVE_DEBOUNCE_MS)
     },
     [saveConfig],
   )
@@ -241,16 +247,17 @@ export function Component() {
   }, [(configQuery.data as any)?.themePreference])
 
   useEffect(() => {
-    setLangfuseDrafts(getLangfuseDrafts(configQuery.data as Config | undefined))
+    setGeneralTextDrafts(getGeneralTextDrafts(configQuery.data as Config | undefined))
   }, [
     configQuery.data?.langfusePublicKey,
     configQuery.data?.langfuseSecretKey,
     configQuery.data?.langfuseBaseUrl,
+    configQuery.data?.transcriptPostProcessingPrompt,
   ])
 
   useEffect(() => {
     return () => {
-      for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
+      for (const timeout of Object.values(generalTextSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
       }
     }
@@ -993,15 +1000,16 @@ export function Component() {
                     </DialogHeader>
                     <Textarea
                       rows={10}
-                      defaultValue={
-                        configQuery.data.transcriptPostProcessingPrompt
-                      }
+                      value={generalTextDrafts.transcriptPostProcessingPrompt}
                       onChange={(e) => {
-                        saveConfig({
-                          transcriptPostProcessingPrompt:
-                            e.currentTarget.value,
-                        })
+                        const value = e.currentTarget.value
+                        setGeneralTextDrafts((current) => ({
+                          ...current,
+                          transcriptPostProcessingPrompt: value,
+                        }))
+                        scheduleGeneralTextSave("transcriptPostProcessingPrompt", value)
                       }}
+                      onBlur={(e) => flushGeneralTextDraft("transcriptPostProcessingPrompt", e.currentTarget.value)}
                     ></Textarea>
                     <div className="text-sm text-muted-foreground">
                       Use{" "}
@@ -1283,16 +1291,16 @@ export function Component() {
               <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
                 <Input
                   type="text"
-                  value={langfuseDrafts.langfusePublicKey}
+                  value={generalTextDrafts.langfusePublicKey}
                   onChange={(e) => {
                     const value = e.currentTarget.value
-                    setLangfuseDrafts((current) => ({
+                    setGeneralTextDrafts((current) => ({
                       ...current,
                       langfusePublicKey: value,
                     }))
-                    scheduleLangfuseSave("langfusePublicKey", value)
+                    scheduleGeneralTextSave("langfusePublicKey", value)
                   }}
-                  onBlur={(e) => flushLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
+                  onBlur={(e) => flushGeneralTextDraft("langfusePublicKey", e.currentTarget.value)}
                   placeholder="pk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
@@ -1301,16 +1309,16 @@ export function Component() {
               <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
                 <Input
                   type="password"
-                  value={langfuseDrafts.langfuseSecretKey}
+                  value={generalTextDrafts.langfuseSecretKey}
                   onChange={(e) => {
                     const value = e.currentTarget.value
-                    setLangfuseDrafts((current) => ({
+                    setGeneralTextDrafts((current) => ({
                       ...current,
                       langfuseSecretKey: value,
                     }))
-                    scheduleLangfuseSave("langfuseSecretKey", value)
+                    scheduleGeneralTextSave("langfuseSecretKey", value)
                   }}
-                  onBlur={(e) => flushLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
+                  onBlur={(e) => flushGeneralTextDraft("langfuseSecretKey", e.currentTarget.value)}
                   placeholder="sk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
@@ -1319,16 +1327,16 @@ export function Component() {
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
                 <Input
                   type="text"
-                  value={langfuseDrafts.langfuseBaseUrl}
+                  value={generalTextDrafts.langfuseBaseUrl}
                   onChange={(e) => {
                     const value = e.currentTarget.value
-                    setLangfuseDrafts((current) => ({
+                    setGeneralTextDrafts((current) => ({
                       ...current,
                       langfuseBaseUrl: value,
                     }))
-                    scheduleLangfuseSave("langfuseBaseUrl", value)
+                    scheduleGeneralTextSave("langfuseBaseUrl", value)
                   }}
-                  onBlur={(e) => flushLangfuseDraft("langfuseBaseUrl", e.currentTarget.value)}
+                  onBlur={(e) => flushGeneralTextDraft("langfuseBaseUrl", e.currentTarget.value)}
                   placeholder="https://cloud.langfuse.com (default)"
                   className="w-full sm:w-[360px] max-w-full min-w-0"
                 />

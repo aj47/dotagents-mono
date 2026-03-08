@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop transcript post-processing prompt editor save behavior in `apps/desktop/src/renderer/src/pages/settings-general.tsx` plus mobile parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider numeric TTS inputs (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` plus mobile TTS parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider settings Groq/Gemini credential inputs (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`) plus mobile parity check in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop general settings Langfuse text inputs (`apps/desktop/src/renderer/src/pages/settings-general.tsx`) and mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx`.
@@ -14,25 +15,58 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop transcript post-processing prompt editing now uses a local draft, debounced autosave, blur flush, and latest-config merging instead of mutating config on every keystroke inside the dialog.
 - 2026-03-08: Desktop provider numeric TTS settings now keep local drafts for OpenAI speed plus Supertonic speed/quality steps, debounce config writes, flush valid edits on blur, and restore invalid drafts to the last saved value.
 - 2026-03-08: Desktop provider settings now keep local drafts for Groq/Gemini API keys and base URLs, debounce config writes, flush on blur, and merge delayed saves against the latest config snapshot.
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
 - 2026-03-08: `git diff --check`
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
-- 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` failed because `vitest` was not installed in this worktree.
+- 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop transcript post-processing prompt editor save behavior in `settings-general.tsx`
 - Agent/task management flows
 - Shared utility reliability / guardrails
 
 ### Next Highest-Value Targets
-- Revisit desktop transcript post-processing prompt editing UX once the workspace can run tests again
 - Inspect agent/task management flows for the next small reliability or UX win
+- Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Desktop transcript post-processing prompt draft/save resilience
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop general settings in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - transcript post-processing prompt editor dialog
+- Why it was chosen:
+  - after the first iteration, this was the next highest-value unchecked item in the ledger
+  - the dialog still saved on every keystroke, which is noisy for a multiline prompt and increases the chance of partial / stale writes while editing
+  - mobile already debounces the analogous remote setting path, so desktop was the lagging surface
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx` for the existing focused renderer test harness
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile already routes `transcriptPostProcessingPrompt` through its debounced `handleRemoteSettingUpdate(...)` draft flow
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - expanded the existing desktop general-settings draft/save helper to include `transcriptPostProcessingPrompt`
+  - the prompt textarea now keeps a local draft, debounces saves by 400ms, and flushes the latest text on blur instead of saving on every keystroke
+  - delayed prompt saves still merge against the latest config snapshot through `configRef`, preventing unrelated setting changes from being overwritten by an older timeout
+  - added focused regression coverage for draft behavior, blur flush, and latest-config merging in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`
+- Assumptions / tradeoffs / rationale:
+  - kept the existing autosave model rather than introducing explicit modal Save/Cancel controls to keep the change consistent with the rest of desktop settings UX
+  - scoped the helper expansion to this prompt plus the already-migrated Langfuse fields, avoiding a larger general-settings refactor
+  - left the existing saved-value preview outside the dialog unchanged; it now reflects the last persisted prompt rather than in-progress draft text
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx`, but the current workspace still lacks installed dependencies and `vitest` was unavailable
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run the general-settings and provider-settings focused renderer tests
+  - inspect agent/task management flows for the next localized reliability or UX improvement
+  - revisit other multiline prompt fields such as `groqSttPrompt` for the same pattern
 
 ### 2026-03-08 — Desktop provider numeric draft/save resilience
 - Date:

@@ -103,6 +103,10 @@ function findInputByPlaceholder(node: any, placeholder: string) {
   )
 }
 
+function findTextareaByRows(node: any, rows: number) {
+  return findNode(node, (candidate) => candidate.type === "Textarea" && candidate.props?.rows === rows)
+}
+
 async function flushPromises() {
   await Promise.resolve()
   await Promise.resolve()
@@ -116,7 +120,8 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   let currentConfig: any = {
     mainAgentMode: "api",
     mcpUnlimitedIterations: true,
-    transcriptPostProcessingEnabled: false,
+    transcriptPostProcessingEnabled: true,
+    transcriptPostProcessingPrompt: "Clean this transcript.",
     ttsEnabled: false,
     toggleVoiceDictationEnabled: false,
     textInputEnabled: false,
@@ -299,6 +304,89 @@ describe("desktop general settings Langfuse inputs", () => {
       config: {
         ...getCurrentConfig(),
         langfuseBaseUrl: "https://self-hosted.langfuse",
+      },
+    })
+  })
+
+  it("keeps a local draft and debounces transcript post-processing prompt saves while editing", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let textarea = findTextareaByRows(tree, 10)
+    expect(textarea.props.value).toBe("Clean this transcript.")
+
+    textarea.props.onChange({ currentTarget: { value: "Tighten filler words only." } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    textarea = findTextareaByRows(tree, 10)
+    expect(textarea.props.value).toBe("Tighten filler words only.")
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        transcriptPostProcessingPrompt: "Tighten filler words only.",
+      },
+    })
+  })
+
+  it("flushes the latest transcript post-processing prompt draft on blur", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const textarea = findTextareaByRows(tree, 10)
+    textarea.props.onChange({ currentTarget: { value: "Preserve speaker names." } })
+    textarea.props.onBlur({ currentTarget: { value: "Preserve speaker names." } })
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        transcriptPostProcessingPrompt: "Preserve speaker names.",
+      },
+    })
+  })
+
+  it("uses the latest config snapshot when a delayed transcript prompt save fires", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig, setConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const textarea = findTextareaByRows(tree, 10)
+    textarea.props.onChange({ currentTarget: { value: "Return polished markdown bullets." } })
+
+    setConfig({
+      ...getCurrentConfig(),
+      streamerModeEnabled: true,
+    })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    vi.advanceTimersByTime(400)
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        transcriptPostProcessingPrompt: "Return polished markdown bullets.",
       },
     })
   })
