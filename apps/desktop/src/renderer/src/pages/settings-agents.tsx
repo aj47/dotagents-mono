@@ -82,13 +82,81 @@ function emptyAgent(): EditingAgent {
   }
 }
 
+function toEditingAgent(agent: AgentProfile): EditingAgent {
+  return {
+    id: agent.id,
+    displayName: agent.displayName,
+    description: agent.description ?? "",
+    systemPrompt: agent.systemPrompt ?? "",
+    guidelines: agent.guidelines ?? "",
+    connectionType: agent.connection.type,
+    connectionCommand: agent.connection.command,
+    connectionArgs: agent.connection.args?.join(" "),
+    connectionBaseUrl: agent.connection.baseUrl,
+    connectionCwd: agent.connection.cwd,
+    enabled: agent.enabled,
+    autoSpawn: agent.autoSpawn,
+    modelConfig: agent.modelConfig ? { ...agent.modelConfig } : undefined,
+    toolConfig: agent.toolConfig ? { ...agent.toolConfig } : undefined,
+    skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined,
+    properties: agent.properties ? { ...agent.properties } : {},
+    avatarDataUrl: agent.avatarDataUrl ?? null,
+  }
+}
+
+function sortStrings(values?: string[]): string[] {
+  return values ? [...values].sort((a, b) => a.localeCompare(b)) : []
+}
+
+function normalizeProperties(properties?: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(properties ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+  )
+}
+
+function normalizeEditingAgentDraft(draft?: Partial<EditingAgent> | null) {
+  return {
+    displayName: draft?.displayName ?? "",
+    description: draft?.description ?? "",
+    systemPrompt: draft?.systemPrompt ?? "",
+    guidelines: draft?.guidelines ?? "",
+    connectionType: draft?.connectionType ?? "internal",
+    connectionCommand: draft?.connectionCommand ?? "",
+    connectionArgs: draft?.connectionArgs ?? "",
+    connectionBaseUrl: draft?.connectionBaseUrl ?? "",
+    connectionCwd: draft?.connectionCwd ?? "",
+    enabled: draft?.enabled ?? true,
+    autoSpawn: draft?.autoSpawn ?? false,
+    modelConfig: draft?.modelConfig ? { ...draft.modelConfig } : null,
+    toolConfig: draft?.toolConfig ? {
+      ...draft.toolConfig,
+      disabledServers: sortStrings(draft.toolConfig.disabledServers),
+      enabledServers: sortStrings(draft.toolConfig.enabledServers),
+      disabledTools: sortStrings(draft.toolConfig.disabledTools),
+      enabledBuiltinTools: sortStrings(draft.toolConfig.enabledBuiltinTools),
+    } : null,
+    skillsConfig: draft?.skillsConfig ? {
+      ...draft.skillsConfig,
+      enabledSkillIds: sortStrings(draft.skillsConfig.enabledSkillIds),
+    } : null,
+    properties: normalizeProperties(draft?.properties),
+    avatarDataUrl: draft?.avatarDataUrl ?? null,
+  }
+}
+
+function hasAgentDraftChanges(draft?: Partial<EditingAgent> | null, baseline?: Partial<EditingAgent> | null): boolean {
+  return JSON.stringify(normalizeEditingAgentDraft(draft)) !== JSON.stringify(normalizeEditingAgentDraft(baseline))
+}
+
 export function SettingsAgents() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [agents, setAgents] = useState<AgentProfile[]>([])
   const [editing, setEditing] = useState<EditingAgent | null>(null)
+  const [editingBaseline, setEditingBaseline] = useState<EditingAgent | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isSavingAgent, setIsSavingAgent] = useState(false)
   const [serverStatus, setServerStatus] = useState<Record<string, ServerInfo>>({})
   const [allTools, setAllTools] = useState<{name: string, description: string, serverName: string}[]>([])
   const [skills, setSkills] = useState<AgentSkill[]>([])
@@ -115,6 +183,7 @@ export function SettingsAgents() {
     if (!installBundlePath) return
 
     setEditing(null)
+    setEditingBaseline(null)
     setIsCreating(false)
     setPrefilledImportFilePath(installBundlePath)
     setIsImportDialogOpen(true)
@@ -131,6 +200,7 @@ export function SettingsAgents() {
 
     if (viewMode === "list") {
       setEditing(null)
+      setEditingBaseline(null)
       setIsCreating(false)
       setSearchParams({}, { replace: true })
       return
@@ -163,29 +233,32 @@ export function SettingsAgents() {
     try { const s = await tipcClient.getSkills(); setSkills(s) } catch {}
   }
 
-  const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()) }
+  const closeEditor = () => {
+    setEditing(null)
+    setEditingBaseline(null)
+    setIsCreating(false)
+    setNewPropKey("")
+    setNewPropValue("")
+  }
+
+  const isEditingDirty = hasAgentDraftChanges(editing, editingBaseline)
+  const editingLabel = editingBaseline?.displayName || editing?.displayName || "this agent"
+
+  const handleCreate = () => {
+    setIsCreating(true)
+    setEditing(emptyAgent())
+    setEditingBaseline(emptyAgent())
+  }
 
   const handleEdit = (agent: AgentProfile) => {
     setIsCreating(false)
-    setEditing({
-      id: agent.id, displayName: agent.displayName,
-      description: agent.description ?? "", systemPrompt: agent.systemPrompt ?? "",
-      guidelines: agent.guidelines ?? "", connectionType: agent.connection.type,
-      connectionCommand: agent.connection.command,
-      connectionArgs: agent.connection.args?.join(" "),
-      connectionBaseUrl: agent.connection.baseUrl,
-      connectionCwd: agent.connection.cwd,
-      enabled: agent.enabled, autoSpawn: agent.autoSpawn,
-      modelConfig: agent.modelConfig ? { ...agent.modelConfig } : undefined,
-      toolConfig: agent.toolConfig ? { ...agent.toolConfig } : undefined,
-      skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined,
-      properties: agent.properties ? { ...agent.properties } : {},
-      avatarDataUrl: agent.avatarDataUrl ?? null,
-    })
+    setEditing(toEditingAgent(agent))
+    setEditingBaseline(toEditingAgent(agent))
   }
 
   const handleSave = async () => {
-    if (!editing) return
+    if (!editing || isSavingAgent) return
+    setIsSavingAgent(true)
     const connection: AgentProfileConnection = {
       type: editing.connectionType, command: editing.connectionCommand,
       args: editing.connectionArgs?.split(" ").filter(Boolean),
@@ -206,11 +279,21 @@ export function SettingsAgents() {
       properties: editing.properties && Object.keys(editing.properties).length > 0 ? editing.properties : undefined,
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }
-    if (isCreating) await tipcClient.createAgentProfile({ profile: data })
-    else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
-    setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); loadAgents()
-    // Invalidate sidebar query so it reflects changes immediately
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    try {
+      if (isCreating) await tipcClient.createAgentProfile({ profile: data })
+      else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
+      closeEditor()
+      void loadAgents()
+      // Invalidate sidebar query so it reflects changes immediately
+      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to save agent", error)
+      toast.error(isCreating
+        ? "Failed to create agent. Your draft is still open."
+        : "Failed to save agent. Your changes are still open.")
+    } finally {
+      setIsSavingAgent(false)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -219,7 +302,25 @@ export function SettingsAgents() {
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
   }
 
-  const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue("") }
+  const handleCancel = () => {
+    if (isSavingAgent) return
+    if (isEditingDirty && !confirm(isCreating
+      ? "Discard this new agent draft? Your unsaved changes will be lost."
+      : `Discard your changes to \"${editingLabel}\"? Your unsaved edits will be lost.`)) return
+    closeEditor()
+  }
+
+  const handleApplyPreset = (preset: Partial<EditingAgent>) => {
+    if (!editing || isSavingAgent) return
+    if (isEditingDirty && !confirm("Apply this preset and replace your current draft? Your unsaved changes will be overwritten.")) return
+    setEditing({ ...emptyAgent(), ...preset })
+  }
+
+  const handleResetSystemPrompt = () => {
+    if (!editing?.systemPrompt || isSavingAgent) return
+    if (!confirm("Reset this custom system prompt and use the default base prompt instead?")) return
+    setEditing({ ...editing, systemPrompt: "" })
+  }
 
   // Derived tool data
   const builtinTools = allTools.filter(t => t.serverName === "dotagents-internal")
@@ -537,7 +638,13 @@ export function SettingsAgents() {
           <CardDescription>Configure agent identity, behavior, model, and capabilities.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="general" className="w-full">
+          {isEditingDirty && (
+            <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+              You have unsaved changes. Save before leaving or replacing this draft.
+            </div>
+          )}
+          <div className={isSavingAgent ? "pointer-events-none opacity-70" : undefined}>
+            <Tabs defaultValue="general" className="w-full">
             <TabsList className="mb-4 flex-wrap h-auto gap-1">
               <TabsTrigger value="general" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />General</TabsTrigger>
               {isInternal && <TabsTrigger value="model" className="gap-1.5"><Brain className="h-3.5 w-3.5" />Model</TabsTrigger>}
@@ -577,7 +684,8 @@ export function SettingsAgents() {
                   <div className="flex gap-2">
                     {Object.entries(AGENT_PRESETS).map(([key, preset]) => (
                       <Button key={key} variant="outline" size="sm"
-                        onClick={() => setEditing({ ...emptyAgent(), ...preset })}
+                        onClick={() => handleApplyPreset(preset)}
+                        disabled={isSavingAgent}
                       >{preset.displayName}</Button>
                     ))}
                   </div>
@@ -616,7 +724,7 @@ export function SettingsAgents() {
                           <p className="text-xs text-muted-foreground text-amber-600 dark:text-amber-500">
                             Not recommended to change. This replaces the core tool-calling instructions. Leave empty to use the default.
                           </p>
-                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setEditing({ ...editing, systemPrompt: "" })} disabled={!editing.systemPrompt}>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={handleResetSystemPrompt} disabled={!editing.systemPrompt || isSavingAgent}>
                             Reset to Default
                           </Button>
                         </div>
@@ -919,11 +1027,12 @@ export function SettingsAgents() {
                 </Button>
               </div>
             </TabsContent>
-          </Tabs>
+            </Tabs>
+          </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <Button variant="outline" className="gap-2" onClick={handleCancel}><X className="h-4 w-4" />Cancel</Button>
-            <Button className="gap-2" onClick={handleSave}><Save className="h-4 w-4" />Save</Button>
+            <Button variant="outline" className="gap-2" onClick={handleCancel} disabled={isSavingAgent}><X className="h-4 w-4" />Cancel</Button>
+            <Button className="gap-2" onClick={handleSave} disabled={isSavingAgent}><Save className="h-4 w-4" />{isSavingAgent ? (isCreating ? "Creating..." : "Saving...") : "Save"}</Button>
           </div>
         </CardContent>
       </Card>

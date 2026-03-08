@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop agent editor draft-loss guardrails in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with related discard-safety pattern review in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, mobile parity check in `apps/mobile/src/screens/AgentEditScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop skills create/edit dialog unsaved-change / discard-safety flow in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, with adjacent agent-editor handoff risk reviewed in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/screens/AgentEditScreen.tsx`.
 - 2026-03-08: Desktop Groq STT prompt draft/save resilience in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with focused test harness review in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx` and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop follow-up composer send-error feedback / retry clarity in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with mount wiring reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx`.
@@ -24,6 +25,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop agent editor now tracks dirty create/edit baselines, warns before canceling a dirty draft, confirms before overwriting an in-progress create draft with Quick Setup or clearing a custom advanced system prompt, and preserves the draft with explicit failure feedback if save fails.
 - 2026-03-08: Desktop skills create/edit dialogs now show explicit unsaved-change guidance, prevent accidental backdrop / escape / close-button dismissal during pending saves, and confirm before discarding dirty drafts from any dialog close path.
 - 2026-03-08: Desktop Groq STT prompt editing now keeps a local draft, debounces config writes, flushes on blur, and merges delayed saves against the latest config snapshot instead of saving on every textarea keystroke.
 - 2026-03-08: Desktop follow-up composers now show an inline send-failure banner with preserved-draft guidance and a `Retry` action instead of silently failing via `console.error` only.
@@ -39,6 +41,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-agents-draft-guardrails.test.js tests/desktop-settings-skills-unsaved-changes.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-skills-unsaved-changes.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: custom `node` source-assertion script verified the new desktop Groq STT prompt draft/debounce/blur-flush wiring in `apps/desktop/src/renderer/src/pages/settings-general.tsx` plus focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`
@@ -62,6 +66,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this agent-editor pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this skills-dialog discard-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this Groq STT prompt pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this follow-up-composer pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
@@ -73,10 +78,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop agent long-form editor (`apps/desktop/src/renderer/src/pages/settings-agents.tsx`) for unsaved-change clarity and destructive-reset guardrails in create/edit flows
+- Desktop agent bundle export/publish flows (`apps/desktop/src/renderer/src/pages/settings-agents.tsx`, `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx`, `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx`) for validation clarity and destructive-action safety
 
 ### Next Highest-Value Targets
-- Inspect the desktop agent editor for the next localized UX/reliability improvement around unsaved-change clarity, preset/reset safety, or recovery after accidental cancellation
+- Inspect desktop agent bundle export/publish flows for the next localized UX/reliability improvement around validation clarity, conflict prevention, or recovery after failed export/publish attempts
+- Once a runnable Electron target is available, live-check the desktop agent editor dirty-cancel, Quick Setup overwrite, advanced reset, and pending-save behavior to confirm the confirmation cadence feels right
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
@@ -627,6 +633,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - inspect desktop provider API key / base URL fields for the same save-on-every-keystroke pattern next
   - once dependencies are available again, run the targeted Langfuse test file and consider broadening coverage to other settings draft-save flows
+
+### 2026-03-08 — Desktop agent editor draft-loss guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop agent editor in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - reviewed adjacent discard-safety pattern in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`
+  - checked mobile parity in `apps/mobile/src/screens/AgentEditScreen.tsx`
+- Why it was chosen:
+  - the ledger explicitly identified the desktop agent editor as the next fresh area that had not been investigated recently
+  - this editor contains long-form agent instructions plus destructive shortcuts (`Cancel`, Quick Setup presets, advanced system-prompt reset), so accidental loss here has immediate user cost
+  - the implementation path was local and high leverage because the destructive actions already lived inside a single renderer file
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` create/edit draft setup, save/cancel flow, Quick Setup preset buttons, and advanced system-prompt reset behavior
+  - `apps/desktop/src/renderer/src/pages/settings-skills.tsx` to reuse the recent lightweight dirty-draft confirmation pattern instead of inventing a new interaction model
+  - `apps/mobile/src/screens/AgentEditScreen.tsx`; confirmed mobile has a related agent-edit surface, but matching back-navigation discard protection there would require navigation-lifecycle work beyond this localized desktop pass
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - added normalized dirty-state tracking for both create and edit agent drafts so the page can reliably distinguish saved state from in-progress edits
+  - the editor now shows a visible unsaved-change callout once the current draft diverges from its baseline
+  - `Cancel` now confirms before discarding dirty create/edit drafts instead of immediately dropping the whole form
+  - Quick Setup preset buttons now confirm before replacing an in-progress create draft, preventing silent overwrite after the user has already started customizing the agent
+  - the advanced `Reset to Default` system-prompt action now confirms before clearing a custom prompt
+  - save now blocks duplicate submissions while pending, temporarily freezes form interactions during the in-flight request, and keeps the draft open with explicit toast feedback if the save fails
+  - added focused source-level regression coverage in `tests/desktop-settings-agents-draft-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - used lightweight built-in confirmation prompts plus an inline dirty-state callout instead of adding another nested modal layer, because the goal was to guard the destructive actions with the smallest local change
+  - kept the change scoped to in-editor destructive actions rather than broader route-navigation guards or mobile back-navigation interception, which are real follow-ups but would require wider wiring and testing
+  - accepted source-level verification for this iteration because live Electron inspection is blocked in this environment and desktop Vitest remains unavailable without installed dependencies
+- Tests / verification:
+  - `node --test tests/desktop-settings-agents-draft-guardrails.test.js tests/desktop-settings-skills-unsaved-changes.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check dirty cancel, Quick Setup overwrite confirmation, advanced reset confirmation, and pending-save behavior in the actual desktop editor
+  - inspect `apps/mobile/src/screens/AgentEditScreen.tsx` separately for back-navigation discard safety when a runnable mobile environment is available
+  - inspect desktop bundle export/publish flows next for another localized UX/reliability improvement
 
 ### Iteration Template
 - Date:
