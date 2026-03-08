@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task runtime-status refresh feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `loopStatusesQuery` / renderer fallback behavior reviewed in that file, `getLoopStatuses()` output rechecked in `apps/desktop/src/main/loop-service.ts`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change needed because mobile loop metadata comes from the primary list fetch instead of a second live-status query), focused source-level coverage extended in `tests/desktop-settings-loops-feedback.test.js`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop `AgentProgress` session-scoped transient-state cleanup in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, with focused-session reuse confirmed in `apps/desktop/src/renderer/src/pages/panel.tsx`, adjacent follow-up/session-scope guardrails cross-checked in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` / `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, mobile parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile screen is session-scoped rather than a reused overlay), and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Mobile `Agent Loops` fetch/loading/error feedback in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/lib/settingsApi.ts` and adjacent mobile warning/loading patterns reviewed, focused source-level coverage added in `apps/mobile/tests/settings-loop-feedback-mobile.test.js`, and targeted loop-related verification run locally.
 - 2026-03-08: Desktop past-sessions dialog destructive-action guardrails / inline delete recovery in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, with history-query/delete mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, mobile parity checked in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile already confirms single-session deletion), focused source-level coverage added in `tests/desktop-past-sessions-dialog-guardrails.test.js`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -58,6 +59,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop `Repeat Tasks` now warns inline when the secondary `getLoopStatuses()` refresh fails after the saved task list has already loaded, keeps the configured tasks visible, explains whether `Running` / `Next run` details are temporarily missing versus potentially stale, and offers a local `Retry status` action so a transient live-status failure no longer silently downgrades the page into misleading runtime metadata; tradeoff: this pass intentionally leaves run/toggle/delete mutation failure feedback for a separate follow-up because the highest-risk confusion was invisible status-query failure on an otherwise healthy list.
 - 2026-03-08: Desktop `AgentProgress` now clears stop-confirmation/loading state plus pending approval-response bookkeeping whenever the rendered `sessionId` changes, so switching the focused overlay/tile session can no longer carry a stale destructive dialog or action spinner over from the previous session; rationale: `panel.tsx` reuses the same `AgentProgress` instance across focus changes, so these affordances must be treated as session-scoped, not component-scoped. Tradeoff: this pass intentionally leaves transcript expansion/tab persistence alone because that needs live UI evidence before changing broader per-session view state.
 - 2026-03-08: Mobile `Agent Loops` now distinguish initial loading, refresh, fetch failure, and true empty states in `apps/mobile/src/screens/SettingsScreen.tsx`, keep previously loaded loops visible while a refresh is in flight, and show inline `Retry loading` guidance instead of making a transient desktop/API failure look like all loops disappeared; tradeoff: this pass intentionally leaves run/toggle/delete mutation failure feedback for a later loop-management pass.
 - 2026-03-08: Desktop `Past Sessions` now confirms before deleting an individual session, keeps delete failures inline with a local `Retry delete` path, blocks nested keyboard delete actions from accidentally opening the session row, and shows row-scoped delete progress so history cleanup is safer and easier to recover from without broad dialog churn; tradeoff: this pass intentionally leaves list-load retry/focus-restoration polish for a follow-up because the highest-risk issue was destructive action confidence.
@@ -107,6 +109,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx` after the runtime-status feedback pass
+- 2026-03-08: `git diff --check` after the desktop repeat-task runtime-status feedback pass
 - 2026-03-08: `node --test tests/desktop-agent-progress-session-cleanup.test.js`
 - 2026-03-08: `git diff --check` after the desktop `AgentProgress` session-cleanup pass
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts` (blocked: `vitest` is not installed in this worktree, so focused renderer regression coverage could not run here)
@@ -223,6 +228,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this repeat-task runtime-status feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this `AgentProgress` session-cleanup pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this `AgentProgress` session-cleanup pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts` fails with `Command "vitest" not found`.
 - 2026-03-08: Focused mobile TypeScript verification for this Agent Loops feedback pass is blocked in this environment because `pnpm exec tsc -p apps/mobile/tsconfig.json --noEmit` cannot resolve `expo/tsconfig.base` and numerous Expo/React Native dependency types in this worktree, so this iteration relied on targeted source-level tests plus a direct `typescript.transpileModule` syntax check.
@@ -274,12 +280,13 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Desktop `AgentProgress` transcript expansion/tab persistence across focused-session changes (`apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/pages/panel.tsx`)
+- Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
 - Once a runnable Electron target is available, live-check desktop `AgentProgress` while switching between sessions with the transcript/tools tabs open, expanded items, and the stop confirmation recently used to confirm the remaining per-session view state feels consistent in the real UI
 - Once a runnable Electron target is available, live-check the desktop past-sessions dialog across keyboard navigation, single-session delete confirmation, failed-delete retry, and delete-all failure states to confirm the new recovery hierarchy feels clear in the real UI
-- Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, fetch failure, empty, and populated states to confirm the new non-empty-state feedback reads clearly in the real UI
-- Desktop repeat-task runtime-status fetch feedback is the most adjacent follow-up if another loops pass is needed, especially when `getLoopStatuses()` fails and the list still needs to explain stale `Running` / `Next run` details
+- Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, list-fetch failure, runtime-status failure (with and without cached status data), empty, and populated states to confirm the new status-warning hierarchy reads clearly in the real UI
+- Desktop repeat-task run/toggle/delete mutation failure feedback is the most adjacent follow-up if another loops pass is needed now that both list-fetch and runtime-status recovery are clearer
 - Once a runnable mobile target is available, live-check `Settings → Agent Loops` across first load, refresh with existing loops, empty state, and inline retry after a fetch failure to confirm the new state hierarchy feels clear on-device
 - Mobile loop action mutation failure feedback (`run`, `toggle`, `delete`) is the most adjacent follow-up if another mobile loops pass is needed now that fetch-state recovery is clearer
 - Once a runnable Electron target is available, live-check the desktop sessions empty state with no history, loading history, a few recent sessions, and more than eight sessions to confirm the new `Past Sessions` action and loading hint feel obvious without overcrowding the primary start actions
@@ -1821,6 +1828,39 @@ Track small, shippable product improvements. Review this file before each iterat
   - once dependencies are available, run `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts`
   - once dependencies are available, run `pnpm --filter @dotagents/desktop typecheck:node`
   - inspect remaining queue/user-response cleanup consistency on interrupted queued runs, since this pass fixed the core runtime-session leak but did not broaden queue/follow-up behavior changes
+
+### 2026-03-08 — Desktop repeat-task runtime-status feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task management in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - specifically the secondary `getLoopStatuses()` refresh that powers `Running` / `Next run` metadata on an already loaded task list
+- Why it was chosen:
+  - the prior loops pass fixed the high-risk “loading/error looks like empty state” problem, which made the next adjacent gap easier to isolate
+  - the page still polls `getLoopStatuses()` separately every few seconds, and that secondary query could fail without explanation while the list silently fell back to incomplete runtime details
+  - the opportunity had clear user value, stayed localized to one renderer page plus focused tests, and avoided a broad loops refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `apps/desktop/src/main/loop-service.ts` to confirm the runtime-status contract returned by `getLoopStatuses()`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed no equivalent change is needed there because mobile loop metadata comes from the primary list fetch rather than a second live-status query
+  - previously used desktop settings retry/error patterns already on the same page
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - added an inline warning state when `loopStatusesQuery` fails after tasks are already loaded
+  - clarified the difference between “runtime details temporarily unavailable” and “last loaded runtime details may be stale” depending on whether cached status data exists
+  - added a local `Retry status` action and reused the normalized error-copy helper so recovery stays near the affected metadata
+  - extended dependency-free regression coverage in `tests/desktop-settings-loops-feedback.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the saved task list visible because the primary `loopsQuery` still succeeded; hiding the list or showing a blocking error would overstate a secondary metadata failure
+  - left the per-row `Active` / `Disabled` affordances alone in this pass because the key missing context was invisible runtime refresh failure, and the smallest effective fix was to explain the state clearly rather than reworking all badges
+  - did not broaden this pass into mutation-state polish because run/toggle/delete feedback is a separate problem with a larger interaction surface
+- Tests / verification:
+  - `node --test tests/desktop-settings-loops-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check the desktop Repeat Tasks page across runtime-status failure with and without cached status data to confirm the warning hierarchy feels obvious in the actual UI
+  - inspect run/toggle/delete mutation failures on the same page now that both list-fetch and runtime-status recovery are clearer
 
 ### 2026-03-08 — Desktop repeat-task fetch-state feedback
 - Date:
