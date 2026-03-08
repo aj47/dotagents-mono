@@ -42,7 +42,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const { currentProfile, setCurrentProfile, refresh } = useProfile();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
-  const missingConfigError = 'Configure server URL and API key to switch agents';
+  const missingConfigError = 'Configure server URL and API key in Settings to switch agents.';
 
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,6 +98,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   }, [visible, fetchProfiles, refresh]);
 
   const currentAgentName = currentProfile?.name || (selectorMode === 'acp' ? 'Main Agent' : 'Default Agent');
+  const isMissingConfigError = error === missingConfigError;
   const emptyStateMessage = selectorMode === 'acp'
     ? 'No enabled ACP agents are available yet. Add or enable one in Settings → Agents to use it as your main agent.'
     : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
@@ -194,16 +195,29 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={fetchProfiles}
-              accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Retry loading agents')}
-              accessibilityHint="Attempts to load the available agents again."
-              activeOpacity={0.7}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
+            {isMissingConfigError ? (
+              <TouchableOpacity
+                style={styles.manageAgentsButton}
+                onPress={handleOpenAgentSettings}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Open agent settings')}
+                accessibilityHint="Returns to Settings so you can add server details and review agent mode."
+                activeOpacity={0.7}
+              >
+                <Text style={styles.manageAgentsButtonText}>Open Agent Settings</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={fetchProfiles}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Retry loading agents')}
+                accessibilityHint="Attempts to load the available agents again."
+                activeOpacity={0.7}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : profiles.length === 0 ? (
           <View style={styles.emptyStateCard}>
@@ -349,6 +363,8 @@ function createStyles(theme: Theme) {
     errorText: {
       color: theme.colors.destructive,
       marginBottom: spacing.sm,
+      textAlign: 'center',
+      lineHeight: 20,
     },
     retryButton: {
       ...actionButtonTouchTarget,

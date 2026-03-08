@@ -24,9 +24,15 @@ test('offers a mobile-friendly path back to agent settings from the empty state'
   assert.match(sheetSource, /manageAgentsButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*180,/);
 });
 
-test('keeps selector-sheet retry and cancel actions mobile-sized with explicit button semantics', () => {
+test('turns the missing-config selector error into a direct settings escape hatch', () => {
+  assert.match(sheetSource, /const missingConfigError = 'Configure server URL and API key in Settings to switch agents\.'/);
+  assert.match(sheetSource, /const isMissingConfigError = error === missingConfigError;/);
+  assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\('Open agent settings'\)[\s\S]*?Returns to Settings so you can add server details and review agent mode\.[\s\S]*?Open Agent Settings/);
+});
+
+test('keeps selector-sheet retry and cancel actions mobile-sized with explicit button semantics for recoverable errors', () => {
   assert.match(sheetSource, /const actionButtonTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
-  assert.match(sheetSource, /style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Retry loading agents'\)/);
+  assert.match(sheetSource, /\) : \([\s\S]*?style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Retry loading agents'\)/);
   assert.match(sheetSource, /accessibilityHint="Attempts to load the available agents again\."/);
   assert.match(sheetSource, /retryButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget/);
   assert.match(sheetSource, /style=\{styles\.closeButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Close agent selector'\)/);

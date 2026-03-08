@@ -1247,3 +1247,49 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Require Tool Approval` now reads and taps consistently with the surrounding `Agent Settings` controls.
   - After live validation returns, compare the remaining `Agent Settings` switches against the now-improved chips, builtin-tools toggle, and tool-approval toggle to see whether any further mismatch is still noticeable on mobile.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 29: make the selector-sheet missing-config state actionable
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow notes in `AGENTS.md` / `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `AgentSelectorSheet` already gave a strong empty-state escape hatch back to `Settings` when no switchable agents were returned.
+  - The parallel missing-config path still routed through the generic error UI:
+    - `missingConfigError` explained that server URL / API key setup was required,
+    - but the only visible action was `Retry`.
+  - On mobile that was a dead end because retrying could not resolve missing configuration; the user first needed a direct path back to `Settings`.
+- Issue selected:
+  - The sub-agent selector exposed a dead-end state on mobile when API configuration was missing, reducing state clarity and leaving the user without an immediate corrective action.
+- Decision:
+  - Keep the selector-sheet layout, title, and existing retry flow for genuine load failures.
+  - Make the smallest local fix: treat the known missing-config error as a settings-oriented state, not a retry-oriented state.
+  - Reuse the existing `Open Agent Settings` button styling instead of introducing a new action pattern.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - make the missing-config copy explicit about fixing the issue in `Settings`,
+    - detect the missing-config error separately from other error cases,
+    - replace the retry-only action with `Open Agent Settings` for that specific state,
+    - keep `Retry` for recoverable fetch/switch failures,
+    - center the error copy so multi-line mobile messaging reads more cleanly.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new missing-config escape hatch while preserving retry coverage for recoverable errors.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / device re-validation ⚠️ blocked by the missing mobile install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved missing-config error still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - The selector rows still rely on single-line truncation for names and guidelines; after live validation returns, confirm that long agent names remain distinguishable enough without secondary metadata.
+  - If live inspection shows users still hesitate between empty-state vs error-state paths, the sheet may later need slightly stronger visual differentiation between those cards, but that should wait for evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the missing-config selector state clearly presents `Open Agent Settings` instead of a dead-end retry.
+  - Compare the selector sheet’s missing-config state against its zero-agents empty state once live validation returns so those two recovery paths stay distinct and easy to scan on mobile.
+  - After that live pass, reassess whether the next highest-friction sub-agent mobile issue is back in the selector sheet or elsewhere.
