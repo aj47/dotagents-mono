@@ -38,6 +38,8 @@ Current behavior:
 - backups are pruned automatically so the folder does not grow without bound
 - default safety backups include agent profiles, MCP servers, skills, and repeat tasks
 - default safety backups **exclude memories**
+- the import/restore dialog now tells users a fresh safety backup will be created before writes begin
+- import result toasts surface the backup path immediately and can reveal the saved backup file directly
 
 ### 2. Restore is reachable in-app
 
@@ -45,7 +47,15 @@ Backups are not toast-only anymore. Desktop users can restore them from:
 
 - `Settings -> Capabilities -> Restore Backup`
 - `Settings -> Capabilities -> Recent backups`
+- per-backup row actions for `Restore`, `Reveal`, and `Copy path`
 - `Settings -> Capabilities -> Open Backups Folder`
+
+Recent backup rows also surface compact provenance and recovery context, including:
+
+- bundle timestamp
+- protected target layer (`global`, `workspace`, or `custom` when available)
+- component counts
+- the full backup file path
 
 ### 3. Preview before write
 
@@ -53,9 +63,21 @@ Bundle import uses a preview dialog that shows:
 
 - what the bundle contains
 - which items conflict with the current config
+- which runtime layer will be updated (`global`, `workspace`, or `custom`)
+- which items are selected versus excluded from the current import plan
 - the current conflict strategy outcome before import starts
 
-### 4. Safe conflict default
+### 4. MCP setup disclosure before and after import
+
+Bundle preview/import now treats MCP setup requirements as a first-class trust signal.
+
+Current behavior:
+
+- selected MCP servers are flagged before import when they still contain redacted credentials or templated placeholder values
+- both secret placeholders (for example `<CONFIGURE_YOUR_KEY>`) and non-secret setup placeholders (for example `<YOUR_USERNAME>`) count as required follow-up configuration
+- the import UI links users directly to `Settings -> Capabilities -> MCP Servers` for post-import reconfiguration
+
+### 5. Safe conflict default
 
 The default conflict behavior is:
 
@@ -66,7 +88,7 @@ Other supported import-wide strategies remain:
 - `overwrite`
 - `rename`
 
-### 5. Component and per-item cherry-pick
+### 6. Component and per-item cherry-pick
 
 Import is no longer all-or-nothing.
 
@@ -82,6 +104,12 @@ Users can:
 
 Desktop bundle export lets users choose exactly what to include in a local `.dotagents` file.
 
+Current local-export trust defaults:
+
+- MCP secrets are stripped automatically from exported config
+- selected memories, repeat task prompts, and other chosen content are exported as-is
+- if selected memories appear to contain secret-like text, the export dialog warns before save
+
 Current entry points:
 
 - `Settings -> Skills` for bundle import/export in the skills workflow
@@ -96,6 +124,7 @@ Current public-sharing defaults:
 - memories are **off by default** for Hub-oriented export
 - repeat tasks are **off by default** for Hub-oriented export
 - MCP secrets are stripped automatically from exported config
+- setup-bearing placeholder values may still require user configuration after install
 - enabled content is still public once the artifact is shared
 
 Before sharing a Hub install link, the bundle file still needs to be hosted at the chosen artifact URL.
@@ -107,6 +136,9 @@ The static website now includes a **bundle inspector modal** for featured Hub bu
 Current behavior:
 
 - users can inspect bundle contents before installing
+- warning badges call out `Contains MCP commands`, `Requires setup`, `Contains memories`, and `Large prompt content`
+- MCP sections show transport-aware connection previews plus explicit `Requires configuration` details when placeholders are present
+- repeat task previews disclose cadence, startup-trigger behavior, and whether the task is enabled in the bundle by default
 - install remains a separate `dotagents://install?...` action
 - prompts/instructions can be reviewed before trust is granted
 
@@ -121,8 +153,8 @@ This establishes the default trust posture for `.dotagents` sharing:
 
 - `Settings -> Skills` — import/export local bundles
 - `Settings -> Agents` — import/export bundles and prepare Hub publish artifacts
-- `Settings -> Capabilities` — restore backups, inspect recent backups, open backup folder
-- `website/index.html` — inspect featured bundles before installing
+- `Settings -> Capabilities` — restore backups, inspect recent backups, reveal/copy backup paths, open backup folder
+- `website/index.html` — inspect featured bundles before installing and review setup/task-timing warnings
 
 ## Still intentionally open under issue #25
 

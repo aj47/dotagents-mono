@@ -2259,3 +2259,38 @@
   - Otherwise prefer a fresh open issue next instead of continuing to mine `#58`.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice next; only return to `#58` if a new direct metadata-loss path is observed.
+
+##### Issue #25 — `.dotagents` docs/spec alignment after finalized `#56` / `#57` trust defaults
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` first, then refreshed the still-open issues and issue comments before choosing this pass.
+  - Issue `#25` has an explicit owner planning comment saying the concrete deliverables in `#56` (Hub inspect modal) and `#57` (import safety / restore UX) should feed back into the umbrella `.dotagents` docs/spec next.
+  - This made `#25` the cleanest fresh issue for a small shippable slice: improve contributor/user understanding of the already-landed trust model without reopening backend import complexity.
+- Investigation:
+  - Re-read issue `#25` and its planning comment, then inspected the existing bundle docs in `DOTAGENTS_BUNDLES.md` and the README summary to see what current-state behavior was still undocumented.
+  - Re-inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed the current restore surface now goes beyond the earlier doc: recent backups show target provenance and component summaries, plus per-backup `Restore`, `Reveal`, and `Copy path` actions alongside `Open Backups Folder`.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the trust model now also includes an explicit automatic safety-backup notice, `Reveal Backup` toast actions, and placeholder-aware MCP setup disclosure for both secret placeholders like `<CONFIGURE_YOUR_KEY>` and templated values like `<YOUR_USERNAME>`.
+  - Re-inspected `website/index.html` and confirmed the Hub inspector now discloses more than the existing doc captured: warning badges for `Contains MCP commands` / `Requires setup` / `Contains memories` / `Large prompt content`, transport-aware MCP connection previews, and repeat-task schedule/startup/default-state disclosure.
+- Important assumptions:
+  - Assumption: the right `#25` slice is to keep the repo-local current-state spec accurate, not to rewrite the umbrella issue body or design a larger documentation site.
+  - Why acceptable: the owner comment explicitly asked for docs/spec alignment after `#56`/`#57`, and a narrow current-state update is the most reviewable way to land that.
+  - Assumption: a dependency-free source test guarding the README + spec prose is sufficient verification for this docs-only pass.
+  - Why acceptable: this slice changes no runtime code, and a small Node test gives the repo a durable guard against the new trust-default documentation drifting again.
+- Changes implemented:
+  - Expanded `DOTAGENTS_BUNDLES.md` to document the now-shipped restore/recovery affordances: recent-backup provenance, per-backup `Restore` / `Reveal` / `Copy path` actions, automatic-safety-backup messaging, and reveal-from-toast behavior.
+  - Added a new `MCP setup disclosure before and after import` section documenting that bundle import treats both redacted secrets and templated placeholders as required follow-up configuration and deep-links users to `Settings -> Capabilities -> MCP Servers`.
+  - Updated the export/share and website-inspector sections in `DOTAGENTS_BUNDLES.md` to cover local memory secret warnings, placeholder-bearing setup requirements, Hub warning badges, transport-aware MCP previews, and repeat-task cadence/startup/default-state disclosure.
+  - Tightened the README bundle summary to mention recent-backup recovery tools and inspect-before-install setup disclosure.
+  - Added `tests/dotagents-bundles-docs.test.js`, a dependency-free regression test locking in the new bundle-doc trust defaults and README discoverability.
+- Verification run:
+  - Completed: `node --test tests/dotagents-bundles-docs.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Keep `DOTAGENTS_BUNDLES.md` aligned if future slot/preset isolation changes import targets, restore provenance, or bundle artifact metadata again.
+  - If Hub bundles later expose explicit dependency metadata, extend both the website inspector and the current-state spec with that trust signal rather than leaving it implied by MCP command previews.
+  - Only resume broader Phase 2/Phase 3 hub work when there is another similarly concrete local slice (for example, installed/update status or registry-caching behavior), not by reopening the full umbrella spec at once.
+
+- Next recommended issue work item: refresh the open issues again and prefer a fresh, well-scoped bug or reliability slice next; if `#25` is revisited, keep it to another concrete docs/trust-sync step rather than speculative roadmap prose.
