@@ -99,25 +99,28 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   }, [visible, fetchProfiles, refresh]);
 
-  const currentAgentName = currentProfile?.name || (selectorMode === 'acp' ? 'Main Agent' : 'Default Agent');
+  const currentAgentName = currentProfile?.name || (selectorMode === 'acp' ? 'Main Agent' : 'Default Profile');
   const isMissingConfigError = error === missingConfigError;
-  const currentAgentBadgeLabel = selectorMode === 'acp' ? 'Current main agent' : 'Current agent';
-  const selectorChoiceRoleLabel = selectorMode === 'acp' ? 'main agent' : 'agent';
-  const loadingAccessibilityLabel = selectorMode === 'acp' ? 'Loading available main agents' : 'Loading available agents';
-  const loadingStatusText = selectorMode === 'acp' ? 'Loading available main agents…' : 'Loading available agents…';
+  const selectorTitle = selectorMode === 'acp' ? 'Select Main Agent' : 'Select Profile';
+  const currentAgentBadgeLabel = selectorMode === 'acp' ? 'Current main agent' : 'Current profile';
+  const selectorChoiceRoleLabel = selectorMode === 'acp' ? 'main agent' : 'profile';
+  const loadingAccessibilityLabel = selectorMode === 'acp' ? 'Loading available main agents' : 'Loading available profiles';
+  const loadingStatusText = selectorMode === 'acp' ? 'Loading available main agents…' : 'Loading available profiles…';
   const loadingSupportText = selectorMode === 'acp'
     ? 'Your current main agent stays active while options load.'
-    : 'Your current agent stays active while options load.';
+    : 'Your current profile stays active while options load.';
   const emptyStateMessage = selectorMode === 'acp'
     ? 'No enabled command-based agents are available yet. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent.'
     : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
   const errorSupportText = isMissingConfigError
     ? selectorMode === 'acp'
       ? 'Your current main agent stays active. Open Settings to finish connecting this server and review main-agent mode.'
-      : 'Your current agent stays active. Open Settings to finish connecting this server and review agent mode.'
+      : 'Your current profile stays active. Open Settings to finish connecting this server and review available profiles.'
     : selectorMode === 'acp'
       ? 'Your current main agent stays active while you retry loading the available options.'
-      : 'Your current agent stays active while you retry loading the available options.';
+      : 'Your current profile stays active while you retry loading the available profiles.';
+  const emptyStateTitle = selectorMode === 'acp' ? 'No main agents ready yet' : 'No saved profiles yet';
+  const openSettingsButtonLabel = 'Open Settings';
 
   const handleOpenAgentSettings = () => {
     onClose();
@@ -166,7 +169,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   const switchingMessage = pendingProfileName
     ? `Switching to ${pendingProfileName}…`
-    : 'Switching agents…';
+    : selectorMode === 'acp'
+      ? 'Switching main agents…'
+      : 'Switching profiles…';
 
   const orderedProfiles = useMemo(() => {
     if (profiles.length <= 1) return profiles;
@@ -188,19 +193,19 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   );
   const currentSelectionNoticeTitle = selectorMode === 'acp'
     ? 'Current main agent unavailable in this list'
-    : 'Current agent unavailable in this list';
+    : 'Current profile unavailable in this list';
   const currentSelectionNoticeText = selectorMode === 'acp'
     ? 'This main agent stays active until you switch. Choose one of the enabled agents below, then review Settings → Agents if this main agent should be available again.'
-    : 'This agent stays active until you switch. Choose one of the available options below, then review Settings → Agents if this profile should still be switchable.';
+    : 'This profile stays active until you switch. Choose one of the available profiles below, then review Settings → Profile & Model if this profile should still be switchable.';
   const availableOptionsHeading = selectorMode === 'acp'
     ? 'Available main agents'
-    : 'Available agents';
+    : 'Available profiles';
   const currentSelectionNoticeActionLabel = selectorMode === 'acp'
     ? 'Review main agent in Settings'
-    : 'Review agent in Settings';
+    : 'Review profile in Settings';
   const currentSelectionNoticeActionHint = selectorMode === 'acp'
     ? 'Opens Settings so you can review why this main agent is unavailable and manage enabled agents.'
-    : 'Opens Settings so you can review why this agent is unavailable and manage switchable agents.';
+    : 'Opens Settings so you can review why this profile is unavailable and manage saved profiles.';
   const selectorSubtitle = selectorMode === 'acp'
     ? 'Pick which enabled command-based agent handles new chats.'
     : 'Switch between saved chat profiles. Delegation agents stay in Settings → Agents.';
@@ -223,7 +228,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ? 'Another agent switch is in progress. Wait for it to finish before changing this selection.'
       : isSelected
         ? 'Currently selected. Double tap to close this selector and keep this agent.'
-        : 'Switches the current agent to this option.';
+        : selectorMode === 'acp'
+          ? 'Switches the current main agent to this option.'
+          : 'Switches the current profile to this option.';
 
     return (
       <TouchableOpacity
@@ -280,7 +287,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       </Pressable>
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.handle} />
-        <Text style={styles.title}>{selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}</Text>
+        <Text style={styles.title}>{selectorTitle}</Text>
         <Text style={styles.subtitle} numberOfLines={2} ellipsizeMode="tail">
           {selectorSubtitle}
         </Text>
@@ -336,11 +343,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                 style={styles.manageAgentsButton}
                 onPress={handleOpenAgentSettings}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Open agent settings')}
+                accessibilityLabel={createButtonAccessibilityLabel(openSettingsButtonLabel)}
                 accessibilityHint="Returns to Settings so you can add server details and review agent mode."
                 activeOpacity={0.7}
               >
-                <Text style={styles.manageAgentsButtonText}>Open Agent Settings</Text>
+                <Text style={styles.manageAgentsButtonText}>{openSettingsButtonLabel}</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -368,18 +375,18 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               </Text>
             </View>
             <Text style={styles.emptyStateTitle}>
-              {selectorMode === 'acp' ? 'No main agents ready yet' : 'No switchable agents yet'}
+              {emptyStateTitle}
             </Text>
             <Text style={styles.emptyText}>{emptyStateMessage}</Text>
             <TouchableOpacity
               style={styles.manageAgentsButton}
               onPress={handleOpenAgentSettings}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Open agent settings')}
+              accessibilityLabel={createButtonAccessibilityLabel(openSettingsButtonLabel)}
               accessibilityHint="Returns to Settings so you can review agents and agent mode."
               activeOpacity={0.7}
             >
-              <Text style={styles.manageAgentsButtonText}>Open Agent Settings</Text>
+              <Text style={styles.manageAgentsButtonText}>{openSettingsButtonLabel}</Text>
             </TouchableOpacity>
           </View>
         ) : (

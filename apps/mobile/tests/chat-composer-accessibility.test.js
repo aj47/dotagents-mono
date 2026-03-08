@@ -39,9 +39,10 @@ test('only shows the composer agent selector when the selector actually has opti
 });
 
 test('uses main-agent terminology in the composer selector when ACP mode is active', () => {
-  assert.match(screenSource, /const currentAgentAccessibilityPrefix = isAcpMainAgentMode \? 'Current main agent' : 'Current agent';/);
-  assert.match(screenSource, /const agentSelectionAccessibilityHint = isAcpMainAgentMode[\s\S]*?'Opens main agent selection menu'[\s\S]*?'Opens agent selection menu';/);
-  assert.match(screenSource, /const composerAgentChipLabel = isAcpMainAgentMode \? '🤖 Main Agent' : '🤖 Agent';/);
+  assert.match(screenSource, /const currentAgentLabel = currentProfile\?\.name \|\| \(isAcpMainAgentMode \? 'Main Agent' : 'Default Profile'\);/);
+  assert.match(screenSource, /const currentAgentAccessibilityPrefix = isAcpMainAgentMode \? 'Current main agent' : 'Current profile';/);
+  assert.match(screenSource, /const agentSelectionAccessibilityHint = isAcpMainAgentMode[\s\S]*?'Opens main agent selection menu'[\s\S]*?'Opens profile selection menu';/);
+  assert.match(screenSource, /const composerAgentChipLabel = isAcpMainAgentMode \? '🤖 Main Agent' : '🤖 Profile';/);
   assert.match(screenSource, /accessibilityLabel=\{`\$\{currentAgentAccessibilityPrefix\}: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
   assert.match(screenSource, /accessibilityHint=\{agentSelectionAccessibilityHint\}/);
   assert.match(screenSource, /<Text style=\{styles\.agentSelectorChipLabel\}>\{composerAgentChipLabel\}<\/Text>/);

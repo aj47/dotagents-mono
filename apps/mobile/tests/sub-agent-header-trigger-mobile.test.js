@@ -33,9 +33,10 @@ for (const [screenName, source] of [
     assert.match(source, /const \[hasAgentSelectorOptions, setHasAgentSelectorOptions\] = useState\(false\);/);
     assert.match(source, /const \[isAcpMainAgentMode, setIsAcpMainAgentMode\] = useState\(false\);/);
     assert.match(source, /setIsAcpMainAgentMode\(settings\.mainAgentMode === 'acp'\);/);
-    assert.match(source, /const currentAgentAccessibilityPrefix = isAcpMainAgentMode \? 'Current main agent' : 'Current agent';/);
-    assert.match(source, /const agentSelectionAccessibilityHint = isAcpMainAgentMode[\s\S]*?'Opens main agent selection menu'[\s\S]*?'Opens agent selection menu';/);
-    assert.match(source, /const noOtherAgentsAvailableText = isAcpMainAgentMode[\s\S]*?'No other main agents are available to switch to right now\.'[\s\S]*?'No other agents are available to switch to right now\.';/);
+    assert.match(source, /const currentAgentLabel = currentProfile\?\.name \|\| \(isAcpMainAgentMode \? 'Main Agent' : 'Default Profile'\);/);
+    assert.match(source, /const currentAgentAccessibilityPrefix = isAcpMainAgentMode \? 'Current main agent' : 'Current profile';/);
+    assert.match(source, /const agentSelectionAccessibilityHint = isAcpMainAgentMode[\s\S]*?'Opens main agent selection menu'[\s\S]*?'Opens profile selection menu';/);
+    assert.match(source, /const noOtherAgentsAvailableText = isAcpMainAgentMode[\s\S]*?'No other main agents are available to switch to right now\.'[\s\S]*?'No other profiles are available to switch to right now\.';/);
     assert.match(source, /const hasAlternativeAgentSelectorOption = useCallback\(\(optionIds: string\[\]\) => \{[\s\S]*?if \(optionIds\.length === 0\) return false;[\s\S]*?if \(!currentAgentId\) return true;[\s\S]*?optionIds\.some\(\(optionId\) => optionId !== currentAgentId\);[\s\S]*?\}, \[currentAgentId\]\);/);
     assert.match(source, /hasAgentSelectorOptions \? \(/);
     assert.match(source, /accessibilityLabel=\{`\$\{currentAgentAccessibilityPrefix\}: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
@@ -58,7 +59,7 @@ for (const [screenName, source] of [
   });
 }
 
-test('Chat and Chats headers use the same fallback agent label when switching is unavailable', () => {
-  assert.match(chatScreenSource, /const currentAgentLabel = currentProfile\?\.name \|\| 'Default Agent';/);
-  assert.match(sessionListScreenSource, /const currentAgentLabel = currentProfile\?\.name \|\| 'Default Agent';/);
+test('Chat and Chats headers use the same fallback selection label when switching is unavailable', () => {
+  assert.match(chatScreenSource, /const currentAgentLabel = currentProfile\?\.name \|\| \(isAcpMainAgentMode \? 'Main Agent' : 'Default Profile'\);/);
+  assert.match(sessionListScreenSource, /const currentAgentLabel = currentProfile\?\.name \|\| \(isAcpMainAgentMode \? 'Main Agent' : 'Default Profile'\);/);
 });

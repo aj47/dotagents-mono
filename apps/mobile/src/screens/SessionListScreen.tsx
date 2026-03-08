@@ -33,17 +33,17 @@ export default function SessionListScreen({ navigation }: Props) {
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const currentAgentId = currentProfile?.id;
-  const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
   const [isAcpMainAgentMode, setIsAcpMainAgentMode] = useState(false);
-  const currentAgentAccessibilityPrefix = isAcpMainAgentMode ? 'Current main agent' : 'Current agent';
+  const currentAgentLabel = currentProfile?.name || (isAcpMainAgentMode ? 'Main Agent' : 'Default Profile');
+  const currentAgentAccessibilityPrefix = isAcpMainAgentMode ? 'Current main agent' : 'Current profile';
   const agentSelectionAccessibilityHint = isAcpMainAgentMode
     ? 'Opens main agent selection menu'
-    : 'Opens agent selection menu';
+    : 'Opens profile selection menu';
   const noOtherAgentsAvailableText = isAcpMainAgentMode
     ? 'No other main agents are available to switch to right now.'
-    : 'No other agents are available to switch to right now.';
+    : 'No other profiles are available to switch to right now.';
 
   const hasAlternativeAgentSelectorOption = useCallback((optionIds: string[]) => {
     if (optionIds.length === 0) return false;

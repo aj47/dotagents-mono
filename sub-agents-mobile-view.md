@@ -1,5 +1,57 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 149 - Make profile-mode selector language match what mobile users are actually switching
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not immediately revisit the just-touched selector CTA wording, `Tool Execution`, `Agents` summary, or `Summarization` work without fresh evidence.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/SessionListScreen.tsx`, and the nearby selector/header tests because the selector flow still had a narrow, source-backed state-clarity issue in saved-profile mode.
+  - Tried again to recover live-validation confidence, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - In saved-profile mode, the selector subtitle already told users they were switching between saved chat profiles.
+  - But several of the highest-visibility labels in the same flow still said `agent`, including the sheet title (`Select Agent`), current-state badge (`Current agent`), loading copy (`Loading available agents`), available-options heading (`Available agents`), missing-selection notice (`Current agent unavailable in this list`), and the chat-composer chip (`🤖 Agent`).
+  - On a narrow mobile screen, that mixed vocabulary made it harder to tell whether the flow was switching a saved chat profile or managing delegation agents.
+- Issue identified:
+  - The mobile selector flow used inconsistent agent-vs-profile terminology in saved-profile mode, weakening state clarity right where users decide what the active sub-agent routing context is.
+- Decision and rationale:
+  - Keep the sheet structure, option rows, recovery actions, and ACP wording intact.
+  - Avoid another broader selector redesign while live validation is still blocked.
+  - Make the smallest effective fix instead: tighten the profile-mode terminology across the selector chrome and launcher labels so the visible and spoken language matches the thing the user is actually switching.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to make saved-profile mode read consistently as profile switching, including:
+    - `Select Profile`
+    - `Current profile`
+    - `Loading available profiles…`
+    - `Available profiles`
+    - `Current profile unavailable in this list`
+    - `Review profile in Settings`
+    - `Switching profiles…`
+    - `No saved profiles yet`
+    - shorter generic recovery button text `Open Settings`
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx` so profile-mode accessibility and fallback labels use `Current profile`, `Opens profile selection menu`, `No other profiles...`, and the chat composer chip now reads `🤖 Profile` outside ACP mode.
+  - Updated focused regression coverage in:
+    - `apps/mobile/tests/agent-selector-sheet.test.js`
+    - `apps/mobile/tests/chat-composer-accessibility.test.js`
+    - `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed `profile` is the best compact term for mobile chrome because it is shorter than `chat profile` while still being grounded by the subtitle and settings copy nearby.
+  - Kept ACP-specific `main agent` wording untouched so the more important command-agent routing distinction stays explicit.
+  - Chose the shorter `Open Settings` button text to reduce width pressure and avoid incorrectly implying that saved-profile recovery lives only in `Agents` settings.
+  - This remains a source-backed improvement and still needs live confirmation that the new `Profile` chip, title, and notice labels feel clear on a real narrow viewport.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that saved-profile mode now reads consistently as profile switching from the launcher chip through the sheet title, loading state, missing-selection notice, and options heading.
+  - Capture screenshot-backed evidence for the profile-mode selector header and missing-selection state to confirm the new labels improve clarity without wrapping awkwardly.
+  - If live validation still shows ambiguity between saved profiles and delegation agents, prefer a small follow-up copy refinement before changing layout.
+
 ## Iteration 148 - Make the missing-selection selector CTA explicit about what it reviews
 
 - Date: 2026-03-08

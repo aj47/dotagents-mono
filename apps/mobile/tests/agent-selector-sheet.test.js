@@ -12,11 +12,12 @@ test('refreshes the current profile context when the selector sheet opens', () =
   assert.match(sheetSource, /if \(visible\) \{[\s\S]*?void Promise\.all\(\[refresh\(\), fetchProfiles\(\)\]\);/);
 });
 
-test('keeps the empty state anchored to the current agent and explains where to manage agents', () => {
-  assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current agent';/);
+test('keeps the empty state anchored to the current selection and explains where to manage it', () => {
+  assert.match(sheetSource, /const currentAgentName = currentProfile\?\.name \|\| \(selectorMode === 'acp' \? 'Main Agent' : 'Default Profile'\);/);
+  assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current profile';/);
   assert.match(sheetSource, /<Text style=\{styles\.currentAgentBadgeLabel\}>\{currentAgentBadgeLabel\}<\/Text>/);
   assert.match(sheetSource, /<Text[\s\S]*?style=\{styles\.currentAgentBadgeText\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{currentAgentName\}/);
-  assert.match(sheetSource, /No switchable agents yet/);
+  assert.match(sheetSource, /const emptyStateTitle = selectorMode === 'acp' \? 'No main agents ready yet' : 'No saved profiles yet';/);
   assert.match(sheetSource, /Manage delegation agents in Settings → Agents\./);
   assert.match(sheetSource, /currentAgentBadge:\s*\{[\s\S]*?maxWidth:\s*'100%'[\s\S]*?alignItems:\s*'center'/);
   assert.match(sheetSource, /currentAgentBadgeText:\s*\{[\s\S]*?textAlign:\s*'center'[\s\S]*?maxWidth:\s*'100%'[\s\S]*?flexShrink:\s*1/);
@@ -24,8 +25,9 @@ test('keeps the empty state anchored to the current agent and explains where to 
 
 test('offers a mobile-friendly path back to agent settings from the empty state', () => {
   assert.match(sheetSource, /navigation\.navigate\('Settings'\)/);
-  assert.match(sheetSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Open agent settings'\)\}/);
-  assert.match(sheetSource, /\{selectorMode === 'acp' \? 'No main agents ready yet' : 'No switchable agents yet'\}[\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?activeOpacity=\{0\.7\}/);
+  assert.match(sheetSource, /const openSettingsButtonLabel = 'Open Settings';/);
+  assert.match(sheetSource, /accessibilityLabel=\{createButtonAccessibilityLabel\(openSettingsButtonLabel\)\}/);
+  assert.match(sheetSource, /\{emptyStateTitle\}[\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?activeOpacity=\{0\.7\}/);
   assert.match(sheetSource, /manageAgentsButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget,[\s\S]*?alignSelf:\s*'stretch'/);
   assert.match(sheetSource, /manageAgentsButtonText:\s*\{[\s\S]*?textAlign:\s*'center'/);
 });
@@ -33,11 +35,11 @@ test('offers a mobile-friendly path back to agent settings from the empty state'
 test('turns the missing-config selector error into a direct settings escape hatch', () => {
   assert.match(sheetSource, /const missingConfigError = 'Configure server URL and API key in Settings to switch agents\.'/);
   assert.match(sheetSource, /const isMissingConfigError = error === missingConfigError;/);
-  assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\('Open agent settings'\)[\s\S]*?Returns to Settings so you can add server details and review agent mode\.[\s\S]*?Open Agent Settings/);
+  assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\(openSettingsButtonLabel\)[\s\S]*?Returns to Settings so you can add server details and review agent mode\.[\s\S]*?\{openSettingsButtonLabel\}/);
 });
 
 test('keeps the current agent visible through selector-sheet errors so the failure feels recoverable', () => {
-  assert.match(sheetSource, /const errorSupportText = isMissingConfigError[\s\S]*?Your current main agent stays active\. Open Settings to finish connecting this server and review main-agent mode\.[\s\S]*?Your current agent stays active\. Open Settings to finish connecting this server and review agent mode\.[\s\S]*?Your current main agent stays active while you retry loading the available options\.[\s\S]*?Your current agent stays active while you retry loading the available options\./);
+  assert.match(sheetSource, /const errorSupportText = isMissingConfigError[\s\S]*?Your current main agent stays active\. Open Settings to finish connecting this server and review main-agent mode\.[\s\S]*?Your current profile stays active\. Open Settings to finish connecting this server and review available profiles\.[\s\S]*?Your current main agent stays active while you retry loading the available options\.[\s\S]*?Your current profile stays active while you retry loading the available profiles\./);
   assert.match(sheetSource, /\) : error \? \([\s\S]*?<View style=\{styles\.errorContainer\}>[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>\{currentAgentBadgeLabel\}<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<Text style=\{styles\.errorText\}>\{error\}<\/Text>[\s\S]*?<Text style=\{styles\.errorSupportText\}>\{errorSupportText\}<\/Text>/);
   assert.match(sheetSource, /errorContainer:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\.sm,[\s\S]*?gap:\s*spacing\.sm/);
   assert.match(sheetSource, /errorSupportText:\s*\{[\s\S]*?textAlign:\s*'center',[\s\S]*?lineHeight:\s*20/);
@@ -47,13 +49,14 @@ test('describes ACP-mode main-agent choices as command-based instead of ACP-only
   assert.match(sheetSource, /const emptyStateMessage = selectorMode === 'acp'[\s\S]*?No enabled command-based agents are available yet\. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent\./);
   assert.match(sheetSource, /const selectorSubtitle = selectorMode === 'acp'[\s\S]*?Pick which enabled command-based agent handles new chats\.[\s\S]*?Switch between saved chat profiles\. Delegation agents stay in Settings → Agents\./);
   assert.match(sheetSource, /<Text style=\{styles\.subtitle\} numberOfLines=\{2\} ellipsizeMode="tail">[\s\S]*?\{selectorSubtitle\}[\s\S]*?<\/Text>/);
-  assert.match(sheetSource, /selectorMode === 'acp' \? 'No main agents ready yet' : 'No switchable agents yet'/);
+  assert.match(sheetSource, /const selectorTitle = selectorMode === 'acp' \? 'Select Main Agent' : 'Select Profile';/);
+  assert.match(sheetSource, /const emptyStateTitle = selectorMode === 'acp' \? 'No main agents ready yet' : 'No saved profiles yet';/);
 });
 
 test('makes the selector loading state read as active progress while keeping the current agent visible', () => {
-  assert.match(sheetSource, /const loadingAccessibilityLabel = selectorMode === 'acp' \? 'Loading available main agents' : 'Loading available agents';/);
-  assert.match(sheetSource, /const loadingStatusText = selectorMode === 'acp' \? 'Loading available main agents…' : 'Loading available agents…';/);
-  assert.match(sheetSource, /const loadingSupportText = selectorMode === 'acp'[\s\S]*?Your current main agent stays active while options load\.[\s\S]*?: 'Your current agent stays active while options load\.';/);
+  assert.match(sheetSource, /const loadingAccessibilityLabel = selectorMode === 'acp' \? 'Loading available main agents' : 'Loading available profiles';/);
+  assert.match(sheetSource, /const loadingStatusText = selectorMode === 'acp' \? 'Loading available main agents…' : 'Loading available profiles…';/);
+  assert.match(sheetSource, /const loadingSupportText = selectorMode === 'acp'[\s\S]*?Your current main agent stays active while options load\.[\s\S]*?: 'Your current profile stays active while options load\.';/);
   assert.match(sheetSource, /\{isLoading \? \([\s\S]*?style=\{styles\.loadingStateCard\}[\s\S]*?accessible[\s\S]*?accessibilityRole="progressbar"[\s\S]*?accessibilityLabel=\{loadingAccessibilityLabel\}[\s\S]*?accessibilityHint=\{loadingSupportText\}[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>\{currentAgentBadgeLabel\}<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<View style=\{styles\.loadingStatusRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.loadingStatusText\}>\{loadingStatusText\}<\/Text>[\s\S]*?<Text style=\{styles\.loadingText\}>\{loadingSupportText\}<\/Text>/);
   assert.match(sheetSource, /loadingStateCard:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*spacing\.sm/);
   assert.match(sheetSource, /loadingStatusRow:\s*\{[\s\S]*?flexDirection:\s*'row'[\s\S]*?alignItems:\s*'center'[\s\S]*?gap:\s*spacing\.sm/);
@@ -92,9 +95,9 @@ test('drops the generic ACP placeholder subtitle while keeping real selector des
 });
 
 test('makes the selected agent row read as the current state instead of only a checkmark', () => {
-  assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'agent';/);
+  assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'profile';/);
   assert.match(sheetSource, /const selectionAccessibilityLabel = isPending[\s\S]*?`Switching to \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Current \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Select \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`;/);
-  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current agent to this option\./);
+  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current main agent to this option\.[\s\S]*?Switches the current profile to this option\./);
   assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching, busy: isPending \}\}/);
   assert.match(sheetSource, /\{isPending \? \([\s\S]*?\) : isSelected && \([\s\S]*?<View style=\{styles\.profileCurrentBadge\}>[\s\S]*?<Text style=\{styles\.profileCurrentBadgeText\}>Current<\/Text>/);
   assert.match(sheetSource, /profileItemSelected:\s*\{[\s\S]*?borderWidth:\s*1,[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '33'/);
@@ -107,7 +110,7 @@ test('shows switching progress and temporarily prevents dismissing the sheet mid
   assert.match(sheetSource, /const handleDismiss = useCallback\(\(\) => \{[\s\S]*?if \(isSwitching\) return;[\s\S]*?onClose\(\);[\s\S]*?\}, \[isSwitching, onClose\]\);/);
   assert.match(sheetSource, /setPendingProfileId\(profile\.id\);[\s\S]*?setPendingProfileName\(profile\.name\);[\s\S]*?setIsSwitching\(true\);/);
   assert.match(sheetSource, /finally \{[\s\S]*?setIsSwitching\(false\);[\s\S]*?setPendingProfileId\(null\);[\s\S]*?setPendingProfileName\(null\);[\s\S]*?\}/);
-  assert.match(sheetSource, /const switchingMessage = pendingProfileName[\s\S]*?`Switching to \$\{pendingProfileName\}…`[\s\S]*?: 'Switching agents…';/);
+  assert.match(sheetSource, /const switchingMessage = pendingProfileName[\s\S]*?`Switching to \$\{pendingProfileName\}…`[\s\S]*?'Switching main agents…'[\s\S]*?'Switching profiles…';/);
   assert.match(sheetSource, /onRequestClose=\{handleDismiss\}/);
   assert.match(sheetSource, /<Pressable style=\{styles\.backdrop\} onPress=\{handleDismiss\} disabled=\{isSwitching\}>/);
   assert.match(sheetSource, /\{isSwitching && \([\s\S]*?<View style=\{styles\.switchingStatus\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.switchingStatusText\}>\{switchingMessage\}<\/Text>/);
@@ -120,7 +123,7 @@ test('marks the tapped selector row as pending while an agent switch is in fligh
   assert.match(sheetSource, /const isPending = pendingProfileId === item\.id;/);
   assert.match(sheetSource, /const isBlockedBySwitch = isSwitching && !isPending && !isSelected;/);
   assert.match(sheetSource, /const selectionAccessibilityLabel = isPending[\s\S]*?`Switching to \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Current \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Select \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`;/);
-  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Another agent switch is in progress\. Wait for it to finish before changing this selection\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current agent to this option\./);
+  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Another agent switch is in progress\. Wait for it to finish before changing this selection\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current main agent to this option\.[\s\S]*?Switches the current profile to this option\./);
   assert.match(sheetSource, /style=\{\[[\s\S]*?styles\.profileItem,[\s\S]*?isSelected && styles\.profileItemSelected,[\s\S]*?isPending && styles\.profileItemPending,[\s\S]*?isBlockedBySwitch && styles\.profileItemBlocked,[\s\S]*?\]\}/);
   assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching, busy: isPending \}\}/);
   assert.match(sheetSource, /\{isPending \? \([\s\S]*?<View style=\{styles\.profilePendingBadge\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.profilePendingBadgeText\}>Switching…<\/Text>/);
@@ -136,11 +139,11 @@ test('keeps the current agent at the top of the selector list so state is visibl
 
 test('keeps current state visible when the active agent is missing from the loaded selector options', () => {
   assert.match(sheetSource, /const isCurrentSelectionMissingFromList = Boolean\([\s\S]*?currentProfile\?\.id[\s\S]*?orderedProfiles\.length > 0[\s\S]*?!orderedProfiles\.some\(\(profile\) => profile\.id === currentProfile\.id\)[\s\S]*?\);/);
-  assert.match(sheetSource, /const currentSelectionNoticeTitle = selectorMode === 'acp'[\s\S]*?'Current main agent unavailable in this list'[\s\S]*?'Current agent unavailable in this list';/);
-  assert.match(sheetSource, /const currentSelectionNoticeText = selectorMode === 'acp'[\s\S]*?This main agent stays active until you switch\.[\s\S]*?Settings → Agents if this main agent should be available again\.[\s\S]*?This agent stays active until you switch\.[\s\S]*?Settings → Agents if this profile should still be switchable\./);
-  assert.match(sheetSource, /const availableOptionsHeading = selectorMode === 'acp'[\s\S]*?'Available main agents'[\s\S]*?'Available agents';/);
-  assert.match(sheetSource, /const currentSelectionNoticeActionLabel = selectorMode === 'acp'[\s\S]*?'Review main agent in Settings'[\s\S]*?'Review agent in Settings';/);
-  assert.match(sheetSource, /const currentSelectionNoticeActionHint = selectorMode === 'acp'[\s\S]*?review why this main agent is unavailable[\s\S]*?review why this agent is unavailable/);
+  assert.match(sheetSource, /const currentSelectionNoticeTitle = selectorMode === 'acp'[\s\S]*?'Current main agent unavailable in this list'[\s\S]*?'Current profile unavailable in this list';/);
+  assert.match(sheetSource, /const currentSelectionNoticeText = selectorMode === 'acp'[\s\S]*?This main agent stays active until you switch\.[\s\S]*?Settings → Agents if this main agent should be available again\.[\s\S]*?This profile stays active until you switch\.[\s\S]*?Settings → Profile & Model if this profile should still be switchable\./);
+  assert.match(sheetSource, /const availableOptionsHeading = selectorMode === 'acp'[\s\S]*?'Available main agents'[\s\S]*?'Available profiles';/);
+  assert.match(sheetSource, /const currentSelectionNoticeActionLabel = selectorMode === 'acp'[\s\S]*?'Review main agent in Settings'[\s\S]*?'Review profile in Settings';/);
+  assert.match(sheetSource, /const currentSelectionNoticeActionHint = selectorMode === 'acp'[\s\S]*?review why this main agent is unavailable[\s\S]*?review why this profile is unavailable/);
   assert.match(sheetSource, /\{isCurrentSelectionMissingFromList && \([\s\S]*?<View style=\{styles\.currentSelectionNoticeCard\}>[\s\S]*?<Text style=\{styles\.currentSelectionNoticeTitle\}>\{currentSelectionNoticeTitle\}<\/Text>[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>\{currentAgentBadgeLabel\}<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<Text style=\{styles\.currentSelectionNoticeText\}>\{currentSelectionNoticeText\}<\/Text>[\s\S]*?<TouchableOpacity[\s\S]*?style=\{styles\.currentSelectionNoticeButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\(currentSelectionNoticeActionLabel\)[\s\S]*?accessibilityHint=\{currentSelectionNoticeActionHint\}[\s\S]*?<Text style=\{styles\.currentSelectionNoticeButtonText\}>\{currentSelectionNoticeActionLabel\}<\/Text>[\s\S]*?\)\}[\s\S]*?<Text style=\{styles\.availableOptionsHeading\}>\{availableOptionsHeading\}<\/Text>[\s\S]*?<FlatList[\s\S]*?data=\{orderedProfiles\}/);
   assert.match(sheetSource, /currentSelectionNoticeCard:\s*\{[\s\S]*?marginBottom:\s*spacing\.sm,[\s\S]*?padding:\s*spacing\.md,[\s\S]*?borderRadius:\s*radius\.lg,[\s\S]*?backgroundColor:\s*theme\.colors\.secondary,[\s\S]*?alignItems:\s*'center'/);
   assert.match(sheetSource, /currentSelectionNoticeText:\s*\{[\s\S]*?textAlign:\s*'center',[\s\S]*?lineHeight:\s*20/);
@@ -159,10 +162,11 @@ test('lets selector options use the remaining sheet height instead of a hard lis
 });
 
 test('uses main-agent terminology consistently across ACP selector status copy', () => {
-  assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current agent';/);
-  assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'agent';/);
-  assert.match(sheetSource, /const loadingAccessibilityLabel = selectorMode === 'acp' \? 'Loading available main agents' : 'Loading available agents';/);
-  assert.match(sheetSource, /const loadingStatusText = selectorMode === 'acp' \? 'Loading available main agents…' : 'Loading available agents…';/);
+  assert.match(sheetSource, /const selectorTitle = selectorMode === 'acp' \? 'Select Main Agent' : 'Select Profile';/);
+  assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current profile';/);
+  assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'profile';/);
+  assert.match(sheetSource, /const loadingAccessibilityLabel = selectorMode === 'acp' \? 'Loading available main agents' : 'Loading available profiles';/);
+  assert.match(sheetSource, /const loadingStatusText = selectorMode === 'acp' \? 'Loading available main agents…' : 'Loading available profiles…';/);
   assert.match(sheetSource, /Your current main agent stays active\. Open Settings to finish connecting this server and review main-agent mode\./);
   assert.match(sheetSource, /Your current main agent stays active while you retry loading the available options\./);
   assert.match(sheetSource, /This main agent stays active until you switch\./);
