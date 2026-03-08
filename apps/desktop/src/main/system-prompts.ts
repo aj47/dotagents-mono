@@ -74,6 +74,9 @@ LOW-CONTEXT / AMBIGUOUS INPUTS:
 SKILLS:
 - Skills are optional instruction modules listed below.
 - Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
+- Treat load_skill_instructions as internal preparation, not a user-facing progress update or completion signal.
+- Do not spend a user-facing turn saying you are about to load or just loaded a skill unless that load itself failed and the failure matters.
+- After the skill instructions are loaded, immediately continue with the concrete workflow (or ask only the focused clarification still required). Do not stop after skill loading.
 
 COMPLETION SIGNAL:
 - When all requested work is fully complete:
@@ -383,7 +386,7 @@ export function constructMinimalSystemPrompt(
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
   if (skillsIndex?.trim()) {
     prompt +=
-      " Skills are optional instruction modules. Before using a skill, call load_skill_instructions with { skillId }."
+      " Skills are optional instruction modules. Before using a skill, call load_skill_instructions with { skillId }. Treat skill loading as internal prep, do not use it as the user-facing result, and continue with the real task immediately after the tool returns."
     prompt += `\n\nAVAILABLE AGENT SKILLS (IDs):\n${skillsIndex.trim()}`
   }
 

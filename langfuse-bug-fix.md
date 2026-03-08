@@ -39,6 +39,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1771906984773_vmb3xu66b | session_1771906984466_gy5dfya2s, session_1771907772476_dae5yojje | fix implemented | Fresh follow-up delegation recovery case around posting a Discord recap. On `post it!`, Langfuse showed `delegate_to_agent` sending `Post the Discord recap tweet...`, but the completed result still returned the earlier recap-prep output (`All files are ready — just say the word to post to @techfren_ai!`). The user had to send `try again` to recover. Root repo issue found: external ACP delegation reused the prior ACP session by default, so a new delegated task could inherit stale session context/output from the previous task instead of starting clean. |
 | 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
 | 2026-03-08 | conv_1772249976658_045heyp88, conv_1772250042517_yukonvxdj | session_1772249976661_2mliad71c, session_1772250042521_skxsyi7og | fix implemented | User asked twice to make a note of repo changes after checking commit history; both runs ended `output: null` and Langfuse recorded unreadable binary-gzip provider noise in the failing generation/text-completion error path. Repo reconstruction showed the main text-completion path was already normalized, but `verifyCompletionWithFetch(...)` still finalized verification generations with raw `error.message`, leaving the same upstream-noise class reachable in live verification traces. |
+| 2026-03-08 | conv_1772308678249_75xk9uj0t | session_1772308678250_idf1lqh2m | fix implemented | User asked `summarize x and save notes about it make sure to include view count and comment count of the posts if possible`; the run opened with `I'll start by loading the x-feed-summarizer skill instructions...`, then spent 60 iterations doing browser/tool work and still ended without a user-facing summary. Corroborating traces showed the same `let me load the ... skill` opener across Discord/browser specialist runs. Root repo issue found: prompt guidance required `load_skill_instructions(...)` but did not say that skill loading is internal prep that must be followed immediately by concrete execution instead of a narrated user-facing turn. |
 | 2026-03-08 | delegated specialist sub-session chain (no parent session id on trace rows) | subsession_1772927398142_3a13b1c5, subsession_1772927403156_46973064, subsession_1772927413450_6da59930 | fix implemented | Fresh delegated `Find blog post referred to as permanent underclass` evidence showed a `Web Browser` specialist sub-run re-delegating to `internal`, then another delegated run re-delegating to `main-agent`, even though the deepest run already had the correct Exa result. The chain still ended with emergency-stop text instead of a single-run answer. Root repo issue found: ACP/stdio/remote delegated specialist profiles did not carry the same no-redelegation execution guidance already applied to internal named sub-sessions. |
 
 ## Investigations
@@ -1484,6 +1485,47 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - debugging-guided live verification attempt (per `apps/desktop/DEBUGGING.md`): `REMOTE_DEBUGGING_PORT=9333 pnpm --filter @dotagents/desktop dev -- -d`
   - ❌ blocked by the pre-existing desktop `predev` failure: missing `node_modules/.pnpm/tsx@4.21.0/.../tsx/dist/cli.mjs` while running `npx tsx scripts/ensure-rust-binary.ts`
 
+## 2026-03-08 — Skill loading should stay internal and flow directly into execution
+
+- Reviewed `langfuse-bug-fix.md` first and skipped already-logged timeout / stale-output / delegation cases unless a fresh trace exposed a distinct prompt gap.
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772308678249_75xk9uj0t` / `session_1772308678250_idf1lqh2m`
+    - user input: `summarize x and save notes about it make sure to include view count and comment count of the posts if possible`
+    - final output: `I'll start by loading the x-feed-summarizer skill instructions ...` plus the generic max-iteration note
+    - observations show the run did much more than that opener:
+      - early `load_skill_instructions` for `x-feed-summarizer` and `chrome-browser`
+      - many successful `execute_command` browser actions (`agent-browser --cdp 9222 ...`)
+      - repeated assistant turns narrating intermediate prep/work (`Let me extract posts ...`, `Let me check where that click took us ...`) without ever synthesizing the requested summary + saved notes
+  - corroborating traces from the same failure family:
+    - `conv_1772241373329_fm0ude7ma` / `session_1772241373826_57mt5uhbd`
+    - `conv_1772239153324_hiy1fwbjn` / `session_1772239153325_53cr5ekeq`
+    - `conv_1772265257344_k2qa6g2sf` / `session_1772265257347_3584hc62r`
+    - browser specialist sub-sessions `subsession_1772413041689_624ade50`, `subsession_1772416374111_2e0a1149`, and `subsession_1772433285793_a3edd1a1`
+    - all showed the same user-visible pattern: the model spent a turn announcing it would load a skill / browser skill first, and the run later stalled or timed out without treating that statement as purely internal prep
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` correctly instructed the model to call `load_skill_instructions(skillId)` before using a skill.
+  - however, it did **not** say that loading a skill is an internal preparation step rather than something worth surfacing as a user-facing progress update/result.
+  - the compact fallback prompt in `constructMinimalSystemPrompt(...)` had the same omission, so context-compressed runs lost any chance of learning the stronger behavior.
+- Concrete root cause:
+  - prompt guidance taught *that* skills must be loaded, but not *how* to behave immediately after loading them.
+  - that left room for the model to burn turns narrating `I'll load the ... skill first` or to treat skill loading as an intermediate milestone instead of immediately executing the actual workflow.
+- Minimal fix applied:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - expanded the `SKILLS` section to say `load_skill_instructions(...)` is internal preparation, not a user-facing progress update or completion signal
+    - explicitly forbid spending a user-facing turn merely announcing skill loading unless the load itself failed and the failure matters
+    - explicitly tell the model to continue immediately with the concrete workflow (or only the focused clarification still needed) after the skill returns
+    - mirrored the same rule in `constructMinimalSystemPrompt(...)` so the guidance survives context-shrunk runs
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - added a regression proving both the full and minimal prompts now treat skill loading as internal prep and push immediate execution
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - ✅ passed (`10 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt test exits successfully
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
+  - debugging-guided live verification per `apps/desktop/DEBUGGING.md` was not required for this prompt-only change after targeted prompt tests + desktop TypeScript verification passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1513,4 +1555,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh capability/introspection trace (for example asking why tools were `cut off` or whether a server/agent is available) to confirm the agent now inspects `list_mcp_servers` / `list_server_tools` / `list_running_agents` / `list_agent_profiles` first instead of speculating.
 - Recheck a fresh `Scroll probe` / `Jump probe` / `Focus jump probe` style trace after the next desktop smoke run, to confirm the model now answers with the concrete observed range/result directly instead of bouncing into `What would you like me to do with it?`.
 - Recheck a fresh fragmentary first-turn trace (for example a stray word, truncated clause, or garbled partial message) after the next desktop smoke run, to confirm the model now asks for clarification immediately instead of first loading notes, memories, repo status, or GitHub state.
+- Recheck a fresh skill-driven run (for example X summarization, Discord recap, or browser-specialist navigation) after the next desktop smoke run, to confirm the model treats `load_skill_instructions(...)` as internal prep and moves straight into concrete execution instead of spending a turn narrating the skill load.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

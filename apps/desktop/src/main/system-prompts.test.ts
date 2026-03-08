@@ -149,6 +149,21 @@ describe("constructSystemPrompt", () => {
     expect(minimalPrompt).toContain("before loading repo context")
   })
 
+  it("treats skill loading as internal prep and pushes immediate execution", async () => {
+    const { constructSystemPrompt, constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+    const minimalPrompt = constructMinimalSystemPrompt([], true, undefined, "- x-feed-summarizer")
+
+    expect(prompt).toContain("Treat load_skill_instructions as internal preparation")
+    expect(prompt).toContain("Do not spend a user-facing turn saying you are about to load or just loaded a skill")
+    expect(prompt).toContain("immediately continue with the concrete workflow")
+
+    expect(minimalPrompt).toContain("Treat skill loading as internal prep")
+    expect(minimalPrompt).toContain("do not use it as the user-facing result")
+    expect(minimalPrompt).toContain("continue with the real task immediately")
+  })
+
   it("omits delegation guidance for specialist sub-sessions that should execute directly", async () => {
     const { agentProfileService } = await import("./agent-profile-service")
     vi.mocked(agentProfileService.getByRole).mockReturnValue([
