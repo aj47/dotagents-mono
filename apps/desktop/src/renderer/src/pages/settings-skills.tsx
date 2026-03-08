@@ -25,12 +25,38 @@ import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package } from "lucide-react"
 
+type SkillDraft = Pick<AgentSkill, "name" | "description" | "instructions">
+
+const EMPTY_SKILL_DRAFT: SkillDraft = {
+  name: "",
+  description: "",
+  instructions: "",
+}
+
+function toSkillDraft(skill?: Partial<SkillDraft> | null): SkillDraft {
+  return {
+    name: skill?.name ?? "",
+    description: skill?.description ?? "",
+    instructions: skill?.instructions ?? "",
+  }
+}
+
+function hasSkillDraftChanges(draft?: Partial<SkillDraft> | null, baseline?: Partial<SkillDraft> | null): boolean {
+  const nextDraft = toSkillDraft(draft)
+  const nextBaseline = toSkillDraft(baseline)
+
+  return nextDraft.name !== nextBaseline.name
+    || nextDraft.description !== nextBaseline.description
+    || nextDraft.instructions !== nextBaseline.instructions
+}
+
 
 export function Component() {
   const queryClient = useQueryClient()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
+  const [editingSkillBaseline, setEditingSkillBaseline] = useState<SkillDraft | null>(null)
   const [newSkillName, setNewSkillName] = useState("")
   const [newSkillDescription, setNewSkillDescription] = useState("")
   const [newSkillInstructions, setNewSkillInstructions] = useState("")
@@ -75,14 +101,30 @@ export function Component() {
     return () => unsubscribe()
   }, [queryClient])
 
+  const resetNewSkillForm = () => {
+    setNewSkillName("")
+    setNewSkillDescription("")
+    setNewSkillInstructions("")
+  }
+
+  const closeCreateDialog = () => {
+    setIsCreateDialogOpen(false)
+    resetNewSkillForm()
+  }
+
+  const closeEditDialog = () => {
+    setIsEditDialogOpen(false)
+    setEditingSkill(null)
+    setEditingSkillBaseline(null)
+  }
+
   const createSkillMutation = useMutation({
     mutationFn: async ({ name, description, instructions }: { name: string; description: string; instructions: string }) => {
       return await tipcClient.createSkill({ name, description, instructions })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
-      setIsCreateDialogOpen(false)
-      resetNewSkillForm()
+      closeCreateDialog()
       toast.success("Skill created successfully")
     },
     onError: (error: Error) => {
@@ -96,8 +138,7 @@ export function Component() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
-      setIsEditDialogOpen(false)
-      setEditingSkill(null)
+      closeEditDialog()
       toast.success("Skill updated successfully")
     },
     onError: (error: Error) => {
@@ -337,10 +378,37 @@ export function Component() {
     importSkillFromGitHubMutation.mutate(gitHubRepoInput.trim())
   }
 
-  const resetNewSkillForm = () => {
-    setNewSkillName("")
-    setNewSkillDescription("")
-    setNewSkillInstructions("")
+  const createSkillDraft = {
+    name: newSkillName,
+    description: newSkillDescription,
+    instructions: newSkillInstructions,
+  }
+  const isCreateSkillDirty = hasSkillDraftChanges(createSkillDraft, EMPTY_SKILL_DRAFT)
+  const isEditSkillDirty = hasSkillDraftChanges(editingSkill, editingSkillBaseline)
+  const editingSkillLabel = editingSkillBaseline?.name || editingSkill?.name || "this skill"
+
+  const handleCreateDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setIsCreateDialogOpen(true)
+      return
+    }
+
+    if (createSkillMutation.isPending) return
+    if (isCreateSkillDirty && !confirm("Discard this new skill draft? Your unsaved changes will be lost.")) return
+
+    closeCreateDialog()
+  }
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setIsEditDialogOpen(true)
+      return
+    }
+
+    if (updateSkillMutation.isPending) return
+    if (isEditSkillDirty && !confirm(`Discard your changes to \"${editingSkillLabel}\"? Your unsaved edits will be lost.`)) return
+
+    closeEditDialog()
   }
 
   const handleCreateSkill = () => {
@@ -418,6 +486,7 @@ export function Component() {
 
   const handleEditSkill = (skill: AgentSkill) => {
     setEditingSkill({ ...skill })
+    setEditingSkillBaseline(toSkillDraft(skill))
     setIsEditDialogOpen(true)
   }
 
@@ -706,7 +775,7 @@ Write your skill instructions here.
         </div>
 
         {/* Create Skill Dialog */}
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogOpenChange}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Skill</DialogTitle>
@@ -714,6 +783,11 @@ Write your skill instructions here.
                 Create a skill with specialized instructions for the AI agent.
               </DialogDescription>
             </DialogHeader>
+            {isCreateSkillDirty && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                You have unsaved changes. Save before closing to keep this draft.
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <Label htmlFor="skill-name">Name</Label>
@@ -746,7 +820,7 @@ Write your skill instructions here.
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => handleCreateDialogOpenChange(false)} disabled={createSkillMutation.isPending}>
                 Cancel
               </Button>
               <Button onClick={handleCreateSkill} disabled={createSkillMutation.isPending}>
@@ -757,7 +831,7 @@ Write your skill instructions here.
         </Dialog>
 
         {/* Edit Skill Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogOpenChange}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Skill</DialogTitle>
@@ -765,6 +839,11 @@ Write your skill instructions here.
                 Update the skill name, description, and instructions.
               </DialogDescription>
             </DialogHeader>
+            {isEditSkillDirty && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                You have unsaved changes. Save before closing to keep this draft.
+              </div>
+            )}
             {editingSkill && (
               <div className="space-y-4">
                 <div>
@@ -802,7 +881,7 @@ Write your skill instructions here.
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <Button variant="outline" onClick={() => handleEditDialogOpenChange(false)} disabled={updateSkillMutation.isPending}>
                 Cancel
               </Button>
               <Button onClick={handleUpdateSkill} disabled={updateSkillMutation.isPending}>

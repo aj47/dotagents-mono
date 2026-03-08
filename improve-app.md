@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop skills create/edit dialog unsaved-change / discard-safety flow in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, with adjacent agent-editor handoff risk reviewed in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/screens/AgentEditScreen.tsx`.
 - 2026-03-08: Desktop Groq STT prompt draft/save resilience in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with focused test harness review in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx` and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop follow-up composer send-error feedback / retry clarity in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with mount wiring reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx`.
 - 2026-03-08: Mobile ChatScreen primary composer submission resilience in `apps/mobile/src/screens/ChatScreen.tsx`, with `apps/mobile/src/store/message-queue.ts` and `apps/mobile/tests/chat-composer-accessibility.test.js` reviewed for queue/startup-guard context.
@@ -23,6 +24,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop skills create/edit dialogs now show explicit unsaved-change guidance, prevent accidental backdrop / escape / close-button dismissal during pending saves, and confirm before discarding dirty drafts from any dialog close path.
 - 2026-03-08: Desktop Groq STT prompt editing now keeps a local draft, debounces config writes, flushes on blur, and merges delayed saves against the latest config snapshot instead of saving on every textarea keystroke.
 - 2026-03-08: Desktop follow-up composers now show an inline send-failure banner with preserved-draft guidance and a `Retry` action instead of silently failing via `console.error` only.
 - 2026-03-08: Mobile ChatScreen composer now blocks the rapid double-submit race during send startup, so fast repeat taps / modifier-enter submits no longer slip duplicate sends through before `responding` catches up.
@@ -37,6 +39,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-skills-unsaved-changes.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: custom `node` source-assertion script verified the new desktop Groq STT prompt draft/debounce/blur-flush wiring in `apps/desktop/src/renderer/src/pages/settings-general.tsx` plus focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: `git diff --check`
@@ -58,6 +62,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this skills-dialog discard-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this Groq STT prompt pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this follow-up-composer pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Mobile live UI inspection for this iteration is blocked in this worktree because both root and `apps/mobile` `node_modules` are missing; `pnpm --filter @dotagents/mobile exec expo --version` failed with `expo: command not found`.
@@ -68,12 +73,49 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop agent / skill long-form editors (`apps/desktop/src/renderer/src/pages/settings-agents.tsx`, `apps/desktop/src/renderer/src/pages/settings-skills.tsx`) for unsaved-change clarity and destructive-reset guardrails
+- Desktop agent long-form editor (`apps/desktop/src/renderer/src/pages/settings-agents.tsx`) for unsaved-change clarity and destructive-reset guardrails in create/edit flows
 
 ### Next Highest-Value Targets
-- Inspect desktop agent / skill long-form editors for the next localized UX/reliability improvement around unsaved-change clarity, reset safety, or recovery after accidental navigation
+- Inspect the desktop agent editor for the next localized UX/reliability improvement around unsaved-change clarity, preset/reset safety, or recovery after accidental cancellation
+- Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop skills dialog discard safety and unsaved-change clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop skills management in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`
+  - reviewed shared dialog close behavior in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`
+  - reviewed adjacent agent-editor flow in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - checked mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/AgentEditScreen.tsx`
+- Why it was chosen:
+  - the ledger explicitly identified desktop agent / skill long-form editors as the next fresh area that had not been investigated recently
+  - skill instructions are long-form markdown, so accidental close loss here has immediate user cost and is more painful than on short single-line settings
+  - the desktop dialog currently closes from multiple paths (Cancel, backdrop click, Escape, corner close button), making this a high-value polish/reliability seam with a small local implementation path
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-skills.tsx` create/edit state, save flows, and dialog open/close wiring
+  - `apps/desktop/src/renderer/src/components/ui/dialog.tsx` to confirm the shared dialog primitive exposes close-button / backdrop / Escape dismissal through `onOpenChange`
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` to separate the skills-specific opportunity from the still-unchecked adjacent agent-editor surface
+  - `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/AgentEditScreen.tsx`; confirmed mobile currently supports skill toggling and agent editing, but not desktop-style skill authoring dialogs, so no mobile parity change was needed in this pass
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - added focused dirty-state tracking for both the desktop create-skill draft and the edit-skill draft baseline
+  - both dialogs now show a visible inline unsaved-change callout once the draft diverges from its saved/default state
+  - Cancel, backdrop click, Escape, and the dialog close button now all funnel through explicit close handlers that confirm before discarding dirty drafts
+  - close attempts are ignored while create/update mutations are pending, preventing the dialog from disappearing mid-save while the request is still in flight
+  - confirmed discard on the create dialog now resets the draft so opening `New Skill` starts clean instead of silently reviving abandoned text
+  - added focused source-level regression coverage in `tests/desktop-settings-skills-unsaved-changes.test.js`
+- Assumptions / tradeoffs / rationale:
+  - used a lightweight built-in confirmation prompt plus inline draft guidance instead of adding a second nested confirmation modal, because the goal here was to protect every dismissal path with the smallest local change
+  - kept the change desktop-only because mobile does not currently expose a comparable skill-authoring dialog surface; extending this pattern to mobile agent editing is separate follow-up work
+  - scoped the work to dialog dismissal safety rather than broader skill-page refactoring (autosave, version history, or preview UI) so the change stays small and shippable
+- Tests / verification:
+  - `node --test tests/desktop-settings-skills-unsaved-changes.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check dirty-skill dismissal via backdrop click, Escape, and the corner close button to confirm the confirmation cadence feels right
+  - inspect the desktop agent editor next for similar unsaved-change / destructive-reset risks, especially preset application and cancel flows
 
 ### 2026-03-08 — Desktop Groq STT prompt draft/save resilience
 - Date:
