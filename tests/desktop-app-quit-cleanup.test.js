@@ -27,6 +27,7 @@ test('desktop before-quit cleanup stops active agent runtime work before service
   assert.match(source, /\{ label: "ACP service shutdown", run: \(\) => acpService\.shutdown\(\) \}/)
   assert.match(source, /\{ label: "MCP service cleanup", run: \(\) => mcpService\.cleanup\(\) \}/)
   assert.match(source, /\{ label: "remote server shutdown", run: \(\) => stopRemoteServer\(\) \}/)
+  assert.match(source, /\{ label: "Cloudflare tunnel shutdown", run: \(\) => stopCloudflareTunnel\(\) \}/)
 })
 
 test('desktop before-quit cleanup waits for agent runtime, ACP, MCP, and remote server shutdown together', () => {

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop Cloudflare tunnel shutdown cleanup parity in `apps/desktop/src/main/index.ts`, with tunnel process lifecycle reviewed in `apps/desktop/src/main/cloudflare-tunnel.ts`, remote-server start/stop behavior rechecked in `apps/desktop/src/main/remote-server.ts`, focused QR-mode source guardrails added in new `tests/desktop-qr-mode-cleanup-guardrails.test.js`, existing shutdown source guardrails extended in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, shared helper runtime coverage re-run in `tests/desktop-shutdown-cleanup-runtime.test.js`, and targeted verification run locally via `node --test`, `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`, plus `git diff --check`.
 - 2026-03-08: Desktop emergency-stop global approval cancellation and dependency-light runtime coverage in `apps/desktop/src/main/emergency-stop.ts` / new `apps/desktop/src/main/emergency-stop-core.ts`, with ACP/process cleanup behavior rechecked in `apps/desktop/src/main/acp/acp-client-service.ts`, `apps/desktop/src/main/acp-service.ts`, and `apps/desktop/src/main/acp/acp-process-manager.ts`, kill-switch callers rechecked in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`, focused runtime coverage added in `tests/desktop-emergency-stop-runtime.test.js`, source guardrails updated in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --experimental-strip-types --test`, `node --test`, `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`, plus `git diff --check`.
 - 2026-03-08: Desktop shared shutdown cleanup orchestration in `apps/desktop/src/main/index.ts`, with duplicated headless / `before-quit` cleanup flow inspected there, new shared helper added in `apps/desktop/src/main/shutdown-cleanup.ts`, existing shutdown guardrail tests updated in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, focused runtime coverage added in `tests/desktop-shutdown-cleanup-runtime.test.js`, and targeted verification run locally via `node --experimental-strip-types --test` plus `git diff --check`.
 - 2026-03-08: Mobile queued-message action-failure parity in `apps/mobile/src/ui/MessageQueuePanel.tsx`, with queue mutation return semantics rechecked in `apps/mobile/src/store/message-queue.ts`, Chat screen wiring cross-checked in `apps/mobile/src/screens/ChatScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/chat-message-queue-feedback.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
@@ -96,6 +97,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop shared shutdown cleanup now structurally includes Cloudflare tunnel teardown plus dedicated `--qr` signal/startup-failure cleanup in `apps/desktop/src/main/index.ts`, but live validation with a real `cloudflared` child process is still needed to confirm Ctrl+C / `SIGTERM` tear down the spawned tunnel promptly and that no late tunnel stderr/close events create confusing post-exit logging.
 - 2026-03-08: Desktop shared shutdown cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts` still needs live Electron / lifecycle-level validation once a runnable desktop target or fuller main-process harness is available, especially to confirm real `before-quit` re-entry, `SIGTERM` wiring, and slow collaborator teardown still behave predictably when the shared helper is exercised through the app’s actual quit paths rather than the isolated helper tests.
 - 2026-03-08: Desktop queued-message action-failure feedback in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` still needs live Electron validation once a runnable renderer target is available, especially to confirm compact-panel error banners stay readable, `Retry & Resume` plus inline error copy do not compete visually when the head item is failed, and preserved edit drafts feel trustworthy after a rejected save.
 - 2026-03-08: Mobile queued-message action-failure parity in `apps/mobile/src/ui/MessageQueuePanel.tsx` / `apps/mobile/src/store/message-queue.ts` still needs a dedicated pass, because mobile queue mutations also return booleans and appear to share the same silent-failure risk even though this iteration intentionally stayed desktop-scoped.
@@ -128,6 +130,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop shutdown cleanup now stops Cloudflare tunnel child processes alongside agent runtime, ACP, MCP, and remote-server cleanup via the shared `getShutdownCleanupTasks()` list in `apps/desktop/src/main/index.ts`, and `--qr` mode now exits through a guarded graceful-cleanup path on startup failure, Ctrl+C, and `SIGTERM` instead of calling `process.exit(...)` immediately. Tradeoff: this pass intentionally keeps the existing cleanup helper/task architecture and focuses on child-process teardown parity rather than refactoring all startup modes into a larger shared bootstrap abstraction.
 - 2026-03-08: Desktop emergency stop now centralizes `cancelAllApprovals()` inside a dependency-light `runEmergencyStopAll(...)` helper in `apps/desktop/src/main/emergency-stop-core.ts`, so every kill-switch entrypoint (window/UI, remote API, built-in tool, headless CLI) immediately clears pending approval prompts before the rest of best-effort shutdown runs; the same extraction also adds real local runtime coverage for ACP failure isolation without needing missing desktop Vitest dependencies. Tradeoff: this pass intentionally keeps the existing built-in-tool pre-cancel call and overall kill-switch behavior unchanged rather than broadening into a larger emergency-stop refactor.
 - 2026-03-08: Desktop headless and GUI quit cleanup now share one bounded cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts` plus one shared cleanup-task list in `apps/desktop/src/main/index.ts`, and the app now has real dependency-light runtime coverage for timeout and per-task best-effort behavior via `tests/desktop-shutdown-cleanup-runtime.test.js`, reducing the risk that `--headless` and `before-quit` drift apart or regress silently when future shutdown tasks change; tradeoff: this pass intentionally keeps the actual service list and quit-path wiring unchanged rather than broadening into a larger lifecycle refactor.
 - 2026-03-08: Desktop queued-message recovery UX in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now preserves edit drafts after failed saves, surfaces inline retryable error feedback for edit/remove/retry/clear/pause/resume/retry-and-resume actions, and treats false IPC queue-action results as real failures instead of silent success, so blocked queues no longer look like they accepted edits or destructive actions when nothing actually changed; tradeoff: this pass intentionally stayed scoped to the desktop IPC-backed queue panel rather than widening into the separate mobile queue UI in the same iteration.
@@ -212,6 +215,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-app-quit-cleanup.test.js tests/desktop-headless-shutdown-guardrails.test.js tests/desktop-qr-mode-cleanup-guardrails.test.js tests/desktop-shutdown-cleanup-runtime.test.js` after the desktop Cloudflare-tunnel shutdown / QR-mode graceful-cleanup pass
+- 2026-03-08: `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false` after the desktop Cloudflare-tunnel shutdown / QR-mode graceful-cleanup pass
+- 2026-03-08: `git diff --check` after the desktop Cloudflare-tunnel shutdown / QR-mode graceful-cleanup pass
 - 2026-03-08: `node --experimental-strip-types --test tests/desktop-emergency-stop-runtime.test.js` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
 - 2026-03-08: `node --test tests/desktop-emergency-stop-guardrails.test.js` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
 - 2026-03-08: `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
@@ -509,6 +515,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop shutdown cleanup now includes Cloudflare tunnel teardown and `--qr` graceful-exit guardrails, so the freshest adjacent follow-up is live signal/process validation with a real remote server plus `cloudflared` child to confirm `before-quit`, `--qr`, and headless exits all leave no lingering listener/tunnel processes and that post-signal logging stays clean.
 - Desktop shared shutdown cleanup now has dependency-light runtime coverage for timeout and per-task failure isolation, so the freshest adjacent follow-up is lifecycle-level validation of the real Electron quit paths (`before-quit`, `SIGTERM`, remote-server startup failure, and slow cleanup collaborators) once a runnable desktop target or fuller main-process harness is available.
 - Desktop queued-message recovery UX now has source-level action-failure guardrails, but live Electron validation is the freshest adjacent follow-up because the user value depends on the compact queue banner density, retry wording, and failed-head recovery hierarchy feeling trustworthy in the real UI, not just on false-result handling existing in source.
 - Mobile queued-message action-failure parity is now covered by source-level guardrails, but live Expo/native validation of the new inline retry banners and compact clear-state readability is the freshest adjacent follow-up once a runnable mobile target is convenient.
@@ -3142,6 +3149,36 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - when a runnable Electron target or fuller main-process harness is available, validate the real `window`, remote API, built-in tool, and headless/CLI emergency-stop entrypoints end-to-end to confirm the same cleanup sequencing holds outside mocked collaborators
   - if that fuller validation path becomes easy, consider deduping the built-in-tool pre-cancel call now that the main kill-switch path owns global approval cancellation
+
+### 2026-03-08 — Desktop Cloudflare-tunnel shutdown cleanup parity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop startup/shutdown orchestration in `apps/desktop/src/main/index.ts`
+  - Cloudflare tunnel child-process lifecycle in `apps/desktop/src/main/cloudflare-tunnel.ts`
+  - remote-server startup/stop behavior in `apps/desktop/src/main/remote-server.ts`
+  - focused source/runtime verification in `tests/desktop-app-quit-cleanup.test.js`, `tests/desktop-headless-shutdown-guardrails.test.js`, `tests/desktop-qr-mode-cleanup-guardrails.test.js`, and `tests/desktop-shutdown-cleanup-runtime.test.js`
+- Why it was chosen:
+  - the ledger still highlighted shutdown-path reliability as a high-value seam, and investigation found a concrete cleanup gap with real user value: the shared shutdown task list stopped the remote server but never stopped auto-started Cloudflare tunnel child processes
+  - the same inspection showed `--qr` mode still exited immediately on startup failure and on terminal interrupts, so it could skip the app’s newer best-effort cleanup path entirely
+  - this was a compact, local fix with targeted dependency-light verification available in the current worktree
+- What was inspected:
+  - shared cleanup task composition and mode-specific shutdown handling in `apps/desktop/src/main/index.ts`
+  - tunnel spawn/stop state management in `apps/desktop/src/main/cloudflare-tunnel.ts`
+  - remote-server forced start and shutdown behavior in `apps/desktop/src/main/remote-server.ts`
+  - existing shutdown guardrail patterns in `tests/desktop-app-quit-cleanup.test.js`, `tests/desktop-headless-shutdown-guardrails.test.js`, and `tests/desktop-shutdown-cleanup-runtime.test.js`
+- Improvement made:
+  - added `stopCloudflareTunnel()` to the shared shutdown task list so normal desktop quit and headless cleanup now explicitly tear down any auto-started tunnel process instead of relying on parent-process exit side effects
+  - added guarded `--qr` graceful shutdown handling for `SIGINT`, `SIGTERM`, and startup-failure exits so QR mode now routes through the same best-effort cleanup task list before calling `process.exit(...)`
+  - added focused QR-mode source guardrails and extended the existing desktop/headless shutdown guardrails so the new cleanup parity is protected from regression
+  - assumptions / tradeoffs: this pass assumes tunnel teardown should be best-effort and idempotent across all startup modes, keeps the existing cleanup helper/task structure intact, and intentionally stops short of a broader startup-mode refactor or live cloudflared integration harness
+- Tests / verification:
+  - `node --test tests/desktop-app-quit-cleanup.test.js tests/desktop-headless-shutdown-guardrails.test.js tests/desktop-qr-mode-cleanup-guardrails.test.js tests/desktop-shutdown-cleanup-runtime.test.js`
+  - `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`
+  - `git diff --check`
+- Follow-up checks:
+  - when a runnable `cloudflared` environment is convenient, validate real normal-app, `--qr`, and headless shutdowns to confirm the tunnel child exits promptly and no confusing late stderr/close logging appears during teardown
+  - if broader shutdown work resumes later, consider whether headless mode should also trap any remaining terminal-interrupt paths through the same explicit graceful-shutdown helper for parity with the new QR handling
 
 ### Iteration Template
 - Date:

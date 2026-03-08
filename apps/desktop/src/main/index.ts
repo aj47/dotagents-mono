@@ -36,6 +36,7 @@ import {
   startCloudflareTunnel,
   startNamedCloudflareTunnel,
   checkCloudflaredInstalled,
+  stopCloudflareTunnel,
 } from "./cloudflare-tunnel"
 import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
@@ -74,6 +75,7 @@ function getShutdownCleanupTasks(): readonly ShutdownCleanupTask[] {
     { label: "ACP service shutdown", run: () => acpService.shutdown() },
     { label: "MCP service cleanup", run: () => mcpService.cleanup() },
     { label: "remote server shutdown", run: () => stopRemoteServer() },
+    { label: "Cloudflare tunnel shutdown", run: () => stopCloudflareTunnel() },
   ] as const
 }
 
@@ -198,12 +200,42 @@ app.whenReady().then(async () => {
       app.dock.hide()
     }
 
+    let isQrShuttingDown = false
+    const gracefulQrShutdown = async (exitCode: number) => {
+      if (isQrShuttingDown) return
+      isQrShuttingDown = true
+      console.log("\n[QR Mode] Shutting down...")
+
+      await runShutdownCleanup({
+        tasks: getShutdownCleanupTasks(),
+        timeoutMs: CLEANUP_TIMEOUT_MS,
+        timeoutMessage: "QR mode cleanup timeout",
+        onTaskError: (label, error) => {
+          console.error(`[QR Mode] Error during ${label}:`, error)
+        },
+        onTimeoutError: (error) => {
+          logApp("Error during QR mode cleanup:", error)
+        },
+      })
+
+      process.exit(exitCode)
+    }
+
+    process.on("SIGINT", () => {
+      void gracefulQrShutdown(0)
+    })
+
+    process.on("SIGTERM", () => {
+      void gracefulQrShutdown(0)
+    })
+
     try {
       // Start remote server (force enabled for --qr mode, bypassing config check)
       const serverResult = await startRemoteServerForced()
       if (!serverResult.running) {
         console.error("[QR Mode] Failed to start remote server:", serverResult.error || "Unknown error")
-        process.exit(1)
+        await gracefulQrShutdown(1)
+        return
       }
       logApp("Remote server started in --qr mode")
 
@@ -260,7 +292,8 @@ app.whenReady().then(async () => {
       console.log("[QR Mode] Server running. Press Ctrl+C to exit.")
     } catch (err) {
       console.error("[QR Mode] Failed to start remote server:", err instanceof Error ? err.message : String(err))
-      process.exit(1)
+      await gracefulQrShutdown(1)
+      return
     }
 
     // Keep the process running - don't create any windows
