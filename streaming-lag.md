@@ -27,6 +27,9 @@
 - [x] Re-inspected desktop session scroll logic in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, especially the initial auto-scroll retry effect, the streaming auto-scroll effect, and `handleScroll` state transitions.
 - [x] Reattached to the live Electron renderer over CDP with `agent-browser --cdp 9333` and inspected both the panel target and the main window target during active sessions.
 - [x] Confirmed the panel can auto-resize aggressively enough to hide overflow during some probes, so overflow/scroll correctness is easier to observe from the main sessions window than from the floating panel in this loop.
+- [x] Checked the desktop sessions-page tile-navigation scroll paths in `apps/desktop/src/renderer/src/pages/sessions.tsx`, including route deep-linking, sidebar `scrollToSessionId`, and continue-conversation focus.
+- [x] Confirmed there is no direct mobile equivalent of this `scrollIntoView(...)` sessions-page path; mobile uses `SessionListScreen` / `ChatScreen` navigation and separate React Native scroll handling.
+- [x] Reproduced a fresh main-window outer-scroll interruption bug from the sessions-page delayed `scrollIntoView({ behavior: 'smooth' })` navigation path by seeding long synthetic session tiles into the live renderer store, setting a scroll target, and then simulating a user manual scroll before the delayed request fired.
 - [x] Confirmed the shared session renderer still scheduled four delayed initial scroll-to-bottom retries (`0/50/100/200ms`) after mount / first display item appearance, regardless of whether the user had already scrolled upward.
 - [x] Positively identified the active overflowing session scroller in the main sessions window via `.progress-panel .h-full.overflow-y-auto.scrollbar-hide-until-hover` / `.progress-panel .h-full.overflow-y-auto` DOM probes and recorded exact bottom-gap samples from it.
 - [x] Reproduced a pinned-at-bottom streaming scroll-lag issue in the visible main sessions window for both a normal-agent probe session and an ACP-styled probe session by streaming long text into the live renderer store and sampling bottom-gap after one vs two animation frames.
@@ -59,7 +62,6 @@
 - [ ] Capture a live ACP-agent scroll-interruption repro in an overflowing focused session detail, not just shared-renderer source evidence.
 - [ ] Capture a live normal-agent scroll-interruption repro in a stable 1x1/focused session tile with exact bottom-gap samples before/after manual wheel scroll.
 - [ ] Measure wheel / trackpad / keyboard scrolling separately from scripted `scrollTop` changes once a stable overflow harness exists.
-- [ ] Check whether the sessions page-level `scrollIntoView(..., { behavior: 'smooth' })` paths introduce a separate scroll-jump issue while active sessions stream.
 - [ ] Run the same settled-grid repro against a real ACP session mix instead of a synthetic long-history store harness.
 - [ ] Investigate the remaining focused long-history single-session cost after offscreen transcript deferral; the current repro still sits around `~338ms` avg chunk→frame for a `240`-item transcript.
 
@@ -116,6 +118,17 @@
   - offscreen transcript deferral enabled: `avgChunkToFrameMs=338.3`, `p95=345.6`, `max=348.9`, `maxBottomGapPx=0`
   - broader `content-visibility` experiments that touched *all* transcript items improved timings more but reintroduced bottom-gap drift, so they were rejected for scroll correctness.
 - **Diagnosis:** older transcript messages far above the viewport were still contributing browser layout/paint work while bottom-pinned streaming grew the live message. Selectively deferring offscreen historical message blocks — while keeping a recent trailing buffer fully rendered for sticky-bottom correctness — measurably reduces that long-history shared-session cost without reopening the scroll anchoring bug.
+- **Scenario:** visible main sessions window (`http://localhost:5174/`), compare layout with long synthetic session tiles mounted; after issuing a sessions-page `scrollToSessionId` request to a far tile, simulate the user manually scrolling back to the top `~50ms` later before the delayed navigation scroll executes.
+- **Evidence:** before the fix, the outer sessions scroller was still yanked hundreds of pixels later even though the simulated user scroll had already reset it to the top. Exact live CDP samples from `.flex-1.min-h-0.overflow-y-auto.scrollbar-hide-until-hover` showed:
+  - before request: `scrollTop=0`
+  - after simulated manual user scroll at `~50ms`: `scrollTop=0`
+  - `~90ms`: `0`
+  - `~120ms`: `0`
+  - `~180ms`: `128`
+  - `~260ms`: `517`
+  - `~360ms`: `650`
+  - `~520ms`: `659`
+- **Diagnosis:** `apps/desktop/src/renderer/src/pages/sessions.tsx` still used three separate `setTimeout(..., 100)` + `scrollIntoView({ behavior: 'smooth', block: 'center' })` paths for route deep-links, sidebar scroll requests, and continue-conversation focus. That delayed smooth-scroll request could survive manual user scrolling and then animate the *outer* sessions page later, creating a stale scroll-jump / delayed-yank bug while long session tiles were mounted.
 
 ## Fixed
 
@@ -137,6 +150,8 @@
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a shared-session regression assertion covering the near-bottom recovery threshold and bottom snap path.
 - **Renderer change:** added selective offscreen transcript deferral for older historical `CompactMessage` blocks in `apps/desktop/src/renderer/src/components/agent-progress.tsx` via `contentVisibility: "auto"` and `containIntrinsicSize: "auto 160px"`, while keeping the most recent `12` timestamped items fully rendered to preserve sticky-at-bottom behavior during live streaming.
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.performance.test.ts` with a regression assertion locking in the offscreen transcript buffer and `content-visibility` guardrail.
+- **Renderer change:** replaced the sessions-page delayed smooth tile-navigation path in `apps/desktop/src/renderer/src/pages/sessions.tsx` with a shared cancellable `requestAnimationFrame` helper that retries briefly until the tile ref exists and then uses immediate `scrollIntoView({ behavior: "auto", block: "center" })` for route deep-links, sidebar `scrollToSessionId`, and continue-conversation focus.
+- **Test coverage:** added `apps/desktop/src/renderer/src/pages/sessions.scroll-navigation.test.ts` to lock in the cancellable `requestAnimationFrame` navigation helper and the removal of the delayed smooth-scroll path.
 
 ## Verified
 
@@ -193,6 +208,18 @@
   - offscreen deferral enabled: `avgChunkToFrameMs=338.3`, `p95=345.6`, `max=348.9`, `maxBottomGapPx=0`
   - improvement from enabling the fix in-place: `~6.1%` lower avg chunk→frame delay and `~23.1ms` lower p95 with no measured sticky-bottom regression in this repro.
 - **Interpretation:** focused shared session streaming with very long histories still has remaining cost, but older offscreen transcript blocks were a real layout/paint contributor. Deferring those older blocks yields a measurable responsiveness improvement while keeping the transcript pinned at bottom during streaming.
+- **Targeted tests:** `pnpm test:run src/renderer/src/pages/sessions.scroll-navigation.test.ts` (from `apps/desktop`) ✅
+- **Formatting check:** `pnpm exec prettier --check src/renderer/src/pages/sessions.tsx src/renderer/src/pages/sessions.scroll-navigation.test.ts` (from `apps/desktop`) ✅
+- **Same outer-scroll interruption repro after fix (same main-window target, same long synthetic sessions, same manual reset at `~50ms`):**
+  - before request: `scrollTop=0`
+  - after manual reset at `~50ms`: `0`
+  - `~90ms`: `0`
+  - `~120ms`: `0`
+  - `~180ms`: `0`
+  - `~260ms`: `0`
+  - `~360ms`: `0`
+  - `~520ms`: `0`
+- **Interpretation:** the sessions-page navigation path no longer leaves a delayed outer smooth-scroll animation alive after the user scrolls elsewhere. Once the user interrupts, the page stays where they left it instead of getting yanked later by stale tile-navigation work.
 
 ## Still Uncertain
 
@@ -202,6 +229,7 @@
 - Whether panel auto-resizing is masking a second, separate overflow/anchoring bug in the floating panel itself.
 - Whether the remaining focused-session long-history cost after this fix is now dominated by the live streaming bubble / markdown subtree, bottom-area layout invalidation, or another hot path unrelated to older offscreen transcript items.
 - Whether wheel / trackpad / keyboard input in a live long-running session exhibits any additional shared-session recovery quirks beyond the scripted renderer-store repro that is now fixed.
+- Whether rapid *repeated* session-selection changes or route swaps during active streaming still produce a separate page-level jank trace now that the delayed smooth-scroll timer is gone.
 
 ## Notes
 

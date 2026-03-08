@@ -265,12 +265,82 @@ export function Component() {
     sessionRefs.current[sessionId] = el
   }, [])
 
-  const handleCollapsedChange = useCallback((sessionId: string, collapsed: boolean) => {
-    setCollapsedSessions(prev => ({
-      ...prev,
-      [sessionId]: collapsed
-    }))
+  const clearPendingSessionScroll = useCallback(() => {
+    if (pendingSessionScrollRafRef.current !== null) {
+      cancelAnimationFrame(pendingSessionScrollRafRef.current)
+      pendingSessionScrollRafRef.current = null
+    }
   }, [])
+
+  const scrollSessionTileIntoView = useCallback(
+    (sessionId: string, options?: { clearScrollRequest?: boolean }) => {
+      clearPendingSessionScroll()
+
+      let remainingAnimationFrameAttempts = 3
+
+      const runScrollWhenTileIsReady = () => {
+        const targetTile = sessionRefs.current[sessionId]
+
+        if (targetTile) {
+          pendingSessionScrollRafRef.current = null
+          // Snap immediately once the tile is ready.
+          // The previous delayed smooth-scroll path could keep a stale request alive
+          // long enough to yank the sessions page after the user had already scrolled
+          // somewhere else, and the animation itself added extra outer-scroll motion
+          // while active tiles were still updating.
+          targetTile.scrollIntoView({ behavior: "auto", block: "center" })
+          if (options?.clearScrollRequest) {
+            setScrollToSessionId(null)
+          }
+          return
+        }
+
+        remainingAnimationFrameAttempts -= 1
+        if (remainingAnimationFrameAttempts <= 0) {
+          pendingSessionScrollRafRef.current = null
+          if (options?.clearScrollRequest) {
+            setScrollToSessionId(null)
+          }
+          return
+        }
+
+        pendingSessionScrollRafRef.current = requestAnimationFrame(
+          runScrollWhenTileIsReady,
+        )
+      }
+
+      pendingSessionScrollRafRef.current = requestAnimationFrame(
+        runScrollWhenTileIsReady,
+      )
+    },
+    [clearPendingSessionScroll, setScrollToSessionId],
+  )
+
+  const handleSessionGridMeasurementsChange = useCallback(
+    ({ containerWidth, gap }: SessionGridMeasurements) => {
+      setSessionGridMeasurements((previous) => {
+        if (
+          previous.containerWidth === containerWidth &&
+          previous.gap === gap
+        ) {
+          return previous
+        }
+
+        return { containerWidth, gap }
+      })
+    },
+    [],
+  )
+
+  const handleCollapsedChange = useCallback(
+    (sessionId: string, collapsed: boolean) => {
+      setCollapsedSessions((prev) => ({
+        ...prev,
+        [sessionId]: collapsed,
+      }))
+    },
+    [],
+  )
 
   /**
    * Returns the timestamp of the most recent activity in a session.
@@ -405,14 +475,13 @@ export function Component() {
       // especially for sessions created remotely (e.g. from mobile) where
       // in-memory progress data may be stale or incomplete.
       const activeSession = Array.from(agentProgressById.entries()).find(
-        ([_, progress]) => progress?.conversationId === routeHistoryItemId && !progress?.isComplete
+        ([_, progress]) =>
+          progress?.conversationId === routeHistoryItemId &&
+          !progress?.isComplete,
       )
       if (activeSession) {
         setFocusedSessionId(activeSession[0])
-        // Scroll to the session tile
-        setTimeout(() => {
-          sessionRefs.current[activeSession[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 100)
+        scrollSessionTileIntoView(activeSession[0])
       } else {
         // It's a past session or completed session - load fresh data from disk
         setPendingConversationId(routeHistoryItemId)
@@ -421,20 +490,26 @@ export function Component() {
       // Using window.history.replaceState instead of navigate() to avoid clearing local state
       window.history.replaceState(null, "", "/")
     }
-  }, [routeHistoryItemId, agentProgressById, setFocusedSessionId])
+  }, [
+    routeHistoryItemId,
+    agentProgressById,
+    scrollSessionTileIntoView,
+    setFocusedSessionId,
+  ])
 
   // Handle scroll-to-session requests from sidebar navigation
   useEffect(() => {
-    if (scrollToSessionId) {
-      const targetSessionId = scrollToSessionId
-      // Use a small delay to ensure the DOM has rendered the tile
-      setTimeout(() => {
-        sessionRefs.current[targetSessionId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        // Clear the scroll request after attempting scroll to avoid race conditions
-        setScrollToSessionId(null)
-      }, 100)
+    if (!scrollToSessionId) {
+      clearPendingSessionScroll()
+      return undefined
     }
-  }, [scrollToSessionId, setScrollToSessionId])
+
+    scrollSessionTileIntoView(scrollToSessionId, { clearScrollRequest: true })
+
+    return clearPendingSessionScroll
+  }, [clearPendingSessionScroll, scrollSessionTileIntoView, scrollToSessionId])
+
+  useEffect(() => clearPendingSessionScroll, [clearPendingSessionScroll])
 
   // Load the pending conversation data when one is selected
   const pendingConversationQuery = useQuery({
@@ -508,15 +583,13 @@ export function Component() {
   const handleContinueConversation = (conversationId: string) => {
     // Check if there's already an active session for this conversationId
     const existingSession = Array.from(agentProgressById.entries()).find(
-      ([_, progress]) => progress?.conversationId === conversationId && !progress?.isComplete
+      ([_, progress]) =>
+        progress?.conversationId === conversationId && !progress?.isComplete,
     )
     if (existingSession) {
       // Focus the existing session tile instead of creating a duplicate
       setFocusedSessionId(existingSession[0])
-      // Scroll to the session tile
-      setTimeout(() => {
-        sessionRefs.current[existingSession[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 100)
+      scrollSessionTileIntoView(existingSession[0])
     } else {
       // No active session exists, create a pending tile
       setPendingContinuationStartedAt(null)
