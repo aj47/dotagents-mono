@@ -3708,3 +3708,36 @@
   - When desktop dependencies are available, add a real renderer/runtime assertion around the full-history divider labels instead of relying only on source-level checks.
 
 - Next recommended issue work item: stay bug-first if `#55` can be validated more directly in a prepared Electron environment; otherwise prefer another narrow, source-confirmed desktop or website UX/reliability slice over speculative provider work.
+
+##### Issue #56 — Bundle inspector footer now shows author/source provenance once preview is ready
+
+- Selection rationale:
+  - Re-read `issue-work.md` first, refreshed the still-open repo issues again, and deliberately avoided churning `#57` / `#58` immediately after the last desktop/history slice.
+  - The latest `#56` ledger follow-up explicitly suggested a small footer provenance improvement (for example, source URL or author handle) if users still needed stronger confidence before installing.
+  - This was a good fit because it stayed inside the existing static landing-page inspector and could be verified with the repo’s dependency-free website source test.
+- Investigation:
+  - Re-reviewed issue `#56` and the current `website/index.html` modal implementation.
+  - Confirmed the ready-state footer already showed counts for agents/MCP/skills/tasks, but it did not expose explicit author or source provenance even though the issue is about inspect-before-install trust.
+  - Fetched a real current public bundle (`dev-powerpack.dotagents`) and confirmed the live manifest already carries `publicMetadata.author` with `displayName`, `handle`, and `url`, so a real user-facing author/source improvement was available without changing the bundle format.
+  - Checked the existing `website/website-hub-inspector.test.js` coverage and confirmed it already exercised the modal/footer behavior via source assertions, making a narrow regression update straightforward.
+- Important assumptions:
+  - Assumption: footer-level provenance links are a better minimal slice than adding a whole new `Requirements` or `Dependencies` section right now.
+  - Why acceptable: current public sample bundles already expose author/source data, while explicit dependency metadata is not yet consistently present across the real bundle examples.
+  - Assumption: using the existing footer meta row for provenance is preferable to adding more warning badges.
+  - Why acceptable: it keeps the trust signal in the final ready-to-install area without visually overloading the warning row.
+- Changes implemented:
+  - Added `buildBundleFooterMeta(bundle, bundleUrl)` in `website/index.html` to keep the existing content counts while also appending an author provenance item and a direct `Source bundle ↗` link when preview data is ready.
+  - Switched the modal ready-state footer rendering to use the new helper instead of the older count-only inline HTML block.
+  - Extended `website/website-hub-inspector.test.js` with a focused regression test asserting the new author/source provenance logic and footer hookup.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If more bundles start publishing structured dependency metadata, consider surfacing lightweight dependency or compatibility requirements in the same footer/meta area instead of leaving them implicit.
+  - If the landing page later mirrors a broader hub catalog, keep the same author/source provenance behavior anywhere preview gating is reused.
+  - Keep the modal preview-first and trust-focused; avoid turning this footer into a dense management surface.
+
+- Next recommended issue work item: stay bug-first if `#55` becomes directly verifiable in an Electron-capable worktree; otherwise prefer another fresh, source-confirmed UX/reliability slice with tight validation, likely outside the recently-heavy `#57` / `#58` tracks.

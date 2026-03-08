@@ -1877,6 +1877,30 @@
             return sections.join('\n\n').trim()
         }
 
+        function buildBundleFooterMeta(bundle, bundleUrl) {
+            const author = bundle.manifest?.publicMetadata?.author || {}
+            const authorLabel = author.handle || author.displayName || ''
+            const items = [
+                `<span>${escapeHtml((bundle.agentProfiles || []).length)} agents</span>`,
+                `<span>${escapeHtml((bundle.mcpServers || []).length)} MCP</span>`,
+                `<span>${escapeHtml((bundle.skills || []).length)} skills</span>`,
+                `<span>${escapeHtml((bundle.repeatTasks || []).length)} tasks</span>`,
+            ]
+
+            if (authorLabel) {
+                const label = `Author: ${escapeHtml(authorLabel)}`
+                items.push(author.url
+                    ? `<a class="hub-inline-link" href="${escapeHtml(author.url)}" target="_blank" rel="noopener">${label} ↗</a>`
+                    : `<span>${label}</span>`)
+            }
+
+            if (bundleUrl) {
+                items.push(`<a class="hub-inline-link" href="${escapeHtml(bundleUrl)}" target="_blank" rel="noopener">Source bundle ↗</a>`)
+            }
+
+            return items.join('<span>·</span>')
+        }
+
         function renderBundle(bundle) {
             const sections = []
 
@@ -2128,15 +2152,7 @@
                         <span>·</span>
                         <span>${escapeHtml(authorLabel)}</span>
                     `
-                    modalFooterMeta.innerHTML = `
-                        <span>${escapeHtml((bundle.agentProfiles || []).length)} agents</span>
-                        <span>·</span>
-                        <span>${escapeHtml((bundle.mcpServers || []).length)} MCP</span>
-                        <span>·</span>
-                        <span>${escapeHtml((bundle.skills || []).length)} skills</span>
-                        <span>·</span>
-                        <span>${escapeHtml((bundle.repeatTasks || []).length)} tasks</span>
-                    `
+                    modalFooterMeta.innerHTML = buildBundleFooterMeta(bundle, bundleUrl)
 
                     if (warningBadges.length) {
                         modalWarnings.hidden = false

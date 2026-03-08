@@ -129,6 +129,15 @@ test('install footer explains whether preview is loading, ready, or unavailable'
     assert.match(source, /setModalInstallStatus\(\{ state: 'error' \}\)/)
 })
 
+test('ready footer metadata includes author and source provenance links', () => {
+    assert.match(source, /function buildBundleFooterMeta\(bundle, bundleUrl\)/)
+    assert.match(source, /const author = bundle\.manifest\?\.publicMetadata\?\.author \|\| \{\}/)
+    assert.match(source, /const authorLabel = author\.handle \|\| author\.displayName \|\| ''/)
+    assert.match(source, /Author: \$\{escapeHtml\(authorLabel\)\}/)
+    assert.match(source, /Source bundle ↗/)
+    assert.match(source, /modalFooterMeta\.innerHTML = buildBundleFooterMeta\(bundle, bundleUrl\)/)
+})
+
 test('markdown content is formatted before rendering', () => {
     assert.match(source, /function stripFrontmatter\(value\)/)
     assert.match(source, /function renderMarkdown\(value\)/)
