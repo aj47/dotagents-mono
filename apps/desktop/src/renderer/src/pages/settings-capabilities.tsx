@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { Button } from "@renderer/components/ui/button"
@@ -16,6 +17,13 @@ const tabs = [
 ] as const
 
 type TabId = (typeof tabs)[number]["id"]
+
+function getRequestedTab(searchParams: URLSearchParams): TabId {
+  const requestedTab = searchParams.get("tab")
+  return tabs.some((tab) => tab.id === requestedTab)
+    ? requestedTab as TabId
+    : "skills"
+}
 
 interface RecentBackup {
   filePath: string
@@ -67,7 +75,27 @@ function formatBackupTargetLabel(backup: RecentBackup["backup"]): string {
 
 export function Component() {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<TabId>("skills")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<TabId>(() => getRequestedTab(searchParams))
+
+  useEffect(() => {
+    const requestedTab = getRequestedTab(searchParams)
+    setActiveTab((currentTab) => currentTab === requestedTab ? currentTab : requestedTab)
+  }, [searchParams])
+
+  const handleTabChange = (tabId: TabId) => {
+    setActiveTab(tabId)
+
+    const nextParams = new URLSearchParams(searchParams)
+    if (tabId === "skills") {
+      nextParams.delete("tab")
+    } else {
+      nextParams.set("tab", tabId)
+    }
+
+    setSearchParams(nextParams, { replace: true })
+  }
+
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false)
   const [restoreFilePath, setRestoreFilePath] = useState<string>()
   const [isSelectingRestoreBackup, setIsSelectingRestoreBackup] = useState(false)
@@ -279,7 +307,7 @@ export function Component() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                 activeTab === tab.id

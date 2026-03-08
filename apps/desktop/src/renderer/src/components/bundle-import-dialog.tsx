@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Dialog,
   DialogContent,
@@ -471,6 +472,7 @@ export function BundleImportDialog({
   sourceLabel = "Bundle source",
   sourceUrl,
 }: BundleImportDialogProps) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState<BundlePreview | null>(null)
@@ -586,7 +588,13 @@ export function BundleImportDialog({
         toast.success(`Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}${sourceMessage}`)
         if (importedMcpServersRequiringConfiguration.length > 0) {
           toast.warning(
-            `Reconfigure ${formatCount("MCP server", importedMcpServersRequiringConfiguration.length)} with <CONFIGURE_YOUR_KEY> placeholders in Settings → Capabilities: ${importedMcpServersRequiringConfiguration.join(", ")}.`
+            `Reconfigure ${formatCount("MCP server", importedMcpServersRequiringConfiguration.length)} with <CONFIGURE_YOUR_KEY> placeholders in Settings → Capabilities: ${importedMcpServersRequiringConfiguration.join(", ")}.`,
+            {
+              action: {
+                label: "Open MCP Servers",
+                onClick: () => navigate("/settings/capabilities?tab=mcp-servers"),
+              },
+            }
           )
         }
         onImportComplete()

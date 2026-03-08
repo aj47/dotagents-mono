@@ -1544,3 +1544,34 @@
   - Consider persisting row-level conflict overrides across dialog reopen/refresh events only if user testing shows that matters; for now they intentionally reset with a new preview to keep the state model simple.
 
 - Next recommended issue work item: look next at `#58` for another small history/UX slice or confirm a direct repro for `#55`; `#54` still appears too under-specified for a safe code-first implementation pass.
+
+##### Issue #25 — Bundle import warnings now deep-link straight to MCP server reconfiguration
+
+- Selection rationale:
+  - The latest `#25` ledger entry explicitly called out a still-open follow-up: after importing bundles with redacted MCP placeholders, users were warned to reconfigure servers but had no one-click jump into the right settings surface.
+  - This was a small, high-trust UX slice with direct user value and a clean local implementation path inside the existing import dialog + settings routing.
+- Investigation:
+  - Re-read the latest `#25` ledger notes to avoid redoing earlier bundle safety work and confirmed the remaining gap was post-import reconfiguration affordance, not bundle parsing or secret stripping.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog already detects imported MCP servers carrying `redactedSecretFields`, but the success path only showed a warning toast telling users to manually open `Settings → Capabilities`.
+  - Inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed the Capabilities page had local tab state only, so there was no stable deep-link path for opening the `MCP Servers` tab from another workflow.
+- Important assumptions:
+  - Assumption: using a lightweight `?tab=mcp-servers` query-param contract for the Capabilities page is preferable to introducing new shared navigation state.
+  - Why acceptable: the repo already uses search-param handoff patterns in nearby settings flows, and this keeps the fix narrow, explicit, and reversible.
+  - Assumption: a toast action is an acceptable post-import affordance for this workflow.
+  - Why acceptable: it preserves the existing success flow while making the next required recovery step one click away instead of forcing users to hunt through settings manually.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` to support `?tab=` deep links, initialize from that query param, and react to later query-param changes so same-route navigation can switch tabs after mount.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to use `useNavigate()` and attach an `Open MCP Servers` action to the post-import warning toast when imported MCP servers still contain `<CONFIGURE_YOUR_KEY>` placeholders.
+  - Extended the existing dependency-light source-contract tests in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to lock in the new navigation/toast behavior and the Capabilities tab deep-link contract.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the relevant desktop/Vitest coverage and typecheck once the worktree has its normal dependency baseline restored.
+  - Consider whether the pre-import MCP placeholder warning card should also expose the same direct settings jump, not just the post-import toast action.
+  - If bundle install/import trust UX grows further, consider preserving a lightweight history of recent import warnings so post-import remediation is not toast-only.
+
+- Next recommended issue work item: either return to `#58` for another small history provenance/reliability slice or confirm a fresh direct repro for `#55`; keep avoiding `#54` until there is stronger concrete evidence for a safe local implementation path.
