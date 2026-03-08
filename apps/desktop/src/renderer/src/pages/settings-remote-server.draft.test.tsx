@@ -30,21 +30,50 @@ function findNamedTunnelIdInput(node: any) { return findNode(node, candidate => 
 function findNamedTunnelHostnameInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "myapp.example.com") }
 function findNamedTunnelCredentialsInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "~/.cloudflared/<tunnel-id>.json (default)") }
 function findStartTunnelButton(node: any) { return findNode(node, candidate => candidate.type === "Button" && candidate.props?.children === "Start Tunnel") }
+function findStopTunnelButton(node: any) { return findNode(node, candidate => candidate.type === "Button" && candidate.props?.children === "Stop Tunnel") }
 function hasText(node: any, text: string): boolean { if (node == null) return false; if (Array.isArray(node)) return node.some(child => hasText(child, text)); if (typeof node === "string") return node.includes(text); if (typeof node === "object") return hasText(node.props?.children, text); return false }
 
-async function loadRemoteServerSettings(runtime: ReturnType<typeof createHookRuntime>, overrides: Record<string, any> = {}, queryOverrides: Record<string, any> = {}) {
+async function flushPromises() { await Promise.resolve(); await Promise.resolve() }
+
+async function loadRemoteServerSettings(runtime: ReturnType<typeof createHookRuntime>, overrides: Record<string, any> = {}, queryOverrides: Record<string, any> = {}, tipcOverrides: Record<string, any> = {}) {
   vi.resetModules()
   const Null = () => null
   const mutate = vi.fn()
   const actionMutate = vi.fn()
   const copyTextToClipboard = vi.fn(async () => {})
   const toastError = vi.fn()
+  const invalidateQueries = vi.fn()
   const queryData = { "cloudflared-installed": false, "cloudflared-logged-in": false, "cloudflare-tunnel-list": { tunnels: [] }, "cloudflare-tunnel-status": null, "remote-server-status": { running: false }, ...queryOverrides } as Record<string, any>
   let currentConfig: any = { remoteServerEnabled: true, remoteServerPort: 3210, remoteServerBindAddress: "127.0.0.1", remoteServerCorsOrigins: ["https://old.example.test"], streamerModeEnabled: false, ...overrides }
+  const tipcClient = {
+    checkCloudflaredInstalled: vi.fn(async () => queryData["cloudflared-installed"]),
+    checkCloudflaredLoggedIn: vi.fn(async () => queryData["cloudflared-logged-in"]),
+    listCloudflareTunnels: vi.fn(async () => queryData["cloudflare-tunnel-list"]),
+    getCloudflareTunnelStatus: vi.fn(async () => queryData["cloudflare-tunnel-status"]),
+    getRemoteServerStatus: vi.fn(async () => queryData["remote-server-status"]),
+    startCloudflareTunnel: vi.fn(async () => ({ success: true })),
+    startNamedCloudflareTunnel: vi.fn(async () => ({ success: true })),
+    stopCloudflareTunnel: vi.fn(async () => undefined),
+    printRemoteServerQRCode: vi.fn(),
+    ...tipcOverrides,
+  }
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@tanstack/react-query", () => ({ useQuery: (options: { queryKey?: string[] }) => ({ data: queryData[options?.queryKey?.[0] ?? ""], isLoading: false }), useMutation: () => ({ mutate: actionMutate, isPending: false }), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }))
+  vi.doMock("@tanstack/react-query", () => ({
+    useQuery: (options: { queryKey?: string[] }) => ({ data: queryData[options?.queryKey?.[0] ?? ""], isLoading: false }),
+    useMutation: (options: { mutationFn?: (args?: any) => any; onSuccess?: (result: any, args: any, context: any) => void; onError?: (error: any, args: any, context: any) => void }) => ({
+      mutate: (args?: any) => {
+        actionMutate(args)
+        Promise.resolve()
+          .then(() => options.mutationFn?.(args))
+          .then((result) => options.onSuccess?.(result, args, undefined))
+          .catch((error) => options.onError?.(error, args, undefined))
+      },
+      isPending: false,
+    }),
+    useQueryClient: () => ({ invalidateQueries }),
+  }))
   vi.doMock("@renderer/lib/query-client", () => ({ useConfigQuery: () => ({ data: currentConfig }), useSaveConfigMutation: () => ({ mutate }) }))
   vi.doMock("@renderer/components/ui/control", () => ({ Control: (props: any) => ({ type: "Control", props }), ControlGroup: (props: any) => props.children, ControlLabel: (props: any) => props.label }))
   vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
@@ -52,12 +81,12 @@ async function loadRemoteServerSettings(runtime: ReturnType<typeof createHookRun
   vi.doMock("@renderer/components/ui/switch", () => ({ Switch: Null }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard }))
-  vi.doMock("@renderer/lib/tipc-client", () => ({ tipcClient: {} }))
+  vi.doMock("@renderer/lib/tipc-client", () => ({ tipcClient }))
   vi.doMock("qrcode.react", () => ({ QRCodeSVG: Null }))
   vi.doMock("lucide-react", () => ({ EyeOff: Null, ExternalLink: Null }))
   vi.doMock("sonner", () => ({ toast: { error: toastError } }))
   const mod = await import("./settings-remote-server")
-  return { RemoteServerSettingsGroups: mod.RemoteServerSettingsGroups, mutate, actionMutate, copyTextToClipboard, toastError, setConfig(nextConfig: any) { currentConfig = nextConfig }, getCurrentConfig() { return currentConfig } }
+  return { RemoteServerSettingsGroups: mod.RemoteServerSettingsGroups, mutate, actionMutate, copyTextToClipboard, toastError, tipcClient, invalidateQueries, setConfig(nextConfig: any) { currentConfig = nextConfig }, getCurrentConfig() { return currentConfig } }
 }
 
 beforeEach(() => { vi.useFakeTimers() })
@@ -291,5 +320,55 @@ describe("desktop remote server copy failure feedback", () => {
     expect(toastError).toHaveBeenNthCalledWith(2, "Failed to copy deep link: clipboard unavailable")
     expect(toastError).toHaveBeenNthCalledWith(3, "Failed to copy tunnel URL: clipboard unavailable")
     expect(toastError).toHaveBeenNthCalledWith(4, "Failed to copy tunnel deep link: clipboard unavailable")
+  })
+})
+
+describe("desktop remote tunnel action failure feedback", () => {
+  it("shows a visible toast when starting a tunnel resolves with success false", async () => {
+    const runtime = createHookRuntime()
+    const { RemoteServerSettingsGroups, toastError, tipcClient, invalidateQueries } = await loadRemoteServerSettings(
+      runtime,
+      {},
+      { "cloudflared-installed": true },
+      {
+        startCloudflareTunnel: vi.fn(async () => ({ success: false, error: "cloudflared is not installed" })),
+      },
+    )
+
+    const tree = runtime.render(RemoteServerSettingsGroups, {} as any)
+    runtime.commitEffects()
+
+    findStartTunnelButton(tree).props.onClick()
+    await flushPromises()
+
+    expect(tipcClient.startCloudflareTunnel).toHaveBeenCalledOnce()
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["cloudflare-tunnel-status"] })
+    expect(toastError).toHaveBeenCalledWith("Failed to start tunnel: cloudflared is not installed")
+  })
+
+  it("shows a visible toast when stopping a tunnel rejects", async () => {
+    const runtime = createHookRuntime()
+    const { RemoteServerSettingsGroups, toastError, tipcClient } = await loadRemoteServerSettings(
+      runtime,
+      {},
+      {
+        "cloudflared-installed": true,
+        "cloudflare-tunnel-status": { running: true, starting: false, url: "https://public.example.test", error: null, mode: "quick" },
+      },
+      {
+        stopCloudflareTunnel: vi.fn(async () => {
+          throw new Error("IPC unavailable")
+        }),
+      },
+    )
+
+    const tree = runtime.render(RemoteServerSettingsGroups, {} as any)
+    runtime.commitEffects()
+
+    findStopTunnelButton(tree).props.onClick()
+    await flushPromises()
+
+    expect(tipcClient.stopCloudflareTunnel).toHaveBeenCalledOnce()
+    expect(toastError).toHaveBeenCalledWith("Failed to stop tunnel: IPC unavailable")
   })
 })

@@ -112,6 +112,13 @@ function getRemoteServerCopyErrorMessage(label: string, error: unknown): string 
   return prefix
 }
 
+function getTunnelActionErrorMessage(action: "start" | "stop", error: unknown): string {
+  const prefix = action === "start" ? "Failed to start tunnel" : "Failed to stop tunnel"
+  if (error instanceof Error && error.message.trim()) return `${prefix}: ${error.message.trim()}`
+  if (typeof error === "string" && error.trim()) return `${prefix}: ${error.trim()}`
+  return prefix
+}
+
 export function RemoteServerSettingsGroups({
   collapsible = false,
   defaultCollapsed = false,
@@ -304,16 +311,30 @@ export function RemoteServerSettingsGroups({
 
   const startTunnelMutation = useMutation({
     mutationFn: () => tipcClient.startCloudflareTunnel(),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
+      if (!result?.success) {
+        toast.error(getTunnelActionErrorMessage("start", result.error))
+      }
+    },
+    onError: (error) => {
+      console.error("[RemoteServerSettings] Failed to start quick tunnel:", error)
+      toast.error(getTunnelActionErrorMessage("start", error))
     },
   })
 
   const startNamedTunnelMutation = useMutation({
     mutationFn: (params: { tunnelId: string; hostname: string; credentialsPath?: string }) =>
       tipcClient.startNamedCloudflareTunnel(params),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
+      if (!result?.success) {
+        toast.error(getTunnelActionErrorMessage("start", result.error))
+      }
+    },
+    onError: (error) => {
+      console.error("[RemoteServerSettings] Failed to start named tunnel:", error)
+      toast.error(getTunnelActionErrorMessage("start", error))
     },
   })
 
@@ -321,6 +342,10 @@ export function RemoteServerSettingsGroups({
     mutationFn: () => tipcClient.stopCloudflareTunnel(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
+    },
+    onError: (error) => {
+      console.error("[RemoteServerSettings] Failed to stop tunnel:", error)
+      toast.error(getTunnelActionErrorMessage("stop", error))
     },
   })
 

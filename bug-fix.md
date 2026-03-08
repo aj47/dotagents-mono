@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and confirmed the visible `Start Tunnel` / `Stop Tunnel` actions still used React Query mutations with `onSuccess(...)` only, so renderer-side mutation/IPC failures had no toast/banner/inline feedback path.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/cloudflare-tunnel.ts` that `startCloudflareTunnel()` and `startNamedCloudflareTunnel(...)` return `{ success: false, error }` for real setup failures like missing `cloudflared`, missing credentials, or DNS-route setup errors instead of always throwing, so the settings page could receive honest non-throwing start failures and still look like the button simply did nothing.
+- [x] 2026-03-08: Assumption accepted: showing a toast for explicit tunnel start/stop failures is acceptable even though the page can also show `tunnelStatus.error` inline, because these are deliberate button clicks in a setup flow where immediate action-level feedback is higher signal than waiting for the next status poll.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-agents.tsx` again and confirmed the Capabilities tab still loaded `getMcpServerStatus()`, `getMcpDetailedToolList()`, and `getSkills()` behind `catch {}` blocks, so rejected IPC/config reads collapsed into the same empty arrays/objects used for genuine zero-data states.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` that those three capability loaders are plain TIPC actions with no renderer-side fallback contract, so a thrown rejection is a real state the page must distinguish instead of silently treating as “nothing configured”.
 - [x] 2026-03-08: Compared the agent-editor capabilities UX against `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx`, which already uses compact inline loading/error/retry cards for the same class of MCP data-loading failure.
@@ -213,6 +216,10 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
 
 ### Reproduced
+- [x] **Desktop Remote Server tunnel actions could fail like dead buttons (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` wired the visible `Start Tunnel` and `Stop Tunnel` buttons through React Query mutations that only handled `onSuccess(...)`, so rejected IPC calls had no visible user feedback.
+  - `apps/desktop/src/main/cloudflare-tunnel.ts` returns `{ success: false, error }` for several real start failures (for example missing `cloudflared`, missing named-tunnel credentials, or DNS-route setup failure), and the renderer previously invalidated status polling without surfacing that non-throwing failure at click time.
+  - Because these actions are part of the desktop remote-access setup flow, a failed click could look like the tunnel controls simply ignored the user.
 - [x] **Desktop Settings → Agents Capabilities could misreport load failures as “nothing configured” (directly confirmed in source):**
   - In `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, `loadServers()`, `loadAllTools()`, and `loadSkills()` previously swallowed all errors with `catch {}` while the page derived its sections from default-empty `serverStatus`, `allTools`, and `skills` state.
   - That meant a rejected capability load rendered the same visible copy as a real empty configuration (`No skills available.`, `No MCP servers configured.`, `No built-in tools available.`), which is misleading on a primary desktop agent-editing surface because the user loses both the actual error and any retry affordance.
@@ -432,6 +439,8 @@
    - That meant a stale desktop `Delete task` click could claim success even though no repeat task was actually removed, which is misleading on an active settings-management surface.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so quick/named `Start Tunnel` mutations now surface a visible `toast.error(...)` for both rejected IPC calls and `{ success: false, error }` results, while `Stop Tunnel` now surfaces a visible toast if its mutation rejects.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-remote-server.draft.test.tsx` with focused regression coverage for the two highest-signal failure paths: a quick-tunnel start that resolves with `success: false`, and a stop-tunnel request that rejects.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the Capabilities tab now tracks loading/error state for skills, MCP servers, and built-in tools; logs failed fetches; and swaps misleading empty-state copy for inline loading/error/retry UI when the relevant data never loaded.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` with a source-level regression test that locks in the new capability load/error/retry state wiring and guards against reintroducing silent `catch {}` handling in `settings-agents.tsx`.
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-selector.tsx` so the desktop selector now keeps a bounded outline button visible while agent profiles are loading and replaces silent initial load failures with a retryable `Retry agents` trigger that exposes the backend error in the button tooltip/title.
@@ -606,6 +615,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` with focused regression coverage for the stale delete-result path, locking in the new false-result guard and query refresh behavior.
 
 ### Verified
+- [x] Manual source verification: `settings-remote-server.tsx` now calls `toast.error(getTunnelActionErrorMessage(...))` when a tunnel start resolves with `success: false`, and also from the quick/named start + stop mutation `onError(...)` paths, so both non-throwing and rejected tunnel failures are visible immediately.
+- [x] Dependency-free verification: a Node file-read assertion script passed for `settings-remote-server.tsx` and `settings-remote-server.draft.test.tsx`, confirming the new tunnel-action error helper, toast wiring, and focused regression coverage are present.
+- [x] Patch hygiene verification: `git diff --check` passed after the remote-server tunnel failure-feedback update.
 - [x] Manual source verification: `settings-agents.tsx` now records `skillsLoadError`, `serverStatusLoadError`, and `allToolsLoadError`, renders explicit loading/error/retry states before falling back to empty-state copy, and no longer uses silent `catch {}` blocks for those capability fetches.
 - [x] Dependency-free verification: a Node file-read assertion script passed for the new `settings-agents.tsx` capability load-state wiring, including the explicit error-state checks and the absence of `catch {}`.
 - [x] Patch hygiene verification: `git diff --check` passed after the `settings-agents.tsx` capability load-state fix.
@@ -763,6 +775,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this remote-server tunnel feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop agent-capabilities load-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Desktop renderer type-check verification for this fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` still fails because `node_modules` are missing and the base Electron toolkit tsconfig cannot be resolved.
 - [x] Targeted automated verification for this desktop Skills single-delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -819,6 +832,7 @@
 - [x] Targeted automated verification for this desktop repeat-task delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether the remote-server tunnel status panel should eventually suppress or deduplicate its inline `Error: ...` copy when the same failure is already shown via the new click-time toast, once live desktop validation is available.
 - [ ] Whether the desktop agent-editor MCP Servers section should eventually show a non-blocking inline warning when server status loads successfully but the shared tool list fails, since the section can still render server rows while tool counts/expansions are incomplete until live validation is possible.
 - [ ] Whether a successful zero-enabled-agent result on desktop should eventually show an explicit empty-state/manage-agents affordance like mobile, rather than continuing to hide the selector outside of load/error states.
 - [ ] Whether later background polling failures in `mcp-tool-manager.tsx` should eventually surface a non-blocking stale-data banner/toast once live desktop verification is available, or whether keeping the last successful tool list visible without extra noise is the better UX.
