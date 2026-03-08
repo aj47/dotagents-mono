@@ -285,6 +285,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+  const [modelsLoadError, setModelsLoadError] = useState<string | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
@@ -847,6 +848,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
 
     setIsLoadingModels(true);
+    setModelsLoadError(null);
     try {
       const response = await settingsClient.getModels(providerId);
       setAvailableModels(response.models);
@@ -858,8 +860,7 @@ export default function SettingsScreen({ navigation }: any) {
       }
     } catch (error: any) {
       console.error('[Settings] Failed to fetch models:', error);
-      // Keep any existing models on error to avoid UI looking empty
-      // Only log the error, don't clear the list
+      setModelsLoadError(getSectionLoadErrorMessage('models', error));
     } finally {
       setIsLoadingModels(false);
     }
@@ -884,6 +885,8 @@ export default function SettingsScreen({ navigation }: any) {
 
     try {
       await settingsClient.updateSettings({ mcpToolsProviderId: provider });
+      setAvailableModels([]);
+      setModelsLoadError(null);
       setRemoteSettings(prev => prev ? { ...prev, mcpToolsProviderId: provider } : null);
       // Reset custom model mode when switching providers
       setUseCustomModel(false);
@@ -910,6 +913,7 @@ export default function SettingsScreen({ navigation }: any) {
       setRemoteSettings(prev => prev ? { ...prev, currentModelPresetId: presetId } : null);
       // Reset models and fetch new ones for the new preset
       setAvailableModels([]);
+      setModelsLoadError(null);
       setUseCustomModel(false);
       // Fetch models for the new preset
       if (remoteSettings.mcpToolsProviderId === 'openai') {
@@ -1512,6 +1516,11 @@ export default function SettingsScreen({ navigation }: any) {
                       </View>
                     )}
                   </TouchableOpacity>
+                )}
+                {!useCustomModel && modelsLoadError && (
+                  <Text style={[styles.helperText, styles.errorHelperText, styles.modelLoadErrorText]}>
+                    {modelsLoadError}
+                  </Text>
                 )}
               </CollapsibleSection>
             )}
@@ -2495,8 +2504,17 @@ export default function SettingsScreen({ navigation }: any) {
             <ScrollView style={styles.modelList} keyboardShouldPersistTaps="handled">
               {filteredModels.length === 0 ? (
                 <View style={styles.modelListEmpty}>
-                  <Text style={styles.modelListEmptyText}>
-                    {modelSearchQuery ? `No models match "${modelSearchQuery}"` : 'No models available'}
+                  <Text
+                    style={[
+                      styles.modelListEmptyText,
+                      modelsLoadError && availableModels.length === 0 && !modelSearchQuery && styles.errorHelperText,
+                    ]}
+                  >
+                    {modelSearchQuery
+                      ? `No models match "${modelSearchQuery}"`
+                      : modelsLoadError && availableModels.length === 0
+                        ? modelsLoadError
+                        : 'No models available'}
                   </Text>
                 </View>
               ) : (
@@ -2538,6 +2556,9 @@ export default function SettingsScreen({ navigation }: any) {
                   ? `${filteredModels.length} of ${availableModels.length} models`
                   : `${availableModels.length} model${availableModels.length !== 1 ? 's' : ''} available`}
               </Text>
+              {modelsLoadError && availableModels.length > 0 && (
+                <Text style={styles.modelPickerErrorText}>{modelsLoadError}</Text>
+              )}
             </View>
           </View>
         </View>
@@ -3456,6 +3477,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelPickerFooterText: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
+    },
+    modelLoadErrorText: {
+      marginTop: spacing.xs,
+    },
+    modelPickerErrorText: {
+      fontSize: 12,
+      color: theme.colors.destructive,
+      marginTop: spacing.xs,
+      textAlign: 'center',
     },
     // Collapsible section styles
     collapsibleSection: {
