@@ -889,3 +889,48 @@
   - Restore the mobile install in this worktree, then visually confirm the new interval preview and warning copy in `LoopEditScreen` on a narrow viewport.
   - After live validation returns, decide whether the loop interval field still needs quick-pick presets or whether the next highest-friction issue has shifted elsewhere.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 21: make selector-sheet retry and dismiss actions easier to use on mobile
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentSelectorSheet` error and footer actions
+  - existing selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow / install state in this worktree
+- Live inspection / workflow status:
+  - Rechecked the mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because the mobile install is still missing in this worktree, Expo Web / simulator validation remains blocked for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the selector sheet's main empty-state CTA already had an explicit mobile-sized target.
+  - The fallback actions surrounding it were still lighter-weight:
+    - error-state `Retry` had no explicit button label/hint and no shared `44px` touch-target guardrail
+    - footer `Cancel` likewise relied on plain text-row styling without explicit mobile button semantics
+- Issue selected:
+  - The selector sheet's recovery and dismissal actions were less tappable and less explicit than the rest of the recent mobile sub-agent controls, weakening user control when the sheet failed to load or simply needed to be dismissed.
+- Decision:
+  - Keep the existing selector sheet layout, copy, and action flow.
+  - Do not redesign the footer or add new secondary buttons while live validation is blocked.
+  - Make the smallest local fix in `AgentSelectorSheet`: reuse the shared minimum-touch-target helper for `Retry` and `Cancel`, and add explicit accessibility labels/hints.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - add a shared `actionButtonTouchTarget` based on `createMinimumTouchTargetStyle(...)`,
+    - apply that guardrail to the error-state `Retry` action,
+    - apply the same guardrail to the footer `Cancel` action while keeping the existing top border and layout,
+    - add explicit button role/label/hint metadata to both actions.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new selector-sheet action semantics and touch-target styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by the missing mobile install / unresolved Expo + React Native dependencies / missing `expo/tsconfig.base`
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The stronger `Retry` / `Cancel` actions still need real narrow-screen confirmation once Expo Web or a simulator is available again.
+  - Selector-sheet row selection still deserves a fresh live pass once switchable options and real agent names are available again in this worktree.
+  - Broader selector-sheet polish should still wait for fresh live evidence instead of source-only tweaks drifting too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then re-open the selector sheet error and dismissal paths in Expo Web to confirm the stronger touch targets feel proportionate on a narrow viewport.
+  - Once live validation returns, smoke-test the selector sheet across empty, error, and populated states for consistency.
+  - Continue only with the next highest-signal sub-agent mobile issue after a fresh narrow-screen pass re-establishes where the remaining friction actually is.

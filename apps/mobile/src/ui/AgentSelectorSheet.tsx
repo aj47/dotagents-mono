@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
-import { createButtonAccessibilityLabel } from '../lib/accessibility';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient, Profile } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
@@ -194,7 +194,14 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchProfiles}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={fetchProfiles}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Retry loading agents')}
+              accessibilityHint="Attempts to load the available agents again."
+              activeOpacity={0.7}
+            >
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -227,7 +234,14 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           />
         )}
 
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Close agent selector')}
+          accessibilityHint="Dismisses this sheet and returns to the current screen."
+          activeOpacity={0.7}
+        >
           <Text style={styles.closeButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -236,6 +250,13 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 }
 
 function createStyles(theme: Theme) {
+  const actionButtonTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.lg,
+    verticalPadding: spacing.sm,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     backdrop: {
       flex: 1,
@@ -330,8 +351,7 @@ function createStyles(theme: Theme) {
       marginBottom: spacing.sm,
     },
     retryButton: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
+      ...actionButtonTouchTarget,
     },
     retryButtonText: {
       color: theme.colors.primary,
@@ -383,8 +403,9 @@ function createStyles(theme: Theme) {
       fontWeight: '600',
     },
     closeButton: {
+      ...actionButtonTouchTarget,
+      width: '100%',
       alignItems: 'center',
-      paddingVertical: spacing.md,
       marginTop: spacing.md,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
