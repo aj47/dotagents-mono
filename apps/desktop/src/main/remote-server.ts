@@ -2754,7 +2754,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         }
 
         const updated = { ...existing, enabled: !existing.enabled }
-        loopService.saveLoop(updated)
+        const saved = loopService.saveLoop(updated)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task toggle" })
+        }
 
         if (updated.enabled) {
           loopService.startLoop(params.id)
