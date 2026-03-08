@@ -2959,3 +2959,38 @@
   - If users still need more post-import confidence, persist or surface richer import provenance (for example imported/skipped counts or conflict-summary breadcrumbs) alongside recent backups.
   - Consider a shared slot-label utility if future bundle surfaces keep needing the same slot-path-to-label mapping in multiple renderer files.
 - Next recommended issue work item: refresh open issues again and prefer a new source-confirmed reliability bug or trust UX slice; the best remaining `#57` work is deeper provenance, while `#58` should only continue if another path-level history mismatch is confirmed in source.
+
+##### Issue #57 — Backups now record originating bundle provenance and import outcome counts
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and intentionally stayed aligned with the previous recommendation instead of re-opening unrelated issues.
+  - Re-checked open repo issues and `#57` comments; the owner’s trust checklist still explicitly called for backup metadata plus imported/skipped counts in the final import result payload.
+  - This was the smallest high-value follow-up because it improves rollback confidence without widening the bundle flow into a larger refactor.
+- Investigation:
+  - Re-read issue `#57` and its comments, especially the follow-up request to include backup metadata and imported/skipped counts in the import result.
+  - Inspected `apps/desktop/src/main/bundle-service.ts` and confirmed pre-import backups only stored target-layer metadata while the final result payload exposed only `backupFilePath` plus per-item arrays, leaving the renderer to re-derive outcome counts and recent backups unable to show which import created them.
+  - Confirmed `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` still computed import totals entirely client-side, and `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` had no way to surface richer provenance beyond target layer + component counts.
+- Important assumptions:
+  - Assumption: persisting the originating bundle name and final import counts inside backup metadata is acceptable even though the backup file is created before the import finishes.
+  - Why acceptable: the backup bundle is plain JSON under DotAgents control, updating manifest metadata after import completion does not change the captured snapshot contents, and it materially improves restore confidence.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the affected import dialog and backup-management UI are desktop-only surfaces today.
+- Changes implemented:
+  - Added a shared `ImportResultSummary` contract in `apps/desktop/src/main/bundle-service.ts` and extended `ImportBundleResult` with structured `summary` counts plus a structured `backup` object carrying persisted backup metadata.
+  - Extended backup metadata to include `sourceBundleName` and `importResultSummary`, seeded the source bundle name when creating the pre-import backup, and finalized the stored backup manifest metadata with the actual import summary after the import completes.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to consume backend-provided import summaries and structured backup payloads instead of relying only on renderer-side derivation and bare `backupFilePath`.
+  - Updated `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` so recent backups can now show provenance like `Before importing …` plus compact applied/skipped/failed outcome counts when that metadata exists.
+  - Extended `apps/desktop/src/main/bundle-service.test.ts`, `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js`, and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to cover the new result/metadata contract and UI wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+  - Blocked by environment: `pnpm --filter @dotagents/desktop run test -- --run src/main/bundle-service.test.ts` ❌ because local `node_modules` are missing in this worktree (`tsup: command not found`, `vitest` unavailable via package scripts/exec), so full package-script verification could not run without installing dependencies.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - If even more trust detail is needed, surface the stored provenance more prominently in the restore flow itself (for example in the restore dialog header or confirmation copy).
+  - Consider including conflict-plan expectations or selected-item counts in backup metadata later if users need to compare multiple experimental imports before restoring.
+  - Re-run the real desktop package test target once dependencies are restored in this worktree so the new `bundle-service.test.ts` assertions execute under Vitest instead of only via source + type checks.
+- Next recommended issue work item: refresh open issues again and prefer a non-`#57` desktop reliability/UX bug if one is now more actionable; otherwise the next honest `#57` step is restore-flow provenance polish rather than broader bundle refactoring.

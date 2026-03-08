@@ -46,14 +46,19 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
   assert.match(dialogSource, /const handleOpenBackupsFolderClick = async \(\) => \{/);
   assert.match(dialogSource, /tipcClient\.openBundleBackupFolder\(\)/);
   assert.match(dialogSource, /Open Backups Folder/);
+  assert.match(dialogSource, /interface ImportResultSummary \{/);
+  assert.match(dialogSource, /interface BundleImportBackupMetadata \{/);
+  assert.match(dialogSource, /backup: \{[\s\S]*filePath: string[\s\S]*metadata: BundleImportBackupMetadata[\s\S]*\} \| null/);
+  assert.match(dialogSource, /summary: ImportResultSummary/);
   assert.match(dialogSource, /const importTargetMessage = buildImportTargetOutcomeMessage\(preview\?\.importTarget, bundleSlotState\)/);
-  assert.match(dialogSource, /const backupMessage = result\.backupFilePath/);
+  assert.match(dialogSource, /const backupFilePath = result\.backup\?\.filePath \?\? result\.backupFilePath/);
+  assert.match(dialogSource, /const backupMessage = backupFilePath/);
   assert.match(dialogSource, /const revealBackupFile = async \(filePath: string\) => \{/);
   assert.match(dialogSource, /tipcClient\.revealBundleBackupFile\(\{ filePath \}\)/);
   assert.match(dialogSource, /const getRevealBackupToastOptions = \(filePath: string \| null\) => \{/);
   assert.match(dialogSource, /label: "Reveal Backup"/);
-  assert.match(dialogSource, /toast\.success\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
-  assert.match(dialogSource, /toast\.error\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
+  assert.match(dialogSource, /toast\.success\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(backupFilePath\)/);
+  assert.match(dialogSource, /toast\.error\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(backupFilePath\)/);
 });
 
 test('bundle import can explicitly target the active bundle slot through the existing preview and import pipeline', () => {

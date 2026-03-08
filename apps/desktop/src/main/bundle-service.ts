@@ -53,10 +53,22 @@ export interface BundlePublicMetadata {
 
 export type BundleBackupTargetLayer = "global" | "workspace" | "slot" | "custom"
 
+export interface ImportResultSummary {
+  imported: number
+  renamed: number
+  overwritten: number
+  skipped: number
+  failed: number
+  appliedCount: number
+  processedCount: number
+}
+
 export interface BundleBackupMetadata {
   kind: "pre-import-snapshot"
   targetLayer: BundleBackupTargetLayer
   targetAgentsDir?: string
+  sourceBundleName?: string
+  importResultSummary?: ImportResultSummary
 }
 
 export interface BundleManifest {
@@ -279,6 +291,11 @@ export interface ImportItemResult {
 export interface ImportBundleResult {
   success: boolean
   backupFilePath: string | null
+  backup: {
+    filePath: string
+    metadata: BundleBackupMetadata
+  } | null
+  summary: ImportResultSummary
   agentProfiles: ImportItemResult[]
   mcpServers: ImportItemResult[]
   skills: ImportItemResult[]
@@ -339,6 +356,52 @@ export interface ImportBackupSummary {
   modifiedAt: number
   backup?: BundleBackupMetadata
   components: BundleManifest["components"]
+}
+
+const IMPORT_RESULT_COMPONENT_KEYS = [
+  "agentProfiles",
+  "mcpServers",
+  "skills",
+  "repeatTasks",
+  "memories",
+] as const satisfies ReadonlyArray<keyof Pick<
+  ImportBundleResult,
+  "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
+>>
+
+function createEmptyImportResultSummary(): ImportResultSummary {
+  return {
+    imported: 0,
+    renamed: 0,
+    overwritten: 0,
+    skipped: 0,
+    failed: 0,
+    appliedCount: 0,
+    processedCount: 0,
+  }
+}
+
+function summarizeImportResult(result: Pick<
+  ImportBundleResult,
+  "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
+>): ImportResultSummary {
+  const summary = createEmptyImportResultSummary()
+
+  for (const key of IMPORT_RESULT_COMPONENT_KEYS) {
+    for (const item of result[key]) {
+      if (item.error) {
+        summary.failed += 1
+        continue
+      }
+
+      summary[item.action] += 1
+    }
+  }
+
+  summary.appliedCount = summary.imported + summary.renamed + summary.overwritten
+  summary.processedCount = summary.appliedCount + summary.skipped + summary.failed
+
+  return summary
 }
 
 function createPreviewConflict(
@@ -1149,12 +1212,18 @@ function getImportBackupTargetLayer(
 
 function createImportBackupMetadata(
   targetAgentsDir: string,
-  targetLayer?: BundleBackupTargetLayer
+  targetLayer?: BundleBackupTargetLayer,
+  options?: {
+    sourceBundleName?: string
+    importResultSummary?: ImportResultSummary
+  }
 ): BundleBackupMetadata {
   return {
     kind: "pre-import-snapshot",
     targetLayer: getImportBackupTargetLayer(targetAgentsDir, targetLayer),
     targetAgentsDir: path.resolve(targetAgentsDir),
+    ...(isNonEmptyString(options?.sourceBundleName) ? { sourceBundleName: options?.sourceBundleName.trim() } : {}),
+    ...(options?.importResultSummary ? { importResultSummary: options.importResultSummary } : {}),
   }
 }
 
@@ -1220,6 +1289,7 @@ function pruneImportBackups(backupDir: string, maxBackups: number): void {
 async function createPreImportBackup(
   targetAgentsDir: string,
   targetLayer: BundleBackupTargetLayer | undefined,
+  sourceBundleName: string | undefined,
   options?: ImportOptions["backup"],
 ): Promise<string> {
   const timestamp = formatImportBackupTimestamp(new Date())
@@ -1230,7 +1300,9 @@ async function createPreImportBackup(
   const bundle = await exportBundle(targetAgentsDir, {
     name: `Backup ${timestamp}`,
     description: "Automatic pre-import backup created by DotAgents before bundle import.",
-    backupMetadata: createImportBackupMetadata(targetAgentsDir, targetLayer),
+    backupMetadata: createImportBackupMetadata(targetAgentsDir, targetLayer, {
+      sourceBundleName,
+    }),
     components: {
       agentProfiles: true,
       mcpServers: true,
@@ -1251,6 +1323,29 @@ async function createPreImportBackup(
   })
 
   return backupFilePath
+}
+
+function updatePreImportBackupMetadata(
+  backupFilePath: string,
+  backupMetadata: BundleBackupMetadata,
+): void {
+  try {
+    const backupBundle = previewBundle(backupFilePath)
+    if (!backupBundle) {
+      logApp("[bundle-service] Failed to load pre-import backup for metadata update", {
+        backupFilePath,
+      })
+      return
+    }
+
+    backupBundle.manifest.backup = backupMetadata
+    fs.writeFileSync(backupFilePath, JSON.stringify(backupBundle, null, 2), "utf-8")
+  } catch (error) {
+    logApp("[bundle-service] Failed to persist pre-import backup metadata", {
+      backupFilePath,
+      error,
+    })
+  }
 }
 
 export async function exportBundleToFile(
@@ -1370,11 +1465,27 @@ function isBundleBackupTargetLayer(value: unknown): value is BundleBackupTargetL
   return value === "global" || value === "workspace" || value === "slot" || value === "custom"
 }
 
+function isImportResultSummary(value: unknown): value is ImportResultSummary {
+  if (!isRecordObject(value)) return false
+  const countKeys: Array<keyof ImportResultSummary> = [
+    "imported",
+    "renamed",
+    "overwritten",
+    "skipped",
+    "failed",
+    "appliedCount",
+    "processedCount",
+  ]
+  return countKeys.every((key) => typeof value[key] === "number" && Number.isFinite(value[key]))
+}
+
 function isBundleBackupMetadata(value: unknown): value is BundleBackupMetadata {
   if (!isRecordObject(value)) return false
   if (value.kind !== "pre-import-snapshot") return false
   if (!isBundleBackupTargetLayer(value.targetLayer)) return false
   return isOptionalString(value.targetAgentsDir)
+    && isOptionalString(value.sourceBundleName)
+    && (value.importResultSummary === undefined || isImportResultSummary(value.importResultSummary))
 }
 
 function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionType {
@@ -1771,6 +1882,8 @@ export async function importBundle(
   const result: ImportBundleResult = {
     success: false,
     backupFilePath: null,
+    backup: null,
+    summary: createEmptyImportResultSummary(),
     agentProfiles: [],
     mcpServers: [],
     skills: [],
@@ -1802,9 +1915,21 @@ export async function importBundle(
   const selectedSkillIds = createImportSelectionSet(selectedItems.skillIds)
   const selectedRepeatTaskIds = createImportSelectionSet(selectedItems.repeatTaskIds)
   const selectedMemoryIds = createImportSelectionSet(selectedItems.memoryIds)
+  const initialBackupMetadata = createImportBackupMetadata(targetAgentsDir, options.targetLayer, {
+    sourceBundleName: bundle.manifest.name,
+  })
 
   try {
-    result.backupFilePath = await createPreImportBackup(targetAgentsDir, options.targetLayer, options.backup)
+    result.backupFilePath = await createPreImportBackup(
+      targetAgentsDir,
+      options.targetLayer,
+      bundle.manifest.name,
+      options.backup,
+    )
+    result.backup = {
+      filePath: result.backupFilePath,
+      metadata: initialBackupMetadata,
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     result.errors.push(`Pre-import backup failed: ${errorMessage}`)
@@ -2218,16 +2343,33 @@ export async function importBundle(
   }
 
   result.success = result.errors.length === 0
+  result.summary = summarizeImportResult(result)
+
+  if (result.backupFilePath) {
+    const finalizedBackupMetadata = createImportBackupMetadata(targetAgentsDir, options.targetLayer, {
+      sourceBundleName: bundle.manifest.name,
+      importResultSummary: result.summary,
+    })
+    result.backup = {
+      filePath: result.backupFilePath,
+      metadata: finalizedBackupMetadata,
+    }
+    updatePreImportBackupMetadata(result.backupFilePath, finalizedBackupMetadata)
+  }
 
   logApp("[bundle-service] Import completed", {
     success: result.success,
     backupFilePath: result.backupFilePath,
+    backupSourceBundleName: result.backup?.metadata.sourceBundleName,
     profiles: result.agentProfiles.length,
     mcpServers: result.mcpServers.length,
     skills: result.skills.length,
     repeatTasks: result.repeatTasks.length,
     memories: result.memories.length,
     errors: result.errors.length,
+    appliedCount: result.summary.appliedCount,
+    skippedCount: result.summary.skipped,
+    failedCount: result.summary.failed,
   })
 
   return result

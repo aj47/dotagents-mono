@@ -153,9 +153,32 @@ interface ImportItemResult {
   newId?: string
 }
 
+interface ImportResultSummary {
+  imported: number
+  renamed: number
+  overwritten: number
+  skipped: number
+  failed: number
+  appliedCount: number
+  processedCount: number
+}
+
+interface BundleImportBackupMetadata {
+  kind: "pre-import-snapshot"
+  targetLayer: "global" | "workspace" | "slot" | "custom"
+  targetAgentsDir?: string
+  sourceBundleName?: string
+  importResultSummary?: ImportResultSummary
+}
+
 interface BundleImportResult {
   success: boolean
   backupFilePath: string | null
+  backup: {
+    filePath: string
+    metadata: BundleImportBackupMetadata
+  } | null
+  summary: ImportResultSummary
   agentProfiles: ImportItemResult[]
   mcpServers: ImportItemResult[]
   skills: ImportItemResult[]
@@ -619,26 +642,8 @@ function summarizeImportResult(result: BundleImportResult): {
   outcomeLabel: string
   detailSummary: string
 } {
-  const counts = {
-    imported: 0,
-    renamed: 0,
-    overwritten: 0,
-    skipped: 0,
-    failed: 0,
-  }
-
-  for (const key of COMPONENT_KEYS) {
-    for (const item of result[key]) {
-      if (item.error) {
-        counts.failed += 1
-        continue
-      }
-
-      counts[item.action] += 1
-    }
-  }
-
-  const appliedCount = counts.imported + counts.renamed + counts.overwritten
+  const counts = result.summary
+  const appliedCount = counts.appliedCount
   const detailSummary = [
     counts.imported > 0 ? formatCount("imported item", counts.imported) : null,
     counts.renamed > 0 ? formatCount("renamed item", counts.renamed) : null,
@@ -867,8 +872,9 @@ export function BundleImportDialog({
         conflictStrategyOverrides,
       }) as BundleImportResult
       const importTargetMessage = buildImportTargetOutcomeMessage(preview?.importTarget, bundleSlotState)
-      const backupMessage = result.backupFilePath
-        ? ` Pre-import backup: ${result.backupFilePath}`
+      const backupFilePath = result.backup?.filePath ?? result.backupFilePath
+      const backupMessage = backupFilePath
+        ? ` Pre-import backup: ${backupFilePath}`
         : ""
       const sourceMessage = buildSourceOutcomeMessage(sourceLabel, sourceUrl)
       const importSummary = summarizeImportResult(result)
@@ -879,7 +885,7 @@ export function BundleImportDialog({
           : ""
         toast.success(
           `Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${importTargetMessage}${backupMessage}${sourceMessage}`,
-          getRevealBackupToastOptions(result.backupFilePath)
+          getRevealBackupToastOptions(backupFilePath)
         )
         if (importedMcpServersRequiringConfiguration.length > 0) {
           toast.warning(
@@ -900,7 +906,7 @@ export function BundleImportDialog({
           : ""
         toast.error(
           `${result.errors.join(", ") || "Import failed"}.${detailMessage}${importTargetMessage}${backupMessage}${sourceMessage}`,
-          getRevealBackupToastOptions(result.backupFilePath)
+          getRevealBackupToastOptions(backupFilePath)
         )
       }
     } catch (error) {

@@ -1240,6 +1240,22 @@ describe("bundle-service", () => {
 
       expect(result.success).toBe(true)
       expect(result.backupFilePath).toBeTruthy()
+      expect(result.backup).toMatchObject({
+        filePath: result.backupFilePath,
+        metadata: {
+          kind: "pre-import-snapshot",
+          sourceBundleName: "Import Test",
+        },
+      })
+      expect(result.summary).toEqual({
+        imported: 4,
+        renamed: 0,
+        overwritten: 0,
+        skipped: 0,
+        failed: 0,
+        appliedCount: 4,
+        processedCount: 4,
+      })
       expect(result.agentProfiles[0].action).toBe("imported")
       expect(result.skills[0].action).toBe("imported")
       expect(result.repeatTasks[0].action).toBe("imported")
@@ -1340,6 +1356,11 @@ describe("bundle-service", () => {
         fs.readFileSync(result.backupFilePath!, "utf-8"),
       ) as DotAgentsBundle
 
+      expect(backupBundle.manifest.backup).toMatchObject({
+        kind: "pre-import-snapshot",
+        sourceBundleName: "Import Test",
+        importResultSummary: result.summary,
+      })
       expect(backupBundle.agentProfiles.map((profile) => profile.id)).toEqual(["pre-import-agent"])
       expect(backupBundle.skills.map((skill) => skill.id)).toEqual(["pre-import-skill"])
       expect(backupBundle.repeatTasks.map((task) => task.id)).toEqual(["pre-import-task"])

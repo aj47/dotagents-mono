@@ -36,6 +36,16 @@ interface RecentBackup {
     kind: "pre-import-snapshot"
     targetLayer: "global" | "workspace" | "slot" | "custom"
     targetAgentsDir?: string
+    sourceBundleName?: string
+    importResultSummary?: {
+      imported: number
+      renamed: number
+      overwritten: number
+      skipped: number
+      failed: number
+      appliedCount: number
+      processedCount: number
+    }
   }
   components: {
     agentProfiles: number
@@ -117,6 +127,35 @@ function formatBackupTargetLabel(
     default:
       return "Unknown target"
   }
+}
+
+function formatBackupImportResultSummary(
+  summary?: NonNullable<RecentBackup["backup"]>["importResultSummary"],
+): string | null {
+  if (!summary) return null
+
+  const parts = [
+    summary.appliedCount > 0 ? `${summary.appliedCount} applied` : null,
+    summary.skipped > 0 ? `${summary.skipped} skipped` : null,
+    summary.failed > 0 ? `${summary.failed} failed` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0
+    ? parts.join(" · ")
+    : summary.processedCount > 0
+      ? `${summary.processedCount} checked`
+      : null
+}
+
+function formatBackupImportProvenance(backup: RecentBackup["backup"]): string | null {
+  if (!backup?.sourceBundleName && !backup?.importResultSummary) return null
+
+  const summaryLabel = formatBackupImportResultSummary(backup?.importResultSummary)
+  const sourceLabel = backup?.sourceBundleName
+    ? `Before importing ${backup.sourceBundleName}`
+    : "Pre-import snapshot"
+
+  return summaryLabel ? `${sourceLabel} · ${summaryLabel}` : sourceLabel
 }
 
 export function Component() {
@@ -379,6 +418,11 @@ export function Component() {
                     </p>
                     {backup.manifestDescription && (
                       <p className="truncate text-xs text-muted-foreground/80">{backup.manifestDescription}</p>
+                    )}
+                    {formatBackupImportProvenance(backup.backup) && (
+                      <p className="truncate text-xs text-muted-foreground/80">
+                        {formatBackupImportProvenance(backup.backup)}
+                      </p>
                     )}
                     <p
                       className="truncate font-mono text-[11px] text-muted-foreground/70"
