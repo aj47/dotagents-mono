@@ -17,19 +17,21 @@ assert.ok(headlessEnd > headlessStart, 'expected non-headless startup to follow 
 const headlessSection = source.slice(headlessStart, headlessEnd)
 
 test('headless graceful shutdown stops active agent runtime work before service shutdown', () => {
-  assert.match(headlessSection, /\{ label: "agent runtime shutdown", run: \(\) => stopAgentRuntimeForShutdown\(\) \},/)
+  assert.match(source, /function getShutdownCleanupTasks\(\): readonly ShutdownCleanupTask\[\] \{/)
+  assert.match(source, /\{ label: "agent runtime shutdown", run: \(\) => stopAgentRuntimeForShutdown\(\) \}/)
+  assert.match(source, /\{ label: "ACP service shutdown", run: \(\) => acpService\.shutdown\(\) \}/)
+  assert.match(source, /\{ label: "MCP service cleanup", run: \(\) => mcpService\.cleanup\(\) \}/)
+  assert.match(source, /\{ label: "remote server shutdown", run: \(\) => stopRemoteServer\(\) \}/)
 })
 
 test('headless graceful shutdown awaits agent runtime, ACP, MCP, and remote server cleanup together under one timeout', () => {
-  assert.doesNotMatch(headlessSection, /await acpService\.shutdown\(\)\.catch\(/)
-  assert.match(headlessSection, /const cleanupTasks = \[\s*\{ label: "agent runtime shutdown", run: \(\) => stopAgentRuntimeForShutdown\(\) \},\s*\{ label: "ACP service shutdown", run: \(\) => acpService\.shutdown\(\) \},\s*\{ label: "MCP service cleanup", run: \(\) => mcpService\.cleanup\(\) \},\s*\{ label: "remote server shutdown", run: \(\) => stopRemoteServer\(\) \},\s*\] as const/)
-  assert.match(headlessSection, /const cleanupPromise = Promise\.all\(\s*cleanupTasks\.map\(async \(\{ label, run \}\) => \{/)
-  assert.match(headlessSection, /await Promise\.race\(\[\s*cleanupPromise,\s*new Promise<void>\(\(_, reject\) => \{/)
-  assert.match(headlessSection, /new Error\("Headless cleanup timeout"\)/)
+  assert.match(source, /import \{ runShutdownCleanup, type ShutdownCleanupTask \} from "\.\/shutdown-cleanup"/)
+  assert.match(headlessSection, /await runShutdownCleanup\(\{\s*tasks: getShutdownCleanupTasks\(\),\s*timeoutMs: CLEANUP_TIMEOUT_MS,\s*timeoutMessage: "Headless cleanup timeout",/)
 })
 
 test('headless graceful shutdown keeps per-service failures best-effort and still exits', () => {
   assert.match(headlessSection, /if \(isHeadlessShuttingDown\) return/)
-  assert.match(headlessSection, /console\.error\(`\[Headless\] Error during \$\{label\}:`, error\)/)
+  assert.match(headlessSection, /onTaskError: \(label, error\) => \{\s*console\.error\(`\[Headless\] Error during \$\{label\}:`, error\)/)
+  assert.match(headlessSection, /onTimeoutError: \(error\) => \{\s*logApp\("Error during headless cleanup:", error\)/)
   assert.match(headlessSection, /process\.exit\(exitCode\)/)
 })

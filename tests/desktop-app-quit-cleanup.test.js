@@ -22,19 +22,21 @@ test('desktop before-quit cleanup stops active agent runtime work before service
   assert.match(source, /agentSessionStateManager\.stopAllSessions\(\)/)
   assert.match(source, /llmRequestAbortManager\.abortAll\(\)/)
   assert.match(source, /await agentProcessManager\.killAllProcesses\(\)/)
-  assert.match(beforeQuitSection, /\{ label: "agent runtime shutdown", run: \(\) => stopAgentRuntimeForShutdown\(\) \},/)
+  assert.match(source, /function getShutdownCleanupTasks\(\): readonly ShutdownCleanupTask\[\] \{/)
+  assert.match(source, /\{ label: "agent runtime shutdown", run: \(\) => stopAgentRuntimeForShutdown\(\) \}/)
+  assert.match(source, /\{ label: "ACP service shutdown", run: \(\) => acpService\.shutdown\(\) \}/)
+  assert.match(source, /\{ label: "MCP service cleanup", run: \(\) => mcpService\.cleanup\(\) \}/)
+  assert.match(source, /\{ label: "remote server shutdown", run: \(\) => stopRemoteServer\(\) \}/)
 })
 
 test('desktop before-quit cleanup waits for agent runtime, ACP, MCP, and remote server shutdown together', () => {
-  assert.doesNotMatch(beforeQuitSection, /acpService\.shutdown\(\)\.catch\(/)
-  assert.match(beforeQuitSection, /const cleanupTasks = \[\s*\{ label: "agent runtime shutdown", run: \(\) => stopAgentRuntimeForShutdown\(\) \},\s*\{ label: "ACP service shutdown", run: \(\) => acpService\.shutdown\(\) \},\s*\{ label: "MCP service cleanup", run: \(\) => mcpService\.cleanup\(\) \},\s*\{ label: "remote server shutdown", run: \(\) => stopRemoteServer\(\) \},\s*\] as const/)
-  assert.match(beforeQuitSection, /const cleanupPromise = Promise\.all\(\s*cleanupTasks\.map\(async \(\{ label, run \}\) => \{/)
-  assert.match(beforeQuitSection, /await Promise\.race\(\[\s*cleanupPromise,\s*new Promise<void>\(\(_, reject\) => \{/)
-  assert.match(beforeQuitSection, /new Error\("App cleanup timeout"\)/)
+  assert.match(source, /import \{ runShutdownCleanup, type ShutdownCleanupTask \} from "\.\/shutdown-cleanup"/)
+  assert.match(beforeQuitSection, /await runShutdownCleanup\(\{\s*tasks: getShutdownCleanupTasks\(\),\s*timeoutMs: CLEANUP_TIMEOUT_MS,\s*timeoutMessage: "App cleanup timeout",/)
 })
 
 test('desktop before-quit cleanup keeps per-service failures best-effort and still proceeds to quit', () => {
   assert.match(beforeQuitSection, /if \(isCleaningUp\) \{\s*return\s*\}/)
-  assert.match(beforeQuitSection, /console\.error\(`\[App\] Error during \$\{label\}:`, error\)/)
+  assert.match(beforeQuitSection, /onTaskError: \(label, error\) => \{\s*console\.error\(`\[App\] Error during \$\{label\}:`, error\)/)
+  assert.match(beforeQuitSection, /onTimeoutError: \(error\) => \{\s*logApp\("Error during app cleanup on quit:", error\)/)
   assert.match(beforeQuitSection, /app\.quit\(\)/)
 })

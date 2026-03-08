@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop shared shutdown cleanup orchestration in `apps/desktop/src/main/index.ts`, with duplicated headless / `before-quit` cleanup flow inspected there, new shared helper added in `apps/desktop/src/main/shutdown-cleanup.ts`, existing shutdown guardrail tests updated in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, focused runtime coverage added in `tests/desktop-shutdown-cleanup-runtime.test.js`, and targeted verification run locally via `node --experimental-strip-types --test` plus `git diff --check`.
 - 2026-03-08: Mobile queued-message action-failure parity in `apps/mobile/src/ui/MessageQueuePanel.tsx`, with queue mutation return semantics rechecked in `apps/mobile/src/store/message-queue.ts`, Chat screen wiring cross-checked in `apps/mobile/src/screens/ChatScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/chat-message-queue-feedback.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop repeat-task explicit-restart scheduling reliability in `apps/desktop/src/main/tipc.ts`, with `loopService` stop/start semantics rechecked in `apps/desktop/src/main/loop-service.ts`, per-loop enable/save actions cross-checked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source guardrails extended in new `tests/desktop-loop-restart-guardrails.test.js` alongside existing `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop/headless quit-path agent-runtime cleanup in `apps/desktop/src/main/index.ts`, with quit and `--headless` shutdown sequencing reviewed in that file, agent-runtime/process/approval cleanup APIs cross-checked in `apps/desktop/src/main/state.ts` and `apps/desktop/src/main/emergency-stop.ts`, focused dependency-free source guardrails extended in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
@@ -94,6 +95,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop shared shutdown cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts` still needs live Electron / lifecycle-level validation once a runnable desktop target or fuller main-process harness is available, especially to confirm real `before-quit` re-entry, `SIGTERM` wiring, and slow collaborator teardown still behave predictably when the shared helper is exercised through the app’s actual quit paths rather than the isolated helper tests.
 - 2026-03-08: Desktop queued-message action-failure feedback in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` still needs live Electron validation once a runnable renderer target is available, especially to confirm compact-panel error banners stay readable, `Retry & Resume` plus inline error copy do not compete visually when the head item is failed, and preserved edit drafts feel trustworthy after a rejected save.
 - 2026-03-08: Mobile queued-message action-failure parity in `apps/mobile/src/ui/MessageQueuePanel.tsx` / `apps/mobile/src/store/message-queue.ts` still needs a dedicated pass, because mobile queue mutations also return booleans and appear to share the same silent-failure risk even though this iteration intentionally stayed desktop-scoped.
 - 2026-03-08: Desktop Memories edit dialog in `apps/desktop/src/renderer/src/pages/memories.tsx` still needs live Electron validation once a runnable renderer target is available, especially to confirm the dirty-draft warning cadence feels right on backdrop/Escape close, the inline save-failure guidance reads clearly above the notes/tags fields, and disabling no-op saves is unsurprising when a user reopens a memory without changes.
@@ -125,6 +127,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop headless and GUI quit cleanup now share one bounded cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts` plus one shared cleanup-task list in `apps/desktop/src/main/index.ts`, and the app now has real dependency-light runtime coverage for timeout and per-task best-effort behavior via `tests/desktop-shutdown-cleanup-runtime.test.js`, reducing the risk that `--headless` and `before-quit` drift apart or regress silently when future shutdown tasks change; tradeoff: this pass intentionally keeps the actual service list and quit-path wiring unchanged rather than broadening into a larger lifecycle refactor.
 - 2026-03-08: Desktop queued-message recovery UX in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now preserves edit drafts after failed saves, surfaces inline retryable error feedback for edit/remove/retry/clear/pause/resume/retry-and-resume actions, and treats false IPC queue-action results as real failures instead of silent success, so blocked queues no longer look like they accepted edits or destructive actions when nothing actually changed; tradeoff: this pass intentionally stayed scoped to the desktop IPC-backed queue panel rather than widening into the separate mobile queue UI in the same iteration.
 - 2026-03-08: Desktop Memories edit dialog in `apps/desktop/src/renderer/src/pages/memories.tsx` now treats false `updateMemory(...)` results as real failures, keeps save failures inline with preserved draft state plus `Retry save`, warns before dismissing dirty notes/tags edits, and disables no-op saves, so memory edits no longer look successfully saved when persistence actually failed or disappear on accidental dismiss; tradeoff: this pass intentionally stays scoped to desktop edit reliability rather than redesigning the broader memories page or mirroring the same draft-loss policy onto the separate mobile edit screen.
 - 2026-03-08: Mobile config loading/saving in `apps/mobile/src/store/config.ts` now sanitizes malformed persisted values instead of blindly spreading parsed AsyncStorage JSON, clamps persisted TTS rate/pitch values to the safe UI ranges, rewrites outdated-but-parseable config into a clean shape, and clears corrupt JSON after logging a warning, so bad local storage data no longer risks breaking settings/chat surfaces that expect booleans, strings, and numbers with valid ranges; tradeoff: this pass intentionally stays inside the shared mobile config store instead of widening into every AsyncStorage-backed mobile store in one go.
@@ -207,6 +210,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --experimental-strip-types --test tests/desktop-shutdown-cleanup-runtime.test.js tests/desktop-app-quit-cleanup.test.js tests/desktop-headless-shutdown-guardrails.test.js` after the desktop shared shutdown cleanup helper pass
+- 2026-03-08: `git diff --check` after the desktop shared shutdown cleanup helper pass
 - 2026-03-08: `node --test tests/desktop-message-queue-recovery.test.js` after the desktop queued-message action-failure feedback pass
 - 2026-03-08: `pnpm --filter @dotagents/desktop typecheck:web` after the desktop queued-message action-failure feedback pass *(blocked: this worktree is missing installed desktop dependencies / `node_modules`, so `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved)*
 - 2026-03-08: `git diff --check` after the desktop queued-message action-failure feedback pass
@@ -498,6 +503,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop shared shutdown cleanup now has dependency-light runtime coverage for timeout and per-task failure isolation, so the freshest adjacent follow-up is lifecycle-level validation of the real Electron quit paths (`before-quit`, `SIGTERM`, remote-server startup failure, and slow cleanup collaborators) once a runnable desktop target or fuller main-process harness is available.
 - Desktop queued-message recovery UX now has source-level action-failure guardrails, but live Electron validation is the freshest adjacent follow-up because the user value depends on the compact queue banner density, retry wording, and failed-head recovery hierarchy feeling trustworthy in the real UI, not just on false-result handling existing in source.
 - Mobile queued-message action-failure parity is now covered by source-level guardrails, but live Expo/native validation of the new inline retry banners and compact clear-state readability is the freshest adjacent follow-up once a runnable mobile target is convenient.
 - Desktop Memories now has source-level edit-save guardrails, but live Electron validation of the dirty-dismiss confirmation, inline failure hierarchy, and save-disabled behavior is the freshest adjacent UX follow-up once a runnable renderer target is available.
@@ -547,6 +553,39 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit/delete flows to confirm the discard warning, new single/bulk delete dialog cadence, partial-failure retry copy, and selection-preservation behavior feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the desktop overlay follow-up composer across session switching plus late success/failure/image-read completions to confirm stale drafts/errors no longer leak across focused sessions in the actual UI
+
+### 2026-03-08 — Desktop shared shutdown cleanup helper
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process shutdown orchestration in `apps/desktop/src/main/index.ts`
+  - new shared bounded cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts`
+  - updated shutdown guardrail coverage in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`
+  - new dependency-light runtime coverage in `tests/desktop-shutdown-cleanup-runtime.test.js`
+- Why it was chosen:
+  - the ledger still highlighted headless and `before-quit` shutdown behavior as a high-value reliability seam, but the current worktree only had duplicated inline cleanup logic and source-structure assertions for those paths
+  - investigation found a concrete maintainability risk: headless and GUI quit each carried the same timeout / best-effort orchestration inline, so any future cleanup change could easily land in one path and drift from the other
+  - extracting the shared orchestration into a pure helper created the smallest local path to stronger runtime verification without requiring a full Electron harness or a broader shutdown refactor
+- What was inspected:
+  - `apps/desktop/src/main/index.ts` to compare the `--headless` `gracefulShutdown(...)` flow and the GUI `before-quit` cleanup path
+  - existing source-level shutdown tests in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`
+  - adjacent emergency-stop reliability work in `apps/desktop/src/main/emergency-stop.ts` and `tests/desktop-emergency-stop-guardrails.test.js` before narrowing the iteration to the higher-leverage duplicated shutdown seam
+  - local Node runtime capability via `node -v` / `node --help`, confirming `--experimental-strip-types` was available for dependency-light TypeScript execution in tests
+- Improvement made:
+  - extracted the bounded timeout / best-effort cleanup orchestration into a reusable `runShutdownCleanup(...)` helper in `apps/desktop/src/main/shutdown-cleanup.ts`
+  - centralized the shared shutdown task list in `getShutdownCleanupTasks()` so headless shutdown and GUI quit now run the same collaborators in the same order instead of duplicating the list inline
+  - kept branch-specific logging and timeout messages (`Headless cleanup timeout` vs `App cleanup timeout`) at the call sites so operational context stays clear while the cleanup behavior stays consistent
+  - added real runtime tests that exercise the helper’s failure-isolation and timeout behavior without depending on Electron or installed desktop dependencies
+- Assumptions / tradeoffs / rationale:
+  - kept the actual cleanup participants unchanged (`agent runtime`, `ACP`, `MCP`, `remote server`) because the value of this pass was consistency plus testability, not changing shutdown scope
+  - chose a pure helper plus focused runtime tests instead of trying to import all of `index.ts` in a mocked Electron harness, which would have been more brittle and heavier in this dependency-light workspace
+  - accepted that real lifecycle integration behavior still needs a later pass once a runnable Electron target or fuller main-process harness is available
+- Tests / verification:
+  - `node --experimental-strip-types --test tests/desktop-shutdown-cleanup-runtime.test.js tests/desktop-app-quit-cleanup.test.js tests/desktop-headless-shutdown-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable desktop target or fuller main-process harness is available, validate actual `before-quit` re-entry, `SIGTERM` shutdown, remote-server startup-failure cleanup, and slow collaborator timeout behavior through the real app lifecycle
+  - if another shutdown-focused pass is warranted later, consider whether `emergencyStopAll()` or other cleanup-heavy paths should reuse the same bounded helper or just keep separate behavior-specific orchestration
 
 ### 2026-03-08 — Desktop repeat-task delete guardrails
 - Date:

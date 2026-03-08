@@ -39,6 +39,7 @@ import {
 } from "./cloudflare-tunnel"
 import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
+import { runShutdownCleanup, type ShutdownCleanupTask } from "./shutdown-cleanup"
 import {
   agentProcessManager,
   agentSessionStateManager,
@@ -65,6 +66,15 @@ async function stopAgentRuntimeForShutdown(): Promise<void> {
   llmRequestAbortManager.abortAll()
   // Also reap any globally tracked child processes to avoid hanging quit on legacy/orphan work.
   await agentProcessManager.killAllProcesses()
+}
+
+function getShutdownCleanupTasks(): readonly ShutdownCleanupTask[] {
+  return [
+    { label: "agent runtime shutdown", run: () => stopAgentRuntimeForShutdown() },
+    { label: "ACP service shutdown", run: () => acpService.shutdown() },
+    { label: "MCP service cleanup", run: () => mcpService.cleanup() },
+    { label: "remote server shutdown", run: () => stopRemoteServer() },
+  ] as const
 }
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
@@ -282,48 +292,17 @@ app.whenReady().then(async () => {
       console.log("\n[Headless] Shutting down...")
       loopService.stopAllLoops()
 
-      const cleanupTasks = [
-        { label: "agent runtime shutdown", run: () => stopAgentRuntimeForShutdown() },
-        { label: "ACP service shutdown", run: () => acpService.shutdown() },
-        { label: "MCP service cleanup", run: () => mcpService.cleanup() },
-        { label: "remote server shutdown", run: () => stopRemoteServer() },
-      ] as const
-
-      const cleanupPromise = Promise.all(
-        cleanupTasks.map(async ({ label, run }) => {
-          try {
-            await run()
-          } catch (error) {
-            console.error(`[Headless] Error during ${label}:`, error)
-          }
-        })
-      )
-
-      let timeoutId: ReturnType<typeof setTimeout> | undefined
-      try {
-        await Promise.race([
-          cleanupPromise,
-          new Promise<void>((_, reject) => {
-            const id = setTimeout(
-              () => reject(new Error("Headless cleanup timeout")),
-              CLEANUP_TIMEOUT_MS
-            )
-            timeoutId = id
-            // unref() ensures this timer won't keep the event loop alive
-            // if cleanup finishes quickly (only available in Node.js)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (id && typeof (id as any).unref === "function") {
-              (id as any).unref()
-            }
-          }),
-        ])
-      } catch (error) {
-        logApp("Error during headless cleanup:", error)
-      } finally {
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId)
-        }
-      }
+      await runShutdownCleanup({
+        tasks: getShutdownCleanupTasks(),
+        timeoutMs: CLEANUP_TIMEOUT_MS,
+        timeoutMessage: "Headless cleanup timeout",
+        onTaskError: (label, error) => {
+          console.error(`[Headless] Error during ${label}:`, error)
+        },
+        onTimeoutError: (error) => {
+          logApp("Error during headless cleanup:", error)
+        },
+      })
 
       process.exit(exitCode)
     }
@@ -659,49 +638,17 @@ app.whenReady().then(async () => {
 
     // Wait for long-lived child services to stop so quit does not leave behind
     // ACP child processes, active agent work, or a lingering local remote-server listener.
-    const cleanupTasks = [
-      { label: "agent runtime shutdown", run: () => stopAgentRuntimeForShutdown() },
-      { label: "ACP service shutdown", run: () => acpService.shutdown() },
-      { label: "MCP service cleanup", run: () => mcpService.cleanup() },
-      { label: "remote server shutdown", run: () => stopRemoteServer() },
-    ] as const
-
-    const cleanupPromise = Promise.all(
-      cleanupTasks.map(async ({ label, run }) => {
-        try {
-          await run()
-        } catch (error) {
-          console.error(`[App] Error during ${label}:`, error)
-        }
-      })
-    )
-
-    let timeoutId: ReturnType<typeof setTimeout> | undefined
-    try {
-      await Promise.race([
-        cleanupPromise,
-        new Promise<void>((_, reject) => {
-          const id = setTimeout(
-            () => reject(new Error("App cleanup timeout")),
-            CLEANUP_TIMEOUT_MS
-          )
-          timeoutId = id
-          // unref() ensures this timer won't keep the event loop alive
-          // if cleanup finishes quickly (only available in Node.js)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if (id && typeof (id as any).unref === "function") {
-            (id as any).unref()
-          }
-        }),
-      ])
-    } catch (error) {
-      logApp("Error during app cleanup on quit:", error)
-    } finally {
-      // Clear the timeout to avoid any lingering references
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId)
-      }
-    }
+    await runShutdownCleanup({
+      tasks: getShutdownCleanupTasks(),
+      timeoutMs: CLEANUP_TIMEOUT_MS,
+      timeoutMessage: "App cleanup timeout",
+      onTaskError: (label, error) => {
+        console.error(`[App] Error during ${label}:`, error)
+      },
+      onTimeoutError: (error) => {
+        logApp("Error during app cleanup on quit:", error)
+      },
+    })
 
     // Now actually quit the app
     app.quit()
