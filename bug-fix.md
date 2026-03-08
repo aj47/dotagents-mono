@@ -96,6 +96,9 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the visible overlay/tile stop buttons still routed rejected `tipcClient.stopAgentSession(...)` / fallback `tipcClient.emergencyStopAgent()` requests to `console.error(...)` only.
 - [x] 2026-03-08: Confirmed `AgentProgress` is mounted by both the floating panel overlay in `apps/desktop/src/renderer/src/pages/panel.tsx` and the sessions-page tile flow in `apps/desktop/src/renderer/src/pages/sessions.tsx`, so this silent stop-failure path affects primary desktop session controls rather than dead UI.
 - [x] 2026-03-08: Compared desktop `AgentProgress` stop failure handling against `apps/mobile/src/screens/ChatScreen.tsx`; mobile already surfaces kill-switch success/failure via `Alert.alert(...)` / `window.alert(...)`, so adding visible desktop failure feedback is consistent with existing product behavior.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/onboarding.tsx` and confirmed the visible onboarding `Install Exa` action saves `exa` into `mcpConfig` before calling `tipcClient.setMcpServerRuntimeEnabled(...)` / `restartMcpServer(...)`, but its `catch` path previously only called `console.error(...)`.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens` has no onboarding or Exa-install equivalent, so this onboarding recovery-state fix is desktop-only rather than a cross-platform parity change.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -201,6 +204,10 @@
   - `apps/desktop/src/renderer/src/components/agent-progress.tsx` renders visible `Stop agent execution` / `Stop agent` controls in both overlay and tile variants, but `handleKillSwitch()` still caught rejected `stopAgentSession(...)` / fallback `emergencyStopAgent()` requests with `console.error(...)` only.
   - Because that catch path showed no toast, banner, or dialog, a failed stop request in the floating panel or sessions-page tile could still look like “Stop did nothing” even though the user had clicked a destructive session-control action.
   - `AgentProgress` is used by both the primary panel overlay and desktop sessions tiles, so this is another active desktop control-surface bug rather than an edge-case or dead code path.
+- [x] **Desktop onboarding Exa install failures were silent/misleading after config save (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/onboarding.tsx` saves the `exa` MCP server into `mcpConfig` first, then separately enables/restarts the runtime via `tipcClient.setMcpServerRuntimeEnabled(...)` and `tipcClient.restartMcpServer(...)`.
+  - If the config save succeeds but runtime startup fails, the old `catch` block only logged `Failed to install Exa:` to the console, so first-time users saw no visible explanation and could even end up with an `Installed` state later because `exa` was now present in saved config.
+  - That makes the onboarding promise misleading on an active first-run flow: the app invites the user to install web search, but a partial failure could look like success or “nothing happened” instead of offering recovery guidance.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -302,6 +309,8 @@
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-processing-view.stop-session.test.tsx` to assert that the loading-state stop button opens the warning dialog, falls back to `emergencyStopAgent()`, and surfaces `Failed to stop agent. ...` feedback when that fallback rejects.
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so rejected overlay/tile stop requests now surface `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-progress.stop-session.test.ts` with source-level assertions that lock in the `sonner` import, shared action-error helper, and visible `Failed to stop agent. ...` toast path.
+- [x] Updated `apps/desktop/src/renderer/src/pages/onboarding.tsx` so the onboarding Exa installer now tracks visible inline failure state, preserves the `Installed` badge when the config save succeeded but runtime startup failed, and tells the user to retry from `Settings → MCP Tools` instead of failing silently.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/onboarding.exa-install.test.tsx` for the partial-failure path where Exa is saved into config but `setMcpServerRuntimeEnabled(...)` rejects.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -363,6 +372,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-progress.tsx` now imports `toast` from `sonner` and calls `toast.error(...)` from `handleKillSwitch()` when `stopAgentSession(...)` or the fallback `emergencyStopAgent()` rejects, so the overlay/tile stop action no longer fails silently.
 - [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `agent-progress.tsx` now contains the `toast.error(...)` stop-failure path and the new regression test locks in the expected `Failed to stop agent. ...` message contract.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the `AgentProgress` stop-feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/onboarding.tsx` now records `exaInstallError`, distinguishes the partial-success case where Exa was saved but could not be started, and renders visible inline retry guidance instead of console-only failure handling.
+- [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `onboarding.tsx` now contains the partial-failure recovery copy and the new `onboarding.exa-install.test.tsx` regression test locks in that contract.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the onboarding Exa install recovery fix and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -388,6 +400,7 @@
 - [x] Targeted automated verification for this floating-panel microphone error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this `AgentProcessingView` stop fallback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-processing-view.stop-session.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this `AgentProgress` stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this onboarding Exa install recovery fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether adjacent `ActiveAgentsSidebar` minimize/restore (`snooze` / `unsnooze`) failure paths should also surface visible feedback instead of console-only logging once this smaller stop-action fix is live-verified.
@@ -407,6 +420,7 @@
 - [ ] Whether any other desktop tabbed editors or dialogs still rely on uncontrolled `defaultValue` tab state even when some tabs are conditional on current draft/runtime state.
 - [ ] Whether the floating panel should eventually offer a richer microphone recovery affordance (for example a system-settings deep link or inline banner) instead of the current minimal visible error dialog once live Electron validation is available.
 - [ ] Whether the broader `AgentProgress` and `AgentProcessingView` stop surfaces should eventually share one small desktop helper for fallback stop semantics + user-visible error copy once live verification is available, or whether keeping the logic duplicated locally is preferable to avoid new abstractions.
+- [ ] Whether onboarding should eventually distinguish “configured in settings” from “runtime server currently running” more explicitly for MCP tools once live desktop validation is available, rather than relying on the new inline warning beside the `Installed` badge.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -453,6 +467,8 @@
 - Updating the confirmation copy is part of the minimal safe fix here because the fallback can affect more than one running session, so the dialog should no longer promise narrower stop semantics during that pre-session window.
 - The broader `AgentProgress` issue is the same high-signal bug on even more common desktop surfaces: the overlay and sessions-page tile both expose a visible destructive stop action, so a rejected stop request should not disappear into DevTools-only logging.
 - Reusing the same `toast.error(...)` pattern already adopted in nearby desktop stop/send flows is the smallest safe fix because it preserves the current confirmation dialog, stop semantics, and loading-state handling while finally making the failure visible.
+- The onboarding Exa issue is a first-run flow correctness bug: the UI promises “Install Exa” on a guided setup screen, but the implementation saves config before starting the runtime, so a startup failure could silently strand the user in a partial state.
+- Tracking that partial-success state explicitly is the smallest safe fix because it preserves the saved MCP configuration, avoids pretending nothing happened, and gives the user an actionable retry path without redesigning onboarding or MCP status management.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -478,6 +494,7 @@
 - Assumption: mapping `NotReadableError` / `TrackStartError` to a generic “microphone unavailable / another app may be using it” message is acceptable for this pass because that is a common Chromium/Electron failure mode, onboarding already distinguishes microphone setup failures at a similar level, and the fallback still preserves the raw error message for unexpected cases.
 - Assumption: using `emergencyStopAgent()` from `AgentProcessingView` before a session id exists is acceptable for this pass because there is no narrower pending-session cancel API, existing desktop pending-session stop flows already use the same fallback, and the dialog copy now warns users that this pre-start stop can affect all running sessions.
 - Assumption: using the existing desktop toast pattern for `AgentProgress` stop failures is acceptable because `sonner` is already mounted app-wide, nearby desktop stop flows already use visible failure feedback, and mobile already exposes comparable kill-switch success/failure state to the user.
+- Assumption: showing `Installed` together with an inline error after a partial Exa install is acceptable for this pass because the server really was added to saved config, while the new warning text makes the runtime startup failure and retry path explicit without inventing a new onboarding status model.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -512,3 +529,5 @@
 - After that, inspect whether any other desktop voice-entry surfaces outside `panel.tsx` still swallow `startRecording()` failures with console-only logging.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-processing-view.stop-session.test.tsx` and live-verify the early-loading desktop panel/text-input stop flow to confirm it no longer no-ops before progress appears.
 - After that, decide whether the equivalent `AgentProgress` fallback stop path should also gain the same explicit warning copy and visible error feedback for complete consistency.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` and live-verify onboarding by forcing an Exa runtime-start failure so the new inline recovery message appears instead of a silent/misleading install result.
+- After that, inspect adjacent onboarding setup actions for any remaining console-only failures, especially other install/setup steps that can partially succeed before a later runtime/API call rejects.
