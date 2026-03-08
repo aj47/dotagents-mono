@@ -127,6 +127,12 @@ test('LoopEditScreen wraps the enabled switch in a named mobile-sized control', 
   assert.match(loopEditSource, /accessibilityState=\{\{ checked: formData\.enabled \}\}/);
 });
 
+test('LoopEditScreen explains what the Enabled switch controls in sub-agent loops', () => {
+  assert.match(loopEditSource, /<Text style=\{styles\.switchLabel\}>Enabled<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Pause or resume this loop&apos;s schedule without deleting it<\/Text>/);
+  assert.match(loopEditSource, /accessibilityHint="Pauses or resumes this loop&apos;s schedule without deleting it\."/);
+  assert.match(loopEditSource, /switchHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
 test('LoopEditScreen gives the primary save action explicit mobile button semantics', () => {
   assert.match(loopEditSource, /const trimmedName = formData\.name\.trim\(\);/);
   assert.match(loopEditSource, /const trimmedPrompt = formData\.prompt\.trim\(\);/);

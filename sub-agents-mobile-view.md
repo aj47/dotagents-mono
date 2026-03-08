@@ -1633,3 +1633,43 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the `Enabled` row now clearly reads as delegation / ACP availability rather than a vague global state.
   - After live validation returns, compare the updated `Enabled` and `Auto Spawn` rows to confirm the two switches now read as distinct concepts on mobile.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 38: explain that disabling a loop pauses scheduling without deleting it
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` now had a mobile-sized wrapped `Enabled` switch, but the row still only showed the one-word label plus the control.
+  - On mobile, that left `Enabled` ambiguous in the loop edit flow because it did not say whether the toggle paused execution, hid the loop, or deleted future scheduling.
+- Issue selected:
+  - The `Enabled` toggle in `LoopEditScreen` lacked visible scope, weakening state clarity in a dense mobile form.
+- Decision:
+  - Keep the existing row order, switch treatment, and helper patterns already used elsewhere in sub-agent editing.
+  - Do not redesign the loop edit form while live validation is blocked.
+  - Make the smallest local fix in `LoopEditScreen`: add one helper line and align the switch accessibility hint with that same pause/resume explanation.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - add helper copy under `Enabled`: `Pause or resume this loop's schedule without deleting it`
+    - expand the `Enabled` switch accessibility hint so it matches the visible explanation
+    - add a local `switchHelperText` style matching the recent agent-edit helper treatment
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new helper and switch hint.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new loop `Enabled` helper still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - If live inspection later shows the helper competes too much with the nearby interval preview or `Agent Profile` helper text, it may need tighter wording — but only with visual evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the `Enabled` row now reads as schedule pause/resume rather than an ambiguous global state.
+  - After live validation returns, compare the updated loop `Enabled` row against the interval preview and profile helpers to confirm the section still scans cleanly on mobile.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

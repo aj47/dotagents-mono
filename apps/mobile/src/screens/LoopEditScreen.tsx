@@ -360,13 +360,14 @@ export default function LoopEditScreen({ navigation, route }: any) {
       <View style={styles.switchRow}>
         <View style={styles.switchLabelGroup}>
           <Text style={styles.switchLabel}>Enabled</Text>
+          <Text style={styles.switchHelperText}>Pause or resume this loop&apos;s schedule without deleting it</Text>
         </View>
         <TouchableOpacity
           style={styles.switchButton}
           onPress={() => updateField('enabled', !formData.enabled)}
           accessibilityRole="switch"
           accessibilityLabel={createSwitchAccessibilityLabel('Loop enabled')}
-          accessibilityHint="Turns this loop schedule on or off."
+          accessibilityHint="Pauses or resumes this loop&apos;s schedule without deleting it."
           accessibilityState={{ checked: formData.enabled }}
           activeOpacity={0.7}
         >
@@ -483,6 +484,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     switchLabelGroup: { flex: 1, minWidth: 0 },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
+    switchHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
     switchButton: {
       ...switchTouchTarget,
       borderRadius: radius.full,
