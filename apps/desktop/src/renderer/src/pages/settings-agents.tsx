@@ -463,7 +463,7 @@ export function SettingsAgents() {
 
   function renderAgentList() {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
+      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))] gap-3 pb-12">
         {agents.map(agent => (
           <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
             <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none">

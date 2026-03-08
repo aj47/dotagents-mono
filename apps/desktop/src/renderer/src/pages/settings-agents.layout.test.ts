@@ -31,4 +31,13 @@ describe("settings agents page layout", () => {
     expect(badgeMatches).toHaveLength(3)
     expect(settingsAgentsSource).toContain('className="h-6 shrink-0 px-2 text-[11px]"')
   })
+
+  it("sizes agent cards from the real content column instead of viewport breakpoints", () => {
+    expect(settingsAgentsSource).toContain(
+      'className="grid [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))] gap-3 pb-12"',
+    )
+    expect(settingsAgentsSource).not.toContain(
+      'className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12"',
+    )
+  })
 })

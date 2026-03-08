@@ -1,5 +1,48 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 43: Desktop Settings → Agents card grid over-compresses under real settings-column constraints
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-agents.tsx` (`renderAgentList()` card grid)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the recently touched `settings-agents` capabilities headers and bundle dialogs and stayed on a fresh, still-visible part of the same screen: the agent management card grid itself.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `apps/mobile/README.md`, and renderer `AGENTS.md` to stay aligned with the repo’s desktop/mobile inspection guidance
+  - confirmed a live Electron renderer was available via CDP on `:9333`, then used `agent-browser --cdp 9333` instead of plain browser inspection so the real mounted desktop UI could be measured
+  - inspected the live `http://localhost:5173/settings/agents` surface around `800×670`, then stress-tested it with simulated `125%` zoom to reflect tighter desktop settings-column conditions
+  - cross-checked the source for the list container in `settings-agents.tsx` to confirm the live behavior matched the current breakpoint-driven grid contract
+  - cross-checked mobile and found no direct equivalent card grid in `apps/mobile/src/`; this issue is specific to the desktop settings management view
+
+#### Findings
+
+- Before the fix, the Settings → Agents list had one concrete desktop layout issue with clear user impact:
+  - the card list used viewport breakpoints (`md:grid-cols-3` through `2xl:grid-cols-6`) even though the actual content column is substantially narrower once the sessions/sidebar chrome is present
+  - in live Electron inspection at `800×670` with simulated `125%` zoom, the grid still forced three columns and compressed each agent card to roughly `126px` wide
+  - that made the management cards feel overly dense for the amount of content they carry: title, two-line description, multiple badges, and edit/delete actions all had to compete inside a too-narrow card
+
+#### Changes made
+
+- Hardened the agent list in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` with a small, local layout fix:
+  - replaced the viewport breakpoint grid with an auto-fit/minmax grid so card count now responds to the real content-column width instead of the full window width
+  - kept the rest of the card design intact; the change only adjusts how many cards are allowed per row
+- Extended `apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts` with focused source-contract coverage for the new container-aware grid rule.
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `repeat(auto-fit,minmax(15rem,1fr))` grid class is present in `settings-agents.tsx`, the old breakpoint grid string is gone, and the new regression test exists
+- Live Electron DOM verification with `agent-browser --cdp 9333` at `800×670` + simulated `125%` zoom:
+  - before the prototype, the live grid measured about `402px` wide and still produced three columns of roughly `126px` cards
+  - after applying the exact auto-fit/minmax rule in the mounted DOM, the same stressed layout dropped to a single readable column with cards at about `390px` width, restoring space for the title, description, badges, and actions
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-agents.tsx apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the running Electron/Vite session is not guaranteed to be serving this checkout’s edited bundle, so I verified the source directly and paired it with a live DOM prototype of the exact grid rule rather than claiming a literal rebuilt post-edit check.
+- This chunk is desktop-only: mobile agent management uses different list/detail screens and does not share this desktop card-grid implementation.
+- Tradeoff/rationale: under tighter widths and larger text, the list may now prefer fewer columns (including a single column) sooner than before, but that is a deliberate readability tradeoff and is materially better than squeezing management cards into ~`126px` columns.
+- Best next UI audit chunk after this one: stay in `settings-agents.tsx` for the create/edit form’s quick-setup preset row and avatar/actions area under zoom, or move to another fresh desktop/mobile surface once a renderer session bound to this worktree is available.
+
 ### 2026-03-08 — Chunk 42: Desktop bundle export dialogs hide primary actions below the fold
 
 - Area selected:
