@@ -427,3 +427,43 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
 - Remaining opportunities:
   - once this worktree can launch directly, capture a true after-state screenshot of the settings rail and confirm the selected child treatment still feels balanced in both light and dark themes
   - avoid more settings-rail churn unless live screenshots still show navigation clarity issues there; the next more likely settings candidate is a content-pane density or hierarchy issue in `Settings > General`, not more sidebar chrome
+
+### Iteration 2026-03-08 / 12
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and current-worktree launch blocker documented
+- Screen / area reviewed: desktop `Settings > General` content pane, specifically the collapsed section headers (`Agent Settings`, `General`, `Remote Server`, `Cloudflare Tunnel`, and neighboring groups)
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5174/settings` via raw CDP on `REMOTE_DEBUGGING_PORT=9444`
+  - the running Electron/Vite instance belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace, because this worktree still lacks linked local packages needed to launch the desktop app directly
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-12-settings-general.png`
+  - live DOM-backed inspection at a `900x670` renderer size showed the collapsed section headers rendering as tiny inline text rows inside the content pane: `Agent Settings` measured about `120x20px`, `General` about `72x20px`, and `Remote Server` about `120x20px`
+  - because those headers were only text-plus-chevron with no full-width row treatment, they read more like lightweight links than expandable settings groups, despite controlling large hidden settings sections below them
+- Issues found:
+  - the settings page used weak disclosure affordances: collapsed groups looked too much like plain text navigation instead of tappable/expandable containers
+  - the `20px`-tall headers undersold both clickability and hierarchy, making the long `Settings > General` page harder to scan with confidence
+- Assumptions:
+  - the desktop renderer benefits most from a clearer disclosure row here because `settings-general.tsx` stacks many collapsed groups in one scrollable pane
+  - mobile does not need the same change: `apps/mobile/src/screens/SettingsScreen.tsx` already uses a bordered `CollapsibleSection` pattern with full-width headers and right-aligned chevrons, so this desktop pass closes a parity gap rather than introducing a new mobile requirement
+- Design rationale:
+  - make disclosure affordances explicit before adding more descriptive copy or reorganizing the whole page
+  - increase header hit area and visual structure so each settings group reads as a calm, expandable card row instead of plain text chrome
+  - keep the change local to the shared desktop `ControlGroup` component so the improved hierarchy benefits the settings surfaces that already depend on it without inventing a one-off page-specific pattern
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/ui/control.tsx` so collapsible `ControlGroup` headers render as full-width bordered disclosure rows with clearer padding, right-aligned chevrons, and `aria-expanded` / `aria-controls` wiring
+  - when expanded, collapsible groups now keep their content and end description inside the same bordered container so the header feels connected to the controls it reveals
+  - updated `apps/desktop/src/renderer/src/components/ui/control.test.tsx` with component-level expectations for the new disclosure-row structure
+  - added `tests/control-group-layout-source.test.js` so this worktree can verify the regression without requiring a local dependency install
+- Verification:
+  - live before-state screenshot + DOM measurements via raw CDP against the main `http://localhost:5174/settings` renderer target on port `9444`
+  - targeted source-level regression passed in this worktree: `node --test tests/control-group-layout-source.test.js`
+  - syntax/transpile sanity check passed using the sibling worktree's installed `typescript` via `transpileModule` for `apps/desktop/src/renderer/src/components/ui/control.tsx` and `apps/desktop/src/renderer/src/components/ui/control.test.tsx`
+  - attempted targeted Vitest run: `NODE_PATH=../streaming-lag-loop/node_modules:../streaming-lag-loop/apps/desktop/node_modules PATH=../streaming-lag-loop/node_modules/.bin:../streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/ui/control.test.tsx` → blocked because this worktree still lacks local package links, so Vite could not resolve `react` through `apps/desktop/tsconfig.web.json`
+  - live after-state approximation by applying an in-memory DOM patch mirroring the implemented disclosure-row treatment, then capturing `tmp/visible-ui-after-2026-03-08-12-settings-general.png`; the first three sampled headers grew from roughly `120x20`, `72x20`, and `120x20` to full-width rows of about `657x40px`
+  - `git diff --check`
+- After-state observation:
+  - `tmp/visible-ui-after-2026-03-08-12-settings-general.png`
+  - the DOM-simulated settings page reads much more confidently: each collapsed group now looks like an intentional disclosure row with enough height and width to feel clickable before hover, and the right-aligned chevron helps the page scan like a list of expandable sections rather than a stack of plain text labels
+  - expected visible effect once this worktree can launch directly: users should be able to distinguish section boundaries and discover expand/collapse behavior faster without the `Settings > General` pane feeling heavier or noisier
+- Remaining opportunities:
+  - once this worktree can launch directly, capture a true after-state screenshot of `Settings > General` and confirm the new disclosure rows still feel calm in both light and dark themes
+  - if the page still feels dense after this, the next likely target is the amount of helper text and end-description copy visible around expanded groups rather than more header chrome

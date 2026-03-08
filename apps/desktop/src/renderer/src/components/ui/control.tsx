@@ -1,5 +1,5 @@
 import { cn } from "@renderer/lib/utils"
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { ChevronDown, ChevronRight, Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
 
@@ -80,38 +80,63 @@ export const ControlGroup = ({
   defaultCollapsed?: boolean
 }) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const contentId = useId()
+  const showContent = !collapsible || !collapsed
 
   return (
     <div className={className}>
-      {title && (
-        collapsible ? (
+      {title && collapsible ? (
+        <div className="overflow-hidden rounded-lg border bg-card/40">
           <button
             type="button"
-            className="flex items-center gap-1.5 mb-3 group cursor-pointer"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            className={cn(
+              "group flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              showContent ? "bg-muted/30" : "hover:bg-accent/30",
             )}
-            <span className="text-sm font-semibold">{title}</span>
+            onClick={() => setCollapsed(!collapsed)}
+            aria-expanded={showContent}
+            aria-controls={contentId}
+          >
+            <span className="min-w-0 text-sm font-semibold leading-5">{title}</span>
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+            )}
           </button>
-        ) : (
-          <div className="mb-3">
-            <span className="text-sm font-semibold">{title}</span>
-          </div>
-        )
-      )}
-      {(!collapsible || !collapsed) && (
-        <>
-          <div className="divide-y rounded-lg border">{children}</div>
-          {endDescription && (
-            <div className="mt-2 text-xs text-muted-foreground sm:flex sm:justify-end sm:text-right">
-              <div className="w-full break-words whitespace-normal sm:max-w-[70%]">
-                {endDescription}
+          {showContent && (
+            <>
+              <div id={contentId} className="divide-y border-t bg-background/80">
+                {children}
               </div>
+              {endDescription && (
+                <div className="border-t bg-muted/20 px-3 py-2 text-xs text-muted-foreground sm:flex sm:justify-end sm:text-right">
+                  <div className="w-full break-words whitespace-normal sm:max-w-[70%]">
+                    {endDescription}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {title && (
+            <div className="mb-3">
+              <span className="text-sm font-semibold">{title}</span>
             </div>
+          )}
+          {showContent && (
+            <>
+              <div className="divide-y rounded-lg border">{children}</div>
+              {endDescription && (
+                <div className="mt-2 text-xs text-muted-foreground sm:flex sm:justify-end sm:text-right">
+                  <div className="w-full break-words whitespace-normal sm:max-w-[70%]">
+                    {endDescription}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
