@@ -97,9 +97,11 @@ function MemoryCard({
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-sm truncate">{memory.title}</h3>
-            <Badge className={cn("text-[10px] px-1.5 py-0", importanceColors[memory.importance])}>
+          <div className="mb-1 flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+            <h3 className="min-w-0 flex-1 text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">
+              {memory.title}
+            </h3>
+            <Badge className={cn("shrink-0 text-[10px] px-1.5 py-0", importanceColors[memory.importance])}>
               {memory.importance}
             </Badge>
           </div>

@@ -1,5 +1,56 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 46: Desktop Memories list titles over-truncate under real main-window width and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/memories.tsx` (`MemoryCard` collapsed list header)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the just-touched Capabilities work and switched to a fresh, populated desktop surface that was practical to inspect live. The panel overlay follow-up was blank without an active session, so the Memories page became the best evidence-backed next target.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `README.md`, `DEVELOPMENT.md`, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow
+  - confirmed a live desktop renderer remained available at `http://localhost:5173/memories` with CDP on `:9333`, then used live product inspection instead of source review alone
+  - stress-tested the mounted `Memories` page at `800×670` with simulated `125%` zoom and captured screenshot-backed evidence in `tmp/ui-audit/memories-before.png` and `tmp/ui-audit/memories-800x670-zoom125.png`
+  - measured the first several mounted memory cards directly in the DOM to compare rendered title width against full scroll width before deciding on a fix
+  - prototyped the intended wrap-safe two-line title treatment directly in the mounted DOM and captured `tmp/ui-audit/memories-title-prototype-lineclamp2.png`
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SettingsScreen.tsx` uses a different stacked memories row with separate title/content/tag chips rather than this desktop card header; no matching mobile code change was needed
+
+#### Findings
+
+- Before the fix, the collapsed memories cards had one concrete desktop readability issue with clear user impact:
+  - each card kept the title on a rigid single line while also reserving space for the importance badge plus edit/delete controls in the same header lane
+  - in live inspection at `800×670` with simulated `125%` zoom, the visible card width was about `390px`, but long titles often only received about `167–185px` of rendered width
+  - real examples like `trust-track focus: implement #57 import planning first`, `hub roadmap: rebrand to TechFriend AJ, 5 new packs`, and `SpeakMCP deprecated. All work now on DotAgents...` had title scroll widths around `322–357px`, so the unique tail of the memory title was hidden behind premature ellipsis
+  - for a memory list whose primary job is helping users identify the right saved insight quickly, over-truncating the title is materially worse than letting the header grow slightly taller when needed
+
+#### Changes made
+
+- Hardened the desktop `MemoryCard` title lane in `apps/desktop/src/renderer/src/pages/memories.tsx` with a small, local layout fix:
+  - changed the title/badge row from a rigid single-line `items-center` layout to a wrap-safe `flex-wrap` / `items-start` row with explicit gap control
+  - replaced the single-line `truncate` title with a compact multiline fallback using `line-clamp-2`, `leading-snug`, `break-words`, and `[overflow-wrap:anywhere]`
+  - made the importance badge explicitly `shrink-0` so it keeps its label while the title becomes the flexible lane
+- Extended `apps/desktop/src/renderer/src/pages/memories.layout.test.ts` with focused source-contract coverage for this multiline title + badge treatment.
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Targeted desktop typecheck attempt: `pnpm --filter @dotagents/desktop typecheck:web` *(blocked: local dependencies are missing, so the shared base tsconfig package `@electron-toolkit/tsconfig` could not be resolved)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the wrap-safe title row, multiline title treatment, and shrink-safe badge class fragments are present in `memories.tsx`
+- Live renderer evidence before the fix at `http://localhost:5173/memories`:
+  - under `800×670` + simulated `125%` zoom, the first memory cards were about `390px` wide, while titles routinely had only about `167–185px` of visible width against `322–357px` of scroll width
+  - screenshot-backed examples were captured in `tmp/ui-audit/memories-before.png` and `tmp/ui-audit/memories-800x670-zoom125.png`
+- Live DOM prototype verification using the exact intended title treatment:
+  - the same stressed cards switched from a single-line truncation state to a compact two-line fallback (`title height ≈ 39px`), while card height increased only from about `112px` to about `132px`
+  - this preserved substantially more of the differentiating title content without forcing the much taller full-header reflow prototype
+  - prototype screenshot: `tmp/ui-audit/memories-title-prototype-lineclamp2.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/memories.tsx apps/desktop/src/renderer/src/pages/memories.layout.test.ts`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live renderer session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit app verification. Instead, I paired live pre-fix evidence with a DOM prototype of the exact title treatment and direct source verification of the patched classes.
+- This chunk is desktop-only: mobile memories management uses a separate stacked row inside `SettingsScreen.tsx`, not the same collapsed card header with checkbox/chevron/action buttons.
+- Tradeoff/rationale: some long-title memory cards can now grow modestly taller because the title may use a second line, but that is a deliberate readability tradeoff and keeps the list much more scannable than aggressive one-line ellipsis.
+- Best next UI audit chunk after this one: stay on `memories.tsx` for the collapsed metadata row (`date + conversation title`) and expanded-content tags/key-findings under the same narrow-width/zoom stress, or return to the floating panel once a live non-blank session is available.
+
 ### 2026-03-08 — Chunk 45: Desktop Capabilities → MCP Servers collapsed rows can hide server identity under action-heavy narrow layouts
 
 - Area selected:

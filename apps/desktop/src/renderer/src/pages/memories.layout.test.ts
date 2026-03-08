@@ -23,4 +23,16 @@ describe("memories page layout", () => {
     )
     expect(memoriesSource).toContain("Delete Selected ({visibleSelectedCount})")
   })
+
+  it("gives long memory titles a compact multiline fallback next to the importance badge", () => {
+    expect(memoriesSource).toContain(
+      'className="mb-1 flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1"',
+    )
+    expect(memoriesSource).toContain(
+      'className="min-w-0 flex-1 text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"',
+    )
+    expect(memoriesSource).toContain(
+      'className={cn("shrink-0 text-[10px] px-1.5 py-0", importanceColors[memory.importance])}',
+    )
+  })
 })
