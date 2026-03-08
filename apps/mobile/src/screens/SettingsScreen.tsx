@@ -33,6 +33,34 @@ const CHAT_PROVIDERS = [
   { label: 'Gemini', value: 'gemini' },
 ] as const;
 
+type ChatProviderId = 'openai' | 'groq' | 'gemini';
+
+const CHAT_PROVIDER_LABELS: Record<ChatProviderId, string> = {
+  openai: 'OpenAI',
+  groq: 'Groq',
+  gemini: 'Gemini',
+};
+
+type ModelDiscoveryMeta = {
+  source?: 'provider' | 'fallback';
+  fallbackReason?: 'missing_api_key' | 'provider_error';
+  fallbackMessage?: string;
+};
+
+function getChatProviderName(providerId?: ChatProviderId): string {
+  return CHAT_PROVIDER_LABELS[providerId || 'openai'];
+}
+
+function getCurrentModelValueForProvider(
+  settings: Settings | null | undefined,
+  providerId: ChatProviderId,
+): string {
+  if (!settings) return '';
+  if (providerId === 'openai') return settings.mcpToolsOpenaiModel || '';
+  if (providerId === 'groq') return settings.mcpToolsGroqModel || '';
+  return settings.mcpToolsGeminiModel || '';
+}
+
 // TTS Provider Options
 const TTS_PROVIDERS = [
   { label: 'OpenAI', value: 'openai' },
@@ -256,6 +284,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [useCustomModel, setUseCustomModel] = useState(false);
+  const [modelDiscoveryMeta, setModelDiscoveryMeta] = useState<ModelDiscoveryMeta | null>(null);
 
   // Preset picker state
   const [showPresetPicker, setShowPresetPicker] = useState(false);
@@ -811,18 +840,30 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   // Fetch available models for the current provider
-  const fetchModels = useCallback(async (providerId: 'openai' | 'groq' | 'gemini') => {
+  const fetchModels = useCallback(async (
+    providerId: 'openai' | 'groq' | 'gemini',
+    currentModel: string = '',
+  ) => {
     if (!settingsClient) return;
 
     setIsLoadingModels(true);
     try {
-      const response = await settingsClient.getModels(providerId);
+      const response = await settingsClient.getModels(providerId) as { models: ModelInfo[] } & ModelDiscoveryMeta;
       setAvailableModels(response.models);
+      setModelDiscoveryMeta({
+        source: response.source,
+        fallbackReason: response.fallbackReason,
+        fallbackMessage: response.fallbackMessage,
+      });
+
       // Check if current model is in the list, if not enable custom mode
-      const currentModel = getCurrentModelValue();
-      if (currentModel && response.models.length > 0) {
-        const isInList = response.models.some(m => m.id === currentModel);
-        setUseCustomModel(!isInList);
+      if (currentModel) {
+        if (response.models.length === 0) {
+          setUseCustomModel(true);
+        } else {
+          const isInList = response.models.some(m => m.id === currentModel);
+          setUseCustomModel(!isInList);
+        }
       }
     } catch (error: any) {
       console.error('[Settings] Failed to fetch models:', error);
@@ -836,7 +877,13 @@ export default function SettingsScreen({ navigation }: any) {
   // Fetch models when remote settings load or provider changes
   useEffect(() => {
     if (remoteSettings?.mcpToolsProviderId && settingsClient) {
-      fetchModels(remoteSettings.mcpToolsProviderId);
+      fetchModels(
+        remoteSettings.mcpToolsProviderId,
+        getCurrentModelValueForProvider(
+          remoteSettings,
+          remoteSettings.mcpToolsProviderId,
+        ),
+      );
     }
   }, [remoteSettings?.mcpToolsProviderId, settingsClient, fetchModels]);
 
@@ -854,6 +901,8 @@ export default function SettingsScreen({ navigation }: any) {
       await settingsClient.updateSettings({ mcpToolsProviderId: provider });
       setRemoteSettings(prev => prev ? { ...prev, mcpToolsProviderId: provider } : null);
       // Reset custom model mode when switching providers
+      setAvailableModels([]);
+      setModelDiscoveryMeta(null);
       setUseCustomModel(false);
       // Models will be fetched via the useEffect above
     } catch (error: any) {
@@ -878,10 +927,14 @@ export default function SettingsScreen({ navigation }: any) {
       setRemoteSettings(prev => prev ? { ...prev, currentModelPresetId: presetId } : null);
       // Reset models and fetch new ones for the new preset
       setAvailableModels([]);
+      setModelDiscoveryMeta(null);
       setUseCustomModel(false);
       // Fetch models for the new preset
       if (remoteSettings.mcpToolsProviderId === 'openai') {
-        fetchModels('openai');
+        fetchModels(
+          'openai',
+          getCurrentModelValueForProvider(remoteSettings, 'openai'),
+        );
       }
     } catch (error: any) {
       console.error('[Settings] Failed to change preset:', error);
@@ -945,28 +998,25 @@ export default function SettingsScreen({ navigation }: any) {
     }
   }, [remoteSettings?.mcpToolsProviderId, remoteSettings?.mcpToolsOpenaiModel, remoteSettings?.mcpToolsGroqModel, remoteSettings?.mcpToolsGeminiModel]);
 
+  const currentChatProviderId = (remoteSettings?.mcpToolsProviderId || 'openai') as ChatProviderId;
+  const currentChatProviderName = getChatProviderName(currentChatProviderId);
+
   // Get current model value based on provider
   const getCurrentModelValue = () => {
-    if (!remoteSettings) return '';
-    const provider = remoteSettings.mcpToolsProviderId;
-    if (provider === 'openai') return remoteSettings.mcpToolsOpenaiModel || '';
-    if (provider === 'groq') return remoteSettings.mcpToolsGroqModel || '';
-    return remoteSettings.mcpToolsGeminiModel || '';
+    return getCurrentModelValueForProvider(remoteSettings, currentChatProviderId);
   };
 
   // Get placeholder based on provider
   const getModelPlaceholder = () => {
-    if (!remoteSettings) return '';
-    const provider = remoteSettings.mcpToolsProviderId;
-    if (provider === 'openai') return 'gpt-4o-mini';
-    if (provider === 'groq') return 'llama-3.3-70b-versatile';
+    if (currentChatProviderId === 'openai') return 'gpt-4o-mini';
+    if (currentChatProviderId === 'groq') return 'llama-3.3-70b-versatile';
     return 'gemini-1.5-flash-002';
   };
 
   // Get display name for current model
   const getCurrentModelDisplayName = () => {
     const currentValue = getCurrentModelValue();
-    if (!currentValue) return 'Select a model';
+    if (!currentValue) return `Select ${currentChatProviderName} model`;
     const model = availableModels.find(m => m.id === currentValue);
     return model?.name || currentValue;
   };
@@ -986,6 +1036,48 @@ export default function SettingsScreen({ navigation }: any) {
       m => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
     );
   }, [availableModels, modelSearchQuery]);
+
+  const usingFallbackModels = modelDiscoveryMeta?.source === 'fallback';
+
+  const modelSelectionHelperText = useMemo(() => {
+    if (useCustomModel) {
+      if (usingFallbackModels) {
+        return `Enter the exact ${currentChatProviderName} model ID from your provider. The list is currently showing fallback suggestions.`;
+      }
+
+      return `Enter any model name supported by ${currentChatProviderName}.`;
+    }
+
+    if (isLoadingModels) {
+      return `Loading ${currentChatProviderName} model suggestions...`;
+    }
+
+    if (usingFallbackModels) {
+      if (modelDiscoveryMeta?.fallbackReason === 'missing_api_key') {
+        return `${currentChatProviderName} API key is missing, so this list is showing fallback suggestions. Update the provider credentials or switch to Custom for an exact model ID.`;
+      }
+
+      return `Couldn't verify ${currentChatProviderName} models from the configured endpoint. Showing fallback suggestions instead; use Refresh after fixing credentials, or switch to Custom.`;
+    }
+
+    if (availableModels.length === 0) {
+      return `No ${currentChatProviderName} models were returned. Switch to Custom if your provider supports manual model IDs.`;
+    }
+
+    return `${availableModels.length} verified ${currentChatProviderName} model${availableModels.length !== 1 ? 's' : ''} available.`;
+  }, [availableModels.length, currentChatProviderName, isLoadingModels, modelDiscoveryMeta?.fallbackReason, useCustomModel, usingFallbackModels]);
+
+  const modelPickerFooterText = modelSearchQuery
+    ? `${filteredModels.length} of ${availableModels.length} ${usingFallbackModels ? 'fallback ' : ''}models`
+    : usingFallbackModels
+      ? `${availableModels.length} fallback suggestion${availableModels.length !== 1 ? 's' : ''} available`
+      : `${availableModels.length} verified ${currentChatProviderName} model${availableModels.length !== 1 ? 's' : ''} available`;
+
+  const modelPickerFooterDetail = usingFallbackModels
+    ? modelDiscoveryMeta?.fallbackReason === 'missing_api_key'
+      ? `${currentChatProviderName} API key missing — switch to Custom if you need an exact model ID.`
+      : `Showing fallback suggestions because ${currentChatProviderName} models could not be verified.`
+    : '';
 
   useEffect(() => {
     setDraft(config);
@@ -1427,6 +1519,8 @@ export default function SettingsScreen({ navigation }: any) {
                     <TouchableOpacity
                       style={styles.modelActionButton}
                       onPress={() => setUseCustomModel(!useCustomModel)}
+                      accessibilityRole="button"
+                      accessibilityLabel={useCustomModel ? 'Switch to model list' : 'Use custom model name'}
                     >
                       <Text style={styles.modelActionText}>
                         {useCustomModel ? '📋 List' : '✏️ Custom'}
@@ -1435,11 +1529,13 @@ export default function SettingsScreen({ navigation }: any) {
                     {!useCustomModel && (
                       <TouchableOpacity
                         style={styles.modelActionButton}
-                        onPress={() => remoteSettings?.mcpToolsProviderId && fetchModels(remoteSettings.mcpToolsProviderId)}
+                        onPress={() => remoteSettings?.mcpToolsProviderId && fetchModels(remoteSettings.mcpToolsProviderId, getCurrentModelValue())}
                         disabled={isLoadingModels}
+                        accessibilityRole="button"
+                        accessibilityLabel={isLoadingModels ? 'Refreshing available models' : 'Refresh available models'}
                       >
                         <Text style={styles.modelActionText}>
-                          {isLoadingModels ? '⏳' : '🔄'}
+                          {isLoadingModels ? '⏳ Refreshing' : '🔄 Refresh'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -1464,7 +1560,7 @@ export default function SettingsScreen({ navigation }: any) {
                     {isLoadingModels ? (
                       <View style={styles.modelSelectorContent}>
                         <ActivityIndicator size="small" color={theme.colors.mutedForeground} />
-                        <Text style={styles.modelSelectorPlaceholder}>Loading models...</Text>
+                        <Text style={styles.modelSelectorPlaceholder}>Loading {currentChatProviderName} models...</Text>
                       </View>
                     ) : (
                       <View style={styles.modelSelectorContent}>
@@ -1479,6 +1575,9 @@ export default function SettingsScreen({ navigation }: any) {
                     )}
                   </TouchableOpacity>
                 )}
+                <Text style={[styles.helperText, { marginTop: spacing.xs }]}>
+                  {modelSelectionHelperText}
+                </Text>
               </CollapsibleSection>
             )}
 
@@ -2421,7 +2520,7 @@ export default function SettingsScreen({ navigation }: any) {
         <View style={styles.modelPickerOverlay}>
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
-              <Text style={styles.modelPickerTitle}>Select Model</Text>
+              <Text style={styles.modelPickerTitle}>Select {currentChatProviderName} Model</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowModelPicker(false);
@@ -2450,7 +2549,7 @@ export default function SettingsScreen({ navigation }: any) {
               {filteredModels.length === 0 ? (
                 <View style={styles.modelListEmpty}>
                   <Text style={styles.modelListEmptyText}>
-                    {modelSearchQuery ? `No models match "${modelSearchQuery}"` : 'No models available'}
+                    {modelSearchQuery ? `No models match "${modelSearchQuery}"` : 'No models available. Switch to Custom to enter an exact model ID.'}
                   </Text>
                 </View>
               ) : (
@@ -2488,10 +2587,13 @@ export default function SettingsScreen({ navigation }: any) {
             {/* Footer with model count */}
             <View style={styles.modelPickerFooter}>
               <Text style={styles.modelPickerFooterText}>
-                {modelSearchQuery
-                  ? `${filteredModels.length} of ${availableModels.length} models`
-                  : `${availableModels.length} model${availableModels.length !== 1 ? 's' : ''} available`}
+                {modelPickerFooterText}
               </Text>
+              {!!modelPickerFooterDetail && (
+                <Text style={styles.modelPickerFooterText}>
+                  {modelPickerFooterDetail}
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -3407,6 +3509,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelPickerFooterText: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
+      textAlign: 'center',
     },
     // Collapsible section styles
     collapsibleSection: {

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile provider model picker fallback/manual-entry clarity in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/lib/settingsApi.ts` reviewed, the new desktop fallback metadata flow cross-checked, and focused source-level verification added in `apps/mobile/tests/settings-model-picker-feedback.test.js`.
 - 2026-03-08: Desktop shared provider model selector fallback-vs-live discovery clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, `apps/desktop/src/renderer/src/lib/queries.ts`, `apps/desktop/src/main/models-service.ts`, and `apps/desktop/src/main/remote-server.ts` reviewed, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop preset-model selector loading / error / empty-state clarity plus repeated-fetch performance in `apps/desktop/src/renderer/src/components/preset-model-selector.tsx`, with shared query-hook reuse reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, adjacent model-loading UX pattern checked in `apps/desktop/src/renderer/src/components/model-selector.tsx`, usage sites reviewed in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop model preset manager create/edit dialog draft-loss / failed-save guardrails in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx`, with shared dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`.
@@ -31,6 +32,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Mobile provider model settings now distinguish fallback suggestions from verified live model lists, keep custom/list handoff aligned with the current provider/model context instead of a stale closure, and give clearer inline/manual-entry guidance plus explicit refresh/custom action labels.
 - 2026-03-08: Desktop shared provider model discovery now reports whether the selector is showing verified provider results or fallback suggestions, and the shared selector surfaces that with clearer missing-key / fallback / empty-state / manual-entry guidance plus explicit custom-model and refresh button labels.
 - 2026-03-08: Desktop preset-model selectors now share cached preset-model and model-info queries across matching selectors, so the create/edit preset dialogs stop refetching the same model list three times, and the control now shows clearer inline guidance for missing credentials, loading, refresh failures, empty results, and available-model counts.
 - 2026-03-08: Desktop model preset create/edit dialogs now track dirty draft baselines, warn before backdrop / Escape / close-button / cancel dismissal would discard unsaved preset edits, and keep the dialog open with inline retry guidance if async config save fails instead of closing immediately.
@@ -53,6 +55,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/settings-model-picker-feedback.test.js`
+- 2026-03-08: attempted `pnpm --filter @dotagents/mobile exec tsc --noEmit` (blocked: the mobile worktree cannot resolve Expo/React Native TypeScript config and dependency types here, including missing `expo/tsconfig.base` plus many missing module/type declarations, so a focused mobile typecheck could not complete in this environment).
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-model-selector-feedback.test.js tests/desktop-preset-model-selector-feedback.test.js`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop typecheck:web` (blocked: this worktree is missing `node_modules`, so `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved and `tsc` could not complete the desktop web typecheck).
 - 2026-03-08: `git diff --check`
@@ -92,6 +97,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused mobile TypeScript verification for this settings-model-picker pass is blocked in this environment because `pnpm --filter @dotagents/mobile exec tsc --noEmit` cannot resolve `expo/tsconfig.base` and numerous Expo/React Native dependency types, so only source-level regression checks were available locally.
 - 2026-03-08: Live desktop UI inspection for this shared model-selector pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop web typecheck for this shared model-selector pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`.
 - 2026-03-08: Live desktop UI inspection for this preset-model-selector pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -111,10 +117,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Mobile provider model picker fallback / empty-state / custom-model handoff clarity (`apps/mobile/src/screens/SettingsScreen.tsx`)
+- Desktop provider settings credential save / retry / error-handling clarity (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect the mobile provider model picker / settings flow next so fallback-model suggestions, empty states, and manual-entry guidance stay consistent with the improved desktop selector
+- Inspect desktop provider settings save/retry/error feedback next so credential updates and model-refresh recovery are clearer when saves fail, partially apply, or require a retry
+- Once the mobile workspace can typecheck or run Expo again, live-check the mobile provider picker states for missing credentials, fallback suggestions, empty results, refresh behavior, and custom-model entry to confirm the new guidance feels right on-device
 - Once a runnable Electron target is available, live-check the desktop shared `model-selector.tsx` states for missing API key, fallback suggestions, empty responses, refresh behavior, and custom-model entry to confirm the new helper text hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
 - Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
@@ -123,6 +130,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Mobile provider model-picker fallback clarity and current-model handoff
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile provider model settings in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - compatible model-discovery response already exposed from the desktop remote server in the previous pass
+  - mobile API client shape reviewed in `apps/mobile/src/lib/settingsApi.ts`
+  - focused regression coverage added in `apps/mobile/tests/settings-model-picker-feedback.test.js`
+- Why it was chosen:
+  - after the desktop shared selector pass, the ledger’s next fresh target was the equivalent mobile provider model picker so the same fallback/manual-entry confusion would not persist on mobile
+  - investigation found a second concrete issue beyond missing fallback messaging: the mobile `fetchModels()` callback used stale current-model context, which could leave custom/list handoff out of sync with the active provider/model state
+  - this is a high-value settings flow because incorrect or unclear model selection directly affects what users think the app is configured to run
+- What was inspected:
+  - `apps/mobile/src/screens/SettingsScreen.tsx` for provider model loading, custom/list toggling, model picker modal copy, refresh affordances, and current-model sync
+  - `apps/mobile/src/lib/settingsApi.ts` to confirm the response contract and keep the change compatible without broad shared-type churn
+  - the previously added desktop remote model-discovery metadata path to confirm mobile could consume the same provenance fields
+- Improvement made:
+  - mobile settings now store model-discovery provenance metadata and use it to explain when the picker is showing fallback suggestions instead of verified live provider results
+  - the model settings helper copy now covers missing API keys, fallback suggestions, empty results, and exact custom-model entry guidance, while the picker footer also distinguishes verified lists from fallback suggestions
+  - the refresh and custom/list buttons now expose explicit labels instead of an icon-only refresh affordance
+  - the model fetch path now accepts the active current model explicitly, so custom/list handoff uses the current provider/model context instead of a stale closure
+  - provider and preset switches now clear stale model-list metadata before the next fetch so old provider state is less likely to linger in the UI
+- Assumptions / tradeoffs / rationale:
+  - kept the API/type change local to the screen by consuming compatible extra response fields instead of broadening shared mobile types in this iteration
+  - kept the picker usable with fallback suggestions rather than forcing custom mode, because fallback lists still provide value as long as the UI clearly labels them and points users to exact manual entry when needed
+  - stayed scoped to settings-model clarity rather than broader mobile settings refactors so this remained one small, shippable pass
+- Tests / verification:
+  - `node --test apps/mobile/tests/settings-model-picker-feedback.test.js`
+  - `git diff --check`
+  - attempted `pnpm --filter @dotagents/mobile exec tsc --noEmit` (blocked because this environment cannot resolve `expo/tsconfig.base` and many Expo/React Native dependency types)
+- Follow-up checks:
+  - once the mobile workspace can run again, live-check missing-key, fallback-suggestion, empty-result, refresh, and custom-model flows on-device / Expo web to confirm the new helper text hierarchy feels right in practice
+  - inspect desktop provider settings save/retry/error-handling clarity next so credential updates and model-refresh recovery messaging stay consistent with these selector improvements
 
 ### 2026-03-08 — Desktop shared provider model-selector fallback clarity
 - Date:
