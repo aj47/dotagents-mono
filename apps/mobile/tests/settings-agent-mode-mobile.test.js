@@ -34,6 +34,22 @@ test('turns the ACP no-agent state into explicit, mode-aware guidance', () => {
   assert.match(settingsSource, /agentSettingsNoticeText:\s*\{[\s\S]*?fontSize:\s*13,[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.foreground/);
 });
 
+test('keeps Agent Settings mode context visible in the collapsible header on mobile', () => {
+  assert.match(settingsSource, /const selectedAcpMainAgentOption = useMemo\([\s\S]*?availableAcpMainAgents\.find\(\(agent\) => agent\.name === remoteSettings\?\.mainAgentName\)/);
+  assert.match(settingsSource, /return selectedAgentName \? `ACP • \$\{selectedAgentName\}` : 'ACP • No enabled agent';/);
+  assert.match(settingsSource, /return 'API • Direct model';/);
+  assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="agentSettings"[\s\S]*?summary=\{agentSettingsSectionSummary\}/);
+});
+
+test('renders collapsible section summaries as a truncation-safe secondary line with explicit disclosure semantics', () => {
+  assert.match(settingsSource, /summary\?: string \| null;/);
+  assert.match(settingsSource, /accessibilityLabel=\{summary \? `\$\{title\}\. \$\{summary\}` : title\}/);
+  assert.match(settingsSource, /accessibilityHint=\{isExpanded \? `Collapses \$\{title\}\.` : `Expands \$\{title\}\.`\}/);
+  assert.match(settingsSource, /<View style=\{styles\.collapsibleHeaderText\}>[\s\S]*?<Text style=\{styles\.collapsibleSummary\} numberOfLines=\{1\} ellipsizeMode="tail">/);
+  assert.match(settingsSource, /collapsibleHeaderText:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:\s*spacing\.sm/);
+  assert.match(settingsSource, /collapsibleSummary:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
 test('wraps Inject Builtin Tools in a named mobile-sized switch control', () => {
   assert.match(settingsSource, /style=\{styles\.agentSettingsSwitchButton\}/);
   assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('acpInjectBuiltinTools', !\(remoteSettings\.acpInjectBuiltinTools \?\? true\)\)\}/);

@@ -273,6 +273,20 @@ export default function SettingsScreen({ navigation }: any) {
     () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
   );
+  const selectedAcpMainAgentOption = useMemo(
+    () => availableAcpMainAgents.find((agent) => agent.name === remoteSettings?.mainAgentName),
+    [availableAcpMainAgents, remoteSettings?.mainAgentName]
+  );
+  const agentSettingsSectionSummary = useMemo(() => {
+    if (!remoteSettings) return null;
+
+    if (remoteSettings.mainAgentMode === 'acp') {
+      const selectedAgentName = selectedAcpMainAgentOption?.displayName || remoteSettings.mainAgentName;
+      return selectedAgentName ? `ACP • ${selectedAgentName}` : 'ACP • No enabled agent';
+    }
+
+    return 'API • Direct model';
+  }, [remoteSettings, selectedAcpMainAgentOption]);
 
   // Profile import/export state
   const [isExportingProfile, setIsExportingProfile] = useState(false);
@@ -1021,10 +1035,12 @@ export default function SettingsScreen({ navigation }: any) {
   const CollapsibleSection = ({
     id,
     title,
+    summary,
     children
   }: {
     id: string;
     title: string;
+    summary?: string | null;
     children: React.ReactNode;
   }) => {
     const isExpanded = expandedSections[id] ?? false;
@@ -1034,9 +1050,18 @@ export default function SettingsScreen({ navigation }: any) {
           style={styles.collapsibleHeader}
           onPress={() => toggleSection(id)}
           accessibilityRole="button"
+          accessibilityLabel={summary ? `${title}. ${summary}` : title}
+          accessibilityHint={isExpanded ? `Collapses ${title}.` : `Expands ${title}.`}
           accessibilityState={{ expanded: isExpanded }}
         >
-          <Text style={styles.collapsibleTitle}>{title}</Text>
+          <View style={styles.collapsibleHeaderText}>
+            <Text style={styles.collapsibleTitle}>{title}</Text>
+            {summary ? (
+              <Text style={styles.collapsibleSummary} numberOfLines={1} ellipsizeMode="tail">
+                {summary}
+              </Text>
+            ) : null}
+          </View>
           <Text style={styles.collapsibleChevron}>{isExpanded ? '▼' : '▶'}</Text>
         </TouchableOpacity>
         {isExpanded && (
@@ -1781,7 +1806,11 @@ export default function SettingsScreen({ navigation }: any) {
 
             {/* 4e. Agent Settings */}
             {remoteSettings && (
-              <CollapsibleSection id="agentSettings" title="Agent Settings">
+              <CollapsibleSection
+                id="agentSettings"
+                title="Agent Settings"
+                summary={agentSettingsSectionSummary}
+              >
                 <Text style={styles.label}>Main Agent Mode</Text>
                 <View style={styles.providerSelector}>
                   {(['api', 'acp'] as const).map((mode) => (
@@ -3768,10 +3797,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       padding: spacing.md,
       backgroundColor: theme.colors.muted,
     },
+    collapsibleHeaderText: {
+      flex: 1,
+      minWidth: 0,
+      marginRight: spacing.sm,
+    },
     collapsibleTitle: {
       fontSize: 14,
       fontWeight: '600',
       color: theme.colors.foreground,
+    },
+    collapsibleSummary: {
+      marginTop: 2,
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
     },
     collapsibleChevron: {
       fontSize: 12,

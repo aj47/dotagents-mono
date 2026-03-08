@@ -3786,3 +3786,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Failed - blocking queue` remains legible and clearly subordinate to the main message text on narrow screens.
   - Compare failed-row retry/remove actions in live use to confirm the stronger hints make the recovery path feel more obvious without adding visual clutter.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this queue copy again without new evidence.
+
+### 2026-03-08 — Iteration 87: keep Agent Settings state visible while the section is collapsed
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused mobile coverage in `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo run again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `SettingsScreen` reuses a generic `CollapsibleSection` header that rendered only the section title and chevron.
+  - In `Settings > Agent Settings`, collapsing the section hid the most important current state for mobile users: whether new chats were using `API` mode or `ACP` mode, and which ACP main agent was selected.
+  - On a long, dense mobile settings stack, that forced users to reopen the section just to re-check core sub-agent routing state.
+- Issue selected:
+  - The collapsed `Agent Settings` header hid the main-agent mode and selection state, weakening state clarity in a high-impact sub-agent control.
+- Decision:
+  - Keep the existing section order, body layout, and agent-setting controls unchanged.
+  - Do not redesign collapsible sections broadly while live validation is blocked.
+  - Make the smallest local fix: add a compact summary line to the shared collapsible header, use it for `Agent Settings`, and mirror that summary through the header accessibility label.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - derive a concise `Agent Settings` summary (`API • Direct model`, `ACP • <agent name>`, or `ACP • No enabled agent`),
+    - pass that summary into the `Agent Settings` collapsible header,
+    - render collapsible summaries as a truncation-safe secondary line,
+    - add explicit expand/collapse accessibility labels and hints that include the summary when present.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new header summary and disclosure semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new `Agent Settings` summary still needs a real narrow-screen pass to confirm it stays legible beside the chevron and does not feel redundant once the section is expanded.
+  - Other collapsible desktop-setting sections still expose title-only headers, so fresh live evidence should decide whether any additional summary lines are warranted instead of applying them speculatively.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Agent Settings` summary stays readable at narrow widths in both API and ACP states.
+  - Check the `ACP • No enabled agent` state live to ensure the warning-like summary is helpful without overpowering the rest of the header.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of broadening header summaries without new evidence.
