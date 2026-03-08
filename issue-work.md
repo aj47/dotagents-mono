@@ -719,3 +719,33 @@
   - Reuse the same reveal/provenance affordances in Hub install flows if bundle install history becomes a first-class surface.
 
 - Next recommended issue work item: treat `#57` as substantially wrapped unless a very small `Copy path` polish proves necessary, and otherwise pivot to a fresh issue with a tighter validated repro path than `#54`.
+
+##### Issue #57 — Bundle backups: copy backup bundle path from Settings → Capabilities
+
+- Selection rationale:
+  - This was the smallest remaining trust/discoverability polish explicitly called out in the prior `#57` ledger entry: users could reveal a backup in Finder/Explorer, but still lacked a one-click way to copy the exact bundle path into terminal, chat, or docs.
+- Investigation:
+  - Re-read issue `#57` comments and confirmed the trust track still emphasizes visible backup paths, restore reachability, and low-friction recovery from Settings → Capabilities.
+  - Re-inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed each recent backup row already displayed the full absolute path plus `Reveal` and `Restore` actions, but no direct copy affordance.
+  - Confirmed the desktop renderer already has a shared `copyTextToClipboard()` helper in `apps/desktop/src/renderer/src/lib/clipboard.ts` that falls back to Electron main-process clipboard writes on platforms where `navigator.clipboard` is unreliable.
+  - Checked mobile parity and confirmed no follow-up is needed for this slice because mobile does not expose the desktop bundle-backup management surface.
+- Important assumptions:
+  - Assumption: a renderer-only `Copy path` action is sufficient; no new TIPC route is needed.
+  - Why acceptable: the existing shared clipboard helper already encapsulates the necessary fallback behavior, so a new main-process API would duplicate established infrastructure.
+- Changes implemented:
+  - Imported `copyTextToClipboard` into `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and added `handleCopyBackupPathClick(...)` with success/error toasts.
+  - Added a per-row `Copy path` action to the `Recent backups` panel so each backup bundle can be copied directly from Settings → Capabilities.
+  - Let the backup action group wrap on narrow widths so the added third action does not force the row controls into overflow-prone horizontal compression.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with source-level assertions covering the copy helper import, `Copy path` label, success toast copy feedback, and row handler wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider whether a temporary inline `Copied` state is worthwhile if users need less toast-dependent confirmation when copying multiple backup paths.
+  - Consider per-backup cleanup/remove actions only after there is a retention-management design beyond the current automatic pruning.
+  - Reuse the same clearer provenance/copy affordances in Hub install history if bundle-install recovery becomes a first-class surface.
+
+- Next recommended issue work item: treat `#57` as effectively wrapped for now and pivot to a fresher validated issue slice, with `#58` desktop/ACP history provenance or another well-scoped bug preferred over the still-speculative `#54`.

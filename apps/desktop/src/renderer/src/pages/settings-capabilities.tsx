@@ -2,9 +2,10 @@ import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { Button } from "@renderer/components/ui/button"
+import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
-import { ExternalLink, FolderOpen, Loader2, RotateCcw } from "lucide-react"
+import { Copy, ExternalLink, FolderOpen, Loader2, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import { Component as McpToolsPage } from "./settings-mcp-tools"
 import { Component as SkillsPage } from "./settings-skills"
@@ -129,6 +130,16 @@ export function Component() {
     }
   }
 
+  const handleCopyBackupPathClick = async (filePath: string) => {
+    try {
+      await copyTextToClipboard(filePath)
+      toast.success("Backup path copied to clipboard")
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to copy backup path: ${errorMessage}`)
+    }
+  }
+
   const handleRestoreDialogOpenChange = (open: boolean) => {
     setIsRestoreDialogOpen(open)
     if (!open) {
@@ -229,7 +240,17 @@ export function Component() {
                       {backup.filePath}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => handleCopyBackupPathClick(backup.filePath)}
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy path
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
