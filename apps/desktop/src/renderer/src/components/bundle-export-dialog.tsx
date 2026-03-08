@@ -83,12 +83,12 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
+      <DialogContent className="max-w-xl max-h-[min(90vh,calc(100%-40px))] !overflow-hidden [grid-template-rows:auto_minmax(0,1fr)_auto]">
+        <DialogHeader className="pr-8">
           <DialogTitle className="flex items-center gap-2"><Download className="h-5 w-5" />Export Bundle</DialogTitle>
           <DialogDescription>Choose what to include in the local <code>.dotagents</code> export before saving the bundle.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 space-y-4 overflow-y-auto py-2 pr-1">
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200 flex gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>Secrets are stripped automatically, but any included memories, repeat tasks, and other content are saved into the exported bundle file.</p>
@@ -113,7 +113,7 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
             setSelection={setSelection}
           />
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2 border-t pt-4 sm:space-x-0">
           <Button variant="outline" onClick={() => close(false)}>Cancel</Button>
           <Button
             onClick={saveBundle}

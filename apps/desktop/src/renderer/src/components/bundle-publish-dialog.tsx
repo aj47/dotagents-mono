@@ -137,14 +137,14 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
   }
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[min(90vh,calc(100%-40px))] !overflow-hidden [grid-template-rows:auto_minmax(0,1fr)_auto]">
+        <DialogHeader className="pr-8">
           <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{step === "metadata" ? "Export for Hub" : "Hub Export Preview"}</DialogTitle>
           <DialogDescription>{step === "metadata" ? "Choose what goes into the public artifact, then add listing metadata. Enabled content is public." : "Review the generated payload, artifact URL, install link, and submission package. Saving here prepares files for Hub submission but does not upload them yet."}</DialogDescription>
         </DialogHeader>
         {step === "metadata" ? (
           <>
-            <div className="space-y-4 py-2">
+            <div className="min-h-0 space-y-4 overflow-y-auto py-2 pr-1">
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 flex gap-2">
                 <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-xs text-blue-700 dark:text-blue-300">Anything enabled below becomes part of the public <code>.dotagents</code> artifact and publish handoff. Memories and repeat tasks are off by default. API keys and secrets are stripped automatically, but enabled content is still public. If you leave listing ID or artifact URL blank, DotAgents derives Hub-friendly defaults for you.</p>
@@ -166,14 +166,14 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
                 description="Choose exactly which public items are included in the shared artifact and handoff metadata."
               />
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 border-t pt-4 sm:space-x-0">
               <Button variant="outline" onClick={() => close(false)}>Cancel</Button>
               <Button onClick={generate} disabled={!ok || loading || exportableItemsQuery.isLoading || !!exportableItemsQuery.error} className="gap-2">{loading && <Loader2 className="h-4 w-4 animate-spin" />}Generate Payload</Button>
             </DialogFooter>
           </>
         ) : (
           <>
-            <div className="space-y-4 py-2">
+            <div className="min-h-0 space-y-4 overflow-y-auto py-2 pr-1">
               <PreviewBadges json={preview?.payloadJson || ""} />
               <SubmissionChecklist />
               <PreviewLinks json={preview?.payloadJson || ""} installUrl={preview?.installUrl || ""} onCopy={copy} />
@@ -192,7 +192,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
                 </div>
               </div>
             </div>
-            <DialogFooter className="gap-2">
+            <DialogFooter className="gap-2 border-t pt-4 sm:flex-wrap sm:justify-end sm:space-x-0">
               <Button variant="outline" onClick={() => setStep("metadata")}>← Back</Button>
               <Button variant="outline" className="gap-2" onClick={saveSubmissionFile}><FileJson className="h-4 w-4" /> Save Hub Package</Button>
               <Button variant="outline" className="gap-2" onClick={() => copy(preview?.bundleJson || "", "Bundle JSON")}><Copy className="h-4 w-4" /> Copy Bundle</Button>

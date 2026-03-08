@@ -1,5 +1,51 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 42: Desktop bundle export dialogs hide primary actions below the fold
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx`
+  - desktop `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx`
+  - launch surface: `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the just-touched desktop settings rows and picked a fresh, visibly UI-heavy area that older follow-up notes had left open: the bundle export / publish dialogs launched from Settings → Agents.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `apps/mobile/README.md`, and renderer `AGENTS.md` to stay aligned with the repo’s desktop/mobile inspection guidance
+  - confirmed a live renderer was available at `http://localhost:5173/settings/agents`, then used browser automation for live inspection instead of source review alone
+  - opened `Import Bundle`, `Export Bundle`, and `Export for Hub` from Settings → Agents and stress-tested them around `800×670` with simulated `125%` page zoom
+  - cross-checked for a mobile equivalent and found none: these bundle-management dialogs are desktop-only, so this pass remained desktop-only
+
+#### Findings
+
+- Before the fix, `Export Bundle` and `Export for Hub` each had one concrete desktop usability issue with clear user impact:
+  - the dialog itself was the scroll container, and the long selection/content body pushed the footer action rail far below the visible modal
+  - in live inspection, the only obvious visible dismissal affordance above the fold was the close icon, making the dialogs feel incomplete unless users discovered the internal scroll area
+  - `Import Bundle` did not show the same problem in the same conditions, so the issue was localized to the longer export-style dialogs rather than the shared launcher row
+
+#### Changes made
+
+- Hardened both export dialogs with a small, local modal-layout fix:
+  - changed `bundle-export-dialog.tsx` and `bundle-publish-dialog.tsx` to use a three-row dialog shell (`header / scroll body / footer`) instead of letting the whole modal scroll as one tall sheet
+  - constrained each dialog to a viewport-aware max height, made the middle content area the only scroll region, and added a clearer separated footer rail with a top border
+  - padded the header away from the close icon and made the publish preview footer wrap-safe so the multi-button action rail keeps a deliberate narrow-height fallback
+- Added `apps/desktop/src/renderer/src/components/bundle-dialog.layout.test.ts` with focused source-contract coverage for the new dialog shell and visible footer treatment.
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/bundle-dialog.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the viewport-bounded three-row dialog shell, scroll-body container, and footer class fragments in both dialog files
+- Live DOM prototype verification against the running renderer at `http://localhost:5173/settings/agents`:
+  - before the prototype, `Export Bundle` footer actions measured around `y≈2147`, well below the visible modal at ~`800×670`
+  - after simulating the same three-row layout in the live DOM, the dialog stayed about `496px` tall, the middle body became scrollable, and `Save .dotagents File` moved into the visible footer band at `y≈455`
+  - the same prototype on `Export for Hub` moved `Generate Payload` from `y≈2139` to the visible footer band at `y≈455`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx apps/desktop/src/renderer/src/components/bundle-dialog.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the live Electron/Vite session is running from a different worktree (`streaming-lag-loop`), so I could not perform a literal post-edit end-to-end check of this checkout’s built bundle. Instead, I paired live pre-fix evidence with a DOM prototype of the exact layout treatment and dependency-free source verification.
+- This chunk is desktop-only: there is no direct mobile equivalent of the bundle export/publish dialogs to mirror in `apps/mobile/src/`.
+- Tradeoff/rationale: kept the dialogs’ existing information architecture and copy intact; the fix only restores action discoverability by separating the scrollable content from the footer rail.
+- Best next UI audit chunk after this one: inspect the long metadata rows inside `bundle-publish-dialog.tsx` itself (for example the `Listing ID` / `Artifact URL` and author fields under narrow widths), or move back to another fresh desktop or mobile surface once a live session bound to this worktree is available.
+
 ### 2026-03-08 — Chunk 41: Desktop General settings shortcut rows under zoom/scaling pressure
 
 - Area selected:
