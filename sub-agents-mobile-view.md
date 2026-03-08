@@ -2442,3 +2442,45 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long current and pending agent names remain readable without making selector rows feel oversized.
   - Check both profile mode and ACP mode to confirm the two-line clamp behaves well with real server-provided names.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 57: promote missing-config blockers in edit screens from helper text to real notices
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed both edit flows already disabled the primary save CTA when Base URL / API key config was missing.
+  - The only explanation on screen was still a plain helper-text line near the top of each form.
+  - On mobile, that made the blocking state easy to skim past because it visually blended with ordinary instructional copy even though it prevented saving.
+- Issue selected:
+  - Missing server configuration was still presented too softly in `AgentEditScreen` and `LoopEditScreen`, weakening state clarity exactly when the main action was unavailable.
+- Decision:
+  - Keep the save-button logic, copy intent, and form layout unchanged.
+  - Do not redesign either edit flow or add a new shared component while live validation is blocked.
+  - Make the smallest local hierarchy fix: promote the missing-config explanation into a dedicated inline notice block in both screens so the disabled-save reason is harder to miss on narrow mobile layouts.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - replace the plain missing-config helper line with a bordered inline notice block,
+    - use stronger notice text that explicitly says saving is disabled until Settings has Base URL and API key configured.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` with the same blocking-notice treatment for consistency across sub-agent edit flows.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new missing-config notice contract in both edit screens.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new notice blocks feel appropriately prominent without crowding the top of the edit forms.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby edit-flow follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new blocking notices read clearly above the forms and make the disabled save CTA easier to understand.
+  - If live validation later shows the notice is still too subtle, consider a smaller icon or accent-color refinement before touching the broader edit layout.

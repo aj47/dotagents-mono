@@ -331,7 +331,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
           <Text style={styles.errorText}>⚠️ {error}</Text>
         </View>
       )}
-      {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
+      {!settingsClient && (
+        <View style={styles.blockingNoticeContainer}>
+          <Text style={styles.blockingNoticeText}>
+            Saving is disabled until Base URL and API key are configured in Settings.
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.label}>Name *</Text>
       <TextInput
@@ -514,6 +520,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     errorText: {
       color: theme.colors.destructive,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    blockingNoticeContainer: {
+      backgroundColor: theme.colors.secondary,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginBottom: spacing.md,
+    },
+    blockingNoticeText: {
+      color: theme.colors.foreground,
       fontSize: 14,
       lineHeight: 20,
     },

@@ -289,7 +289,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
       )}
 
       {!settingsClient && (
-        <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+        <View style={styles.blockingNoticeContainer}>
+          <Text style={styles.blockingNoticeText}>
+            Saving is disabled until Base URL and API key are configured in Settings.
+          </Text>
+        </View>
       )}
 
       {isBuiltInAgent && (
@@ -576,6 +580,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     warningText: {
       color: '#f59e0b',
       fontSize: 14,
+    },
+    blockingNoticeContainer: {
+      backgroundColor: theme.colors.secondary,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginBottom: spacing.md,
+    },
+    blockingNoticeText: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      lineHeight: 20,
     },
     label: {
       fontSize: 14,

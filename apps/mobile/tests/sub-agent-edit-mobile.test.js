@@ -161,11 +161,16 @@ test('AgentEditScreen makes missing server config explicit before the primary sa
   assert.match(agentEditSource, /const hasDisplayName = formData\.displayName\.trim\(\)\.length > 0;/);
   assert.match(agentEditSource, /const saveValidationMessage = !hasDisplayName[\s\S]*?Add a display name to enable saving\./);
   assert.match(agentEditSource, /const isSaveDisabled = isSaving \|\| !settingsClient \|\| !!saveValidationMessage;/);
-  assert.match(agentEditSource, /!settingsClient && \([\s\S]*?Configure Base URL and API key in Settings to save changes\.[\s\S]*?\)/);
   assert.match(agentEditSource, /settingsClient && saveValidationMessage && \([\s\S]*?styles\.saveHelperText[\s\S]*?\{saveValidationMessage\}[\s\S]*?\)/);
   assert.match(agentEditSource, /style=\{\[styles\.saveButton, isSaveDisabled && styles\.saveButtonDisabled\]\}/);
   assert.match(agentEditSource, /disabled=\{isSaveDisabled\}/);
   assert.match(agentEditSource, /saveHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
+test('AgentEditScreen surfaces missing server config in a dedicated blocking notice', () => {
+  assert.match(agentEditSource, /!settingsClient && \([\s\S]*?<View style=\{styles\.blockingNoticeContainer\}>[\s\S]*?<Text style=\{styles\.blockingNoticeText\}>[\s\S]*?Saving is disabled until Base URL and API key are configured in Settings\.[\s\S]*?<\/Text>[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(agentEditSource, /blockingNoticeContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.secondary,[\s\S]*?borderWidth:\s*1,[\s\S]*?borderColor:\s*theme\.colors\.border,[\s\S]*?padding:\s*spacing\.md,[\s\S]*?borderRadius:\s*radius\.md,[\s\S]*?marginBottom:\s*spacing\.md/);
+  assert.match(agentEditSource, /blockingNoticeText:\s*\{[\s\S]*?color:\s*theme\.colors\.foreground,[\s\S]*?fontSize:\s*14,[\s\S]*?lineHeight:\s*20/);
 });
 
 test('AgentEditScreen gives the primary save action explicit mobile button semantics', () => {
@@ -210,4 +215,10 @@ test('LoopEditScreen gives the primary save action explicit mobile button semant
   assert.match(loopEditSource, /settingsClient && saveValidationMessage && \([\s\S]*?styles\.saveHelperText[\s\S]*?\{saveValidationMessage\}[\s\S]*?\)/);
   assert.match(loopEditSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{saveButtonAccessibilityLabel\}[\s\S]*?accessibilityHint=\{saveButtonAccessibilityHint\}[\s\S]*?accessibilityState=\{\{ disabled: isSaveDisabled, busy: isSaving \}\}/);
   assert.match(loopEditSource, /saveHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
+test('LoopEditScreen surfaces missing server config in a dedicated blocking notice', () => {
+  assert.match(loopEditSource, /!settingsClient && \([\s\S]*?<View style=\{styles\.blockingNoticeContainer\}>[\s\S]*?<Text style=\{styles\.blockingNoticeText\}>[\s\S]*?Saving is disabled until Base URL and API key are configured in Settings\.[\s\S]*?<\/Text>[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(loopEditSource, /blockingNoticeContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.secondary,[\s\S]*?borderWidth:\s*1,[\s\S]*?borderColor:\s*theme\.colors\.border,[\s\S]*?padding:\s*spacing\.md,[\s\S]*?borderRadius:\s*radius\.md,[\s\S]*?marginBottom:\s*spacing\.md/);
+  assert.match(loopEditSource, /blockingNoticeText:\s*\{[\s\S]*?color:\s*theme\.colors\.foreground,[\s\S]*?fontSize:\s*14,[\s\S]*?lineHeight:\s*20/);
 });
