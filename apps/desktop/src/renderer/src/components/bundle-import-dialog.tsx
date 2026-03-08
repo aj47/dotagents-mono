@@ -97,7 +97,7 @@ interface BundlePreview {
   bundle?: {
     manifest: BundleManifest
     agentProfiles?: Array<{ id: string; name: string; displayName?: string }>
-    mcpServers?: Array<{ name: string }>
+    mcpServers?: Array<{ name: string; redactedSecretFields?: string[] }>
     skills?: Array<{ id: string; name: string }>
     repeatTasks?: Array<{ id: string; name: string }>
     memories?: Array<{ id: string; title: string }>
@@ -117,6 +117,7 @@ interface ImportItemResult {
   name: string
   action: "imported" | "skipped" | "renamed" | "overwritten"
   error?: string
+  newId?: string
 }
 
 interface BundleImportResult {
@@ -186,6 +187,41 @@ function formatExpectedConflictOutcome(conflictCount: number, strategy: Conflict
 function formatExpectedMemoryConflictOutcome(conflictCount: number): string | null {
   if (conflictCount === 0) return null
   return `${formatCount("existing memory", conflictCount)} will be skipped because memory imports are additive-only.`
+}
+
+function formatRedactedSecretFields(fields: string[]): string {
+  return fields.join(", ")
+}
+
+function getSelectedMcpServersRequiringConfiguration(
+  bundle: BundlePreview["bundle"] | undefined,
+  components: BundleComponentsState,
+  selectedItems: BundleItemSelectionState,
+): Array<{ name: string; redactedSecretFields: string[] }> {
+  if (!components.mcpServers) return []
+
+  const selectedNames = new Set(selectedItems.mcpServerNames)
+  return (bundle?.mcpServers ?? [])
+    .filter((server) => selectedNames.has(server.name) && (server.redactedSecretFields?.length ?? 0) > 0)
+    .map((server) => ({
+      name: server.name,
+      redactedSecretFields: server.redactedSecretFields ?? [],
+    }))
+}
+
+function getImportedMcpServersRequiringConfiguration(
+  bundle: BundlePreview["bundle"] | undefined,
+  result: BundleImportResult,
+): string[] {
+  const reconfigurationByServerName = new Map<string, true>(
+    (bundle?.mcpServers ?? [])
+      .filter((server) => (server.redactedSecretFields?.length ?? 0) > 0)
+      .map((server) => [server.name, true] as const)
+  )
+
+  return result.mcpServers
+    .filter((item) => !item.error && item.action !== "skipped" && reconfigurationByServerName.has(item.id))
+    .map((item) => item.newId || item.name)
 }
 
 type ImportPlanAction = "add" | ConflictStrategy | "exclude"
@@ -494,11 +530,17 @@ export function BundleImportDialog({
         : ""
       const sourceMessage = buildSourceOutcomeMessage(sourceLabel, sourceUrl)
       const importSummary = summarizeImportResult(result)
+      const importedMcpServersRequiringConfiguration = getImportedMcpServersRequiringConfiguration(preview?.bundle, result)
       if (result.success) {
         const detailMessage = importSummary.detailSummary
           ? ` (${importSummary.detailSummary})`
           : ""
         toast.success(`Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}${sourceMessage}`)
+        if (importedMcpServersRequiringConfiguration.length > 0) {
+          toast.warning(
+            `Reconfigure ${formatCount("MCP server", importedMcpServersRequiringConfiguration.length)} with <CONFIGURE_YOUR_KEY> placeholders in Settings → Capabilities: ${importedMcpServersRequiringConfiguration.join(", ")}.`
+          )
+        }
         onImportComplete()
         handleClose()
       } else {
@@ -550,6 +592,11 @@ export function BundleImportDialog({
   const selectedPlanItemCount = importPlanSections.reduce(
     (total, section) => total + section.items.filter((item) => item.selected).length,
     0,
+  )
+  const selectedMcpServersRequiringConfiguration = getSelectedMcpServersRequiringConfiguration(
+    preview?.bundle,
+    normalizedComponents,
+    selectedItems,
   )
 
   const toggleComponent = (key: keyof typeof components) => {
@@ -694,6 +741,36 @@ export function BundleImportDialog({
                 )}
               </div>
             </div>
+
+            {selectedMcpServersRequiringConfiguration.length > 0 && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
+                  <div className="space-y-2">
+                    <Label>Credential reconfiguration required</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedMcpServersRequiringConfiguration.length === 1
+                        ? "This selected MCP server contains redacted credentials and will import with "
+                        : "These selected MCP servers contain redacted credentials and will import with "}
+                      <span className="font-mono">&lt;CONFIGURE_YOUR_KEY&gt;</span>
+                      {" placeholders. After import, open Settings → Capabilities and replace those placeholders before using the servers."}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedMcpServersRequiringConfiguration.map((server) => (
+                        <Badge key={server.name} variant="outline" className="text-xs">
+                          {server.name}
+                          {server.redactedSecretFields.length > 0 && (
+                            <span className="ml-1 text-muted-foreground">
+                              · {formatRedactedSecretFields(server.redactedSecretFields)}
+                            </span>
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Import plan */}
             {importPlanSections.length > 0 && (

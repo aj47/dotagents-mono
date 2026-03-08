@@ -61,3 +61,14 @@ test('bundle import dialog supports section-level bulk selection and blocks empt
   assert.match(dialogSource, /const importDisabled = !preview\?\.filePath \|\| importing \|\| loading \|\| selectedPlanItemCount === 0/);
   assert.match(dialogSource, /<Button onClick=\{handleImport\} disabled=\{importDisabled\}>/);
 });
+
+test('bundle import preserves MCP placeholder metadata and warns about post-import reconfiguration', () => {
+  assert.match(bundleServiceSource, /export interface BundleMCPServer \{[\s\S]*config\?: Record<string, unknown>[\s\S]*redactedSecretFields\?: string\[\]/);
+  assert.match(bundleServiceSource, /function getRedactedSecretFieldNames\(config: Record<string, unknown>\): string\[]/);
+  assert.match(bundleServiceSource, /function buildImportedMcpServerConfig\(bundleServer: BundleMCPServer\): Record<string, unknown>/);
+  assert.match(dialogSource, /function getSelectedMcpServersRequiringConfiguration\(/);
+  assert.match(dialogSource, /Credential reconfiguration required/);
+  assert.match(dialogSource, /<CONFIGURE_YOUR_KEY>/);
+  assert.match(dialogSource, /Settings → Capabilities/);
+  assert.match(dialogSource, /toast\.warning\(/);
+});

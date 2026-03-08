@@ -266,7 +266,7 @@ describe("bundle-service", () => {
       expect((bundle.repeatTasks[0] as any).profileId).toBeUndefined()
     })
 
-    it("exports MCP servers from canonical mcpConfig and omits secret-bearing fields", async () => {
+    it("exports MCP servers from canonical mcpConfig with redacted placeholders for secret-bearing fields", async () => {
       writeTestMcpJson(agentsDir, {
         mcpConfig: {
           mcpServers: {
@@ -311,19 +311,41 @@ describe("bundle-service", () => {
           args: ["-y", "@modelcontextprotocol/server-github"],
           transport: "stdio",
           enabled: true,
+          config: {
+            transport: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            env: {
+              GITHUB_PERSONAL_ACCESS_TOKEN: "<CONFIGURE_YOUR_KEY>",
+              SAFE_VALUE: "keep-out-of-bundle",
+            },
+            headers: {
+              Authorization: "<CONFIGURE_YOUR_KEY>",
+              "X-Api-Key": "<CONFIGURE_YOUR_KEY>",
+            },
+            oauth: {
+              clientId: "client-id",
+              clientSecret: "<CONFIGURE_YOUR_KEY>",
+            },
+            timeout: 30_000,
+          },
+          redactedSecretFields: ["env", "headers", "oauth"],
         },
         {
           name: "exa",
           transport: "streamableHttp",
           enabled: false,
+          config: {
+            transport: "streamableHttp",
+            url: "https://mcp.exa.ai/mcp",
+            headers: {
+              Authorization: "<CONFIGURE_YOUR_KEY>",
+            },
+            disabled: true,
+          },
+          redactedSecretFields: ["headers"],
         },
       ])
-
-      expect(bundle.mcpServers[0]).not.toHaveProperty("env")
-      expect(bundle.mcpServers[0]).not.toHaveProperty("headers")
-      expect(bundle.mcpServers[0]).not.toHaveProperty("oauth")
-      expect(bundle.mcpServers[0]).not.toHaveProperty("timeout")
-      expect(bundle.mcpServers[1]).not.toHaveProperty("url")
     })
 
     it("supports per-item export selection across all bundle component types", async () => {
@@ -1753,6 +1775,77 @@ describe("bundle-service", () => {
           },
         },
         mcpDisabledTools: ["github:create_issue"],
+      })
+    })
+
+    it("preserves redacted MCP config placeholders so imported servers can be reconfigured safely", async () => {
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "MCP Placeholder Import Test",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 1, skills: 0, repeatTasks: 0, memories: 0 },
+        },
+        agentProfiles: [],
+        mcpServers: [
+          {
+            name: "remote-secure",
+            transport: "streamableHttp",
+            enabled: true,
+            config: {
+              transport: "streamableHttp",
+              url: "https://mcp.example.com/secure",
+              headers: {
+                Authorization: "<CONFIGURE_YOUR_KEY>",
+              },
+              oauth: {
+                clientId: "desktop-app",
+                clientSecret: "<CONFIGURE_YOUR_KEY>",
+              },
+              env: {
+                API_TOKEN: "<CONFIGURE_YOUR_KEY>",
+                SAFE_VALUE: "keep-me",
+              },
+              timeout: 45_000,
+            },
+          },
+        ],
+        skills: [],
+        repeatTasks: [],
+        memories: [],
+      }
+      const bundlePath = path.join(tempDir, "import-mcp-placeholders.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const preview = previewBundle(bundlePath)
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(preview?.mcpServers[0].redactedSecretFields).toEqual(["env", "headers", "oauth"])
+      expect(result.success).toBe(true)
+      expect(result.mcpServers).toEqual([{ id: "remote-secure", name: "remote-secure", action: "imported" }])
+      expect(mcpJson).toEqual({
+        mcpConfig: {
+          mcpServers: {
+            "remote-secure": {
+              transport: "streamableHttp",
+              url: "https://mcp.example.com/secure",
+              headers: {
+                Authorization: "<CONFIGURE_YOUR_KEY>",
+              },
+              oauth: {
+                clientId: "desktop-app",
+                clientSecret: "<CONFIGURE_YOUR_KEY>",
+              },
+              env: {
+                API_TOKEN: "<CONFIGURE_YOUR_KEY>",
+                SAFE_VALUE: "keep-me",
+              },
+              timeout: 45_000,
+            },
+          },
+        },
       })
     })
 

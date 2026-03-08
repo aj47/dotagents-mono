@@ -100,8 +100,11 @@ export interface BundleMCPServer {
   command?: string
   args?: string[]
   transport?: string
-  // URL/keys stripped
+  // Backward-compatible summary fields retained for older bundles.
   enabled?: boolean
+  // Redacted MCP config preserved so imports can carry safe placeholders forward.
+  config?: Record<string, unknown>
+  redactedSecretFields?: string[]
 }
 
 export interface BundleSkill {
@@ -340,6 +343,7 @@ const SECRET_PATTERNS = [
   /auth/i,
   /bearer/i,
 ]
+const REDACTED_SECRET_PLACEHOLDER = "<CONFIGURE_YOUR_KEY>"
 
 const MEMORY_SECRET_VALUE_PATTERNS = [
   /\bsk-[A-Za-z0-9_-]{16,}\b/,
@@ -489,12 +493,42 @@ function stripSecretsFromObject(obj: Record<string, unknown>): Record<string, un
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(obj)) {
     if (isSecretKey(key) && typeof value === "string" && value.length > 0) {
-      result[key] = "<CONFIGURE_YOUR_KEY>"
+      result[key] = REDACTED_SECRET_PLACEHOLDER
     } else {
       result[key] = stripSecretsFromValue(value)
     }
   }
   return result
+}
+
+function collectRedactedSecretFieldNames(
+  value: unknown,
+  path: string[] = [],
+  fields: Set<string> = new Set()
+): Set<string> {
+  if (value === REDACTED_SECRET_PLACEHOLDER && path.length > 0) {
+    fields.add(path[0])
+    return fields
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectRedactedSecretFieldNames(item, path, fields)
+    }
+    return fields
+  }
+
+  if (isRecordObject(value)) {
+    for (const [key, nestedValue] of Object.entries(value)) {
+      collectRedactedSecretFieldNames(nestedValue, [...path, key], fields)
+    }
+  }
+
+  return fields
+}
+
+function getRedactedSecretFieldNames(config: Record<string, unknown>): string[] {
+  return [...collectRedactedSecretFieldNames(config)].sort((a, b) => a.localeCompare(b))
 }
 
 function isLikelyMcpServerConfig(value: unknown): value is Record<string, unknown> {
@@ -708,6 +742,7 @@ function loadMCPServersForBundle(
 
       // Strip secrets from the server config
       const stripped = stripSecretsFromObject(serverConfig)
+      const redactedSecretFields = getRedactedSecretFieldNames(stripped)
 
       servers.push({
         name,
@@ -715,6 +750,8 @@ function loadMCPServersForBundle(
         args: Array.isArray(stripped.args) ? stripped.args.map(String) : undefined,
         transport: typeof stripped.transport === "string" ? stripped.transport : undefined,
         enabled: typeof stripped.disabled === "boolean" ? !stripped.disabled : true,
+        config: stripped,
+        redactedSecretFields,
       })
     }
   }
@@ -1328,7 +1365,24 @@ function isBundleMcpServer(value: unknown): value is BundleMCPServer {
   if (!isOptionalString(value.transport)) return false
   if (value.args !== undefined && !isStringArray(value.args)) return false
   if (value.enabled !== undefined && typeof value.enabled !== "boolean") return false
+  if (value.config !== undefined && !isRecordObject(value.config)) return false
+  if (value.redactedSecretFields !== undefined && !isStringArray(value.redactedSecretFields)) return false
   return true
+}
+
+function normalizeBundleMcpServer(server: BundleMCPServer): BundleMCPServer {
+  const config = isRecordObject(server.config)
+    ? { ...(server.config as Record<string, unknown>) }
+    : undefined
+  const redactedSecretFields = config
+    ? getRedactedSecretFieldNames(config)
+    : (server.redactedSecretFields ?? []).filter(isNonEmptyString)
+
+  return {
+    ...server,
+    ...(config ? { config } : {}),
+    ...(redactedSecretFields.length > 0 ? { redactedSecretFields } : {}),
+  }
 }
 
 function isBundleSkill(value: unknown): value is BundleSkill {
@@ -1398,6 +1452,7 @@ function validateBundle(bundle: unknown): bundle is LegacyDotAgentsBundle {
 function normalizeBundle(bundle: LegacyDotAgentsBundle): DotAgentsBundle {
   const repeatTasks = Array.isArray(bundle.repeatTasks) ? bundle.repeatTasks : []
   const memories = Array.isArray(bundle.memories) ? bundle.memories : []
+  const mcpServers = bundle.mcpServers.map(normalizeBundleMcpServer)
   const rawComponents = isRecordObject(bundle.manifest.components)
     ? (bundle.manifest.components as Record<string, unknown>)
     : {}
@@ -1410,15 +1465,29 @@ function normalizeBundle(bundle: LegacyDotAgentsBundle): DotAgentsBundle {
       ...bundle.manifest,
       components: {
         agentProfiles: countOrFallback(rawComponents.agentProfiles, bundle.agentProfiles.length),
-        mcpServers: countOrFallback(rawComponents.mcpServers, bundle.mcpServers.length),
+        mcpServers: countOrFallback(rawComponents.mcpServers, mcpServers.length),
         skills: countOrFallback(rawComponents.skills, bundle.skills.length),
         repeatTasks: countOrFallback(rawComponents.repeatTasks, repeatTasks.length),
         memories: countOrFallback(rawComponents.memories, memories.length),
       },
     },
+    mcpServers,
     repeatTasks,
     memories,
   }
+}
+
+function buildImportedMcpServerConfig(bundleServer: BundleMCPServer): Record<string, unknown> {
+  const serverConfig = isRecordObject(bundleServer.config)
+    ? { ...(bundleServer.config as Record<string, unknown>) }
+    : {}
+
+  if (bundleServer.command && serverConfig.command === undefined) serverConfig.command = bundleServer.command
+  if (bundleServer.args && serverConfig.args === undefined) serverConfig.args = bundleServer.args
+  if (bundleServer.transport && serverConfig.transport === undefined) serverConfig.transport = bundleServer.transport
+  if (bundleServer.enabled === false && serverConfig.disabled === undefined) serverConfig.disabled = true
+
+  return serverConfig
 }
 
 export function previewBundle(filePath: string): DotAgentsBundle | null {
@@ -1830,11 +1899,7 @@ export async function importBundle(
         }
 
         // Build server config
-        const serverConfig: Record<string, unknown> = {}
-        if (bundleServer.command) serverConfig.command = bundleServer.command
-        if (bundleServer.args) serverConfig.args = bundleServer.args
-        if (bundleServer.transport) serverConfig.transport = bundleServer.transport
-        if (bundleServer.enabled === false) serverConfig.disabled = true
+        const serverConfig = buildImportedMcpServerConfig(bundleServer)
 
         mcpServers[finalName] = serverConfig
         existingNames.add(finalName)

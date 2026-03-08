@@ -1470,3 +1470,42 @@
   - If bundle import later supports richer conflict reasons, thread the memory duplicate reason through the preview payload instead of keeping today’s generic skip-only conflict entry.
 
 - Next recommended issue work item: pivot away from `#25` for the next pass unless another clearly self-contained acceptance gap appears; `#55` remains the best bug candidate only if a fresh direct repro is confirmed first, otherwise revisit the remaining open UX issues for a similarly small verified slice.
+
+##### Issue #25 — Bundle imports now preserve redacted MCP placeholders and prompt reconfiguration
+
+- Selection rationale:
+  - The latest ledger explicitly deferred the remaining `#25` MCP-secret acceptance gap until the bundle format carried placeholder metadata instead of the previous coarse MCP summaries.
+  - After re-checking the current code, that was now the best small, high-trust follow-up: exports were already stripping secrets recursively, but imports still discarded most of the stripped MCP config, so users lost the exact fields that needed reconfiguration.
+- Investigation:
+  - Re-read `#25` plus its comment history and confirmed the umbrella issue still covers bundle trust/safety work even after the recent `#56` / `#57` slices.
+  - Inspected `apps/desktop/src/main/bundle-service.ts` and confirmed `loadMCPServersForBundle(...)` already computed a recursively stripped MCP config, but then only kept `name`, `command`, `args`, `transport`, and `enabled` in `BundleMCPServer`.
+  - Confirmed `importBundle(...)` rebuilt imported MCP servers only from those summary fields, which meant imported servers lost redacted `env`, `headers`, `oauth`, `url`, and timeout context that users would need in order to finish setup safely.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog had no way to warn when a selected MCP server would import with `<CONFIGURE_YOUR_KEY>` placeholders and require follow-up in Settings.
+- Important assumptions:
+  - Assumption: preserving redacted MCP config structure in the bundle is acceptable as long as secret values remain replaced with placeholders.
+  - Why acceptable: it materially improves import transparency and reconfiguration without exposing the original credentials.
+  - Assumption: continuing to redact only secret-looking keys (rather than blanking every `env` / `headers` value wholesale) is acceptable for this slice.
+  - Why acceptable: it stays consistent with the existing secret-stripping heuristic already used by bundle export, so this change improves round-tripping without broadening what gets exposed.
+  - Assumption: source-level Node tests are the practical verification path in this worktree right now.
+  - Why acceptable: the worktree still lacks the desktop dependency baseline needed for Vitest / TypeScript checks, but the added source-contract tests still lock in the new bundle/import-dialog wiring and the runtime-focused Vitest coverage is in place for later re-run.
+- Changes implemented:
+  - Expanded `BundleMCPServer` in `apps/desktop/src/main/bundle-service.ts` to carry the full redacted MCP `config` plus derived `redactedSecretFields` metadata.
+  - Added helper logic to derive redacted secret field names from `<CONFIGURE_YOUR_KEY>` placeholders, normalize that metadata during bundle preview, and rebuild imported MCP server configs from the preserved redacted structure.
+  - Updated bundle export so MCP servers now keep safe placeholder-bearing config data instead of dropping the fields entirely.
+  - Updated the desktop bundle import dialog to flag selected MCP servers that will import with placeholders, list the affected servers/field groups, and show a post-import warning pointing users to Settings → Capabilities for reconfiguration.
+  - Added runtime-oriented Vitest coverage in `apps/desktop/src/main/bundle-service.test.ts` for both export-side redacted MCP config preservation and import-side placeholder round-tripping.
+  - Added dependency-light source tests in `apps/desktop/src/main/bundle-service.mcp-placeholder.test.js` and `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to lock in the new service/dialog contract in this dependency-light worktree.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/bundle-service.mcp-placeholder.test.js apps/desktop/src/main/bundle-service.memory-secret-warning.test.js apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted but blocked by missing workspace dependencies: `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` → `Command "vitest" not found`.
+  - Attempted but blocked by missing workspace dependencies: `pnpm --filter @dotagents/desktop run typecheck` → missing `electron-vite/node`, `vitest/globals`, and `@electron-toolkit/tsconfig` because this worktree does not currently have the desktop `node_modules` baseline.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the new `bundle-service.test.ts` cases and desktop typecheck once the worktree has the normal desktop dependency/tooling baseline restored.
+  - Consider whether the import dialog should eventually offer a one-click jump directly into the MCP settings surface after import for servers that still contain placeholders.
+  - If bundle preview payloads later grow richer item metadata, consider threading explicit per-field reconfiguration reasons through the preview/import result instead of keeping today’s light `redactedSecretFields` summary.
+
+- Next recommended issue work item: pivot to another open issue for the next loop; `#54` still looks too speculative for a code-first slice, so prefer a fresh direct repro for `#55` or a narrow follow-up on `#57` / `#58` with similarly local verification.
