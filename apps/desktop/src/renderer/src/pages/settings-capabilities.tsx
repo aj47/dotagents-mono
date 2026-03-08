@@ -114,6 +114,8 @@ export function Component() {
   const [isSelectingRestoreBackup, setIsSelectingRestoreBackup] = useState(false)
   const [isOpeningBackupsFolder, setIsOpeningBackupsFolder] = useState(false)
   const [isOpeningSlotsFolder, setIsOpeningSlotsFolder] = useState(false)
+  const [switchingSlotId, setSwitchingSlotId] = useState<string | null>(null)
+  const [isClearingActiveSlot, setIsClearingActiveSlot] = useState(false)
   const [revealingBackupPath, setRevealingBackupPath] = useState<string | null>(null)
   const recentBackupsQuery = useQuery({
     queryKey: ["bundle-import-backups"],
@@ -127,6 +129,30 @@ export function Component() {
   const recentBackups = recentBackupsQuery.data ?? []
   const bundleSlotState = bundleSlotStateQuery.data
   const bundleSlots = bundleSlotState?.slots ?? []
+  const isBundleSlotActionPending = switchingSlotId !== null || isClearingActiveSlot
+
+  const invalidateRuntimeLayerQueries = () => {
+    const queryKeys = [
+      ["skills"],
+      ["skillsSidebar"],
+      ["config"],
+      ["bundle-import-backups"],
+      ["bundle-slot-state"],
+      ["agentProfilesSidebar"],
+      ["agentProfilesSelector"],
+      ["agentProfilesPanel"],
+      ["current-agent-profile"],
+      ["profile-enabled-skill-ids"],
+      ["mcp-server-status"],
+      ["mcp-initialization-status"],
+      ["serverStatusSidebar"],
+      ["toolsSidebar"],
+    ] as const
+
+    for (const queryKey of queryKeys) {
+      queryClient.invalidateQueries({ queryKey: [...queryKey] })
+    }
+  }
 
   const openRestoreDialogForFile = (filePath: string) => {
     setRestoreFilePath(filePath)
@@ -193,6 +219,34 @@ export function Component() {
     }
   }
 
+  const handleActivateSlotClick = async (slotId: string) => {
+    setSwitchingSlotId(slotId)
+    try {
+      await tipcClient.setActiveBundleSlot({ slotId })
+      invalidateRuntimeLayerQueries()
+      toast.success(`Activated bundle slot \"${slotId}\"`)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to activate bundle slot: ${errorMessage}`)
+    } finally {
+      setSwitchingSlotId((currentSlotId) => currentSlotId === slotId ? null : currentSlotId)
+    }
+  }
+
+  const handleClearActiveSlotClick = async () => {
+    setIsClearingActiveSlot(true)
+    try {
+      await tipcClient.clearActiveBundleSlot()
+      invalidateRuntimeLayerQueries()
+      toast.success("Cleared active bundle slot")
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to clear active bundle slot: ${errorMessage}`)
+    } finally {
+      setIsClearingActiveSlot(false)
+    }
+  }
+
   const handleCopyBackupPathClick = async (filePath: string) => {
     try {
       await copyTextToClipboard(filePath)
@@ -211,11 +265,7 @@ export function Component() {
   }
 
   const handleRestoreImportComplete = () => {
-    queryClient.invalidateQueries({ queryKey: ["skills"] })
-    queryClient.invalidateQueries({ queryKey: ["config"] })
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
-    queryClient.invalidateQueries({ queryKey: ["bundle-import-backups"] })
-    queryClient.invalidateQueries({ queryKey: ["bundle-slot-state"] })
+    invalidateRuntimeLayerQueries()
   }
 
   return (
@@ -379,13 +429,30 @@ export function Component() {
               {!bundleSlotStateQuery.isLoading && !bundleSlotStateQuery.isError && (
                 <>
                   <div className="rounded-md border bg-background px-3 py-2 text-sm">
-                    <p className="font-medium">Active slot</p>
-                    <p className="text-xs text-muted-foreground">
-                      {bundleSlotState?.activeSlotId ?? "No active slot selected"}
-                      {bundleSlotState?.lastSwitchedAt
-                        ? ` · last switched ${new Date(bundleSlotState.lastSwitchedAt).toLocaleString()}`
-                        : " · no switch timestamp recorded yet"}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">Active slot</p>
+                        <p className="text-xs text-muted-foreground">
+                          {bundleSlotState?.activeSlotId ?? "No active slot selected"}
+                          {bundleSlotState?.lastSwitchedAt
+                            ? ` · last switched ${new Date(bundleSlotState.lastSwitchedAt).toLocaleString()}`
+                            : " · no switch timestamp recorded yet"}
+                        </p>
+                      </div>
+                      {bundleSlotState?.activeSlotId && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 shrink-0"
+                          onClick={handleClearActiveSlotClick}
+                          disabled={isBundleSlotActionPending}
+                        >
+                          {isClearingActiveSlot && <Loader2 className="h-4 w-4 animate-spin" />}
+                          Clear Active Slot
+                        </Button>
+                      )}
+                    </div>
                     <p className="mt-1 font-mono text-[11px] text-muted-foreground/70" title={bundleSlotState?.slotsFolder}>
                       {bundleSlotState?.slotsFolder}
                     </p>
@@ -393,21 +460,36 @@ export function Component() {
 
                   {bundleSlots.length === 0 && (
                     <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
-                      No bundle slot directories found yet. Create or import a slot under this folder, then point `active-slot.json` at it to activate the middle overlay layer.
+                      No bundle slot directories found yet. Create or import a slot under this folder, then activate it here to mount the middle overlay layer.
                     </div>
                   )}
 
                   {bundleSlots.map(slot => (
                     <div key={slot.id} className="rounded-md border bg-background px-3 py-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium">{slot.id}</p>
-                        <span className="text-xs text-muted-foreground">
-                          {slot.isActive ? "Active pointer" : "Available slot"}
-                        </span>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{slot.id}</p>
+                          <p className="truncate font-mono text-[11px] text-muted-foreground/70" title={slot.slotDir}>
+                            {slot.slotDir}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground">
+                            {slot.isActive ? "Active pointer" : "Available slot"}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => handleActivateSlotClick(slot.id)}
+                            disabled={isBundleSlotActionPending || slot.isActive}
+                          >
+                            {switchingSlotId === slot.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {slot.isActive ? "Active" : "Use Slot"}
+                          </Button>
+                        </div>
                       </div>
-                      <p className="truncate font-mono text-[11px] text-muted-foreground/70" title={slot.slotDir}>
-                        {slot.slotDir}
-                      </p>
                     </div>
                   ))}
 

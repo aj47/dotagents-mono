@@ -2526,3 +2526,43 @@
   - Revisit deeper runtime/integration coverage once the full desktop test runner environment is consistently available.
 
 - Next recommended issue work item: stay on `#57` for one more small slice only if it tackles a concrete write-path or slot-action gap (most likely broader config save semantics or explicit slot-switch actions); otherwise refresh open issues and pick the next well-scoped desktop bug/reliability issue.
+
+##### Issue #57 — Bundle slots: explicit switch / clear actions in Settings → Capabilities
+
+- Selection rationale:
+  - Followed the latest `issue-work.md` recommendation first instead of reopening a broader issue.
+  - The remaining gap was concrete and user-facing: slot state was visible in Settings → Capabilities, but users still had to hand-edit `bundle-slots/active-slot.json` to actually switch or clear the active slot.
+  - This was a small, reviewable trust/UX slice of `#57` with a direct local implementation path across config, TIPC, and the existing desktop settings page.
+- Investigation:
+  - Re-read issue `#57` plus the earlier ledger notes and confirmed explicit slot actions were still listed as a remaining follow-up after the slot-aware runtime read/persistence work.
+  - Re-inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed the page already showed `Active slot` state and discovered slot directories, but exposed no action beyond `Open Slots Folder`.
+  - Re-inspected `apps/desktop/src/main/config.ts` and confirmed there was a read-side `getActiveBundleSlotState()` contract but no write helper for the active-slot pointer.
+  - Re-inspected `apps/desktop/src/main/tipc.ts` and confirmed there was already a reusable runtime refresh helper used after bundle imports, making explicit slot switching a narrow follow-up rather than a new architecture.
+- Important assumptions:
+  - Assumption: a first explicit slot-action slice only needs `Use Slot` and `Clear Active Slot`, not the larger `import into new/current slot` or `promote current config to slot` workflows.
+  - Why acceptable: the issue thread and earlier ledger notes explicitly called out manual pointer editing as the immediate UX gap, and these two actions remove that friction without broadening scope.
+  - Assumption: clearing the active slot should still persist a fresh `lastSwitchedAt` timestamp rather than deleting `active-slot.json` entirely.
+  - Why acceptable: it preserves useful provenance for the Settings UI while still expressing “no active slot selected” cleanly.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: bundle-slot activation is wired through the desktop Electron `.agents` layering/runtime path, and the mobile app does not expose the same filesystem-backed slot model.
+- Changes implemented:
+  - Added `setActiveBundleSlot(slotId: string | null)` in `apps/desktop/src/main/config.ts` to validate discovered slot IDs, persist `active-slot.json` safely with backups, and return updated slot state.
+  - Reused the existing main-process runtime refresh path in `apps/desktop/src/main/tipc.ts` via new `setActiveBundleSlot` and `clearActiveBundleSlot` procedures so switching a slot also reloads config, agent profiles, skills, loops, memories, and MCP state.
+  - Updated `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` to add per-slot `Use Slot` actions, an `Active` disabled state, a `Clear Active Slot` button, success/error toasts, and query invalidation for runtime-layer-dependent renderer caches.
+  - Extended `apps/desktop/src/main/config.runtime-layers.test.ts` with a focused unit test covering persisted slot switching.
+  - Updated source-level regression coverage in `apps/desktop/src/main/agents-layer-resolution.foundation.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to assert the new config/TIPC/UI wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+  - Blocked by local environment: `pnpm --filter @dotagents/desktop exec vitest run src/main/config.runtime-layers.test.ts` ❌ because this workspace is missing installed package binaries/dependencies (`vitest` not found; pnpm also reports missing `node_modules`).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Add explicit slot-targeted import flows (`import into current slot` / `import into new slot`) so bundle workflows can use slots directly instead of only switching existing ones.
+  - Extend the same clarity to broader settings/config save paths if users can edit values that are currently sourced from an active slot override.
+  - Consider a `promote current config to slot` or similar workflow if slot authoring becomes a common desktop path.
+  - Re-run the new Vitest coverage once package dependencies are available in the workspace.
+
+- Next recommended issue work item: stay on `#57` only if the next slice is another narrow slot workflow (most likely slot-targeted import/promote actions or broader config-save semantics); otherwise refresh open issues and pick the next concrete desktop reliability/UX bug.

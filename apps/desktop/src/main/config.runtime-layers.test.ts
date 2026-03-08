@@ -10,6 +10,8 @@ const mockFindAgentsDirUpward = vi.fn(() => null)
 const mockGetAgentsLayerPaths = vi.fn((agentsDir: string) => ({ agentsDir }))
 const mockLoadMergedAgentsConfig = vi.fn(() => ({ merged: {}, hasAnyAgentsFiles: false }))
 const mockWriteAgentsLayerFromConfig = vi.fn()
+const mockSafeReadJsonFileSync = vi.fn(() => ({}))
+const mockSafeWriteJsonFileSync = vi.fn()
 
 vi.mock("fs", () => ({
   default: {
@@ -43,8 +45,8 @@ vi.mock("./agents-files/modular-config", () => ({
 }))
 
 vi.mock("./agents-files/safe-file", () => ({
-  safeReadJsonFileSync: vi.fn(() => ({})),
-  safeWriteJsonFileSync: vi.fn(),
+  safeReadJsonFileSync: mockSafeReadJsonFileSync,
+  safeWriteJsonFileSync: mockSafeWriteJsonFileSync,
 }))
 
 describe("getRuntimeAgentsLayers", () => {
@@ -68,6 +70,9 @@ describe("getRuntimeAgentsLayers", () => {
     mockLoadMergedAgentsConfig.mockReset()
     mockLoadMergedAgentsConfig.mockReturnValue({ merged: {}, hasAnyAgentsFiles: false })
     mockWriteAgentsLayerFromConfig.mockReset()
+    mockSafeReadJsonFileSync.mockReset()
+    mockSafeReadJsonFileSync.mockReturnValue({})
+    mockSafeWriteJsonFileSync.mockReset()
   })
 
   it("returns only the global layer when no workspace overlay is available", async () => {
@@ -181,5 +186,33 @@ describe("getRuntimeAgentsLayers", () => {
         paths: { agentsDir: "/tmp/workspace-root/.agents" },
       },
     })
+  })
+
+  it("persists explicit bundle slot switches with a fresh timestamp", async () => {
+    const slotsFolder = path.join(os.homedir(), ".agents", "bundle-slots")
+    const activeStatePath = path.join(slotsFolder, "active-slot.json")
+
+    mockFsExistsSync.mockImplementation((candidate: unknown) => String(candidate) === slotsFolder)
+    mockFsReaddirSync.mockReturnValue([
+      { name: "focus-mode", isDirectory: () => true },
+    ])
+
+    const { setActiveBundleSlot } = await import("./config")
+    const state = setActiveBundleSlot("focus-mode")
+
+    expect(mockSafeWriteJsonFileSync).toHaveBeenCalledWith(
+      activeStatePath,
+      expect.objectContaining({ slotId: "focus-mode", lastSwitchedAt: expect.any(String) }),
+      expect.objectContaining({
+        backupDir: path.join(slotsFolder, ".backups"),
+        maxBackups: 10,
+        pretty: true,
+      }),
+    )
+    expect(state).toMatchObject({
+      activeSlotId: "focus-mode",
+      slots: [{ id: "focus-mode", isActive: true }],
+    })
+    expect(state.lastSwitchedAt).toEqual(expect.any(String))
   })
 })

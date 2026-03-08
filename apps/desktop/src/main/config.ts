@@ -29,6 +29,7 @@ export const configPath = path.join(dataFolder, "config.json")
 export const globalAgentsFolder = path.join(os.homedir(), ".agents")
 export const bundleSlotsFolder = path.join(globalAgentsFolder, "bundle-slots")
 export const activeBundleSlotStatePath = path.join(bundleSlotsFolder, "active-slot.json")
+const bundleSlotsBackupsFolder = path.join(bundleSlotsFolder, ".backups")
 
 // Legacy location (app-data/.agents) — used only for one-time migration.
 const legacyAppDataAgentsFolder = path.join(dataFolder, ".agents")
@@ -184,6 +185,28 @@ function readResolvedBundleSlotSelection(): {
   }
 }
 
+function createBundleSlotState({
+  slots,
+  activeSlotId,
+  lastSwitchedAt,
+}: {
+  slots: Array<{ id: string; slotDir: string }>
+  activeSlotId: string | null
+  lastSwitchedAt: string | null
+}): BundleSlotState {
+  return {
+    slotsFolder: bundleSlotsFolder,
+    activeSlotId,
+    lastSwitchedAt,
+    slots: slots.map((slot) => ({
+      ...slot,
+      isActive: slot.id === activeSlotId,
+    })),
+    precedence: "global -> active slot -> workspace",
+    runtimeActivationEnabled: true,
+  }
+}
+
 /**
  * Slot metadata plus whether the current build/runtime will actually mount the
  * active slot as a middle overlay layer.
@@ -191,17 +214,44 @@ function readResolvedBundleSlotSelection(): {
 export function getActiveBundleSlotState(): BundleSlotState {
   const { slots, activeSlot, lastSwitchedAt } = readResolvedBundleSlotSelection()
 
-  return {
-    slotsFolder: bundleSlotsFolder,
+  return createBundleSlotState({
+    slots,
     activeSlotId: activeSlot?.id ?? null,
     lastSwitchedAt,
-    slots: slots.map((slot) => ({
-      ...slot,
-      isActive: slot.id === activeSlot?.id,
-    })),
-    precedence: "global -> active slot -> workspace",
-    runtimeActivationEnabled: true,
+  })
+}
+
+/**
+ * Persist the explicit active-slot pointer used by runtime layer resolution.
+ * Passing `null` clears the active slot while still recording when the switch happened.
+ */
+export function setActiveBundleSlot(slotId: string | null): BundleSlotState {
+  const normalizedSlotId = slotId === null ? null : normalizeBundleSlotId(slotId)
+  if (slotId !== null && !normalizedSlotId) {
+    throw new Error("Invalid bundle slot id")
   }
+
+  const slots = listBundleSlotDirectories()
+  if (normalizedSlotId && !slots.some((slot) => slot.id === normalizedSlotId)) {
+    throw new Error(`Bundle slot \"${normalizedSlotId}\" does not exist`)
+  }
+
+  const lastSwitchedAt = new Date().toISOString()
+  safeWriteJsonFileSync(
+    activeBundleSlotStatePath,
+    normalizedSlotId ? { slotId: normalizedSlotId, lastSwitchedAt } : { lastSwitchedAt },
+    {
+      backupDir: bundleSlotsBackupsFolder,
+      maxBackups: 10,
+      pretty: true,
+    },
+  )
+
+  return createBundleSlotState({
+    slots,
+    activeSlotId: normalizedSlotId,
+    lastSwitchedAt,
+  })
 }
 
 /**

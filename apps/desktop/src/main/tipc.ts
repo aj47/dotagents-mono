@@ -570,25 +570,25 @@ const saveRecordingsHitory = (history: RecordingHistoryItem[]) => {
   )
 }
 
-async function refreshRuntimeAfterBundleImport(): Promise<void> {
+async function refreshRuntimeAfterAgentsLayerChange(): Promise<void> {
   try {
     configStore.reload()
   } catch (error) {
-    logApp("[tipc] Failed to reload config after bundle load", { error })
+    logApp("[tipc] Failed to reload config after agents layer change", { error })
   }
 
   try {
     agentProfileService.reload()
     agentProfileService.syncAgentProfilesToACPRegistry()
   } catch (error) {
-    logApp("[tipc] Failed to reload agent profiles after bundle load", { error })
+    logApp("[tipc] Failed to reload agent profiles after agents layer change", { error })
   }
 
   try {
     const { skillsService } = await import("./skills-service")
     skillsService.scanSkillsFolder()
   } catch (error) {
-    logApp("[tipc] Failed to reload skills after bundle load", { error })
+    logApp("[tipc] Failed to reload skills after agents layer change", { error })
   }
 
   try {
@@ -597,7 +597,7 @@ async function refreshRuntimeAfterBundleImport(): Promise<void> {
     loopService.resumeScheduling()
     loopService.startAllLoops()
   } catch (error) {
-    logApp("[tipc] Failed to reload repeat tasks after bundle load", { error })
+    logApp("[tipc] Failed to reload repeat tasks after agents layer change", { error })
     // Avoid leaving loop scheduling paused if stopAllLoops() succeeded but reload/start failed.
     try {
       loopService.resumeScheduling()
@@ -609,7 +609,7 @@ async function refreshRuntimeAfterBundleImport(): Promise<void> {
   try {
     await memoryService.reload()
   } catch (error) {
-    logApp("[tipc] Failed to reload memories after bundle load", { error })
+    logApp("[tipc] Failed to reload memories after agents layer change", { error })
   }
 
   try {
@@ -2276,6 +2276,22 @@ export const router = {
   getBundleSlotState: t.procedure.action(async () => {
     const { getActiveBundleSlotState } = await import("./config")
     return getActiveBundleSlotState()
+  }),
+
+  setActiveBundleSlot: t.procedure
+    .input<{ slotId: string }>()
+    .action(async ({ input }) => {
+      const { setActiveBundleSlot } = await import("./config")
+      const state = setActiveBundleSlot(input.slotId)
+      await refreshRuntimeAfterAgentsLayerChange()
+      return state
+    }),
+
+  clearActiveBundleSlot: t.procedure.action(async () => {
+    const { setActiveBundleSlot } = await import("./config")
+    const state = setActiveBundleSlot(null)
+    await refreshRuntimeAfterAgentsLayerChange()
+    return state
   }),
 
   openBundleSlotsFolder: t.procedure.action(async () => {
@@ -4761,7 +4777,7 @@ export const router = {
         selectedItems: input.selectedItems,
         conflictStrategyOverrides: input.conflictStrategyOverrides,
       })
-      await refreshRuntimeAfterBundleImport()
+      await refreshRuntimeAfterAgentsLayerChange()
       return result
     }),
 
@@ -4801,7 +4817,7 @@ export const router = {
         conflictStrategyOverrides: input.conflictStrategyOverrides,
       })
       if (result) {
-        await refreshRuntimeAfterBundleImport()
+        await refreshRuntimeAfterAgentsLayerChange()
       }
       return result
     }),
