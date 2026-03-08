@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile `Agent Loops` fetch/loading/error feedback in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/lib/settingsApi.ts` and adjacent mobile warning/loading patterns reviewed, focused source-level coverage added in `apps/mobile/tests/settings-loop-feedback-mobile.test.js`, and targeted loop-related verification run locally.
 - 2026-03-08: Desktop past-sessions dialog destructive-action guardrails / inline delete recovery in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, with history-query/delete mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, mobile parity checked in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile already confirms single-session deletion), focused source-level coverage added in `tests/desktop-past-sessions-dialog-guardrails.test.js`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop repeat-task settings load/fetch-failure feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with adjacent inline loading/retry patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, focused source-level coverage added in `tests/desktop-settings-loops-feedback.test.js`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop overlay follow-up composer session-scope cleanup in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, with overlay mount reuse reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, existing follow-up guardrails checked in `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts`, stronger focused renderer regression coverage added in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx`, dependency-free source assertions added in `tests/desktop-overlay-follow-up-session-scope.test.js`, and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile composer is screen-scoped rather than reused across focused desktop sessions).
@@ -56,6 +57,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Mobile `Agent Loops` now distinguish initial loading, refresh, fetch failure, and true empty states in `apps/mobile/src/screens/SettingsScreen.tsx`, keep previously loaded loops visible while a refresh is in flight, and show inline `Retry loading` guidance instead of making a transient desktop/API failure look like all loops disappeared; tradeoff: this pass intentionally leaves run/toggle/delete mutation failure feedback for a later loop-management pass.
 - 2026-03-08: Desktop `Past Sessions` now confirms before deleting an individual session, keeps delete failures inline with a local `Retry delete` path, blocks nested keyboard delete actions from accidentally opening the session row, and shows row-scoped delete progress so history cleanup is safer and easier to recover from without broad dialog churn; tradeoff: this pass intentionally leaves list-load retry/focus-restoration polish for a follow-up because the highest-risk issue was destructive action confidence.
 - 2026-03-08: Desktop repeat-task settings now keep the `Repeat Tasks` page in a distinct loading state while saved schedules are still resolving and show an inline fetch-failure banner with `Retry loading` instead of falling straight to the empty-state copy, so transient query failures no longer look like all loops disappeared; tradeoff: this pass intentionally leaves `getLoopStatuses()` failure messaging for a follow-up because the highest-risk confusion was the main loop list query being mistaken for “no tasks”.
 - 2026-03-08: Desktop overlay follow-up input now treats `conversationId` + `sessionId` as a composer scope, clears stale draft/error/image state when the focused overlay session changes, and ignores late async submit/image completions from the previous session so a failed or delayed follow-up from session A cannot leak into session B or wipe a new draft there; tradeoff: this pass intentionally stays scoped to the overlay composer because the tile composer is mounted per-session already, so it does not share the same cross-session reuse risk.
@@ -103,6 +105,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-feedback-mobile.test.js`
+- 2026-03-08: attempted `pnpm exec tsc -p apps/mobile/tsconfig.json --noEmit` (blocked: `apps/mobile/tsconfig.json` extends missing `expo/tsconfig.base`, and the worktree lacks the Expo / React Native dependency types needed for focused mobile typecheck verification here)
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/SettingsScreen.tsx` plus `node --check apps/mobile/tests/settings-loop-feedback-mobile.test.js`
+- 2026-03-08: `git diff --check` after the mobile Agent Loops fetch-state feedback pass
 - 2026-03-08: `node --test tests/desktop-past-sessions-dialog-guardrails.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
 - 2026-03-08: `git diff --check` after the desktop past-sessions delete-guardrails pass
@@ -212,6 +218,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused mobile TypeScript verification for this Agent Loops feedback pass is blocked in this environment because `pnpm exec tsc -p apps/mobile/tsconfig.json --noEmit` cannot resolve `expo/tsconfig.base` and numerous Expo/React Native dependency types in this worktree, so this iteration relied on targeted source-level tests plus a direct `typescript.transpileModule` syntax check.
 - 2026-03-08: Live desktop UI inspection for this past-sessions delete-guardrails pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this repeat-task fetch-state feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this overlay session-scope pass is blocked in this worktree because `node_modules` is missing, so `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx ...` fails during the required `build:shared` pretest step when `tsup` cannot be found.
@@ -260,13 +267,13 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Desktop session lifecycle and error-state cleanup consistency (`apps/desktop/src/main/state.ts`, `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`)
-- Mobile `Agent Loops` fetch-failure feedback (`apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/lib/settingsApi.ts`)
 
 ### Next Highest-Value Targets
 - Once a runnable Electron target is available, live-check the desktop past-sessions dialog across keyboard navigation, single-session delete confirmation, failed-delete retry, and delete-all failure states to confirm the new recovery hierarchy feels clear in the real UI
 - Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, fetch failure, empty, and populated states to confirm the new non-empty-state feedback reads clearly in the real UI
 - Desktop repeat-task runtime-status fetch feedback is the most adjacent follow-up if another loops pass is needed, especially when `getLoopStatuses()` fails and the list still needs to explain stale `Running` / `Next run` details
-- Mobile `Agent Loops` fetch-failure feedback in `apps/mobile/src/screens/SettingsScreen.tsx` is the closest cross-platform parity follow-up now that desktop no longer conflates a failed loop query with an empty list
+- Once a runnable mobile target is available, live-check `Settings → Agent Loops` across first load, refresh with existing loops, empty state, and inline retry after a fetch failure to confirm the new state hierarchy feels clear on-device
+- Mobile loop action mutation failure feedback (`run`, `toggle`, `delete`) is the most adjacent follow-up if another mobile loops pass is needed now that fetch-state recovery is clearer
 - Once a runnable Electron target is available, live-check the desktop sessions empty state with no history, loading history, a few recent sessions, and more than eight sessions to confirm the new `Past Sessions` action and loading hint feel obvious without overcrowding the primary start actions
 - Desktop past-sessions dialog list-load retry / focus-restoration polish is the most adjacent follow-up if another history/navigation pass is needed, now that single-delete safety and failure recovery are tightened
 - Once a runnable Electron target is available, live-check the desktop queued-send flow across paused, failed-head, `Retry & Resume`, and edited-head recovery states to confirm the new recovery path feels obvious in the actual UI
@@ -1873,6 +1880,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Electron target is available, live-check the dialog across keyboard navigation, single delete confirmation, failed delete retry, and delete-all failure states
   - inspect whether the dialog also needs an inline `Retry loading` path or focus restoration after delete/close in a future history/navigation pass
+
+### 2026-03-08 — Mobile Agent Loops fetch-state feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile settings loop management in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - specifically the `Agent Loops` section’s initial load, refresh, failure, and empty-state feedback
+- Why it was chosen:
+  - the desktop repeat-task list already stopped conflating fetch failures with an empty list, but mobile still fell straight from a failed `getLoops()` request to `No agent loops configured`
+  - that made transient desktop/API failures look like saved loops had disappeared, which is high-confusion behavior on a settings surface that users trust for scheduled automation
+  - the opportunity had a clear user-facing payoff and stayed local to one screen plus focused source-level tests
+- What was inspected:
+  - `apps/mobile/src/screens/SettingsScreen.tsx` loop fetch/render branches and nearby warning/loading UI patterns
+  - `apps/mobile/src/lib/settingsApi.ts` to confirm the `getLoops()` call shape and failure surface
+  - existing mobile loop-focused source assertions in `apps/mobile/tests/settings-loop-actions-mobile.test.js` and `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+- Improvement made:
+  - added dedicated `loopsError` state so a failed fetch is represented separately from a true empty result
+  - changed the section to show explicit `Loading agent loops...` feedback on first load instead of a spinner-only branch
+  - kept previously loaded loops visible during refreshes and added `Refreshing agent loops...` copy so background reloads are clearer without blanking the section
+  - added an inline warning banner with `Retry loading` when `getLoops()` fails, and only show `No agent loops configured` when there is neither data nor an active fetch error
+  - added focused coverage in `apps/mobile/tests/settings-loop-feedback-mobile.test.js`
+- Assumptions / tradeoffs / rationale:
+  - reused the existing mobile warning/loading styles instead of introducing a loops-specific component so the change stays visually consistent and easy to maintain
+  - preserved the backend-provided error message when available because specific desktop/API failures can be more actionable than a generic fallback string
+  - kept this pass scoped to fetch-state clarity rather than broadening into loop mutation error handling, which is an adjacent but separable follow-up
+- Tests / verification:
+  - `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-feedback-mobile.test.js`
+  - attempted `pnpm exec tsc -p apps/mobile/tsconfig.json --noEmit` (blocked in this worktree because `expo/tsconfig.base` and Expo/React Native dependency types are unavailable)
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `node --check apps/mobile/tests/settings-loop-feedback-mobile.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable mobile target is available, live-check the `Agent Loops` section across first load, refresh with existing loops, empty state, and retry after a failed fetch
+  - inspect loop action mutation failures (`run`, `toggle`, `delete`) if another mobile loops iteration is needed
 
 ### Iteration Template
 - Date:

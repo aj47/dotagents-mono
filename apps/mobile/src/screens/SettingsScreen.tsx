@@ -267,6 +267,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [loopsError, setLoopsError] = useState<string | null>(null);
   const availableAcpMainAgents = useMemo(
     () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -465,11 +466,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchLoops = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingLoops(true);
+    setLoopsError(null);
     try {
       const res = await settingsClient.getLoops();
       setLoops(res.loops);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch loops:', error);
+      setLoopsError(error.message || 'Failed to load agent loops');
     } finally {
       setIsLoadingLoops(false);
     }
@@ -2417,79 +2420,106 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4n. Agent Loops */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agentLoops" title="Agent Loops">
-                {isLoadingLoops ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : loops.length === 0 ? (
-                  <Text style={styles.helperText}>No agent loops configured</Text>
+                {isLoadingLoops && loops.length === 0 ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={styles.loadingText}>Loading agent loops...</Text>
+                  </View>
                 ) : (
-                  loops.map((loop) => (
-                    <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleLoopEdit(loop)}
-                        accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${loop.name} loop`)}
-                        accessibilityHint="Opens this loop so you can review and change its schedule or prompt."
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.serverInfo, { flex: 1 }]}> 
-                          <View style={styles.serverNameRow}>
-                            <View style={[
-                              styles.statusDot,
-                              loop.isRunning ? styles.statusConnected : styles.statusDisconnected,
-                            ]} />
-                            <Text style={styles.serverName}>{loop.name}</Text>
-                          </View>
-                          <Text style={styles.serverMeta} numberOfLines={2}>
-                            {formatLoopIntervalLabel(loop.intervalMinutes)}
-                            {loop.profileName && ` • ${loop.profileName}`}
-                            {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
-                          </Text>
-                          <Text style={styles.loopPromptPreview} numberOfLines={1}>{loop.prompt}</Text>
-                          {renderInlineEditAffordance()}
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.loopActions}>
+                  <>
+                    {loopsError && (
+                      <View style={styles.warningContainer}>
+                        <Text style={styles.warningText}>⚠️ {loopsError}</Text>
                         <TouchableOpacity
-                          style={styles.loopSwitchButton}
-                          onPress={() => handleLoopToggle(loop.id)}
-                          accessibilityRole="switch"
-                          accessibilityLabel={createSwitchAccessibilityLabel(`${loop.name} loop`)}
-                          accessibilityHint="Enables or pauses this scheduled loop."
-                          accessibilityState={{ checked: loop.enabled }}
-                          activeOpacity={0.7}
-                        >
-                          <View
-                            pointerEvents="none"
-                            accessibilityElementsHidden
-                            importantForAccessibility="no-hide-descendants"
-                          >
-                            {renderActionRailSwitchVisual(loop.enabled)}
-                          </View>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.loopActionButton}
-                          onPress={() => handleLoopRun(loop.id)}
+                          onPress={() => {
+                            void fetchLoops();
+                          }}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
-                          accessibilityHint="Triggers this loop immediately."
-                          activeOpacity={0.7}
+                          accessibilityLabel="Retry loading agent loops"
                         >
-                          <Text style={styles.loopRunText}>▶ Run</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.loopActionButton}
-                          onPress={() => handleLoopDelete(loop)}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
-                          accessibilityHint="Removes this scheduled loop after confirmation."
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.loopDeleteText}>🗑 Delete</Text>
+                          <Text style={styles.retryText}>Retry loading</Text>
                         </TouchableOpacity>
                       </View>
-                    </View>
-                  ))
+                    )}
+                    {isLoadingLoops && loops.length > 0 && (
+                      <View style={styles.loadingRow}>
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                        <Text style={styles.loadingText}>Refreshing agent loops...</Text>
+                      </View>
+                    )}
+                    {loops.length === 0 && !loopsError ? (
+                      <Text style={styles.helperText}>No agent loops configured</Text>
+                    ) : (
+                      loops.map((loop) => (
+                        <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                          <TouchableOpacity
+                            style={styles.agentInfoPressable}
+                            onPress={() => handleLoopEdit(loop)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Edit ${loop.name} loop`)}
+                            accessibilityHint="Opens this loop so you can review and change its schedule or prompt."
+                            activeOpacity={0.7}
+                          >
+                            <View style={[styles.serverInfo, { flex: 1 }]}>
+                              <View style={styles.serverNameRow}>
+                                <View style={[
+                                  styles.statusDot,
+                                  loop.isRunning ? styles.statusConnected : styles.statusDisconnected,
+                                ]} />
+                                <Text style={styles.serverName}>{loop.name}</Text>
+                              </View>
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                {formatLoopIntervalLabel(loop.intervalMinutes)}
+                                {loop.profileName && ` • ${loop.profileName}`}
+                                {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
+                              </Text>
+                              <Text style={styles.loopPromptPreview} numberOfLines={1}>{loop.prompt}</Text>
+                              {renderInlineEditAffordance()}
+                            </View>
+                          </TouchableOpacity>
+                          <View style={styles.loopActions}>
+                            <TouchableOpacity
+                              style={styles.loopSwitchButton}
+                              onPress={() => handleLoopToggle(loop.id)}
+                              accessibilityRole="switch"
+                              accessibilityLabel={createSwitchAccessibilityLabel(`${loop.name} loop`)}
+                              accessibilityHint="Enables or pauses this scheduled loop."
+                              accessibilityState={{ checked: loop.enabled }}
+                              activeOpacity={0.7}
+                            >
+                              <View
+                                pointerEvents="none"
+                                accessibilityElementsHidden
+                                importantForAccessibility="no-hide-descendants"
+                              >
+                                {renderActionRailSwitchVisual(loop.enabled)}
+                              </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.loopActionButton}
+                              onPress={() => handleLoopRun(loop.id)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
+                              accessibilityHint="Triggers this loop immediately."
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.loopRunText}>▶ Run</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.loopActionButton}
+                              onPress={() => handleLoopDelete(loop)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
+                              accessibilityHint="Removes this scheduled loop after confirmation."
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.loopDeleteText}>🗑 Delete</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))
+                    )}
+                  </>
                 )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
