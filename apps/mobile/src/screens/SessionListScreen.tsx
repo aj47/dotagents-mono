@@ -31,6 +31,20 @@ type SessionHistoryBadgeInfo = {
   tone: 'primary' | 'warning';
 };
 
+type SessionHistoryFilter = 'all' | 'compacted' | 'partial';
+
+const getSessionHistoryFilter = (
+  session: Pick<SessionListItem, 'compaction'>,
+): Exclude<SessionHistoryFilter, 'all'> | null => {
+  if (!session.compaction) {
+    return null;
+  }
+
+  return session.compaction.partialReason === 'legacy_summary_without_raw_messages'
+    ? 'partial'
+    : 'compacted';
+};
+
 const getSessionHistoryBadge = (
   session: Pick<SessionListItem, 'compaction'>,
 ): SessionHistoryBadgeInfo | null => {
@@ -733,6 +747,34 @@ export default function SessionListScreen({ navigation }: Props) {
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
+  const [historyFilter, setHistoryFilter] = useState<SessionHistoryFilter>('all');
+  const filteredSessions = useMemo(() => {
+    if (historyFilter === 'all') {
+      return sessions;
+    }
+
+    return sessions.filter((session) => getSessionHistoryFilter(session) === historyFilter);
+  }, [historyFilter, sessions]);
+  const hasHistoryFilterOptions = useMemo(
+    () => sessions.some((session) => getSessionHistoryFilter(session) !== null),
+    [sessions],
+  );
+  const historyFilterCounts = useMemo(() => {
+    const counts = {
+      all: sessions.length,
+      compacted: 0,
+      partial: 0,
+    };
+
+    for (const session of sessions) {
+      const nextFilter = getSessionHistoryFilter(session);
+      if (nextFilter) {
+        counts[nextFilter] += 1;
+      }
+    }
+
+    return counts;
+  }, [sessions]);
 
   if (!sessionStore.ready) {
     return (
@@ -918,9 +960,17 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const EmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyTitle}>No Sessions Yet</Text>
+      <Text style={styles.emptyTitle}>
+        {historyFilter === 'all'
+          ? 'No Sessions Yet'
+          : historyFilter === 'partial'
+            ? 'No Partial-History Chats'
+            : 'No Compacted-History Chats'}
+      </Text>
       <Text style={styles.emptySubtitle}>
-        Start a new chat to begin a conversation
+        {historyFilter === 'all'
+          ? 'Start a new chat to begin a conversation'
+          : 'Try All chats to browse every conversation again.'}
       </Text>
     </View>
   );
@@ -975,11 +1025,52 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       </View>
 
+      {hasHistoryFilterOptions && (
+        <View style={styles.historyFilterSection}>
+          <Text style={styles.historyFilterTitle}>History</Text>
+          <View style={styles.historyFilterRow}>
+            {([
+              ['all', 'All'],
+              ['compacted', 'Compacted'],
+              ['partial', 'Partial'],
+            ] as const).map(([filterValue, filterLabel]) => {
+              const isSelected = historyFilter === filterValue;
+              const resultCount = historyFilterCounts[filterValue];
+
+              return (
+                <Pressable
+                  key={filterValue}
+                  style={[
+                    styles.historyFilterChip,
+                    isSelected ? styles.historyFilterChipSelected : styles.historyFilterChipUnselected,
+                  ]}
+                  onPress={() => setHistoryFilter(filterValue)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  accessibilityLabel={`${filterLabel} chats, ${resultCount} result${resultCount !== 1 ? 's' : ''}`}
+                >
+                  <Text
+                    style={[
+                      styles.historyFilterChipText,
+                      isSelected
+                        ? styles.historyFilterChipTextSelected
+                        : styles.historyFilterChipTextUnselected,
+                    ]}
+                  >
+                    {filterLabel} ({resultCount})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       <FlatList
-        data={sessions}
+        data={filteredSessions}
         renderItem={renderSession}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={sessions.length === 0 ? styles.emptyList : styles.list}
+        contentContainerStyle={filteredSessions.length === 0 ? styles.emptyList : styles.list}
         ListEmptyComponent={EmptyState}
       />
 
@@ -1132,6 +1223,51 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     list: {
       padding: spacing.md,
+    },
+    historyFilterSection: {
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.xs,
+      paddingBottom: spacing.xs,
+      gap: spacing.xs,
+    },
+    historyFilterTitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    historyFilterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+    },
+    historyFilterChip: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: 6,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.full,
+      borderWidth: theme.hairline,
+    },
+    historyFilterChipSelected: {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+      borderColor: hexToRgba(theme.colors.primary, 0.28),
+    },
+    historyFilterChipUnselected: {
+      backgroundColor: theme.colors.card,
+      borderColor: theme.colors.border,
+    },
+    historyFilterChipText: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+    },
+    historyFilterChipTextSelected: {
+      color: theme.colors.primary,
+    },
+    historyFilterChipTextUnselected: {
+      color: theme.colors.mutedForeground,
     },
     emptyList: {
       flex: 1,

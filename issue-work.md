@@ -3137,3 +3137,39 @@
   - If custom-layer imports become a supported long-term concept, define an equally safe restore-target-defaulting story for those backups instead of falling back to the writable default.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or high-value UX slice outside `#57`; if `#57` continues, the next honest step is post-restore slot activation/default-slot polish rather than more provenance copy.
+
+##### Issue #58 — Mobile session list can now filter compacted vs partial-history chats
+
+- Selection rationale:
+  - After the `#57` restore-target commit, I refreshed the open issues again and intentionally looked for a fresh user-visible slice outside the bundle/restore track.
+  - There still was not a narrower unworked bug with a cleaner local repro than the remaining enhancement work, so I followed the most concrete already-documented `#58` follow-up from the ledger: mobile session-list filtering/details after the history badges landed.
+  - This is a small, reviewable UX improvement with direct value: users can now quickly find summarized or legacy-partial chats instead of visually scanning the entire list for badges.
+- Investigation:
+  - Re-read issue `#58` and confirmed it still explicitly centers on easy UI access to full/preserved history, not only storage internals.
+  - Inspected `apps/mobile/src/screens/SessionListScreen.tsx` and confirmed the mobile list already rendered `History compacted` / `History partial` badges per row but offered no list-level discovery affordance.
+  - Inspected `apps/mobile/tests/session-list-history-badges.test.js` and confirmed there was already a dependency-free source test file that could be extended safely for this UI contract.
+  - Confirmed there was no existing `SessionListScreen` component test harness in this worktree, so a regex/source test was the smallest reliable verification path available without pulling in Expo/React Native test infra.
+- Important assumptions:
+  - Assumption: a simple `All / Compacted / Partial` filter is a valid first discovery slice even without adding sort, counts in row metadata, or a long-press details sheet.
+  - Why acceptable: it directly reduces list-scanning friction, keeps the change local to the current badge surface, and matches the ledger’s prior guidance to prefer filtering/details rather than another storage refactor.
+  - Assumption: `Compacted` should only match sessions with preserved compacted history, while `Partial` should remain its own separate filter for legacy summarized sessions with missing raw history.
+  - Why acceptable: the badge logic already distinguishes those two states, so mirroring that distinction in the filter avoids collapsing very different trust semantics into one bucket.
+- Changes implemented:
+  - Added a `SessionHistoryFilter` model plus `getSessionHistoryFilter(...)` helper in `apps/mobile/src/screens/SessionListScreen.tsx`.
+  - Added local session-list filter state, derived counts, and filtered list data so the screen can switch between `All`, `Compacted`, and `Partial` chats.
+  - Added compact mobile-friendly filter chips above the list, including result counts and selected-state accessibility metadata.
+  - Updated the empty state copy so filtered views explain when there are no matching compacted or partial-history chats.
+  - Extended `apps/mobile/tests/session-list-history-badges.test.js` with source-level assertions covering the new filter model, helper, chips, and filtered list binding.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/session-list-history-badges.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm exec tsc --noEmit -p apps/mobile/tsconfig.json` ⚠️ blocked by existing worktree/mobile environment issues, including missing `expo/tsconfig.base`, missing Expo/React Native type packages, and broad pre-existing mobile TypeScript dependency/config failures unrelated to this change.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Consider whether the selected history filter should persist across screen revisits once there is evidence that users rely on it heavily.
+  - Consider adding a tiny details affordance or richer row metadata if users need represented/stored counts without opening the conversation.
+  - Re-run real mobile TypeScript / Expo verification once the missing Expo config and dependency baseline is restored in this worktree.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, concrete bug or UX slice outside both `#57` and `#58`; if `#58` continues, the next honest mobile follow-up is richer row details or a persisted filter preference rather than more storage plumbing.

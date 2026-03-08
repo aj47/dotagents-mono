@@ -26,3 +26,16 @@ test('session list renders the history badge row and folds badge detail into acc
   assert.match(sessionListSource, /sessionHistoryBadgeWarning:/);
   assert.match(sessionListSource, /sessionHistoryBadgePrimary:/);
 });
+
+test('session list lets users filter chats by compacted versus partial history state', () => {
+  assert.match(sessionListSource, /type SessionHistoryFilter = 'all' \| 'compacted' \| 'partial';/);
+  assert.match(sessionListSource, /const getSessionHistoryFilter = \(/);
+  assert.match(sessionListSource, /const \[historyFilter, setHistoryFilter\] = useState<SessionHistoryFilter>\('all'\);/);
+  assert.match(sessionListSource, /const filteredSessions = useMemo\(\(\) => \{/);
+  assert.match(sessionListSource, /return sessions\.filter\(\(session\) => getSessionHistoryFilter\(session\) === historyFilter\);/);
+  assert.match(sessionListSource, /\['all', 'All'\],/);
+  assert.match(sessionListSource, /\['compacted', 'Compacted'\],/);
+  assert.match(sessionListSource, /\['partial', 'Partial'\],/);
+  assert.match(sessionListSource, /style=\{\[\s*styles\.historyFilterChip,/);
+  assert.match(sessionListSource, /data=\{filteredSessions\}/);
+});
