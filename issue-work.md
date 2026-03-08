@@ -1745,3 +1745,35 @@
   - Re-run any broader renderer/component test coverage for bundle-import flows if/when the worktree regains the full Vitest entrypoint.
 
 - Next recommended issue work item: stay on `#57` / `#25` only for another equally local trust-polish slice (for example, exact backup-file reveal from the success path), otherwise pivot to `#58` or another open issue with a similarly self-contained repro.
+
+##### Issue #57 / #25 — Bundle import trust UX: reveal the exact created backup bundle from import-result toasts
+
+- Selection rationale:
+  - The prior `#57 / #25` ledger entry explicitly called out exact backup-file reveal from the success path as the next smallest trust-focused follow-up.
+  - The shared import dialog already told users where backups live, but after import they still had to open the folder and manually find the newest bundle instead of jumping straight to the exact snapshot just created for that run.
+- Investigation:
+  - Re-read the latest `#57 / #25` ledger entries and confirmed this gap was still unaddressed after the pre-confirm backup notice and backup-folder affordance landed.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed import-result toasts only appended the raw `backupFilePath` string with no action tied to it.
+  - Inspected `apps/desktop/src/main/tipc.ts` plus `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed the repo already had a safe `revealBundleBackupFile` TIPC handler and renderer usage pattern for revealing individual backup files.
+- Important assumptions:
+  - Assumption: adding a direct toast action is a worthwhile trust improvement even though Settings → Capabilities already exposes reveal/copy controls for recent backups.
+  - Why acceptable: it shortens the path from import completion to backup inspection/recovery, which is exactly when the user is most likely to want immediate reassurance.
+  - Assumption: source-level confirmation of the missing reveal action is sufficient reproduction for this slice.
+  - Why acceptable: the issue is a concrete omission in the shared import-result UI, and the needed safe reveal plumbing already existed in the codebase.
+- Changes implemented:
+  - Added `revealBackupFile(...)` and `getRevealBackupToastOptions(...)` in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`.
+  - Updated both success and failure import-result toasts to include a `Reveal Backup` action whenever `backupFilePath` is present, reusing `tipcClient.revealBundleBackupFile(...)` instead of adding new filesystem logic.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to lock in the new reveal helper wiring and toast action usage.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57 / #25:
+  - Consider whether post-import success toasts should also surface the resolved target-layer label so the recovery action and mutated layer remain visible together after the dialog closes.
+  - If the bundle trust UX still needs more permanence than toasts, consider a lightweight import-history/recent-imports surface rather than stacking more transient toast copy.
+  - Re-run any broader desktop component/Vitest coverage for bundle-import flows if/when the worktree regains that fuller test entrypoint.
+
+- Next recommended issue work item: pivot away from `#57 / #25` unless another equally small trust polish is directly observable, and prefer either a narrow `#58` provenance/reliability follow-up or a fresh bug slice from the current open issues.

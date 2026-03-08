@@ -608,7 +608,10 @@ export function BundleImportDialog({
         const detailMessage = importSummary.detailSummary
           ? ` (${importSummary.detailSummary})`
           : ""
-        toast.success(`Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}${sourceMessage}`)
+        toast.success(
+          `Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}${sourceMessage}`,
+          getRevealBackupToastOptions(result.backupFilePath)
+        )
         if (importedMcpServersRequiringConfiguration.length > 0) {
           toast.warning(
             `Reconfigure ${formatCount("MCP server", importedMcpServersRequiringConfiguration.length)} with <CONFIGURE_YOUR_KEY> placeholders in Settings → Capabilities: ${importedMcpServersRequiringConfiguration.join(", ")}.`,
@@ -626,7 +629,10 @@ export function BundleImportDialog({
         const detailMessage = importSummary.detailSummary
           ? ` Progress: ${importSummary.detailSummary}.`
           : ""
-        toast.error(`${result.errors.join(", ") || "Import failed"}.${detailMessage}${backupMessage}${sourceMessage}`)
+        toast.error(
+          `${result.errors.join(", ") || "Import failed"}.${detailMessage}${backupMessage}${sourceMessage}`,
+          getRevealBackupToastOptions(result.backupFilePath)
+        )
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -686,6 +692,31 @@ export function BundleImportDialog({
       toast.error(`Failed to open backups folder: ${errorMessage}`)
     } finally {
       setIsOpeningBackupFolder(false)
+    }
+  }
+
+  const revealBackupFile = async (filePath: string) => {
+    try {
+      const result = await tipcClient.revealBundleBackupFile({ filePath })
+      if (!result?.success) {
+        throw new Error(result?.error || "Unknown error")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to reveal backup bundle: ${errorMessage}`)
+    }
+  }
+
+  const getRevealBackupToastOptions = (filePath: string | null) => {
+    if (!filePath) return undefined
+
+    return {
+      action: {
+        label: "Reveal Backup",
+        onClick: () => {
+          void revealBackupFile(filePath)
+        },
+      },
     }
   }
 

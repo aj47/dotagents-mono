@@ -39,6 +39,12 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
   assert.match(dialogSource, /tipcClient\.openBundleBackupFolder\(\)/);
   assert.match(dialogSource, /Open Backups Folder/);
   assert.match(dialogSource, /const backupMessage = result\.backupFilePath/);
+  assert.match(dialogSource, /const revealBackupFile = async \(filePath: string\) => \{/);
+  assert.match(dialogSource, /tipcClient\.revealBundleBackupFile\(\{ filePath \}\)/);
+  assert.match(dialogSource, /const getRevealBackupToastOptions = \(filePath: string \| null\) => \{/);
+  assert.match(dialogSource, /label: "Reveal Backup"/);
+  assert.match(dialogSource, /toast\.success\([\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
+  assert.match(dialogSource, /toast\.error\([\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
 });
 
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {
