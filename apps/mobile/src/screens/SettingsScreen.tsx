@@ -674,12 +674,12 @@ export default function SettingsScreen({ navigation }: any) {
   );
 
   // Handle memory delete
-  const handleMemoryDelete = async (memoryId: string) => {
+  const handleMemoryDelete = async (memory: Memory) => {
     if (!settingsClient) return;
-    confirmDestructiveAction('Delete Memory', 'Are you sure you want to delete this memory?', async () => {
+    confirmDestructiveAction('Delete Memory', `Are you sure you want to delete "${memory.title}"?`, async () => {
       try {
-        await settingsClient.deleteMemory(memoryId);
-        setMemories(prev => prev.filter(m => m.id !== memoryId));
+        await settingsClient.deleteMemory(memory.id);
+        setMemories(prev => prev.filter(m => m.id !== memory.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete memory:', error);
         Alert.alert('Error', 'Failed to delete memory');
@@ -2179,6 +2179,9 @@ export default function SettingsScreen({ navigation }: any) {
                       <TouchableOpacity
                         style={styles.agentInfoPressable}
                         onPress={() => handleMemoryEdit(memory)}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${memory.title} memory`)}
+                        accessibilityHint="Opens this memory so you can review and change what the agent remembers."
                         activeOpacity={0.7}
                       >
                         <View style={[styles.serverInfo, { flex: 1 }]}> 
@@ -2199,11 +2202,16 @@ export default function SettingsScreen({ navigation }: any) {
                               <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{memory.importance}</Text>
                             </View>
                           </View>
+                          {renderInlineEditAffordance()}
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={{ padding: 8 }}
-                        onPress={() => handleMemoryDelete(memory.id)}
+                        style={styles.agentDeleteButton}
+                        onPress={() => handleMemoryDelete(memory)}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Delete ${memory.title} memory`)}
+                        accessibilityHint="Removes this memory after confirmation."
+                        activeOpacity={0.7}
                       >
                         <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
                       </TouchableOpacity>

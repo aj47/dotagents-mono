@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile memories action discoverability / accessibility in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts` reviewed for edit-flow context.
 - 2026-03-08: Mobile connection status / verification UX in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/store/tunnelConnection.ts`, and `apps/mobile/src/ui/ConnectionStatusIndicator.tsx`.
 - 2026-03-08: Shared shell-command parsing / formatting reliability for desktop MCP stdio server configuration in `packages/shared/src/shell-parse.ts`, `apps/desktop/src/shared/shell-parse.ts`, and `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`.
 - 2026-03-08: Desktop memories search flow in `apps/desktop/src/renderer/src/pages/memories.tsx`, plus mobile memories-management parity review in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`.
@@ -19,6 +20,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Mobile memories rows now show a visible inline `Edit` affordance, expose explicit edit/delete accessibility semantics, use a mobile-sized delete tap target, and name the memory being deleted in the confirmation prompt.
 - 2026-03-08: Mobile connection surfaces now reflect actual tunnel connection state (checking, reconnecting, failed, disconnected) instead of showing a misleading generic “Connected” whenever credentials are merely saved.
 - 2026-03-08: Desktop MCP stdio server command editing/testing now round-trips quoted paths, escaped spaces, empty args, and Windows-style paths safely via shared shell-command formatting/parsing guardrails.
 - 2026-03-08: Desktop memories search now debounces backend queries, keeps search results keyed to the settled query, and shows inline loading feedback so fast typing no longer spams searches or risks stale-result flashes.
@@ -29,6 +31,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/settings-connection-card-mobile.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/shared/shell-parse.test.ts` (blocked: `vitest` not installed in this worktree).
@@ -41,6 +45,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Mobile live UI inspection for this iteration is blocked in this worktree because both root and `apps/mobile` `node_modules` are missing; `pnpm --filter @dotagents/mobile exec expo --version` failed with `expo: command not found`.
 - 2026-03-08: Focused desktop shell-parse verification for `src/shared/shell-parse.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Shared package build verification for `@dotagents/shared` is blocked in this worktree because `pnpm --filter @dotagents/shared build` cannot find `tsup`; `node_modules` is missing.
 - 2026-03-08: Focused desktop Vitest verification for `src/renderer/src/pages/memories.search.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
@@ -48,11 +53,46 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Mobile memories management flows
+- Mobile ChatScreen primary composer submission resilience
 
 ### Next Highest-Value Targets
-- Inspect mobile memories management flows for the next localized UX/reliability improvement that does not overlap the recent desktop settings and shared-utility passes
+- Inspect mobile ChatScreen primary composer submission resilience for duplicate-send or draft-loss gaps without overlapping the recent settings/memories passes
 - Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Mobile memories action discoverability and accessibility
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile memories list in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - reviewed supporting memory edit flow in `apps/mobile/src/screens/MemoryEditScreen.tsx`
+  - reviewed mobile memory API surface in `apps/mobile/src/lib/settingsApi.ts`
+- Why it was chosen:
+  - the ledger explicitly called out mobile memories management as the next fresh area that had not been investigated recently
+  - the primary mobile memory edit path already existed, but each memory row looked mostly static and lacked the visible `Edit` cue/accessibility semantics already added to nearby agent and loop rows
+  - the delete affordance was only a small unlabeled icon button, so the action was less discoverable and less reliable for assistive-tech users than adjacent management surfaces
+- What was inspected:
+  - `apps/mobile/src/screens/SettingsScreen.tsx` memories list row and delete action
+  - `apps/mobile/src/screens/MemoryEditScreen.tsx` to confirm the existing tap-to-edit navigation flow and save path
+  - `apps/mobile/src/lib/settingsApi.ts` memory CRUD methods to confirm this was a UI/discoverability issue rather than a missing backend capability
+  - existing focused mobile source-level tests in `apps/mobile/tests/settings-agent-actions-mobile.test.js` and `apps/mobile/tests/settings-loop-actions-mobile.test.js` for the established edit-affordance/accessibility pattern
+  - attempted live product inspection via Expo Web readiness check, but this workspace currently lacks mobile dependencies (`node_modules` missing, `expo` unavailable)
+- Improvement made:
+  - mobile memory rows now expose explicit button semantics, labels, and hints for opening a memory editor
+  - each memory row now shows the same lightweight inline `Edit ›` affordance used on nearby mobile agent and loop rows, making the primary action clearer at a glance
+  - memory delete now uses the shared mobile-sized action target styling plus explicit button accessibility label/hint
+  - the delete confirmation prompt now includes the specific memory title, reducing ambiguity before a destructive action
+  - added focused regression coverage in `apps/mobile/tests/settings-memory-actions-mobile.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the existing tap-to-edit navigation pattern rather than adding a separate trailing edit button, because nearby mobile management surfaces already use row-body editing successfully and consistency is more valuable here than adding another control
+  - reused the existing shared `Edit` affordance and action-button sizing patterns instead of introducing memory-specific styling, keeping the change small and visually consistent
+  - scoped this pass to row discoverability/accessibility rather than broader memory-list redesign (sorting, search, metadata changes) so it remains a small shippable improvement with immediate user value
+- Tests / verification:
+  - `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once mobile dependencies are available again, verify the updated memory row affordances in Expo Web or on-device for touch-target feel and visual hierarchy
+  - inspect mobile ChatScreen primary composer submission resilience for the next non-overlapping improvement
+  - consider whether the mobile memories list needs better metadata hierarchy or sorting after live inspection is possible
 
 ### 2026-03-08 — Mobile connection status truthfulness on settings surfaces
 - Date:
