@@ -1,5 +1,47 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 51: Mobile Loop editor disconnected/error states were visually easy to miss
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/LoopEditScreen.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched desktop surfaces plus the recently iterated mobile chat-composer work.
+  - The unlogged mobile editor screens were still called out as the next best source of UI debt, and `LoopEditScreen` exposed a concrete visually neglected state stronger than a speculative layout tweak.
+  - This targeted a real user-impacting edge state: when the app is disconnected or a save/load fails, the screen showed only bare inline text at the top of a dense form.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, mobile workflow/docs, and repo guidance to stay aligned with the repo’s preferred live-inspection workflow when practical
+  - attempted practical live mobile verification, but this checkout still lacks local `node_modules` / Expo tooling, so Expo Web inspection was blocked before runtime
+  - inspected `LoopEditScreen.tsx` directly, then compared it with the nearby `MemoryEditScreen.tsx` mobile editor pattern to confirm this was an outlier rather than inventing a new treatment
+
+#### Findings
+
+- Before the fix, the mobile loop editor had one concrete neglected-state issue with clear user impact:
+  - the top-of-screen disconnected helper (`Configure Base URL and API key...`) and any save/load error were rendered as bare text with no visual container, border, or spacing treatment beyond a small margin
+  - on a long form screen, those messages could read like incidental copy instead of the primary reason the user cannot save or continue
+  - this is materially risky because disconnected/mobile-first users can miss the gating state and keep interacting with the form without understanding why save is disabled or why load/save failed
+
+#### Changes made
+
+- Hardened `apps/mobile/src/screens/LoopEditScreen.tsx` with the smallest effective state-treatment fix:
+  - promoted the top-level error message into a bordered destructive card using the same visual language already used in `MemoryEditScreen`
+  - promoted the disconnected helper into a neutral bordered helper card so the missing-configuration state reads as intentional guidance instead of stray body copy
+  - split the lower `Loading profiles...` note onto a dedicated inline helper text style so the top-level helper card could be improved without over-styling the secondary loading hint
+- Extended `apps/mobile/tests/loop-edit-screen-layout.test.js` with focused source-contract coverage for the new helper/error card treatment
+
+#### Verification
+
+- Targeted mobile source-contract test: `node --test apps/mobile/tests/loop-edit-screen-layout.test.js`
+- Targeted mobile typecheck attempt: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked: this checkout still lacks the local mobile dependency/tooling graph, so Expo/React Native types and `expo/tsconfig.base` could not be resolved)*
+- Patch hygiene: `git diff --check -- apps/mobile/src/screens/LoopEditScreen.tsx apps/mobile/tests/loop-edit-screen-layout.test.js ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: live Expo Web inspection was not practical in this worktree because local dependencies are missing, so this chunk is source-inspection-driven rather than screenshot-backed.
+- This chunk is mobile-only: the desktop repeat-task/settings surfaces use different containers and did not share this exact bare-helper-state contract.
+- Tradeoff/rationale: this change adds slightly more vertical chrome above the form, but that is a deliberate and safer tradeoff because the disconnected/error state now reads as the primary gating information instead of disappearing into the form copy.
+- Best next UI audit chunk after this one: stay within the unlogged mobile editor set (`AgentEditScreen` or another nested mobile editor) or return to live-inspectable desktop/mobile routes once this checkout has a runnable dependency install again.
+
 ### 2026-03-08 — Chunk 50: Desktop onboarding step transitions can strand the next step off-screen under tighter heights and larger text
 
 - Area selected:

@@ -212,8 +212,16 @@ export default function LoopEditScreen({ navigation, route }: any) {
       contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
       keyboardShouldPersistTaps="handled"
     >
-      {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
-      {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
+        </View>
+      )}
+      {!settingsClient && (
+        <View style={styles.helperContainer}>
+          <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+        </View>
+      )}
 
       <Text style={styles.label}>Name *</Text>
       <TextInput
@@ -279,7 +287,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           </TouchableOpacity>
         ))}
       </View>
-      {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
+      {isLoadingProfiles && <Text style={styles.inlineHelperText}>Loading profiles...</Text>}
 
       <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
@@ -299,9 +307,26 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     container: { padding: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: spacing.md, color: theme.colors.mutedForeground, fontSize: 14 },
-    errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
+    errorContainer: {
+      backgroundColor: theme.colors.destructive + '14',
+      borderWidth: 1,
+      borderColor: theme.colors.destructive + '33',
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    errorText: { color: theme.colors.destructive, fontSize: 14, lineHeight: 20 },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
-    helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
+    helperContainer: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    helperText: { fontSize: 12, lineHeight: 18, color: theme.colors.mutedForeground },
+    inlineHelperText: { fontSize: 12, lineHeight: 18, color: theme.colors.mutedForeground, marginTop: spacing.xs },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },

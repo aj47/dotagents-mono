@@ -18,3 +18,10 @@ test('allows long loop profile names to wrap without pushing chips out of bounds
   assert.match(loopEditSource, /<Text[\s\S]*?styles\.profileOptionText[\s\S]*?numberOfLines=\{2\}[\s\S]*?\{profile\.displayName\}[\s\S]*?<\/Text>/);
   assert.match(loopEditSource, /profileOptionText:\s*\{[\s\S]*?lineHeight: 18,[\s\S]*?textAlign: 'center',[\s\S]*?flexShrink: 1/);
 });
+
+test('surfaces disconnected and error states as bordered cards instead of bare inline text', () => {
+  assert.match(loopEditSource, /\{error && \([\s\S]*?<View style=\{styles\.errorContainer\}>[\s\S]*?<Text style=\{styles\.errorText\}>⚠️ \{error\}<\/Text>[\s\S]*?<\/View>[\s\S]*?\)\}/);
+  assert.match(loopEditSource, /\{!settingsClient && \([\s\S]*?<View style=\{styles\.helperContainer\}>[\s\S]*?<Text style=\{styles\.helperText\}>Configure Base URL and API key in Settings to save changes\.<\/Text>[\s\S]*?<\/View>[\s\S]*?\)\}/);
+  assert.match(loopEditSource, /errorContainer:\s*\{[\s\S]*?borderWidth: 1,[\s\S]*?borderColor: theme\.colors\.destructive \+ '33',[\s\S]*?marginBottom: spacing\.md,/);
+  assert.match(loopEditSource, /helperContainer:\s*\{[\s\S]*?backgroundColor: theme\.colors\.card,[\s\S]*?borderWidth: 1,[\s\S]*?borderColor: theme\.colors\.border,[\s\S]*?marginBottom: spacing\.md,/);
+});
