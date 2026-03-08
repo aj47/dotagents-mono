@@ -199,6 +199,10 @@ type MessageTtsErrorOptions = {
   reason?: 'empty_text';
 };
 
+type AutoResponseTtsErrorOptions = {
+  voiceId?: string | null;
+};
+
 const getMessageTtsErrorDetails = (
   error: unknown,
   { voiceId, reason }: MessageTtsErrorOptions = {},
@@ -246,6 +250,49 @@ const getMessageTtsErrorDetails = (
     message: voiceId
       ? 'Read aloud could not start with the selected voice. Tap the speaker again or choose another voice in TTS Settings.'
       : 'Read aloud could not start. Tap the speaker again to retry.',
+  };
+};
+
+const getAutoResponseTtsErrorDetails = (
+  error: unknown,
+  { voiceId }: AutoResponseTtsErrorOptions = {},
+) => {
+  const rawMessage = error instanceof Error
+    ? error.message || error.name
+    : typeof error === 'string'
+      ? error
+      : error == null
+        ? 'Unknown read aloud error'
+        : String(error);
+  const normalizedMessage = rawMessage.toLowerCase();
+
+  if (
+    normalizedMessage.includes('voice') &&
+    (normalizedMessage.includes('not found') ||
+      normalizedMessage.includes('unavailable') ||
+      normalizedMessage.includes('invalid'))
+  ) {
+    return {
+      title: 'Voice unavailable',
+      message: voiceId
+        ? 'The selected voice could not read the latest assistant response. Retry read aloud or choose another voice in TTS Settings.'
+        : 'This voice could not read the latest assistant response. Retry read aloud to try again.',
+    };
+  }
+
+  if (normalizedMessage.includes('language') || normalizedMessage.includes('locale')) {
+    return {
+      title: 'Voice unavailable',
+      message:
+        'The latest assistant response could not be read with the current language or voice settings. Retry read aloud or choose another voice in TTS Settings.',
+    };
+  }
+
+  return {
+    title: 'Automatic read aloud unavailable',
+    message: voiceId
+      ? 'The latest assistant response could not be read aloud with the selected voice. Retry read aloud or choose another voice in TTS Settings.'
+      : 'The latest assistant response could not be read aloud automatically. Retry read aloud or use the speaker button on the message.',
   };
 };
 
@@ -793,12 +840,72 @@ export default function ChatScreen({ route, navigation }: any) {
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
 	  const [messageTtsError, setMessageTtsError] = useState<(ReturnType<typeof getMessageTtsErrorDetails> & { index: number }) | null>(null);
+  const [autoResponseTtsError, setAutoResponseTtsError] = useState<(ReturnType<typeof getAutoResponseTtsErrorDetails> & { text: string }) | null>(null);
   // Ref to track the intended speaking index, preventing race conditions
   // when Speech.stop()'s onStopped fires after a new Speech.speak() starts
   const intendedSpeakingIndexRef = useRef<number | null>(null);
+  const autoResponseTtsRequestIdRef = useRef(0);
+
+  const clearAutoResponseTtsError = useCallback(() => {
+    autoResponseTtsRequestIdRef.current += 1;
+    setAutoResponseTtsError(null);
+  }, []);
+
+  useEffect(() => {
+    if (!ttsEnabled) {
+      clearAutoResponseTtsError();
+    }
+  }, [clearAutoResponseTtsError, ttsEnabled]);
+
+  const playAutomaticResponseTts = useCallback((text: string) => {
+    clearAutoResponseTtsError();
+    const processedText = preprocessTextForTTS(text);
+    if (!processedText) {
+      return false;
+    }
+
+    const requestId = autoResponseTtsRequestIdRef.current;
+    const handleAutomaticTtsFailure = (speechError: unknown) => {
+      if (autoResponseTtsRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setAutoResponseTtsError({
+        text,
+        ...getAutoResponseTtsErrorDetails(speechError, { voiceId: config.ttsVoiceId }),
+      });
+    };
+
+    const speechOptions: Speech.SpeechOptions = {
+      language: 'en-US',
+      rate: config.ttsRate ?? 1.0,
+      pitch: config.ttsPitch ?? 1.0,
+      onError: handleAutomaticTtsFailure,
+    };
+    if (config.ttsVoiceId) {
+      speechOptions.voice = config.ttsVoiceId;
+    }
+
+    try {
+      Speech.speak(processedText, speechOptions);
+      return true;
+    } catch (speechError) {
+      handleAutomaticTtsFailure(speechError);
+      return false;
+    }
+  }, [clearAutoResponseTtsError, config.ttsPitch, config.ttsRate, config.ttsVoiceId]);
+
+  const retryAutoResponseTts = useCallback(() => {
+    if (!autoResponseTtsError?.text) {
+      return;
+    }
+
+    playAutomaticResponseTts(autoResponseTtsError.text);
+  }, [autoResponseTtsError, playAutomaticResponseTts]);
 
   const speakMessage = useCallback((index: number, content: string) => {
 	    setMessageTtsError(null);
+    clearAutoResponseTtsError();
     if (speakingMessageIndex === index) {
       // Toggle off - stop speaking
       intendedSpeakingIndexRef.current = null;
@@ -847,7 +954,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      setSpeakingMessageIndex(null);
 	      setMessageTtsError({ index, ...getMessageTtsErrorDetails(speechError, { voiceId: config.ttsVoiceId }) });
 	    }
-  }, [speakingMessageIndex, config.ttsRate, config.ttsPitch, config.ttsVoiceId]);
+	  }, [clearAutoResponseTtsError, speakingMessageIndex, config.ttsRate, config.ttsPitch, config.ttsVoiceId]);
 
   // Auto-scroll state and ref for mobile chat
   const scrollViewRef = useRef<ScrollView>(null);
@@ -1008,6 +1115,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // "final response expanded" behavior per chat and prevent stale UI state from leaking.
       setExpandedMessages({});
       setExpandedToolCalls({});
+      clearAutoResponseTtsError();
       // Clear respond_to_user history for the new session
       setRespondToUserHistory([]);
       // Clear stale in-flight marker when switching sessions.
@@ -1110,7 +1218,7 @@ export default function ChatScreen({ route, navigation }: any) {
     } else {
       setMessages([]);
     }
-  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey]);
+  }, [clearAutoResponseTtsError, sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -1680,6 +1788,7 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo(`Starting request to ${config.baseUrl}...`);
     // Clear any previous failed message when starting a new send
     setLastFailedMessage(null);
+    clearAutoResponseTtsError();
 
     const userMsg: ChatMessage = { role: 'user', content: text };
 	    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
@@ -1762,19 +1871,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         // Mid-turn TTS: play immediately when userResponse is first set
         if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
-          midTurnTTSPlayed = true;
-          const processedText = preprocessTextForTTS(lastUserResponse);
-          if (processedText) {
-            const speechOptions: Speech.SpeechOptions = {
-              language: 'en-US',
-              rate: config.ttsRate ?? 1.0,
-              pitch: config.ttsPitch ?? 1.0,
-            };
-            if (config.ttsVoiceId) {
-              speechOptions.voice = config.ttsVoiceId;
-            }
-            Speech.speak(processedText, speechOptions);
-          }
+          midTurnTTSPlayed = playAutomaticResponseTts(lastUserResponse);
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
@@ -2006,16 +2103,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const ttsText = lastUserResponse || finalText;
       const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
       if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
-        const processedText = preprocessTextForTTS(ttsText);
-        const speechOptions: Speech.SpeechOptions = {
-          language: 'en-US',
-          rate: config.ttsRate ?? 1.0,
-          pitch: config.ttsPitch ?? 1.0,
-        };
-        if (config.ttsVoiceId) {
-          speechOptions.voice = config.ttsVoiceId;
-        }
-        Speech.speak(processedText, speechOptions);
+        playAutomaticResponseTts(ttsText);
       }
     } catch (e: any) {
       console.error('[ChatScreen] Chat error:', e);
@@ -2142,6 +2230,8 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
+    clearAutoResponseTtsError();
+
     console.log('[ChatScreen] Processing queued message:', queuedMsg.id, getMessageLogMeta(text));
 
     // Get client from connection manager (preserves connections across session switches)
@@ -2195,19 +2285,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         // Mid-turn TTS: play immediately when userResponse is first set
         if (lastUserResponse && !midTurnTTSPlayed && config.ttsEnabled !== false) {
-          midTurnTTSPlayed = true;
-          const processedText = preprocessTextForTTS(lastUserResponse);
-          if (processedText) {
-            const speechOptions: Speech.SpeechOptions = {
-              language: 'en-US',
-              rate: config.ttsRate ?? 1.0,
-              pitch: config.ttsPitch ?? 1.0,
-            };
-            if (config.ttsVoiceId) {
-              speechOptions.voice = config.ttsVoiceId;
-            }
-            Speech.speak(processedText, speechOptions);
-          }
+          midTurnTTSPlayed = playAutomaticResponseTts(lastUserResponse);
         }
         const progressMessages = convertProgressToMessages(update);
         if (progressMessages.length > 0) {
@@ -2306,16 +2384,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const ttsText = lastUserResponse || finalText;
       const alreadySpokenMidTurn = midTurnTTSPlayed && ttsText === lastUserResponse;
       if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
-        const processedText = preprocessTextForTTS(ttsText);
-        const speechOptions: Speech.SpeechOptions = {
-          language: 'en-US',
-          rate: config.ttsRate ?? 1.0,
-          pitch: config.ttsPitch ?? 1.0,
-        };
-        if (config.ttsVoiceId) {
-          speechOptions.voice = config.ttsVoiceId;
-        }
-        Speech.speak(processedText, speechOptions);
+        playAutomaticResponseTts(ttsText);
       }
 
       // Mark as processed on success
@@ -3557,6 +3626,31 @@ export default function ChatScreen({ route, navigation }: any) {
 		              </View>
 		            </View>
 		          )}
+		          {autoResponseTtsError && ttsEnabled && (
+		            <View
+		              style={[styles.connectionBanner, styles.connectionBannerFailed, styles.autoResponseTtsBanner]}
+		              accessibilityLiveRegion="polite"
+		              aria-live="polite"
+		            >
+		              <View style={styles.connectionBannerContent}>
+		                <Text style={styles.connectionBannerIcon}>🔊</Text>
+		                <View style={styles.connectionBannerTextContainer}>
+		                  <Text style={styles.connectionBannerText}>{autoResponseTtsError.title}</Text>
+		                  <Text style={styles.connectionBannerSubtext}>{autoResponseTtsError.message}</Text>
+		                </View>
+		                <TouchableOpacity
+		                  style={styles.retryButton}
+		                  onPress={retryAutoResponseTts}
+		                  activeOpacity={0.7}
+		                  accessibilityRole="button"
+		                  accessibilityLabel="Retry assistant read aloud"
+		                  accessibilityHint="Tries to read the latest assistant response aloud again."
+		                >
+		                  <Text style={styles.retryButtonText}>Retry read aloud</Text>
+		                </TouchableOpacity>
+		              </View>
+		            </View>
+		          )}
 	          {!!sttPreview && (
 	            <View style={styles.sttPreviewBox}>
 	              <Text style={styles.sttPreviewLabel}>STT preview</Text>
@@ -4056,6 +4150,9 @@ function createStyles(theme: Theme, screenHeight: number) {
 	    voiceStartBanner: {
 	      marginBottom: spacing.xs,
 	    },
+		    autoResponseTtsBanner: {
+		      marginBottom: spacing.xs,
+		    },
     connectionBannerContent: {
       flexDirection: 'row',
       alignItems: 'center',

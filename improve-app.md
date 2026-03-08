@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile automatic assistant read-aloud failure feedback in `apps/mobile/src/screens/ChatScreen.tsx`, including both streaming `respond_to_user` and final-response `Speech.speak(...)` paths, nearby inline composer warning patterns in `ChatScreen`, focused source-level coverage added in `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop WhatsApp connection-state feedback in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`, with the WhatsApp connect/status/disconnect/logout IPC handlers reviewed in `apps/desktop/src/main/tipc.ts`, existing page-level coverage extended in `apps/desktop/src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx`, mobile parity checked across `apps/mobile/src/` (no equivalent WhatsApp settings surface exists there), live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target), and focused desktop Vitest attempted via `pnpm exec vitest run src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` (blocked because this dependency-less worktree does not have `vitest` available).
 - 2026-03-08: Desktop agent deletion guardrails in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with `deleteAgentProfile` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/agent-profile-service.ts`, nearby inline destructive-action patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` / `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change needed because mobile already uses native confirmation plus follow-up error alert flow), focused source-level coverage added in `tests/desktop-settings-agents-delete-guardrails.test.js`, and live desktop inspection attempted but blocked because no Electron/CDP target is available in this environment.
 - 2026-03-08: Desktop Memories destructive delete recovery in `apps/desktop/src/renderer/src/pages/memories.tsx`, with memory delete return semantics verified in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/memory-service.ts`, the nearby inline destructive-action pattern reviewed in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, mobile memory-delete parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change in this pass because mobile already uses a native confirmation + follow-up error alert flow rather than a reusable desktop dialog), focused source-level coverage added in `tests/desktop-memories-delete-guardrails.test.js`, and live desktop inspection attempted but blocked because no Electron/CDP target is available in this environment.
@@ -67,6 +68,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Mobile automatic assistant read-aloud warning/retry states still need live device or Expo-web validation once the mobile toolchain is available, especially for invalid voice selection, mid-stream `respond_to_user` playback failure followed by final-response fallback, and retry-to-success recovery from the composer banner.
 - 2026-03-08: Desktop WhatsApp connection feedback still needs live Electron validation once a runnable target is available, especially to confirm the initial `Checking WhatsApp status...` state, QR/reconnect transitions, and the disabled-action behavior feel clear while connect/disconnect/logout requests and background polling overlap.
 - 2026-03-08: Desktop agent deletion guardrails still need live Electron validation once a runnable target is available, especially to confirm the inline confirmation density, successful removal timing, and failed-delete retry state feel clear in a crowded agents grid.
 - 2026-03-08: Desktop Memories delete guardrails still need live Electron validation once a runnable target is available, especially to confirm the new inline retry copy, dialog-close clearing, and single-delete false-result handling feel correct across individual, selected, and delete-all flows.
@@ -75,6 +77,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile `ChatScreen` automatic assistant read-aloud now routes both streaming and final-response `Speech.speak(...)` calls through one guarded helper, surfaces startup/playback failures in a compact composer-level banner with `Retry read aloud`, clears stale auto-read-aloud errors when a new request or manual read-aloud begins, and only marks mid-turn playback as handled after speech actually starts so a startup failure no longer fails silently or suppresses the final-response fallback attempt; tradeoff: this pass intentionally stays scoped to `ChatScreen`’s automatic speech path and does not yet widen the same retry UX into `ResponseHistoryPanel`’s separate manual playback controls.
 - 2026-03-08: Desktop `Settings → WhatsApp` now distinguishes the initial status check from a real unavailable-server warning, replacing the misleading first-render `WhatsApp server not available` flash with `Checking WhatsApp status...`, and the connection action row now shows action-local pending labels (`Disconnecting...`, `Refreshing...`, `Logging out...`) while disabling conflicting buttons so repeated clicks and overlapping polling no longer make the connection state feel ambiguous; tradeoff: this pass intentionally stays scoped to connection-status clarity and does not yet redesign the broader WhatsApp onboarding/settings copy.
 - 2026-03-08: Desktop `Settings → Agents` now keeps custom-agent deletion inside the card with an inline confirmation panel, row-local `Deleting...` / `Retry delete` feedback, and false-result/error handling that preserves context instead of relying on a one-shot browser confirm plus silent failure; tradeoff: this pass intentionally stays scoped to delete guardrails and does not yet broaden into agent-list load states or edit-flow polish.
 - 2026-03-08: Desktop Memories destructive actions now keep delete failures inside the confirmation dialogs instead of relying on toast-only recovery, single-memory deletion now treats a false IPC result as an actual failure rather than incorrectly reporting success, the dialogs name the affected memory/count more clearly, and each destructive path offers a local retry state so persistence failures no longer look like a successful deletion; tradeoff: this pass intentionally stays scoped to delete guardrails and does not yet refactor the rest of the memories page toward inline edit/folder-action feedback.
@@ -133,6 +136,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/chat-auto-response-tts-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/ChatScreen.tsx`
+- 2026-03-08: `git diff --check` after the mobile automatic response TTS feedback pass
 - 2026-03-08: `node --test tests/desktop-settings-whatsapp-connection-feedback.test.js`
 - 2026-03-08: `git diff --check` after the desktop WhatsApp connection feedback pass
 - 2026-03-08: attempted `pnpm exec vitest run src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` in `apps/desktop` (blocked: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` because this worktree does not have desktop test dependencies installed)
@@ -279,6 +285,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this automatic response TTS feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this WhatsApp connection-feedback pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this WhatsApp connection-feedback pass is blocked in this worktree because `pnpm exec vitest run src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` fails with `Command "vitest" not found`.
 - 2026-03-08: Live desktop UI inspection for this agent-deletion guardrails pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
@@ -338,15 +345,15 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Mobile automatic response TTS failure feedback for streaming/final assistant speech in `apps/mobile/src/screens/ChatScreen.tsx`
 - Desktop `AgentProgress` transcript expansion/tab persistence across focused-session changes (`apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/pages/panel.tsx`)
 - Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop `AgentProgress` transcript expansion/tab persistence across focused-session changes is now the freshest high-leverage code follow-up, because the earlier transient-state cleanup reduced one session-leak class but left the remaining reused-view persistence behavior unverified and potentially inconsistent
 - Once a runnable Electron target is available, live-check desktop `Settings → WhatsApp` across first load, QR-required connect, reconnect with cached credentials, disconnect, logout, and background-status refresh overlap to confirm the new loading/pending hierarchy feels trustworthy in the real UI
 - Once a runnable Electron target is available, live-check desktop agent deletion in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` across confirm, cancel, failed-delete retry, and successful removal to validate the new inline guardrails in a dense agent grid.
 - Once a runnable mobile target is available, live-check the new mobile message-level read-aloud warning/retry state across invalid voice selection, empty-text messages, and repeated retry from the same assistant card
-- Mobile automatic response TTS failure feedback is the most adjacent follow-up now that manual message-level read-aloud no longer fails silently
+- Once a runnable mobile target is available, live-check the new automatic assistant read-aloud warning/retry state across invalid voice selection, streaming `respond_to_user` playback failure, final-response fallback, and retry-to-success recovery from the composer banner
 - Once a runnable Electron target is available, live-check the desktop compact audio player across blocked auto-play, retry after a blocked/interrupted play request, and broken media states to confirm the new warning hierarchy feels clear inside real session cards
 - Once a runnable Electron target is available, live-check the desktop floating panel across denied microphone permission, no microphone present, busy microphone, normal dictation start, and MCP continue-recording start so the new recording-failure guidance can be validated in the real UI
 - Desktop floating-panel live transcription preview chunk failures are the most adjacent voice-input product follow-up now that both desktop and mobile recording-start failures surface visible recovery guidance
@@ -2165,6 +2172,39 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Electron target is available, live-check confirm, cancel, failed-delete retry, and successful removal flows in a dense agents grid to validate the inline guardrail hierarchy
   - inspect whether a future agent-management pass should add inline recovery for list-load/rescan failures now that delete safety is stronger
+
+### 2026-03-08 — Mobile automatic response TTS failure feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile automatic assistant read-aloud in `apps/mobile/src/screens/ChatScreen.tsx`
+  - specifically the streaming `respond_to_user` and final-response `Speech.speak(...)` paths plus nearby composer-level warning UI
+  - focused source-level regression coverage added in `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`
+- Why it was chosen:
+  - `improve-app.md` explicitly listed automatic response TTS as the freshest unchecked follow-up after the earlier per-message read-aloud pass
+  - investigation found a concrete reliability + UX gap: the mid-turn path set `midTurnTTSPlayed = true` before `Speech.speak(...)` was proven to have started, so a startup failure could both fail silently and suppress the final-response playback attempt
+  - this was a small, local improvement with clear user value because automatic assistant speech otherwise looked inert exactly when users expect hands-free feedback
+- What was inspected:
+  - `apps/mobile/src/screens/ChatScreen.tsx` around the streaming progress handler, final response handling, per-message TTS, and existing inline warning/retry banner patterns near the composer
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to confirm it uses a separate manual playback surface that should stay out of scope for this pass
+  - existing source-level mobile test patterns in `apps/mobile/tests/chat-message-tts-feedback.test.js` and `apps/mobile/tests/chat-composer-accessibility.test.js`
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version`, which failed because `expo` is not installed in this worktree
+- Improvement made:
+  - added shared automatic-response TTS error state plus a guarded `playAutomaticResponseTts(...)` helper that centralizes `Speech.speak(...)`, captures synchronous failures and async `onError`, and retains retryable context for the latest assistant response
+  - updated both chat send paths to reuse that helper for streaming and final assistant speech, so startup failures no longer count as successful mid-turn playback and the final-response path can still attempt playback when the first start call never began
+  - surfaced automatic read-aloud failures in a compact composer-level live-region banner with `Retry read aloud`, and clear that banner when the user starts a new request, disables TTS, switches sessions, or recovers via manual message playback
+- Assumptions / tradeoffs / rationale:
+  - kept the change inside `ChatScreen` because the highest-value gap was the automatic speech path already owned there; widening into `ResponseHistoryPanel` would have mixed a separate manual playback UX into the same pass
+  - accepted a local retry banner near the composer instead of toast/modal feedback because the failure is tied to the chat session’s current auto-read-aloud setting and should be recoverable in place
+  - accepted source-level verification for this pass because live Expo/device inspection is blocked in this dependency-less worktree
+- Tests / verification:
+  - `node --test apps/mobile/tests/chat-auto-response-tts-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/ChatScreen.tsx`
+  - `git diff --check`
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version` (blocked: `Command "expo" not found`)
+- Follow-up checks:
+  - once a runnable mobile target is available, live-check invalid voice selection, streaming `respond_to_user` playback failure, final-response fallback after a startup error, and retry-to-success recovery from the composer banner
+  - inspect desktop `AgentProgress` transcript/tab persistence next as the freshest not-recently-checked code follow-up
 
 ### Iteration Template
 - Date:
