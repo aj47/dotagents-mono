@@ -79,6 +79,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     }
   }, [message.status, message.text]);
 
+  const trimmedOriginalText = message.text.trim();
+
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -86,7 +88,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
 
   const handleSaveEdit = () => {
     const trimmed = editText.trim();
-    if (trimmed && trimmed !== message.text) {
+    if (trimmed && trimmed !== trimmedOriginalText) {
       onUpdate(trimmed);
     }
     setIsEditing(false);
@@ -101,6 +103,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const isFailed = message.status === 'failed';
   const isProcessing = message.status === 'processing';
   const isAddedToHistory = message.addedToHistory === true;
+  const trimmedEditText = editText.trim();
+  const isSaveEditDisabled = !trimmedEditText || trimmedEditText === trimmedOriginalText;
 
   const styles = StyleSheet.create({
     container: {
@@ -216,6 +220,9 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
       backgroundColor: theme.colors.primary,
       borderColor: theme.colors.primary,
     },
+    saveButtonDisabled: {
+      opacity: 0.6,
+    },
     buttonText: {
       fontSize: 12,
       color: theme.colors.foreground,
@@ -251,15 +258,17 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.editButton, styles.saveButton]}
+              style={[styles.editButton, styles.saveButton, isSaveEditDisabled && styles.saveButtonDisabled]}
               onPress={handleSaveEdit}
-              disabled={!editText.trim()}
+              disabled={isSaveEditDisabled}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Save queued message edit')}
-              accessibilityHint={!editText.trim()
-                ? 'Enter message text before saving your queued message changes.'
+              accessibilityHint={isSaveEditDisabled
+                ? !trimmedEditText
+                  ? 'Enter message text before saving your queued message changes.'
+                  : 'Change the queued message text before saving.'
                 : 'Applies your queued message edits before it sends.'}
-              accessibilityState={{ disabled: !editText.trim() }}
+              accessibilityState={{ disabled: isSaveEditDisabled }}
               activeOpacity={0.7}
             >
               <Text style={styles.saveButtonText}>Save</Text>

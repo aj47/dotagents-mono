@@ -3051,3 +3051,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queued-message edit mode now keeps `Cancel` / `Save` comfortably tappable on a narrow screen.
   - Check both an empty edit draft and a changed draft so the new `Save` disabled-state semantics can be visually compared.
   - If live validation still shows queue edit mode as cramped, tighten the text-field/action spacing before attempting any broader queue redesign.
+
+### 2026-03-08 — Iteration 71: disable no-op queue edit saves so the primary action reflects real change state
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - The prior pass made queue edit `Cancel` / `Save` controls easier to tap, but source review showed `Save` still stayed enabled when the queued-message draft matched the original text.
+  - In that unchanged state, pressing the primary action just exited edit mode without saving anything.
+  - On a narrow mobile screen, that makes the strongest visible action behave like a no-op exactly when the user is trying to make a careful queue correction.
+- Issue selected:
+  - Queue edit mode did not make unchanged drafts explicit, so the primary `Save` control overstated what would happen and weakened state clarity.
+- Decision:
+  - Keep the edit layout and copy stable.
+  - Avoid adding a new helper row or broader queue redesign while live validation is blocked.
+  - Make the smallest state-clarity fix: treat unchanged drafts like invalid saves, visually mute the button, and expose more accurate accessibility hints.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - normalize the original and edited queue text with trimmed comparisons,
+    - disable `Save` when the draft is empty or unchanged,
+    - add a muted disabled treatment so the no-op state reads less actionable,
+    - swap the save hint between empty, unchanged, and changed-draft states so assistive tech reflects the real outcome.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the unchanged-draft guardrail, disabled styling, and revised button semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the visually muted disabled `Save` state is obvious enough without making the edit row feel overly dim.
+  - The queue edit `TextInput` still needs live validation to confirm the field, buttons, and keyboard spacing remain balanced on smaller devices.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that unchanged drafts now present a clearly disabled `Save` action and changed drafts recover a confident primary CTA.
+  - Compare empty, unchanged, and changed queue-edit states on a narrow screen to confirm the button affordance ladder feels intuitive.
+  - If the disabled state still feels too subtle in live use, add a compact inline explanation before attempting any broader queue-panel changes.
