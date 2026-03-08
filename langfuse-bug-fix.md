@@ -1133,6 +1133,33 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ✅ passed (`41 passed`)
   - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop ACP tests exit successfully
 
+### 2026-03-08 — Sanitize inline `data:image` payloads before final Langfuse trace output
+
+- Langfuse evidence reviewed:
+  - primary recovery trace: `conv_1772666851173_6xu2w9eik` / `session_1772666851183_be8pptyar`
+    - user input: `give full context to web browser agent to complete`
+    - trace outcome: the run spent ~25 minutes working through a recovery flow and the final Langfuse `output` collapsed to the placeholder `<truncated due to size exceeding limit>`
+    - Langfuse trace details showed the delivered `respond_to_user` content was very large (`responseContentLength: 1185554`, `responseContentBytes: 1185554`, `localImageCount: 1`, `imageCount: 1`), matching an inline image-bearing final response
+    - this was a follow-up/recovery session after the user had already needed another run to finish the same overall intent
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` finalized the Langfuse trace with `output: finalContent` after preferring the stored user-facing `respond_to_user` message
+  - that stored response can legitimately include inline markdown images with `data:image/...` URLs, which are useful for the desktop UI but can make the Langfuse `output` field huge
+  - `apps/desktop/src/shared/message-display-utils.ts` already had `sanitizeMessageContentForDisplay(...)`, which strips inline `data:image` markdown down to a compact `[Image: ...]` placeholder for display-safe contexts
+- Concrete root cause:
+  - Langfuse trace finalization reused the raw stored user-facing response, including megabyte-scale inline `data:image` payloads
+  - large inline image blobs could push the final trace `output` over Langfuse/CLI size limits, replacing the preserved result with a useless truncation placeholder instead of readable final user-facing text
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm.ts`
+    - sanitize the finalized `output` passed to `endAgentTrace(...)` with `sanitizeMessageContentForDisplay(...)` so Langfuse keeps compact readable text while the actual stored/user-facing response remains unchanged
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression proving a stored `respond_to_user` message that still contains inline `data:image` markdown is preserved in session state, while the Langfuse trace output gets the compact `[Image: ...]` representation instead of the raw blob
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - ✅ passed (`13 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test file exits successfully
+  - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts`
+  - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1145,6 +1172,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
 - Recheck a fresh delegated specialist trace (especially `Web Browser` or other internal profiles) after dependencies are restored, to confirm internal sub-agents now execute directly instead of re-delegating into `internal` / `augustus` and hitting recursion or oversized-request failures.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
+- Recheck a fresh image-bearing `respond_to_user` trace (for example browser/social posting with screenshots) after the next desktop smoke run, to confirm Langfuse now stores compact readable final text instead of collapsing the trace `output` to `<truncated due to size exceeding limit>`.
 - Recheck a fresh post-`respond_to_user` trace where the first assistant turn is only a progress opener (`Let me ...`, `I'll ...`) and a later provider/stream error occurs, to confirm the stored user-facing answer now overrides the stale opener in Langfuse/UI.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.

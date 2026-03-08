@@ -3214,8 +3214,10 @@ Return ONLY JSON per schema.`,
     )
 
     if (isLangfuseEnabled()) {
+      const langfuseOutput = sanitizeMessageContentForDisplay(finalContent)
+
       endAgentTrace(currentSessionId, {
-        output: finalContent,
+        output: langfuseOutput,
         metadata: {
           totalIterations: iteration,
           wasAborted,

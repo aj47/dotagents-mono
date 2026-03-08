@@ -111,6 +111,59 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("sanitizes inline data-image respond_to_user content before sending Langfuse trace output", async () => {
+    const {
+      getSessionUserResponse,
+      setSessionUserResponse,
+      clearSessionUserResponse,
+    } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-inline-image-trace-output")
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{
+          name: "respond_to_user",
+          arguments: { text: "Posted the full thread." },
+        }],
+      })
+      .mockRejectedValueOnce(new Error("later speculative tool step failed"))
+
+    const executeToolCall = vi.fn(async (toolCall: any) => {
+      if (toolCall.name === "respond_to_user") {
+        setSessionUserResponse(
+          "session-inline-image-trace-output",
+          `${toolCall.arguments.text}\n\n![thread_complete.png](data:image/png;base64,AAAA)`,
+        )
+      }
+      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+    })
+
+    await expect(processTranscriptWithAgentMode(
+      "give full context to web browser agent to complete",
+      [{ name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      executeToolCall,
+      3,
+      [],
+      "conv-inline-image-trace-output",
+      "session-inline-image-trace-output",
+      undefined,
+      undefined,
+      1,
+    )).rejects.toThrow("later speculative tool step failed")
+
+    expect(getSessionUserResponse("session-inline-image-trace-output")).toContain("data:image/png;base64,AAAA")
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-inline-image-trace-output",
+      expect.objectContaining({
+        output: expect.stringContaining("Posted the full thread."),
+      }),
+    )
+    expect(mockEndAgentTrace.mock.calls[0]?.[1]?.output).toContain("[Image: thread_complete.png]")
+    expect(mockEndAgentTrace.mock.calls[0]?.[1]?.output).not.toContain("data:image/png;base64,AAAA")
+  })
+
   it("preserves the latest streamed assistant text when the session is stopped right after the LLM responds", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { AGENT_STOP_NOTE } = await import("./agent-run-utils")
