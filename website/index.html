@@ -755,6 +755,22 @@
             font-size: 12px;
             line-height: 1.6;
         }
+        .bundle-inline-details {
+            margin-top: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.02);
+        }
+        .bundle-inline-details summary {
+            cursor: pointer;
+            padding: 12px 14px;
+            color: var(--color-accent-cyan);
+            font-size: 12px;
+            font-family: var(--font-mono);
+        }
+        .bundle-inline-details-body {
+            padding: 0 14px 14px;
+        }
         .bundle-command {
             margin-top: 12px;
             padding: 12px 14px;
@@ -1593,6 +1609,36 @@
             return `<div class="bundle-markdown">${html.join('')}</div>`
         }
 
+        function buildMarkdownPreview(value, options = {}) {
+            const source = stripFrontmatter(value)
+            if (!source) return { preview: '', truncated: false }
+
+            const maxLines = Number.isFinite(options.maxLines) ? options.maxLines : 8
+            const maxChars = Number.isFinite(options.maxChars) ? options.maxChars : 900
+            const lines = source.split('\n')
+            const previewLines = []
+            let charCount = 0
+            let truncated = false
+
+            for (const line of lines) {
+                const nextCount = charCount + line.length + 1
+                if (previewLines.length >= maxLines || nextCount > maxChars) {
+                    truncated = true
+                    break
+                }
+                previewLines.push(line)
+                charCount = nextCount
+            }
+
+            const preview = previewLines.join('\n').trim()
+            if (!preview) return { preview: '', truncated }
+
+            return {
+                preview: truncated ? `${preview}\n\n…` : preview,
+                truncated,
+            }
+        }
+
         function formatIntervalLabel(intervalMinutes) {
             if (!Number.isFinite(intervalMinutes)) return 'custom schedule'
             if (intervalMinutes % 10080 === 0) return intervalMinutes === 10080 ? 'weekly' : `every ${intervalMinutes / 10080} weeks`
@@ -1749,13 +1795,24 @@
             }
 
             if (bundle.skills?.length) {
-                const skillHtml = bundle.skills.map((skill) => `
-                    <article class="bundle-entry">
-                        <h4>🧠 ${escapeHtml(skill.name)}</h4>
-                        ${skill.description ? `<p class="bundle-entry-subtitle">${escapeHtml(skill.description)}</p>` : ''}
-                        ${renderMarkdown(skill.instructions)}
-                    </article>
-                `).join('')
+                const skillHtml = bundle.skills.map((skill) => {
+                    const instructions = typeof skill.instructions === 'string' ? skill.instructions : ''
+                    const preview = buildMarkdownPreview(instructions, { maxLines: 8, maxChars: 900 })
+
+                    return `
+                        <article class="bundle-entry">
+                            <h4>🧠 ${escapeHtml(skill.name)}</h4>
+                            ${skill.description ? `<p class="bundle-entry-subtitle">${escapeHtml(skill.description)}</p>` : ''}
+                            ${preview.preview ? renderMarkdown(preview.preview) : ''}
+                            ${preview.truncated ? `
+                                <details class="bundle-inline-details">
+                                    <summary>Show full skill instructions</summary>
+                                    <div class="bundle-inline-details-body">${renderMarkdown(instructions)}</div>
+                                </details>
+                            ` : ''}
+                        </article>
+                    `
+                }).join('')
                 sections.push(renderSection(`🧠 Skills (${bundle.skills.length})`, skillHtml))
             }
 

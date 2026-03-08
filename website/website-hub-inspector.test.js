@@ -67,8 +67,18 @@ test('modal logic fetches bundle JSON and supports expected dismissal paths', ()
 test('markdown content is formatted before rendering', () => {
     assert.match(source, /function stripFrontmatter\(value\)/)
     assert.match(source, /function renderMarkdown\(value\)/)
+    assert.match(source, /function buildMarkdownPreview\(value, options = \{\}\)/)
     assert.match(source, /bundle-markdown-heading/)
     assert.match(source, /bundle-code-block/)
     assert.match(source, /renderInlineMarkdown\(headingMatch\[2\]\.trim\(\)\)/)
     assert.match(source, /renderMarkdown\(`## System Prompt\\n\$\{profile\.systemPrompt\}`\)/)
+})
+
+test('skill sections lead with a preview and keep full instructions behind an inline details affordance', () => {
+    assert.match(source, /const preview = buildMarkdownPreview\(instructions, \{ maxLines: 8, maxChars: 900 \}\)/)
+    assert.match(source, /preview\.preview \? renderMarkdown\(preview\.preview\) : ''/)
+    assert.match(source, /preview\.truncated \? `/)
+    assert.match(source, /Show full skill instructions/)
+    assert.match(source, /bundle-inline-details/)
+    assert.match(source, /bundle-inline-details-body/)
 })

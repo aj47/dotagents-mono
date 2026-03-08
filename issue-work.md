@@ -2370,3 +2370,40 @@
   - When slot activation lands, update the Capabilities card from status-only copy to real switch / rollback affordances and keep restore/import semantics aligned with the same layer order.
 
 - Next recommended issue work item: refresh the open issues again and prefer a concrete bug/reliability slice next; if `#57` is revisited immediately, the right next move is runtime consumption of the active slot contract (not more read-only slot chrome).
+
+##### Issue #56 — Bundle inspector: skill preview first, expandable full instructions
+
+- Selection rationale:
+  - After the `#57` slot-status commit, I refreshed the open issues and avoided forcing another blocked/repetitive desktop-runtime slice.
+  - `#56` still had a concrete trust/mobile gap that maps directly to the owner comment: skills were requested as `title + first lines / summary`, but the current website inspector dumped full instructions immediately.
+  - Real featured bundle data made this a current user-facing problem, not hypothetical: the `TechFren Daily Driver` bundle includes very large skill instruction bodies, which makes the modal dense and harder to scan on smaller viewports.
+- Investigation:
+  - Re-read `#56` and its owner comment, especially the requested v1 modal shape for skills (`title + first lines / summary`).
+  - Re-inspected `website/index.html` and confirmed the skills section still rendered `renderMarkdown(skill.instructions)` directly for every skill, with no preview truncation or inline affordance.
+  - Fetched the real featured public bundle artifacts (`techfrenaj-daily-driver.dotagents`, `dev-powerpack.dotagents`, `research-analyst.dotagents`) and confirmed the density problem is real today: several skill instructions are long enough that the modal becomes a wall of content before the user can finish scanning the rest of the bundle.
+- Important assumptions:
+  - Assumption: `#56` is better served by preview-first skill rendering than by always showing the full skill body inline.
+  - Why acceptable: this matches the owner comment more closely, improves mobile scanability, and still preserves access to the full instructions through an explicit inline details affordance.
+  - Assumption: a dependency-free website source test plus inline script syntax parse is sufficient verification for this static landing-page change.
+  - Why acceptable: the slice only touches `website/index.html` and its existing no-dependency test suite, and both targeted checks now pass locally.
+- Changes implemented:
+  - Added `buildMarkdownPreview(...)` in `website/index.html` to strip frontmatter, keep only the first lines/characters of long markdown content, and mark whether the content was truncated.
+  - Updated the inspector skills section so each skill now renders:
+    - title + description
+    - a readable markdown preview first
+    - `Show full skill instructions` inline details only when the instructions exceed the preview limits
+  - Added lightweight website styles for the inline skill-details affordance so the expanded full content remains visually nested rather than blending into the main card body.
+  - Updated `website/website-hub-inspector.test.js` to lock in the preview helper and the expandable full-instructions affordance.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: inline website script syntax parse via Node (`new Function(...)`) ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If agent-profile prompts become similarly hard to scan on mobile, apply the same preview-first pattern there without hiding short prompts unnecessarily.
+  - If the landing page grows beyond curated featured bundles, keep the preview/full-content behavior consistent across any future catalog surface.
+  - Avoid turning the inspector into a full editor/manager; keep it focused on inspect-before-install trust.
+
+- Next recommended issue work item: refresh open issues again and prefer either a concrete desktop bug/reliability slice or the next honest `#57` runtime-slot follow-up only if it actually mounts the active slot contract instead of adding more status-only UI.
