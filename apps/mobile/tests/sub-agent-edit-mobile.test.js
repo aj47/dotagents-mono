@@ -114,6 +114,12 @@ test('LoopEditScreen explains when the loop is intentionally left unassigned', (
   assert.match(loopEditSource, /showNoProfileSelectedHelper && \([\s\S]*?No profile selected\. This loop will run without a saved profile until you choose one\.[\s\S]*?\)/);
 });
 
+test('LoopEditScreen surfaces load and save errors in a dedicated alert block', () => {
+  assert.match(loopEditSource, /\{error && \([\s\S]*?<View style=\{styles\.errorContainer\}>[\s\S]*?<Text style=\{styles\.errorText\}>⚠️ \{error\}<\/Text>[\s\S]*?\)\}/);
+  assert.match(loopEditSource, /errorContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.destructive \+ '20'[\s\S]*?padding:\s*spacing\.md[\s\S]*?borderRadius:\s*radius\.md[\s\S]*?marginBottom:\s*spacing\.md/);
+  assert.match(loopEditSource, /errorText:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive,[\s\S]*?fontSize:\s*14,[\s\S]*?lineHeight:\s*20/);
+});
+
 test('LoopEditScreen keeps profile load failures local to the Agent Profile section', () => {
   assert.match(loopEditSource, /const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;/);
   assert.match(loopEditSource, /showProfileLoadErrorHelper && \([\s\S]*?Saved profiles couldn't load right now\. You can still save this loop with No profile\.[\s\S]*?\)/);

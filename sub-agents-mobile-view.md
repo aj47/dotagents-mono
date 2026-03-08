@@ -2279,3 +2279,45 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that tapping another agent immediately highlights that exact row as pending.
   - Check a long agent name during switching to confirm the new `Switching…` badge does not crowd the row.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 53: make loop edit errors stand out like real alerts
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` top-of-form error presentation in `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - `AgentEditScreen` error treatment as the nearest existing mobile sub-agent pattern
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `AgentEditScreen` already wrapped important errors in a dedicated alert-style container.
+  - `LoopEditScreen` still rendered `⚠️ ...` as a plain text line at the top of the form.
+  - On mobile that made loop load/save failures easier to skim past because they visually blended with nearby helper copy.
+- Issue selected:
+  - The loop edit flow's main error state was too easy to miss on mobile, weakening state clarity during save/load failures.
+- Decision:
+  - Keep the loop edit flow, copy, and validation logic unchanged.
+  - Do not redesign the form or add a new error component while live validation is blocked.
+  - Make the smallest local fix: match the existing `AgentEditScreen` alert treatment so loop-edit errors read like high-salience status instead of inline helper text.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - wrap top-level errors in a dedicated `errorContainer`,
+    - apply alert-style background, padding, radius, and spacing,
+    - strengthen the error text with explicit font sizing and line height for narrow-screen readability.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new loop-edit error block.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The strengthened loop-edit error block still needs a real narrow-screen visual check once Expo Web or a simulator is available again.
+  - The mobile install blocker continues to prevent screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+  - If live validation later shows the loop edit form still has weak hierarchy, the next step should be chosen from fresh evidence rather than more source-only polishing.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that loop-edit load/save errors now read clearly as alerts.
+  - Re-establish live inspection before choosing the next sub-agent mobile tweak so the next change is driven by current narrow-screen evidence again.
+  - Revisit the highest-friction remaining edit-flow or selector issue only after Expo Web or simulator validation becomes available again.

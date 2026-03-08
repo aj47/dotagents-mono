@@ -326,7 +326,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
       contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
       keyboardShouldPersistTaps="handled"
     >
-      {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
+        </View>
+      )}
       {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
 
       <Text style={styles.label}>Name *</Text>
@@ -502,7 +506,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     container: { padding: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: spacing.md, color: theme.colors.mutedForeground, fontSize: 14 },
-    errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
+    errorContainer: {
+      backgroundColor: theme.colors.destructive + '20',
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginBottom: spacing.md,
+    },
+    errorText: {
+      color: theme.colors.destructive,
+      fontSize: 14,
+      lineHeight: 20,
+    },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
     helperTextWarning: { color: theme.colors.destructive, lineHeight: 17 },
