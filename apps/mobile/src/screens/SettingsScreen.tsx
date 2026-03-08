@@ -16,6 +16,7 @@ import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, Set
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
 import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
 
 // STT Provider Options
 const STT_PROVIDERS = [
@@ -2506,14 +2507,14 @@ export default function SettingsScreen({ navigation }: any) {
                         </TouchableOpacity>
                         {!profile.isBuiltIn && (
                           <TouchableOpacity
-                            style={styles.agentDeleteButton}
+                            style={[styles.agentDeleteButton, styles.agentDeleteButtonDanger]}
                             onPress={() => handleAgentProfileDelete(profile)}
                             accessibilityRole="button"
                             accessibilityLabel={createButtonAccessibilityLabel(`Delete ${profile.displayName} agent`)}
                             accessibilityHint={agentDeleteHint}
                             activeOpacity={0.7}
                           >
-                            <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                            <Ionicons name="trash-outline" size={16} color={theme.colors.destructive} style={styles.agentDeleteIcon} />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -3627,6 +3628,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    agentDeleteButtonDanger: {
+      borderColor: theme.colors.destructive + '2E',
+      backgroundColor: theme.colors.destructive + '10',
+    },
+    agentDeleteIcon: {
+      textAlign: 'center',
     },
     loopActions: {
       alignItems: 'stretch',

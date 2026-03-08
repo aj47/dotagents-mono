@@ -26,6 +26,10 @@ test('gives agent delete actions explicit button semantics and a mobile-sized ta
   assert.match(settingsSource, /accessibilityHint=\{agentDeleteHint\}/);
   assert.match(settingsSource, /const deleteMessage = isSelectedMainAgentProfile[\s\S]*?Are you sure you want to delete "\$\{profile\.displayName\}"\?[\s\S]*?This agent is currently selected as the main agent for new chats in ACP mode\./);
   assert.match(settingsSource, /agentDeleteButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget/);
+  assert.match(settingsSource, /style=\{\[styles\.agentDeleteButton, styles\.agentDeleteButtonDanger\]\}/);
+  assert.match(settingsSource, /<Ionicons name="trash-outline" size=\{16\} color=\{theme\.colors\.destructive\} style=\{styles\.agentDeleteIcon\} \/>/);
+  assert.match(settingsSource, /agentDeleteButtonDanger:\s*\{[\s\S]*?borderColor:\s*theme\.colors\.destructive \+ '2E',[\s\S]*?backgroundColor:\s*theme\.colors\.destructive \+ '10'/);
+  assert.match(settingsSource, /agentDeleteButton:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center'/);
 });
 
 test('makes the create-agent action a full-width mobile button with explicit creation semantics', () => {

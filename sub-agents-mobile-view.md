@@ -4797,3 +4797,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that tapping anywhere across the queue header content collapses and reopens the panel reliably while `Clear All` remains distinct.
   - Capture screenshot-backed evidence for the queue panel in both expanded and collapsed states on a narrow width.
   - After that live pass, continue with the next highest-signal local mobile hierarchy or state-clarity issue instead of revisiting this disclosure-target fix without fresh evidence.
+
+## Iteration 109 - Clarify the destructive agent delete affordance on mobile
+
+- Date: 2026-03-08
+- Summary: Made the `Settings > Agents` delete control read as a clearer destructive action on mobile by replacing the raw trash emoji with a stable icon and adding a subtle danger tint, without changing the row layout or action flow.
+- Review-before-change notes:
+  - Re-read the latest `sub-agents-mobile-view.md` entries first to avoid revisiting the recent queue-header disclosure work or adding another collapsed-section summary without fresh evidence.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-agent-actions-mobile.test.js` because the current mobile `Agents` list is the highest-signal sub-agent surface adjacent to the latest activity-state fixes.
+  - Reconfirmed the mobile workflow blocker before choosing a source-backed change.
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection still was not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with a focused command:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration relied on source-backed row-action review plus focused Node-based regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - Source review showed the mobile agent row toggle already uses a dedicated wrapped switch visual, and the row itself already exposes clear edit affordances, badges, and state-aware delete copy.
+  - The delete control itself still rendered as a raw `🗑️` text glyph inside a mostly neutral pill button.
+  - On a dense mobile action rail, that left the highest-consequence row action less visually distinct than the recent queue-row remove action and more dependent on platform emoji rendering than the rest of the modernized controls.
+- Issue identified:
+  - The mobile agent delete affordance still looked too neutral and platform-variable, weakening quick destructive-action recognition in a cramped sub-agent action rail.
+- Decision and rationale:
+  - Keep the current action order, target size, confirmation flow, and state-aware delete copy unchanged.
+  - Do not widen the action rail with a visible `Delete` label while live validation is blocked, since that could destabilize row balance on narrow screens.
+  - Make the smallest local improvement: keep the compact footprint, but swap in a consistent trash icon and give the pill a subtle destructive tint so it reads less like a neutral secondary action.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the raw trash emoji in agent rows with `Ionicons` `trash-outline`,
+    - add centered icon alignment inside the compact delete target,
+    - add `agentDeleteButtonDanger` styling so the delete pill uses a light destructive border and background tint while preserving the existing 44px target baseline.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the danger-tinted delete button and icon-based rendering contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed that a subtle danger tint improves destructive-action recognition without making the row feel alarm-heavy during everyday scanning.
+  - Chose a stable icon instead of an explicit `Delete` text label to preserve the existing compact action rail width until live mobile validation is available.
+  - This improves visual signaling in source, but the final narrow-screen balance of the tinted pill still needs real device or Expo Web confirmation.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The `Settings > Agents` list still needs a screenshot-backed pass after several recent state-clarity updates (`Main agent`, disabled badge, state-aware delete copy, and now the tinted delete affordance).
+  - A live conflicting-state pass is still needed where the current ACP main agent is disabled, since badge plus delete-state treatments may still be insufficient without fresh visual evidence.
+  - The broader sub-agent activity surfaces remain partially blocked on this worktree until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the danger-tinted delete pill stays readable, aligned, and appropriately weighted beside the wrapped toggle on a narrow device.
+  - Capture screenshot-backed evidence for at least one regular agent row and one current-main-agent row after this affordance update.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this delete-affordance tweak without fresh evidence.
