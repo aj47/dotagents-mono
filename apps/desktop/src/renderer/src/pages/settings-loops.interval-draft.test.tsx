@@ -75,6 +75,10 @@ function findButtonByTitle(node: any, title: string) {
   return findNode(node, (candidate) => candidate.type === "Button" && candidate.props?.title === title)
 }
 
+function findSwitch(node: any) {
+  return findNode(node, (candidate) => candidate.type === "Switch")
+}
+
 function findInputById(node: any, id: string) {
   return findNode(node, (candidate) => candidate.type === "Input" && candidate.props?.id === id)
 }
@@ -87,14 +91,17 @@ async function loadSettingsLoops(
   runtime: ReturnType<typeof createHookRuntime>,
   options: {
     loops?: Array<Record<string, any>>
+    loopStatuses?: Array<Record<string, any>>
     deleteLoopResult?: { success: boolean }
+    startLoopResult?: { success: boolean }
+    stopLoopResult?: { success: boolean }
   } = {},
 ) {
   vi.resetModules()
 
   const saveLoop = vi.fn(async () => undefined)
-  const startLoop = vi.fn(async () => undefined)
-  const stopLoop = vi.fn(async () => undefined)
+  const startLoop = vi.fn(async () => options.startLoopResult ?? { success: true })
+  const stopLoop = vi.fn(async () => options.stopLoopResult ?? { success: true })
   const deleteLoop = vi.fn(async () => options.deleteLoopResult ?? { success: true })
   const success = vi.fn()
   const error = vi.fn()
@@ -130,7 +137,13 @@ async function loadSettingsLoops(
     },
   }))
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? (options.loops ?? []) : [] }),
+    useQuery: ({ queryKey }: any) => ({
+      data: queryKey?.[0] === "loops"
+        ? (options.loops ?? [])
+        : queryKey?.[0] === "loop-statuses"
+          ? (options.loopStatuses ?? [])
+          : [],
+    }),
     useQueryClient: () => ({ invalidateQueries }),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
@@ -138,7 +151,7 @@ async function loadSettingsLoops(
   vi.doMock("sonner", () => ({ toast: { success, error } }))
 
   const mod = await import("./settings-loops")
-  return { Component: mod.Component, saveLoop, startLoop, deleteLoop, success, error, invalidateQueries }
+  return { Component: mod.Component, saveLoop, startLoop, stopLoop, deleteLoop, success, error, invalidateQueries }
 }
 
 afterEach(() => {
@@ -216,6 +229,62 @@ describe("desktop repeat-task interval editing", () => {
     })
     expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
     expect(success).toHaveBeenCalledWith("Task created")
+  })
+
+  it("reports scheduling failure after saving instead of falsely showing task creation success", async () => {
+    const runtime = createHookRuntime()
+    const { Component, saveLoop, startLoop, success, error } = await loadSettingsLoops(runtime, {
+      startLoopResult: { success: false },
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Add Task").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    findInputById(tree, "interval").props.onChange({ target: { value: "60" } })
+
+    tree = runtime.render(Component, {} as any)
+    await findButtonWithText(tree, "Save").props.onClick()
+
+    expect(saveLoop).toHaveBeenCalled()
+    expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
+    expect(success).not.toHaveBeenCalledWith("Task created")
+    expect(error).toHaveBeenCalledWith("Task created, but it could not be scheduled right now.")
+  })
+
+  it("reports disable failures when an existing schedule could not be cleared", async () => {
+    const runtime = createHookRuntime()
+    const { Component, saveLoop, stopLoop, success, error } = await loadSettingsLoops(runtime, {
+      loops: [{
+        id: "daily-summary",
+        name: "Daily Summary",
+        prompt: "Summarize recent activity",
+        intervalMinutes: 15,
+        enabled: true,
+        runOnStartup: false,
+      }],
+      loopStatuses: [{
+        id: "daily-summary",
+        isRunning: false,
+        nextRunAt: Date.now() + 60_000,
+      }],
+      stopLoopResult: { success: false },
+    })
+
+    const tree = runtime.render(Component, {} as any)
+    await findSwitch(tree).props.onCheckedChange(false)
+
+    expect(saveLoop).toHaveBeenCalledWith({
+      loop: expect.objectContaining({
+        id: "daily-summary",
+        enabled: false,
+      }),
+    })
+    expect(stopLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
+    expect(success).not.toHaveBeenCalledWith("Task disabled")
+    expect(error).toHaveBeenCalledWith("Task disabled, but its previous schedule could not be cleared right now.")
   })
 
   it("shows an error and refreshes the list when deleting a task that is already gone", async () => {

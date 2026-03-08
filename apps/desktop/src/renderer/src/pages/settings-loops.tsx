@@ -30,6 +30,10 @@ interface LoopRuntimeStatus {
   lastRunAt?: number
 }
 
+function hasScheduledLoopRuntime(status?: LoopRuntimeStatus): boolean {
+  return status?.isRunning === true || typeof status?.nextRunAt === "number"
+}
+
 const emptyLoop: EditingLoop = {
   name: "",
   prompt: "",
@@ -173,41 +177,97 @@ export function SettingsLoops() {
       runOnStartup: editing.runOnStartup,
     }
 
+    const saveSuccessMessage = isCreating ? "Task created" : "Task updated"
+    const hadScheduledRuntime = editing.id ? hasScheduledLoopRuntime(statusByLoopId.get(editing.id)) : false
+
     try {
       await tipcClient.saveLoop({ loop: loopData })
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
-      setEditing(null)
-      setIsCreating(false)
-      toast.success(isCreating ? "Task created" : "Task updated")
-
-      // Start/stop loop based on enabled state
-      if (loopData.enabled) {
-        await tipcClient.startLoop?.({ loopId: loopData.id })
-      } else {
-        await tipcClient.stopLoop?.({ loopId: loopData.id })
-      }
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     } catch {
       toast.error("Failed to save task")
+      return
     }
+
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+    setEditing(null)
+    setIsCreating(false)
+
+    if (loopData.enabled) {
+      try {
+        const result = await tipcClient.startLoop?.({ loopId: loopData.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success) {
+          toast.error(`${saveSuccessMessage}, but it could not be scheduled right now.`)
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.error(`${saveSuccessMessage}, but it could not be scheduled right now.`)
+        return
+      }
+    } else if (editing.id) {
+      try {
+        const result = await tipcClient.stopLoop?.({ loopId: loopData.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success && hadScheduledRuntime) {
+          toast.error(`${saveSuccessMessage}, but its previous schedule could not be cleared right now.`)
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (hadScheduledRuntime) {
+          toast.error(`${saveSuccessMessage}, but its previous schedule could not be cleared right now.`)
+          return
+        }
+      }
+    }
+
+    toast.success(saveSuccessMessage)
   }
 
   const handleToggleEnabled = async (loop: LoopConfig) => {
     const updatedLoop = { ...loop, enabled: !loop.enabled }
+    const hadScheduledRuntime = hasScheduledLoopRuntime(statusByLoopId.get(loop.id))
+
     try {
       await tipcClient.saveLoop({ loop: updatedLoop })
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
-
-      if (updatedLoop.enabled) {
-        await tipcClient.startLoop?.({ loopId: loop.id })
-      } else {
-        await tipcClient.stopLoop?.({ loopId: loop.id })
-      }
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
-      toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
     } catch {
       toast.error("Failed to update task")
+      return
     }
+
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+
+    if (updatedLoop.enabled) {
+      try {
+        const result = await tipcClient.startLoop?.({ loopId: loop.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success) {
+          toast.error("Task enabled, but it could not be scheduled right now.")
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.error("Task enabled, but it could not be scheduled right now.")
+        return
+      }
+    } else {
+      try {
+        const result = await tipcClient.stopLoop?.({ loopId: loop.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success && hadScheduledRuntime) {
+          toast.error("Task disabled, but its previous schedule could not be cleared right now.")
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (hadScheduledRuntime) {
+          toast.error("Task disabled, but its previous schedule could not be cleared right now.")
+          return
+        }
+      }
+    }
+
+    toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
   }
 
   const handleRunNow = async (loop: LoopConfig) => {
