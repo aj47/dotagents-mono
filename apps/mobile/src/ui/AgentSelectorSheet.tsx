@@ -47,6 +47,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [pendingProfileName, setPendingProfileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectorMode, setSelectorMode] = useState<'profile' | 'acp'>('profile');
@@ -126,6 +127,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
 
     setError(null);
+    setPendingProfileId(profile.id);
     setPendingProfileName(profile.name);
     setIsSwitching(true);
     try {
@@ -143,6 +145,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       setError(err?.message || 'Failed to switch agent');
     } finally {
       setIsSwitching(false);
+      setPendingProfileId(null);
       setPendingProfileName(null);
     }
   };
@@ -153,25 +156,34 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
+    const isPending = pendingProfileId === item.id;
     const secondaryDescription = item.guidelines && item.guidelines !== 'ACP main agent'
       ? item.guidelines
       : null;
-    const selectionAccessibilityLabel = isSelected
-      ? `Current ${item.name} agent`
-      : `Select ${item.name} agent`;
-    const selectionAccessibilityHint = isSelected
-      ? 'Currently selected. Double tap to close this selector and keep this agent.'
-      : 'Switches the current agent to this option.';
+    const selectionAccessibilityLabel = isPending
+      ? `Switching to ${item.name} agent`
+      : isSelected
+        ? `Current ${item.name} agent`
+        : `Select ${item.name} agent`;
+    const selectionAccessibilityHint = isPending
+      ? 'Agent switch in progress. Wait for the current request to finish.'
+      : isSelected
+        ? 'Currently selected. Double tap to close this selector and keep this agent.'
+        : 'Switches the current agent to this option.';
 
     return (
       <TouchableOpacity
-        style={[styles.profileItem, isSelected && styles.profileItemSelected]}
+        style={[
+          styles.profileItem,
+          isSelected && styles.profileItemSelected,
+          isPending && styles.profileItemPending,
+        ]}
         onPress={() => handleSelectProfile(item)}
         disabled={isSwitching}
         accessibilityRole="button"
         accessibilityLabel={selectionAccessibilityLabel}
         accessibilityHint={selectionAccessibilityHint}
-        accessibilityState={{ selected: isSelected, disabled: isSwitching }}
+        accessibilityState={{ selected: isSelected, disabled: isSwitching, busy: isPending }}
       >
         <View style={styles.profileInfo}>
           <Text
@@ -187,7 +199,12 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </Text>
           )}
         </View>
-        {isSelected && (
+        {isPending ? (
+          <View style={styles.profilePendingBadge}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={styles.profilePendingBadgeText}>Switching…</Text>
+          </View>
+        ) : isSelected && (
           <View style={styles.profileCurrentBadge}>
             <Text style={styles.profileCurrentBadgeText}>Current</Text>
           </View>
@@ -364,6 +381,11 @@ function createStyles(theme: Theme) {
       borderWidth: 1,
       borderColor: theme.colors.primary + '33',
     },
+    profileItemPending: {
+      backgroundColor: theme.colors.primary + '12',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '2E',
+    },
     profileInfo: {
       flex: 1,
       minWidth: 0,
@@ -395,6 +417,24 @@ function createStyles(theme: Theme) {
       borderColor: theme.colors.primary + '33',
     },
     profileCurrentBadgeText: {
+      fontSize: 11,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      flexShrink: 0,
+    },
+    profilePendingBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      flexShrink: 0,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.primary + '12',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '2E',
+    },
+    profilePendingBadgeText: {
       fontSize: 11,
       color: theme.colors.primary,
       fontWeight: '700',

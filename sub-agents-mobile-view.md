@@ -2235,3 +2235,47 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that selecting another agent shows the new in-progress status immediately and prevents accidental dismissal.
   - Check both profile mode and ACP mode to confirm the switching banner wording still reads clearly with longer agent names.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 52: show the pending target row during mobile agent switching
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 51 added a top-of-sheet `Switching to …` banner and dismissal lock while an agent switch was in flight.
+  - The tapped selector row itself still only became disabled; it did not visibly identify itself as the pending destination.
+  - On mobile that meant users had to map the banner text back to the list manually, which weakens state clarity in a short, high-salience interaction.
+- Issue selected:
+  - The mobile sub-agent selector did not show which specific row was currently being activated, so switching still felt slightly ambiguous even after adding the global in-progress banner.
+- Decision:
+  - Keep the existing selector-sheet layout, global switching banner, and dismissal lock unchanged.
+  - Do not add row-level spinners everywhere or redesign the current-row treatment without live evidence.
+  - Make the smallest local fix in `AgentSelectorSheet`: track the pending row by id, give that row a compact `Switching…` badge and pending styling, and expose the same state through accessibility metadata.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - track `pendingProfileId` alongside the existing `pendingProfileName`,
+    - mark the tapped row with pending styling while the request is in flight,
+    - replace the destination row's trailing `Current` badge with a compact `Switching…` badge and inline spinner,
+    - promote the pending state into row accessibility labels, hints, and `busy` state,
+    - clear the row-level pending marker in the existing `finally` cleanup path.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new row-level pending-state contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new pending badge feels proportionate beside long agent names.
+  - If live validation later shows both the top banner and row badge feel redundant, the next step may need to simplify one of them rather than add more status copy.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that tapping another agent immediately highlights that exact row as pending.
+  - Check a long agent name during switching to confirm the new `Switching…` badge does not crowd the row.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
