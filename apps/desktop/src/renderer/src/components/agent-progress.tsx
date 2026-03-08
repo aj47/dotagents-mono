@@ -3222,6 +3222,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const shouldLimitTileTranscript = !isFocused && !isExpanded
     const shouldUseCompactTileFooter = !isFocused && !isExpanded
     const showTileExpandAction = !!onExpand && !isExpanded && !isSnoozed
+    const showTileProfileName = !!profileName && !acpSessionInfo?.agentTitle
     const tileDisplayItems = shouldLimitTileTranscript
       ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
       : displayItems
@@ -3250,7 +3251,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 {getTitle()}
               </span>
               {/* Agent name indicator in header */}
-              {profileName && (
+              {showTileProfileName && (
                 <span className="flex items-center gap-1 text-[10px] text-primary/70">
                   <Bot className="h-2.5 w-2.5 shrink-0" />
                   <span className="truncate">{profileName}</span>
@@ -3437,7 +3438,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                   {/* ACP Session info for tile variant */}
                   {acpSessionInfo && (
-                    <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
+                    <ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />
                   )}
                   {/* Model info - only show for non-ACP sessions */}
                   {!isComplete && modelInfo && !acpSessionInfo && !shouldUseCompactTileFooter && (

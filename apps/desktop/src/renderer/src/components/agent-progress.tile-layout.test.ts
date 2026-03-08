@@ -24,6 +24,14 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('title="Restore session"')
   })
 
+  it("keeps ACP agent identity in one place by hiding the header profile chip when the footer badge already names the agent", () => {
+    expect(agentProgressSource).toContain(
+      'const showTileProfileName = !!profileName && !acpSessionInfo?.agentTitle'
+    )
+    expect(agentProgressSource).toContain('{showTileProfileName && (')
+    expect(agentProgressSource).toContain('<ACPSessionBadge info={acpSessionInfo}')
+  })
+
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex flex-wrap items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"')

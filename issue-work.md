@@ -27,9 +27,14 @@
 - Important assumptions:
   - Assumption: the reported duplicate maximize state is the snoozed-tile case, because that is the only clear path in the current tile header that renders two maximize-style actions at once.
   - Why acceptable: the issue explicitly says it happens only "in certain cases," and this code path matches that conditional behavior exactly.
+- Additional assumption for follow-up slice: the repeated agent-name presentation comes from ACP tiles showing agent identity both in the header profile chip and again in the footer `ACPSessionBadge`.
+- Why acceptable: the footer badge already presents the richer agent identity (including version/model context), so hiding the header chip only when the ACP badge names the agent reduces repetition without removing unique information.
 - Changes implemented:
   - Added `showTileExpandAction` so the tile-level maximize action is hidden when the session is snoozed and already exposes `Restore session`.
   - Added a regression assertion in `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` covering the snoozed-tile action gating.
+  - Added `showTileProfileName` so ACP-backed tiles do not repeat the header profile chip when the footer `ACPSessionBadge` already names the agent.
+  - Added a regression assertion covering the ACP header/footer identity de-duplication.
+  - Removed an unused `compact` prop from the tile footer `ACPSessionBadge` call so the invocation matches the component API.
 - Verification run:
   - Attempted: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/agent-progress.tile-layout.test.ts`
   - Result: blocked by missing local dependencies / `node_modules`; shared pretest failed with `sh: tsup: command not found`.
@@ -38,7 +43,6 @@
   - Branch: `aloops/issue-work-loop`
   - PR: not created in this iteration.
 - Remaining follow-ups for issue #55:
-  - Investigate and fix the repeated agent-name presentation in the tile view.
   - Investigate collapsed-tile reflow; likely requires a layout-level adjustment in `SessionGrid` / `SessionTileWrapper`, not just header chrome.
 
-- Next recommended issue work item: either continue with the repeated agent-name slice of `#55`, or switch to another small desktop UX bug after this change is committed.
+- Next recommended issue work item: investigate the collapsed-tile reflow slice of `#55`, or switch to another small desktop UX bug after this change is committed.
