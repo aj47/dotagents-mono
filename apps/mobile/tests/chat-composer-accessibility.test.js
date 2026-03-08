@@ -41,7 +41,13 @@ test('refreshes composer agent selector visibility when the chat screen regains 
 
 test('lets the composer agent selector label use available row width before truncating', () => {
   assert.match(screenSource, /agentSelectorChip:\s*\{[\s\S]*?maxWidth:\s*'100%'/);
-  assert.match(screenSource, /agentSelectorChipValue:\s*\{[\s\S]*?flexShrink:\s*1,/);
+  assert.match(screenSource, /agentSelectorChipValueRow:\s*\{[\s\S]*?flexShrink:\s*1,[\s\S]*?minWidth:\s*0,/);
+  assert.match(screenSource, /agentSelectorChipValue:\s*\{[\s\S]*?flexShrink:\s*1,[\s\S]*?minWidth:\s*0,/);
+});
+
+test('keeps the composer agent selector chevron visible beside long agent names', () => {
+  assert.match(screenSource, /<View style=\{styles\.agentSelectorChipValueRow\}>[\s\S]*?<Text style=\{styles\.agentSelectorChipValue\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{currentAgentLabel\}[\s\S]*?<Text style=\{styles\.agentSelectorChipChevron\}>▼<\/Text>/);
+  assert.doesNotMatch(screenSource, /\{currentAgentLabel\} ▼/);
 });
 
 test('exposes the edit-before-send toggle state to Expo Web accessibility APIs', () => {

@@ -3358,9 +3358,12 @@ export default function ChatScreen({ route, navigation }: any) {
 			                accessibilityHint="Opens agent selection menu"
 			              >
 			                <Text style={styles.agentSelectorChipLabel}>🤖 Agent</Text>
-			                <Text style={styles.agentSelectorChipValue} numberOfLines={1}>
-			                  {currentAgentLabel} ▼
-			                </Text>
+			                <View style={styles.agentSelectorChipValueRow}>
+			                  <Text style={styles.agentSelectorChipValue} numberOfLines={1} ellipsizeMode="tail">
+			                    {currentAgentLabel}
+			                  </Text>
+			                  <Text style={styles.agentSelectorChipChevron}>▼</Text>
+			                </View>
 			              </TouchableOpacity>
 			            </View>
 			          )}
@@ -3656,11 +3659,25 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontWeight: '600',
       marginRight: 6,
     },
+	    agentSelectorChipValueRow: {
+	      flexDirection: 'row',
+	      alignItems: 'center',
+	      flexShrink: 1,
+	      minWidth: 0,
+	    },
     agentSelectorChipValue: {
       fontSize: 12,
       color: theme.colors.primary,
       fontWeight: '600',
       flexShrink: 1,
+	      minWidth: 0,
+	    },
+	    agentSelectorChipChevron: {
+	      fontSize: 11,
+	      color: theme.colors.primary,
+	      fontWeight: '700',
+	      marginLeft: 4,
+	      flexShrink: 0,
     },
     pendingImagesRow: {
       paddingHorizontal: spacing.sm,

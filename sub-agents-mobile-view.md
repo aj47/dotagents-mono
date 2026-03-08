@@ -2740,3 +2740,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long agent names still show a clear selector affordance in both mobile headers.
   - Compare the header badge against the composer chip with the same long-name data before duplicating this pattern elsewhere.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 64: keep the composer agent chip chevron visible beside long names
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - focused composer regression coverage in `apps/mobile/tests/chat-composer-accessibility.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the mobile headers now separate long current-agent labels from their chevrons.
+  - But the composer-level agent chip still rendered `{currentAgentLabel} ▼` inside one truncating text node.
+  - On narrow screens, a longer agent name could therefore truncate away the chevron and make the chip look like passive metadata instead of an agent-switching control.
+- Issue selected:
+  - The composer-level sub-agent chip could lose its selector affordance under long agent names, weakening interaction clarity in a compact part of the mobile chat UI.
+- Decision:
+  - Keep the existing composer chip layout, copy, and touch-target sizing unchanged.
+  - Do not redesign the composer row while live validation is blocked.
+  - Make the smallest local fix: mirror the header pattern by splitting the chip into a truncating current-agent label plus a fixed chevron.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - render the composer agent value and chevron as separate nodes,
+    - add an `agentSelectorChipValueRow` wrapper with `flexShrink` / `minWidth: 0` so long names truncate safely,
+    - add explicit tail truncation to the current-agent label,
+    - keep the chevron fixed-width so it remains visible beside long names.
+  - Updated `apps/mobile/tests/chat-composer-accessibility.test.js` with focused regression coverage for the separated composer-chip chevron contract and truncation styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the composer chip keeps a balanced layout when very long agent names are present.
+  - The same long-name scenario should still be checked across the selector sheet and header badges together once live validation is available again.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long agent names still show a clear selector affordance in the composer chip.
+  - Compare the composer chip against the header badge and selector sheet with the same long-name data so truncation feels consistent across entry points.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
