@@ -126,3 +126,10 @@ test('keeps queue edit mode anchored to the current queued or failed message con
 test('keeps queue editing usable with the keyboard open or after dragging the list', () => {
   assert.match(queuePanelSource, /<ScrollView[\s\S]*?style=\{styles\.list\}[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"[\s\S]*?>/);
 });
+
+test('caps expanded queue height relative to the viewport so it does not crowd shorter mobile chat screens', () => {
+  assert.match(queuePanelSource, /useWindowDimensions/);
+  assert.match(queuePanelSource, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
+  assert.match(queuePanelSource, /const queueListMaxHeight = Math\.min\(200, Math\.max\(160, Math\.round\(windowHeight \* 0\.28\)\)\);/);
+  assert.match(queuePanelSource, /list:\s*\{[\s\S]*?maxHeight:\s*queueListMaxHeight,/);
+});

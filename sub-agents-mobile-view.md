@@ -5360,3 +5360,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the expanded response-history panel now feels proportionate on a short mobile viewport while still showing enough context on taller screens.
   - Capture screenshot-backed evidence for the expanded panel with a short screen height and a taller screen height so the new responsive cap can be judged against the chat transcript space it preserves.
   - Compare the updated expanded response-history height against the nearby queue panel to decide whether their stacked hierarchy now feels balanced or whether a later local follow-up is warranted.
+
+## Iteration 121 - Keep expanded mobile queue panels from crowding short chat screens
+
+- Date: 2026-03-08
+- Summary: Reduced the risk of the expanded mobile `MessageQueuePanel` taking over shorter chat screens by replacing its fixed `200px` list cap with a viewport-aware limit that shrinks on short devices while preserving the existing ceiling on taller ones.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent response-history sizing and queue-header work without a fresh, local issue.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/src/ui/ResponseHistoryPanel.tsx`, and focused queue/history tests because Iteration 120 explicitly called out the need to compare those stacked panels.
+  - Confirmed this exact fixed-height queue-list issue had not already been logged, even though nearby queue iterations had already improved disclosure, failure copy, and header hierarchy.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker during this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed layout review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ChatScreen` renders `MessageQueuePanel` near the active composer, so any expanded queue height directly competes with visible message and composer context on mobile.
+  - Source review showed the queue list still used a fixed `maxHeight: 200` regardless of viewport height.
+  - After the adjacent `ResponseHistoryPanel` became viewport-aware in Iteration 120, the queue panel remained the remaining stacked sub-agent surface with a rigid expanded-height cap on short screens.
+- Issue identified:
+  - The expanded mobile queue panel still used a one-size-fits-all height cap, weakening information hierarchy by letting a secondary activity list claim too much vertical space on shorter chat screens.
+- Decision and rationale:
+  - Keep the queue header, row layout, action rail, and collapsed behavior unchanged.
+  - Do not broaden this into a larger queue/history redesign while live validation is blocked.
+  - Make the smallest local fix instead: derive the expanded queue-list cap from viewport height with a protective floor, while preserving the existing `200px` ceiling on taller screens so current roomy behavior does not change unnecessarily.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - read the current viewport height via `useWindowDimensions()`,
+    - derive `queueListMaxHeight` as `min(200, max(160, round(windowHeight * 0.28)))`,
+    - apply that responsive cap to the expanded queue `ScrollView` instead of the previous fixed `200px` value.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new viewport-aware queue-height contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed the queue panel should stay secondary to the active chat transcript and composer, so protecting vertical room on shorter screens is more valuable than always maximizing visible queued rows.
+  - Kept the existing `200px` ceiling to avoid changing taller-screen behavior without live evidence that the queue should grow further.
+  - Chose a `160px` minimum so the expanded queue remains useful on compact devices instead of collapsing into a cramped scroller that exposes too little context.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that its disclosure semantics, failure copy, header hierarchy, and now expanded-height behavior have all evolved without fresh Expo confirmation in this worktree.
+  - The stacked relationship between the response-history panel and the queue panel still deserves live one-handed hierarchy review once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the expanded queue panel now feels proportionate on a short mobile viewport while still showing enough queued context on taller screens.
+  - Capture screenshot-backed evidence for the expanded queue panel with a short screen height and a taller screen height so the new responsive cap can be judged against the chat/composer space it preserves.
+  - Compare the updated queue height against the already-responsive response-history panel to decide whether their stacked hierarchy now feels balanced or whether a later local follow-up is warranted.

@@ -13,6 +13,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { QueuedMessage } from '@dotagents/shared';
@@ -486,6 +487,7 @@ export function MessageQueuePanel({
   compact = false,
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
 
   useEffect(() => {
@@ -516,6 +518,7 @@ export function MessageQueuePanel({
     ? 'One queued message is sending now. Clear All stays disabled until it finishes.'
     : `${processingCount} queued messages are sending now. Clear All stays disabled until they finish.`;
   const queueDisclosureLabel = `${createExpandCollapseAccessibilityLabel('queued messages', !isListCollapsed)}. ${queuedMessageLabel}. ${queueHeaderStatusText}.`;
+  const queueListMaxHeight = Math.min(200, Math.max(160, Math.round(windowHeight * 0.28)));
 
   if (messages.length === 0) {
     return null;
@@ -647,7 +650,7 @@ export function MessageQueuePanel({
       color: theme.colors.primary,
     },
     list: {
-      maxHeight: 200,
+      maxHeight: queueListMaxHeight,
     },
     separator: {
       height: 1,
