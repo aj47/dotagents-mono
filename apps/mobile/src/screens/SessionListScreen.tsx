@@ -829,7 +829,7 @@ export default function SessionListScreen({ navigation }: Props) {
             {isStub && (
               <Text style={styles.sessionStubIndicator}>💻</Text>
             )}
-            <Text style={styles.sessionTitle} numberOfLines={1}>
+            <Text style={styles.sessionTitle} numberOfLines={2}>
               {item.title}
             </Text>
           </View>
@@ -1132,12 +1132,14 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.body,
       fontWeight: '600',
       flex: 1,
+      flexShrink: 1,
       minWidth: 0,
     },
     sessionDate: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
       alignSelf: 'flex-start',
+      paddingTop: 2,
       flexShrink: 0,
     },
     sessionPreview: {

@@ -1,5 +1,49 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 89: Mobile session list rows hid too much chat identity behind one-line titles when timestamps kept their lane under narrow width + larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/SessionListScreen.tsx` (`Chats` list → per-session title/timestamp row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched desktop settings surfaces plus the recently improved mobile connection/chat/loop flows unless a literal follow-up fix justified it.
+  - `mobile-app-improvement.md` still listed session list navigation and empty/loading states as a live candidate area, and the main audit log had not recently inspected `SessionListScreen` itself.
+  - I tried to start from the preferred live mobile path first, but this checkout still cannot run Expo Web, so the right non-thrashy move was a small source-driven session-list fix with targeted test coverage.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `mobile-app-improvement.md`, `apps/mobile/README.md`, and the repo’s mobile workflow guidance before choosing the area
+  - attempted to verify a live mobile path and captured blocker evidence:
+    - `test -d node_modules` → missing
+    - `test -d apps/mobile/node_modules` → missing
+    - `pnpm --filter @dotagents/mobile exec expo --version` → failed with `Command "expo" not found`
+    - checked `127.0.0.1` ports `8081`, `19007`, `8091`, `8092`, and `8093`; none had an active Expo Web listener
+  - inspected `apps/mobile/src/screens/SessionListScreen.tsx`, its existing `apps/mobile/tests/session-list-screen-layout.test.js`, and nearby mobile list/card patterns to keep the change consistent and small
+
+#### Findings
+
+- Before the fix, the mobile session list had one concrete identity/scannability issue with clear user impact:
+  - each chat row still rendered the session title with `numberOfLines={1}` while preserving a separate timestamp lane on the right
+  - that means long conversation titles surrender their distinguishing tail to ellipsis immediately, even though the row already supports wrapped header content and the session title is the primary thing users need in order to reopen the right chat
+  - practical impact: on narrow phones, larger text, or longer AI-generated session names, users have less visible session identity and are more likely to open the wrong conversation from the chats list
+
+#### Changes made
+
+- Hardened only the session-row title treatment in `apps/mobile/src/screens/SessionListScreen.tsx`:
+  - changed the visible session title from `numberOfLines={1}` to `numberOfLines={2}` so long chat names get a compact multiline fallback instead of immediate one-line truncation
+  - added `flexShrink: 1` to the title style so the text lane keeps yielding intentionally inside the existing flexible header row
+  - added a small `paddingTop: 2` adjustment to the timestamp so it stays visually aligned with the first wrapped title line
+- Extended `apps/mobile/tests/session-list-screen-layout.test.js` with focused source-contract coverage for the two-line title fallback and timestamp alignment contract
+
+#### Verification
+
+- Targeted mobile source-contract test: `node --test apps/mobile/tests/session-list-screen-layout.test.js` ✅
+- Targeted mobile typecheck attempt: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked: this checkout still lacks the local Expo / React Native dependency graph; `expo/tsconfig.base`, `react-native`, and related modules cannot be resolved, and the filtered exec ends with `Command failed with exit code 2: tsc --noEmit`)*
+- Patch hygiene: `git diff --check -- apps/mobile/src/screens/SessionListScreen.tsx apps/mobile/tests/session-list-screen-layout.test.js ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: I could not do screenshot-backed Expo Web inspection for this chunk because the workspace currently has no mobile dependencies or active Expo runtime. The next evidence needed for literal live verification is a runnable mobile web/dev build for this checkout.
+- Tradeoff/rationale: some long chat titles can now use a second line, but that is a safer product tradeoff than keeping the timestamp rigid while hiding the session identity users are trying to scan.
+- Best next UI audit chunk after this one: once Expo Web is runnable again, do a literal `SessionListScreen` live pass around `320–390px` widths with larger text and verify the updated row behavior alongside the empty/loading states; otherwise move to the next fresh mobile candidate such as a session-list empty/loading/error follow-up or the adjacent chat-list action affordances.
+
 ### 2026-03-08 — Chunk 88: Desktop local model download errors could explode the providers value lane and under-signal recovery under stressed width + larger text
 
 - Area selected:

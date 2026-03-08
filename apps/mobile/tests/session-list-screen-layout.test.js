@@ -16,9 +16,11 @@ test('lets the session list action bar wrap safely under narrow widths and large
 
 test('keeps session card title rows flexible before crowding timestamps', () => {
   assert.match(screenSource, /<View style=\{styles\.sessionHeader\}>[\s\S]*?<View style=\{styles\.sessionTitleRow\}>/);
+  assert.match(screenSource, /<Text style=\{styles\.sessionTitle\} numberOfLines=\{2\}>/);
   assert.match(screenSource, /sessionHeader:\s*\{[\s\S]*?flexWrap: 'wrap',[\s\S]*?alignItems: 'flex-start',[\s\S]*?minWidth: 0,/);
   assert.match(screenSource, /sessionTitleRow:\s*\{[\s\S]*?flex: 1,[\s\S]*?minWidth: 0,[\s\S]*?gap: spacing\.xs,/);
-  assert.match(screenSource, /sessionDate:\s*\{[\s\S]*?alignSelf: 'flex-start',[\s\S]*?flexShrink: 0,/);
+  assert.match(screenSource, /sessionTitle:\s*\{[\s\S]*?fontWeight: '600',[\s\S]*?flex: 1,[\s\S]*?flexShrink: 1,[\s\S]*?minWidth: 0,/);
+  assert.match(screenSource, /sessionDate:\s*\{[\s\S]*?alignSelf: 'flex-start',[\s\S]*?paddingTop: 2,[\s\S]*?flexShrink: 0,/);
 });
 
 test('keeps stub-session affordances aligned without forcing extra title margin hacks', () => {
