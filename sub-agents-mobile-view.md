@@ -1942,3 +1942,45 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Running`, `Active`, and `Paused` are visually distinct at a glance.
   - Check a long loop name plus `Run on startup` metadata together to confirm the new badge does not create truncation pressure.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 45: humanize agent row metadata in mobile settings
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agents` rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - shared agent role / connection-type values in `apps/desktop/src/shared/types.ts`
+  - focused agent-row tests in `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile agent rows still rendered raw implementation terms in the main metadata line, e.g. `acp • delegation-target`.
+  - On a dense mobile settings list, those lowercase enum values read more like internal config than user-facing state.
+  - The surrounding rows already had enough structure, so the main readability gap was wording rather than layout.
+- Issue selected:
+  - Mobile `Settings > Agents` used machine-style metadata labels, which made connection and role state harder to scan quickly on narrow screens.
+- Decision:
+  - Keep the existing row layout, built-in badge, action rail, and edit affordance unchanged.
+  - Do not add another badge row or extra metadata line without fresh live evidence.
+  - Make the smallest local fix: humanize the existing connection-type and role labels in place.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `formatAgentConnectionTypeLabel(...)` for `Internal` / `ACP` / `Stdio` / `Remote`
+    - add `formatAgentRoleLabel(...)` for `Profile` / `Delegation` / `External` / `Agent`
+    - use those helpers in the `Settings > Agents` metadata line instead of raw enum values
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new human-readable metadata contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the clearer labels improve scanability without pushing long descriptions into awkward wraps.
+  - Agent rows still rely on the action-rail switch for enabled state; if live validation later shows that state is still easy to miss, the next step may need a compact text treatment rather than more raw metadata.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `ACP`, `Stdio`, `Remote`, and `Delegation` read clearly at a glance in `Settings > Agents`.
+  - Check a long agent name plus description together to confirm the improved metadata wording does not create extra truncation pressure.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

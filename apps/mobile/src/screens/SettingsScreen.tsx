@@ -188,6 +188,33 @@ function formatLoopLastRunLabel(timestamp: number): string {
   })}`;
 }
 
+function formatAgentConnectionTypeLabel(connectionType: AgentProfile['connectionType']): 'Internal' | 'ACP' | 'Stdio' | 'Remote' {
+  switch (connectionType) {
+    case 'acp':
+      return 'ACP';
+    case 'stdio':
+      return 'Stdio';
+    case 'remote':
+      return 'Remote';
+    case 'internal':
+    default:
+      return 'Internal';
+  }
+}
+
+function formatAgentRoleLabel(role?: AgentProfile['role']): 'Profile' | 'Delegation' | 'External' | 'Agent' {
+  switch (role) {
+    case 'user-profile':
+      return 'Profile';
+    case 'delegation-target':
+      return 'Delegation';
+    case 'external-agent':
+      return 'External';
+    default:
+      return 'Agent';
+  }
+}
+
 function getLoopStatusLabel(loop: Loop): 'Running' | 'Active' | 'Paused' {
   if (loop.isRunning) return 'Running';
   return loop.enabled ? 'Active' : 'Paused';
@@ -2338,7 +2365,7 @@ export default function SettingsScreen({ navigation }: any) {
                             )}
                           </View>
                           <Text style={styles.serverMeta}>
-                            {profile.connectionType} • {profile.role || 'agent'}
+                            {formatAgentConnectionTypeLabel(profile.connectionType)} • {formatAgentRoleLabel(profile.role)}
                           </Text>
                           {profile.description && (
                             <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>

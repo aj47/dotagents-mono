@@ -32,3 +32,17 @@ test('adds an explicit edit affordance to each agent row', () => {
   assert.match(settingsSource, /renderInlineEditAffordance\(\)/);
   assert.match(settingsSource, /editAffordance:\s*\{[\s\S]*?backgroundColor: theme\.colors\.primary \+ '14'/);
 });
+
+test('formats agent row metadata into human-readable mobile labels', () => {
+  assert.match(settingsSource, /function formatAgentConnectionTypeLabel\(connectionType: AgentProfile\['connectionType'\]\): 'Internal' \| 'ACP' \| 'Stdio' \| 'Remote'/);
+  assert.match(settingsSource, /case 'acp':[\s\S]*?return 'ACP';/);
+  assert.match(settingsSource, /case 'stdio':[\s\S]*?return 'Stdio';/);
+  assert.match(settingsSource, /case 'remote':[\s\S]*?return 'Remote';/);
+  assert.match(settingsSource, /case 'internal':[\s\S]*?return 'Internal';/);
+  assert.match(settingsSource, /function formatAgentRoleLabel\(role\?: AgentProfile\['role'\]\): 'Profile' \| 'Delegation' \| 'External' \| 'Agent'/);
+  assert.match(settingsSource, /case 'user-profile':[\s\S]*?return 'Profile';/);
+  assert.match(settingsSource, /case 'delegation-target':[\s\S]*?return 'Delegation';/);
+  assert.match(settingsSource, /case 'external-agent':[\s\S]*?return 'External';/);
+  assert.match(settingsSource, /\{formatAgentConnectionTypeLabel\(profile\.connectionType\)\} • \{formatAgentRoleLabel\(profile\.role\)\}/);
+  assert.doesNotMatch(settingsSource, /\{profile\.connectionType\} • \{profile\.role \|\| 'agent'\}/);
+});
