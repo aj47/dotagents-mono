@@ -100,6 +100,8 @@ export interface ModelStatus {
   downloading: boolean
   progress: number
   error?: string
+  runtimeAvailable?: boolean
+  runtimeError?: string
 }
 
 let modelStatus: ModelStatus = {
@@ -412,12 +414,21 @@ export function isModelReady(): boolean {
 /**
  * Get current model download status
  */
-export function getModelStatus(): ModelStatus {
+export async function getModelStatus(): Promise<ModelStatus> {
   // Refresh downloaded status
   if (!modelStatus.downloading) {
     modelStatus.downloaded = isModelReady()
   }
-  return { ...modelStatus }
+
+  const runtimeAvailable = await isSherpaAvailable()
+
+  return {
+    ...modelStatus,
+    runtimeAvailable,
+    runtimeError: runtimeAvailable
+      ? undefined
+      : getSherpaLoadError() || "Failed to load the local Parakeet transcription runtime.",
+  }
 }
 
 /**

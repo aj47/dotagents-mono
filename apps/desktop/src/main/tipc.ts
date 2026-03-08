@@ -1364,7 +1364,7 @@ export const router = {
 
   // Parakeet (local) STT model management
   getParakeetModelStatus: t.procedure.action(async () => {
-    return parakeetStt.getModelStatus()
+    return await parakeetStt.getModelStatus()
   }),
 
   downloadParakeetModel: t.procedure.action(async () => {

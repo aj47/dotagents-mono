@@ -21,7 +21,7 @@ import { ModelPresetManager } from "@renderer/components/model-preset-manager"
 import { ProviderModelSelector } from "@renderer/components/model-selector"
 import { PresetModelSelector } from "@renderer/components/preset-model-selector"
 
-import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Brain, Zap, BookOpen, Settings2, Cpu, Download, Loader2 } from "lucide-react"
+import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Brain, Zap, BookOpen, Settings2, Cpu, Download, Loader2, AlertTriangle } from "lucide-react"
 
 import {
   STT_PROVIDERS,
@@ -290,6 +290,15 @@ function ProviderCredentialInputs({
   )
 }
 
+type ParakeetModelStatus = {
+  downloaded: boolean
+  downloading: boolean
+  progress: number
+  error?: string
+  runtimeAvailable?: boolean
+  runtimeError?: string
+}
+
 // Parakeet Model Download Component
 function ParakeetModelDownload() {
   const queryClient = useQueryClient()
@@ -320,18 +329,57 @@ function ParakeetModelDownload() {
     }
   }
 
-  const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
+  const status = modelStatusQuery.data as ParakeetModelStatus | undefined
+  const runtimeUnavailable = status?.runtimeAvailable === false
+  const runtimeError = status?.runtimeError?.trim()
+  const runtimeWarning = runtimeUnavailable ? (
+    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium text-amber-700 dark:text-amber-300">
+            Local runtime unavailable
+          </p>
+          <p>
+            {status?.downloaded
+              ? "The model files are on this device, but the Parakeet transcription runtime could not load, so recordings would still fail until that is fixed."
+              : "Downloading the model alone will not make Parakeet usable until the local transcription runtime can load on this device."}
+          </p>
+          {runtimeError && (
+            <p className="break-words text-[11px]">{runtimeError}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : null
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
   }
 
   if (status?.downloaded) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+    const readyLabel = runtimeUnavailable ? "Model Downloaded" : "Model Ready"
+    const readyClassName = runtimeUnavailable ? "text-amber-600 dark:text-amber-400" : "text-green-600"
+    const readyIcon = runtimeUnavailable
+      ? <AlertTriangle className="h-3.5 w-3.5" />
+      : <CheckCircle2 className="h-3.5 w-3.5" />
+
+    const readyIndicator = (
+      <span className={`inline-flex items-center gap-1.5 text-xs ${readyClassName}`}>
+        {readyIcon}
+        {readyLabel}
       </span>
+    )
+
+    if (!runtimeUnavailable) {
+      return readyIndicator
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {readyIndicator}
+        {runtimeWarning}
+      </div>
     )
   }
 
@@ -357,21 +405,25 @@ function ParakeetModelDownload() {
 
   if (status?.error) {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
           Retry Download
         </Button>
+        {runtimeWarning}
       </div>
     )
   }
 
   return (
-    <Button size="sm" variant="outline" onClick={handleDownload}>
-      <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~200MB)
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button size="sm" variant="outline" onClick={handleDownload}>
+        <Download className="h-3.5 w-3.5 mr-1.5" />
+        Download Model (~200MB)
+      </Button>
+      {runtimeWarning}
+    </div>
   )
 }
 
@@ -382,6 +434,7 @@ function ParakeetProviderSection({
   onToggleCollapse,
   usageBadges,
   numThreads,
+  transcriptionPreviewEnabled,
   onNumThreadsChange,
 }: {
   isActive: boolean
@@ -389,6 +442,7 @@ function ParakeetProviderSection({
   onToggleCollapse: () => void
   usageBadges: { label: string; icon: React.ElementType }[]
   numThreads: number
+  transcriptionPreviewEnabled: boolean
   onNumThreadsChange: (value: number) => void
 }) {
   return (
@@ -428,6 +482,28 @@ function ParakeetProviderSection({
                 ? "Local speech-to-text using NVIDIA Parakeet. No API key required - runs entirely on your device."
                 : "This provider is not currently selected for any feature. Select it above to use it."}
             </p>
+          </div>
+
+          <div className="px-3 py-3">
+            <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-700 dark:text-amber-300">
+                    No live preview during recording
+                  </p>
+                  <p className="mt-1 text-xs leading-5">
+                    {transcriptionPreviewEnabled
+                      ? <>
+                          Live preview is currently enabled in <a href="/settings/general" className="underline">Recording settings</a>, but Parakeet still waits until you stop recording before showing text.
+                        </>
+                      : <>
+                          Parakeet waits until you stop recording before showing text. If you later turn live preview on in <a href="/settings/general" className="underline">Recording settings</a>, Parakeet will still skip partial updates while recording.
+                        </>}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Model Download Section */}
@@ -1731,6 +1807,7 @@ export function SettingsProvidersContent() {
           onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
           usageBadges={activeProviders.parakeet}
           numThreads={configQuery.data.parakeetNumThreads || 2}
+          transcriptionPreviewEnabled={configQuery.data.transcriptionPreviewEnabled ?? false}
           onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
         />
       )}
@@ -1988,6 +2065,7 @@ export function SettingsProvidersContent() {
           onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
           usageBadges={activeProviders.parakeet}
           numThreads={configQuery.data.parakeetNumThreads || 2}
+          transcriptionPreviewEnabled={configQuery.data.transcriptionPreviewEnabled ?? false}
           onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
         />
       )}

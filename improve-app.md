@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop Parakeet provider settings model readiness / preview limitation clarity in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with Parakeet runtime/model status wiring reviewed in `apps/desktop/src/main/parakeet-stt.ts` / `apps/desktop/src/main/tipc.ts`, mobile provider-selection parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings transcription preview cost / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime preview gating reviewed in `apps/desktop/src/renderer/src/pages/panel.tsx`, desktop/mobile config exposure checked in `apps/desktop/src/main/config.ts` / `apps/desktop/src/main/remote-server.ts` / `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings primary recording shortcut hold/toggle completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with onboarding dictation-step parity reviewed in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, sessions shortcut hint usage updated in `apps/desktop/src/renderer/src/pages/sessions.tsx`, runtime recording behavior checked in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers updated in `apps/desktop/src/shared/key-utils.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings toggle-voice-dictation shortcut completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime toggle behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers updated in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -45,6 +46,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop Parakeet provider settings now warn when the local Sherpa runtime cannot load even if model files are already downloaded, explain that downloading alone will not fix that runtime blocker, and surface the existing no-live-preview-during-recording tradeoff inline with a link back to Recording settings.
 - 2026-03-08: Desktop transcription preview settings now default to the current cost-safe off state explicitly, keep the switch tied to the saved setting, explain off/on/provider-specific billing behavior inline, and warn when Parakeet is selected because live preview is unavailable during recording even if the preference is enabled.
 - 2026-03-08: Desktop primary voice-dictation shortcut settings and onboarding now explain the active hold-vs-toggle behavior in plain language, keep the shortcut summary aligned with the actual saved custom mode, warn when a custom recording shortcut is still incomplete, and stop sessions/onboarding from silently falling back to `Hold Ctrl` when custom setup is unfinished.
 - 2026-03-08: Desktop Toggle Voice Dictation settings now keep the selected hotkey visible even while the feature is off, explain whether keyboard toggle dictation is currently active or still incomplete, show the active Fn/F-key/custom shortcut in plain language, and warn explicitly when a custom toggle shortcut has not been fully recorded yet.
@@ -81,6 +83,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-providers-parakeet-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, `apps/desktop/src/main/parakeet-stt.ts`, and `apps/desktop/src/main/tipc.ts`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-general-transcription-preview-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/main/config.ts`, and `apps/desktop/src/main/remote-server.ts`
 - 2026-03-08: `git diff --check`
@@ -159,6 +164,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this Parakeet provider settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this transcription-preview settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this primary recording-shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this toggle-voice-dictation shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -194,10 +200,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop Parakeet provider settings model readiness / preview limitation clarity (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`)
+- Desktop local TTS provider settings runtime readiness / model usability clarity (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop Parakeet provider settings model readiness / live-preview limitation clarity next so users choosing local STT understand both model-download state and the current no-live-preview tradeoff before they hit Recording settings
+- Inspect desktop local TTS provider settings runtime readiness / model usability clarity next so users picking Kitten or Supertonic understand whether downloaded files also mean the local runtime is actually usable before they rely on on-device speech output
+- Once a runnable Electron target is available, live-check the desktop Parakeet provider section across not-downloaded, downloaded, runtime-unavailable, and preview-enabled states to confirm the new warning hierarchy reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop transcription preview switch across off, Groq, and Parakeet states to confirm the new cost/availability guidance reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop primary recording shortcut settings plus onboarding dictation step to confirm the new hold/toggle summaries, incomplete-custom warning, and shortcut hints feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop toggle-voice-dictation shortcut settings to confirm the new off/active/incomplete-custom guidance feels right in the actual UI
@@ -217,6 +224,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop Parakeet provider readiness and preview clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop provider settings Parakeet section in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - main-process Parakeet model/runtime status in `apps/desktop/src/main/parakeet-stt.ts`
+  - Parakeet status IPC exposure in `apps/desktop/src/main/tipc.ts`
+  - mobile provider-selection parity review in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused source-level regression coverage added in `tests/desktop-settings-providers-parakeet-feedback.test.js`
+- Why it was chosen:
+  - the ledger explicitly called out Parakeet provider readiness / preview clarity as the next unchecked STT settings opportunity
+  - investigation found two concrete UX gaps: the provider card treated downloaded model files as effectively ready even though the local Sherpa runtime can still fail to load, and the no-live-preview tradeoff only existed on the separate Recording settings page instead of where users choose Parakeet itself
+  - this was a small local change with clear user value because local-STT users need to know whether Parakeet is actually usable on this device before downloading a large model or expecting partial transcript updates while recording
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to confirm the Parakeet card only showed download progress / ready state plus thread count and never surfaced runtime-load failures or preview limitations inline
+  - `apps/desktop/src/main/parakeet-stt.ts` to confirm the app already tracks Sherpa native-module load failures separately from model-file presence via `isSherpaAvailable()` and `getSherpaLoadError()`
+  - `apps/desktop/src/main/tipc.ts` to confirm desktop settings only received model download status, not runtime availability, from `getParakeetModelStatus`
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to confirm mobile only exposes provider selection and has no equivalent local Parakeet runtime/model management UI to update in this pass
+  - live desktop inspection attempt via `electron_execute`, which remained blocked because no Electron/CDP target was available in this environment
+- What changed:
+  - extended Parakeet model-status payloads to include runtime availability plus the current load error when the local Sherpa runtime cannot initialize
+  - updated the desktop Parakeet model-status UI so downloaded files only show as fully ready when the runtime is also available, and otherwise warn that recordings would still fail until the runtime issue is fixed
+  - added inline warning copy explaining that downloading the model alone will not make Parakeet usable when the runtime itself cannot load
+  - added an in-card Parakeet callout that makes the existing no-live-preview-during-recording tradeoff explicit and points users back to Recording settings for that preference
+- Assumptions / tradeoffs / rationale:
+  - treated runtime-load failure as a readiness problem because downloaded files alone are not enough for actual local transcription success
+  - kept the change local to Parakeet instead of introducing a broader local-model abstraction so this iteration stayed small and shippable
+  - left mobile unchanged because the mobile settings screen only selects the desktop STT provider remotely and does not expose a matching local-model/runtime surface
+- Verification:
+  - `node --test tests/desktop-settings-providers-parakeet-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, `apps/desktop/src/main/parakeet-stt.ts`, and `apps/desktop/src/main/tipc.ts`
+  - `git diff --check`
+- Remaining follow-ups:
+  - live-check the Parakeet provider card in a runnable Electron session to confirm the warning hierarchy feels right across download and runtime states
+  - consider a similar runtime-readiness audit for other local model surfaces like Kitten and Supertonic if their cards also overstate “downloaded” as “usable”
 
 ### 2026-03-08 — Desktop transcription preview cost and saved-state clarity
 - Date:
