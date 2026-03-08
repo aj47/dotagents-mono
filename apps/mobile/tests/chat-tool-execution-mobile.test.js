@@ -16,7 +16,16 @@ test('gives the collapsed tool execution summary a minimum mobile touch target',
 test('keeps collapsed tool execution labels legible on narrow mobile screens', () => {
   assert.match(chatScreenSource, /toolCallCompactIcon:\s*\{[\s\S]*?fontSize: 11/);
   assert.match(chatScreenSource, /toolCallCompactName:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 16,[\s\S]*?flexShrink: 1,[\s\S]*?minWidth: 0/);
-  assert.match(chatScreenSource, /toolCallCompactStatus:\s*\{[\s\S]*?fontSize: 11/);
+  assert.match(chatScreenSource, /const toolExecutionStateLabel = isPending \? 'Running' : hasErrors \? 'Error' : 'Done';/);
+  assert.match(chatScreenSource, /toolCallCompactStatusBadge:\s*\{[\s\S]*?borderRadius: 999,[\s\S]*?paddingHorizontal: 4,[\s\S]*?flexShrink: 0/);
+  assert.match(chatScreenSource, /toolCallCompactStatusText:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?fontWeight: '600'/);
+  assert.match(chatScreenSource, /toolCallCompactStatusBadgePending:\s*\{[\s\S]*?theme\.colors\.info/);
+  assert.match(chatScreenSource, /toolCallCompactStatusBadgeSuccess:\s*\{[\s\S]*?theme\.colors\.success/);
+  assert.match(chatScreenSource, /toolCallCompactStatusBadgeError:\s*\{[\s\S]*?theme\.colors\.destructive/);
+  assert.match(chatScreenSource, /toolCallCompactStatusTextPending:\s*\{[\s\S]*?theme\.colors\.info/);
+  assert.match(chatScreenSource, /toolCallCompactStatusTextSuccess:\s*\{[\s\S]*?theme\.colors\.success/);
+  assert.match(chatScreenSource, /toolCallCompactStatusTextError:\s*\{[\s\S]*?theme\.colors\.destructive/);
+  assert.match(chatScreenSource, /<View style=\{\[[\s\S]*?styles\.toolCallCompactStatusBadge,[\s\S]*?\]\}>[\s\S]*?<Text style=\{\[[\s\S]*?styles\.toolCallCompactStatusText,[\s\S]*?\]\}>[\s\S]*?\{toolExecutionStateLabel\}[\s\S]*?<\/Text>/);
   assert.match(chatScreenSource, /toolCallCompactPreview:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 15,[\s\S]*?flex: 1,[\s\S]*?minWidth: 0,[\s\S]*?flexShrink: 1/);
   assert.match(chatScreenSource, /toolCallCompactChevron:\s*\{[\s\S]*?fontSize: 10/);
 });

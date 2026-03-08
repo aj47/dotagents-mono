@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 164 - Make collapsed mobile tool rows state-explicit at a glance
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not redo the just-shipped tool-detail typography or settings-row preview work without a new local issue.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-tool-execution-mobile.test.js`, staying on the delegated tool-execution surface but focusing on the still-collapsed summary row instead of the recently touched expanded-detail styles.
+  - Re-tested whether live Expo validation was practical in this worktree before closing the change.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `undefined` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the collapsed tool-execution summary row still expressed execution state with tiny symbol-only text (`⏳`, `✓`, `✗`).
+  - Recent iterations had already improved touch targets, multi-tool scope, header wrapping, and expanded-detail readability, so the collapsed row was now the most visible remaining place where state still depended on compact glyphs and color.
+  - On narrow screens, that made the collapsed state harder to scan quickly than nearby sub-agent surfaces that already use explicit text badges such as `Latest`, `Speaking`, `Running…`, or `Delete`.
+- Issue identified:
+  - Collapsed mobile tool rows still relied on terse symbol-only status cues, weakening state clarity at the exact summary level users see most often.
+- Decision and rationale:
+  - Keep the collapsed row layout, touch-target sizing, preview behavior, and expanded tool-detail flow unchanged.
+  - Avoid broadening this into another header or copy redesign while live validation remains blocked.
+  - Make the smallest useful fix instead: replace the tiny symbol-only status cue with a compact text badge that says `Running`, `Done`, or `Error`, while preserving the existing row density and result preview slot.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to derive `toolExecutionStateLabel` for collapsed tool rows.
+  - Replaced the previous symbol-only status text with a tinted pill badge plus explicit text label for pending, success, and error states.
+  - Kept the rest of the collapsed row structure intact so the main tool name, `+N` count badge, preview, and disclosure chevron still behave the same.
+  - Updated `apps/mobile/tests/chat-tool-execution-mobile.test.js` with focused regression coverage for the new explicit state-badge contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-tool-execution-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed an explicit text badge is worth a small width increase because the collapsed row is the highest-frequency tool-execution surface on mobile.
+  - Kept the labels short (`Running`, `Done`, `Error`) instead of using longer sentences so the preview area still retains meaningful room on narrow screens.
+  - This remains a source-backed improvement and still needs live confirmation that the clearer status badges feel balanced beside long tool names and previews around ~320px width.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that collapsed tool rows now communicate `Running` / `Done` / `Error` clearly without crowding the tool name or preview.
+  - Capture screenshot-backed evidence for one running row, one successful row, and one error row so the new badge language can be judged in context.
+  - If live validation shows the explicit badges add too much density, prefer trimming badge padding or shortening `Running` before reconsidering the row structure.
+
 ## Iteration 163 - Let operational mobile sub-agent previews use two lines
 
 - Date: 2026-03-08

@@ -2887,6 +2887,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const toolCallNames = (m.toolCalls ?? []).map(tc => tc.name);
             const collapsedToolPrimaryName = toolCallNames[0] || 'Tool execution';
             const additionalToolCallCount = Math.max(toolCallNames.length - 1, 0);
+            const toolExecutionStateLabel = isPending ? 'Running' : hasErrors ? 'Error' : 'Done';
             const toolExecutionSummaryLabel = additionalToolCallCount > 0
               ? `${toolCallNames.length} tool execution details`
               : `${collapsedToolPrimaryName} tool execution details`;
@@ -2995,14 +2996,21 @@ export default function ChatScreen({ route, navigation }: any) {
                             {additionalToolCallCount > 0 && (
                               <Text style={styles.toolCallCompactCountBadge}>+{additionalToolCallCount}</Text>
                             )}
-                            <Text style={[
-                              styles.toolCallCompactStatus,
-                              isPending && styles.toolCallCompactStatusPending,
-                              allSuccess && styles.toolCallCompactStatusSuccess,
-                              hasErrors && styles.toolCallCompactStatusError,
+                            <View style={[
+                              styles.toolCallCompactStatusBadge,
+                              isPending && styles.toolCallCompactStatusBadgePending,
+                              allSuccess && styles.toolCallCompactStatusBadgeSuccess,
+                              hasErrors && styles.toolCallCompactStatusBadgeError,
                             ]}>
-                              {isPending ? '⏳' : allSuccess ? '✓' : '✗'}
-                            </Text>
+                              <Text style={[
+                                styles.toolCallCompactStatusText,
+                                isPending && styles.toolCallCompactStatusTextPending,
+                                allSuccess && styles.toolCallCompactStatusTextSuccess,
+                                hasErrors && styles.toolCallCompactStatusTextError,
+                              ]}>
+                                {toolExecutionStateLabel}
+                              </Text>
+                            </View>
                             {/* Result preview - show truncated result content like desktop */}
                             {!isPending && m.toolResults && m.toolResults.length > 0 && (
                               <Text
@@ -4064,18 +4072,35 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingVertical: 1,
       flexShrink: 0,
     },
-    toolCallCompactStatus: {
-      fontSize: 11,
+    toolCallCompactStatusBadge: {
+      borderRadius: 999,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
       marginLeft: 1,
+      flexShrink: 0,
     },
-    toolCallCompactStatusPending: {
+    toolCallCompactStatusBadgePending: {
+      backgroundColor: hexToRgba(theme.colors.info, 0.12),
+    },
+    toolCallCompactStatusBadgeSuccess: {
+      backgroundColor: hexToRgba(theme.colors.success, 0.12),
+    },
+    toolCallCompactStatusBadgeError: {
+      backgroundColor: hexToRgba(theme.colors.destructive, 0.12),
+    },
+    toolCallCompactStatusText: {
+      fontSize: 10,
+      lineHeight: 14,
+      fontWeight: '600',
+    },
+    toolCallCompactStatusTextPending: {
       color: theme.colors.info,
     },
-    toolCallCompactStatusSuccess: {
-      color: theme.colors.mutedForeground,
+    toolCallCompactStatusTextSuccess: {
+      color: theme.colors.success,
     },
-    toolCallCompactStatusError: {
-      color: theme.colors.mutedForeground,
+    toolCallCompactStatusTextError: {
+      color: theme.colors.destructive,
     },
     toolCallCompactChevron: {
       fontSize: 10,
