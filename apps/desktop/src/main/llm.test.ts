@@ -204,6 +204,49 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("preserves streamed assistant text when the LLM call aborts after partial output", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { AGENT_STOP_NOTE } = await import("./agent-run-utils")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-stop-during-stream")
+
+    let shouldStopDuringStream = false
+    mockShouldStopSession.mockImplementation(() => shouldStopDuringStream)
+    mockStreamingCall.mockImplementation(async (_messages, onStreamingUpdate) => {
+      onStreamingUpdate?.(
+        "I found the working directory: /tmp/project.",
+        "I found the working directory: /tmp/project.",
+      )
+      shouldStopDuringStream = true
+      const abortError = new Error("stream aborted")
+      ;(abortError as Error & { name: string }).name = "AbortError"
+      throw abortError
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "run pwd",
+      [] as any,
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      2,
+      [],
+      "conv-stop-during-stream",
+      "session-stop-during-stream",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("I found the working directory: /tmp/project.")
+    expect(result.content).toContain(AGENT_STOP_NOTE)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-stop-during-stream",
+      expect.objectContaining({
+        output: expect.stringContaining("I found the working directory: /tmp/project."),
+      }),
+    )
+  })
+
   it("preserves a stored respond_to_user answer when the session is stopped after tool execution", async () => {
     const { emitAgentProgress } = await import("./emit-agent-progress")
     const { AGENT_STOP_NOTE } = await import("./agent-run-utils")

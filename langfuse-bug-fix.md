@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772240416384_vv22n56ok | session_1772240416385_czog6zy7k | fix implemented | User input `do you know about` ended with `output: null` and `wasAborted: true`, but the failing `Streaming LLM Call` observation already contained a substantial partial answer. Root repo issue found: the emergency-stop abort catch path finalized without passing through the latest streamed assistant text, so mid-stream aborts could discard partial deliverable content even when Langfuse had already recorded it inside the generation observation. |
 | 2026-03-08 | conv_1771713524892_s4fckyh7n | session_1771713524893_ttnm6sh50, session_1771713542868_kydy6y6qo | fix implemented | User asked how to restart the SpeakMCP macOS app. The first run emitted raw tool-call artifacts (`<function_calls>...`, `[Calling tools: ...]`, even a lone `[`), attempted bogus proxy-prefixed tool names like `proxy_speakmcp-settings:execute_command`, and ended with `output: null`; only a later retry fell back to manual instructions. Root repo issue found: the native-tool-call reminder guard only caught full `[Calling tools: ...]` placeholders / SDK marker tokens, not truncated placeholder fragments or raw XML function-call scaffolding, so malformed tool-call text could slip through as if it were normal assistant content. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh follow-up evidence) | session_1772916139885_8wx8su8xa | fix implemented | User asked `we have enough starters, what else would be highest impact. gather lots of context about overall goals etc`; the run still replied with another starter-pack recommendation and verification marked the answer complete even though the user explicitly asked for broader context-grounded analysis and had already ruled out `more starters` as the immediate next move. Root repo issue found: the completion-verifier prompt did not explicitly reject answers that skipped a requested research/context-gathering step or ignored an explicit user constraint/premise. |
 | 2026-03-08 | conv_1772472232055_lpgo0dg11 | session_1772472232057_4ajhc3jv9 | fix implemented | Unlogged aborted-run evidence: user input `debug beta 1772472232053` ended with `output: null`, `wasAborted: true`, and only one `Streaming LLM Call` observation with no error status and no output. Root repo issue found: the streaming helpers could treat a stop-before-first-chunk as an empty success (`makeLLMCallWithStreaming`) or a generic empty-response error (`makeLLMCallWithStreamingAndTools`) instead of an explicit abort, making kill-switch finalization ambiguous and low-signal. |
@@ -1678,6 +1679,36 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ⚠️ the package script ignored the file filter and ran the wider desktop suite; our new `llm.test.ts` slice passed, but two unrelated existing renderer tests failed: `src/renderer/src/components/agent-progress.tile-layout.test.ts` and `src/renderer/src/components/agent-progress.performance.test.ts`
   - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted `llm.test.ts` command exits successfully
   - debugging-guided live verification from `apps/desktop/DEBUGGING.md` was not required for this loop because the failing flow was reconstructable from Langfuse and directly covered by the new focused regression
+
+## 2026-03-08 — Mid-stream aborts should preserve already-streamed assistant text
+
+- Reviewed `langfuse-bug-fix.md` first and avoided already-logged abort cases unless fresh evidence pointed to a distinct gap.
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772240416384_vv22n56ok` / `session_1772240416385_czog6zy7k`
+    - user input: `do you know about`
+    - trace outcome: `output: null`
+    - metadata showed `wasAborted: true`
+    - the failing `Streaming LLM Call` observation already contained substantial partial assistant text, so the run had streamed usable content before the abort finalized
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` already preserved the full `llmResponse.content` when a stop landed *after* the LLM call returned.
+  - however, the `AbortError` catch path still called `finalizeEmergencyStop(...)` with no candidate output.
+  - during streaming, partial text only lived in `thinkingStep.llmContent`, which meant an abort raised *before* `makeLLMCall(...)` returned could drop the already-streamed assistant text on the floor.
+- Concrete root cause:
+  - the emergency-stop abort catch path did not thread the latest streamed assistant text into finalization.
+  - that left a distinct gap from the already-fixed `zero streamed chunks` abort case: if some chunks had already arrived, Langfuse could show them inside the generation observation while the final trace output still collapsed to `null`.
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm.ts`
+    - pass `thinkingStep.llmContent` into `finalizeEmergencyStop(...)` when the in-flight LLM call aborts
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression that simulates a streamed partial answer followed by `AbortError` and verifies both the returned content and Langfuse trace output preserve the partial answer plus the stop note
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts -t "preserves streamed assistant text when the LLM call aborts after partial output"`
+  - ✅ passed (`1 passed`, `15 skipped`)
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - ✅ passed (`16 passed`)
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
+  - note: the Vitest runs still print the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test commands exit successfully
 
 ## Remaining Leads
 

@@ -1852,7 +1852,7 @@ Return ONLY JSON per schema.`,
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
         thinkingStep.description = "Emergency stop triggered"
-        finalizeEmergencyStop(progressSteps.slice(-3))
+        finalizeEmergencyStop(progressSteps.slice(-3), thinkingStep.llmContent)
         break
       }
 
