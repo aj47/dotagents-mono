@@ -1965,13 +1965,51 @@ const PastResponseItem: React.FC<{
   sessionId?: string
 }> = ({ response, index, sessionId }) => {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
+  const [ttsError, setTtsError] = useState<string | null>(null)
   const configQuery = useConfigQuery()
   const shouldShowTTSButton = configQuery.data?.ttsEnabled
   const ttsResponseText = sanitizeMessageContentForSpeech(response)
 
+  useEffect(() => {
+    setAudioData(null)
+    setTtsError(null)
+  }, [ttsResponseText])
+
   const generatePastAudio = async (): Promise<ArrayBuffer> => {
-    const result = await tipcClient.generateSpeech({ text: ttsResponseText })
-    return result.audio
+    setIsGeneratingAudio(true)
+    setTtsError(null)
+
+    try {
+      const result = await tipcClient.generateSpeech({ text: ttsResponseText })
+      setAudioData(result.audio)
+      return result.audio
+    } catch (error) {
+      console.error("[Past Response TTS] Failed to generate audio:", error)
+
+      let errorMessage = "Failed to generate audio"
+      if (error instanceof Error) {
+        if (error.message.includes("API key")) {
+          errorMessage = "TTS API key not configured"
+        } else if (error.message.includes("terms acceptance")) {
+          errorMessage = "Groq TTS model requires terms acceptance. Visit the Groq Playground with the model selected to accept terms."
+        } else if (error.message.includes("rate limit")) {
+          errorMessage = "Rate limit exceeded. Please try again later"
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your connection"
+        } else if (error.message.includes("validation")) {
+          errorMessage = "Text content is not suitable for TTS"
+        } else {
+          errorMessage = `TTS error: ${error.message}`
+        }
+      }
+
+      setTtsError(errorMessage)
+      throw error
+    } finally {
+      setIsGeneratingAudio(false)
+    }
   }
 
   const preview = response.length > 80 ? response.slice(0, 80) + "…" : response
@@ -2002,13 +2040,21 @@ const PastResponseItem: React.FC<{
             <MarkdownRenderer content={response} />
           </div>
           {shouldShowTTSButton && (
-            <div className="mt-1.5 min-w-0">
+            <div className="mt-1.5 min-w-0 space-y-1">
               <AudioPlayer
+                audioData={audioData || undefined}
                 text={ttsResponseText}
                 onGenerateAudio={generatePastAudio}
+                isGenerating={isGeneratingAudio}
+                error={ttsError}
                 compact={true}
                 autoPlay={false}
               />
+              {ttsError && (
+                <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
+                  <span className="font-medium">Audio generation failed:</span> {ttsError}
+                </div>
+              )}
             </div>
           )}
         </div>
