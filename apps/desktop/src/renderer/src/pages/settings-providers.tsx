@@ -44,9 +44,10 @@ import {
 } from "@shared/index"
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
-const PROVIDER_TEXT_INPUT_SAVE_DEBOUNCE_MS = 400
+const PROVIDER_INPUT_SAVE_DEBOUNCE_MS = 400
 
 type ProviderTextDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+type ProviderNumericDraftKey = "openaiTtsSpeed" | "supertonicSpeed" | "supertonicSteps"
 
 function getProviderTextDrafts(config?: Partial<Config>) {
   return {
@@ -64,6 +65,55 @@ function getOptionalStringConfigUpdate<Key extends ProviderTextDraftKey>(
   return {
     [key]: value || undefined,
   } as Pick<Config, Key>
+}
+
+function getProviderNumericDrafts(config?: Partial<Config>) {
+  return {
+    openaiTtsSpeed: (config?.openaiTtsSpeed ?? 1.0).toString(),
+    supertonicSpeed: (config?.supertonicSpeed ?? 1.05).toString(),
+    supertonicSteps: (config?.supertonicSteps ?? 5).toString(),
+  }
+}
+
+function getProviderNumericConfigUpdate<Key extends ProviderNumericDraftKey>(
+  key: Key,
+  value: string,
+): Pick<Config, Key> | null {
+  const trimmedValue = value.trim()
+  if (!trimmedValue) return null
+
+  let nextValue: number | null = null
+
+  if (key === "openaiTtsSpeed") {
+    const parsed = Number(trimmedValue)
+    if (!Number.isNaN(parsed) && parsed >= 0.25 && parsed <= 4.0) {
+      nextValue = parsed
+    }
+  } else if (key === "supertonicSpeed") {
+    const parsed = Number(trimmedValue)
+    if (!Number.isNaN(parsed) && parsed >= 0.5 && parsed <= 2.0) {
+      nextValue = parsed
+    }
+  } else {
+    const parsed = Number(trimmedValue)
+    if (!Number.isNaN(parsed) && Number.isInteger(parsed) && parsed >= 2 && parsed <= 10) {
+      nextValue = parsed
+    }
+  }
+
+  if (nextValue === null) return null
+
+  return {
+    [key]: nextValue,
+  } as Pick<Config, Key>
+}
+
+function getProviderNumericConfigValue<Key extends ProviderNumericDraftKey>(
+  key: Key,
+  value: string,
+): Config[Key] | null {
+  const configUpdate = getProviderNumericConfigUpdate(key, value)
+  return configUpdate ? configUpdate[key] : null
 }
 
 // Badge component to show which features are using this provider
@@ -675,9 +725,13 @@ function SupertonicProviderSection({
   language,
   onLanguageChange,
   speed,
-  onSpeedChange,
+  speedInputValue,
+  onSpeedInputChange,
+  onSpeedInputBlur,
   steps,
-  onStepsChange,
+  stepsInputValue,
+  onStepsInputChange,
+  onStepsInputBlur,
 }: {
   isActive: boolean
   isCollapsed: boolean
@@ -688,9 +742,13 @@ function SupertonicProviderSection({
   language: string
   onLanguageChange: (value: string) => void
   speed: number
-  onSpeedChange: (value: number) => void
+  speedInputValue: string
+  onSpeedInputChange: (value: string) => void
+  onSpeedInputBlur: (value: string) => void
   steps: number
-  onStepsChange: (value: number) => void
+  stepsInputValue: string
+  onStepsInputChange: (value: string) => void
+  onStepsInputBlur: (value: string) => void
 }) {
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
@@ -841,13 +899,9 @@ function SupertonicProviderSection({
                   max={2.0}
                   step={0.05}
                   className="w-full sm:w-[100px]"
-                  value={speed}
-                  onChange={(e) => {
-                    const val = parseFloat(e.currentTarget.value)
-                    if (!isNaN(val) && val >= 0.5 && val <= 2.0) {
-                      onSpeedChange(val)
-                    }
-                  }}
+                  value={speedInputValue}
+                  onChange={(e) => onSpeedInputChange(e.currentTarget.value)}
+                  onBlur={(e) => onSpeedInputBlur(e.currentTarget.value)}
                 />
               </Control>
 
@@ -866,13 +920,9 @@ function SupertonicProviderSection({
                   max={10}
                   step={1}
                   className="w-full sm:w-[100px]"
-                  value={steps}
-                  onChange={(e) => {
-                    const val = parseInt(e.currentTarget.value)
-                    if (!isNaN(val) && val >= 2 && val <= 10) {
-                      onStepsChange(val)
-                    }
-                  }}
+                  value={stepsInputValue}
+                  onChange={(e) => onStepsInputChange(e.currentTarget.value)}
+                  onBlur={(e) => onStepsInputBlur(e.currentTarget.value)}
                 />
               </Control>
 
@@ -907,11 +957,19 @@ export function Component() {
   const [providerTextDrafts, setProviderTextDrafts] = useState(() =>
     getProviderTextDrafts(configQuery.data as Config | undefined),
   )
+  const [providerNumericDrafts, setProviderNumericDrafts] = useState(() =>
+    getProviderNumericDrafts(configQuery.data as Config | undefined),
+  )
   const providerTextSaveTimeoutsRef = useRef<Record<ProviderTextDraftKey, ReturnType<typeof setTimeout> | null>>({
     groqApiKey: null,
     groqBaseUrl: null,
     geminiApiKey: null,
     geminiBaseUrl: null,
+  })
+  const providerNumericSaveTimeoutsRef = useRef<Record<ProviderNumericDraftKey, ReturnType<typeof setTimeout> | null>>({
+    openaiTtsSpeed: null,
+    supertonicSpeed: null,
+    supertonicSteps: null,
   })
 
   const saveConfig = useCallback(
@@ -947,7 +1005,53 @@ export function Component() {
       providerTextSaveTimeoutsRef.current[key] = setTimeout(() => {
         providerTextSaveTimeoutsRef.current[key] = null
         saveConfig(getOptionalStringConfigUpdate(key, value))
-      }, PROVIDER_TEXT_INPUT_SAVE_DEBOUNCE_MS)
+      }, PROVIDER_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const resetProviderNumericDraft = useCallback((key: ProviderNumericDraftKey) => {
+    const nextValue = getProviderNumericDrafts(configRef.current)[key]
+    setProviderNumericDrafts((current) => ({
+      ...current,
+      [key]: nextValue,
+    }))
+  }, [])
+
+  const flushProviderNumericDraft = useCallback(
+    (key: ProviderNumericDraftKey, value: string) => {
+      const timeout = providerNumericSaveTimeoutsRef.current[key]
+      if (timeout) {
+        clearTimeout(timeout)
+        providerNumericSaveTimeoutsRef.current[key] = null
+      }
+
+      const configUpdate = getProviderNumericConfigUpdate(key, value)
+      if (!configUpdate) {
+        resetProviderNumericDraft(key)
+        return
+      }
+
+      saveConfig(configUpdate)
+    },
+    [resetProviderNumericDraft, saveConfig],
+  )
+
+  const scheduleProviderNumericSave = useCallback(
+    (key: ProviderNumericDraftKey, value: string) => {
+      const timeout = providerNumericSaveTimeoutsRef.current[key]
+      if (timeout) clearTimeout(timeout)
+
+      const configUpdate = getProviderNumericConfigUpdate(key, value)
+      if (!configUpdate) {
+        providerNumericSaveTimeoutsRef.current[key] = null
+        return
+      }
+
+      providerNumericSaveTimeoutsRef.current[key] = setTimeout(() => {
+        providerNumericSaveTimeoutsRef.current[key] = null
+        saveConfig(configUpdate)
+      }, PROVIDER_INPUT_SAVE_DEBOUNCE_MS)
     },
     [saveConfig],
   )
@@ -966,8 +1070,20 @@ export function Component() {
   ])
 
   useEffect(() => {
+    setProviderNumericDrafts(getProviderNumericDrafts(configQuery.data as Config | undefined))
+  }, [
+    configQuery.data?.openaiTtsSpeed,
+    configQuery.data?.supertonicSpeed,
+    configQuery.data?.supertonicSteps,
+  ])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(providerTextSaveTimeoutsRef.current)) {
+        if (timeout) clearTimeout(timeout)
+      }
+
+      for (const timeout of Object.values(providerNumericSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
       }
     }
@@ -1227,13 +1343,16 @@ export function Component() {
                     max="4.0"
                     step="0.25"
                     placeholder="1.0"
-                    defaultValue={configQuery.data.openaiTtsSpeed?.toString()}
+                    value={providerNumericDrafts.openaiTtsSpeed}
                     onChange={(e) => {
-                      const speed = parseFloat(e.currentTarget.value)
-                      if (!isNaN(speed) && speed >= 0.25 && speed <= 4.0) {
-                        saveConfig({ openaiTtsSpeed: speed })
-                      }
+                      const value = e.currentTarget.value
+                      setProviderNumericDrafts((current) => ({
+                        ...current,
+                        openaiTtsSpeed: value,
+                      }))
+                      scheduleProviderNumericSave("openaiTtsSpeed", value)
                     }}
+                    onBlur={(e) => flushProviderNumericDraft("openaiTtsSpeed", e.currentTarget.value)}
                   />
                 </Control>
               </div>
@@ -1485,10 +1604,20 @@ export function Component() {
             onVoiceChange={(value) => saveConfig({ supertonicVoice: value })}
             language={configQuery.data.supertonicLanguage ?? "en"}
             onLanguageChange={(value) => saveConfig({ supertonicLanguage: value })}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            onSpeedChange={(value) => saveConfig({ supertonicSpeed: value })}
-            steps={configQuery.data.supertonicSteps ?? 5}
-            onStepsChange={(value) => saveConfig({ supertonicSteps: value })}
+            speed={getProviderNumericConfigValue("supertonicSpeed", providerNumericDrafts.supertonicSpeed) ?? (configQuery.data.supertonicSpeed ?? 1.05)}
+            speedInputValue={providerNumericDrafts.supertonicSpeed}
+            onSpeedInputChange={(value) => {
+              setProviderNumericDrafts((current) => ({ ...current, supertonicSpeed: value }))
+              scheduleProviderNumericSave("supertonicSpeed", value)
+            }}
+            onSpeedInputBlur={(value) => flushProviderNumericDraft("supertonicSpeed", value)}
+            steps={getProviderNumericConfigValue("supertonicSteps", providerNumericDrafts.supertonicSteps) ?? (configQuery.data.supertonicSteps ?? 5)}
+            stepsInputValue={providerNumericDrafts.supertonicSteps}
+            onStepsInputChange={(value) => {
+              setProviderNumericDrafts((current) => ({ ...current, supertonicSteps: value }))
+              scheduleProviderNumericSave("supertonicSteps", value)
+            }}
+            onStepsInputBlur={(value) => flushProviderNumericDraft("supertonicSteps", value)}
           />
         )}
 
@@ -1736,10 +1865,20 @@ export function Component() {
             onVoiceChange={(value) => saveConfig({ supertonicVoice: value })}
             language={configQuery.data.supertonicLanguage ?? "en"}
             onLanguageChange={(value) => saveConfig({ supertonicLanguage: value })}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            onSpeedChange={(value) => saveConfig({ supertonicSpeed: value })}
-            steps={configQuery.data.supertonicSteps ?? 5}
-            onStepsChange={(value) => saveConfig({ supertonicSteps: value })}
+            speed={getProviderNumericConfigValue("supertonicSpeed", providerNumericDrafts.supertonicSpeed) ?? (configQuery.data.supertonicSpeed ?? 1.05)}
+            speedInputValue={providerNumericDrafts.supertonicSpeed}
+            onSpeedInputChange={(value) => {
+              setProviderNumericDrafts((current) => ({ ...current, supertonicSpeed: value }))
+              scheduleProviderNumericSave("supertonicSpeed", value)
+            }}
+            onSpeedInputBlur={(value) => flushProviderNumericDraft("supertonicSpeed", value)}
+            steps={getProviderNumericConfigValue("supertonicSteps", providerNumericDrafts.supertonicSteps) ?? (configQuery.data.supertonicSteps ?? 5)}
+            stepsInputValue={providerNumericDrafts.supertonicSteps}
+            onStepsInputChange={(value) => {
+              setProviderNumericDrafts((current) => ({ ...current, supertonicSteps: value }))
+              scheduleProviderNumericSave("supertonicSteps", value)
+            }}
+            onStepsInputBlur={(value) => flushProviderNumericDraft("supertonicSteps", value)}
           />
         )}
 

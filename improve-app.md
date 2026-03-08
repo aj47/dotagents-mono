@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop provider numeric TTS inputs (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` plus mobile TTS parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider settings Groq/Gemini credential inputs (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`) plus mobile parity check in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop general settings Langfuse text inputs (`apps/desktop/src/renderer/src/pages/settings-general.tsx`) and mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-07: Initial setup. No prior investigation log existed.
@@ -13,24 +14,59 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop provider numeric TTS settings now keep local drafts for OpenAI speed plus Supertonic speed/quality steps, debounce config writes, flush valid edits on blur, and restore invalid drafts to the last saved value.
 - 2026-03-08: Desktop provider settings now keep local drafts for Groq/Gemini API keys and base URLs, debounce config writes, flush on blur, and merge delayed saves against the latest config snapshot.
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
 - 2026-03-08: `git diff --check`
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
 - Desktop transcript post-processing prompt editor save behavior in `settings-general.tsx`
-- Desktop provider numeric inputs that still save on every change (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`)
 - Agent/task management flows
 - Shared utility reliability / guardrails
 
 ### Next Highest-Value Targets
 - Revisit desktop transcript post-processing prompt editing UX once the workspace can run tests again
-- Inspect desktop provider numeric settings (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) for similar save-churn or stale-merge issues
+- Inspect agent/task management flows for the next small reliability or UX win
+
+### 2026-03-08 — Desktop provider numeric draft/save resilience
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop provider settings in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - specifically `openaiTtsSpeed`, `supertonicSpeed`, and `supertonicSteps`
+- Why it was chosen:
+  - the ledger explicitly called out these remaining numeric settings as a fresh, not-yet-checked area after the credential-input pass
+  - these inputs sit on a core TTS configuration surface and still saved eagerly while typing, which creates avoidable config churn and awkward numeric-editing UX
+  - the fix was local, user-visible, and could reuse the existing draft/debounce approach without a broad settings refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - `apps/desktop/src/renderer/src/pages/settings-providers.credentials.test.tsx` for the existing focused renderer test harness around provider settings
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile already uses a more deliberate `onSlidingComplete(...)` flow for OpenAI TTS speed and does not expose the same Supertonic numeric editing surface, so no parity change was needed here
+  - attempted live desktop inspection, but no Electron CDP target was available in this environment
+- Improvement made:
+  - added shared local draft state for OpenAI TTS speed and Supertonic speed / quality-step inputs
+  - debounced valid numeric saves by 400ms while typing and flushes the latest valid value on blur
+  - invalid or blank numeric drafts now revert to the last saved config value on blur instead of sticking in a broken state or attempting an invalid save
+  - delayed numeric saves now still merge against the latest config snapshot via the existing `configRef`, preventing stale-config overwrites when unrelated settings change before the timeout fires
+  - kept Supertonic test-voice playback reading the current valid numeric draft so preview behavior stays aligned with what the user just typed
+  - extended focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-providers.credentials.test.tsx`
+- Assumptions / tradeoffs / rationale:
+  - kept the existing autosave model instead of adding explicit Save/Cancel controls to keep the change small and consistent with nearby settings UX
+  - chose “revert invalid blur” rather than persisting blanks/default resets automatically so incomplete numeric edits do not silently overwrite saved settings
+  - kept this pass scoped to the three remaining numeric provider inputs instead of reorganizing the broader provider settings screen
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx`, but the current workspace still lacks installed dependencies and `vitest` was unavailable
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run `src/renderer/src/pages/settings-providers.credentials.test.tsx` plus the previously blocked Langfuse settings test file
+  - revisit the transcript post-processing prompt editor for similar draft/save UX issues
+  - inspect agent/task management flows for the next small, high-value iteration
 
 ### 2026-03-08 — Desktop provider credential draft/save resilience
 - Date:

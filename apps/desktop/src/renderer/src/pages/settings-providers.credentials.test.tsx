@@ -105,6 +105,13 @@ function findInputByPlaceholder(node: any, placeholder: string) {
   return findNode(node, (candidate) => candidate.type === "Input" && candidate.props?.placeholder === placeholder)
 }
 
+function findInputByRange(node: any, min: string | number, max: string | number) {
+  return findNode(
+    node,
+    (candidate) => candidate.type === "Input" && candidate.props?.min === min && candidate.props?.max === max,
+  )
+}
+
 async function flushPromises() {
   await Promise.resolve()
   await Promise.resolve()
@@ -121,16 +128,19 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
     transcriptPostProcessingProviderId: "openai",
     mcpToolsProviderId: "groq",
     ttsProviderId: "openai",
-    providerSectionCollapsedOpenai: true,
+    providerSectionCollapsedOpenai: false,
     providerSectionCollapsedGroq: false,
     providerSectionCollapsedGemini: true,
     providerSectionCollapsedParakeet: true,
     providerSectionCollapsedKitten: true,
-    providerSectionCollapsedSupertonic: true,
+    providerSectionCollapsedSupertonic: false,
     groqApiKey: "gr-old",
     groqBaseUrl: "https://old.groq.example",
     geminiApiKey: "gm-old",
     geminiBaseUrl: "https://old.gemini.example",
+    openaiTtsSpeed: 1,
+    supertonicSpeed: 1.05,
+    supertonicSteps: 5,
     streamerModeEnabled: false,
     modelPresets: [],
     agentProfiles: [],
@@ -141,7 +151,13 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: () => ({ data: undefined, isLoading: false }),
+    useQuery: ({ queryKey }: { queryKey?: string[] }) => {
+      if (queryKey?.[0] === "supertonicModelStatus") {
+        return { data: { downloaded: true }, isLoading: false }
+      }
+
+      return { data: undefined, isLoading: false }
+    },
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
   }))
   vi.doMock("@renderer/components/ui/control", () => ({
@@ -329,6 +345,96 @@ describe("desktop provider credential inputs", () => {
       config: {
         ...getCurrentConfig(),
         groqBaseUrl: "https://new.groq.example",
+      },
+    })
+  })
+
+  it("keeps a local draft and debounces OpenAI TTS speed saves while editing", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsProviders(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let input = findInputByPlaceholder(tree, "1.0")
+    expect(input.props.value).toBe("1")
+
+    input.props.onChange({ currentTarget: { value: "1.5" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    input = findInputByPlaceholder(tree, "1.0")
+    expect(input.props.value).toBe("1.5")
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        openaiTtsSpeed: 1.5,
+      },
+    })
+  })
+
+  it("restores the last saved Supertonic steps value when blur leaves an invalid draft", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate } = await loadSettingsProviders(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let input = findInputByRange(tree, 2, 10)
+    expect(input.props.value).toBe("5")
+
+    input.props.onChange({ currentTarget: { value: "" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    input = findInputByRange(tree, 2, 10)
+    expect(input.props.value).toBe("")
+    expect(mutate).not.toHaveBeenCalled()
+
+    input.props.onBlur({ currentTarget: { value: "" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    input = findInputByRange(tree, 2, 10)
+    expect(input.props.value).toBe("5")
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it("uses the latest config snapshot when a delayed Supertonic numeric save fires", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsProviders(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const input = findInputByRange(tree, 0.5, 2)
+    input.props.onChange({ currentTarget: { value: "1.25" } })
+
+    setConfig({
+      ...getCurrentConfig(),
+      streamerModeEnabled: true,
+    })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    vi.advanceTimersByTime(400)
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        supertonicSpeed: 1.25,
       },
     })
   })
