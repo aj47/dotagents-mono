@@ -122,18 +122,21 @@ export const createVoiceInputLiveRegionAnnouncement = ({
   listening,
   handsFree,
   willCancel,
+  voiceError,
   liveTranscript,
   sttPreview,
 }: {
   listening: boolean;
   handsFree: boolean;
   willCancel: boolean;
+  voiceError?: string;
   liveTranscript?: string;
   sttPreview?: string;
 }): string => {
   const transcriptForAnnouncement = normalizeVoiceTranscriptForAnnouncement(
     liveTranscript || sttPreview || '',
   );
+  const voiceErrorAnnouncement = normalizeVoiceTranscriptForAnnouncement(voiceError || '');
 
   if (listening) {
     const releaseInstruction = handsFree
@@ -147,6 +150,10 @@ export const createVoiceInputLiveRegionAnnouncement = ({
     }
 
     return `Voice listening active. ${releaseInstruction}`;
+  }
+
+  if (voiceErrorAnnouncement) {
+    return `Voice input error. ${voiceErrorAnnouncement}`;
   }
 
   if (transcriptForAnnouncement) {

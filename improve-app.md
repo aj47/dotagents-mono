@@ -4,6 +4,8 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile `ChatScreen` voice-start failure feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with native/web start-failure branches reviewed, `createVoiceInputLiveRegionAnnouncement` in `apps/mobile/src/lib/accessibility.ts` extended for accessible error announcements, focused source-level coverage added in `apps/mobile/tests/chat-voice-start-feedback.test.js`, and live mobile-web inspection attempted but blocked because this worktree is missing Expo / `node_modules`.
+- 2026-03-08: Desktop floating-panel recording-start failure feedback in `apps/desktop/src/renderer/src/pages/panel.tsx`, with `Recorder.startRecording()` failure handling reviewed in `apps/desktop/src/renderer/src/lib/recorder.ts`, onboarding microphone-error guidance cross-checked in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, mobile voice-start parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no change in this pass because the mobile speech-recognition stack is a separate surface that needs its own dedicated follow-up), focused source-level coverage added in `tests/desktop-panel-recording-start-feedback.test.js`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop repeat-task runtime-status refresh feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `loopStatusesQuery` / renderer fallback behavior reviewed in that file, `getLoopStatuses()` output rechecked in `apps/desktop/src/main/loop-service.ts`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change needed because mobile loop metadata comes from the primary list fetch instead of a second live-status query), focused source-level coverage extended in `tests/desktop-settings-loops-feedback.test.js`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop `AgentProgress` session-scoped transient-state cleanup in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, with focused-session reuse confirmed in `apps/desktop/src/renderer/src/pages/panel.tsx`, adjacent follow-up/session-scope guardrails cross-checked in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` / `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, mobile parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile screen is session-scoped rather than a reused overlay), and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Mobile `Agent Loops` fetch/loading/error feedback in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/lib/settingsApi.ts` and adjacent mobile warning/loading patterns reviewed, focused source-level coverage added in `apps/mobile/tests/settings-loop-feedback-mobile.test.js`, and targeted loop-related verification run locally.
@@ -58,7 +60,12 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop follow-up composer duplicate-submit guardrails (`apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`).
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
+### Not Yet Checked
+- 2026-03-08: Desktop floating-panel live transcription preview chunk failures in `apps/desktop/src/renderer/src/pages/panel.tsx` still log to the console only, so a future pass could inspect whether preview stalls need inline warning or retry guidance distinct from full recording-start failures.
+
 ### Improved
+- 2026-03-08: Mobile `ChatScreen` now turns voice-input start failures into visible inline recovery guidance near the composer, clears stale failure state before each new mic attempt, translates native/web permission + unavailable-module + unsupported-browser/dev-build cases into actionable copy, and announces those failures through the shared voice live-region helper so mic taps no longer fail silently; tradeoff: this pass stays intentionally scoped to startup failures and leaves mid-session recognition dropouts / preview stalls for a later voice-input follow-up.
+- 2026-03-08: Desktop floating-panel recording now turns microphone start failures into actionable error dialogs instead of silently collapsing back to idle, reusing one shared failure handler across normal and MCP entry points, translating common permission / missing-device / busy-device errors into clearer recovery guidance, and resetting MCP-specific recording context when startup fails so users no longer have to guess whether the shortcut/button did anything; tradeoff: this pass intentionally leaves live transcription preview chunk failures for later because the highest-confusion issue was total recording-start failure with no visible feedback.
 - 2026-03-08: Desktop `Repeat Tasks` now warns inline when the secondary `getLoopStatuses()` refresh fails after the saved task list has already loaded, keeps the configured tasks visible, explains whether `Running` / `Next run` details are temporarily missing versus potentially stale, and offers a local `Retry status` action so a transient live-status failure no longer silently downgrades the page into misleading runtime metadata; tradeoff: this pass intentionally leaves run/toggle/delete mutation failure feedback for a separate follow-up because the highest-risk confusion was invisible status-query failure on an otherwise healthy list.
 - 2026-03-08: Desktop `AgentProgress` now clears stop-confirmation/loading state plus pending approval-response bookkeeping whenever the rendered `sessionId` changes, so switching the focused overlay/tile session can no longer carry a stale destructive dialog or action spinner over from the previous session; rationale: `panel.tsx` reuses the same `AgentProgress` instance across focus changes, so these affordances must be treated as session-scoped, not component-scoped. Tradeoff: this pass intentionally leaves transcript expansion/tab persistence alone because that needs live UI evidence before changing broader per-session view state.
 - 2026-03-08: Mobile `Agent Loops` now distinguish initial loading, refresh, fetch failure, and true empty states in `apps/mobile/src/screens/SettingsScreen.tsx`, keep previously loaded loops visible while a refresh is in flight, and show inline `Retry loading` guidance instead of making a transient desktop/API failure look like all loops disappeared; tradeoff: this pass intentionally leaves run/toggle/delete mutation failure feedback for a later loop-management pass.
@@ -109,6 +116,13 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: attempted `pnpm --filter @dotagents/mobile web` (blocked: `expo: command not found` and PNPM warned that local `node_modules` is missing, so live mobile inspection could not start in this worktree)
+- 2026-03-08: `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-voice-start-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/lib/accessibility.ts`
+- 2026-03-08: `git diff --check` after the mobile voice-start feedback pass
+- 2026-03-08: `node --test tests/desktop-panel-recording-start-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/panel.tsx`
+- 2026-03-08: `git diff --check` after the desktop floating-panel recording-start feedback pass
 - 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx` after the runtime-status feedback pass
 - 2026-03-08: `git diff --check` after the desktop repeat-task runtime-status feedback pass
@@ -228,6 +242,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this `ChatScreen` voice-start feedback pass was blocked because `pnpm --filter @dotagents/mobile web` failed with `expo: command not found` and PNPM warned that local `node_modules` is missing, so this iteration relied on source inspection, targeted source-level tests, and direct `typescript.transpileModule` syntax checks.
+- 2026-03-08: Live desktop UI inspection for this floating-panel recording-start feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this repeat-task runtime-status feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this `AgentProgress` session-cleanup pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this `AgentProgress` session-cleanup pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts` fails with `Command "vitest" not found`.
@@ -283,6 +299,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
+- Once a runnable Electron target is available, live-check the desktop floating panel across denied microphone permission, no microphone present, busy microphone, normal dictation start, and MCP continue-recording start so the new recording-failure guidance can be validated in the real UI
+- Desktop floating-panel live transcription preview chunk failures are the most adjacent voice-input product follow-up now that both desktop and mobile recording-start failures surface visible recovery guidance
 - Once a runnable Electron target is available, live-check desktop `AgentProgress` while switching between sessions with the transcript/tools tabs open, expanded items, and the stop confirmation recently used to confirm the remaining per-session view state feels consistent in the real UI
 - Once a runnable Electron target is available, live-check the desktop past-sessions dialog across keyboard navigation, single-session delete confirmation, failed-delete retry, and delete-all failure states to confirm the new recovery hierarchy feels clear in the real UI
 - Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, list-fetch failure, runtime-status failure (with and without cached status data), empty, and populated states to confirm the new status-warning hierarchy reads clearly in the real UI
@@ -1962,6 +1980,41 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable mobile target is available, live-check the `Agent Loops` section across first load, refresh with existing loops, empty state, and retry after a failed fetch
   - inspect loop action mutation failures (`run`, `toggle`, `delete`) if another mobile loops iteration is needed
+
+### 2026-03-08 — Desktop floating-panel recording-start failure feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop floating voice panel in `apps/desktop/src/renderer/src/pages/panel.tsx`
+  - microphone capture startup via `Recorder.startRecording()` in `apps/desktop/src/renderer/src/lib/recorder.ts`
+  - onboarding microphone-error guidance in `apps/desktop/src/renderer/src/pages/onboarding.tsx` reviewed as the nearest existing desktop pattern
+  - focused source-level regression coverage added in `tests/desktop-panel-recording-start-feedback.test.js`
+- Why it was chosen:
+  - the ledger had not covered floating-panel microphone startup failures yet, and source review showed four `startRecording()` entry points that only logged to the console when `getUserMedia` or `MediaRecorder` setup failed
+  - because the panel optimistically flips into recording mode before microphone startup finishes, a startup failure could look like the hotkey or mic action simply did nothing and then the panel auto-closed
+  - the opportunity had clear user value, stayed localized to one renderer screen, and had a nearby onboarding copy pattern that could keep the fix consistent without a broad refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/panel.tsx` for all normal and MCP recording start flows, auto-close behavior, and existing `displayError(...)` usage on other panel failures
+  - `apps/desktop/src/renderer/src/lib/recorder.ts` to confirm the startup failure originates from `navigator.mediaDevices.getUserMedia(...)` / `MediaRecorder` setup rather than a later transcription path
+  - `apps/desktop/src/renderer/src/pages/onboarding.tsx` to reuse the app’s existing microphone permission / missing-device copy strategy instead of inventing a second tone
+  - `apps/mobile/src/screens/ChatScreen.tsx`; confirmed mobile has adjacent voice-start failure gaps too, but its native/web speech-recognition split is a separate surface better handled in its own iteration
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - added a shared `getRecordingStartErrorDetails(...)` mapper for the floating panel so common permission-denied, no-microphone, and busy-microphone failures become user-facing recovery guidance instead of raw browser errors
+  - added a shared `handleRecordingStartFailure(...)` path that resets optimistic recording UI state, clears MCP-specific continuation context when needed, and shows the error through the existing desktop `displayError(...)` channel
+  - switched all four panel recording-start entry points (normal start, normal toggle start, MCP start, and MCP toggle start) to use that shared failure handler
+  - added focused dependency-free regression coverage in `tests/desktop-panel-recording-start-feedback.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the fix desktop-only because the mobile voice stack uses different native/web speech-recognition code paths; combining both into one pass would have raised scope and muddied the product decision-making
+  - reused the existing modal error channel instead of introducing a new inline panel banner so the change stays small, works even when the panel auto-closes, and matches other panel submission failures
+  - intentionally left live transcription preview chunk failures alone because they are a separate partial-recording experience; the highest-confusion bug here was total recording-start failure with no visible explanation
+- Tests / verification:
+  - `node --test tests/desktop-panel-recording-start-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/panel.tsx`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check normal and MCP recording start failures for permission denied, missing microphone, and busy-device cases to confirm the dialog copy feels right in context
+  - inspect whether the live transcription preview path should surface its own inline warning if chunk transcription fails repeatedly during an otherwise valid recording
 
 ### Iteration Template
 - Date:

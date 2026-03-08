@@ -105,6 +105,95 @@ const getApproxDataUrlBytes = (dataUrl: string) => {
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 
+type VoiceStartErrorOptions = {
+  platform: 'web' | 'native';
+  reason?: 'permission_denied' | 'api_unavailable' | 'development_build_required';
+};
+
+const getVoiceStartErrorDetails = (
+  error: unknown,
+  { platform, reason }: VoiceStartErrorOptions,
+) => {
+  const rawMessage = error instanceof Error
+    ? error.message || error.name
+    : typeof error === 'string'
+      ? error
+      : error == null
+        ? 'Unknown voice input error'
+        : String(error);
+
+  if (reason === 'development_build_required' || rawMessage.includes('ExpoSpeechRecognition')) {
+    return {
+      title: 'Development build required',
+      message:
+        'Voice input needs a development build on this device. Expo Go does not support speech recognition here.',
+    };
+  }
+
+  if (reason === 'api_unavailable') {
+    return platform === 'web'
+      ? {
+          title: 'Voice input unavailable',
+          message:
+            'Voice input on the web needs Chrome or Edge over HTTPS with microphone access enabled.',
+        }
+      : {
+          title: 'Voice input unavailable',
+          message:
+            'Speech recognition is not available in this build. Install the development app and try again.',
+        };
+  }
+
+  if (
+    reason === 'permission_denied' ||
+    rawMessage.includes('Permission denied') ||
+    rawMessage.includes('NotAllowedError') ||
+    rawMessage.includes('permission not granted') ||
+    rawMessage.includes('service-not-allowed') ||
+    rawMessage.includes('not-allowed')
+  ) {
+    return {
+      title: 'Microphone access needed',
+      message:
+        platform === 'web'
+          ? 'Allow microphone access in your browser, then try voice input again.'
+          : 'Allow microphone and speech recognition access in your device settings, then try voice input again.',
+    };
+  }
+
+  if (
+    rawMessage.includes('NotFoundError') ||
+    rawMessage.includes('DevicesNotFoundError') ||
+    rawMessage.includes('Requested device not found') ||
+    rawMessage.includes('audio-capture') ||
+    rawMessage.includes('no audio input')
+  ) {
+    return {
+      title: 'No microphone found',
+      message: 'Connect or enable a microphone, then try voice input again.',
+    };
+  }
+
+  if (
+    rawMessage.includes('NotReadableError') ||
+    rawMessage.includes('TrackStartError') ||
+    rawMessage.includes('InvalidStateError') ||
+    rawMessage.includes('Could not start audio source') ||
+    rawMessage.includes('busy')
+  ) {
+    return {
+      title: 'Microphone unavailable',
+      message:
+        'Your microphone is busy or unavailable right now. Close any other app using it, then try again.',
+    };
+  }
+
+  return {
+    title: 'Voice input failed to start',
+    message: `Couldn't start voice input: ${rawMessage}`,
+  };
+};
+
 const inferImageMimeType = (asset: {
   mimeType?: string | null;
   fileName?: string | null;
@@ -628,6 +717,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [listening, setListening] = useState(false);
+	  const [voiceStartError, setVoiceStartError] = useState<ReturnType<typeof getVoiceStartErrorDetails> | null>(null);
 	const listeningRef = useRef<boolean>(listening);
 	useEffect(() => { listeningRef.current = listening; }, [listening]);
 	const setListeningValue = useCallback((v: boolean) => {
@@ -1139,6 +1229,18 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track whether press-in was observed by Pressable so we can debug/fallback if press-out is swallowed.
   const webPressInSeenRef = useRef(false);
   const stopRecordingAndHandleRef = useRef<(() => Promise<void>) | null>(null);
+
+	const handleVoiceStartFailure = useCallback((error: unknown, options: VoiceStartErrorOptions) => {
+		const details = getVoiceStartErrorDetails(error, options);
+		voiceLog('voice:start failed', { details, options, error });
+		setListeningValue(false);
+		setLiveTranscriptValue('');
+		nativeFinalRef.current = '';
+		webFinalRef.current = '';
+		pendingHandsFreeFinalRef.current = '';
+		startingRef.current = false;
+		setVoiceStartError(details);
+	}, [setListeningValue, setLiveTranscriptValue, voiceLog]);
 
   // On web, prevent browser long-press behavior from stealing hold-to-talk.
   useEffect(() => {
@@ -2200,6 +2302,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	  listening,
 	  handsFree,
 	  willCancel,
+		  voiceError: voiceStartError ? `${voiceStartError.title}. ${voiceStartError.message}` : undefined,
 	  liveTranscript,
 	  sttPreview,
 	});
@@ -2511,6 +2614,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     startingRef.current = true;
+			setVoiceStartError(null);
     try {
 	      // New push-to-talk gesture/session.
 	      voiceGestureIdRef.current += 1;
@@ -2684,8 +2788,10 @@ export default function ChatScreen({ route, navigation }: any) {
 								voiceLog('native: requestPermissionsAsync', req);
                 if (!req?.granted) {
                   console.warn('[Voice] microphone/speech permission not granted; aborting');
-	                  setListeningValue(false);
-                  startingRef.current = false;
+			                  handleVoiceStartFailure('Permission denied', {
+							platform: 'native',
+							reason: 'permission_denied',
+						});
                   return;
                 }
               }
@@ -2706,27 +2812,35 @@ export default function ChatScreen({ route, navigation }: any) {
               });
             } catch (serr) {
               console.error('[Voice] Native start error:', serr);
-	              setListeningValue(false);
+		              handleVoiceStartFailure(serr, { platform: 'native' });
+						return;
             }
             startingRef.current = false;
             return;
           }
+					handleVoiceStartFailure('Speech recognition module unavailable', {
+						platform: 'native',
+						reason: 'api_unavailable',
+					});
+					return;
         } catch (err) {
           const errorMsg = (err as any)?.message || String(err);
 					voiceLog('native: import/start failed', { errorMsg });
           console.warn('[Voice] Native SR unavailable (likely Expo Go):', errorMsg);
+					handleVoiceStartFailure(errorMsg, {
+						platform: 'native',
+						reason: errorMsg.includes('ExpoSpeechRecognition') ? 'development_build_required' : 'api_unavailable',
+					});
 
           if (!nativeSRUnavailableShownRef.current && errorMsg.includes('ExpoSpeechRecognition')) {
             nativeSRUnavailableShownRef.current = true;
-	            setListeningValue(false);
-            startingRef.current = false;
             Alert.alert(
               'Development Build Required',
               'Speech recognition requires a development build. Expo Go does not support native modules like expo-speech-recognition.\n\nRun "npx expo run:android" or "npx expo run:ios" to build and install the development app.',
               [{ text: 'OK' }]
             );
-            return;
           }
+					return;
         }
       }
 
@@ -2743,17 +2857,17 @@ export default function ChatScreen({ route, navigation }: any) {
         } catch (err) {
 				voiceLog('web: start() failed', err);
           console.error('[Voice] Web start error:', err);
-	          setListeningValue(false);
-          startingRef.current = false;
+		          handleVoiceStartFailure(err, { platform: 'web' });
         }
       } else {
-	        setListeningValue(false);
-        startingRef.current = false;
+		        handleVoiceStartFailure('Web Speech API unavailable', {
+					platform: 'web',
+					reason: 'api_unavailable',
+				});
       }
     } catch (err) {
       console.error('[Voice] startRecording error:', err);
-	      setListeningValue(false);
-      startingRef.current = false;
+		      handleVoiceStartFailure(err, { platform: Platform.OS === 'web' ? 'web' : 'native' });
     }
   };
 
@@ -3338,6 +3452,21 @@ export default function ChatScreen({ route, navigation }: any) {
           </View>
         )}
 		        <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
+		          {voiceStartError && !listening && (
+		            <View
+		              style={[styles.connectionBanner, styles.connectionBannerFailed, styles.voiceStartBanner]}
+		              accessibilityLiveRegion="polite"
+		              aria-live="polite"
+		            >
+		              <View style={styles.connectionBannerContent}>
+		                <Text style={styles.connectionBannerIcon}>⚠️</Text>
+		                <View style={styles.connectionBannerTextContainer}>
+		                  <Text style={styles.connectionBannerText}>{voiceStartError.title}</Text>
+		                  <Text style={styles.connectionBannerSubtext}>{voiceStartError.message}</Text>
+		                </View>
+		              </View>
+		            </View>
+		          )}
 	          {!!sttPreview && (
 	            <View style={styles.sttPreviewBox}>
 	              <Text style={styles.sttPreviewLabel}>STT preview</Text>
@@ -3834,6 +3963,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.1),
       borderColor: hexToRgba(theme.colors.destructive, 0.3),
     },
+	    voiceStartBanner: {
+	      marginBottom: spacing.xs,
+	    },
     connectionBannerContent: {
       flexDirection: 'row',
       alignItems: 'center',
