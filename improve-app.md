@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile queued-message action-failure parity in `apps/mobile/src/ui/MessageQueuePanel.tsx`, with queue mutation return semantics rechecked in `apps/mobile/src/store/message-queue.ts`, Chat screen wiring cross-checked in `apps/mobile/src/screens/ChatScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/chat-message-queue-feedback.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop repeat-task explicit-restart scheduling reliability in `apps/desktop/src/main/tipc.ts`, with `loopService` stop/start semantics rechecked in `apps/desktop/src/main/loop-service.ts`, per-loop enable/save actions cross-checked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source guardrails extended in new `tests/desktop-loop-restart-guardrails.test.js` alongside existing `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop/headless quit-path agent-runtime cleanup in `apps/desktop/src/main/index.ts`, with quit and `--headless` shutdown sequencing reviewed in that file, agent-runtime/process/approval cleanup APIs cross-checked in `apps/desktop/src/main/state.ts` and `apps/desktop/src/main/emergency-stop.ts`, focused dependency-free source guardrails extended in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
 - 2026-03-08: Desktop queued-message action-failure feedback in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, with queue action return semantics rechecked in `apps/desktop/src/main/tipc.ts`, nearby inline retry/error patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` and `apps/desktop/src/renderer/src/components/audio-player.tsx`, mobile parity reviewed in `apps/mobile/src/ui/MessageQueuePanel.tsx` / `apps/mobile/src/store/message-queue.ts` (same general silent-failure risk exists there, but this pass stayed desktop-scoped because the IPC-backed desktop queue is the sharper user-trust risk and offered the smallest local fix), focused source-level coverage extended in `tests/desktop-message-queue-recovery.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and desktop renderer typecheck attempted via `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this dependency-light worktree is missing installed desktop dependencies / `node_modules`).
@@ -487,7 +488,6 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Desktop queued-message recovery UX live validation / compact-banner readability (`apps/desktop/src/renderer/src/components/message-queue-panel.tsx`)
-- Mobile queued-message action-failure parity (`apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/src/store/message-queue.ts`)
 - Desktop Memories edit dialog live validation / save-failure cadence check (`apps/desktop/src/renderer/src/pages/memories.tsx`)
 - Desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
@@ -3030,6 +3030,38 @@ Track small, shippable product improvements. Review this file before each iterat
   - `git diff --check`
 - Follow-up checks:
   - once a fuller desktop runtime is available, live-check that disabling then re-enabling a repeat task after any global loop pause yields the expected next-run status and actual execution
+  - next highest-value nearby target: inspect desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
+
+### 2026-03-08 — Mobile queued-message actions now surface retryable failures
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile queued-message panel in `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - queue mutation store in `apps/mobile/src/store/message-queue.ts`
+  - Chat screen wiring in `apps/mobile/src/screens/ChatScreen.tsx`
+- Why it was chosen:
+  - the ledger still listed mobile queued-message action-failure parity as unchecked while desktop had already gained clearer retryable feedback
+  - silently ignored remove/edit/retry/clear failures are especially confusing on mobile because there is less surrounding context and no always-visible dev console
+  - the queue store already returned booleans for most actions, so a small local pass could turn hidden failures into actionable feedback without refactoring queue architecture
+- What was inspected:
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - `apps/mobile/src/store/message-queue.ts`
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - `tests/desktop-message-queue-recovery.test.js` for the desktop parity reference
+  - `apps/mobile/tests/` for existing mobile source-level feedback test patterns
+- Improvement made:
+  - mobile queue item actions now treat `false` callback results as failures instead of silent success, show inline retryable guidance, and preserve edit drafts when save fails
+  - panel-level clear now reports whether it actually cleared the queue so the UI can show inline “Retry clear” guidance when the queue is unchanged
+  - Chat screen queue handlers now return explicit success/failure booleans so the panel can surface real action outcomes
+- Assumptions / tradeoffs / rationale:
+  - preferred source-level parity with the desktop queue panel over a broader queue-store redesign because the user-value problem here was missing feedback, not missing persistence
+  - kept verification source-based in this worktree rather than attempting a full Expo/mobile runtime spin-up, since the change was local and the existing mobile test style in this repo already validates these feedback contracts via source assertions
+  - accepted a lightweight callback-signature expansion (`boolean | Promise<boolean>`) to leave room for future async queue actions without reworking the panel again
+- Tests / verification:
+  - `node --test apps/mobile/tests/chat-message-queue-feedback.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once Expo/mobile runtime verification is convenient, live-check the new inline error banners for edit/remove/retry/clear actions and confirm the compact panel keeps the copy readable on narrow screens
   - next highest-value nearby target: inspect desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
 
 ### Iteration Template

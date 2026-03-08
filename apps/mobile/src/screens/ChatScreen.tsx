@@ -3569,18 +3569,26 @@ export default function ChatScreen({ route, navigation }: any) {
               onRemove={(messageId) => messageQueue.removeFromQueue(currentConversationId, messageId)}
               onUpdate={(messageId, text) => messageQueue.updateText(currentConversationId, messageId, text)}
               onRetry={(messageId) => {
-                messageQueue.resetToPending(currentConversationId, messageId);
+                const resetSucceeded = messageQueue.resetToPending(currentConversationId, messageId);
+                if (!resetSucceeded) {
+                  return false;
+                }
+
                 // If not already processing, trigger queue processing
                 if (!responding) {
                   const nextMessage = messageQueue.peek(currentConversationId);
                   if (nextMessage) {
                     console.log('[ChatScreen] onRetry: Processing queue while idle, next message:', nextMessage.id);
-                    messageQueue.markProcessing(currentConversationId, nextMessage.id);
+                    const markSucceeded = messageQueue.markProcessing(currentConversationId, nextMessage.id);
+                    if (!markSucceeded) {
+                      return false;
+                    }
                     setTimeout(() => {
                       processQueuedMessage(nextMessage);
                     }, 100);
                   }
                 }
+                return true;
               }}
               onClear={() => messageQueue.clearQueue(currentConversationId)}
             />

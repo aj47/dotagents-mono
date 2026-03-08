@@ -21,18 +21,104 @@ import { useTheme } from './ThemeProvider';
 interface MessageQueuePanelProps {
   conversationId: string;
   messages: QueuedMessage[];
-  onRemove: (messageId: string) => void;
-  onUpdate: (messageId: string, text: string) => void;
-  onRetry: (messageId: string) => void;
-  onClear: () => void;
+  onRemove: (messageId: string) => boolean | Promise<boolean>;
+  onUpdate: (messageId: string, text: string) => boolean | Promise<boolean>;
+  onRetry: (messageId: string) => boolean | Promise<boolean>;
+  onClear: () => boolean | Promise<boolean>;
   compact?: boolean;
+}
+
+type QueuedMessageActionError = {
+  kind: 'update' | 'remove' | 'retry';
+  message: string;
+};
+
+type QueuePanelActionError = {
+  kind: 'clear';
+  message: string;
+};
+
+function getQueueActionErrorMessage(error: unknown, fallbackMessage: string) {
+  const message = error instanceof Error
+    ? error.message.trim()
+    : typeof error === 'string'
+    ? error.trim()
+    : '';
+
+  const nextMessage = message || fallbackMessage;
+  return /[.!?]$/.test(nextMessage) ? nextMessage : `${nextMessage}.`;
+}
+
+async function ensureQueueActionSuccess(result: boolean | Promise<boolean>, fallbackMessage: string) {
+  const success = await Promise.resolve(result);
+  if (!success) {
+    throw new Error(fallbackMessage);
+  }
+}
+
+function QueueActionError({
+  message,
+  recoveryHint,
+  retryLabel,
+  onRetry,
+}: {
+  message?: string | null;
+  recoveryHint: string;
+  retryLabel?: string;
+  onRetry?: () => void;
+}) {
+  const { theme } = useTheme();
+
+  if (!message) {
+    return null;
+  }
+
+  const styles = StyleSheet.create({
+    container: {
+      marginTop: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: `${theme.colors.destructive}33`,
+      backgroundColor: `${theme.colors.destructive}12`,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      gap: 6,
+    },
+    message: {
+      fontSize: 12,
+      color: theme.colors.destructive,
+      lineHeight: 17,
+    },
+    retryButton: {
+      alignSelf: 'flex-start',
+      paddingVertical: 2,
+    },
+    retryText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.destructive,
+    },
+  });
+
+  return (
+    <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.container}>
+      <Text style={styles.message}>
+        {message} {recoveryHint}
+      </Text>
+      {onRetry && retryLabel && (
+        <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
+          <Text style={styles.retryText}>{retryLabel}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 }
 
 interface QueuedMessageItemProps {
   message: QueuedMessage;
-  onRemove: () => void;
-  onUpdate: (text: string) => void;
-  onRetry: () => void;
+  onRemove: () => boolean | Promise<boolean>;
+  onUpdate: (text: string) => boolean | Promise<boolean>;
+  onRetry: () => boolean | Promise<boolean>;
 }
 
 function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
@@ -40,6 +126,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const [actionError, setActionError] = useState<QueuedMessageActionError | null>(null);
+  const [pendingAction, setPendingAction] = useState<QueuedMessageActionError['kind'] | null>(null);
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -53,6 +141,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     if (message.status === 'processing') {
       setIsEditing(false);
       setEditText(message.text);
+      setActionError(null);
     }
   }, [message.status, message.text]);
 
@@ -61,17 +150,66 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     const trimmed = editText.trim();
     if (trimmed && trimmed !== message.text) {
-      onUpdate(trimmed);
+      setPendingAction('update');
+      setActionError(null);
+      try {
+        await ensureQueueActionSuccess(onUpdate(trimmed), "Couldn't save changes to this queued message yet");
+        setActionError(null);
+        setIsEditing(false);
+        return;
+      } catch (error) {
+        setActionError({
+          kind: 'update',
+          message: getQueueActionErrorMessage(error, "Couldn't save changes to this queued message yet"),
+        });
+        return;
+      } finally {
+        setPendingAction(null);
+      }
     }
+    setActionError(null);
     setIsEditing(false);
   };
 
   const handleCancelEdit = () => {
+    setActionError(null);
     setIsEditing(false);
     setEditText(message.text);
+  };
+
+  const handleRetry = async () => {
+    setPendingAction('retry');
+    setActionError(null);
+    try {
+      await ensureQueueActionSuccess(onRetry(), "Couldn't retry this queued message right now");
+      setActionError(null);
+    } catch (error) {
+      setActionError({
+        kind: 'retry',
+        message: getQueueActionErrorMessage(error, "Couldn't retry this queued message right now"),
+      });
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleRemove = async () => {
+    setPendingAction('remove');
+    setActionError(null);
+    try {
+      await ensureQueueActionSuccess(onRemove(), "Couldn't remove this queued message right now");
+      setActionError(null);
+    } catch (error) {
+      setActionError({
+        kind: 'remove',
+        message: getQueueActionErrorMessage(error, "Couldn't remove this queued message right now"),
+      });
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   const isLongMessage = message.text.length > 100;
@@ -196,17 +334,28 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             <TouchableOpacity
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
+              disabled={pendingAction === 'update'}
             >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.editButton, styles.saveButton]}
-              onPress={handleSaveEdit}
-              disabled={!editText.trim()}
+              onPress={() => {
+                void handleSaveEdit();
+              }}
+              disabled={!editText.trim() || pendingAction === 'update'}
             >
-              <Text style={styles.saveButtonText}>Save</Text>
+              <Text style={styles.saveButtonText}>{pendingAction === 'update' ? 'Saving…' : 'Save'}</Text>
             </TouchableOpacity>
           </View>
+          <QueueActionError
+            message={actionError?.kind === 'update' ? actionError.message : null}
+            recoveryHint="Your draft is still here, so you can review it and try again."
+            retryLabel="Retry save"
+            onRetry={() => {
+              void handleSaveEdit();
+            }}
+          />
         </View>
       </View>
     );
@@ -252,11 +401,33 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               </TouchableOpacity>
             )}
           </View>
+          <QueueActionError
+            message={actionError?.kind === 'remove' || actionError?.kind === 'retry' ? actionError.message : null}
+            recoveryHint={actionError?.kind === 'remove'
+              ? 'The queued message is still here, so you can try again.'
+              : 'The failed message is still blocking this queue, so you can try again.'}
+            retryLabel={actionError?.kind === 'remove' ? 'Retry remove' : actionError?.kind === 'retry' ? 'Retry message' : undefined}
+            onRetry={actionError?.kind === 'remove'
+              ? () => {
+                  void handleRemove();
+                }
+              : actionError?.kind === 'retry'
+              ? () => {
+                  void handleRetry();
+                }
+              : undefined}
+          />
         </View>
         {!isProcessing && (
           <View style={styles.actions}>
             {isFailed && (
-              <TouchableOpacity style={styles.actionButton} onPress={onRetry}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  void handleRetry();
+                }}
+                disabled={pendingAction !== null}
+              >
                 <Ionicons name="refresh" size={16} color={theme.colors.foreground} />
               </TouchableOpacity>
             )}
@@ -264,11 +435,18 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setIsEditing(true)}
+                disabled={pendingAction !== null}
               >
                 <Ionicons name="pencil" size={16} color={theme.colors.foreground} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.actionButton} onPress={onRemove}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                void handleRemove();
+              }}
+              disabled={pendingAction !== null}
+            >
               <Ionicons name="close" size={16} color={theme.colors.foreground} />
             </TouchableOpacity>
           </View>
@@ -292,12 +470,31 @@ export function MessageQueuePanel({
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
+  const [panelActionError, setPanelActionError] = useState<QueuePanelActionError | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     setIsListCollapsed(false);
+    setPanelActionError(null);
   }, [conversationId]);
 
   const hasProcessingMessage = messages.some((m) => m.status === 'processing');
+
+  const handleClear = async () => {
+    setIsClearing(true);
+    setPanelActionError(null);
+    try {
+      await ensureQueueActionSuccess(onClear(), "Couldn't clear queued messages right now");
+      setPanelActionError(null);
+    } catch (error) {
+      setPanelActionError({
+        kind: 'clear',
+        message: getQueueActionErrorMessage(error, "Couldn't clear queued messages right now"),
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   if (messages.length === 0) {
     return null;
@@ -364,21 +561,33 @@ export function MessageQueuePanel({
 
   if (compact) {
     return (
-      <View style={styles.compactContainer}>
-        <Ionicons name="time-outline" size={12} color={theme.colors.mutedForeground} />
-        <Text style={styles.compactText}>
-          {messages.length} queued message{messages.length > 1 ? 's' : ''}
-        </Text>
-        <TouchableOpacity
-          onPress={onClear}
-          disabled={hasProcessingMessage}
-        >
-          <Ionicons
-            name="trash-outline"
-            size={14}
-            color={hasProcessingMessage ? theme.colors.mutedForeground : theme.colors.foreground}
-          />
-        </TouchableOpacity>
+      <View>
+        <View style={styles.compactContainer}>
+          <Ionicons name="time-outline" size={12} color={theme.colors.mutedForeground} />
+          <Text style={styles.compactText}>
+            {messages.length} queued message{messages.length > 1 ? 's' : ''}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              void handleClear();
+            }}
+            disabled={hasProcessingMessage || isClearing}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={14}
+              color={hasProcessingMessage ? theme.colors.mutedForeground : theme.colors.foreground}
+            />
+          </TouchableOpacity>
+        </View>
+        <QueueActionError
+          message={panelActionError?.message}
+          recoveryHint="The queued list is unchanged, so you can review it and try again."
+          retryLabel="Retry clear"
+          onRetry={() => {
+            void handleClear();
+          }}
+        />
       </View>
     );
   }
@@ -396,10 +605,12 @@ export function MessageQueuePanel({
           {!isListCollapsed && (
             <TouchableOpacity
               style={styles.clearButton}
-              onPress={onClear}
-              disabled={hasProcessingMessage}
+              onPress={() => {
+                void handleClear();
+              }}
+              disabled={hasProcessingMessage || isClearing}
             >
-              <Text style={styles.clearButtonText}>Clear All</Text>
+              <Text style={styles.clearButtonText}>{isClearing ? 'Clearing…' : 'Clear All'}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -417,6 +628,18 @@ export function MessageQueuePanel({
           </TouchableOpacity>
         </View>
       </View>
+      {!isListCollapsed && (
+        <View style={{ paddingHorizontal: 12, paddingBottom: panelActionError ? 8 : 0 }}>
+          <QueueActionError
+            message={panelActionError?.message}
+            recoveryHint="The queued list is unchanged, so you can review it and try again."
+            retryLabel="Retry clear"
+            onRetry={() => {
+              void handleClear();
+            }}
+          />
+        </View>
+      )}
       {!isListCollapsed && (
         <ScrollView style={styles.list}>
           {messages.map((msg, index) => (
