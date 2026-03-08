@@ -1,5 +1,46 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 156 - Keep mobile sub-agent mode labels from going stale after refresh failures
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-shipped tool-execution density pass or the recent selector wording changes without a new issue.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/SessionListScreen.tsx`, and the header/composer selector tests because those files still own the highest-visibility mobile routing labels for sub-agents.
+  - Tried again to recover live validation in this worktree before editing.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed both mobile header selector refresh helpers (`ChatScreen` and `SessionListScreen`) updated `isAcpMainAgentMode` on successful loads, but their failure path only turned off `hasAgentSelectorOptions`.
+  - That meant a failed refresh could leave the screen reusing stale `main agent` vs `profile` mode state from an earlier success, even after the current selection context had changed.
+  - On mobile, that weakens state clarity in the highest-visibility routing surfaces: the Chat / Chats header badge and the Chat composer selector chip.
+- Issue identified:
+  - When the mobile app failed to refresh sub-agent selector availability, the visible routing labels could stay stuck in stale main-agent/profile mode instead of falling back to the current selection's known type.
+- Decision and rationale:
+  - Keep the existing header layout, selector visibility rules, and badge copy unchanged on successful loads.
+  - Avoid another broader selector redesign or deeper loading-state refactor while live validation remains blocked.
+  - Make the smallest useful fix instead: when availability refresh fails, derive the fallback mode from the current profile context (`ACP main agent` vs saved profile) before rendering the passive header/composer state.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to derive `currentProfileRepresentsAcpMainAgent` and use it in the refresh-failure path before collapsing selector availability.
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` with the same fallback-mode behavior so `Chat` and `Chats` stay aligned.
+  - Updated focused regression coverage in:
+    - `apps/mobile/tests/chat-composer-accessibility.test.js`
+    - `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the current profile context is the safest fallback source of truth when a live settings refresh fails, because it reflects the last known active selection more directly than stale screen-local mode state.
+  - Kept the change to failure-path logic only, so normal successful selector refresh behavior and UI copy remain untouched.
+  - This remains a source-backed improvement and still needs live confirmation that the passive header/composer state now stays semantically aligned after simulated refresh failures.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that Chat / Chats headers and the composer chip keep the right `Main Agent` vs `Profile` wording after a forced selector-refresh failure.
+  - Capture screenshot-backed evidence for one ACP failure case and one saved-profile failure case so the fallback labels can be judged in context.
+  - If live validation shows remaining ambiguity when there is no current selection at all, prefer a small empty-state label refinement before changing the layout.
+
 ## Iteration 155 - Make mobile tool-execution rows easier to read and tap
 
 - Date: 2026-03-08

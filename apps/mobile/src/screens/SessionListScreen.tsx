@@ -36,6 +36,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
   const [isAcpMainAgentMode, setIsAcpMainAgentMode] = useState(false);
+  const currentProfileRepresentsAcpMainAgent = currentProfile?.guidelines === 'ACP main agent';
   const currentAgentLabel = currentProfile?.name || (isAcpMainAgentMode ? 'Main Agent' : 'Default Profile');
   const currentAgentAccessibilityPrefix = isAcpMainAgentMode ? 'Current main agent' : 'Current profile';
   const agentSelectionAccessibilityHint = isAcpMainAgentMode
@@ -79,9 +80,10 @@ export default function SessionListScreen({ navigation }: Props) {
       );
     } catch (error) {
       console.warn('[SessionListScreen] Failed to refresh agent selector availability:', error);
+      setIsAcpMainAgentMode(currentProfileRepresentsAcpMainAgent);
       setHasAgentSelectorOptions(false);
     }
-  }, [config.baseUrl, config.apiKey, hasAlternativeAgentSelectorOption]);
+  }, [config.baseUrl, config.apiKey, currentProfileRepresentsAcpMainAgent, hasAlternativeAgentSelectorOption]);
 
   useEffect(() => {
     void refreshAgentSelectorAvailability();

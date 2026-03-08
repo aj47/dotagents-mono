@@ -32,6 +32,7 @@ for (const [screenName, source] of [
   test(`${screenName} only makes the header agent control interactive when switchable options exist`, () => {
     assert.match(source, /const \[hasAgentSelectorOptions, setHasAgentSelectorOptions\] = useState\(false\);/);
     assert.match(source, /const \[isAcpMainAgentMode, setIsAcpMainAgentMode\] = useState\(false\);/);
+    assert.match(source, /const currentProfileRepresentsAcpMainAgent = currentProfile\?\.guidelines === 'ACP main agent';/);
     assert.match(source, /setIsAcpMainAgentMode\(settings\.mainAgentMode === 'acp'\);/);
     assert.match(source, /const currentAgentLabel = currentProfile\?\.name \|\| \(isAcpMainAgentMode \? 'Main Agent' : 'Default Profile'\);/);
     assert.match(source, /const currentAgentAccessibilityPrefix = isAcpMainAgentMode \? 'Current main agent' : 'Current profile';/);
@@ -45,6 +46,11 @@ for (const [screenName, source] of [
     assert.match(source, /\{currentAgentLabel\}/);
     assert.match(source, /style=\{styles\.headerAgentSelectorBadgeChevron\}[\s\S]*?>\s*▼\s*<\/Text>/);
     assert.doesNotMatch(source, /\{`\$\{currentAgentLabel\} ▼`\}/);
+  });
+
+  test(`${screenName} falls back to the current selection mode if header selector refresh fails`, () => {
+    assert.match(source, /const currentProfileRepresentsAcpMainAgent = currentProfile\?\.guidelines === 'ACP main agent';/);
+    assert.match(source, /catch \(error\) \{[\s\S]*?setIsAcpMainAgentMode\(currentProfileRepresentsAcpMainAgent\);[\s\S]*?setHasAgentSelectorOptions\(false\);[\s\S]*?\}/);
   });
 
   test(`${screenName} styles the no-options header badge as passive status instead of an active selector`, () => {

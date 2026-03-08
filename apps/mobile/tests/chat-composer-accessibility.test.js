@@ -31,11 +31,17 @@ test('keeps the composer agent selector chip comfortably tappable on mobile', ()
 test('only shows the composer agent selector when the selector actually has options', () => {
   assert.match(screenSource, /const \[hasAgentSelectorOptions, setHasAgentSelectorOptions\] = useState\(false\);/);
   assert.match(screenSource, /const \[isAcpMainAgentMode, setIsAcpMainAgentMode\] = useState\(false\);/);
+  assert.match(screenSource, /const currentProfileRepresentsAcpMainAgent = currentProfile\?\.guidelines === 'ACP main agent';/);
   assert.match(screenSource, /setIsAcpMainAgentMode\(settings\.mainAgentMode === 'acp'\);/);
   assert.match(screenSource, /const hasAlternativeAgentSelectorOption = useCallback\(\(optionIds: string\[\]\) => \{[\s\S]*?if \(optionIds\.length === 0\) return false;[\s\S]*?if \(!currentAgentId\) return true;[\s\S]*?optionIds\.some\(\(optionId\) => optionId !== currentAgentId\);[\s\S]*?\}, \[currentAgentId\]\);/);
   assert.match(screenSource, /hasAlternativeAgentSelectorOption\(\(profilesResponse\.profiles \|\| \[\]\)\.map\(\(profile\) => profile\.id\)\)/);
   assert.match(screenSource, /getAcpMainAgentOptions\(settings, agentProfilesResponse\.profiles \|\| \[\]\)[\s\S]*?\.map\(\(option\) => toMainAgentProfile\(option\)\.id\)[\s\S]*?hasAlternativeAgentSelectorOption\(mainAgentOptionIds\)/);
   assert.match(screenSource, /\{hasAgentSelectorOptions && \(/);
+});
+
+test('falls back to the current selection mode if agent-selector availability refresh fails', () => {
+  assert.match(screenSource, /const currentProfileRepresentsAcpMainAgent = currentProfile\?\.guidelines === 'ACP main agent';/);
+  assert.match(screenSource, /catch \(error\) \{[\s\S]*?setIsAcpMainAgentMode\(currentProfileRepresentsAcpMainAgent\);[\s\S]*?setHasAgentSelectorOptions\(false\);[\s\S]*?\}/);
 });
 
 test('uses main-agent terminology in the composer selector when ACP mode is active', () => {
