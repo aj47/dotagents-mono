@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/ui/tabs"
-import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe } from "lucide-react"
+import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe, AlertTriangle, Loader2 } from "lucide-react"
 import { Facehash } from "facehash"
 import { toast } from "sonner"
 
@@ -170,6 +170,9 @@ export function SettingsAgents() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [prefilledImportFilePath, setPrefilledImportFilePath] = useState<string | null>(null)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [pendingDeleteAgentId, setPendingDeleteAgentId] = useState<string | null>(null)
+  const [deleteAgentError, setDeleteAgentError] = useState<{ id: string; message: string } | null>(null)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -245,12 +248,16 @@ export function SettingsAgents() {
   const editingLabel = editingBaseline?.displayName || editing?.displayName || "this agent"
 
   const handleCreate = () => {
+    setDeleteConfirmId(null)
+    setDeleteAgentError(null)
     setIsCreating(true)
     setEditing(emptyAgent())
     setEditingBaseline(emptyAgent())
   }
 
   const handleEdit = (agent: AgentProfile) => {
+    setDeleteConfirmId(null)
+    setDeleteAgentError(null)
     setIsCreating(false)
     setEditing(toEditingAgent(agent))
     setEditingBaseline(toEditingAgent(agent))
@@ -296,10 +303,34 @@ export function SettingsAgents() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this agent?")) return
-    await tipcClient.deleteAgentProfile({ id }); loadAgents()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+  const handleDelete = async (agent: AgentProfile) => {
+    if (pendingDeleteAgentId) return
+
+    setPendingDeleteAgentId(agent.id)
+    setDeleteAgentError(null)
+
+    try {
+      const deleted = await tipcClient.deleteAgentProfile({ id: agent.id })
+      if (!deleted) {
+        throw new Error(`Couldn't delete "${agent.displayName}" yet. The agent is still available, so you can try again.`)
+      }
+
+      setAgents(prev => prev.filter(existing => existing.id !== agent.id))
+      setDeleteConfirmId(null)
+      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+      toast.success(`Deleted "${agent.displayName}"`)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to delete agent", error)
+      setDeleteConfirmId(agent.id)
+      setDeleteAgentError({
+        id: agent.id,
+        message: error instanceof Error && error.message.trim()
+          ? error.message
+          : `Couldn't delete "${agent.displayName}" yet. The agent is still available, so you can try again.`,
+      })
+    } finally {
+      setPendingDeleteAgentId(null)
+    }
   }
 
   const handleCancel = () => {
@@ -565,8 +596,13 @@ export function SettingsAgents() {
   function renderAgentList() {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
-        {agents.map(agent => (
-          <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
+        {agents.map(agent => {
+          const isDeleteConfirmOpen = deleteConfirmId === agent.id
+          const isDeletePending = pendingDeleteAgentId === agent.id
+          const deleteErrorMessage = deleteAgentError?.id === agent.id ? deleteAgentError.message : null
+
+          return (
+            <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
             <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none">
               <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden shrink-0 bg-muted">
                 {agent.avatarDataUrl
@@ -603,21 +639,81 @@ export function SettingsAgents() {
                 )}
               </div>
               <div className="flex items-center gap-1 pt-2 border-t mt-auto">
-                <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-muted-foreground hover:text-foreground px-0" onClick={() => handleEdit(agent)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 h-6 text-[11px] text-muted-foreground hover:text-foreground px-0"
+                  onClick={() => handleEdit(agent)}
+                  disabled={pendingDeleteAgentId !== null}
+                >
                   <Edit2 className="h-3 w-3 mr-1" /> Edit
                 </Button>
                 {!agent.isBuiltIn && !agent.isDefault && (
                   <>
                     <div className="w-[1px] h-3 bg-border"></div>
-                    <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 px-0" onClick={() => handleDelete(agent.id)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 h-6 text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 px-0"
+                      onClick={() => {
+                        setDeleteConfirmId(agent.id)
+                        setDeleteAgentError(null)
+                      }}
+                      disabled={pendingDeleteAgentId !== null}
+                    >
                       <Trash2 className="h-3 w-3 mr-1" /> Delete
                     </Button>
                   </>
                 )}
               </div>
+              {isDeleteConfirmOpen && (
+                <div className="mt-3 rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{`Delete "${agent.displayName}"?`}</p>
+                      <p className="text-xs text-muted-foreground">
+                        This removes the agent and its saved conversation history. This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                  {deleteErrorMessage && (
+                    <p role="alert" aria-live="polite" className="text-xs text-destructive">
+                      {deleteErrorMessage}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setDeleteConfirmId(null)
+                        setDeleteAgentError(null)
+                      }}
+                      disabled={isDeletePending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs"
+                      onClick={() => handleDelete(agent)}
+                      disabled={isDeletePending}
+                    >
+                      {isDeletePending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      {isDeletePending
+                        ? "Deleting..."
+                        : deleteAgentError?.id === agent.id ? "Retry delete" : "Delete agent"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
-          </Card>
-        ))}
+            </Card>
+          )
+        })}
         {agents.length === 0 && (
           <div className="col-span-full text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
             No agents yet. Click &quot;Add Agent&quot; to create one.
