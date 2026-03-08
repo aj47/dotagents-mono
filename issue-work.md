@@ -2860,3 +2860,36 @@
   - If a fresh manual repro still exists after that, investigate runtime behavior rather than adding more source-only checks; current source strongly suggests the originally reported regressions are already addressed.
   - Do not keep churning `#55` without either a new repro or a fuller runtime validation path.
 - Next recommended issue work item: refresh the open issues again and prefer either a concrete runtime-repro desktop bug or a focused docs/spec sync slice for the remaining bundle/import issues if no better local bug candidate emerges.
+
+##### Issue #25 — `.dotagents` docs/spec sync for slot-aware import targets and richer MCP inspection
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest recommendation literally: after the recent `#55` reliability follow-up, there was no sharper local runtime bug candidate than the already-covered/blocked paths.
+  - Refreshed the open issues and re-checked issue `#25` plus its planning comment, which explicitly says finalized `#56`/`#57` trust defaults should keep feeding back into the umbrella `.dotagents` docs/spec.
+  - This made a small docs/spec sync the next honest, non-thrashy slice.
+- Investigation:
+  - Re-read issue `#25` and its owner planning comment calling for `#57` import safety + `#56` inspect-before-install work to feed back into the umbrella spec.
+  - Inspected `DOTAGENTS_BUNDLES.md` and confirmed it already documented earlier trust defaults, but it still described import targets in older `global/workspace/custom` language and did not yet mention active-slot/new-slot targeting or the runtime precedence contract.
+  - Confirmed the same doc also stopped short of documenting the newly landed website affordance that lets users expand `Show full MCP config` to inspect bundled URL/args/config details.
+  - Inspected `README.md` and confirmed the short bundle summary also lagged behind the latest slot-aware import isolation and MCP inspector improvements.
+- Important assumptions:
+  - Assumption: issue `#25` is the right place for current-state trust/workflow documentation updates even when the underlying feature work was landed under concrete child issues like `#56` and `#57`.
+  - Why acceptable: the owner comment explicitly frames `#25` as the umbrella spec that should absorb the finalized UX/security defaults from those deliverables.
+  - Assumption: this pass should stay strictly current-state and avoid promising speculative future slot/Hub behavior.
+  - Why acceptable: `DOTAGENTS_BUNDLES.md` is already framed as a workflow/spec note for current repo behavior, not a roadmap commitment.
+- Changes implemented:
+  - Updated `DOTAGENTS_BUNDLES.md` so the preview/import trust section now documents slot-aware import targets (default writable layer, active slot, new slot) plus the current runtime precedence contract `global -> active slot -> workspace`.
+  - Added a dedicated `Slot-aware import isolation` subsection to the bundle doc and updated the `Settings -> Capabilities` surface summary to include slot actions alongside backup recovery.
+  - Extended the `Inspect before install` section to mention the new expandable `Show full MCP config` affordance for bundled MCP URL/args/config plus redacted-secret field hints.
+  - Updated the README bundle summary bullets so the top-level project docs also reflect slot-targeted imports and richer MCP inspection defaults.
+- Verification run:
+  - Completed: `git diff --check` ✅
+  - Manually inspected the updated `DOTAGENTS_BUNDLES.md` and `README.md` excerpts for wording/structure consistency ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Keep the umbrella docs aligned if future `#57` slot work changes write semantics, restore provenance, or slot-management surfaces again.
+  - If the Hub inspector later exposes dependency metadata or richer MCP grouping, extend the current-state docs with that trust signal rather than leaving it implied.
+  - Avoid reopening broader bundle-roadmap prose unless another concrete local docs/spec sync need appears.
+- Next recommended issue work item: refresh the open issues again and prefer the next concrete runtime-repro desktop bug or reliability slice; keep `#54` blocked until provider/auth feasibility materially changes, and only revisit docs if another just-landed trust default needs syncing.

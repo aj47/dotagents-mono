@@ -75,8 +75,9 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 DotAgents also supports portable `.dotagents` bundle files for sharing and restoring working agent setups.
 
 - import is preview-first, conflict-aware, and backed by automatic pre-import snapshots
+- imports can target the default writable layer, the active slot, or a freshly created slot for safer isolation
 - restore is available from `Settings -> Capabilities`, including recent-backup recovery tools
-- public Hub-style sharing uses inspect-before-install, setup disclosure, and sanitized export defaults
+- public Hub-style sharing uses inspect-before-install, setup disclosure, expandable MCP config details, and sanitized export defaults
 
 See **[DOTAGENTS_BUNDLES.md](DOTAGENTS_BUNDLES.md)** for the current workflow and trust defaults.
 

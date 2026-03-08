@@ -63,11 +63,23 @@ Bundle import uses a preview dialog that shows:
 
 - what the bundle contains
 - which items conflict with the current config
-- which runtime layer will be updated (`global`, `workspace`, or `custom`)
+- which import target will be updated (default writable layer, active slot, or a freshly named new slot)
+- which effective runtime layer will ultimately supply the imported config (`global -> active slot -> workspace`, with workspace still winning on conflicts)
 - which items are selected versus excluded from the current import plan
 - the current conflict strategy outcome before import starts
 
-### 4. MCP setup disclosure before and after import
+### 4. Slot-aware import isolation
+
+Bundle import no longer has to mean “merge straight into the default writable layer.”
+
+Current behavior:
+
+- users can import into the default writable layer, the currently active slot, or a newly created slot directly from the existing import dialog
+- `Settings -> Capabilities` surfaces active-slot status plus switch / clear actions
+- active slots are mounted between global and workspace layers at runtime, so workspace config still overrides slot content when both define the same id
+- slot-targeted imports stay inside the same preview / backup / restore trust model rather than creating a second import pipeline
+
+### 5. MCP setup disclosure before and after import
 
 Bundle preview/import now treats MCP setup requirements as a first-class trust signal.
 
@@ -77,7 +89,7 @@ Current behavior:
 - both secret placeholders (for example `<CONFIGURE_YOUR_KEY>`) and non-secret setup placeholders (for example `<YOUR_USERNAME>`) count as required follow-up configuration
 - the import UI links users directly to `Settings -> Capabilities -> MCP Servers` for post-import reconfiguration
 
-### 5. Safe conflict default
+### 6. Safe conflict default
 
 The default conflict behavior is:
 
@@ -88,7 +100,7 @@ Other supported import-wide strategies remain:
 - `overwrite`
 - `rename`
 
-### 6. Component and per-item cherry-pick
+### 7. Component and per-item cherry-pick
 
 Import is no longer all-or-nothing.
 
@@ -138,6 +150,7 @@ Current behavior:
 - users can inspect bundle contents before installing
 - warning badges call out `Contains MCP commands`, `Requires setup`, `Contains memories`, and `Large prompt content`
 - MCP sections show transport-aware connection previews plus explicit `Requires configuration` details when placeholders are present
+- MCP sections now also expose expandable `Show full MCP config` details for bundled URL/args/config plus redacted-secret field hints when present
 - repeat task previews disclose cadence, startup-trigger behavior, and whether the task is enabled in the bundle by default
 - install remains a separate `dotagents://install?...` action
 - prompts/instructions can be reviewed before trust is granted
@@ -153,7 +166,7 @@ This establishes the default trust posture for `.dotagents` sharing:
 
 - `Settings -> Skills` — import/export local bundles
 - `Settings -> Agents` — import/export bundles and prepare Hub publish artifacts
-- `Settings -> Capabilities` — restore backups, inspect recent backups, reveal/copy backup paths, open backup folder
+- `Settings -> Capabilities` — restore backups, inspect recent backups, reveal/copy backup paths, switch/clear the active slot, and open backup/slot folders
 - `website/index.html` — inspect featured bundles before installing and review setup/task-timing warnings
 
 ## Still intentionally open under issue #25
