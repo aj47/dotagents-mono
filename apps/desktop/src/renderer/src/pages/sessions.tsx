@@ -79,6 +79,8 @@ const RECENT_SESSION_ROW_CLASS_NAME =
   "hover:bg-accent/50 group flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors"
 const RECENT_SESSION_TITLE_CLASS_NAME =
   "min-w-0 flex-1 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+const EMPTY_STATE_ACTION_ROW_CLASS_NAME =
+  "flex max-w-full flex-wrap items-center justify-center gap-1.5"
 
 const TILE_LAYOUT_OPTIONS = [
   {
@@ -419,16 +421,29 @@ function EmptyState({
           selectedAgentId={selectedAgentId}
           onSelectAgent={onSelectAgent}
         />
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button onClick={onTextClick} className="gap-2">
+        <div className={EMPTY_STATE_ACTION_ROW_CLASS_NAME}>
+          <Button
+            size="sm"
+            onClick={onTextClick}
+            className="gap-1.5"
+            title="Start with Text"
+            aria-label="Start with Text"
+          >
             <Plus className="h-4 w-4" />
-            Start with Text
+            Text Chat
           </Button>
-          <Button variant="secondary" onClick={onVoiceClick} className="gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onVoiceClick}
+            className="gap-1.5"
+            title="Start with Voice"
+            aria-label="Start with Voice"
+          >
             <Mic className="h-4 w-4" />
-            Start with Voice
+            Voice Chat
           </Button>
-          <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} />
+          <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} buttonSize="sm" />
         </div>
         {/* Keybind hints - visible on all screens, wraps on narrow */}
         <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3 text-xs">

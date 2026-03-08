@@ -27,4 +27,21 @@ describe("sessions empty-state layout", () => {
     expectSourceToContain('title={session.title}')
     expectSourceToContain('className="text-muted-foreground shrink-0 pt-0.5 text-[10px] tabular-nums"')
   })
+
+  it("keeps the empty-state quick-start actions compact and explicit under stressed widths", () => {
+    expectSourceToContain(
+      'const EMPTY_STATE_ACTION_ROW_CLASS_NAME = "flex max-w-full flex-wrap items-center justify-center gap-1.5"',
+    )
+    expectSourceToContain(
+      '<Button size="sm" onClick={onTextClick} className="gap-1.5" title="Start with Text" aria-label="Start with Text">',
+    )
+    expectSourceToContain(
+      '<Button variant="secondary" size="sm" onClick={onVoiceClick} className="gap-1.5" title="Start with Voice" aria-label="Start with Voice">',
+    )
+    expectSourceToContain('Text Chat')
+    expectSourceToContain('Voice Chat')
+    expectSourceToContain(
+      '<PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} buttonSize="sm" />',
+    )
+  })
 })

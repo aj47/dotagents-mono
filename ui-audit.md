@@ -1,5 +1,55 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 74: Desktop root empty-state quick-start actions broke into an awkward staggered cluster under larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/sessions.tsx` (`/` root sessions page → `No Active Sessions` empty state → quick-start action row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided going back into the recently touched `Memories`, `settings-general`, `settings-remote-server`, and recent root recent-sessions/pending-loading follow-ups unless a fresh live issue appeared.
+  - A real Electron renderer was reachable on `:9333`, and the root sessions page was available with a real mounted empty state and recent-session data, which made this a stronger screenshot-backed candidate than another speculative source-only pass.
+  - The live empty-state action row was still unlogged in the ledger even though it is one of the first things users see when starting from the root page.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, repo workflow guidance, and renderer `AGENTS.md` before picking the next area
+  - used `agent-browser --cdp 9333` against the live Electron renderer on `http://localhost:5173/` and inspected the mounted root empty state instead of relying on static source review alone
+  - stress-tested the live page with larger base text (`document.documentElement.style.fontSize = '24px'`), captured screenshot-backed evidence in `tmp/ui-audit/root-empty-620x670-root24.png`, and measured the quick-start buttons directly in the mounted DOM
+  - prototyped the exact compact-button treatment in the live DOM, captured `tmp/ui-audit/root-empty-actions-compact-prototype.png`, and compared the measured action-row footprint before editing source
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SessionListScreen.tsx` does not expose this desktop empty-state quick-start row; no parallel mobile code change was needed
+
+#### Findings
+
+- Before the fix, the desktop root `No Active Sessions` quick-start row had one concrete polish/usability issue with clear user impact:
+  - under live inspection with larger base text, the empty-state action lane only had about `372px` of usable width, but the three controls needed materially more than that (`Start with Text` about `225.7px`, `Start with Voice` about `238.3px`, prompts button about `48px`)
+  - this forced the quick-start controls into an awkward staggered wrapped cluster instead of a calm intentional row, with the prompts trigger visually stranded beside the second primary action
+  - practical impact: on tighter desktop shells or larger text, the root page’s primary “how do I start?” controls feel less polished and are harder to parse at a glance right when the user is deciding between text and voice
+
+#### Changes made
+
+- Hardened only the empty-state quick-start row in `apps/desktop/src/renderer/src/pages/sessions.tsx` with the smallest effective fit/polish fix:
+  - added a local `EMPTY_STATE_ACTION_ROW_CLASS_NAME` so the quick-start row uses a slightly tighter, explicit wrap-safe action lane
+  - compacted the two primary buttons to `size="sm"` with tighter icon/text spacing instead of leaving them at the roomier default button chrome
+  - shortened the visible labels to `Text Chat` and `Voice Chat` while preserving the fuller action meaning through `title` and `aria-label` (`Start with Text` / `Start with Voice`)
+  - reduced the predefined-prompts trigger to `buttonSize="sm"` so the tertiary action no longer dominates the lane under stress
+- Extended `apps/desktop/src/renderer/src/pages/sessions.empty-state-layout.test.ts` with focused source-contract coverage for the compact quick-start treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.empty-state-layout.test.ts` *(blocked: `vitest` not found in this worktree’s filtered desktop exec path)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new compact empty-state action-row constant, the `size="sm"` quick-start buttons, the shorter visible labels plus explicit `title` / `aria-label`, the smaller prompts trigger, and the focused regression test coverage are present
+- Live Electron evidence before the fix at `http://localhost:5173/`:
+  - screenshot: `tmp/ui-audit/root-empty-620x670-root24.png`
+  - measured action row footprint: about `372px` usable lane vs. controls needing about `225.7px + 238.3px + 48px`, which forced the row into a visually fragmented wrapped cluster
+- Live DOM prototype verification of the intended fix:
+  - after applying the same compact treatment in the mounted DOM, the controls fit back into a calm single horizontal group measuring about `364.6px` total (`Text Chat` about `147.0px`, `Voice Chat` about `157.6px`, prompts about `42px`)
+  - screenshot: `tmp/ui-audit/root-empty-actions-compact-prototype.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/sessions.tsx apps/desktop/src/renderer/src/pages/sessions.empty-state-layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the live Electron renderer is reusable for inspection, but it is not guaranteed to be serving this exact checkout’s edited bundle. I therefore paired live pre-fix runtime evidence with a DOM prototype of the exact compact treatment and direct source verification of the patch instead of claiming a literal rebuilt post-edit pass from this worktree.
+- Mobile cross-check: no matching mobile change was needed because `SessionListScreen.tsx` uses a different full-screen list/CTA pattern and does not share this desktop empty-state quick-start row.
+- Tradeoff/rationale: the visible button copy is slightly shorter than before, but that is a better product tradeoff than letting the primary root-start controls fracture into a visually accidental wrapped cluster under larger text.
+- Best next UI audit chunk after this one: move away from the root sessions empty state unless a fresh live pending-approval / retry / error follow-up appears; the next strongest target is another live-inspectable desktop or mobile screen with an unreviewed stressed-width state.
+
 ### 2026-03-08 — Chunk 73: Desktop remote-server Cloudflare prerequisite/error states read like loose footnotes and did not wrap safely under setup pressure
 
 - Area selected:
