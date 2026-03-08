@@ -25,6 +25,10 @@ import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package } from "lucide-react"
 
+function getDeleteSkillFailureMessage(): string {
+  return "This skill could not be deleted. The skills list was refreshed."
+}
+
 
 export function Component() {
   const queryClient = useQueryClient()
@@ -109,7 +113,13 @@ export function Component() {
     mutationFn: async (id: string) => {
       return await tipcClient.deleteSkill({ id })
     },
-    onSuccess: () => {
+    onSuccess: (didDelete) => {
+      if (!didDelete) {
+        queryClient.invalidateQueries({ queryKey: ["skills"] })
+        toast.error(getDeleteSkillFailureMessage())
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["skills"] })
       toast.success("Skill deleted successfully")
     },
