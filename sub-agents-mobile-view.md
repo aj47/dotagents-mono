@@ -6649,3 +6649,52 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that wrapped switch rows in `AgentEditScreen` and `LoopEditScreen` now read as a top-aligned label block plus toggle on narrow screens.
   - Compare one-line rows (`Enabled`) against multi-line rows (`Auto Spawn`, `Run on Startup`) to confirm the new alignment improves readability without making the shorter rows feel visually off.
   - After that live pass, continue with the next highest-signal local improvement instead of revisiting this switch-row alignment tweak without fresh evidence.
+
+## Iteration 136 - Add an inline blocked-queue warning notice on mobile
+
+- Date: 2026-03-08
+- Summary: Improved mobile sub-agent activity clarity in `MessageQueuePanel` by adding an inline warning notice when failed queued messages are blocking later work, so the expanded queue explains the recovery action without making users infer it only from row metadata or the collapsed header.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recently touched selector-sheet and edit-screen surfaces without new evidence.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx` and `apps/mobile/tests/message-queue-panel-mobile.test.js` because the active mobile queue surface still had a source-backed state-clarity gap after the recent failure-ordering and header-summary refinements.
+  - Confirmed the current queue panel already exposed blocked state in failed rows (`Failed - blocking queue`) and the header summary (`Blocked by 1 failed`), but did not provide an inline recovery explanation inside the expanded panel itself.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the expanded queue panel rendered failed rows with `Failed - blocking queue` metadata and exposed `Retry` / `Remove` row actions.
+  - But the panel-level notice area only handled active processing state (`Sending now` / `Clear All stays disabled...`).
+  - On mobile, that meant users had to infer the queue recovery path from per-row badges and action icons instead of seeing one short, explicit explanation near the top of the blocked queue.
+- Issue identified:
+  - The active mobile queue surface made blocked state visible, but not actionably clear, weakening recovery confidence in a high-frequency sub-agent activity panel.
+- Decision and rationale:
+  - Keep the queue layout, row actions, processing notice, and collapse behavior unchanged.
+  - Do not broaden this into a larger queue redesign or merge failure + processing state into a denser combined banner while live validation is blocked.
+  - Make the smallest local fix instead: add a concise count-aware failure notice above the queue list so blocked state explains the next action without changing the rest of the panel hierarchy.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - derive count-aware `failureNoticeText` for singular vs plural failed-queue states,
+    - render a destructive inline notice with an alert icon whenever failed queued messages are present and the list is expanded,
+    - keep the existing processing notice intact so active-send and blocked-state cues can coexist when needed.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new failure notice copy, styling, and conditional rendering.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed a short warning notice near the top of the expanded queue is clearer on mobile than expecting users to derive recovery steps only from failed-row metadata and small action icons.
+  - Kept the notice informational rather than adding another panel-level CTA, because the row-level `Retry` / `Remove` controls already exist and are the correct scoped actions.
+  - This remains a source-backed improvement and still needs live confirmation that the added warning notice feels helpful without making mixed failed + processing queue states too tall on narrow screens.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still lacks a fresh screenshot-backed pass after multiple recent header, failure-state, and edit-flow refinements.
+  - Mixed states with both failed and processing queued messages still need a real narrow-screen check to confirm the stacked warning/info notices feel proportional above the list.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new blocked-queue notice is easy to scan and does not crowd the queue header or first failed row on a narrow screen.
+  - Capture screenshot-backed evidence for both `1 failed` and `1 failed + 1 processing` queue states so the warning + info notice stack can be judged with real spacing and row content.
+  - After that live pass, continue with the next highest-signal local improvement instead of revisiting this blocked-queue notice without fresh evidence.

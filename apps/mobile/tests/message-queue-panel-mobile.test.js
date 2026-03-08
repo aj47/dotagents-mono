@@ -61,6 +61,13 @@ test('keeps the full queue header informative when the list is collapsed', () =>
   assert.match(queuePanelSource, /accessibilityLabel=\{queueDisclosureLabel\}/);
 });
 
+test('adds an inline warning notice when failed queued messages are blocking later work', () => {
+  assert.match(queuePanelSource, /const failureNoticeText = failedCount === 1[\s\S]*?1 queued message failed\. Retry or remove it to let later queued messages continue\.[\s\S]*?\$\{failedCount\} queued messages failed\. Retry or remove them to let later queued messages continue\./);
+  assert.match(queuePanelSource, /failureNotice:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?backgroundColor:\s*`\$\{theme\.colors\.destructive\}10`/);
+  assert.match(queuePanelSource, /failureNoticeText:\s*\{[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.destructive/);
+  assert.match(queuePanelSource, /\{failedCount > 0 && !isListCollapsed && \([\s\S]*?<View style=\{styles\.failureNotice\}>[\s\S]*?<Ionicons name="alert-circle" size=\{16\} color=\{theme\.colors\.destructive\} \/>[\s\S]*?<Text style=\{styles\.failureNoticeText\}>[\s\S]*?\{failureNoticeText\}[\s\S]*?<\/Text>[\s\S]*?<\/View>[\s\S]*?\)\}/);
+});
+
 test('gives queued-message row actions mobile-sized targets and explicit labels', () => {
   assert.match(queuePanelSource, /const queueActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(queuePanelSource, /function formatQueuedMessageAccessibilityContext\(text: string, timestampLabel: string\): string \{[\s\S]*?text\.replace\(/);

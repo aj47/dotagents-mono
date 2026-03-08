@@ -523,6 +523,9 @@ export function MessageQueuePanel({
   const compactSummaryText = hasProcessingMessage
     ? `${queuedMessageLabel} • ${queueProcessingSummary}`
     : queuedMessageLabel;
+  const failureNoticeText = failedCount === 1
+    ? '1 queued message failed. Retry or remove it to let later queued messages continue.'
+    : `${failedCount} queued messages failed. Retry or remove them to let later queued messages continue.`;
   const clearQueueAccessibilityHint = hasProcessingMessage
     ? processingCount === 1
       ? 'Wait for the active queued message to finish before clearing the rest of this queue.'
@@ -664,6 +667,22 @@ export function MessageQueuePanel({
       lineHeight: 18,
       color: theme.colors.primary,
     },
+    failureNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: `${theme.colors.destructive}26`,
+      backgroundColor: `${theme.colors.destructive}10`,
+    },
+    failureNoticeText: {
+      flex: 1,
+      fontSize: 12,
+      lineHeight: 18,
+      color: theme.colors.destructive,
+    },
     list: {
       maxHeight: queueListMaxHeight,
     },
@@ -770,6 +789,14 @@ export function MessageQueuePanel({
           </TouchableOpacity>
         )}
       </View>
+      {failedCount > 0 && !isListCollapsed && (
+        <View style={styles.failureNotice}>
+          <Ionicons name="alert-circle" size={16} color={theme.colors.destructive} />
+          <Text style={styles.failureNoticeText}>
+            {failureNoticeText}
+          </Text>
+        </View>
+      )}
       {hasProcessingMessage && !isListCollapsed && (
         <View style={styles.processingNotice}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
