@@ -297,6 +297,26 @@ export function MessageQueuePanel({
   // Disable Clear All when processing to prevent confusing UX where user thinks
   // they cancelled a running prompt while it actually continues running
   const hasProcessingMessage = messages.some((m) => m.status === "processing")
+  const headFailedMessage = messages[0]?.status === "failed" ? messages[0] : undefined
+
+  const retryAndResumeMutation = useMutation({
+    mutationFn: async () => {
+      if (!headFailedMessage) {
+        throw new Error("No failed queued message is blocking this conversation")
+      }
+
+      const success = await tipcClient.retryQueuedMessage({
+        conversationId,
+        messageId: headFailedMessage.id,
+      })
+
+      if (!success) {
+        throw new Error("Failed to retry the blocked queued message")
+      }
+
+      return success
+    },
+  })
 
   if (messages.length === 0) {
     return null
@@ -323,7 +343,18 @@ export function MessageQueuePanel({
           {messages.length} queued{isPaused ? " (paused)" : ""}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          {isPaused ? (
+          {isPaused && headFailedMessage ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+              onClick={() => retryAndResumeMutation.mutate()}
+              disabled={retryAndResumeMutation.isPending}
+              title="Retry failed message and resume queue"
+            >
+              <RefreshCw className={cn("h-3 w-3", retryAndResumeMutation.isPending && "animate-spin")} />
+            </Button>
+          ) : isPaused ? (
             <Button
               variant="ghost"
               size="icon"
@@ -398,7 +429,19 @@ export function MessageQueuePanel({
           </span>
         </div>
         <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-          {isPaused ? (
+          {isPaused && headFailedMessage ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-200/50 dark:hover:bg-orange-800/50"
+              onClick={() => retryAndResumeMutation.mutate()}
+              disabled={retryAndResumeMutation.isPending}
+              title="Retry failed message and resume queue"
+            >
+              <RefreshCw className={cn("h-3 w-3 mr-1", retryAndResumeMutation.isPending && "animate-spin")} />
+              Retry & Resume
+            </Button>
+          ) : isPaused ? (
             <Button
               variant="ghost"
               size="sm"
@@ -467,7 +510,9 @@ export function MessageQueuePanel({
       {/* Paused notice */}
       {isPaused && !isListCollapsed && (
         <div className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300">
-          Queue was stopped. Click Resume to continue processing queued messages.
+          {headFailedMessage
+            ? "Queue was stopped while the first queued message failed. Retry it to resume processing the rest of the queue."
+            : "Queue was stopped. Click Resume to continue processing queued messages."}
         </div>
       )}
 

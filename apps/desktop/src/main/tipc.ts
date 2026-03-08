@@ -3763,11 +3763,12 @@ export const router = {
   updateQueuedMessageText: t.procedure
     .input<{ conversationId: string; messageId: string; text: string }>()
     .action(async ({ input }) => {
-    
       // Check if this was a failed message before updating
       const queue = messageQueueService.getQueue(input.conversationId)
       const message = queue.find((m) => m.id === input.messageId)
       const wasFailed = message?.status === "failed"
+      const isHeadMessage = queue[0]?.id === input.messageId
+      const wasPaused = messageQueueService.isQueuePaused(input.conversationId)
 
       const success = messageQueueService.updateMessageText(input.conversationId, input.messageId, input.text)
       if (!success) return false
@@ -3784,6 +3785,13 @@ export const router = {
           }
         }
 
+        // Editing the failed head item is an explicit recovery action.
+        // If the queue was paused after an interrupted run, resume it so the
+        // corrected message can continue immediately instead of staying pending.
+        if (wasPaused && isHeadMessage) {
+          messageQueueService.resumeQueue(input.conversationId)
+        }
+
         // Conversation is idle, trigger queue processing
         processQueuedMessages(input.conversationId).catch((err) => {
           logLLM("[updateQueuedMessageText] Error processing queued messages:", err)
@@ -3796,7 +3804,10 @@ export const router = {
   retryQueuedMessage: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-        
+      const queue = messageQueueService.getQueue(input.conversationId)
+      const isHeadMessage = queue[0]?.id === input.messageId
+      const wasPaused = messageQueueService.isQueuePaused(input.conversationId)
+
       // Use resetToPending to reset failed message status without modifying text
       // This works even for addedToHistory messages since we're not changing the text
       const success = messageQueueService.resetToPending(input.conversationId, input.messageId)
@@ -3810,6 +3821,13 @@ export const router = {
           // Session is active, queue will be processed when it completes
           return true
         }
+      }
+
+      // Retrying the failed head item is an explicit recovery action.
+      // If the queue was paused after an interrupted run, resume it so the
+      // user does not have to discover a second separate Resume step.
+      if (wasPaused && isHeadMessage) {
+        messageQueueService.resumeQueue(input.conversationId)
       }
 
       // Conversation is idle, trigger queue processing
