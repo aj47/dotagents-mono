@@ -29,3 +29,17 @@ test('exposes the reset action as an accessible button with a descriptive label'
   assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
   assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
 });
+
+test('keeps the connected server summary readable under narrow mobile widths', () => {
+  assert.match(screenSource, /<Text style=\{styles\.statusUrl\} numberOfLines=\{2\}>[\s\S]*?\{config\.baseUrl\}[\s\S]*?<\/Text>/);
+  assert.match(screenSource, /statusRow:\s*\{[\s\S]*?flexWrap:\s*'wrap'/);
+  assert.match(screenSource, /statusText:\s*\{[\s\S]*?flexShrink:\s*1/);
+});
+
+test('lets connection label rows wrap before crowding inline actions', () => {
+  assert.match(screenSource, /<Text style=\{styles\.labelRowTitle\}>API Key<\/Text>/);
+  assert.match(screenSource, /<Text style=\{styles\.labelRowTitle\}>Base URL<\/Text>/);
+  assert.match(screenSource, /labelRow:\s*\{[\s\S]*?alignItems:\s*'flex-start'[\s\S]*?flexWrap:\s*'wrap'/);
+  assert.match(screenSource, /labelRowTitle:\s*\{[\s\S]*?minWidth:\s*0,[\s\S]*?flexShrink:\s*1,/);
+  assert.match(screenSource, /inlineActionButton:\s*\{[\s\S]*?marginLeft:\s*'auto',[\s\S]*?flexShrink:\s*0,/);
+});

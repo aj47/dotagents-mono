@@ -205,7 +205,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
             </Text>
           </View>
           {isConnected && (
-            <Text style={styles.statusUrl} numberOfLines={1}>
+            <Text style={styles.statusUrl} numberOfLines={2}>
               {config.baseUrl}
             </Text>
           )}
@@ -225,7 +225,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         </Text>
 
         <View style={styles.labelRow}>
-          <Text style={styles.label}>API Key</Text>
+          <Text style={styles.labelRowTitle}>API Key</Text>
           <TouchableOpacity
             onPress={() => setShowApiKey(!showApiKey)}
             style={styles.inlineActionButton}
@@ -249,7 +249,7 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
         />
 
         <View style={styles.labelRow}>
-          <Text style={styles.label}>Base URL</Text>
+          <Text style={styles.labelRowTitle}>Base URL</Text>
           <TouchableOpacity
             onPress={resetBaseUrl}
             style={styles.inlineActionButton}
@@ -329,6 +329,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
+      flexWrap: 'wrap',
+      minWidth: 0,
     },
     statusDot: {
       width: 10,
@@ -345,11 +347,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 16,
       fontWeight: '600',
       color: theme.colors.foreground,
+      flexShrink: 1,
     },
     statusUrl: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: spacing.xs,
+      lineHeight: 16,
     },
     label: {
       ...theme.typography.label,
@@ -357,9 +361,16 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     labelRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
       marginTop: spacing.sm,
+    },
+    labelRowTitle: {
+      ...theme.typography.label,
+      marginTop: 0,
+      minWidth: 0,
+      flexShrink: 1,
     },
     inlineActionButton: {
       ...createMinimumTouchTargetStyle({
@@ -374,6 +385,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.secondary,
       alignItems: 'center',
       justifyContent: 'center',
+      marginLeft: 'auto',
+      flexShrink: 0,
     },
     resetText: {
       fontSize: 12,

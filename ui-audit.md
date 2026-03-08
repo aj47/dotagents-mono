@@ -1,5 +1,38 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 25: Mobile Connection settings status card and inline actions under narrow widths / larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+- Why this chunk: chunk 24 explicitly called out the nested mobile settings/editor screens as the next best unlogged area. `ConnectionSettingsScreen` is the most reachable of those surfaces from the top-level Settings flow, and its status card plus inline form actions still had obvious single-line assumptions that would degrade under narrow widths or larger text.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid overlap with prior mobile Settings passes
+  - reused `apps/desktop/DEBUGGING.md`, `AGENTS.md`, and `DEVELOPMENT.md` for the repo’s Electron/mobile debugging workflow and platform guidance
+  - attempted live Expo Web inspection via `pnpm --filter @dotagents/mobile web -- --port 8081`, but this worktree is currently missing local dependencies / `expo`, so live mobile runtime inspection was blocked
+  - inspected `ConnectionSettingsScreen.tsx` directly and cross-checked it against the already-audited top-level Settings connection card for the intended narrow-width behavior
+
+#### Findings
+
+- Before the fix, the nested connection editor still had two clear responsive/polish gaps:
+  - the connected status URL was hard-capped to a single line, so custom or longer server URLs were truncated right where users need to verify which backend they are editing
+  - the `API Key` / `Base URL` label rows still assumed a roomy one-line title-plus-action layout, so the `Show` and especially `Reset to default` actions had no graceful wrap path under narrower widths or larger text
+
+#### Changes made
+
+- Hardened `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` with the smallest local layout fix:
+  - upgraded the connected status URL from a one-line truncation to a two-line summary with explicit line height so the active backend remains identifiable on mobile
+  - made the status row wrap-safe and allowed the status label to shrink instead of competing rigidly with the indicator dot
+  - introduced a dedicated `labelRowTitle` style and made the inline action rows wrap-aware, so form labels yield before the `Show` / `Reset to default` controls and the action buttons can drop cleanly when space gets tight
+
+#### Verification
+
+- Targeted regression test: `node --test apps/mobile/tests/connection-settings-validation.test.js`
+
+#### Notes
+
+- Live mobile verification remains blocked in this worktree until dependencies are installed (`expo` / local `node_modules` are currently missing), so this chunk is source-inspection-driven with targeted source-contract tests rather than screenshot-backed runtime evidence.
+- Best next UI audit chunk after this one: `AgentEditScreen` and `LoopEditScreen` now stand out as the next strongest unlogged mobile editor surfaces, especially their switch rows and option chips under narrow widths / larger text.
+
 ### 2026-03-06 — Chunk 24: Mobile Settings desktop-management list rows under narrow widths and larger text
 
 - Area selected:
