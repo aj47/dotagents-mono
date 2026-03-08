@@ -118,6 +118,12 @@ type KillSwitchFeedback = {
   message: string;
 };
 
+type ImageAttachmentFeedback = {
+  title: string;
+  message: string;
+  actionLabel?: 'Choose again' | 'Add more';
+};
+
 const KILL_SWITCH_CONFIRMATION_TITLE = '⚠️ Emergency Stop';
 const KILL_SWITCH_CONFIRMATION_MESSAGE =
   'Are you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.';
@@ -306,6 +312,39 @@ const getAutoResponseTtsErrorDetails = (
       ? 'The latest assistant response could not be read aloud with the selected voice. Retry read aloud or choose another voice in TTS Settings.'
       : 'The latest assistant response could not be read aloud automatically. Retry read aloud or use the speaker button on the message.',
   };
+};
+
+const normalizeImageAttachmentFeedbackDetail = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+const getImageAttachmentFeedbackMessage = (errors: string[], addedCount = 0) => {
+  const details = errors.map(normalizeImageAttachmentFeedbackDetail).filter(Boolean);
+
+  if (details.length === 0) {
+    return addedCount > 0
+      ? "Some selected images couldn't be attached. Any added images are still here."
+      : "Couldn't attach image. Please try again.";
+  }
+
+  const intro = details.length > 1 || addedCount > 0
+    ? "Some selected images couldn't be attached."
+    : "Couldn't attach image.";
+  const suffix = addedCount > 0 ? ' Any added images are still here.' : '';
+
+  return `${intro} ${details.join(' ')}${suffix}`.trim();
+};
+
+const getImageAttachmentUnexpectedErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    const detail = normalizeImageAttachmentFeedbackDetail(error.message || '');
+    return detail ? `Couldn't attach image. ${detail}` : "Couldn't attach image. Please try again.";
+  }
+
+  if (typeof error === 'string') {
+    const detail = normalizeImageAttachmentFeedbackDetail(error);
+    return detail ? `Couldn't attach image. ${detail}` : "Couldn't attach image. Please try again.";
+  }
+
+  return "Couldn't attach image. Please try again.";
 };
 
 const inferImageMimeType = (asset: {
@@ -872,6 +911,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	}, []);
 	  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
+	  const [imageAttachmentFeedback, setImageAttachmentFeedback] = useState<ImageAttachmentFeedback | null>(null);
+	  const [imagePickerPending, setImagePickerPending] = useState(false);
+	  const imagePickerPendingRef = useRef(false);
 	  const inputRef = useRef<TextInput>(null);
   const [listening, setListening] = useState(false);
 	  const [voiceStartError, setVoiceStartError] = useState<ReturnType<typeof getVoiceStartErrorDetails> | null>(null);
@@ -1699,9 +1741,20 @@ export default function ChatScreen({ route, navigation }: any) {
   // Get queued messages for the current conversation
   const queuedMessages = messageQueue.getQueue(currentConversationId);
 
+  const clearImageAttachmentFeedback = useCallback(() => {
+    setImageAttachmentFeedback(null);
+  }, []);
+
   const handlePickImages = useCallback(async () => {
+    if (imagePickerPendingRef.current) {
+      return;
+    }
+
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
-      Alert.alert('Image limit reached', `You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
+      setImageAttachmentFeedback({
+        title: 'Image limit reached',
+        message: `You can attach up to ${MAX_PENDING_IMAGES} images per message. Remove one and try again.`,
+      });
       return;
     }
 
@@ -1710,12 +1763,17 @@ export default function ChatScreen({ route, navigation }: any) {
       0
     );
     if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
-      Alert.alert(
-        'Image budget reached',
-        `This message already reached the image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
-      );
+      setImageAttachmentFeedback({
+        title: 'Image budget reached',
+        message:
+          `This message already reached the image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}). Remove an image or send this message before adding more.`,
+      });
       return;
     }
+
+    clearImageAttachmentFeedback();
+    imagePickerPendingRef.current = true;
+    setImagePickerPending(true);
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -1735,6 +1793,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const oversizedImageNames: string[] = [];
       const unknownMimeNames: string[] = [];
       const budgetExceededNames: string[] = [];
+      const attachmentIssues: string[] = [];
       let runningEmbeddedBytes = existingEmbeddedBytes;
 
       selectedAssets.forEach((asset, index) => {
@@ -1781,40 +1840,55 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (missingBase64Names.length > 0) {
-        Alert.alert(
-          'Some images were skipped',
-          `${missingBase64Names.join(', ')} could not be attached. Please try again.`
-        );
+        attachmentIssues.push(`${missingBase64Names.join(', ')} could not be read from the image picker.`);
       }
 
       if (oversizedImageNames.length > 0) {
-        Alert.alert(
-          'Image too large',
-          `${oversizedImageNames.join(', ')} exceed the 4MB limit.`
+        attachmentIssues.push(
+          `${oversizedImageNames.join(', ')} exceed the ${formatMb(MAX_PENDING_IMAGE_FILE_SIZE_BYTES)} limit.`
         );
       }
 
       if (unknownMimeNames.length > 0) {
-        Alert.alert(
-          'Unsupported image format',
-          `${unknownMimeNames.join(', ')} could not be attached because the image type could not be determined.`
+        attachmentIssues.push(
+          `${unknownMimeNames.join(', ')} use an unsupported image format.`
         );
       }
 
       if (budgetExceededNames.length > 0) {
-        Alert.alert(
-          'Image budget reached',
+        attachmentIssues.push(
           `${budgetExceededNames.join(', ')} exceed the per-message image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
         );
       }
+
+      if (attachmentIssues.length > 0) {
+        const finalAttachmentCount = pendingImages.length + nextImages.length;
+        const canPickMore =
+          finalAttachmentCount < MAX_PENDING_IMAGES &&
+          runningEmbeddedBytes < MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES;
+
+        setImageAttachmentFeedback({
+          title: nextImages.length > 0 ? 'Some images were skipped' : 'Couldn\'t attach image',
+          message: getImageAttachmentFeedbackMessage(attachmentIssues, nextImages.length),
+          actionLabel: canPickMore ? (nextImages.length > 0 ? 'Add more' : 'Choose again') : undefined,
+        });
+      }
     } catch (error: any) {
-      Alert.alert('Image picker error', error?.message || 'Unable to select images right now.');
+      setImageAttachmentFeedback({
+        title: 'Couldn\'t attach image',
+        message: getImageAttachmentUnexpectedErrorMessage(error),
+        actionLabel: 'Choose again',
+      });
+    } finally {
+      imagePickerPendingRef.current = false;
+      setImagePickerPending(false);
     }
-  }, [pendingImages]);
+  }, [clearImageAttachmentFeedback, pendingImages]);
 
   const removePendingImage = useCallback((attachmentId: string) => {
+    clearImageAttachmentFeedback();
     setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));
-  }, []);
+  }, [clearImageAttachmentFeedback]);
 
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
@@ -1825,6 +1899,7 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.enqueue(currentConversationId, text);
       setInput('');
       if (options?.fromComposer) {
+	        clearImageAttachmentFeedback();
         setPendingImages([]);
       }
       return;
@@ -1872,6 +1947,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     setInput('');
 	    if (options?.fromComposer) {
+		      clearImageAttachmentFeedback();
 	      setPendingImages([]);
 	    }
 
@@ -3747,6 +3823,37 @@ export default function ChatScreen({ route, navigation }: any) {
 		              </View>
 		            </View>
 		          )}
+		          {imageAttachmentFeedback && (
+		            <View
+		              style={[styles.connectionBanner, styles.connectionBannerFailed, styles.imageAttachmentBanner]}
+		              accessibilityLiveRegion="polite"
+		              aria-live="polite"
+		            >
+		              <View style={styles.connectionBannerContent}>
+		                {imagePickerPending ? (
+		                  <ActivityIndicator size="small" color={theme.colors.primary} style={styles.killSwitchBannerSpinner} />
+		                ) : (
+		                  <Text style={styles.connectionBannerIcon}>🖼️</Text>
+		                )}
+		                <View style={styles.connectionBannerTextContainer}>
+		                  <Text style={styles.connectionBannerText}>{imageAttachmentFeedback.title}</Text>
+		                  <Text style={styles.connectionBannerSubtext}>{imageAttachmentFeedback.message}</Text>
+		                </View>
+		                {imageAttachmentFeedback.actionLabel && !imagePickerPending && (
+		                  <TouchableOpacity
+		                    style={styles.retryButton}
+		                    onPress={handlePickImages}
+		                    activeOpacity={0.7}
+		                    accessibilityRole="button"
+		                    accessibilityLabel={imageAttachmentFeedback.actionLabel === 'Add more' ? 'Add more images' : 'Choose images again'}
+		                    accessibilityHint="Reopens the image picker so you can retry the attachment selection."
+		                  >
+		                    <Text style={styles.retryButtonText}>{imageAttachmentFeedback.actionLabel}</Text>
+		                  </TouchableOpacity>
+		                )}
+		              </View>
+		            </View>
+		          )}
 	          {!!sttPreview && (
 	            <View style={styles.sttPreviewBox}>
 	              <Text style={styles.sttPreviewLabel}>STT preview</Text>
@@ -3793,14 +3900,20 @@ export default function ChatScreen({ route, navigation }: any) {
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity
-	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
+		              style={[styles.ttsToggle, (pendingImages.length > 0 || imagePickerPending) && styles.ttsToggleOn]}
 	              onPress={handlePickImages}
 	              activeOpacity={0.7}
+		              disabled={imagePickerPending}
 	              accessibilityRole="button"
-	              accessibilityLabel="Attach images"
+		              accessibilityLabel={imagePickerPending ? 'Selecting images' : 'Attach images'}
 	              accessibilityHint="Select one or more images to include with your next message."
+		              accessibilityState={{ disabled: imagePickerPending }}
 	            >
-	              <Text style={styles.ttsToggleText}>🖼️</Text>
+		              {imagePickerPending ? (
+		                <ActivityIndicator size="small" color={theme.colors.primary} />
+		              ) : (
+		                <Text style={styles.ttsToggleText}>🖼️</Text>
+		              )}
 	            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
@@ -4275,6 +4388,9 @@ function createStyles(theme: Theme, screenHeight: number) {
 	      marginBottom: spacing.xs,
 	    },
 		    autoResponseTtsBanner: {
+		      marginBottom: spacing.xs,
+		    },
+		    imageAttachmentBanner: {
 		      marginBottom: spacing.xs,
 		    },
     connectionBannerContent: {

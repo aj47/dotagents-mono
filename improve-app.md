@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile `ChatScreen` image-attachment feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with the React Native / Expo image-picker flow reviewed in that file, the existing desktop inline attachment-feedback copy pattern cross-checked in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`, adjacent mobile composer/banner accessibility patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-image-attachment-feedback.test.js`, adjacent `ChatScreen` composer / TTS / emergency-stop coverage re-run in `apps/mobile/tests/chat-composer-accessibility.test.js`, `apps/mobile/tests/chat-kill-switch-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop headless shutdown cleanup bounding in `apps/desktop/src/main/index.ts`, with `--headless` startup / `gracefulShutdown(...)` flow reviewed in that file, GUI quit-path parity rechecked in the same file, focused dependency-free source guardrails added in `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
 - 2026-03-08: Mobile `ChatScreen` emergency-stop feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with `killSwitch()` client semantics reviewed in the mobile chat session client path, adjacent mobile banner/voice-feedback patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-kill-switch-feedback.test.js`, adjacent `ChatScreen` feedback guards re-run in `apps/mobile/tests/chat-voice-start-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop app `before-quit` cleanup synchronization in `apps/desktop/src/main/index.ts`, with headless shutdown parity reviewed in that file, async shutdown semantics checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/remote-server.ts`, existing desktop main-process test patterns reviewed in `apps/desktop/src/main/index.hub-install.test.ts`, focused source-level coverage added in `tests/desktop-app-quit-cleanup.test.js`, and targeted verification run locally via `node --test` because this dependency-light worktree does not have desktop `vitest` available.
@@ -84,6 +85,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Mobile `ChatScreen` image-attachment warning/retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline banner, `Choose again` / `Add more` actions, attach-button pending spinner, and thumbnail density remain clear on compact screens and large text.
 - 2026-03-08: Desktop headless shutdown cleanup still needs behavior-level validation once desktop Vitest or a runnable headless/Electron target is available, especially to confirm `SIGTERM`, CLI-triggered shutdown, remote-server start failure, and slow ACP/MCP/remote-server teardown all respect the shared timeout budget without double-exit surprises.
 - 2026-03-08: Mobile `ChatScreen` emergency-stop confirmation/banner flow still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the header action remains discoverable under large text, the inline success/error banner does not crowd the bottom action rail, and retry feels clear after transient remote-server failures.
 - 2026-03-08: Desktop app `before-quit` cleanup still needs execution-path validation once desktop Vitest or a runnable Electron target is available, especially to confirm real quit re-entry, shared-timeout fallback, and slow ACP/MCP/remote-server shutdown timing all behave predictably.
@@ -107,6 +109,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile `ChatScreen` image attachments in `apps/mobile/src/screens/ChatScreen.tsx` now replace stacked native alerts with inline composer feedback that aggregates partial-success / failure details, preserves successfully added thumbnails in place, disables duplicate picker launches while selection is already in progress, and offers contextual `Choose again` / `Add more` recovery actions, so attachment problems no longer disappear behind dismissible dialogs or leave users guessing whether any selected images were kept; tradeoff: this pass intentionally keeps the existing Expo image-picker + base64 attachment pipeline and compact thumbnail strip instead of broadening into upload/compression refactors.
 - 2026-03-08: Desktop `--headless` shutdown in `apps/desktop/src/main/index.ts` now cleans up ACP, MCP, and the remote server in one bounded parallel batch with per-service best-effort logging and the same 5 second timeout budget used by GUI quit, so headless exits no longer risk hanging forever behind one stalled cleanup call or taking longer than necessary because services shut down sequentially; tradeoff: this pass intentionally keeps the existing inline cleanup structure in `index.ts` instead of extracting a shared helper while the worktree is limited to dependency-free guardrail verification.
 - 2026-03-08: Mobile `ChatScreen` emergency stop now routes confirmation through platform-safe helpers in `apps/mobile/src/screens/ChatScreen.tsx`, disables repeated taps while a kill request is in flight, replaces raw browser success/error alerts with inline pending/success/failure banner feedback, surfaces a contextual retry action on failure, and reports missing remote-server connectivity directly in context, so a safety-critical stop request no longer feels like a fire-and-forget icon tap or depends on web-only dialog APIs; tradeoff: this pass intentionally keeps the existing header action and compact bottom-banner pattern instead of introducing a custom modal or toast system.
 - 2026-03-08: Desktop app `before-quit` now waits for ACP shutdown, MCP cleanup, and remote-server shutdown together in `apps/desktop/src/main/index.ts`, bounded by one quit-time timeout and with per-service best-effort error logging, so the normal desktop quit path no longer fire-and-forgets ACP shutdown or skips local server cleanup before exiting; tradeoff: this pass intentionally stays scoped to the GUI quit path and source-level guardrails instead of refactoring the already-functional headless shutdown flow.
@@ -182,6 +185,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/chat-image-attachment-feedback.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js` after the mobile ChatScreen image-attachment feedback pass
+- 2026-03-08: `pnpm --filter @dotagents/mobile exec expo --version` after the mobile ChatScreen image-attachment feedback pass *(blocked: `Command "expo" not found`)*
+- 2026-03-08: `git diff --check` after the mobile ChatScreen image-attachment feedback pass
 - 2026-03-08: `node --test tests/desktop-headless-shutdown-guardrails.test.js tests/desktop-app-quit-cleanup.test.js` after the desktop headless shutdown cleanup-bounding pass
 - 2026-03-08: `git diff --check` after the desktop headless shutdown cleanup-bounding pass
 - 2026-03-08: `node --test apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-voice-start-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js` after the mobile ChatScreen emergency-stop feedback pass
@@ -369,6 +375,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this ChatScreen image-attachment feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this ChatScreen emergency-stop pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Runtime desktop main-process verification for the before-quit cleanup pass is still blocked because `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, so this iteration relied on source inspection plus dependency-free `node:test` coverage.
 - 2026-03-08: Live mobile UI inspection for the mobile loop mutation-feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
@@ -440,7 +447,6 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Mobile `ChatScreen` image-attachment failure / partial-success recovery (`apps/mobile/src/screens/ChatScreen.tsx`)
 - Desktop app `before-quit` cleanup execution-path validation (`apps/desktop/src/main/index.ts`)
 - Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
@@ -451,8 +457,8 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Next Highest-Value Targets
 - Desktop headless shutdown now has source-level guardrails, but mocked execution-path validation for `SIGTERM`, CLI-initiated exit, remote-server start failure, and slow shutdown collaborators is the freshest adjacent reliability follow-up because the key user value is graceful termination under real timing and re-entry conditions, not just structural parity with GUI quit.
-- Mobile `ChatScreen` image-attachment feedback is the freshest adjacent mobile follow-up, because desktop attachment handling already gained inline failure guidance while the separate React Native picker path still appears to rely on alert-style recovery and likely lacks partial-success / retry clarity in context.
 - Desktop app `before-quit` cleanup now has source-level guardrails, but real Electron or mocked main-process execution-path validation is the freshest adjacent reliability follow-up because the user value depends on actual quit re-entry and timeout behavior, not just source structure.
+- Mobile `ChatScreen` image-attachment live validation is now the freshest adjacent mobile follow-up, because the source-level guardrails now cover inline recovery and picker-pending behavior, but the actual banner density, thumbnail layout, and retry affordances still need real product evidence once Expo is available.
 - Mobile `Settings → Agent Loops` live validation is now the freshest adjacent mobile loops follow-up, because the new row-local pending/error guardrails are only source-verified so far and the compact warning density, disabled-action affordances, and optimistic run-refresh behavior still need real product evidence once Expo is available.
 - Mobile session-list long-press delete discoverability / web-native live validation remains a strong adjacent mobile history follow-up, because deletion is safer at the source level but the long-press affordance, `Deleting chat...` density, and failure-alert clarity still need real product evidence once Expo is available.
 - Desktop repeat-task startup scheduling now has source-level guardrails, but behavior-level validation with mocked timers or a runnable Electron lifecycle is the freshest adjacent reliability follow-up because the key user value is preventing a stray extra run during disable/reload/quit races.
@@ -2721,6 +2727,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once Expo or a runnable mobile target is available, live-check the header action with large text, long server latency, success, failure, and retry to confirm the inline banner remains readable without crowding the composer rail
   - investigate the separate mobile image-attachment picker/error path next, because it is a fresh adjacent `ChatScreen` flow that likely still relies on alert-style recovery instead of inline partial-success guidance
+
+### 2026-03-08 — Mobile ChatScreen image-attachment feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile `ChatScreen` image-attachment picker flow in `apps/mobile/src/screens/ChatScreen.tsx`
+  - desktop inline attachment-feedback copy reviewed in `apps/desktop/src/renderer/src/lib/message-image-utils.ts` for local consistency only
+  - focused source-level regression coverage in `apps/mobile/tests/chat-image-attachment-feedback.test.js`
+  - adjacent mobile chat coverage re-run in `apps/mobile/tests/chat-composer-accessibility.test.js`, `apps/mobile/tests/chat-kill-switch-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`
+- Why it was chosen:
+  - the ledger explicitly called out mobile attachment recovery as the freshest adjacent `ChatScreen` follow-up after the desktop composer got inline image-attachment guidance
+  - source review found a concrete UX gap: the mobile picker still emitted multiple blocking `Alert.alert(...)` dialogs for skipped or failed images, so partial success was easy to lose and there was no persistent in-context retry guidance near the thumbnails/composer
+  - this was a small, high-leverage trust improvement because attaching images is a primary input path and users need to know which selections were kept, which were rejected, and what to do next without replaying dismissed alerts from memory
+- What was inspected:
+  - `apps/mobile/src/screens/ChatScreen.tsx` picker launch path, pending-thumbnail rendering, image budget / size guards, and nearby inline banner patterns already used for voice/TTS/emergency-stop feedback
+  - `apps/desktop/src/renderer/src/lib/message-image-utils.ts` to reuse the already-proven partial-success copy shape without introducing a cross-runtime shared refactor in this pass
+  - existing mobile chat source-level tests to confirm where to add a focused guardrail without duplicating unrelated coverage
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version`, but Expo is unavailable in this dependency-less worktree
+- Improvement made:
+  - replaced attachment-specific modal alerts with inline composer feedback that aggregates picker-read failures, oversize files, unsupported formats, and per-message image-budget rejections into one persistent banner
+  - kept successfully attached thumbnails in place and explicitly tells users that added images were preserved when only part of a selection failed
+  - added contextual `Choose again` / `Add more` recovery actions plus picker-in-flight guards so repeated taps cannot launch overlapping image-picker requests
+  - disabled the attachment button while the picker is already opening and exposed that pending state through the existing compact control affordance rather than adding a larger tray or modal
+- Assumptions / tradeoffs / rationale:
+  - kept the implementation local to `ChatScreen` instead of extracting a new shared helper because desktop and mobile use different runtime/tooling boundaries and this pass needed the smallest safe change
+  - kept the existing Expo base64 attachment pipeline and compact pending-thumbnail strip because the goal was clearer recovery and resilience, not image processing or composer redesign
+  - accepted source-level verification because live Expo/mobile execution is blocked in this worktree
+- Tests / verification:
+  - `node --test apps/mobile/tests/chat-image-attachment-feedback.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js`
+  - `git diff --check`
+  - `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `Command "expo" not found`)*
+- Follow-up checks:
+  - once Expo or a runnable mobile target is available, live-check partial-success attachment selections, retry/add-more affordances, and large-text layout to confirm the inline banner does not crowd the thumbnail strip or primary send controls
+  - if future attachment work revisits compression or upload preprocessing, consider whether this local copy helper should move into a shared mobile-safe utility only after both platforms demonstrate the same message shape is still desirable
 
 ### Iteration Template
 - Date:
