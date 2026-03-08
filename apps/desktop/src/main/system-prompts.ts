@@ -56,6 +56,11 @@ CAPABILITY / TOOLING QUESTIONS:
 - First inspect the live state with tools like list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema as appropriate.
 - Base your explanation on the actual current tool/runtime state before answering.
 
+INSTRUCTION / NOTES UPDATES:
+- When the user asks you to update your own guidelines, .agents files, notes, memories, or other durable local instructions/config, identify the most likely target file/config first and make that edit directly.
+- Do not start those requests with broad repo-status checks, issue listing, or wide note dumps unless the target location is genuinely unclear.
+- If you need note context, inspect the most relevant file or directory first; do not concatenate an entire notes tree into one command just because notes might help.
+
 SKILLS:
 - Skills are optional instruction modules listed below.
 - Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
@@ -360,6 +365,7 @@ export function constructMinimalSystemPrompt(
   if (isAgentMode) {
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up."
     prompt += " For questions about available tools, MCP servers, or agents — or why something was unavailable/cut off — inspect live state with list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema instead of guessing."
+    prompt += " For requests to update your own guidelines, .agents files, notes, memories, or other local instructions/config, inspect the likely target and edit it directly instead of starting with unrelated repo-status checks or dumping entire notes trees."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).

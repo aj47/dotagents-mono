@@ -102,6 +102,23 @@ describe("constructSystemPrompt", () => {
     expect(minimalPrompt).toContain("get_tool_schema")
   })
 
+  it("guides guideline and notes update requests to edit the likely target directly", async () => {
+    const { constructSystemPrompt, constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+    const minimalPrompt = constructMinimalSystemPrompt([], true)
+
+    expect(prompt).toContain("INSTRUCTION / NOTES UPDATES")
+    expect(prompt).toContain("update your own guidelines")
+    expect(prompt).toContain("make that edit directly")
+    expect(prompt).toContain("broad repo-status checks")
+    expect(prompt).toContain("do not concatenate an entire notes tree")
+
+    expect(minimalPrompt).toContain("update your own guidelines")
+    expect(minimalPrompt).toContain("edit it directly")
+    expect(minimalPrompt).toContain("dumping entire notes trees")
+  })
+
   it("omits delegation guidance for specialist sub-sessions that should execute directly", async () => {
     const { agentProfileService } = await import("./agent-profile-service")
     vi.mocked(agentProfileService.getByRole).mockReturnValue([

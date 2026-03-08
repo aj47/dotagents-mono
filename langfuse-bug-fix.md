@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772726771670_hevmdkekt | session_1772726771671_nebuhg26t | fix implemented | User asked to add guidance about reading agent notes before answering context-heavy questions. Langfuse showed the run immediately doing broad note dumping (`cat` across note trees) plus unrelated `github:list_issues`, then ending via emergency kill switch without making the requested update. Root repo issue found: agent-mode prompts did not explicitly tell the model that requests to update its own guidelines / `.agents` files / notes should go straight to the likely durable target instead of starting with broad repo-status checks or dumping whole note trees. |
 | 2026-03-08 | conv_1772260442055_9xjtqdock | session_1772260441759_qlnn5jvxv | fix implemented | Fresh recovery-path evidence from a previously logged `ask Augustus what folder he's in` failure: after `delegate_to_agent` said `Agent "augustus" not found in configuration`, the same trace showed `list_available_agents` and `list_agent_profiles` exposing Augustus plus profile ID `286c6b41-28ed-4a57-9728-0bab9846ebe6`, but later `spawn_agent` / `delegate_to_agent` retries still rejected that valid profile ID. Root repo issue found: ACP routing/spawn paths only resolved agent profiles by name/displayName, not by profile ID, so error recovery could dead-end even after the tools surfaced the exact profile identifier. |
 | 2026-03-08 | conv_1772236244285_xzqrrynd8 | session_1772236244288_jbyzrkt1b, session_1772239900929_r2gu4lvnr | fix implemented | User asked `How did they get cut off before` twice. The first run incorrectly claimed the iTerm tools were not surfaced in the system prompt header even though they were listed in `AVAILABLE MCP SERVERS`; the later identical follow-up explicitly corrected that mistake. Root repo issue found: agent-mode prompt guidance taught tool discovery, but did not explicitly tell the model to inspect live tool/agent state before answering meta questions about current capabilities or why something was unavailable/cut off. |
 | 2026-03-08 | conv_1772413081893_0m2fhduf9 | session_1772413081894_y5zkxuyrj | fix implemented | User asked for mobile parity around desktop `respond_to_user`; Langfuse showed the run consuming 60 iterations and finalizing with only future-tense progress text (`Let me examine the current mobile app...`) plus the generic timeout note. Corroborating traces `subsession_1772433101034_b71f5c33`, `subsession_1772413302748_948ec4be`, and `subsession_1772420541552_f1cc42f4` showed the same `I'll help you... Let me first load... (Note: Task may not be fully complete...)` pattern. Root repo issue found: progress/deliverable heuristics counted long progress-only text as deliverable once the appended timeout note pushed it past the short-progress word-count threshold. |
@@ -36,6 +37,47 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
 
 ## Investigations
+
+### 2026-03-08 — Guideline / notes update requests should edit the likely target directly
+
+- Langfuse evidence reviewed:
+  - `conv_1772726771670_hevmdkekt` / `session_1772726771671_nebuhg26t`
+  - user input: `in your additional guidelines add that when i ask something that probably needs more context read in my agent notes first to give a better answer`
+  - trace outcome: `(Agent mode was stopped by emergency kill switch)` after only one iteration; the user intent was not completed in that run
+  - observation timeline showed:
+    - the first generation promising `I'll check your agent notes for context first, then look at the DotAgents repo.`
+    - a broad `execute_command` that listed note directories and concatenated multiple markdown files into one large output
+    - an unrelated `github:list_issues` call that burned most of the run latency
+    - no edit tool call, no direct update to guidelines/notes, and no user-facing completion before the run died
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` already had strong agent-mode guidance for capability/tooling questions, delegation, and ad-hoc file creation.
+  - but it did not have a decision rule for requests that explicitly ask the agent to update its own durable instructions/config/notes.
+  - without that rule, the model could treat an update request as a broad research task, which matches this trace's `read lots of notes + inspect repo issues` detour.
+- Concrete root cause:
+  - prompt guidance did not distinguish `update your own guidelines / notes / .agents config` requests from general context-gathering tasks.
+  - that let a single run drift into wide exploratory tool use instead of identifying the likely target file/config and making the requested change directly.
+- Fix implemented:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - added an `INSTRUCTION / NOTES UPDATES` section to the main agent-mode prompt
+    - explicitly tell the model that when the user asks to update its own guidelines, `.agents` files, notes, memories, or other durable local instructions/config, it should identify the likely target and edit it directly
+    - explicitly forbid starting those requests with broad repo-status checks, issue listing, or wide note dumps unless the target is genuinely unclear
+    - tell the model to inspect the most relevant file/directory first instead of concatenating an entire notes tree just because notes might help
+    - mirrored the same rule in `constructMinimalSystemPrompt(...)` so the behavior survives context-shrunk runs
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - added a regression proving both the full and minimal prompts now steer guideline/notes update requests toward direct editing rather than broad repo/status exploration
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - ✅ passed (`7 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt tests exit successfully
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
+  - DEBUGGING.md-style live desktop verification attempted:
+    - `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dapp`
+    - ❌ blocked by a pre-existing local dev-environment failure in desktop `predev`: `npx tsx scripts/ensure-rust-binary.ts` could not resolve local `tsx/dist/cli.mjs`
+- Remaining promising leads:
+  - `conv_1772473727520_lz68hnt7x` / `session_1772473727522_vykctvesf` — blank output after a notes-update request plus `Streaming LLM Call` error `Failed after 3 attempts. Last error: Cannot connect to API:`; likely adjacent provider-error class, but not revisited this iteration because that class is already tracked and recently fixed
+  - `conv_1772417284245_4j5gr6gtc` / `session_1772417284250_4j5gr6gtc` — stale progress-text timeout (`Let me double-check...`) on a simple browser/navigation request; worth checking only if fresh evidence suggests a remaining max-iteration/fallback gap
 
 ### 2026-03-08 — Capability/introspection questions should inspect live tool state before answering
 
