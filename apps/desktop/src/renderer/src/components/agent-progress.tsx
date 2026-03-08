@@ -777,16 +777,16 @@ const ToolExecutionBubble: React.FC<{
 
             {/* Expanded details for this tool */}
             {isToolExpanded && (
-              <div className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-[10px]">
+              <div className="mb-1 ml-3 mt-0.5 space-y-1 border-l border-border/50 pl-2 text-xs leading-4">
                 {call.arguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="min-w-0 font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
+                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-xs" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
                         <Copy className="h-2 w-2 mr-0.5" /> Copy
                       </Button>
                     </div>
-                    <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
+                    <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4">
                       {JSON.stringify(call.arguments, null, 2)}
                     </pre>
                   </>
@@ -800,30 +800,30 @@ const ToolExecutionBubble: React.FC<{
                       )}>
                         {result.success ? "Result" : "Error"}
                       </span>
-                      <span className="shrink-0 whitespace-nowrap opacity-50 text-[10px]">{(result.content?.length || 0).toLocaleString()} chars</span>
+                      <span className="shrink-0 whitespace-nowrap opacity-50 text-xs">{(result.content?.length || 0).toLocaleString()} chars</span>
                     </div>
                     {result.error && (
-                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
+                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4 bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
                         {result.error}
                       </pre>
                     )}
                     {result.content && (
                       <pre className={cn(
-                        "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
+                        "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4",
                         result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
                       )}>
                         {result.content}
                       </pre>
                     )}
                     {!result.error && !result.content && (
-                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
+                      <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4 bg-muted/40">
                         No content
                       </pre>
                     )}
                   </>
                 )}
                 {callIsPending && (
-                  <div className="text-[10px] opacity-60 italic py-1 flex items-center gap-1" role="status" aria-label="Waiting for response">
+                  <div className="flex items-center gap-1 py-1 text-xs leading-4 opacity-60 italic" role="status" aria-label="Waiting for response">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />
                     <span className="sr-only">Waiting for response</span>
                   </div>
@@ -988,10 +988,10 @@ const AssistantWithToolsBubble: React.FC<{
               {data.calls.map((call, idx) => {
                 const result = data.results[idx]
                 return (
-                  <div key={idx} className="text-[10px] space-y-1">
+                  <div key={idx} className="space-y-1 text-xs leading-4">
                     <div className="font-medium opacity-70 break-words">Parameters:</div>
                     {call.arguments && (
-                      <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap max-w-full max-h-32 scrollbar-thin text-[10px]">
+                      <pre className="rounded bg-muted/40 p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4">
                         {JSON.stringify(call.arguments, null, 2)}
                       </pre>
                     )}
@@ -1000,27 +1000,27 @@ const AssistantWithToolsBubble: React.FC<{
                         <div className="flex flex-wrap items-center gap-1.5 font-medium opacity-70">
                           Result:
                           <span className={cn(
-                            "shrink-0 text-[10px] font-semibold",
+                            "shrink-0 text-xs font-semibold",
                             result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                           )}>
                             {result.success ? "OK" : "ERR"}
                           </span>
                         </div>
                         {result.error && (
-                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
+                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4 bg-red-50/50 dark:bg-red-950/30 text-red-700 dark:text-red-300">
                             {result.error}
                           </pre>
                         )}
                         {result.content && (
                           <pre className={cn(
-                            "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px]",
+                            "rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4",
                             result.success ? "bg-green-50/50 dark:bg-green-950/30" : "bg-muted/40"
                           )}>
                             {result.content}
                           </pre>
                         )}
                         {!result.error && !result.content && (
-                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin text-[10px] bg-muted/40">
+                          <pre className="rounded p-1.5 overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words max-w-full max-h-32 scrollbar-thin font-mono text-xs leading-4 bg-muted/40">
                             No content
                           </pre>
                         )}

@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 65: Desktop agent-progress tool detail blocks stayed at fixed microcopy under larger text scaling
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched `Past Sessions`, Hub publish, settings, and memories surfaces without a concrete follow-up reason.
+  - Chunk 64 explicitly left the font-scale audit on `agent-progress.tsx` message/tool-output blocks as the strongest fresh next pass.
+  - A live Electron renderer was still available on `:9333`, and unlike several source-only candidates, this surface could be inspected with real session data.
+  - I also avoided `model-preset-manager.tsx` because this worktree already had unrelated uncommitted changes there.
+- Audit method:
+  - re-read `ui-audit.md`, `visible-ui.md`, `apps/desktop/DEBUGGING.md`, and the existing `agent-progress.tile-layout.test.ts` contract before editing
+  - used raw CDP against the live Electron renderer on `http://localhost:5174/`, reopened a recent session from the root screen, expanded a real `delegate_to_agent` tool execution, and captured screenshot-backed evidence in `tmp/ui-audit/agent-progress-tool-details-620x670-root24-before.png`
+  - stressed the live session tile at `620×670` with larger root text (`24px`) and measured the mounted tool-detail `pre` blocks directly in the DOM before editing source
+  - prototyped the intended relative-typography treatment directly in the mounted DOM and captured `tmp/ui-audit/agent-progress-tool-details-620x670-root24-prototype.png`
+  - cross-checked mobile and confirmed the equivalent tool-result UI lives separately in `apps/mobile/src/screens/ChatScreen.tsx`, so I kept this chunk scoped to the live desktop renderer instead of broadening into an unrelated native pass
+
+#### Findings
+
+- Before the fix, the expanded desktop `agent-progress` tool-detail blocks had one concrete readability/accessibility issue with clear user impact:
+  - the parameter/result/error `pre` blocks and adjacent labels used fixed `text-[10px]` microcopy inside the session tile details
+  - in live inspection at `620×670` with `24px` root text, the two visible tool-detail `pre` blocks were only about `117px` wide, but their content still rendered at `10px` while inheriting a `24px` line height
+  - representative mounted blocks measured `clientWidth = 117`, `scrollWidth = 132` / `117`, `clientHeight = 192`, and `scrollHeight = 762` / `37914`, which meant users were being asked to inspect dense JSON/output in a tiny fixed-size font inside already constrained scroll panes
+  - this matters because expanded tool details are the place where users verify what was sent to a tool and what came back; keeping that content at absolute microcopy size undermines readability exactly when users increase text size to make dense content easier to inspect
+
+#### Changes made
+
+- Hardened the desktop tool-detail typography in `apps/desktop/src/renderer/src/components/agent-progress.tsx` with the smallest effective scaling fix:
+  - replaced the expanded tool-detail wrappers’ fixed `text-[10px]` treatment with scalable `text-xs leading-4`
+  - promoted the parameter/result/error/no-content `pre` blocks to `font-mono text-xs leading-4` so they scale with root text instead of staying pinned to `10px`
+  - added `break-words` to the parameter JSON blocks so long tokens have a better wrap path in the narrow tile lane
+  - aligned the adjacent `Copy`, char-count, and assistant tool-detail status labels with the same scalable typography rather than leaving mismatched microcopy around the upgraded code blocks
+- Updated `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` with focused source-contract coverage for the new scalable tool-detail typography classes
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.tile-layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new tool-detail typography classes and the focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5174/` after reopening a recent session and expanding `delegate_to_agent`:
+  - screenshot: `tmp/ui-audit/agent-progress-tool-details-620x670-root24-before.png`
+  - at `620×670` with `24px` root text, representative tool-detail `pre` blocks stayed at `fontSize = 10px` with `lineHeight = 24px` inside `117px`-wide panes
+- Live DOM prototype verification of the intended fix:
+  - after applying the same relative `text-xs` treatment directly in the mounted DOM, the same tool-detail `pre` blocks moved from `10px` to `18px` text at the same `24px` root size while preserving the fixed `192px` scroll-pane height
+  - screenshot: `tmp/ui-audit/agent-progress-tool-details-620x670-root24-prototype.png`
+  - tradeoff verified live: the larger type increases internal scroll distance for long JSON/output, but that is the right tradeoff because the content becomes meaningfully readable without blowing out the tile width
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/agent-progress.tsx apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. I paired live pre-fix evidence with a DOM prototype of the exact typography treatment and direct source verification of the patch instead.
+- This chunk intentionally stayed desktop-only: mobile `ChatScreen.tsx` uses a separate native tool-result implementation and deserves its own focused pass rather than piggybacking on a desktop live fix.
+- Tradeoff/rationale: the expanded tool-detail panes now spend slightly more vertical scroll budget on content, but that is a deliberate and safer tradeoff than rendering dense JSON/results in fixed 10px microcopy when users have asked the app for larger text.
+- Best next UI audit chunk after this one: stay in `agent-progress.tsx` only for a separate live follow-up on collapsed tool-row summary previews under larger text, or move to another fresh live-inspectable desktop/mobile surface instead of revisiting the just-fixed detail panes.
+
 ### 2026-03-08 — Chunk 64: Desktop Past Sessions dialog hid too much session identity under narrow dialog widths and larger text
 
 - Area selected:
