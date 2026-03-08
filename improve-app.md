@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop sessions pending past-session continuation failure visibility in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with the pending conversation query / synthetic tile / startup-timeout flow reviewed in that file, nearby inline retry/warning patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent pending continuation tile exists there because mobile opens session history directly instead of staging a desktop continuation tile), focused source-level coverage added in `tests/desktop-sessions-pending-continuation-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available in this environment).
 - 2026-03-08: Mobile `ChatScreen` image-attachment feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with the React Native / Expo image-picker flow reviewed in that file, the existing desktop inline attachment-feedback copy pattern cross-checked in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`, adjacent mobile composer/banner accessibility patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-image-attachment-feedback.test.js`, adjacent `ChatScreen` composer / TTS / emergency-stop coverage re-run in `apps/mobile/tests/chat-composer-accessibility.test.js`, `apps/mobile/tests/chat-kill-switch-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop headless shutdown cleanup bounding in `apps/desktop/src/main/index.ts`, with `--headless` startup / `gracefulShutdown(...)` flow reviewed in that file, GUI quit-path parity rechecked in the same file, focused dependency-free source guardrails added in `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
 - 2026-03-08: Mobile `ChatScreen` emergency-stop feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with `killSwitch()` client semantics reviewed in the mobile chat session client path, adjacent mobile banner/voice-feedback patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-kill-switch-feedback.test.js`, adjacent `ChatScreen` feedback guards re-run in `apps/mobile/tests/chat-voice-start-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
@@ -85,6 +86,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop sessions pending continuation recovery feedback still needs live Electron validation once a runnable target is available, especially to confirm the standalone load-failure tile, inline startup-timeout warning, retry/dismiss actions, and focus-layout behavior remain clear when other active sessions already occupy the grid.
 - 2026-03-08: Mobile `ChatScreen` image-attachment warning/retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline banner, `Choose again` / `Add more` actions, attach-button pending spinner, and thumbnail density remain clear on compact screens and large text.
 - 2026-03-08: Desktop headless shutdown cleanup still needs behavior-level validation once desktop Vitest or a runnable headless/Electron target is available, especially to confirm `SIGTERM`, CLI-triggered shutdown, remote-server start failure, and slow ACP/MCP/remote-server teardown all respect the shared timeout budget without double-exit surprises.
 - 2026-03-08: Mobile `ChatScreen` emergency-stop confirmation/banner flow still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the header action remains discoverable under large text, the inline success/error banner does not crowd the bottom action rail, and retry feels clear after transient remote-server failures.
@@ -109,6 +111,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop `Sessions` now keeps failed past-session continuation attempts visible in `apps/desktop/src/renderer/src/pages/sessions.tsx`, replacing toast-only disappearance with a retryable recovery tile when a saved conversation cannot be reopened and an inline timeout warning that leaves the saved conversation open when follow-up session startup stalls, so continuing an old chat no longer feels like the session vanished with no local next step; tradeoff: this pass intentionally stops short of preserving the unsent follow-up draft across startup timeout because that draft currently lives inside the existing per-tile composer and widening that state scope would be a larger refactor.
 - 2026-03-08: Mobile `ChatScreen` image attachments in `apps/mobile/src/screens/ChatScreen.tsx` now replace stacked native alerts with inline composer feedback that aggregates partial-success / failure details, preserves successfully added thumbnails in place, disables duplicate picker launches while selection is already in progress, and offers contextual `Choose again` / `Add more` recovery actions, so attachment problems no longer disappear behind dismissible dialogs or leave users guessing whether any selected images were kept; tradeoff: this pass intentionally keeps the existing Expo image-picker + base64 attachment pipeline and compact thumbnail strip instead of broadening into upload/compression refactors.
 - 2026-03-08: Desktop `--headless` shutdown in `apps/desktop/src/main/index.ts` now cleans up ACP, MCP, and the remote server in one bounded parallel batch with per-service best-effort logging and the same 5 second timeout budget used by GUI quit, so headless exits no longer risk hanging forever behind one stalled cleanup call or taking longer than necessary because services shut down sequentially; tradeoff: this pass intentionally keeps the existing inline cleanup structure in `index.ts` instead of extracting a shared helper while the worktree is limited to dependency-free guardrail verification.
 - 2026-03-08: Mobile `ChatScreen` emergency stop now routes confirmation through platform-safe helpers in `apps/mobile/src/screens/ChatScreen.tsx`, disables repeated taps while a kill request is in flight, replaces raw browser success/error alerts with inline pending/success/failure banner feedback, surfaces a contextual retry action on failure, and reports missing remote-server connectivity directly in context, so a safety-critical stop request no longer feels like a fire-and-forget icon tap or depends on web-only dialog APIs; tradeoff: this pass intentionally keeps the existing header action and compact bottom-banner pattern instead of introducing a custom modal or toast system.
@@ -2762,6 +2765,40 @@ Track small, shippable product improvements. Review this file before each iterat
   - once Expo or a runnable mobile target is available, live-check partial-success attachment selections, retry/add-more affordances, and large-text layout to confirm the inline banner does not crowd the thumbnail strip or primary send controls
   - if future attachment work revisits compression or upload preprocessing, consider whether this local copy helper should move into a shared mobile-safe utility only after both platforms demonstrate the same message shape is still desirable
 
+### 2026-03-08 — Desktop sessions pending continuation recovery feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop `Sessions` past-session continuation flow in `apps/desktop/src/renderer/src/pages/sessions.tsx`
+  - nearby retry / inline warning patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` to confirm mobile does not use the same pending continuation tile pattern
+  - focused source-level regression coverage in `tests/desktop-sessions-pending-continuation-feedback.test.js`
+- Why it was chosen:
+  - the ledger still listed desktop session lifecycle and error states as a high-value backlog area, but recent work had not yet covered what happens when reopening a past session fails or times out before a real follow-up session appears
+  - source review found a concrete UX gap: this flow showed a toast and then removed the pending tile entirely, which makes it feel like the saved conversation vanished and leaves no in-place retry path
+  - this was a small, local renderer change with clear user value because continuing old chats is a core workflow and failure states should preserve context instead of forcing users to start over from memory
+- What was inspected:
+  - the pending conversation query, synthetic `AgentProgress` tile creation, duplicate-session suppression, and startup-timeout cleanup logic in `apps/desktop/src/renderer/src/pages/sessions.tsx`
+  - adjacent inline recovery patterns in `past-sessions-dialog.tsx` and `settings-loops.tsx` to keep the fix visually and behaviorally consistent with existing desktop warning cards
+  - `apps/mobile/src/screens/SessionListScreen.tsx` for parity: mobile opens prior sessions directly and does not stage a pending continuation tile, so no paired mobile change was needed in this pass
+  - attempted live desktop inspection via `electron_execute`, but this environment still does not expose an Electron/CDP target
+- Improvement made:
+  - added a local recovery card when a saved conversation fails to load into a pending continuation tile, with explicit failure copy plus `Retry opening` / `Dismiss` actions instead of toast-only disappearance
+  - changed the follow-up startup timeout path so the already loaded saved conversation stays visible and now shows an inline warning explaining that the new session never appeared and the user should try sending the follow-up again
+  - taught the sessions grid/focus-layout bookkeeping to treat that standalone recovery state as a first-class pending tile so empty-state copy does not flash underneath it
+- Assumptions / tradeoffs / rationale:
+  - kept the change local to `sessions.tsx` because the problem is renderer-state handoff around one existing tile flow, and extracting broader shared status abstractions would add churn without improving this specific recovery path
+  - chose inline recovery over another toast so the user keeps the saved-conversation context and can act from the same place they initiated continuation
+  - intentionally did not widen this pass into preserving the unsent follow-up draft across startup timeout because that draft currently lives inside the existing per-tile composer and would require a larger state-lifting change than this iteration justified
+  - accepted source-level verification because live Electron inspection is blocked in this dependency-light worktree
+- Tests / verification:
+  - `node --test tests/desktop-sessions-empty-state-feedback.test.js tests/desktop-sessions-pending-continuation-feedback.test.js`
+  - `git diff --check`
+  - `electron_execute` live inspection attempt *(blocked: no Electron/CDP target available)*
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check the standalone error tile, timeout warning, retry/dismiss actions, and focus-layout behavior with multiple active sessions already present
+  - next highest-value related target: investigate desktop session lifecycle follow-through in queue/user-response cleanup after interrupted or failed continuation sends, because that remains the most adjacent unverified session-state edge after this renderer feedback pass
+
 ### Iteration Template
 - Date:
 - Area / screen / subsystem:
@@ -2773,7 +2810,7 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Backlog of Areas to Inspect
 - Desktop follow-up composers and queued-send edge states
-- Desktop session lifecycle and error states (follow-up: queue/user-response cleanup consistency)
+- Desktop session lifecycle follow-up: queue/user-response cleanup consistency after interrupted sends
 - Settings screens and validation UX (remaining text inputs that still save on every keystroke)
 - Agent/task management flows
 - Mobile parity gaps with desktop

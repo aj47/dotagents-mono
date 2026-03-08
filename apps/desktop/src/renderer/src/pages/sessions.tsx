@@ -70,6 +70,21 @@ function formatTimestamp(timestamp: number): string {
   return date.format("MMM D")
 }
 
+function getPendingContinuationErrorDetail(error: unknown): string | null {
+  const message =
+    error instanceof Error
+      ? error.message.trim()
+      : typeof error === "string"
+        ? error.trim()
+        : ""
+
+  if (!message) {
+    return null
+  }
+
+  return /[.!?]$/.test(message) ? message : `${message}.`
+}
+
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
@@ -126,6 +141,15 @@ const DEFAULT_TILE_LAYOUT_MODE: TileLayoutMode = "1x2"
 
 type RestorableTileLayoutMode = Exclude<TileLayoutMode, "1x1">
 const DEFAULT_RESTORABLE_TILE_LAYOUT_MODE: RestorableTileLayoutMode = "1x2"
+
+type PendingContinuationFeedback = {
+  conversationId: string
+  tone: "warning" | "error"
+  title: string
+  message: string
+  detail?: string
+  retryLabel?: string
+}
 
 const STACKED_LAYOUT_RECOVERY_HINTS: Record<
   RestorableTileLayoutMode,
@@ -270,6 +294,84 @@ function getFocusLayoutFallbackSessionId(
     ] ??
     focusableSessionIds[0] ??
     null
+  )
+}
+
+function PendingContinuationFeedbackCard({
+  feedback,
+  onRetry,
+  onDismiss,
+  className,
+}: {
+  feedback: PendingContinuationFeedback
+  onRetry?: () => void
+  onDismiss: () => void
+  className?: string
+}) {
+  const isWarning = feedback.tone === "warning"
+
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "rounded-lg border px-3 py-3",
+        isWarning
+          ? "border-amber-500/30 bg-amber-500/10"
+          : "border-destructive/30 bg-destructive/5",
+        className,
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <AlertTriangle
+          className={cn(
+            "mt-0.5 h-4 w-4 shrink-0",
+            isWarning
+              ? "text-amber-600 dark:text-amber-400"
+              : "text-destructive",
+          )}
+        />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">{feedback.title}</p>
+            <p className="text-xs text-muted-foreground">{feedback.message}</p>
+            {feedback.detail && (
+              <p
+                className={cn(
+                  "break-words text-xs",
+                  isWarning
+                    ? "text-amber-700 dark:text-amber-300"
+                    : "text-destructive",
+                )}
+              >
+                {feedback.detail}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={onDismiss}
+            >
+              Dismiss
+            </Button>
+            {feedback.retryLabel && onRetry && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={onRetry}
+              >
+                {feedback.retryLabel}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -679,6 +781,8 @@ export function Component() {
   >(null)
   const [pendingContinuationStartedAt, setPendingContinuationStartedAt] =
     useState<number | null>(null)
+  const [pendingContinuationFeedback, setPendingContinuationFeedback] =
+    useState<PendingContinuationFeedback | null>(null)
   const pendingConversationIdRef = useRef<string | null>(pendingConversationId)
   const pendingContinuationStartedAtRef = useRef<number | null>(
     pendingContinuationStartedAt,
@@ -712,6 +816,7 @@ export function Component() {
   // so we don't briefly show two tiles for the same conversation.
   useEffect(() => {
     if (hasRealActiveSessionForPending) {
+      setPendingContinuationFeedback(null)
       setPendingConversationId(null)
     }
   }, [hasRealActiveSessionForPending])
@@ -815,6 +920,7 @@ export function Component() {
         scrollSessionTileIntoView(activeSession[0])
       } else {
         // It's a past session or completed session - load fresh data from disk
+        setPendingContinuationFeedback(null)
         setPendingConversationId(routeHistoryItemId)
       }
       // Clear the route param from URL without causing a remount
@@ -859,8 +965,8 @@ export function Component() {
     pendingConversationQuery.isSuccess &&
     pendingConversationQuery.data === null
 
-  // If loading a pending conversation fails (deleted/missing), clear the pending
-  // state so we do not keep showing a stuck loading tile.
+  // If loading a pending conversation fails (deleted/missing), replace the
+  // loading tile with local recovery instead of dropping the context entirely.
   useEffect(() => {
     if (!pendingConversationId) return
     if (!pendingConversationQuery.isError && !isPendingConversationMissing)
@@ -874,7 +980,20 @@ export function Component() {
     } else {
       console.error("Pending conversation not found:", pendingConversationId)
     }
-    toast.error("Unable to load that past session")
+
+    setPendingContinuationFeedback({
+      conversationId: pendingConversationId,
+      tone: "error",
+      title: "Couldn't reopen that past session",
+      message: pendingConversationQuery.isError
+        ? "The conversation is still saved, but this page couldn't load it into a continuation tile yet."
+        : "This saved conversation could not be found anymore, so the continuation tile could not be prepared.",
+      detail: pendingConversationQuery.isError
+        ? getPendingContinuationErrorDetail(pendingConversationQuery.error) ??
+          undefined
+        : undefined,
+      retryLabel: "Retry opening",
+    })
     setPendingContinuationStartedAt(null)
     setPendingConversationId(null)
   }, [
@@ -931,6 +1050,8 @@ export function Component() {
   // If found, focus it; otherwise create a pending tile
   // LLM inference will only happen when user sends an actual message
   const handleContinueConversation = (conversationId: string) => {
+    setPendingContinuationFeedback(null)
+
     // Check if there's already an active session for this conversationId
     const existingSession = Array.from(agentProgressById.entries()).find(
       ([_, progress]) =>
@@ -952,6 +1073,7 @@ export function Component() {
     logUI("[Sessions] Dismissing pending continuation:", {
       pendingConversationId,
     })
+    setPendingContinuationFeedback(null)
     setPendingContinuationStartedAt(null)
     setPendingConversationId(null)
   }
@@ -980,6 +1102,7 @@ export function Component() {
   }, [applySelectedAgentToNextSession])
 
   const handlePendingContinuationStarted = useCallback(() => {
+    setPendingContinuationFeedback(null)
     setPendingContinuationStartedAt((existing) => existing ?? Date.now())
   }, [])
 
@@ -1001,6 +1124,7 @@ export function Component() {
 
     if (hasRealSession) {
       // A real session has started for this conversation, dismiss the pending tile
+      setPendingContinuationFeedback(null)
       setPendingContinuationStartedAt(null)
       setPendingConversationId(null)
     }
@@ -1012,7 +1136,7 @@ export function Component() {
   ])
 
   // Safety fallback: if initialization does not produce a real session in time,
-  // dismiss the pending tile instead of leaving it stuck indefinitely.
+  // keep the saved conversation visible and explain how to retry locally.
   useEffect(() => {
     if (!pendingConversationId || pendingContinuationStartedAt === null)
       return undefined
@@ -1034,9 +1158,15 @@ export function Component() {
           pendingContinuationStartedAt: timeoutStartedAt,
         },
       )
-      toast.error("Session startup timed out. Please try again.")
+
+      setPendingContinuationFeedback({
+        conversationId: timeoutConversationId,
+        tone: "warning",
+        title: "Session startup timed out",
+        message:
+          "The saved conversation is still open below, but the new follow-up session never appeared. Try sending your follow-up again.",
+      })
       setPendingContinuationStartedAt(null)
-      setPendingConversationId(null)
     }, PENDING_CONTINUATION_TIMEOUT_MS)
 
     return () => {
@@ -1197,16 +1327,31 @@ export function Component() {
     !pendingProgress &&
     !pendingConversationQuery.isError &&
     !isPendingConversationMissing
-  const hasPendingTile = !!pendingProgress || hasPendingLoadingTile
+  const pendingFeedbackTileId = pendingContinuationFeedback
+    ? `pending-feedback-${pendingContinuationFeedback.conversationId}`
+    : null
+  const hasStandalonePendingFeedbackTile =
+    !!pendingContinuationFeedback &&
+    !pendingConversationId &&
+    !pendingProgress &&
+    !hasPendingLoadingTile
+  const hasPendingTile =
+    !!pendingProgress || hasPendingLoadingTile || hasStandalonePendingFeedbackTile
   const totalTileCount = allProgressEntries.length + (hasPendingTile ? 1 : 0)
   const isFocusLayout = tileLayoutMode === "1x1"
 
   const focusableSessionIds = useMemo(
     () => [
-      ...(hasPendingTile && pendingSessionId ? [pendingSessionId] : []),
+      ...(hasPendingTile
+        ? pendingSessionId
+          ? [pendingSessionId]
+          : pendingFeedbackTileId
+            ? [pendingFeedbackTileId]
+            : []
+        : []),
       ...allProgressEntries.map(([sessionId]) => sessionId),
     ],
-    [allProgressEntries, hasPendingTile, pendingSessionId],
+    [allProgressEntries, hasPendingTile, pendingFeedbackTileId, pendingSessionId],
   )
   const previousFocusableSessionIdsRef = useRef<string[]>(focusableSessionIds)
   const hasExplicitFocusedSession =
@@ -1272,8 +1417,19 @@ export function Component() {
     !!pendingSessionId &&
     hasPendingLoadingTile &&
     (!isFocusLayout || maximizedSessionId === pendingSessionId)
+  const showPendingFeedbackTile =
+    !!pendingFeedbackTileId &&
+    hasStandalonePendingFeedbackTile &&
+    (!isFocusLayout || maximizedSessionId === pendingFeedbackTileId)
+  const showPendingContinuationInlineFeedback =
+    !!pendingContinuationFeedback &&
+    !!pendingConversationId &&
+    pendingContinuationFeedback.conversationId === pendingConversationId &&
+    showPendingProgressTile
   const hasVisiblePendingTile =
-    showPendingProgressTile || showPendingLoadingTile
+    showPendingProgressTile ||
+    showPendingLoadingTile ||
+    showPendingFeedbackTile
   const visibleTileCount =
     visibleProgressEntries.length + (hasVisiblePendingTile ? 1 : 0)
   const showTileMaximize = !isFocusLayout
@@ -1723,27 +1879,39 @@ export function Component() {
                 isDragTarget={false}
                 isDragging={false}
               >
-                <AgentProgress
-                  progress={pendingProgress}
-                  variant="tile"
-                  isFocused={true}
-                  onFocus={() => {}}
-                  onDismiss={handleDismissPendingContinuation}
-                  onFollowUpSent={handlePendingContinuationStarted}
-                  isCollapsed={collapsedSessions[pendingSessionId] ?? false}
-                  onCollapsedChange={(collapsed) =>
-                    handleCollapsedChange(pendingSessionId, collapsed)
-                  }
-                  onExpand={
-                    showTileMaximize
-                      ? () => handleMaximizeTile(pendingSessionId)
-                      : undefined
-                  }
-                  isExpanded={isFocusLayout}
-                  isFollowUpInputInitializing={
-                    pendingContinuationStartedAt !== null
-                  }
-                />
+                <div className="flex h-full min-h-0 flex-col gap-3">
+                  {showPendingContinuationInlineFeedback &&
+                    pendingContinuationFeedback && (
+                      <PendingContinuationFeedbackCard
+                        feedback={pendingContinuationFeedback}
+                        onDismiss={() => setPendingContinuationFeedback(null)}
+                        className="shrink-0"
+                      />
+                    )}
+                  <div className="min-h-0 flex-1">
+                    <AgentProgress
+                      progress={pendingProgress}
+                      variant="tile"
+                      isFocused={true}
+                      onFocus={() => {}}
+                      onDismiss={handleDismissPendingContinuation}
+                      onFollowUpSent={handlePendingContinuationStarted}
+                      isCollapsed={collapsedSessions[pendingSessionId] ?? false}
+                      onCollapsedChange={(collapsed) =>
+                        handleCollapsedChange(pendingSessionId, collapsed)
+                      }
+                      onExpand={
+                        showTileMaximize
+                          ? () => handleMaximizeTile(pendingSessionId)
+                          : undefined
+                      }
+                      isExpanded={isFocusLayout}
+                      isFollowUpInputInitializing={
+                        pendingContinuationStartedAt !== null
+                      }
+                    />
+                  </div>
+                </div>
               </SessionTileWrapper>
             )}
             {showPendingLoadingTile && pendingSessionId && (
@@ -1772,6 +1940,36 @@ export function Component() {
                 </div>
               </SessionTileWrapper>
             )}
+            {showPendingFeedbackTile &&
+              pendingFeedbackTileId &&
+              pendingContinuationFeedback && (
+                <SessionTileWrapper
+                  key={pendingFeedbackTileId}
+                  sessionId={pendingFeedbackTileId}
+                  index={0}
+                  isCollapsed={false}
+                  isDraggable={false}
+                  onDragStart={() => {}}
+                  onDragOver={() => {}}
+                  onDragEnd={() => {}}
+                  isDragTarget={false}
+                  isDragging={false}
+                >
+                  <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4">
+                    <PendingContinuationFeedbackCard
+                      feedback={pendingContinuationFeedback}
+                      onRetry={() => {
+                        setPendingContinuationFeedback(null)
+                        setPendingConversationId(
+                          pendingContinuationFeedback.conversationId,
+                        )
+                      }}
+                      onDismiss={() => setPendingContinuationFeedback(null)}
+                      className="mt-auto"
+                    />
+                  </div>
+                </SessionTileWrapper>
+              )}
             {/* Regular sessions */}
             {visibleProgressEntries.map(([sessionId, progress], index) => {
               const isCollapsed = collapsedSessions[sessionId] ?? false
