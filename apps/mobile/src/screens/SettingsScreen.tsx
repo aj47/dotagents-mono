@@ -40,6 +40,30 @@ const TTS_PROVIDERS = [
   { label: 'Supertonic', value: 'supertonic' },
 ] as const;
 
+function buildRemoteSettingsInputDrafts(settings: Settings | null): Record<string, string> {
+  if (!settings) {
+    return {
+      sttLanguage: '',
+      transcriptPostProcessingPrompt: '',
+      mcpMaxIterations: '',
+      whatsappAllowFrom: '',
+      langfusePublicKey: '',
+      langfuseSecretKey: '',
+      langfuseBaseUrl: '',
+    };
+  }
+
+  return {
+    sttLanguage: settings.sttLanguage || '',
+    transcriptPostProcessingPrompt: settings.transcriptPostProcessingPrompt || '',
+    mcpMaxIterations: String(settings.mcpMaxIterations ?? 10),
+    whatsappAllowFrom: (settings.whatsappAllowFrom || []).join(', '),
+    langfusePublicKey: settings.langfusePublicKey || '',
+    langfuseSecretKey: settings.langfuseSecretKey === '••••••••' ? '' : (settings.langfuseSecretKey || ''),
+    langfuseBaseUrl: settings.langfuseBaseUrl || '',
+  };
+}
+
 // OpenAI TTS Voice Options
 const OPENAI_TTS_VOICES = [
   { label: 'Alloy', value: 'alloy' },
@@ -311,8 +335,11 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchRemoteSettings = useCallback(async () => {
     if (!settingsClient) {
       setProfiles([]);
+      setCurrentProfileId(undefined);
       setMcpServers([]);
       setRemoteSettings(null);
+      setRemoteError(null);
+      setInputDrafts(buildRemoteSettingsInputDrafts(null));
       setIsDotAgentsServer(false);
       return;
     }
@@ -334,25 +361,25 @@ export default function SettingsScreen({ navigation }: any) {
         setProfiles(profilesRes.profiles);
         setCurrentProfileId(profilesRes.currentProfileId);
         successCount++;
+      } else {
+        setProfiles([]);
+        setCurrentProfileId(undefined);
       }
       if (serversRes) {
         setMcpServers(serversRes.servers);
         successCount++;
+      } else {
+        setMcpServers([]);
       }
       if (settingsRes) {
         setRemoteSettings(settingsRes);
         // Sync input drafts from fetched settings (only on explicit fetch,
         // not on optimistic local updates, to avoid overwriting user's typing)
-        setInputDrafts({
-          sttLanguage: settingsRes.sttLanguage || '',
-          transcriptPostProcessingPrompt: settingsRes.transcriptPostProcessingPrompt || '',
-          mcpMaxIterations: String(settingsRes.mcpMaxIterations ?? 10),
-          whatsappAllowFrom: (settingsRes.whatsappAllowFrom || []).join(', '),
-          langfusePublicKey: settingsRes.langfusePublicKey || '',
-          langfuseSecretKey: settingsRes.langfuseSecretKey === '••••••••' ? '' : (settingsRes.langfuseSecretKey || ''),
-          langfuseBaseUrl: settingsRes.langfuseBaseUrl || '',
-        });
+        setInputDrafts(buildRemoteSettingsInputDrafts(settingsRes));
         successCount++;
+      } else {
+        setRemoteSettings(null);
+        setInputDrafts(buildRemoteSettingsInputDrafts(null));
       }
 
       // Consider it a DotAgents server if at least one endpoint succeeded

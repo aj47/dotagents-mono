@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `mobile-app-improvement.md` follow-up notes and picked the unresolved mobile Settings warning lead (`⚠️ Failed to load: settings`) as a fresh bug candidate that was not already covered in this ledger.
+- [x] 2026-03-08: Re-reviewed `apps/mobile/src/screens/SettingsScreen.tsx` and confirmed `fetchRemoteSettings()` only updated `remoteSettings`, `profiles`, and `mcpServers` on successful endpoint responses; partial reconnect failures left previous successful state objects intact.
+- [x] 2026-03-08: Confirmed this stale-state path is user-visible: the mobile screen renders a warning banner from `remoteError`, but `remoteSettings && ...` still allowed old desktop settings controls to remain mounted whenever an earlier fetch had succeeded and a later `getSettings()` call failed.
 - [x] 2026-03-08: Reviewed both desktop global TTS-disable entry points in `apps/desktop/src/renderer/src/components/app-layout.tsx` and `apps/desktop/src/renderer/src/pages/settings-general.tsx`; each stopped local speech, awaited `tipcClient.stopAllTts()`, and only logged rejected cross-window stop failures to the console before still persisting `ttsEnabled: false`.
 - [x] 2026-03-08: Confirmed there is no equivalent shared multi-window stop path in `apps/mobile`; mobile `ttsEnabled` toggles are local state/settings only, so this silent cross-window stop failure is a desktop-only bug.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the visible `Import Bundle` picker path still treated any falsy `tipcClient.previewBundle()` result as a user cancel, immediately calling `onOpenChange(false)` with no visible failure state.
@@ -285,6 +288,9 @@
 - [x] 2026-03-08: Compared repeat-task layer ownership against `apps/desktop/src/main/skills-service.ts`; skills already preserve the active global/workspace origin on update/delete, so applying the same origin-preserving rule to repeat-task persistence is an acceptable minimal assumption rather than a new cross-cutting abstraction.
 
 ### Reproduced
+- [x] **Mobile Settings could keep stale desktop settings visible after a partial reconnect failure (directly confirmed in source):**
+  - In `apps/mobile/src/screens/SettingsScreen.tsx`, `fetchRemoteSettings()` called `setRemoteError(\`Failed to load: ${errors.join(', ')}\`)` when one of the remote endpoints failed after another succeeded, but it only mutated `remoteSettings` inside `if (settingsRes) { ... }`.
+  - That meant a prior successful `remoteSettings` object could survive a later `getSettings()` failure, so the user could see `⚠️ Failed to load: settings` while still interacting with stale Desktop Settings content from the earlier server state.
 - [x] **Desktop global TTS disable could fail silently for other windows (directly confirmed in source):**
   - In both `apps/desktop/src/renderer/src/components/app-layout.tsx` and `apps/desktop/src/renderer/src/pages/settings-general.tsx`, turning TTS off already called `ttsManager.stopAll(...)` for the current renderer and then awaited `tipcClient.stopAllTts()` for the wider desktop app.
   - If that IPC call rejected, each handler only ran `console.error("Failed to stop TTS in all windows:", error)` and then still saved `ttsEnabled: false`, so users could believe TTS was fully disabled while speech in another window kept playing with no visible warning.
@@ -608,6 +614,9 @@
   - That meant a visible Settings → Repeat Tasks delete could still look successful while the task file survived on disk (or in the workspace overlay), causing the task to reappear after reload and making the delete result dishonest.
 
 ### Fixed
+- [x] Updated `apps/mobile/src/screens/SettingsScreen.tsx` so remote settings fetches now clear stale `profiles`, `currentProfileId`, `mcpServers`, `remoteSettings`, and fetched `inputDrafts` when the settings client disconnects or any of those individual endpoint requests fail during a later refresh.
+- [x] Added `buildRemoteSettingsInputDrafts(...)` in `SettingsScreen.tsx` so successful mobile remote-settings fetches and stale-state clears share the same normalized draft-shape logic instead of leaving old text input values behind after `getSettings()` fails.
+- [x] Added `apps/mobile/tests/settings-remote-loading.test.js` with a focused source-level regression assertion that locks in the new stale-slice clearing behavior for disconnects plus partial fetch failures.
 - [x] Updated `apps/desktop/src/renderer/src/components/app-layout.tsx` so the visible sidebar/header global TTS toggle now surfaces `toast.error(...)` when `tipcClient.stopAllTts()` rejects, while preserving the existing local `ttsManager.stopAll(...)` behavior and config save.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so disabling desktop TTS from Settings → General also surfaces the same visible cross-window stop warning instead of staying console-only; added a small local `getActionErrorMessage(...)` helper to preserve readable fallback copy.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/app-layout.emergency-stop.test.tsx` for the app-shell toggle path and in `apps/desktop/src/renderer/src/pages/settings-general.controlled-controls.test.ts` for the settings-page source contract.
@@ -843,6 +852,9 @@
 - [x] Added focused regression coverage in `apps/mobile/src/screens/ChatScreen.message-queue-feedback.test.ts` locking in the new mobile alert copy, the retry race guard, the edit-mode preservation, and the `clearQueue(...)` boolean contract.
 
 ### Verified
+- [x] Manual source verification: `SettingsScreen.tsx` now clears `remoteSettings` and its derived input drafts in the `else` branch when `settingsRes` is missing, so the mobile warning `Failed to load: settings` no longer coexists with stale desktop settings controls from an earlier successful fetch.
+- [x] Targeted automated verification passed: `node --test apps/mobile/tests/settings-remote-loading.test.js` completed with exit code 0.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the mobile stale-settings fix and regression test addition.
 - [x] Manual source verification: `app-layout.tsx` and `settings-general.tsx` now both keep the existing local stop/save flow but surface `Disabled TTS for this window, but failed to stop speech in other windows. ...` when `stopAllTts()` rejects, so the visible desktop global-TTS controls no longer fail silently.
 - [x] Dependency-free verification passed: `git diff --check` completed cleanly after this TTS-feedback fix.
 - [x] Dependency-free verification passed: a plain `node` file-read assertion script confirmed the new toast/error wiring in `app-layout.tsx` and `settings-general.tsx` plus the focused regression coverage in `app-layout.emergency-stop.test.tsx` and `settings-general.controlled-controls.test.ts`.
@@ -1074,6 +1086,7 @@
 - [x] Dependency-free verification passed: a plain `node` file-read assertion script confirmed the new mobile alert/error wiring in `ChatScreen.tsx`, the edit-preservation guard in `MessageQueuePanel.tsx`, the boolean `clearQueue(...)` contract in `message-queue.ts`, and the added regression coverage in `ChatScreen.message-queue-feedback.test.ts`.
 
 ### Blocked
+- [x] Broader mobile type-check verification is blocked by the worktree environment rather than this patch: `pnpm --filter @dotagents/mobile exec tsc --noEmit` fails because Expo/React Native inputs are unavailable here (`tsconfig.json` cannot resolve `expo/tsconfig.base`, React Native/Expo modules are missing, and JSX/lib settings do not load), so only dependency-free targeted verification was possible in this loop.
 - [x] Targeted automated verification for this desktop global-TTS feedback fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/app-layout.emergency-stop.test.tsx src/renderer/src/pages/settings-general.controlled-controls.test.ts` fails during `pretest` because `packages/shared` cannot find `tsup` (`node_modules` is missing), so Vitest never starts.
 - [x] Targeted automated verification for this bundle-import preview fix is blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts src/renderer/src/components/bundle-import-dialog.feedback.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
 - [x] Live desktop repro/validation for this Settings → Agents stale-save/delete bug is still blocked by missing workspace dependencies in this worktree: `REMOTE_DEBUGGING_PORT=9333 pnpm dev -- -d` fails during `predev` because `packages/shared` cannot find `tsup`, so the Electron renderer cannot be launched here without installing dependencies.
@@ -1219,6 +1232,8 @@
 - [ ] Whether the onboarding Exa step should eventually expose an explicit `Retry start` action in-place once runtime enable/start fails after config save, rather than keeping the current conservative `Installed` + recovery-copy state that sends the user to Settings → MCP Tools.
 
 ### Diagnosis / Rationale
+- A partial remote-settings fetch is still a new source of truth; once `getSettings()` fails, continuing to render the last successful `remoteSettings` object makes the mobile Settings screen dishonest because the warning says the current settings failed to load while the controls still reflect old data.
+- Clearing only the stale slices owned by the failed endpoints is the smallest safe fix: it preserves successful data from the same refresh, removes misleading old controls, and avoids inventing a larger retry/state-management abstraction inside an already broad screen.
 - The bug was not that TTS failed to disable for the current window; both handlers already stopped local playback first. The broken part was the global promise implied by the UI: the cross-window `stopAllTts()` step could fail and remain invisible while the persisted `ttsEnabled: false` state suggested everything had stopped.
 - A visible toast is the smallest safe fix because future TTS should still be disabled, local playback is already stopped, and the only missing behavior was honest recovery guidance when the multi-window cleanup step rejects.
 - The bundle-import bug was a direct contract mismatch between the desktop main process and renderer: the picker path used `null` for both a real cancel and an invalid selected file, so the UI could not tell whether the user backed out or whether the chosen bundle was broken.
@@ -1351,6 +1366,7 @@
 - Rolling the loop-service state back and forwarding that real boolean result is the smallest safe fix because it keeps the existing desktop loop editor/scheduler flow intact while finally making “saved” mean the repeat task actually reached disk.
 
 ### Assumptions
+- Assumption: when `getSettings()` fails during a mobile refresh, clearing the current `remoteSettings` controls is preferable to keeping the last successful copy visible, because the latest request is the only authoritative snapshot and stale editable controls are more misleading than temporarily hiding them behind the existing warning banner.
 - Assumption: keeping the `ttsEnabled: false` save even when `stopAllTts()` rejects is acceptable because the user clearly requested future TTS disablement, the current window is already stopped locally, and the concrete bug here was the missing warning about other windows possibly still playing.
 - Assumption: keeping the bundle-import dialog open with inline error copy plus a `Choose Another File` retry button is acceptable because the confirmed bug was a silent close/no-feedback path, and this localized recovery avoids both dead-close behavior and noisy duplicate toasts.
 - Assumption: using inline retry banners plus `Checking...` / `Unavailable` badges for MCP server-status failures is acceptable because this page already functions as a diagnostics surface, while toast spam on every 1-second poll failure would be noisy and less actionable.
@@ -1429,6 +1445,7 @@
 - Assumption: ending the active desktop conversation immediately when its backing past-session entry is deleted is acceptable because the delete action is explicit and destructive, and keeping a deleted conversation selected for the next panel action is more misleading than dropping back to fresh-session mode.
 
 ### Next Leads
+- Revisit the remaining mobile Settings follow-up notes from `mobile-app-improvement.md`, especially whether the Expo Web `Scan QR Code` flow still lacks a visible scanner modal and whether the `Unexpected text node ... child of a <View>` runtime warning is still reproducible once live Expo Web tooling is available in this worktree.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/app-layout.emergency-stop.test.tsx src/renderer/src/pages/settings-general.controlled-controls.test.ts` and live-verify both desktop global-TTS disable controls (sidebar/header toggle and Settings → General switch) while forcing a `stopAllTts()` failure, confirming the user now sees the cross-window warning instead of a silent partial stop.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts src/renderer/src/components/bundle-import-dialog.feedback.test.ts` and live-verify the desktop `Import Bundle` flow by selecting one invalid `.dotagents`/JSON file and then a valid one, confirming the dialog now stays open with an error plus `Choose Another File` instead of closing as if canceled.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/mobile exec vitest run src/screens/ChatScreen.message-queue-feedback.test.ts` and live-verify the mobile queue `Remove`, `Save`, `Retry`, and `Clear All` actions by forcing stale/processing queue states, confirming each now surfaces the new failure alert instead of silently no-oping.
