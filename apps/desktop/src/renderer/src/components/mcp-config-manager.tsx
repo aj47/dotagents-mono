@@ -2334,11 +2334,11 @@ export function MCPConfigManager({
                             ) : serverConfig && (
                               <>
                                 {/* Command/Transport Info */}
-                                <div className="text-sm">
+                                <div className="flex min-w-0 flex-col items-start gap-1 text-sm">
                                   <span className="font-medium text-muted-foreground">
                                     {serverConfig.transport === "stdio" || !serverConfig.transport ? "Command:" : "Transport:"}
-                                  </span>{" "}
-                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                  </span>
+                                  <code className="block w-full max-w-full rounded bg-muted px-2 py-1 text-xs font-mono leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-wrap">
                                     {serverConfig.transport === "stdio" || !serverConfig.transport
                                       ? `${serverConfig.command || ""} ${serverConfig.args ? serverConfig.args.join(" ") : ""}`
                                       : `${serverConfig.transport}: ${serverConfig.url || ""}`}

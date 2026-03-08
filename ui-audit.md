@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 55: Desktop MCP server transport/command details spill out of the card under tighter settings widths and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (`Settings` → `Capabilities` → `MCP Servers`, expanded server detail rows)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided revisiting the just-touched `settings-agents`, sessions, onboarding, and WhatsApp surfaces.
+  - Chunk 42 explicitly left the capabilities/MCP management area as a worthwhile follow-up once a fresh live pass was practical.
+  - A real Electron renderer session was available again on `:9333`, so this was a good chance to prefer live inspection over source-only guessing on a dense settings surface.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer, navigated to `http://localhost:5174/settings/capabilities`, and stress-tested the screen at `760×670` with simulated `150%` zoom
+  - switched the live page to the `MCP Servers` tab, expanded the existing `exa` and `whatsapp` server details, and captured screenshot-backed evidence in `tmp/ui-audit/settings-capabilities-760x670-zoom150.png` and `tmp/ui-audit/settings-capabilities-mcp-760x670-zoom150.png`
+  - measured the mounted `Transport:` and `Command:` detail rows directly in the DOM before editing source, then prototyped the smallest stacked/wrap-safe treatment in place and captured `tmp/ui-audit/settings-capabilities-mcp-transport-prototype-wrap.png`
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` exposes MCP server toggles, but not this expanded desktop server-details inspector with inline transport/command values
+
+#### Findings
+
+- Before the fix, the expanded desktop MCP server details had one concrete readability issue with clear user impact:
+  - the `Transport:` / `Command:` rows rendered as inline label text plus an inline `<code>` pill inside a narrow settings card
+  - in live inspection at `760×670` with simulated `150%` zoom, the `exa` transport value only had about `181px` of visible width but needed about `1169px`, and its rendered text extended to about `x=1420` while the visible row ended around `x=431.7`
+  - the `whatsapp` command row was smaller but still overflowed, with about `181px` of visible width against about `289px` of scroll width
+  - this is materially risky because transport URLs and commands are exactly the details users need when debugging, auditing, or editing MCP server configuration; letting the core value spill out of the card makes those details hard to read or compare
+
+#### Changes made
+
+- Hardened the expanded server detail row in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` with the smallest effective fix verified live:
+  - changed the `Transport:` / `Command:` wrapper from a single inline text row to a `min-w-0` stacked column
+  - changed the value from a tiny inline code pill to a full-width wrap-safe code block using `font-mono`, `whitespace-pre-wrap`, and `[overflow-wrap:anywhere]`
+  - kept the same information architecture and values intact; this is a local readability fix rather than a redesign of MCP server management
+- Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts` with focused source-contract coverage for the new wrap-safe expanded detail row
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new stacked detail-row wrapper, the wrap-safe code block classes, and the focused regression test are present
+- Live Electron evidence before the fix at `http://localhost:5174/settings/capabilities`:
+  - screenshots: `tmp/ui-audit/settings-capabilities-760x670-zoom150.png`, `tmp/ui-audit/settings-capabilities-mcp-760x670-zoom150.png`
+  - the `exa` transport row measured about `181px` of visible width against about `1169px` of scroll width, with the long value extending far beyond the visible card
+  - the `whatsapp` command row measured about `181px` of visible width against about `289px` of scroll width
+- Live DOM prototype verification of the intended fix:
+  - after applying the same stacked/wrap-safe treatment directly in the mounted DOM, both the `Transport:` and `Command:` values measured `scrollWidth = clientWidth = 181px`, eliminating horizontal spill
+  - the `exa` transport value remained fully readable as a taller wrapped block, and the `whatsapp` command path also stayed contained within the same card width
+  - screenshot: `tmp/ui-audit/settings-capabilities-mcp-transport-prototype-wrap.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/mcp-config-manager.tsx apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired real pre-fix renderer evidence with a live DOM prototype of the exact stacked/wrap-safe treatment and direct source verification of the patch.
+- This chunk is desktop-only: mobile `SettingsScreen` exposes an MCP server list with toggles, not the same expanded server-detail inspector that renders long transport URLs and command strings.
+- Tradeoff/rationale: the transport/command rows may now become taller sooner under tight widths or larger text, but that is a deliberate and safer tradeoff than letting essential server details run out of the visible card.
+- Best next UI audit chunk after this one: stay in `mcp-config-manager.tsx` only for another live MCP follow-up like tool-row name/action pressure or dense section-header controls under zoom, or move to another fresh live-inspectable desktop/mobile surface.
+
 ### 2026-03-08 — Chunk 54: Desktop agent create-form quick-setup presets clip horizontally under tighter settings widths and larger text
 
 - Area selected:

@@ -27,4 +27,11 @@ describe("mcp config manager layout", () => {
     expect(mcpConfigManagerSource).toContain('className="flex max-w-full shrink-0 flex-wrap items-center gap-1"')
     expect(mcpConfigManagerSource).toContain('className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1"')
   })
+
+  it("wraps expanded server transport and command details instead of letting long values spill out of the card", () => {
+    expect(mcpConfigManagerSource).toContain('className="flex min-w-0 flex-col items-start gap-1 text-sm"')
+    expect(mcpConfigManagerSource).toContain(
+      'className="block w-full max-w-full rounded bg-muted px-2 py-1 text-xs font-mono leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-wrap"',
+    )
+  })
 })
