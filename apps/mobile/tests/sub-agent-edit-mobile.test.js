@@ -52,6 +52,14 @@ test('LoopEditScreen keeps long profile chips stable on narrow screens', () => {
   assert.match(loopEditSource, /numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{profile\.displayName\}/);
 });
 
+test('LoopEditScreen explains when no saved profiles are available to assign', () => {
+  assert.match(loopEditSource, /const \[profileLoadError, setProfileLoadError\] = useState<string \| null>\(null\);/);
+  assert.match(loopEditSource, /setProfileLoadError\(null\);[\s\S]*?settingsClient\.getAgentProfiles\(\)/);
+  assert.match(loopEditSource, /setProfileLoadError\(err\.message \|\| 'Failed to load agent profiles'\);/);
+  assert.match(loopEditSource, /const showNoSavedProfilesHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length === 0;/);
+  assert.match(loopEditSource, /showNoSavedProfilesHelper && \([\s\S]*?No saved profiles yet\. Create one in Settings → Agents to assign it here\.[\s\S]*?\)/);
+});
+
 test('LoopEditScreen previews interval minutes with readable cadence labels', () => {
   assert.match(loopEditSource, /function formatLoopIntervalLabel\(minutes: number\): string/);
   assert.match(loopEditSource, /minutes === 60\) return 'Hourly'/);

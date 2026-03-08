@@ -117,6 +117,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,6 +144,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   useEffect(() => {
     if (!settingsClient) return;
     let cancelled = false;
+    setProfileLoadError(null);
     setIsLoadingProfiles(true);
     settingsClient.getAgentProfiles()
       .then((res) => {
@@ -152,6 +154,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       })
       .catch((err: Error) => {
         if (!cancelled) {
+          setProfileLoadError(err.message || 'Failed to load agent profiles');
           setError(err.message || 'Failed to load agent profiles');
         }
       })
@@ -279,6 +282,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const trimmedPrompt = formData.prompt.trim();
   const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
+  const showNoSavedProfilesHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
   const saveValidationMessage = !trimmedName && !trimmedPrompt
     ? 'Add a name and prompt to enable saving.'
     : !trimmedName
@@ -416,6 +420,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
         ))}
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
+      {showNoSavedProfilesHelper && (
+        <Text style={styles.helperText}>No saved profiles yet. Create one in Settings → Agents to assign it here.</Text>
+      )}
 
       {settingsClient && saveValidationMessage && (
         <Text style={styles.saveHelperText}>{saveValidationMessage}</Text>

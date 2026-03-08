@@ -1073,3 +1073,44 @@
   - Restore the mobile install in this worktree, then confirm in Expo Web that both edit flows keep the save action visibly disabled until the form is minimally valid.
   - Verify on a narrow viewport that the new helper copy is understandable without feeling repetitive once users start filling fields.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 25: clarify the empty loop-profile assignment state on mobile
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` profile-assignment section
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the mobile install / `expo/tsconfig.base` / Expo + React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` always renders the `No profile` chip first, then any fetched saved profiles.
+  - When there were zero saved profiles, the section mostly looked blank after that first chip; mobile users got no explicit cue that there simply were no assignable saved profiles yet.
+  - The only adjacent status copy was `Loading profiles...`, so the settled empty state had weaker clarity than the rest of the recently improved sub-agent form states.
+- Issue selected:
+  - The loop profile picker had an ambiguous empty state on mobile, making it harder to tell whether profile assignment was unavailable because nothing existed yet or because something silently failed.
+- Decision:
+  - Keep the existing chip layout and `No profile` default.
+  - Do not add a new CTA or redesign the form while live validation is blocked.
+  - Make the smallest local fix in `LoopEditScreen`: show a lightweight helper only when profile loading succeeds with zero saved profiles, and avoid showing that copy on load-failure paths.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - track profile-load failure separately from the broader screen error state,
+    - derive `showNoSavedProfilesHelper` only when config exists, profile loading is finished, no profile-load error occurred, and `profiles.length === 0`,
+    - render helper copy: `No saved profiles yet. Create one in Settings → Agents to assign it here.`
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new empty-state helper gating and copy.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new empty-state helper still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - If live validation shows profile assignment still feels like a dead end, a later iteration could consider a more explicit create-profile CTA, but that should wait for evidence.
+  - The loop profile section should still be compared against the profile-load error state once live validation returns to make sure those states read distinctly on mobile.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the empty-state helper reads clearly beneath the profile chips without overwhelming the section.
+  - After live validation returns, confirm the empty state and the profile-load error state are visually distinct and not confused for one another.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
