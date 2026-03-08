@@ -4,5 +4,5 @@
  * The shell parsing utility is now in the shared package.
  */
 
-export { parseShellCommand } from '@dotagents/shared'
+export { formatShellCommand, parseShellCommand } from '@dotagents/shared'
 

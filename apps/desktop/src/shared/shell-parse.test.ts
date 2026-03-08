@@ -1,4 +1,4 @@
-import { parseShellCommand } from './shell-parse'
+import { formatShellCommand, parseShellCommand } from './shell-parse'
 
 describe('parseShellCommand', () => {
   it('should parse simple command without arguments', () => {
@@ -93,6 +93,39 @@ describe('parseShellCommand', () => {
     expect(result).toEqual({
       command: 'C:\\Users\\test\\file.exe',
       args: ['--flag']
+    })
+  })
+
+  it('should preserve unquoted Windows paths without treating path separators as escapes', () => {
+    const result = parseShellCommand('C:\\Users\\test\\file.exe --flag')
+    expect(result).toEqual({
+      command: 'C:\\Users\\test\\file.exe',
+      args: ['--flag']
+    })
+  })
+
+  it('should treat backslash-escaped spaces outside quotes as part of the same token', () => {
+    const result = parseShellCommand('python /Users/test/My\\ Scripts/run.py --flag')
+    expect(result).toEqual({
+      command: 'python',
+      args: ['/Users/test/My Scripts/run.py', '--flag']
+    })
+  })
+
+  it('should unescape quoted tokens produced by formatShellCommand', () => {
+    const formatted = formatShellCommand('/Applications/My Tool/run.sh', ['--allowed-dir', '/Users/test/My Projects'])
+    expect(parseShellCommand(formatted)).toEqual({
+      command: '/Applications/My Tool/run.sh',
+      args: ['--allowed-dir', '/Users/test/My Projects']
+    })
+  })
+
+  it('should round-trip empty args and backslashes through formatShellCommand', () => {
+    const formatted = formatShellCommand('cmd', ['', 'C:\\Program Files\\DotAgents'])
+    expect(formatted).toBe('cmd "" "C:\\Program Files\\DotAgents"')
+    expect(parseShellCommand(formatted)).toEqual({
+      command: 'cmd',
+      args: ['', 'C:\\Program Files\\DotAgents']
     })
   })
 })

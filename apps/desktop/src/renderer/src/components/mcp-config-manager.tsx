@@ -63,7 +63,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES, getOAuthExample } from "@shared/oauth-examples"
-import { parseShellCommand } from "@shared/shell-parse"
+import { formatShellCommand, parseShellCommand } from "@shared/shell-parse"
 
 
 
@@ -114,9 +114,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   )
   const [fullCommand, setFullCommand] = useState(() => {
     if (server?.config.command) {
-      const cmd = server.config.command
-      const args = server.config.args ? server.config.args.join(" ") : ""
-      return args ? `${cmd} ${args}` : cmd
+      return formatShellCommand(server.config.command, server.config.args || [])
     }
     return ""
   })
@@ -155,9 +153,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
 
     // Combine command and args for editing, or reset to empty
     if (server?.config.command) {
-      const cmd = server.config.command
-      const args = server.config.args ? server.config.args.join(" ") : ""
-      setFullCommand(args ? `${cmd} ${args}` : cmd)
+      setFullCommand(formatShellCommand(server.config.command, server.config.args || []))
     } else {
       setFullCommand("")
     }
@@ -669,7 +665,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                         <h5 className="font-medium text-sm">{example.name}</h5>
                         <p className="text-xs text-muted-foreground mt-1">
                           {example.config.transport === "stdio"
-                            ? `Command: ${example.config.command} ${example.config.args?.join(" ") || ""}`
+                            ? `Command: ${formatShellCommand(example.config.command || "", example.config.args || [])}`
                             : `URL: ${example.config.url}`
                           }
                         </p>
@@ -690,10 +686,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                         onClick={() => {
                           setName(example.name)
                           setTransport(example.config.transport)
-                          // Combine command and args into fullCommand
-                          const cmd = example.config.command || ""
-                          const args = example.config.args?.join(" ") || ""
-                          setFullCommand(args ? `${cmd} ${args}` : cmd)
+                          setFullCommand(formatShellCommand(example.config.command || "", example.config.args || []))
                           setUrl(example.config.url || "")
                           setEnv(
                             example.config.env
@@ -751,10 +744,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                           onClick={() => {
                             setName(example.name)
                             setTransport(example.config.transport)
-                            // Combine command and args into fullCommand
-                            const cmd = example.config.command || ""
-                            const args = example.config.args?.join(" ") || ""
-                            setFullCommand(args ? `${cmd} ${args}` : cmd)
+                            setFullCommand(formatShellCommand(example.config.command || "", example.config.args || []))
                             setUrl(example.config.url || "")
                             setEnv(
                               example.config.env
@@ -2336,7 +2326,7 @@ export function MCPConfigManager({
                                   </span>{" "}
                                   <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                     {serverConfig.transport === "stdio" || !serverConfig.transport
-                                      ? `${serverConfig.command || ""} ${serverConfig.args ? serverConfig.args.join(" ") : ""}`
+                                      ? formatShellCommand(serverConfig.command || "", serverConfig.args || [])
                                       : `${serverConfig.transport}: ${serverConfig.url || ""}`}
                                   </code>
                                 </div>

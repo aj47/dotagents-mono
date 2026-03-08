@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Shared shell-command parsing / formatting reliability for desktop MCP stdio server configuration in `packages/shared/src/shell-parse.ts`, `apps/desktop/src/shared/shell-parse.ts`, and `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`.
 - 2026-03-08: Desktop memories search flow in `apps/desktop/src/renderer/src/pages/memories.tsx`, plus mobile memories-management parity review in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`.
 - 2026-03-08: Desktop repeat-task creation flow in `apps/desktop/src/renderer/src/pages/settings-loops.tsx` plus main-process repeat-task persistence in `apps/desktop/src/main/loop-service.ts` / `apps/desktop/src/main/agents-files/tasks.ts`, with mobile loop-creation parity review in `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts`.
 - 2026-03-08: Desktop transcript post-processing prompt editor save behavior in `apps/desktop/src/renderer/src/pages/settings-general.tsx` plus mobile parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
@@ -17,6 +18,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop MCP stdio server command editing/testing now round-trips quoted paths, escaped spaces, empty args, and Windows-style paths safely via shared shell-command formatting/parsing guardrails.
 - 2026-03-08: Desktop memories search now debounces backend queries, keeps search results keyed to the settled query, and shows inline loading feedback so fast typing no longer spams searches or risks stale-result flashes.
 - 2026-03-08: Desktop repeat-task creation now uses collision-safe readable IDs, so creating a second task with the same name no longer silently overwrites the first task file/config entry.
 - 2026-03-08: Desktop transcript post-processing prompt editing now uses a local draft, debounced autosave, blur flush, and latest-config merging instead of mutating config on every keystroke inside the dialog.
@@ -25,6 +27,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/shared/shell-parse.test.ts` (blocked: `vitest` not installed in this worktree).
+- 2026-03-08: attempted `pnpm --filter @dotagents/shared build` (blocked: `tsup` unavailable because this worktree has no installed dependencies / `node_modules`).
+- 2026-03-08: `git diff --check`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.search.test.ts` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.ids.test.ts` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: `git diff --check`
@@ -32,17 +37,53 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused desktop shell-parse verification for `src/shared/shell-parse.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
+- 2026-03-08: Shared package build verification for `@dotagents/shared` is blocked in this worktree because `pnpm --filter @dotagents/shared build` cannot find `tsup`; `node_modules` is missing.
 - 2026-03-08: Focused desktop Vitest verification for `src/renderer/src/pages/memories.search.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Focused desktop Vitest verification for `src/renderer/src/pages/settings-loops.ids.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Shared utility reliability / guardrails
+- Mobile memories management flows
+- Remote/mobile connection settings verification UX
 
 ### Next Highest-Value Targets
-- Inspect shared utility reliability / guardrails for the next small resilience win
-- Inspect mobile memories management flows for the next localized UX/reliability improvement that does not overlap this desktop search pass
+- Inspect mobile memories management flows for the next localized UX/reliability improvement that does not overlap the recent desktop settings and shared-utility passes
+- Inspect remote/mobile connection settings verification UX for the next small trust-building resilience win
 - Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Desktop MCP stdio shell-command round-trip guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - shared shell-command utility in `packages/shared/src/shell-parse.ts`
+  - desktop MCP server configuration UI in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`
+- Why it was chosen:
+  - the ledger identified shared utility reliability / guardrails as the next fresh, non-overlapping target
+  - desktop MCP stdio server setup depends on a shared parser to split the user-entered full command for both save and test actions, so a small bug there directly affects a core power-user configuration flow
+  - the existing parser did not handle common escaped-space input, and the desktop UI rebuilt `command + args` with a plain join that could silently lose quoting for args containing spaces when editing existing configs or applying examples
+- What was inspected:
+  - `packages/shared/src/shell-parse.ts`
+  - `apps/desktop/src/shared/shell-parse.ts` and `apps/desktop/src/shared/shell-parse.test.ts`
+  - `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` around stdio save/test and example-selection flows
+  - confirmed there is no equivalent mobile MCP configuration surface that needed the same change in this pass
+- Improvement made:
+  - added shared `formatShellCommand(...)` support so command/arg arrays can be rendered back into a safe editable command string without losing empty args, quoted paths, or backslashes
+  - taught `parseShellCommand(...)` to handle backslash-escaped spaces and other common escaped separators outside quotes while still preserving normal unquoted Windows path separators
+  - updated the desktop MCP config manager to use the shared formatter when initializing/editing/displaying stdio commands and when applying built-in examples, so edit/test/save round-trips stay stable for args with spaces
+  - added focused regression coverage in `apps/desktop/src/shared/shell-parse.test.ts`
+- Assumptions / tradeoffs / rationale:
+  - kept the change at the shared utility + MCP settings seam instead of adding heavier validation UX because the main user harm was incorrect parsing/round-tripping, not lack of surface-level affordances
+  - intentionally preserved unquoted Windows-style paths even though full POSIX shell escaping is more complex, because this UI stores command/arg arrays rather than executing through a shell parser directly and Windows paths are a common user input
+  - used a formatter rather than more ad hoc quoting in the React component so the parsing/formatting behavior stays centralized and reusable
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/shared/shell-parse.test.ts`, but the current workspace still lacks installed dependencies and `vitest` was unavailable
+  - attempted `pnpm --filter @dotagents/shared build`, but the current workspace still lacks installed dependencies and `tsup` was unavailable
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run `src/shared/shell-parse.test.ts` and `pnpm --filter @dotagents/shared build`
+  - inspect mobile memories management flows for the next localized UX/reliability improvement
+  - inspect remote/mobile connection settings verification UX after this MCP command-entry reliability pass
 
 ### 2026-03-08 — Desktop memories search debounce and stale-result guardrails
 - Date:
