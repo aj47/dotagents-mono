@@ -765,6 +765,15 @@ export function BundleImportDialog({
               </p>
             </div>
 
+            <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-3">
+              <div className="space-y-1">
+                <Label>Automatic safety backup</Label>
+                <p className="text-xs text-muted-foreground">
+                  Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup. You can restore it later from Settings → Capabilities → Restore Backup.
+                </p>
+              </div>
+            </div>
+
             {/* Component selection */}
             <div className="space-y-2">
               <Label>Components to import</Label>

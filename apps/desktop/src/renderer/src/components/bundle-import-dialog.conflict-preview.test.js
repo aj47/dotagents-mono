@@ -25,6 +25,13 @@ test('bundle import dialog renders an import plan with add and rename outcome de
   assert.match(dialogSource, /Renamed ID preview:/);
 });
 
+test('bundle import dialog shows the automatic safety backup guarantee before confirmation', () => {
+  assert.match(dialogSource, /<Label>Automatic safety backup<\/Label>/);
+  assert.match(dialogSource, /Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup\./);
+  assert.match(dialogSource, /You can restore it later from Settings → Capabilities → Restore Backup\./);
+  assert.match(dialogSource, /const backupMessage = result\.backupFilePath/);
+});
+
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {
   assert.match(bundleServiceSource, /selectedItems\?: BundleItemSelectionOptions/);
   assert.match(bundleServiceSource, /function createImportSelectionSet\(ids\?: string\[\]\): Set<string> \| null/);

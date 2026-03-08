@@ -1679,3 +1679,34 @@
   - Re-run shared/mobile package builds once this worktree has the missing package-manager artifacts/tooling restored.
 
 - Next recommended issue work item: revisit `#57` or `#25` for another narrow trust/preview follow-up, or continue `#58` only if the next slice is similarly self-contained and does not depend on broader mobile environment repair.
+
+##### Issue #57 / #25 — Bundle import trust UX: pre-confirm automatic backup notice
+
+- Selection rationale:
+  - The latest `#57` trust-track comments explicitly called for a backup notice before confirm, and `#25` treats that trust behavior as part of the shared `.dotagents` import contract.
+  - This was a small, directly observable gap in the existing shared bundle import flow with user value across local imports, skill-only imports, Hub installs, and backup restores.
+- Investigation:
+  - Re-read open issues `#57` and `#25` plus their comments to confirm the remaining requirement: users should see the automatic snapshot/restore guarantee before any bundle write, not only after import toasts.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog already surfaced conflict previews and post-import `backupFilePath` toast copy, but had no pre-confirm backup notice in the body.
+  - Confirmed by inspecting `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and `apps/desktop/src/renderer/src/pages/settings-skills.tsx` that the same dialog is reused for Hub installs and local bundle imports, so one renderer change would cover the whole trust track without duplicating logic.
+- Important assumptions:
+  - Assumption: source-level confirmation of the missing notice is sufficient reproduction for this slice.
+  - Why acceptable: the trust gap is the absence of explicit UI copy in a known shared dialog, and the dialog reuse points are directly visible in code.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the affected bundle import dialog is desktop-renderer-specific, with no equivalent mobile bundle-import surface in this repo.
+- Changes implemented:
+  - Added an `Automatic safety backup` notice card to `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` explaining that DotAgents creates a fresh pre-import backup before any bundle write and that users can later restore it from `Settings → Capabilities → Restore Backup`.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` with a targeted regression test locking in the new pre-confirm backup guarantee copy alongside the existing post-import backup-path wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57 / #25:
+  - Consider whether the pre-confirm notice should also surface richer backup metadata (for example, the target layer or expected restore location) once that information can be shown without adding noise.
+  - Decide whether bundle trust UX needs a more persistent post-import reminder surface than toast history alone for users who postpone restore/MCP follow-up actions.
+  - Re-run any fuller desktop component/Vitest coverage for bundle-import flows if/when the worktree regains that test entrypoint.
+
+- Next recommended issue work item: stay on `#57` / `#25` for another narrow trust/preview polish slice only if it is similarly local, otherwise pivot back to `#58` for a comparably self-contained history/reliability improvement.
