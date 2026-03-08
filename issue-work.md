@@ -2994,3 +2994,39 @@
   - Consider including conflict-plan expectations or selected-item counts in backup metadata later if users need to compare multiple experimental imports before restoring.
   - Re-run the real desktop package test target once dependencies are restored in this worktree so the new `bundle-service.test.ts` assertions execute under Vitest instead of only via source + type checks.
 - Next recommended issue work item: refresh open issues again and prefer a non-`#57` desktop reliability/UX bug if one is now more actionable; otherwise the next honest `#57` step is restore-flow provenance polish rather than broader bundle refactoring.
+
+##### Issue #58 — Mobile now persists stored full-history metadata across session loads
+
+- Selection rationale:
+  - Refreshed the open issue list after the local `#57` commit and deliberately avoided immediately reworking the same bundle surfaces again.
+  - Re-read prior `#58` notes and only continued because a new source-confirmed persistence gap still existed in current mobile code, matching the earlier guidance to continue only when another path-level mismatch was visible in source.
+  - This slice is small but user-facing: it preserves full-history trust metadata already returned by the server so mobile users do not lose full-history affordances after the first lazy load.
+- Investigation:
+  - Inspected `apps/mobile/src/lib/syncService.ts`, `apps/mobile/src/store/sessions.ts`, `apps/mobile/src/screens/ChatScreen.tsx`, and `packages/shared/src/session.ts`.
+  - Confirmed `fetchFullConversation()` already returned `fullHistoryMessages` and `compaction`, but the shared `Session` model did not persist those fields and `loadSessionMessages()` dropped them when saving fetched sessions.
+  - Confirmed `ChatScreen` always re-hydrated preserved history from the network when it saw summary messages, even when that same full-history payload had already been fetched earlier for the session.
+  - That meant the server had the right provenance data, but mobile stored it only transiently in the fetch result instead of persisting it across session revisits and sync refreshes.
+- Important assumptions:
+  - Assumption: extending the shared session model with optional `fullHistoryMessages` and `compaction` is safe for existing consumers.
+  - Why acceptable: the fields are additive/optional, existing callers already tolerate absent values, and the server/mobile code was already using the same concepts in fetch results.
+  - Assumption: source-contract tests are an acceptable verification layer for this worktree even though the full Expo/mobile TypeScript environment is unavailable.
+  - Why acceptable: this repo already uses source assertions for the mobile history UX, and the failing app-wide mobile `tsc` run was blocked by missing workspace dependencies/config (`expo/tsconfig.base`, React Native/Expo packages), not by targeted errors introduced in this slice.
+- Changes implemented:
+  - Extended `packages/shared/src/session.ts` so `Session` can persist `fullHistoryMessages` and `compaction`, and `SessionListItem` can carry `compaction` metadata forward for future list-level history badges.
+  - Updated `apps/mobile/src/lib/syncService.ts` so both full session hydration and newer-server sync pulls keep `rawMessages`/`compaction` instead of throwing them away after conversion.
+  - Updated `apps/mobile/src/store/sessions.ts` so `loadSessionMessages()` returns and persists stored full-history metadata when a session is already loaded, when a late fetch races with newer local state, and when a fresh server fetch is saved.
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to reuse stored `fullHistoryMessages` + `compaction` from the current session before falling back to another network hydrate, preserving offline/revisit trust cues and avoiding unnecessary repeat fetches.
+  - Added/updated source tests in `apps/mobile/src/lib/syncService.full-history-response.test.js`, `apps/mobile/src/screens/ChatScreen.full-history-banner.test.js`, and new `apps/mobile/src/store/sessions.full-history-persistence.test.js`.
+- Verification run:
+  - Completed: `node --test apps/mobile/src/lib/syncService.full-history-response.test.js apps/mobile/src/screens/ChatScreen.full-history-banner.test.js apps/mobile/src/store/sessions.full-history-persistence.test.js apps/mobile/tests/conversation-history-full-history.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p packages/shared/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+  - Blocked by environment: `pnpm exec tsc --noEmit -p apps/mobile/tsconfig.json` ❌ because this worktree is missing the Expo/mobile toolchain inputs (`expo/tsconfig.base`, React Native/Expo module types, and other mobile dependencies), so full mobile compile verification could not be completed here.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Consider surfacing the newly persisted `SessionListItem.compaction` metadata in `SessionListScreen` so users can tell which conversations are compacted/partial before opening them.
+  - Once the mobile workspace dependencies are restored, rerun the Expo/mobile typecheck (and any app-level tests) to verify the additive shared-session fields across the full app.
+  - If another `#58` slice is needed later, prefer discoverability polish (session-list badges / entry-point hints) over more storage refactors.
+- Next recommended issue work item: refresh open issues again and prefer a fresh bug or concrete desktop/mobile UX gap that is not another persistence-only `#58` follow-up unless list-level compaction discoverability becomes the highest-value next slice.

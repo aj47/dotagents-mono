@@ -8,3 +8,10 @@ test('fetchFullConversation preserves stored full-history and compaction metadat
   assert.match(syncServiceSource, /fullHistoryMessages: fullConv\.rawMessages\?\.map\(fromServerMessage\)/)
   assert.match(syncServiceSource, /compaction: fullConv\.compaction/)
 })
+
+test('sync service persists full-history and compaction metadata when mobile sessions are hydrated from the server', () => {
+  assert.match(syncServiceSource, /fullHistoryMessages: conv\.rawMessages\?\.map\(fromServerMessage\)/)
+  assert.match(syncServiceSource, /compaction: conv\.compaction/)
+  assert.match(syncServiceSource, /fullHistoryMessages: fullConv\.rawMessages\?\.map\(fromServerMessage\)/)
+  assert.match(syncServiceSource, /compaction: fullConv\.compaction/)
+})

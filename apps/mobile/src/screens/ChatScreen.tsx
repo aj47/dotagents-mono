@@ -950,13 +950,18 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (currentSession.messages.length > 0) {
         const chatMessages: ChatMessage[] = withSummaryMetadata(currentSession.messages as ChatMessage[]);
+        const storedFullHistory = currentSession.fullHistoryMessages
+          ? withSummaryMetadata(currentSession.fullHistoryMessages as ChatMessage[])
+          : null;
         setMessages(chatMessages);
+        setFullHistoryMessages(storedFullHistory);
+        setHistoryCompaction(currentSession.compaction ?? null);
 
         // Extract respond_to_user content from saved messages for display (#32, #33)
         const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
         setRespondToUserHistory(savedResponses);
 
-        if (chatMessages.some(message => message.isSummary) && currentSession.serverConversationId && hasServerAuth) {
+        if (!storedFullHistory && chatMessages.some(message => message.isSummary) && currentSession.serverConversationId && hasServerAuth) {
           void hydrateStoredFullHistory(currentSession.id, currentSession.serverConversationId);
         }
       } else if (currentSession.serverConversationId && hasServerAuth) {

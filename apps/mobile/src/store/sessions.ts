@@ -589,6 +589,8 @@ export function useSessions(): SessionStore {
     if (session.messages.length > 0) {
       return {
         messages: session.messages,
+        fullHistoryMessages: session.fullHistoryMessages,
+        compaction: session.compaction,
         title: session.title,
         updatedAt: session.updatedAt,
         freshlyFetched: false,
@@ -608,6 +610,8 @@ export function useSessions(): SessionStore {
       if (latestSession && latestSession.messages.length > 0) {
         return {
           messages: latestSession.messages,
+          fullHistoryMessages: latestSession.fullHistoryMessages,
+          compaction: latestSession.compaction,
           title: latestSession.title,
           updatedAt: latestSession.updatedAt,
           freshlyFetched: false,
@@ -621,6 +625,8 @@ export function useSessions(): SessionStore {
           title: result.title,
           updatedAt: result.updatedAt,
           messages: result.messages,
+          fullHistoryMessages: result.fullHistoryMessages,
+          compaction: result.compaction,
           // Clear serverMetadata since we now have real messages
           serverMetadata: undefined,
         };

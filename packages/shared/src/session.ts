@@ -2,6 +2,7 @@
  * Session types and utilities for DotAgents apps
  */
 
+import type { ConversationCompactionMetadata } from './api-types';
 import type { ToolCall, ToolResult } from './types';
 
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi;
@@ -30,6 +31,8 @@ export interface Session {
   createdAt: number;
   updatedAt: number;
   messages: SessionChatMessage[];
+  fullHistoryMessages?: SessionChatMessage[];
+  compaction?: ConversationCompactionMetadata;
   /** Server-side conversation ID for continuing conversations on the DotAgents server */
   serverConversationId?: string;
   /** Optional metadata about the session */
@@ -53,6 +56,7 @@ export interface SessionListItem {
   messageCount: number;
   lastMessage: string;
   preview: string;
+  compaction?: ConversationCompactionMetadata;
 }
 
 /**
@@ -123,6 +127,7 @@ export function sessionToListItem(session: Session): SessionListItem {
       messageCount: session.serverMetadata.messageCount,
       lastMessage: session.serverMetadata.lastMessage,
       preview: session.serverMetadata.preview,
+      compaction: session.compaction,
     };
   }
 
@@ -137,6 +142,7 @@ export function sessionToListItem(session: Session): SessionListItem {
     messageCount: session.messages.length,
     lastMessage: preview.substring(0, 100),
     preview: preview.substring(0, 200),
+    compaction: session.compaction,
   };
 }
 

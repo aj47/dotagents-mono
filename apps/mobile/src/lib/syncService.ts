@@ -72,6 +72,8 @@ function serverConversationToSession(conv: ServerConversationFull): Session {
     createdAt: conv.createdAt,
     updatedAt: conv.updatedAt,
     messages: conv.messages.map(fromServerMessage),
+    fullHistoryMessages: conv.rawMessages?.map(fromServerMessage),
+    compaction: conv.compaction,
     serverConversationId: conv.id,
     metadata: conv.metadata as Session['metadata'],
   };
@@ -154,6 +156,8 @@ export async function syncConversations(
                 title: fullConv.title,
                 updatedAt: fullConv.updatedAt,
                 messages: fullConv.messages.map(fromServerMessage),
+                fullHistoryMessages: fullConv.rawMessages?.map(fromServerMessage),
+                compaction: fullConv.compaction,
               };
               result.updated++;
             } catch (err: any) {
