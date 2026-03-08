@@ -92,6 +92,7 @@ async function loadSettingsLoops(
   options: {
     loops?: Array<Record<string, any>>
     loopStatuses?: Array<Record<string, any>>
+    saveLoopResult?: { success: boolean }
     deleteLoopResult?: { success: boolean }
     startLoopResult?: { success: boolean }
     stopLoopResult?: { success: boolean }
@@ -99,7 +100,7 @@ async function loadSettingsLoops(
 ) {
   vi.resetModules()
 
-  const saveLoop = vi.fn(async () => undefined)
+  const saveLoop = vi.fn(async () => options.saveLoopResult ?? { success: true })
   const startLoop = vi.fn(async () => options.startLoopResult ?? { success: true })
   const stopLoop = vi.fn(async () => options.stopLoopResult ?? { success: true })
   const deleteLoop = vi.fn(async () => options.deleteLoopResult ?? { success: true })
@@ -229,6 +230,34 @@ describe("desktop repeat-task interval editing", () => {
     })
     expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
     expect(success).toHaveBeenCalledWith("Task created")
+  })
+
+  it("keeps the editor open when the backend reports the task was not persisted", async () => {
+    const runtime = createHookRuntime()
+    const { Component, saveLoop, startLoop, success, error, invalidateQueries } = await loadSettingsLoops(runtime, {
+      saveLoopResult: { success: false },
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Add Task").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "name").props.onChange({ target: { value: "Daily Summary" } })
+    findTextareaById(tree, "prompt").props.onChange({ target: { value: "Summarize recent activity" } })
+    findInputById(tree, "interval").props.onChange({ target: { value: "60" } })
+
+    tree = runtime.render(Component, {} as any)
+    await findButtonWithText(tree, "Save").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    expect(saveLoop).toHaveBeenCalled()
+    expect(startLoop).not.toHaveBeenCalled()
+    expect(success).not.toHaveBeenCalledWith("Task created")
+    expect(error).toHaveBeenCalledWith("Failed to save task")
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["loops"] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["loop-statuses"] })
+    expect(findInputById(tree, "name").props.value).toBe("Daily Summary")
+    expect(findTextareaById(tree, "prompt").props.value).toBe("Summarize recent activity")
   })
 
   it("reports scheduling failure after saving instead of falsely showing task creation success", async () => {

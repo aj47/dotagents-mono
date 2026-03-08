@@ -98,6 +98,11 @@ export function SettingsLoops() {
   const [editing, setEditing] = useState<EditingLoop | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
+  const refreshLoopQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+    queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+  }
+
   const loopsQuery = useQuery({
     queryKey: ["loops"],
     queryFn: async () => tipcClient.getLoops() as Promise<LoopConfig[]>,
@@ -141,14 +146,12 @@ export function SettingsLoops() {
     try {
       const result = await tipcClient.deleteLoop({ loopId: id })
       if (!result?.success) {
-        queryClient.invalidateQueries({ queryKey: ["loops"] })
-        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        refreshLoopQueries()
         toast.error("This task no longer exists. Refreshed the task list.")
         return
       }
 
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+      refreshLoopQueries()
       toast.success("Task deleted")
     } catch {
       toast.error("Failed to delete task")
@@ -181,7 +184,12 @@ export function SettingsLoops() {
     const hadScheduledRuntime = editing.id ? hasScheduledLoopRuntime(statusByLoopId.get(editing.id)) : false
 
     try {
-      await tipcClient.saveLoop({ loop: loopData })
+      const result = await tipcClient.saveLoop({ loop: loopData })
+      if (!result?.success) {
+        refreshLoopQueries()
+        toast.error("Failed to save task")
+        return
+      }
     } catch {
       toast.error("Failed to save task")
       return
@@ -229,7 +237,12 @@ export function SettingsLoops() {
     const hadScheduledRuntime = hasScheduledLoopRuntime(statusByLoopId.get(loop.id))
 
     try {
-      await tipcClient.saveLoop({ loop: updatedLoop })
+      const result = await tipcClient.saveLoop({ loop: updatedLoop })
+      if (!result?.success) {
+        refreshLoopQueries()
+        toast.error("Failed to update task")
+        return
+      }
     } catch {
       toast.error("Failed to update task")
       return

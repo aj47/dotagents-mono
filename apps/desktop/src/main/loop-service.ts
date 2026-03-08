@@ -94,15 +94,17 @@ class LoopService {
   }
 
   /** Persist a single task to the global .agents/tasks/ layer. */
-  private saveTask(task: LoopConfig): void {
+  private saveTask(task: LoopConfig): boolean {
     try {
       const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
       writeTaskFile(globalLayer, task, { maxBackups: 10 })
     } catch (error) {
       logApp("[LoopService] Error saving task file:", error)
+      return false
     }
     // Shadow: keep config.json in sync for backward compatibility
     this.syncToConfigJson()
+    return true
   }
 
   /** Remove a task's files from the global .agents/tasks/ layer. */
@@ -141,14 +143,28 @@ class LoopService {
   }
 
   /** Save (create or update) a loop. */
-  saveLoop(loop: LoopConfig): void {
+  saveLoop(loop: LoopConfig): boolean {
     const idx = this.loops.findIndex((l) => l.id === loop.id)
+    const previousLoop = idx >= 0 ? this.loops[idx] : null
+
     if (idx >= 0) {
       this.loops[idx] = loop
     } else {
       this.loops.push(loop)
     }
-    this.saveTask(loop)
+
+    if (!this.saveTask(loop)) {
+      if (idx >= 0 && previousLoop) {
+        this.loops[idx] = previousLoop
+      } else {
+        this.loops.pop()
+      }
+
+      logApp(`[LoopService] Rolled back in-memory task "${loop.name}" (${loop.id}) after persistence failure`)
+      return false
+    }
+
+    return true
   }
 
   /** Delete a loop. */
