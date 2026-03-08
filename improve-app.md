@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop app `before-quit` cleanup synchronization in `apps/desktop/src/main/index.ts`, with headless shutdown parity reviewed in that file, async shutdown semantics checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/remote-server.ts`, existing desktop main-process test patterns reviewed in `apps/desktop/src/main/index.hub-install.test.ts`, focused source-level coverage added in `tests/desktop-app-quit-cleanup.test.js`, and targeted verification run locally via `node --test` because this dependency-light worktree does not have desktop `vitest` available.
 - 2026-03-08: Mobile `Settings → Agent Loops` mutation feedback in `apps/mobile/src/screens/SettingsScreen.tsx`, with loop API response semantics reviewed in `apps/mobile/src/lib/settingsApi.ts`, existing mobile loop action coverage rechecked in `apps/mobile/tests/settings-loop-actions-mobile.test.js` / `apps/mobile/tests/settings-loop-feedback-mobile.test.js` / `apps/mobile/tests/settings-loop-metadata-mobile.test.js`, new mutation-feedback coverage added in `apps/mobile/tests/settings-loop-mutation-feedback-mobile.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Mobile session-list delete guardrails in `apps/mobile/src/screens/SessionListScreen.tsx`, with async delete / clear persistence semantics reviewed in `apps/mobile/src/store/sessions.ts`, destructive confirmation patterns cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/session-list-delete-guardrails.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop repeat-task `runOnStartup` scheduling guardrails in `apps/desktop/src/main/loop-service.ts`, with startup/stop/reload/shutdown call sites reviewed in `apps/desktop/src/main/index.ts` and `apps/desktop/src/main/tipc.ts`, existing repeat-task renderer feedback context rechecked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source-level coverage added in `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree still does not have desktop Vitest dependencies installed.
@@ -81,6 +82,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop app `before-quit` cleanup still needs execution-path validation once desktop Vitest or a runnable Electron target is available, especially to confirm real quit re-entry, shared-timeout fallback, and slow ACP/MCP/remote-server shutdown timing all behave predictably.
 - 2026-03-08: Mobile `Settings → Agent Loops` row-local pending / retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline warning density, disabled-action affordances, and optimistic `lastRunAt` refresh feel clear on compact screens.
 - 2026-03-08: Mobile session-list delete / clear-all pending-state and failure-alert UX still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm long-press discoverability, `Deleting chat...` density, and the new failure copy feel clear on both native and web.
 - 2026-03-08: Desktop repeat-task `runOnStartup` disable/reload/shutdown behavior still needs behavioral validation once desktop Vitest or a runnable Electron target is available, especially for enable-then-immediate-disable, repeated `startLoop(...)` calls, bundle-reload pauses, and quit-right-after-launch timing.
@@ -101,6 +103,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop app `before-quit` now waits for ACP shutdown, MCP cleanup, and remote-server shutdown together in `apps/desktop/src/main/index.ts`, bounded by one quit-time timeout and with per-service best-effort error logging, so the normal desktop quit path no longer fire-and-forgets ACP shutdown or skips local server cleanup before exiting; tradeoff: this pass intentionally stays scoped to the GUI quit path and source-level guardrails instead of refactoring the already-functional headless shutdown flow.
 - 2026-03-08: Mobile `Settings → Agent Loops` now tracks per-row `run` / `toggle` / `delete` mutations in `apps/mobile/src/screens/SettingsScreen.tsx`, disables conflicting controls while a row action is in flight, treats false `settingsClient` success results as real failures, replaces one-shot loop-action alerts with inline retryable warnings, and updates `lastRunAt` locally before background refresh on successful runs, so loop actions no longer feel fire-and-forget or silently fail behind transient alerts; tradeoff: this pass intentionally keeps the existing compact loop row layout and source-level verification instead of broadening into a settings-screen redesign or new global toast infrastructure.
 - 2026-03-08: Mobile `Chats` session history now routes delete / clear-all through one confirmation helper in `apps/mobile/src/screens/SessionListScreen.tsx`, awaits async `sessionStore.deleteSession(...)` / `clearAllSessions()` persistence before treating destructive actions as done, surfaces explicit delete-failure alerts instead of fire-and-forget async rejection noise, and temporarily disables overlapping destructive actions while a delete is in progress, so chat cleanup no longer depends on raw web-only `window.confirm(...)` calls or silent persistence failures; tradeoff: this pass intentionally keeps the existing long-press-to-delete gesture and alert-based recovery instead of broadening into explicit row delete controls or a custom modal.
 - 2026-03-08: Desktop repeat-task startup scheduling now tracks pending `runOnStartup` immediates in `apps/desktop/src/main/loop-service.ts`, cancels or replaces them when a loop is stopped/restarted, and skips non-manual executions after a loop has been disabled or global scheduling has entered shutdown, so enabled-on-start tasks no longer risk one stray extra run during rapid toggle, reload, or quit edges; tradeoff: this pass stays narrowly focused on the existing main-process scheduler and uses source-level guardrails in this dependency-light worktree instead of a broader runtime refactor.
@@ -173,6 +176,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-app-quit-cleanup.test.js` after the desktop before-quit cleanup pass
+- 2026-03-08: `git diff --check` after the desktop before-quit cleanup pass
+- 2026-03-08: `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` after the desktop before-quit cleanup pass *(blocked: `Command "vitest" not found`)*
 - 2026-03-08: `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js apps/mobile/tests/settings-loop-feedback-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-mutation-feedback-mobile.test.js` after the mobile loop mutation-feedback pass
 - 2026-03-08: `pnpm --filter @dotagents/mobile exec expo --version` after the mobile loop mutation-feedback pass (blocked: `Command "expo" not found`)
 - 2026-03-08: `git diff --check` after the mobile loop mutation-feedback pass
@@ -353,6 +359,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Runtime desktop main-process verification for the before-quit cleanup pass is still blocked because `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, so this iteration relied on source inspection plus dependency-free `node:test` coverage.
 - 2026-03-08: Live mobile UI inspection for the mobile loop mutation-feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this session-list delete-guardrails pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this repeat-task run/toggle action-feedback pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -422,6 +429,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
+- Desktop app `before-quit` cleanup execution-path validation (`apps/desktop/src/main/index.ts`)
 - Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop `Settings → General` ACP main-agent warning density / recovery flow live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
@@ -430,6 +438,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop app `before-quit` cleanup now has source-level guardrails, but real Electron or mocked main-process execution-path validation is the freshest adjacent reliability follow-up because the user value depends on actual quit re-entry and timeout behavior, not just source structure.
 - Mobile `Settings → Agent Loops` live validation is now the freshest adjacent mobile loops follow-up, because the new row-local pending/error guardrails are only source-verified so far and the compact warning density, disabled-action affordances, and optimistic run-refresh behavior still need real product evidence once Expo is available.
 - Mobile session-list long-press delete discoverability / web-native live validation remains a strong adjacent mobile history follow-up, because deletion is safer at the source level but the long-press affordance, `Deleting chat...` density, and failure-alert clarity still need real product evidence once Expo is available.
 - Desktop repeat-task startup scheduling now has source-level guardrails, but behavior-level validation with mocked timers or a runnable Electron lifecycle is the freshest adjacent reliability follow-up because the key user value is preventing a stray extra run during disable/reload/quit races.
@@ -2599,6 +2608,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once Expo or a runnable mobile target is available, live-check the compact loop rows across run success, run failure, toggle failure, delete failure, and retry flows to confirm the inline warnings stay readable without crowding the action rail
   - if the optimistic `lastRunAt` update feels misleading in real use, revisit whether the row should show a shorter-lived `Triggered` status instead of immediately advancing the timestamp
+
+### 2026-03-08 — Desktop app before-quit cleanup synchronization
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process GUI quit path in `apps/desktop/src/main/index.ts`
+  - reviewed headless shutdown parity in `apps/desktop/src/main/index.ts`
+  - async shutdown helpers in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/remote-server.ts`
+  - focused source-level guardrail coverage added in `tests/desktop-app-quit-cleanup.test.js`
+- Why it was chosen:
+  - the ledger already covered repeat-task and emergency-stop reliability, but normal desktop app quit still had an adjacent high-leverage shutdown seam that had not been investigated recently
+  - source review found a concrete reliability gap: the GUI `before-quit` path waited only on MCP cleanup, fire-and-forgot ACP shutdown, and skipped explicit remote-server shutdown even though headless mode already awaited all three services
+  - that made normal desktop exit the least trustworthy long-lived-service cleanup path, with plausible orphaned-agent or lingering-listener risk after ACP or remote-server use
+- What was inspected:
+  - `apps/desktop/src/main/index.ts` around headless `gracefulShutdown(...)`, GUI `before-quit`, and quit re-entry handling
+  - `apps/desktop/src/main/acp-service.ts` `shutdown()` / `stopAgent()` semantics to confirm ACP shutdown is asynchronous and should be awaited during quit
+  - `apps/desktop/src/main/remote-server.ts` `stopRemoteServer()` to confirm the desktop app already exposes a no-op-safe async shutdown helper
+  - `apps/desktop/src/main/index.hub-install.test.ts` to check existing desktop main-process mocking/test patterns before choosing a dependency-free guardrail test instead
+- Improvement made:
+  - moved the GUI quit path to guard re-entry before starting cleanup work again, so the second `before-quit` triggered by `app.quit()` does not restart service shutdown
+  - replaced fire-and-forget ACP shutdown with one cleanup batch that awaits ACP shutdown, MCP cleanup, and remote-server shutdown together under the existing 5 second timeout budget
+  - kept each cleanup step best-effort with per-service logging so one failure does not prevent the rest of shutdown from making progress
+  - added dependency-free source assertions in `tests/desktop-app-quit-cleanup.test.js` to lock in the quit-path contract in this no-`node_modules` worktree
+- Assumptions / tradeoffs / rationale:
+  - kept the existing 5 second timeout budget instead of introducing per-service timeouts, because the goal was to close the ACP/remote-server gap without broad shutdown refactoring or longer normal quit latency
+  - scoped the code change to the GUI `before-quit` path and left the headless shutdown flow untouched, because headless already awaited all three services and did not share the identified reliability gap
+  - accepted source-level verification plus a blocked Vitest probe because this worktree does not currently provide desktop Vitest
+- Tests / verification:
+  - `node --test tests/desktop-app-quit-cleanup.test.js`
+  - `git diff --check`
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` *(blocked: `Command "vitest" not found`)*
+- Follow-up checks:
+  - once desktop Vitest or a runnable Electron target is available, exercise real quit re-entry and timeout behavior with slow or failing ACP/MCP/remote-server mocks
+  - if future shutdown work revisits both GUI and headless flows, consider extracting the shared long-lived-service cleanup sequence into one helper to reduce drift
 
 ### Iteration Template
 - Date:

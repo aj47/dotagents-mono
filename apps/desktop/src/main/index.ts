@@ -23,7 +23,12 @@ import { diagnosticsService } from "./diagnostics"
 import { ensureAppSwitcherPresence } from "./app-switcher"
 
 import { configStore } from "./config"
-import { startRemoteServer, printQRCodeToTerminal, startRemoteServerForced } from "./remote-server"
+import {
+  startRemoteServer,
+  printQRCodeToTerminal,
+  startRemoteServerForced,
+  stopRemoteServer,
+} from "./remote-server"
 import { acpService } from "./acp-service"
 import { agentProfileService } from "./agent-profile-service"
 import { initializeBundledSkills, skillsService, startSkillsFolderWatcher } from "./skills-service"
@@ -35,7 +40,6 @@ import {
 import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
 import { setHeadlessMode } from "./state"
-import { stopRemoteServer } from "./remote-server"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import { downloadHubBundleToTempFile, findHubBundleInstallBundleUrl } from "./hub-install"
 import { buildHubBundleInstallUrl, resolveStartupMainWindowDecision } from "./startup-routing"
@@ -585,12 +589,6 @@ app.whenReady().then(async () => {
   app.on("before-quit", async (event) => {
     setAppQuitting()
     makePanelWindowClosable()
-    loopService.stopAllLoops()
-
-    // Shutdown ACP agents gracefully
-    acpService.shutdown().catch((error) => {
-      console.error('[App] Error shutting down ACP service:', error)
-    })
 
     // Prevent re-entry during cleanup
     if (isCleaningUp) {
@@ -600,16 +598,33 @@ app.whenReady().then(async () => {
     // Prevent the quit from happening immediately so we can wait for cleanup
     event.preventDefault()
     isCleaningUp = true
+    loopService.stopAllLoops()
 
-    // Clean up MCP server processes to prevent orphaned node processes
-    // This terminates all child processes spawned by StdioClientTransport
+    // Wait for long-lived child services to stop so quit does not leave behind
+    // ACP child processes or a lingering local remote-server listener.
+    const cleanupTasks = [
+      { label: "ACP service shutdown", run: () => acpService.shutdown() },
+      { label: "MCP service cleanup", run: () => mcpService.cleanup() },
+      { label: "remote server shutdown", run: () => stopRemoteServer() },
+    ] as const
+
+    const cleanupPromise = Promise.all(
+      cleanupTasks.map(async ({ label, run }) => {
+        try {
+          await run()
+        } catch (error) {
+          console.error(`[App] Error during ${label}:`, error)
+        }
+      })
+    )
+
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     try {
       await Promise.race([
-        mcpService.cleanup(),
+        cleanupPromise,
         new Promise<void>((_, reject) => {
           const id = setTimeout(
-            () => reject(new Error("MCP cleanup timeout")),
+            () => reject(new Error("App cleanup timeout")),
             CLEANUP_TIMEOUT_MS
           )
           timeoutId = id
@@ -622,7 +637,7 @@ app.whenReady().then(async () => {
         }),
       ])
     } catch (error) {
-      logApp("Error during MCP service cleanup on quit:", error)
+      logApp("Error during app cleanup on quit:", error)
     } finally {
       // Clear the timeout to avoid any lingering references
       if (timeoutId !== undefined) {
