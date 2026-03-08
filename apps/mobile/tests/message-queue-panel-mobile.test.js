@@ -10,8 +10,9 @@ const queuePanelSource = fs.readFileSync(
 
 test('makes busy queue state explicit instead of silently disabling Clear All', () => {
   assert.match(queuePanelSource, /const hasProcessingMessage = messages\.some\(\(m\) => m\.status === 'processing'\);/);
-  assert.match(queuePanelSource, /const clearQueueAccessibilityHint = hasProcessingMessage[\s\S]*?Wait for the active queued message to finish before clearing the rest of this queue\.[\s\S]*?Removes all queued messages for this conversation\./);
-  assert.match(queuePanelSource, /\{hasProcessingMessage && !isListCollapsed && \([\s\S]*?<View style=\{styles\.processingNotice\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?One queued message is sending now\. Clear All stays disabled until it finishes\.[\s\S]*?<\/View>[\s\S]*?\)\}/);
+  assert.match(queuePanelSource, /const clearQueueAccessibilityHint = hasProcessingMessage[\s\S]*?processingCount === 1[\s\S]*?Wait for the active queued message to finish before clearing the rest of this queue\.[\s\S]*?Wait for the \$\{processingCount\} queued messages that are sending now to finish before clearing the rest of this queue\.[\s\S]*?Removes all queued messages for this conversation\./);
+  assert.match(queuePanelSource, /const processingNoticeText = processingCount === 1[\s\S]*?One queued message is sending now\. Clear All stays disabled until it finishes\.[\s\S]*?\$\{processingCount\} queued messages are sending now\. Clear All stays disabled until they finish\./);
+  assert.match(queuePanelSource, /\{hasProcessingMessage && !isListCollapsed && \([\s\S]*?<View style=\{styles\.processingNotice\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?\{processingNoticeText\}[\s\S]*?<\/View>[\s\S]*?\)\}/);
   assert.match(queuePanelSource, /processingNotice:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?backgroundColor:\s*`\$\{theme\.colors\.primary\}10`/);
   assert.match(queuePanelSource, /processingNoticeText:\s*\{[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.primary/);
 });
@@ -26,7 +27,8 @@ test('gives queue header actions mobile-sized button semantics and explanatory h
 
 test('surfaces processing state in the compact queue summary too', () => {
   assert.match(queuePanelSource, /const queuedMessageLabel = `\$\{messages\.length\} queued message\$\{messages\.length > 1 \? 's' : ''\}`;/);
-  assert.match(queuePanelSource, /const compactSummaryText = hasProcessingMessage[\s\S]*?`\$\{queuedMessageLabel\} • Sending now`[\s\S]*?: queuedMessageLabel;/);
+  assert.match(queuePanelSource, /const queueProcessingSummary = processingCount === 1 \? 'Sending now' : `\$\{processingCount\} sending now`;/);
+  assert.match(queuePanelSource, /const compactSummaryText = hasProcessingMessage[\s\S]*?`\$\{queuedMessageLabel\} • \$\{queueProcessingSummary\}`[\s\S]*?: queuedMessageLabel;/);
   assert.match(queuePanelSource, /<Text style=\{styles\.compactText\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{compactSummaryText\}[\s\S]*?<\/Text>/);
 });
 
@@ -34,7 +36,7 @@ test('keeps the full queue header informative when the list is collapsed', () =>
   assert.match(queuePanelSource, /const processingCount = messages\.filter\(\(m\) => m\.status === 'processing'\)\.length;/);
   assert.match(queuePanelSource, /const waitingCount = messages\.filter\(\(m\) => m\.status === 'pending'\)\.length;/);
   assert.match(queuePanelSource, /const failedCount = messages\.filter\(\(m\) => m\.status === 'failed'\)\.length;/);
-  assert.match(queuePanelSource, /const queueHeaderStatusParts: string\[\] = \[];[\s\S]*?if \(processingCount > 0\) queueHeaderStatusParts\.push\('Sending now'\);[\s\S]*?if \(waitingCount > 0\) queueHeaderStatusParts\.push\(`\$\{waitingCount\} waiting`\);[\s\S]*?if \(failedCount > 0\) queueHeaderStatusParts\.push\(`\$\{failedCount\} failed`\);/);
+  assert.match(queuePanelSource, /const queueHeaderStatusParts: string\[\] = \[];[\s\S]*?if \(processingCount > 0\) queueHeaderStatusParts\.push\(queueProcessingSummary\);[\s\S]*?if \(waitingCount > 0\) queueHeaderStatusParts\.push\(`\$\{waitingCount\} waiting`\);[\s\S]*?if \(failedCount > 0\) queueHeaderStatusParts\.push\(`\$\{failedCount\} failed`\);/);
   assert.match(queuePanelSource, /const queueHeaderStatusText = queueHeaderStatusParts\.join\(' • '\) \|\| 'Queue activity updated';/);
   assert.match(queuePanelSource, /const queueDisclosureLabel = `\$\{createExpandCollapseAccessibilityLabel\('queued messages', !isListCollapsed\)\}\. \$\{queuedMessageLabel\}\. \$\{queueHeaderStatusText\}\.`;/);
   assert.match(queuePanelSource, /headerTitleGroup:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0/);

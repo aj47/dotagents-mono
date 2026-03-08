@@ -3917,3 +3917,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the active response row remains readable when `Speaking` and `Latest` badges appear together.
   - Check VoiceOver / TalkBack-style row semantics live or via simulator accessibility inspection to confirm the timestamped playback labels remove ambiguity across multiple rows.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of broadening playback UI beyond this row-level clarity fix.
+
+### 2026-03-08 — Iteration 90: make queue processing copy count-aware
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree; ends with `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules because the mobile install is missing
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `MessageQueuePanel` already computed `processingCount`.
+  - The compact queue summary, collapsed header summary, processing notice, and disabled `Clear All` hint still hardcoded singular active-work wording like `Sending now` / `One queued message is sending now...`.
+  - If more than one queued message was in `processing`, the mobile queue UI understated current activity instead of reflecting the real workload.
+- Issue selected:
+  - Queue activity copy was not count-aware, weakening state clarity in the mobile sub-agent activity flow whenever more than one queued message was actively sending.
+- Decision:
+  - Keep the queue layout, actions, and existing busy-state treatment unchanged.
+  - Do not redesign the queue header while live validation is blocked.
+  - Make the smallest local fix: derive one reusable processing summary/notice string and use it everywhere the queue reports active sending state.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - derive `queueProcessingSummary` for singular vs plural active-send states,
+    - reuse that summary in the compact queue summary and collapsed header status line,
+    - make the disabled `Clear All` accessibility hint count-aware,
+    - make the processing notice pluralize correctly when multiple queued messages are sending.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new count-aware queue summary, busy-state hint, and processing-notice copy.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked because local `expo` is unavailable and the mobile install is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by missing mobile dependencies / missing `expo/tsconfig.base`
+- Remaining nearby issues noted, not addressed this iteration:
+  - The longer plural processing notice still needs a real narrow-screen pass to confirm it stays balanced beside the queue header actions.
+  - Mixed states with multiple processing items plus failed items still need live confirmation to make sure the count-aware summary stays readable and proportional.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that singular and plural queue-processing states both read cleanly at narrow widths.
+  - Compare single-processing vs multi-processing queue states live to confirm the new copy improves clarity without making the header/noise feel heavier.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting queue copy again without new evidence.

@@ -455,17 +455,23 @@ export function MessageQueuePanel({
   const waitingCount = messages.filter((m) => m.status === 'pending').length;
   const failedCount = messages.filter((m) => m.status === 'failed').length;
   const queuedMessageLabel = `${messages.length} queued message${messages.length > 1 ? 's' : ''}`;
+  const queueProcessingSummary = processingCount === 1 ? 'Sending now' : `${processingCount} sending now`;
   const queueHeaderStatusParts: string[] = [];
-  if (processingCount > 0) queueHeaderStatusParts.push('Sending now');
+  if (processingCount > 0) queueHeaderStatusParts.push(queueProcessingSummary);
   if (waitingCount > 0) queueHeaderStatusParts.push(`${waitingCount} waiting`);
   if (failedCount > 0) queueHeaderStatusParts.push(`${failedCount} failed`);
   const queueHeaderStatusText = queueHeaderStatusParts.join(' • ') || 'Queue activity updated';
   const compactSummaryText = hasProcessingMessage
-    ? `${queuedMessageLabel} • Sending now`
+    ? `${queuedMessageLabel} • ${queueProcessingSummary}`
     : queuedMessageLabel;
   const clearQueueAccessibilityHint = hasProcessingMessage
-    ? 'Wait for the active queued message to finish before clearing the rest of this queue.'
+    ? processingCount === 1
+      ? 'Wait for the active queued message to finish before clearing the rest of this queue.'
+      : `Wait for the ${processingCount} queued messages that are sending now to finish before clearing the rest of this queue.`
     : 'Removes all queued messages for this conversation.';
+  const processingNoticeText = processingCount === 1
+    ? 'One queued message is sending now. Clear All stays disabled until it finishes.'
+    : `${processingCount} queued messages are sending now. Clear All stays disabled until they finish.`;
   const queueDisclosureLabel = `${createExpandCollapseAccessibilityLabel('queued messages', !isListCollapsed)}. ${queuedMessageLabel}. ${queueHeaderStatusText}.`;
 
   if (messages.length === 0) {
@@ -662,7 +668,7 @@ export function MessageQueuePanel({
         <View style={styles.processingNotice}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
           <Text style={styles.processingNoticeText}>
-            One queued message is sending now. Clear All stays disabled until it finishes.
+            {processingNoticeText}
           </Text>
         </View>
       )}
