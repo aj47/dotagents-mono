@@ -83,6 +83,11 @@
 - [x] 2026-03-08: Assumption accepted: using `toast.error(...)` is the smallest safe desktop fix for sidebar stop failures because `apps/desktop/src/renderer/src/App.tsx` already mounts a global `sonner` toaster and nearby desktop send/stop flows already use visible failure feedback.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the active-sessions sidebar stop-feedback fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/app-layout.tsx` and confirmed the visible sidebar/header emergency-stop button still caught `tipcClient.emergencyStopAgent()` failures with `console.error(...)` only.
+- [x] 2026-03-08: Compared desktop global emergency-stop handling against `apps/mobile/src/screens/ChatScreen.tsx`; mobile already confirms kill-switch success/failure with `Alert.alert(...)` / `window.alert(...)`, so visible desktop failure feedback is consistent with existing product behavior.
+- [x] 2026-03-08: Assumption accepted: using `toast.error(...)` for a rejected desktop global emergency stop is the smallest safe fix because `apps/desktop/src/renderer/src/App.tsx` already mounts a global `sonner` toaster and nearby desktop stop/send flows now use the same visible feedback pattern.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the app-layout emergency-stop feedback fix and regression test addition.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -172,6 +177,10 @@
   - `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` renders a visible stop button for each active session row, but `handleStopSession(...)` previously caught `tipcClient.stopAgentSession({ sessionId })` failures with `console.error(...)` only.
   - That meant clicking stop from the primary desktop sessions sidebar could appear to do nothing whenever the stop IPC call failed, even though the user had just invoked a core session-control action.
   - `apps/desktop/src/renderer/src/components/app-layout.tsx` mounts `ActiveAgentsSidebar`, so this is a real desktop navigation/control surface rather than dead or edge-case UI.
+- [x] **Desktop global emergency-stop failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/app-layout.tsx` renders the visible `Emergency stop all agent sessions` button in both expanded and collapsed sidebar chrome, but `handleEmergencyStopAll(...)` previously caught `tipcClient.emergencyStopAgent()` failures with `console.error(...)` only.
+  - That meant a failed global kill-switch request could look like “nothing happened” from the user’s point of view even though they had just invoked the desktop-wide emergency stop action.
+  - Mobile already surfaces kill-switch success/failure in `apps/mobile/src/screens/ChatScreen.tsx`, so this silent desktop path was a concrete UX bug rather than an intentional platform difference.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -263,6 +272,8 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers expose a visible `Failed to stop agent` toast path for callback, direct stop-session, and emergency-stop failures.
 - [x] Updated `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` so a rejected sidebar `stopAgentSession(...)` call now surfaces `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` to assert that the visible sidebar stop button still calls `stopAgentSession(...)` and surfaces `Failed to stop session. ...` feedback when the IPC stop request rejects.
+- [x] Updated `apps/desktop/src/renderer/src/components/app-layout.tsx` so a rejected global `emergencyStopAgent()` call now surfaces `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/app-layout.emergency-stop.test.tsx` to assert that the visible global emergency-stop button still calls `stopAllTts()` / `emergencyStopAgent()`, clears its busy state after a rejection, and surfaces `Failed to stop all agent sessions. ...` feedback.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -312,6 +323,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` now mocks `sonner` and asserts that a rejected sidebar stop request still calls `stopAgentSession(...)` and surfaces the visible `Failed to stop session. backend offline` toast.
 - [x] Low-cost automated sanity check: a `node` file-read assertion confirmed the sidebar source now contains the `toast.error(...)` stop-failure path and the new regression test locks in the expected `Failed to stop session. backend offline` message.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the active-sessions sidebar stop-feedback update.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/app-layout.tsx` now imports `toast` from `sonner` and calls `toast.error(...)` when the visible global emergency-stop action’s `emergencyStopAgent()` request rejects, so the desktop-wide kill switch no longer fails silently.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/app-layout.emergency-stop.test.tsx` now mocks `sonner` and asserts that a rejected global emergency stop still calls `stopAllTts()` / `emergencyStopAgent()`, clears the busy state, and surfaces `Failed to stop all agent sessions. backend offline` feedback.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the app-layout emergency-stop feedback update.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -332,10 +346,12 @@
 - [x] Targeted automated verification for this primary-composer error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/text-input-panel.submit.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this follow-up kill-switch error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this active-sessions sidebar stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this app-layout emergency-stop feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether other desktop stop-session surfaces outside the now-covered follow-up composers and `ActiveAgentsSidebar` (for example `AgentProgress` or `AgentProcessingView`) should also surface a toast instead of remaining console-only once live verification is available.
 - [ ] Whether adjacent `ActiveAgentsSidebar` minimize/restore (`snooze` / `unsnooze`) failure paths should also surface visible feedback instead of console-only logging once this smaller stop-action fix is live-verified.
+- [ ] Whether the adjacent `tipcClient.stopAllTts()` failure path in `app-layout.tsx` also needs visible feedback, or whether keeping that secondary best-effort cleanup console-only is preferable once live desktop verification is available.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
@@ -408,6 +424,7 @@
 - Assumption: using the existing desktop toast pattern for follow-up kill-switch failures is acceptable because `sonner` is already mounted app-wide, the same components already use it for follow-up send failures, and mobile already exposes stop failures visibly.
 - Assumption: resetting an invalid `model` tab back to `general` is acceptable because `General` is the safest always-available editor section, while mobile has no competing tab-state behavior that needs to stay aligned here.
 - Assumption: using the existing desktop toast pattern for `ActiveAgentsSidebar` stop failures is acceptable because the action is destructive/core, the app already mounts a global `sonner` toaster, and recent nearby desktop send/stop fixes established visible error feedback as the repo-local pattern.
+- Assumption: surfacing only the rejected `emergencyStopAgent()` path with a toast (while keeping the best-effort pre-stop `stopAllTts()` cleanup console-only) is acceptable for this pass because the user-facing bug is the silent failure of the destructive kill-switch action itself, and widening the UX contract around secondary audio cleanup would be a larger behavior decision.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -436,4 +453,5 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.editor-tabs.test.ts src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that switching an agent from `internal` to `acp`/`stdio`/`remote` while on `Model` immediately lands on `General` instead of leaving the editor blank.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify that failing a follow-up kill-switch action surfaces the new desktop toast instead of failing silently.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` and live-verify that a failed stop click from the desktop sessions sidebar surfaces the new toast instead of appearing to do nothing.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx` and live-verify that a failed desktop global emergency-stop click surfaces the new toast instead of appearing to do nothing.
 - After that, inspect whether adjacent `ActiveAgentsSidebar` snooze/restore failures also need visible feedback for consistency with the now-covered sidebar stop action.
