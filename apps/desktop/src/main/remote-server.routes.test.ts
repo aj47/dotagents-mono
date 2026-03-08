@@ -84,4 +84,20 @@ describe("remote-server route registration", () => {
     expect(streamableMcpSection).toContain("reply.hijack()")
     expect(streamableMcpSection).toContain("transport.handleRequest(req.raw, reply.raw, req.body)")
   })
+
+  it("preserves loop runOnStartup state through the mobile loop routes", () => {
+    const source = getRemoteServerSource()
+    const createLoopSection = getSection(source, '// POST /v1/loops - Create a new loop/repeat task', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+    const updateLoopSection = getSection(source, '// PATCH /v1/loops/:id - Update a loop/repeat task', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+
+    expect(createLoopSection).toContain('runOnStartup?: unknown')
+    expect(createLoopSection).toContain('runOnStartup must be a boolean when provided')
+    expect(createLoopSection).toContain('const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : false')
+    expect(createLoopSection).toContain('runOnStartup,')
+
+    expect(updateLoopSection).toContain('runOnStartup?: unknown')
+    expect(updateLoopSection).toContain('runOnStartup must be a boolean when provided')
+    expect(updateLoopSection).toContain('const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined')
+    expect(updateLoopSection).toContain('...(runOnStartup !== undefined && { runOnStartup }),')
+  })
 })

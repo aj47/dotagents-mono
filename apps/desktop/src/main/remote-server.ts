@@ -2972,6 +2972,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         prompt?: unknown
         intervalMinutes?: unknown
         enabled?: unknown
+        runOnStartup?: unknown
         profileId?: unknown
       }
 
@@ -2996,11 +2997,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply.code(400).send({ error: "enabled must be a boolean when provided" })
       }
+      if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
+        return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
+      }
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
+      const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : false
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
@@ -3010,6 +3015,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         prompt,
         intervalMinutes,
         enabled,
+        runOnStartup,
         profileId: profileId || undefined,
       }
 
@@ -3041,6 +3047,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         prompt?: unknown
         intervalMinutes?: unknown
         enabled?: unknown
+        runOnStartup?: unknown
         profileId?: unknown
       }
 
@@ -3083,6 +3090,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.enabled !== undefined && typeof body.enabled !== "boolean") {
         return reply.code(400).send({ error: "enabled must be a boolean when provided" })
       }
+      if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
+        return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
+      }
       if (body.profileId !== undefined && body.profileId !== null && typeof body.profileId !== "string") {
         return reply.code(400).send({ error: "profileId must be a string when provided" })
       }
@@ -3094,6 +3104,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           ? body.intervalMinutes
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
+      const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const updated = {
         ...existing,
@@ -3101,6 +3112,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(prompt !== undefined && { prompt }),
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
+        ...(runOnStartup !== undefined && { runOnStartup }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
       }
 

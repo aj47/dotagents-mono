@@ -28,6 +28,7 @@ type LoopFormData = {
   prompt: string;
   intervalMinutes: string;
   enabled: boolean;
+  runOnStartup: boolean;
   profileId: string;
 };
 
@@ -36,6 +37,7 @@ const defaultFormData: LoopFormData = {
   prompt: '',
   intervalMinutes: '60',
   enabled: true,
+  runOnStartup: false,
   profileId: '',
 };
 
@@ -110,6 +112,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         prompt: loopFromRoute.prompt,
         intervalMinutes: String(loopFromRoute.intervalMinutes),
         enabled: loopFromRoute.enabled,
+        runOnStartup: loopFromRoute.runOnStartup ?? false,
         profileId: loopFromRoute.profileId || '',
       }
       : defaultFormData
@@ -184,6 +187,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           prompt: loop.prompt,
           intervalMinutes: String(loop.intervalMinutes),
           enabled: loop.enabled,
+          runOnStartup: loop.runOnStartup ?? false,
           profileId: loop.profileId || '',
         });
       })
@@ -256,6 +260,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           prompt,
           intervalMinutes,
           enabled: formData.enabled,
+          runOnStartup: formData.runOnStartup,
           profileId: formData.profileId || undefined,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
@@ -265,6 +270,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           prompt,
           intervalMinutes,
           enabled: formData.enabled,
+          runOnStartup: formData.runOnStartup,
           profileId: formData.profileId || undefined,
         };
         await settingsClient.createLoop(createPayload);
@@ -377,6 +383,30 @@ export default function LoopEditScreen({ navigation, route }: any) {
             importantForAccessibility="no-hide-descendants"
           >
             {renderSwitchVisual(formData.enabled)}
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.switchRow}>
+        <View style={styles.switchLabelGroup}>
+          <Text style={styles.switchLabel}>Run on Startup</Text>
+          <Text style={styles.switchHelperText}>If enabled, run once immediately when DotAgents starts before resuming the regular interval</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.switchButton}
+          onPress={() => updateField('runOnStartup', !formData.runOnStartup)}
+          accessibilityRole="switch"
+          accessibilityLabel={createSwitchAccessibilityLabel('Run on startup')}
+          accessibilityHint="If enabled, this loop runs once when DotAgents starts before resuming its regular interval."
+          accessibilityState={{ checked: formData.runOnStartup }}
+          activeOpacity={0.7}
+        >
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {renderSwitchVisual(formData.runOnStartup)}
           </View>
         </TouchableOpacity>
       </View>

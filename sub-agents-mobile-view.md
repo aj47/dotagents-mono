@@ -1807,3 +1807,52 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Internal` and `Remote` no longer show `Auto Spawn` while `ACP` and `Stdio` still do.
   - After live validation returns, confirm the new DotAgents-startup wording reads as clearer scope rather than extra copy.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 42: preserve and expose loop run-on-startup state on mobile
+
+- Status: shipped locally with live/desktop-runner blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - `apps/mobile/src/lib/settingsApi.ts`
+  - desktop loop parity in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - mobile-facing loop routes in `apps/desktop/src/main/remote-server.ts`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Desktop loop settings and shared loop types already support `runOnStartup`.
+  - Mobile `LoopEditScreen` did not load, show, or save `runOnStartup`.
+  - Mobile loop request types and the mobile-facing `/v1/loops` create/update handlers also omitted `runOnStartup`, so editing a loop from mobile risked silently stripping an existing startup-run configuration.
+- Issue selected:
+  - Mobile loop editing hid `runOnStartup` state and could drop that state on save, weakening schedule clarity and user control in sub-agent loop management.
+- Decision:
+  - Keep the existing loop form layout and switch styling unchanged.
+  - Fix the problem end-to-end in the smallest possible slice: mobile form state, mobile request payloads, and mobile-facing loop route parsing.
+  - Add a dedicated switch row with explicit helper copy instead of overloading the existing `Enabled` explanation.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - add `runOnStartup` to the mobile form state and default it safely,
+    - hydrate the field from both route-provided loop data and fetched loop data,
+    - add a `Run on Startup` switch row with helper copy and accessibility semantics,
+    - include `runOnStartup` in both create and update loop payloads.
+  - Updated `apps/mobile/src/lib/settingsApi.ts` so loop create/update request types accept `runOnStartup`.
+  - Updated `apps/desktop/src/main/remote-server.ts` so mobile loop create/update routes validate and persist `runOnStartup` instead of dropping it.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new state wiring, switch row, and save payload preservation.
+  - Updated `apps/desktop/src/main/remote-server.routes.test.ts` with focused source assertions for `runOnStartup` handling in the mobile loop routes.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `node` source validation against `apps/desktop/src/main/remote-server.ts` for the new `runOnStartup` create/update handling ✅
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/remote-server.routes.test.ts` ⚠️ blocked in this worktree because `vitest` is not available to `pnpm exec` (`Command "vitest" not found`)
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The mobile loop list in `SettingsScreen` still does not visibly surface `Run on startup`, so list-level state clarity may still lag the edit form.
+  - The new switch row still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that editing an existing startup loop keeps the switch on and saving preserves it.
+  - After live validation returns, decide whether the loop list also needs a compact `Run on startup` indicator for better at-a-glance schedule clarity.
+  - Re-run the focused desktop route test once the desktop Vitest runner is available in this worktree.

@@ -102,6 +102,7 @@ export interface LoopCreateRequest {
   prompt: string;
   intervalMinutes: number;
   enabled: boolean;
+  runOnStartup?: boolean;
   profileId?: string;
 }
 
@@ -110,6 +111,7 @@ export interface LoopUpdateRequest {
   prompt?: string;
   intervalMinutes?: number;
   enabled?: boolean;
+  runOnStartup?: boolean;
   profileId?: string;
 }
 

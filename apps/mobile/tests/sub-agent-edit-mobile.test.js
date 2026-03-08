@@ -169,6 +169,17 @@ test('LoopEditScreen explains what the Enabled switch controls in sub-agent loop
   assert.match(loopEditSource, /switchHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
 });
 
+test('LoopEditScreen exposes run-on-startup state without dropping it on save', () => {
+  assert.match(loopEditSource, /type LoopFormData = \{[\s\S]*?runOnStartup: boolean;[\s\S]*?\};/);
+  assert.match(loopEditSource, /runOnStartup: loopFromRoute\.runOnStartup \?\? false,/);
+  assert.match(loopEditSource, /runOnStartup: loop\.runOnStartup \?\? false,/);
+  assert.match(loopEditSource, /runOnStartup: formData\.runOnStartup,/);
+  assert.match(loopEditSource, /<Text style=\{styles\.switchLabel\}>Run on Startup<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>If enabled, run once immediately when DotAgents starts before resuming the regular interval<\/Text>/);
+  assert.match(loopEditSource, /onPress=\{\(\) => updateField\('runOnStartup', !formData\.runOnStartup\)\}/);
+  assert.match(loopEditSource, /createSwitchAccessibilityLabel\('Run on startup'\)/);
+  assert.match(loopEditSource, /accessibilityState=\{\{ checked: formData\.runOnStartup \}\}/);
+});
+
 test('LoopEditScreen gives the primary save action explicit mobile button semantics', () => {
   assert.match(loopEditSource, /const trimmedName = formData\.name\.trim\(\);/);
   assert.match(loopEditSource, /const trimmedPrompt = formData\.prompt\.trim\(\);/);
