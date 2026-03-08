@@ -603,6 +603,67 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("tells the completion verifier to reject answers that skip requested context gathering or explicit user constraints", async () => {
+    const { clearSessionUserResponse, setSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-verifier-context-constraint")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{
+          name: "execute_command",
+          arguments: { command: "echo reviewed-goals-context" },
+        }],
+      })
+      .mockResolvedValueOnce({
+        content: "I reviewed the context and have a recommendation.",
+        toolCalls: [{
+          name: "respond_to_user",
+          arguments: { text: "Next best move: improve bundle safety before adding more starter packs." },
+        }],
+      })
+    mockVerifyCompletion.mockResolvedValue({
+      isComplete: true,
+      confidence: 0.9,
+      missingItems: [],
+      reason: "stubbed completion for verifier-prompt inspection",
+    })
+
+    await processTranscriptWithAgentMode(
+      "we have enough starters, what else would be highest impact. gather lots of context about overall goals etc",
+      [
+        { name: "execute_command", description: "Run command", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } },
+      ] as any,
+      vi.fn(async (toolCall: any) => {
+        if (toolCall.name === "respond_to_user") {
+          setSessionUserResponse("session-verifier-context-constraint", toolCall.arguments.text)
+        }
+        return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      }),
+      2,
+      [],
+      "conv-verifier-context-constraint",
+      "session-verifier-context-constraint",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(mockVerifyCompletion).toHaveBeenCalledTimes(1)
+    const verificationMessages = mockVerifyCompletion.mock.calls[0]?.[0] ?? []
+    expect(verificationMessages[0]?.content).toContain("gather/review/research context")
+    expect(verificationMessages[0]?.content).toContain("ignores or contradicts an explicit user constraint or premise")
+    expect(verificationMessages[1]?.content).toContain("Original request:")
+    expect(verificationMessages[1]?.content).toContain("we have enough starters")
+  })
+
   it("nudges pseudo tool placeholders to use native tool calls before continuing", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")

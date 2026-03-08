@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh follow-up evidence) | session_1772916139885_8wx8su8xa | fix implemented | User asked `we have enough starters, what else would be highest impact. gather lots of context about overall goals etc`; the run still replied with another starter-pack recommendation and verification marked the answer complete even though the user explicitly asked for broader context-grounded analysis and had already ruled out `more starters` as the immediate next move. Root repo issue found: the completion-verifier prompt did not explicitly reject answers that skipped a requested research/context-gathering step or ignored an explicit user constraint/premise. |
 | 2026-03-08 | conv_1772472232055_lpgo0dg11 | session_1772472232057_4ajhc3jv9 | fix implemented | Unlogged aborted-run evidence: user input `debug beta 1772472232053` ended with `output: null`, `wasAborted: true`, and only one `Streaming LLM Call` observation with no error status and no output. Root repo issue found: the streaming helpers could treat a stop-before-first-chunk as an empty success (`makeLLMCallWithStreaming`) or a generic empty-response error (`makeLLMCallWithStreamingAndTools`) instead of an explicit abort, making kill-switch finalization ambiguous and low-signal. |
 | 2026-03-08 | conv_1772237314285_vmw9q84l4 | session_1772237314287_0o7pppwnt | fix implemented (desktop smoke blocked) | User asked `check my youtube studio analytics`; the run immediately delegated to `Web Browser` with `waitForResult: true`, the `delegate_to_agent` span never finished (`endTime: null`), and the parent trace still ended `output: null`. Root repo issue found: synchronous internal delegation had no fail-fast timeout/cancellation path, so a hung internal specialist could stall the parent run indefinitely. |
 | 2026-03-08 | conv_1772726771670_hevmdkekt | session_1772726771671_nebuhg26t | fix implemented | User asked to add guidance about reading agent notes before answering context-heavy questions. Langfuse showed the run immediately doing broad note dumping (`cat` across note trees) plus unrelated `github:list_issues`, then ending via emergency kill switch without making the requested update. Root repo issue found: agent-mode prompts did not explicitly tell the model that requests to update its own guidelines / `.agents` files / notes should go straight to the likely durable target instead of starting with broad repo-status checks or dumping whole note trees. |
@@ -1590,6 +1591,28 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ❌ blocked by pre-existing unrelated desktop/worktree issues (`uuid` resolution in `src/main/acp/internal-agent.ts` and existing strict mock typing errors in `src/main/acp-service.test.ts` / `src/main/llm.test.ts`)
   - debugging-guided live verification per `apps/desktop/DEBUGGING.md` was not required for this message-normalization change after targeted trace reconstruction plus focused unit coverage
 
+## 2026-03-08 — Verification should reject answers that skip requested research/context or explicit user constraints
+
+- Langfuse evidence reviewed:
+  - trace: `conv_1772912335273_fi5tznrfx` / `session_1772916139885_8wx8su8xa`
+  - user input: `we have enough starters, what else would be highest impact. gather lots of context about overall goals etc`
+  - trace outcome: the run still answered with another starter-pack recommendation even though the user had explicitly said starters were already sufficient and wanted broader goal/context gathering first
+  - the same trace also recorded `Verification Call` observations that accepted the run as complete, so the completion gate itself did not protect against that mismatch
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` builds the completion-verifier system prompt inline in `buildVerificationMessages(...)`
+  - that verifier prompt already rejected empty/progress-only/manual-command answers, but it did not explicitly tell the verifier to fail answers that skipped a requested research/context-gathering step or ignored a clear user constraint/premise
+  - in this failure class, a plausible-sounding recommendation could still slip through verification even though it failed the user's requested method (`gather lots of context`) and contradicted the stated constraint (`we have enough starters`)
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm.ts`
+    - added verifier blockers for responses that skip explicitly requested `gather/review/research context` work or ignore/contradict an explicit user constraint/premise
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression proving the actual verification prompt/messages now include those two blockers when a run is verified
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - ✅ passed (`14 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test exits successfully
+  - debugging-guided live verification per `apps/desktop/DEBUGGING.md` was not required for this verifier-prompt change after trace reconstruction plus focused unit coverage
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1598,6 +1621,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` / `I'll help you ... Let me first ...` text with the generic timeout note.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now surface the normalized readable error message instead of binary/gzip transport noise or low-signal plain-streaming statuses like `Bad Request`.
 - Recheck a fresh verification-failure trace after desktop dependencies are restored, to confirm `Verification Call` generations now also surface the normalized nested-cause error text instead of raw provider garbage or empty `error.message` output.
+- Recheck a fresh verification trace where the user explicitly asks for broader context/research (or gives a hard constraint like `we already have enough X`) to confirm the verifier now rejects quick contradictory answers instead of marking them complete.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.

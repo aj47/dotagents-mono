@@ -1295,6 +1295,8 @@ FIRST, CHECK THESE BLOCKERS (if ANY are true, mark INCOMPLETE):
 - Tool results exist but the agent hasn't synthesized/presented them to the user
 - The response is empty or just acknowledges the request
 - The user asked the agent to perform an action (for example run/open/start something), but the response only gives the user manual instructions or commands instead of confirming the action was actually performed or clearly blocked
+- The user explicitly asked the agent to gather/review/research context, inspect specific sources, or ground the answer in evidence first, but the response does not show that requested investigation or synthesis
+- The response ignores or contradicts an explicit user constraint or premise without acknowledging it
 
 ONLY IF NO BLOCKERS, mark COMPLETE if:
 1. The agent directly answered the user's question or fulfilled their request
