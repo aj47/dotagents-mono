@@ -3,6 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
 
@@ -228,6 +229,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
             ]}
             onPress={() => updateField('connectionType', ct.value)}
             disabled={isBuiltInAgent}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel(`Use ${ct.label} connection type`)}
+            accessibilityHint="Updates how this agent connects."
+            accessibilityState={{ selected: formData.connectionType === ct.value, disabled: isBuiltInAgent }}
+            activeOpacity={0.7}
           >
             <Text style={[
               styles.connectionTypeText,
@@ -358,6 +364,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const selectionChipTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: {
       padding: spacing.lg,
@@ -417,8 +430,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexWrap: 'wrap',
     },
     connectionTypeOption: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      ...selectionChipTouchTarget,
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,

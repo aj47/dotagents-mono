@@ -587,3 +587,51 @@
   - Restore the mobile install in this worktree, then re-run Expo Web and confirm the passive no-options header treatment reads clearly on a narrow screen.
   - Smoke-test long configured agent names in both header selectors once switchable options exist again.
   - Revisit `Settings > Agent Loops` only if live inspection shows it has again become the highest-friction sub-agent surface.
+
+### 2026-03-08 — Iteration 14: make edit-flow selection chips easier to tap and understand
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen` connection-type selector
+  - `LoopEditScreen` profile selector
+  - shared mobile accessibility helpers in `apps/mobile/src/lib/accessibility.ts`
+- Live inspection / workflow status:
+  - Re-tried the existing mobile workflow first:
+    - `pnpm --filter @dotagents/mobile exec expo --version`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - Live Expo inspection is still blocked in this worktree because `apps/mobile/node_modules` is missing and local `expo` is unavailable.
+  - TypeScript validation is blocked by the same missing mobile install (`expo/tsconfig.base` and React Native/Expo packages cannot be resolved).
+- Current behavior observed before the fix:
+  - Source review showed the main choice chips in the untouched mobile edit flows still rendered as plain pills:
+    - `AgentEditScreen` → `Connection Type` (`Internal`, `ACP`, `Stdio`, `Remote`)
+    - `LoopEditScreen` → `Agent Profile` (`No profile`, saved profiles)
+  - Those chips did not use the shared `createMinimumTouchTargetStyle(...)` guardrail and did not expose explicit button/selected semantics.
+- Issue selected:
+  - The core selection controls used while creating or editing sub-agents were easier to mis-tap on mobile and gave weaker state feedback than the rest of the recently improved sub-agent surfaces.
+- Decision:
+  - Keep the existing chip layouts and editing flows.
+  - Do not introduce a new shared component while live validation is blocked.
+  - Apply the same local mobile guardrail already used elsewhere: minimum `44px` touch targets plus explicit button/selected-state accessibility metadata.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - apply a shared `selectionChipTouchTarget` based on `createMinimumTouchTargetStyle(...)` to `Connection Type` chips,
+    - add explicit button labels/hints,
+    - expose selected + disabled state for built-in-agent editing.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - apply the same `selectionChipTouchTarget` pattern to `Agent Profile` chips,
+    - add explicit button labels/hints for `No profile` and saved profiles,
+    - expose selected state for the current profile choice.
+  - Added focused regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native packages in this worktree
+  - Expo Web re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The `Enabled` / `Auto Spawn` switches in edit flows still use native `Switch` controls without the wrapped touch-target pattern used in settings lists.
+  - Long profile names in `LoopEditScreen` should still be visually checked once Expo Web or a simulator is available again.
+  - The mobile edit screens still need a live narrow-screen pass now that list/header surfaces have had several improvements.
+- Next checks:
+  - Restore the mobile install in this worktree and re-run Expo Web against the edit flows to visually confirm the chip sizing/selection treatment.
+  - Inspect whether edit-screen switches should become row-level wrapped controls for clearer mobile touch targets.
+  - Smoke-test long saved profile names in `LoopEditScreen` after live validation is available again.

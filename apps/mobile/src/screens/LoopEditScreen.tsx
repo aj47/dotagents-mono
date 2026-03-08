@@ -20,6 +20,7 @@ import {
   LoopUpdateRequest,
 } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 
 type LoopFormData = {
   name: string;
@@ -260,6 +261,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
         <TouchableOpacity
           style={[styles.profileOption, !formData.profileId && styles.profileOptionActive]}
           onPress={() => updateField('profileId', '')}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Select no profile')}
+          accessibilityHint="Keeps this loop unassigned so it runs without a specific saved profile."
+          accessibilityState={{ selected: !formData.profileId }}
+          activeOpacity={0.7}
         >
           <Text style={[styles.profileOptionText, !formData.profileId && styles.profileOptionTextActive]}>No profile</Text>
         </TouchableOpacity>
@@ -268,6 +274,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
             key={profile.id}
             style={[styles.profileOption, formData.profileId === profile.id && styles.profileOptionActive]}
             onPress={() => updateField('profileId', profile.id)}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel(`Use ${profile.displayName} profile`)}
+            accessibilityHint="Assigns this loop to run with the selected saved profile."
+            accessibilityState={{ selected: formData.profileId === profile.id }}
+            activeOpacity={0.7}
           >
             <Text style={[styles.profileOptionText, formData.profileId === profile.id && styles.profileOptionTextActive]}>{profile.displayName}</Text>
           </TouchableOpacity>
@@ -283,6 +294,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const selectionChipTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: { padding: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -295,7 +313,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
     profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    profileOption: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+    profileOption: {
+      ...selectionChipTouchTarget,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+    },
     profileOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     profileOptionText: { color: theme.colors.foreground, fontSize: 13 },
     profileOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
