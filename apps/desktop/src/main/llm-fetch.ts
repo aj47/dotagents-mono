@@ -660,7 +660,13 @@ function createSessionAbortController(sessionId?: string): AbortController {
   } else {
     llmRequestAbortManager.register(controller)
   }
-return controller
+  return controller
+}
+
+function createAbortError(message: string): Error {
+  const abortError = new Error(message)
+  abortError.name = "AbortError"
+  return abortError
 }
 
 /**
@@ -975,6 +981,17 @@ export async function makeLLMCallWithStreaming(
       })
     }
 
+    if (
+      !accumulated
+      && (
+        abortController.signal.aborted
+        || state.shouldStopAgent
+        || (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
+      )
+    ) {
+      throw createAbortError("Streaming LLM call aborted")
+    }
+
     return {
       content: accumulated,
       toolCalls: undefined,
@@ -1130,6 +1147,14 @@ export async function makeLLMCallWithStreamingAndTools(
         }
 
         if (!accumulated && collectedToolCalls.length === 0) {
+	          if (
+	            abortController.signal.aborted
+	            || state.shouldStopAgent
+	            || (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
+	          ) {
+	            throw createAbortError("Streaming LLM call aborted")
+	          }
+
           throw new Error("LLM returned empty response")
         }
 

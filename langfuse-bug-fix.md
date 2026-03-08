@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772472232055_lpgo0dg11 | session_1772472232057_4ajhc3jv9 | fix implemented | Unlogged aborted-run evidence: user input `debug beta 1772472232053` ended with `output: null`, `wasAborted: true`, and only one `Streaming LLM Call` observation with no error status and no output. Root repo issue found: the streaming helpers could treat a stop-before-first-chunk as an empty success (`makeLLMCallWithStreaming`) or a generic empty-response error (`makeLLMCallWithStreamingAndTools`) instead of an explicit abort, making kill-switch finalization ambiguous and low-signal. |
 | 2026-03-08 | conv_1772237314285_vmw9q84l4 | session_1772237314287_0o7pppwnt | fix implemented (desktop smoke blocked) | User asked `check my youtube studio analytics`; the run immediately delegated to `Web Browser` with `waitForResult: true`, the `delegate_to_agent` span never finished (`endTime: null`), and the parent trace still ended `output: null`. Root repo issue found: synchronous internal delegation had no fail-fast timeout/cancellation path, so a hung internal specialist could stall the parent run indefinitely. |
 | 2026-03-08 | conv_1772726771670_hevmdkekt | session_1772726771671_nebuhg26t | fix implemented | User asked to add guidance about reading agent notes before answering context-heavy questions. Langfuse showed the run immediately doing broad note dumping (`cat` across note trees) plus unrelated `github:list_issues`, then ending via emergency kill switch without making the requested update. Root repo issue found: agent-mode prompts did not explicitly tell the model that requests to update its own guidelines / `.agents` files / notes should go straight to the likely durable target instead of starting with broad repo-status checks or dumping whole note trees. |
 | 2026-03-08 | conv_1772260442055_9xjtqdock | session_1772260441759_qlnn5jvxv | fix implemented | Fresh recovery-path evidence from a previously logged `ask Augustus what folder he's in` failure: after `delegate_to_agent` said `Agent "augustus" not found in configuration`, the same trace showed `list_available_agents` and `list_agent_profiles` exposing Augustus plus profile ID `286c6b41-28ed-4a57-9728-0bab9846ebe6`, but later `spawn_agent` / `delegate_to_agent` retries still rejected that valid profile ID. Root repo issue found: ACP routing/spawn paths only resolved agent profiles by name/displayName, not by profile ID, so error recovery could dead-end even after the tools surfaced the exact profile identifier. |
@@ -41,6 +42,43 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | delegated specialist sub-session chain (no parent session id on trace rows) | subsession_1772927398142_3a13b1c5, subsession_1772927403156_46973064, subsession_1772927413450_6da59930 | fix implemented | Fresh delegated `Find blog post referred to as permanent underclass` evidence showed a `Web Browser` specialist sub-run re-delegating to `internal`, then another delegated run re-delegating to `main-agent`, even though the deepest run already had the correct Exa result. The chain still ended with emergency-stop text instead of a single-run answer. Root repo issue found: ACP/stdio/remote delegated specialist profiles did not carry the same no-redelegation execution guidance already applied to internal named sub-sessions. |
 
 ## Investigations
+
+### 2026-03-08 — Pre-aborted streaming calls should surface an explicit abort, not an empty/blank run
+
+- Langfuse evidence reviewed:
+  - `conv_1772472232055_lpgo0dg11` / `session_1772472232057_4ajhc3jv9`
+  - user input: `debug beta 1772472232053`
+  - trace outcome: `output` was `null` even though trace metadata recorded `wasAborted: true`
+  - the only observation was a single `Streaming LLM Call` generation with:
+    - `level: DEFAULT`
+    - `statusMessage: null`
+    - no output payload
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` already treats `AbortError` as a kill-switch stop and synthesizes a final stop note for the user/trace.
+  - but `apps/desktop/src/main/llm-fetch.ts` had two edge paths where an already-stopped session could finish the streaming helper without producing any chunks:
+    - `makeLLMCallWithStreaming(...)` returned an empty successful response when the stream ended before the first text chunk
+    - `makeLLMCallWithStreamingAndTools(...)` threw the generic `LLM returned empty response` error when the stream ended before any text/tool event
+  - that meant stop-before-first-chunk cases could bypass the explicit abort signal that higher-level agent finalization expects.
+- Concrete root cause:
+  - the streaming layer did not convert `abort with zero streamed events` into an `AbortError`.
+  - as a result, aborted runs could look like empty successes or low-signal empty-response failures instead of a clear kill-switch stop.
+- Fix implemented:
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - added a small local `createAbortError(...)` helper
+    - updated `makeLLMCallWithStreaming(...)` to throw `AbortError` when the stream ends with no text and the abort signal / session stop is active
+    - updated `makeLLMCallWithStreamingAndTools(...)` to do the same when the stream ends with no text and no tool calls under an active abort/stop condition
+- Tests added/updated:
+  - `apps/desktop/src/main/llm-fetch.test.ts`
+    - added a regression proving pre-aborted plain streaming with zero chunks rejects with `AbortError` instead of silently returning empty content
+    - added a regression proving pre-aborted streaming+tools with zero events rejects with `AbortError` instead of `LLM returned empty response`
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-fetch.test.ts`
+  - ✅ passed (`33 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
+- Remaining promising leads:
+  - recheck the next fresh Langfuse trace with `wasAborted: true` plus `output: null` (if one appears) to confirm the LLM-generation status now records an explicit abort path instead of an empty/default streaming finish
 
 ### 2026-03-08 — Guideline / notes update requests should edit the likely target directly
 

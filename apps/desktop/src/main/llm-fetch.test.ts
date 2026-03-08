@@ -151,6 +151,36 @@ describe('LLM Fetch with AI SDK', () => {
     )
   })
 
+  it('treats a pre-aborted plain stream with no chunks as an AbortError', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+    const { agentSessionStateManager } = await import('./state')
+
+    streamTextMock.mockReturnValue({
+      textStream: (async function* () {})(),
+    } as any)
+
+    const shouldStopSpy = vi.spyOn(agentSessionStateManager, 'shouldStopSession')
+      .mockReturnValue(true)
+
+    const { makeLLMCallWithStreaming } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreaming(
+        [{ role: 'user', content: 'test abort before first chunk' }],
+        vi.fn(),
+        'openai',
+        'stopped-session-id',
+      )
+    ).rejects.toMatchObject({
+      name: 'AbortError',
+      message: 'Streaming LLM call aborted',
+    })
+
+    expect(streamTextMock).toHaveBeenCalledTimes(1)
+    shouldStopSpy.mockRestore()
+  })
+
   it('records a readable Langfuse error status when verification generateText throws binary-like noise', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
@@ -974,6 +1004,37 @@ describe('LLM Fetch with AI SDK', () => {
         vi.fn(),
       )
     ).rejects.toThrow('provider returned malformed chunk')
+  })
+
+  it('treats a pre-aborted streaming+tools call with no events as an AbortError', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+    const { agentSessionStateManager } = await import('./state')
+
+    streamTextMock.mockReturnValue({
+      fullStream: (async function* () {})(),
+    } as any)
+
+    const shouldStopSpy = vi.spyOn(agentSessionStateManager, 'shouldStopSession')
+      .mockReturnValue(true)
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreamingAndTools(
+        [{ role: 'user', content: 'test abort before first event' }],
+        vi.fn(),
+        'openai',
+        undefined,
+        'stopped-session-id',
+      )
+    ).rejects.toMatchObject({
+      name: 'AbortError',
+      message: 'Streaming LLM call aborted',
+    })
+
+    expect(streamTextMock).toHaveBeenCalledTimes(1)
+    shouldStopSpy.mockRestore()
   })
 
   it('times out a hanging streaming+tools call instead of hanging forever', async () => {
