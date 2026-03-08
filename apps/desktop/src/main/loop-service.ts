@@ -31,6 +31,10 @@ export interface LoopStatus {
   intervalMinutes: number
 }
 
+type LoopOrigin = {
+  layer: "global" | "workspace"
+}
+
 class LoopService {
   private static instance: LoopService | null = null
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
@@ -39,6 +43,8 @@ class LoopService {
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
+  /** Tracks which .agents layer currently owns each merged task. */
+  private originById: Map<string, LoopOrigin> = new Map()
 
   static getInstance(): LoopService {
     if (!LoopService.instance) {
@@ -55,24 +61,42 @@ class LoopService {
   // Persistence — load / save / delete
   // ============================================================================
 
+  private getLayers() {
+    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+    const workspaceDir = resolveWorkspaceAgentsFolder()
+    const workspaceLayer = workspaceDir ? getAgentsLayerPaths(workspaceDir) : null
+    return { globalLayer, workspaceLayer }
+  }
+
   /** Load tasks from .agents/tasks/ (global + workspace), migrating from config.json if needed. */
   private loadFromDisk(): void {
-    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+    const { globalLayer, workspaceLayer } = this.getLayers()
     const globalResult = loadTasksLayer(globalLayer)
 
-    const workspaceDir = resolveWorkspaceAgentsFolder()
-    let workspaceTasks: LoopConfig[] = []
-    if (workspaceDir) {
-      const workspaceLayer = getAgentsLayerPaths(workspaceDir)
-      workspaceTasks = loadTasksLayer(workspaceLayer).tasks
-    }
+    const workspaceResult = workspaceLayer
+      ? loadTasksLayer(workspaceLayer)
+      : { tasks: [] as LoopConfig[], originById: new Map() }
 
-    if (globalResult.tasks.length > 0 || workspaceTasks.length > 0) {
+    if (globalResult.tasks.length > 0 || workspaceResult.tasks.length > 0) {
       // Merge: workspace overrides global by ID
       const mergedById = new Map<string, LoopConfig>()
-      for (const t of globalResult.tasks) mergedById.set(t.id, t)
-      for (const t of workspaceTasks) mergedById.set(t.id, t) // workspace wins
+      const mergedOriginById = new Map<string, LoopOrigin>()
+
+      for (const t of globalResult.tasks) {
+        mergedById.set(t.id, t)
+        if (globalResult.originById.has(t.id)) {
+          mergedOriginById.set(t.id, { layer: "global" })
+        }
+      }
+      for (const t of workspaceResult.tasks) {
+        mergedById.set(t.id, t)
+        if (workspaceResult.originById.has(t.id)) {
+          mergedOriginById.set(t.id, { layer: "workspace" })
+        }
+      }
+
       this.loops = Array.from(mergedById.values())
+      this.originById = mergedOriginById
       logApp(`[LoopService] Loaded ${this.loops.length} task(s) from .agents/tasks/`)
       return
     }
@@ -81,6 +105,7 @@ class LoopService {
     const legacyLoops = configStore.get().loops || []
     if (legacyLoops.length > 0) {
       this.loops = [...legacyLoops]
+      this.originById = new Map(legacyLoops.map(loop => [loop.id, { layer: "global" }]))
       try {
         writeAllTaskFiles(globalLayer, legacyLoops, { onlyIfMissing: true, maxBackups: 10 })
         logApp(`[LoopService] Migrated ${legacyLoops.length} task(s) from config.json to .agents/tasks/`)
@@ -91,31 +116,42 @@ class LoopService {
     }
 
     this.loops = []
+    this.originById = new Map()
   }
 
-  /** Persist a single task to the global .agents/tasks/ layer. */
+  /** Persist a task back to its current layer; new tasks default to global. */
   private saveTask(task: LoopConfig): boolean {
+    const { globalLayer, workspaceLayer } = this.getLayers()
+    const targetLayerName = this.originById.get(task.id)?.layer === "workspace" && workspaceLayer ? "workspace" : "global"
+    const targetLayer = targetLayerName === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      writeTaskFile(globalLayer, task, { maxBackups: 10 })
+      writeTaskFile(targetLayer, task, { maxBackups: 10 })
     } catch (error) {
       logApp("[LoopService] Error saving task file:", error)
       return false
     }
+
+    this.originById.set(task.id, { layer: targetLayerName })
     // Shadow: keep config.json in sync for backward compatibility
     this.syncToConfigJson()
     return true
   }
 
-  /** Remove a task's files from the global .agents/tasks/ layer. */
-  private removeTaskFiles(taskId: string): void {
+  /** Remove a task's files from its current layer without mutating in-memory state first. */
+  private removeTaskFiles(taskId: string): boolean {
+    const { globalLayer, workspaceLayer } = this.getLayers()
+    const targetLayerName = this.originById.get(taskId)?.layer === "workspace" && workspaceLayer ? "workspace" : "global"
+    const targetLayer = targetLayerName === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      deleteTaskFiles(globalLayer, taskId)
+      deleteTaskFiles(targetLayer, taskId)
     } catch (error) {
       logApp("[LoopService] Error deleting task files:", error)
+      return false
     }
-    this.syncToConfigJson()
+
+    return true
   }
 
   /** Shadow-write all loops back to config.json for backward compatibility. */
@@ -171,9 +207,15 @@ class LoopService {
   deleteLoop(loopId: string): boolean {
     const idx = this.loops.findIndex((l) => l.id === loopId)
     if (idx === -1) return false
-    this.loops.splice(idx, 1)
+
+    if (!this.removeTaskFiles(loopId)) {
+      return false
+    }
+
     this.stopLoop(loopId)
-    this.removeTaskFiles(loopId)
+    this.loops.splice(idx, 1)
+    this.originById.delete(loopId)
+    this.syncToConfigJson()
     return true
   }
 

@@ -209,12 +209,8 @@ export function writeAllTaskFiles(
 
 export function deleteTaskFiles(layer: AgentsLayerPaths, taskId: string): void {
   const taskDir = taskIdToDirPath(layer, taskId)
-  try {
-    if (fs.existsSync(taskDir)) {
-      fs.rmSync(taskDir, { recursive: true, force: true })
-    }
-  } catch {
-    // best-effort
+  if (fs.existsSync(taskDir)) {
+    fs.rmSync(taskDir, { recursive: true, force: true })
   }
 }
 
