@@ -51,6 +51,7 @@
 - [x] A/B-tested the focused transcript with offscreen transcript-item `content-visibility` forced off vs on in the live renderer; keeping a recent bottom buffer fully rendered preserved `maxBottomGapPx=0` while older offscreen blocks were deferred.
 - [x] Ruled out one tempting but secondary fix path in this loop: memoizing transcript data/render arrays inside `AgentProgress` alone did not materially change the live focused-session timings until browser-side offscreen rendering work was reduced.
 - [x] Reproduced a fresh shared-session scroll-interruption race in the visible panel target (`/panel`) by seeding a long synthetic transcript into the live focused session store, manually scrolling `~400px` above bottom, and pushing the next streamed chunk in the same task as the scroll event.
+- [x] Reproduced and isolated a fresh focused long-history first-chunk lag in the visible main sessions window by seeding one focused session with `120` user/assistant pairs, waiting `250ms`, and measuring the first streamed chunk after focus.
 
 ## Not Yet Checked
 
@@ -64,7 +65,7 @@
 - [ ] Capture a live normal-agent scroll-interruption repro in a stable 1x1/focused session tile with exact bottom-gap samples before/after manual wheel scroll.
 - [ ] Measure wheel / trackpad / keyboard scrolling separately from scripted `scrollTop` changes once a stable overflow harness exists.
 - [ ] Run the same settled-grid repro against a real ACP session mix instead of a synthetic long-history store harness.
-- [ ] Investigate the remaining focused long-history single-session cost after offscreen transcript deferral; the current repro still sits around `~338ms` avg chunk→frame for a `240`-item transcript.
+- [ ] Compare the same focused long-history first-chunk repro against a live ACP session with real streamed content instead of the synthetic renderer-store harness.
 
 ## Reproduced
 
@@ -137,6 +138,13 @@
   - after the next streamed chunk: `distanceFromBottom=0.5px`
   - `snappedBackToBottom=true`
 - **Diagnosis:** the shared `AgentProgress` scroll handler already flipped `shouldAutoScrollRef.current = false` synchronously, but the streaming `useLayoutEffect` still gated `scrollToBottom()` on React state (`shouldAutoScroll`). When a user scroll event and the next streamed chunk landed in the same task/batch, the layout effect could still observe stale `shouldAutoScroll=true` and yank the viewport back to bottom before the state update committed.
+- **Scenario:** visible main sessions window (`http://localhost:5174/`), one focused active session tile with a very long shared transcript (`120` user/assistant pairs = `240` history items), wait `250ms` after focus, then deliver the **first** streamed chunk.
+- **Evidence:** before the fix, the first streamed chunk after focus was dramatically slower than steady-state chunk updates in the same long-history session:
+  - first-chunk chunk→next-frame: `977.6ms`
+  - second chunk in the same session: `7.3ms`
+  - if the session was allowed to settle for `~3s`, steady-state chunks fell back to `~11–14ms`
+  - source inspection showed every collapsed historical `CompactMessage` still mounted a full `<MarkdownRenderer content={...} />`, so focusing a long transcript eagerly parsed markdown across the entire mounted history even when most messages were collapsed/offscreen.
+- **Diagnosis:** the remaining focused long-history jank was dominated by collapsed-message markdown work during and immediately after focus. The expensive first streamed chunk was landing while the newly focused transcript still had a large number of full markdown trees mounted for collapsed history items.
 
 ## Fixed
 
@@ -163,6 +171,8 @@
 - **Renderer change:** updated the shared session streaming `useLayoutEffect` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to consult `shouldAutoScrollRef.current` instead of the lagging `shouldAutoScroll` state, so a manual scroll interruption takes effect immediately even if the next streamed chunk arrives in the same task.
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a regression assertion that the pinned streaming path uses the live ref and no longer reads `if (shouldAutoScroll) { scrollToBottom() }`.
 - **Renderer compatibility cleanup:** restored the missing `SessionGrid` exports / measurement callback contract in `apps/desktop/src/renderer/src/components/session-grid.tsx` and added `src/renderer/src/components/session-grid.layout.test.ts`, because the main sessions route was crashing before streaming repro work could proceed.
+- **Renderer change:** updated `CompactMessage` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` so collapsed transcript messages render a lightweight plain-text preview instead of mounting full `MarkdownRenderer` trees until the message is expanded.
+- **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.performance.test.ts` with a guardrail assertion for the collapsed-preview path.
 
 ## Verified
 
@@ -239,6 +249,14 @@
   - after the next streamed chunk: `distanceFromBottom=736px`
   - `snappedBackToBottom=false`
 - **Interpretation:** the shared session view now respects immediate user scroll interruption in the measured panel repro. The next streamed chunk no longer yanks the transcript back to bottom; instead the viewport stays where the user left it while new content accumulates below.
+- **Targeted test:** `pnpm exec vitest run apps/desktop/src/renderer/src/components/agent-progress.performance.test.ts` ✅
+- **Renderer typecheck:** `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit` ✅
+- **Same focused long-history first-chunk repro after the collapsed-preview fix (same main-window target, same `240`-item transcript, same `250ms` post-focus wait):**
+  - one-shot first chunk: `36.1ms` (down from `977.6ms`)
+  - next chunk in the same session: `12.4ms`
+  - repeated fresh-session samples: `31.6ms`, `34.3ms`, `39.4ms` (`avg=35.1ms`, `median=34.3ms`, `max=39.4ms`)
+  - captured after-fix trace: `/tmp/focused-first-stream-after-collapsed-preview.zip`
+- **Interpretation:** focusing a very long transcript no longer leaves the first streamed chunk stuck behind nearly a full second of collapsed-history markdown work. The remaining first-chunk cost is still above ideal, but it is now in the tens of milliseconds instead of the high hundreds.
 
 ## Still Uncertain
 
@@ -246,7 +264,7 @@
 - Whether live end-to-end normal-agent and ACP-agent sessions in the floating panel show the same before/after behavior as the scripted main-window replay, since panel resizing can mask overflow.
 - Whether the shared fix fully resolves the same interruption pattern in a live ACP session with sustained streaming; this loop confirmed the renderer code path but did not capture a clean overflowing ACP live trace.
 - Whether panel auto-resizing is masking a second, separate overflow/anchoring bug in the floating panel itself.
-- Whether the remaining focused-session long-history cost after this fix is now dominated by the live streaming bubble / markdown subtree, bottom-area layout invalidation, or another hot path unrelated to older offscreen transcript items.
+- Whether the remaining `~31–39ms` first-chunk cost in the focused long-history repro is now dominated by bottom-area layout/paint, the live streaming bubble itself, or another smaller renderer hot path.
 - Whether wheel / trackpad / keyboard input in a live long-running session exhibits any additional shared-session recovery quirks beyond the scripted renderer-store repro that is now fixed.
 - Whether rapid *repeated* session-selection changes or route swaps during active streaming still produce a separate page-level jank trace now that the delayed smooth-scroll timer is gone.
 - Whether a live end-to-end normal-agent or ACP-agent session in a stable overflowing focused main-session view still shows any interruption pattern beyond this now-fixed shared renderer race.

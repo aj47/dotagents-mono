@@ -23,7 +23,7 @@ import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
-import { sanitizeMessageContentForSpeech } from "@shared/message-display-utils"
+import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@shared/message-display-utils"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -104,6 +104,21 @@ type DisplayItem =
 
 const TILE_TRANSCRIPT_PREVIEW_ITEMS = 6
 const OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS = 12
+
+function getCollapsedMessagePreview(content: string): string {
+  return sanitizeMessageContentForDisplay(content)
+    .replace(/```[\s\S]*?```/g, "[code block]")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, (_match, altText: string) => altText?.trim() ? `[Image: ${altText.trim()}]` : "[Image]")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .replace(/^\s*[0-9]+\.\s+/gm, "")
+    .replace(/[*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
 
 function extractRespondToUserContentFromArgs(args: unknown): string | null {
   if (!args || typeof args !== "object") return null
@@ -275,6 +290,11 @@ const CompactMessage: React.FC<{
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
   const shouldCollapse = (message.content?.length ?? 0) > 100 || hasExtras
+  const shouldRenderCollapsedPreview = !isExpanded && shouldCollapse
+  const collapsedPreviewContent = useMemo(
+    () => getCollapsedMessagePreview(message.content ?? ""),
+    [message.content],
+  )
 
   // Track the computed ttsSource (ttsText || message.content) since that's what determines the
   // ttsKey and should also gate async state updates.
@@ -464,7 +484,9 @@ const CompactMessage: React.FC<{
             "leading-relaxed text-left",
             !isExpanded && shouldCollapse && "line-clamp-2"
           )}>
-          <MarkdownRenderer content={(message.content ?? "").trim()} />
+          {shouldRenderCollapsedPreview
+            ? <div className="break-words [overflow-wrap:anywhere]">{collapsedPreviewContent}</div>
+            : <MarkdownRenderer content={(message.content ?? "").trim()} />}
           </div>
           {hasExtras && isExpanded && (
             <div className="mt-2 space-y-2 text-left">

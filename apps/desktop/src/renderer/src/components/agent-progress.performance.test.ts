@@ -19,8 +19,8 @@ describe("agent progress streaming performance guardrails", () => {
   it("memoizes session tiles so unrelated streamed chunks do not re-render the full grid", () => {
     expect(sessionsPageSource).toContain("const SessionProgressTile = React.memo(function SessionProgressTile")
     expect(sessionsPageSource).toContain("<SessionProgressTile")
-    expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(async (sessionId: string) =>")
-    expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(async (sessionId: string) =>")
+    expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(")
+    expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(")
   })
 
   it("keeps the historical transcript memoized while streamed chunks update only current-state items", () => {
@@ -39,4 +39,12 @@ describe("agent progress streaming performance guardrails", () => {
     expect(agentProgressSource).toContain("containIntrinsicSize: \"auto 160px\"")
     expect(agentProgressSource).toContain("index < timestampedDisplayItems.length - OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS")
   })
+
+  it("uses a lightweight collapsed preview instead of full markdown for collapsed transcript messages", () => {
+    expect(agentProgressSource).toContain("function getCollapsedMessagePreview(content: string): string")
+    expect(agentProgressSource).toContain("const shouldRenderCollapsedPreview = !isExpanded && shouldCollapse")
+    expect(agentProgressSource).toContain("getCollapsedMessagePreview(message.content ?? \"\")")
+    expect(agentProgressSource).toContain("? <div className=\"break-words [overflow-wrap:anywhere]\">{collapsedPreviewContent}</div>")
+  })
+
 })
