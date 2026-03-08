@@ -959,6 +959,37 @@ export default function SettingsScreen({ navigation }: any) {
     );
   };
 
+  const renderActionRailSwitchVisual = (enabled: boolean) => {
+    if (Platform.OS === 'web') {
+      return (
+        <View
+          style={[
+            styles.actionRailSwitchTrack,
+            enabled && styles.actionRailSwitchTrackActive,
+          ]}
+          accessible={false}
+        >
+          <View
+            style={[
+              styles.actionRailSwitchThumb,
+              enabled && styles.actionRailSwitchThumbActive,
+            ]}
+            accessible={false}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <Switch
+        accessible={false}
+        value={enabled}
+        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+        thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+      />
+    );
+  };
+
   if (!ready) return null;
 
   return (
@@ -2174,13 +2205,12 @@ export default function SettingsScreen({ navigation }: any) {
                           accessibilityState={{ checked: profile.enabled }}
                           activeOpacity={0.7}
                         >
-                          <View pointerEvents="none">
-                            <Switch
-                              accessible={false}
-                              value={profile.enabled}
-                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                              thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                            />
+                          <View
+                            pointerEvents="none"
+                            accessibilityElementsHidden
+                            importantForAccessibility="no-hide-descendants"
+                          >
+                            {renderActionRailSwitchVisual(profile.enabled)}
                           </View>
                         </TouchableOpacity>
                         {!profile.isBuiltIn && (
@@ -2252,13 +2282,12 @@ export default function SettingsScreen({ navigation }: any) {
                           accessibilityState={{ checked: loop.enabled }}
                           activeOpacity={0.7}
                         >
-                          <View pointerEvents="none">
-                            <Switch
-                              accessible={false}
-                              value={loop.enabled}
-                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                              thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                            />
+                          <View
+                            pointerEvents="none"
+                            accessibilityElementsHidden
+                            importantForAccessibility="no-hide-descendants"
+                          >
+                            {renderActionRailSwitchVisual(loop.enabled)}
                           </View>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -3098,6 +3127,28 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.destructive,
       fontSize: 12,
       fontWeight: '600',
+    },
+    actionRailSwitchTrack: {
+      width: 36,
+      height: 20,
+      borderRadius: radius.full,
+      padding: 2,
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+    },
+    actionRailSwitchTrackActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    actionRailSwitchThumb: {
+      width: 16,
+      height: 16,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.background,
+      transform: [{ translateX: 0 }],
+    },
+    actionRailSwitchThumbActive: {
+      backgroundColor: theme.colors.primaryForeground,
+      transform: [{ translateX: 16 }],
     },
     createAgentButton: {
       marginTop: spacing.md,

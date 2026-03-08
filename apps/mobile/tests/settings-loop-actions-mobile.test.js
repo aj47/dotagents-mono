@@ -16,6 +16,8 @@ test('uses minimum touch targets for loop action controls', () => {
 
 test('adds explicit accessibility semantics for loop actions', () => {
   assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\(`\$\{loop\.name\} loop`\)/);
+  assert.match(settingsSource, /renderActionRailSwitchVisual\(loop\.enabled\)/);
+  assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?createButtonAccessibilityLabel\(`Run \$\{loop\.name\} loop now`\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Run \$\{loop\.name\} loop now`\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete \$\{loop\.name\} loop`\)/);
 });

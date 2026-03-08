@@ -160,3 +160,49 @@
   - Remove the duplicate unnamed inner switch exposure for both `Agents` and `Agent Loops` without shrinking the hit target.
   - Reduce `Agent Loops` text density with a small hierarchy/readability improvement.
   - Inspect the chat/session header trigger sizing again after settings-row affordances feel solid.
+
+### 2026-03-08 — Iteration 4: remove duplicate inner switch nodes on web
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - wrapped switch implementations in `SettingsScreen`
+  - the prior `Agents` / `Agent Loops` Expo Web accessibility findings
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Confirmed both `Settings > Agents` and `Settings > Agent Loops` still exposed duplicate accessibility nodes:
+    - a named outer switch control,
+    - plus an extra unnamed inner switch node from the visual `Switch`.
+  - Representative AX-tree counts showed 11 named switches and 11 unnamed switch nodes on the inspected page state.
+- Issue selected:
+  - The wrapped mobile switches improved naming and hit targets, but React Native Web still leaked the inner visual `Switch` into the accessibility tree, creating duplicate announcements.
+- Decision:
+  - Keep the named/tappable outer wrappers.
+  - Stop relying on React Native Web to hide the inner native `Switch` semantics.
+  - Render a web-only non-semantic switch visual inside the wrapped controls while preserving the native `Switch` on non-web platforms.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `renderActionRailSwitchVisual(enabled)` for compact action-rail switches,
+    - render a plain `View`-based switch track/thumb visual on web,
+    - keep the native `Switch` for non-web platforms,
+    - reuse the helper for both `Settings > Agents` and `Settings > Agent Loops`.
+  - Updated focused tests in:
+    - `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+    - `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - unnamed switch count in the full accessibility tree: `0`
+    - named agent toggles remain present (`augustus agent toggle`, `Worker Agent agent toggle`, etc.)
+    - named loop toggles remain present (`Discord Recap Tweeter loop toggle`, etc.)
+    - hit targets still healthy: agent switch `~52x44`, loop switch `~73x44`
+    - switch visual still reads clearly with track `~36x20` and thumb `~16x16`
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Agent Loops` cards are still text-heavy for narrow-screen scanning.
+  - The chat/session header sub-agent trigger should be rechecked after recent settings improvements.
+  - `Settings > Agents` rows could still gain a small hierarchy polish if labels/metadata grow.
+- Next checks:
+  - Reduce `Agent Loops` text density with a local hierarchy/readability improvement.
+  - Revisit the chat/session header trigger sizing and state clarity on narrow screens.
+  - Check whether long agent descriptions need better truncation or metadata grouping on mobile.
