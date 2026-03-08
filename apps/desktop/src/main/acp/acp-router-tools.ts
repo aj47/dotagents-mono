@@ -1149,8 +1149,6 @@ async function executeACPAgentSync(
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
   try {
-    registerSessionMapping();
-
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(() => {
         controller.abort(timeoutMessage);
@@ -1164,6 +1162,11 @@ async function executeACPAgentSync(
         input: args.task,
         context: args.context,
         workingDirectory: args.workingDirectory,
+        // Delegated tasks should not inherit prior ACP session state/results.
+        // Reusing a session here can surface stale outputs from an earlier task
+        // (for example returning an old "ready to post" recap result for a new
+        // "post it" delegation). Start each delegated ACP run in a fresh session.
+        forceNewSession: true,
         mode: 'sync',
         timeout: SYNC_DELEGATION_TIMEOUT_MS,
         signal: controller.signal,
@@ -1273,6 +1276,7 @@ function executeStdioAgentAsync(
     input: args.task,
     context: args.context,
     workingDirectory: args.workingDirectory,
+    forceNewSession: true,
     mode: 'async',
   }).then(
     (result) => {

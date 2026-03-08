@@ -230,4 +230,48 @@ describe('handleDelegateToAgent', () => {
       vi.useRealTimers()
     }
   })
+
+  it('forces a fresh ACP session for each synchronous delegated run', async () => {
+    vi.mocked(acpService.runTask).mockResolvedValue({
+      success: true,
+      result: 'Fresh delegated result',
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: 'test-agent', task: 'Post the prepared recap now' },
+      'parent-session-6',
+    )).resolves.toMatchObject({
+      success: true,
+      status: 'completed',
+    })
+
+    expect(acpService.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      agentName: 'test-agent',
+      input: 'Post the prepared recap now',
+      forceNewSession: true,
+      mode: 'sync',
+    }))
+  })
+
+  it('forces a fresh ACP session for each async stdio delegated run', async () => {
+    vi.mocked(acpService.runTask).mockResolvedValue({
+      success: true,
+      result: 'Queued delegated result',
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: 'test-agent', task: 'Watch for updates in the background', waitForResult: false },
+      'parent-session-7',
+    )).resolves.toMatchObject({
+      success: true,
+      status: 'running',
+    })
+
+    expect(acpService.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      agentName: 'test-agent',
+      input: 'Watch for updates in the background',
+      forceNewSession: true,
+      mode: 'async',
+    }))
+  })
 })

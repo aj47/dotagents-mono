@@ -29,6 +29,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772917123572_de9jk57jd | session_1772917979621_p7x7puoru, session_1772922892781_i3o21grlf | fix implemented (desktop smoke blocked) | User said `continue working on this next step`; Langfuse showed one `delegate_to_agent` result that was only a `## Plan ... I'll first gather ...` handoff, then two later `delegate_to_agent` spans with `endTime: null` before the run ended as `(Agent mode was stopped by emergency kill switch)`. A later follow-up in the same conversation succeeded only after the user restated the intent more concretely. Root repo issue found: synchronous ACP delegation had no fail-fast watchdog, and local ACP `runTask()` ignored per-request abort/timeout signals, so a hung delegated prompt could block the parent run until the user killed agent mode. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh sub-agent evidence) | subsession_1772916424066_82e0fba0, subsession_1772916435166_cb8bb364, subsession_1772916449139_f650fc9f | fix implemented | Fresh Langfuse sub-session traces for the same starter-pack planning conversation showed the delegated internal `Web Browser` specialist repeatedly calling `delegate_to_agent` again instead of doing the browsing/research work itself. That caused recursive delegation failures (`Maximum recursion depth (3) reached`), oversized delegated-request failures (`request body size is too large, must be less than 512000`), blank `output: null` sub-runs, and only delayed recovery after extra turns. Root repo issue found: specialist internal sub-sessions were still built with the generic delegation guidance, so delegated agents could re-delegate the very task they had been chosen to execute. |
 | 2026-03-08 | conv_1771714066742_a3r3bqee6, conv_1771817444023_7v2d8szph | session_1771714066745_wb6k5ig9v, session_1771817444027_h74z83ol9 | fix implemented | Fresh unlogged output-leak class: one trace answering `Did it work` ended with raw pseudo tool-result text starting `Let me check right now. [iterm:list_sessions] { ... }`; corroborating trace `do we need to make more skills to make this easier` ended with `... [Calling tools: speakmcp-settings:execute_command]`. Root repo issue found: final-output helpers only unwrapped pseudo `respond_to_user` text, not generic pseudo tool scaffolding or raw tool-result wrappers, so tool-intent text and structured tool payloads could leak into final user-visible output. |
+| 2026-03-08 | conv_1771906984773_vmb3xu66b | session_1771906984466_gy5dfya2s, session_1771907772476_dae5yojje | fix implemented | Fresh follow-up delegation recovery case around posting a Discord recap. On `post it!`, Langfuse showed `delegate_to_agent` sending `Post the Discord recap tweet...`, but the completed result still returned the earlier recap-prep output (`All files are ready — just say the word to post to @techfren_ai!`). The user had to send `try again` to recover. Root repo issue found: external ACP delegation reused the prior ACP session by default, so a new delegated task could inherit stale session context/output from the previous task instead of starting clean. |
 
 ## Investigations
 
@@ -933,6 +934,42 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/agent-run-utils.ts apps/desktop/src/main/agent-run-utils.test.ts`
   - ✅ passed
 
+### 2026-03-08 — Follow-up ACP delegations should start from a fresh session instead of reusing stale sub-agent context
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1771906984773_vmb3xu66b`
+  - failing trace: `session_1771906984466_gy5dfya2s`
+    - user input: `post it!`
+    - observations showed `delegate_to_agent(agentName: "Web Browser")` with task `Post the Discord recap tweet to @techfren_ai on X/Twitter...`
+    - despite that explicit post request, the delegated result came back `success: true`, `status: completed`, but the returned output was stale recap-prep text ending `All files are ready — just say the word to post to @techfren_ai!`
+    - the user-facing response therefore said the recap assets were ready and asked for permission again, even though the current turn already was the permission/action request
+  - recovery trace: `session_1771907772476_dae5yojje`
+    - user had to send `try again`
+    - later observations showed another posting attempt, confirming the original `post it!` turn had not achieved the intended action in a single run
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` delegated external ACP/stdio agents via `acpService.runTask(...)` without `forceNewSession`
+  - `apps/desktop/src/main/acp-service.ts` intentionally reuses an existing ACP session by default, only clearing collected output blocks; it does not reset the agent-side conversation/history for that session
+  - that means a follow-up delegated task can inherit the previous delegated task's context and last completed output unless the caller explicitly asks for a new ACP session
+  - in traces like this one, a follow-up task (`post it!`) can therefore receive a stale completion from the earlier task (`Recap Discord`) instead of a clean run scoped to the new request
+- Concrete root cause:
+  - delegated ACP runs were session-isolated only at the process level, not at the task/session level
+  - reusing the same ACP session for separate delegated tasks allowed stale sub-agent context/output to bleed into a later delegation result
+- Fix implemented:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - force a fresh ACP session for each synchronous delegated ACP run
+    - force a fresh ACP session for each async stdio delegated ACP run
+    - stop pre-registering the previously active ACP session before the sync run starts, so stale session IDs are not rebound onto the new delegated run
+  - tests added/updated:
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - regression that sync delegated ACP runs now pass `forceNewSession: true`
+      - regression that async stdio delegated ACP runs now pass `forceNewSession: true`
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts`
+  - ✅ passed (`7 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop ACP test exits successfully
+  - `git diff --check -- apps/desktop/src/main/acp/acp-router-tools.ts apps/desktop/src/main/acp/acp-router-tools.test.ts langfuse-bug-fix.md`
+  - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -952,6 +989,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh unavailable-agent / delegation-tool-error trace (for example missing `augustus`) after the next desktop smoke run, to confirm the user now sees the concrete blocker (`send_to_agent failed: ... not found`) instead of a blank or generic incomplete result.
 - Recheck a fresh async ACP delegation trace with repeated `check_agent_status` polling, to confirm the new running-status guidance nudges the model toward other work or a clear `still running` handoff instead of burning the run on tight polling.
 - Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
+- Recheck a fresh follow-up ACP delegation trace on the same specialist (for example `Recap Discord` followed by `post it!`) to confirm the delegated output now comes from a new session instead of resurfacing stale prior-turn results.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
 - Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
