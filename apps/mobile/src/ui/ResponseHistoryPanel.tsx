@@ -174,6 +174,7 @@ export function ResponseHistoryPanel({
   const prevCountRef = useRef(responses.length);
   const newestTimestamp = responses.length > 0 ? Math.max(...responses.map((r) => r.timestamp)) : null;
   const shouldAnimateNewest = responses.length > prevCountRef.current;
+  const newestOriginalIndex = responses.length - 1;
   const responseCountLabel = responses.length === 1 ? '1 response' : `${responses.length} responses`;
   const headerStatusText = speakingIndex !== null
     ? 'Speaking now'
@@ -266,9 +267,35 @@ export function ResponseHistoryPanel({
       justifyContent: 'space-between',
       marginBottom: 4,
     },
+    responseMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
+      flexShrink: 1,
+    },
     timestamp: {
       fontSize: 11,
       color: theme.colors.mutedForeground,
+    },
+    timestampLatest: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    latestBadge: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: `${theme.colors.primary}26`,
+      backgroundColor: `${theme.colors.primary}12`,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      flexShrink: 0,
+    },
+    latestBadgeText: {
+      fontSize: 10,
+      lineHeight: 12,
+      fontWeight: '600',
+      color: theme.colors.primary,
     },
     speakButton: {
       ...responseSpeakTouchTarget,
@@ -325,6 +352,7 @@ export function ResponseHistoryPanel({
           {[...responses].reverse().map((response, index) => {
             const originalIndex = responses.length - 1 - index;
             const isSpeaking = speakingIndex === originalIndex;
+            const isLatest = originalIndex === newestOriginalIndex;
             // Animate newest entry (shown at top after reverse)
             const isNewestEntry =
               shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
@@ -334,9 +362,16 @@ export function ResponseHistoryPanel({
                 <AnimatedResponseItem isNewest={isNewestEntry}>
                   <View style={styles.responseItem}>
                     <View style={styles.responseHeader}>
-                      <Text style={styles.timestamp}>
-                        {formatTime(response.timestamp, false)}
-                      </Text>
+                      <View style={styles.responseMeta}>
+                        <Text style={[styles.timestamp, isLatest && styles.timestampLatest]}>
+                          {formatTime(response.timestamp, false)}
+                        </Text>
+                        {isLatest ? (
+                          <View style={styles.latestBadge}>
+                            <Text style={styles.latestBadgeText}>Latest</Text>
+                          </View>
+                        ) : null}
+                      </View>
                       <TouchableOpacity
                         style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
                         onPress={() => handleSpeak(response.text, originalIndex)}

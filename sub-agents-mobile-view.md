@@ -3699,3 +3699,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new missing-current-selection notice is clear, compact, and visually subordinate to the actual option list.
   - Recheck the selector in both profile and ACP modes to confirm the mode-aware notice copy feels accurate in each case.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting selector context handling again without new evidence.
+
+### 2026-03-08 — Iteration 85: mark the newest response row so same-minute history stays scannable
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - focused mobile coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`
+  - the current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 82 had already compacted visible response-history row timestamps down to minute precision.
+  - That made the panel cleaner overall, but the expanded list still relied on timestamp text alone to signal which response was newest.
+  - On mobile, if multiple responses land in the same minute, adjacent rows could now look too similar at a glance.
+- Issue selected:
+  - The expanded response-history list could still hide which row was newest once timestamps were compacted, weakening scan speed and state clarity in a narrow mobile panel.
+- Decision:
+  - Keep the response-history layout, ordering, disclosure summary, and playback behavior unchanged.
+  - Do not add broader relative-time wording or another always-on metadata line while live validation is blocked.
+  - Make the smallest local fix: mark only the newest row with a compact `Latest` badge and a slightly stronger timestamp treatment.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - derive the newest response row from the original ordering,
+    - group the row timestamp into a compact metadata cluster,
+    - render a small `Latest` badge only on the newest response row,
+    - tint the newest timestamp to match that badge for quicker visual recognition.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new newest-row badge and styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new `Latest` badge stays visually helpful without crowding the speak button or long markdown rows.
+  - If several responses arrive in the same minute, the newest-row badge should now help, but a live pass is still needed to decide whether any relative-time cue (`Just now`, `1m ago`) is warranted.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the newest-row badge stays compact and legible at narrow widths.
+  - Compare collapsed vs expanded response-history states to confirm the header summary plus row-level `Latest` cue feel complementary rather than redundant.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history ordering again without new evidence.
