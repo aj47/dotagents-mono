@@ -1,13 +1,19 @@
-import React, { useState, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
-import { useMutation } from "@tanstack/react-query"
+import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot, Sparkles } from "lucide-react"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
+import type { AgentSkill } from "@shared/types"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import {
+  expandSlashCommandText,
+  getSlashCommandState,
+  replaceSlashCommandSelection,
+} from "./skill-slash-commands"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
@@ -46,14 +52,31 @@ export function TileFollowUpInput({
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
+  const [selectedSlashSkillIndex, setSelectedSlashSkillIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+  const skillsQuery = useQuery<AgentSkill[]>({
+    queryKey: ["skills"],
+    queryFn: () => tipcClient.getSkills(),
+    staleTime: 60_000,
+  })
+  const availableSkills = skillsQuery.data ?? []
+  const slashCommandState = React.useMemo(
+    () => getSlashCommandState(text, availableSkills),
+    [availableSkills, text],
+  )
+  const matchedSlashSkill = slashCommandState?.exactSkill ?? null
+  const selectedSlashSkill = slashCommandState?.suggestions[selectedSlashSkillIndex] ?? null
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
   const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
+
+  useEffect(() => {
+    setSelectedSlashSkillIndex(0)
+  }, [slashCommandState?.query, slashCommandState?.suggestions.length])
 
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -97,7 +120,8 @@ export function TileFollowUpInput({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
-    const message = buildMessageWithImages(text, imageAttachments)
+    const expandedText = expandSlashCommandText(text, matchedSlashSkill)
+    const message = buildMessageWithImages(expandedText, imageAttachments)
     logUI("[TileFollowUpInput] submit requested", {
       hasText: text.trim().length > 0,
       attachmentCount: imageAttachments.length,
@@ -127,6 +151,11 @@ export function TileFollowUpInput({
       submitInFlightRef.current = false
       setIsSubmitting(false)
     }
+  }
+
+  const handleSelectSlashSkill = (skill: AgentSkill) => {
+    setText((currentText) => replaceSlashCommandSelection(currentText, skill))
+    setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,6 +195,28 @@ export function TileFollowUpInput({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (slashCommandState?.shouldShowSuggestions && selectedSlashSkill) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setSelectedSlashSkillIndex((currentIndex) =>
+          Math.min(currentIndex + 1, slashCommandState.suggestions.length - 1),
+        )
+        return
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault()
+        setSelectedSlashSkillIndex((currentIndex) => Math.max(currentIndex - 1, 0))
+        return
+      }
+
+      if ((e.key === "Tab" || e.key === "Enter") && !e.shiftKey) {
+        e.preventDefault()
+        handleSelectSlashSkill(selectedSlashSkill)
+        return
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -273,6 +324,13 @@ export function TileFollowUpInput({
         <div className="flex items-center gap-1 text-[10px] text-primary/70">
           <Bot className="h-2.5 w-2.5 shrink-0" />
           <span className="truncate" title={`Agent: ${agentName}`}>{agentName}</span>
+        </div>
+      )}
+
+      {matchedSlashSkill && (
+        <div className="flex min-w-0 items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400">
+          <Sparkles className="h-2.5 w-2.5 shrink-0" />
+          <span className="min-w-0 truncate">Skill: {matchedSlashSkill.name}</span>
         </div>
       )}
 
@@ -391,7 +449,47 @@ export function TileFollowUpInput({
         </Button>
         )}
       </div>
+
+      {slashCommandState?.shouldShowSuggestions && !isDisabled && (
+        <div className="overflow-hidden rounded-md border border-border/60 bg-muted/20">
+          <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Skill commands
+          </div>
+          <div
+            role="listbox"
+            aria-label="Skill slash command suggestions"
+            className="max-h-28 overflow-y-auto p-1"
+          >
+            {skillsQuery.isLoading ? (
+              <div className="px-2 py-2 text-xs text-muted-foreground">Loading skills…</div>
+            ) : slashCommandState.suggestions.length === 0 ? (
+              <div className="px-2 py-2 text-xs text-muted-foreground">
+                No skills match `/{slashCommandState.query}`.
+              </div>
+            ) : (
+              slashCommandState.suggestions.map((skill, index) => (
+                <button
+                  key={skill.id}
+                  type="button"
+                  className={cn(
+                    "flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors",
+                    index === selectedSlashSkillIndex
+                      ? "bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+                      : "hover:bg-accent hover:text-accent-foreground",
+                  )}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => handleSelectSlashSkill(skill)}
+                >
+                  <span className="font-medium">{skill.name}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    /{skill.id} • {skill.description || "Use this skill as a reusable prompt."}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </form>
   )
 }
-
