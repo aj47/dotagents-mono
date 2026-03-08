@@ -27,6 +27,8 @@ export const configPath = path.join(dataFolder, "config.json")
 // Global agents folder: ~/.agents — the canonical, shareable location for all agent config.
 // Everything lives here so it's easy to version-control, share, or distribute as a profile pack.
 export const globalAgentsFolder = path.join(os.homedir(), ".agents")
+export const bundleSlotsFolder = path.join(globalAgentsFolder, "bundle-slots")
+export const activeBundleSlotStatePath = path.join(bundleSlotsFolder, "active-slot.json")
 
 // Legacy location (app-data/.agents) — used only for one-time migration.
 const legacyAppDataAgentsFolder = path.join(dataFolder, ".agents")
@@ -97,6 +99,98 @@ export function resolveWorkspaceAgentsFolder(): string | null {
   // Don't return the same directory as the global layer
   if (path.resolve(found) === globalResolved) return null
   return found
+}
+
+type PersistedActiveBundleSlotState = {
+  slotId?: unknown
+  lastSwitchedAt?: unknown
+}
+
+export type BundleSlotSummary = {
+  id: string
+  slotDir: string
+  isActive: boolean
+}
+
+export type BundleSlotState = {
+  slotsFolder: string
+  activeSlotId: string | null
+  lastSwitchedAt: string | null
+  slots: BundleSlotSummary[]
+  precedence: "global -> active slot -> workspace"
+  runtimeActivationEnabled: boolean
+}
+
+const BUNDLE_SLOT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+
+function normalizeBundleSlotId(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return BUNDLE_SLOT_ID_PATTERN.test(trimmed) ? trimmed : null
+}
+
+function normalizeIsoTimestamp(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return Number.isNaN(Date.parse(trimmed)) ? null : trimmed
+}
+
+function readPersistedActiveBundleSlotState(): PersistedActiveBundleSlotState | null {
+  try {
+    if (!fs.existsSync(activeBundleSlotStatePath)) return null
+    const raw = JSON.parse(fs.readFileSync(activeBundleSlotStatePath, "utf8"))
+    return raw && typeof raw === "object" ? raw as PersistedActiveBundleSlotState : null
+  } catch {
+    return null
+  }
+}
+
+export function listBundleSlotDirectories(): Array<{ id: string; slotDir: string }> {
+  try {
+    if (!fs.existsSync(bundleSlotsFolder) || !fs.statSync(bundleSlotsFolder).isDirectory()) {
+      return []
+    }
+
+    return fs.readdirSync(bundleSlotsFolder, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => ({
+        id: normalizeBundleSlotId(entry.name),
+        slotDir: path.join(bundleSlotsFolder, entry.name),
+      }))
+      .filter((entry): entry is { id: string; slotDir: string } => Boolean(entry.id))
+      .sort((a, b) => a.id.localeCompare(b.id))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Read-only slot metadata/status for issue #57.
+ *
+ * This intentionally does not activate slot layering yet; it only exposes the
+ * discovered slot folders plus the current `active-slot.json` pointer so the UI
+ * can show status without implying full preset-switch support already exists.
+ */
+export function getActiveBundleSlotState(): BundleSlotState {
+  const slots = listBundleSlotDirectories()
+  const persisted = readPersistedActiveBundleSlotState()
+  const requestedActiveSlotId = normalizeBundleSlotId(persisted?.slotId)
+  const activeSlotId = requestedActiveSlotId && slots.some((slot) => slot.id === requestedActiveSlotId)
+    ? requestedActiveSlotId
+    : null
+
+  return {
+    slotsFolder: bundleSlotsFolder,
+    activeSlotId,
+    lastSwitchedAt: normalizeIsoTimestamp(persisted?.lastSwitchedAt),
+    slots: slots.map((slot) => ({
+      ...slot,
+      isActive: slot.id === activeSlotId,
+    })),
+    precedence: "global -> active slot -> workspace",
+    runtimeActivationEnabled: false,
+  }
 }
 
 /**

@@ -2328,3 +2328,45 @@
   - Keep import-target and restore semantics aligned with this precedence when slot-aware bundle import is introduced.
 
 - Next recommended issue work item: refresh the open issues again and prefer the next smallest direct-value bug/reliability slice; if `#57` is revisited, the clean next step is real slot metadata/state on top of the now-documented layer order, not more abstract slot planning.
+
+##### Issue #57 — Bundle-slot groundwork: read-only slot metadata/status in Settings → Capabilities
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the immediately recommended `#57` next step after the precedence-doc slice: add real slot metadata/state, but keep the first landing read-only so the app does not imply full preset switching is already finished.
+  - This was the smallest shippable follow-up with direct user/developer value because it exposes the future slot surface (`bundle-slots/*` + `active-slot.json`) in the app and main-process contract without yet changing runtime layer loading semantics.
+- Investigation:
+  - Re-read issue `#57` plus the owner slot comment and confirmed the requested visible state includes the active slot and last-switched time.
+  - Re-inspected `apps/desktop/src/main/config.ts`, `apps/desktop/src/main/tipc.ts`, and `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed there was still no slot metadata helper, no TIPC endpoint, and no Capabilities UI surface for slot state.
+  - Confirmed the earlier precedence note now makes the intended future order explicit (`global -> active slot -> workspace`), so a read-only status slice can safely reference that contract without silently changing runtime behavior yet.
+- Important assumptions:
+  - Assumption: storing the active-slot pointer at `~/.agents/bundle-slots/active-slot.json` is an acceptable first concrete location even though the issue comment named the file but not its exact parent folder.
+  - Why acceptable: colocating the pointer with the slot directories keeps the new metadata self-contained under the bundle-slot root and avoids inventing another top-level config file.
+  - Assumption: the first landed UI should be explicitly read-only rather than shipping a half-wired switcher.
+  - Why acceptable: the runtime still does not mount slot layers, so a status card plus folder affordance is honest, useful, and avoids misleading users into thinking preset switching already works end-to-end.
+- Changes implemented:
+  - Added bundle-slot metadata helpers to `apps/desktop/src/main/config.ts`:
+    - `bundleSlotsFolder` and `activeBundleSlotStatePath`
+    - validation helpers for slot IDs / timestamps
+    - `listBundleSlotDirectories()`
+    - `getActiveBundleSlotState()` returning discovered slots, active pointer, last-switched timestamp, future precedence note, and an explicit `runtimeActivationEnabled: false` guard
+  - Added `getBundleSlotState` and `openBundleSlotsFolder` procedures in `apps/desktop/src/main/tipc.ts` so the renderer can query slot status and open the canonical slot root.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` with a new `Bundle slots` card that shows:
+    - the current active slot pointer (or empty state)
+    - last-switched time if present
+    - discovered slot directories
+    - an `Open Slots Folder` action
+    - explicit copy that this is status-only for now and does not yet activate runtime layer switching
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with dependency-free source assertions covering the new config helpers, TIPC endpoints, and Capabilities UI/status copy.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Add write-side slot actions next (`set active slot`, `clear active slot`, or import-targeted slot creation) only once the runtime can actually consume the active slot layer.
+  - Extend `getRuntimeAgentsLayers()` and the relevant loaders/services to mount the active slot between global and workspace before exposing a switch action in the UI.
+  - When slot activation lands, update the Capabilities card from status-only copy to real switch / rollback affordances and keep restore/import semantics aligned with the same layer order.
+
+- Next recommended issue work item: refresh the open issues again and prefer a concrete bug/reliability slice next; if `#57` is revisited immediately, the right next move is runtime consumption of the active slot contract (not more read-only slot chrome).

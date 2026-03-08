@@ -11,6 +11,7 @@ const settingsSource = fs.readFileSync(path.join(__dirname, 'settings-capabiliti
 const dialogSource = fs.readFileSync(path.join(__dirname, '..', 'components', 'bundle-import-dialog.tsx'), 'utf8')
 const tipcSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'main', 'tipc.ts'), 'utf8')
 const bundleServiceSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'main', 'bundle-service.ts'), 'utf8')
+const configSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'main', 'config.ts'), 'utf8')
 
 test('settings capabilities exposes a restore-backup entrypoint that reuses the bundle import dialog', () => {
   assert.match(settingsSource, /import \{ useEffect, useState \} from "react"/)
@@ -25,9 +26,15 @@ test('settings capabilities exposes a restore-backup entrypoint that reuses the 
   assert.match(settingsSource, /copyTextToClipboard/)
   assert.match(settingsSource, /tipcClient\.selectBundleBackupFile\(\)/)
   assert.match(settingsSource, /tipcClient\.listBundleBackups\(\{ limit: 4 \}\)/)
+  assert.match(settingsSource, /tipcClient\.getBundleSlotState\(\)/)
   assert.match(settingsSource, /tipcClient\.openBundleBackupFolder\(\)/)
+  assert.match(settingsSource, /tipcClient\.openBundleSlotsFolder\(\)/)
   assert.match(settingsSource, /tipcClient\.revealBundleBackupFile\(\{ filePath \}\)/)
   assert.match(settingsSource, /Recent backups/)
+  assert.match(settingsSource, /Bundle slots/)
+  assert.match(settingsSource, /Active slot/)
+  assert.match(settingsSource, /Status only for now/)
+  assert.match(settingsSource, /Open Slots Folder/)
   assert.match(settingsSource, /Open Backups Folder/)
   assert.match(settingsSource, /Copy path/)
   assert.match(settingsSource, /Reveal/)
@@ -45,6 +52,7 @@ test('settings capabilities exposes a restore-backup entrypoint that reuses the 
   assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["skills"\] \}\)/)
   assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["config"\] \}\)/)
   assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["bundle-import-backups"\] \}\)/)
+  assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["bundle-slot-state"\] \}\)/)
 })
 
 test('bundle import dialog supports restore-specific labels and clearer import provenance without forking the flow', () => {
@@ -88,4 +96,17 @@ test('main process offers backup picker and reveal actions rooted in the default
   assert.match(tipcSource, /listBundleBackups: t\.procedure/)
   assert.match(tipcSource, /listImportBackups\(\{ limit: input\?\.limit \}\)/)
   assert.match(tipcSource, /selectImportBackupBundleFromDialog/)
+})
+
+test('bundle slot metadata is surfaced through config, TIPC, and the capabilities page without implying full activation yet', () => {
+  assert.match(configSource, /export const bundleSlotsFolder = path\.join\(globalAgentsFolder, "bundle-slots"\)/)
+  assert.match(configSource, /export const activeBundleSlotStatePath = path\.join\(bundleSlotsFolder, "active-slot\.json"\)/)
+  assert.match(configSource, /Future bundle-slot work must keep workspace as the highest-priority override:[\s\S]*global -> active slot -> workspace/)
+  assert.match(configSource, /export function getActiveBundleSlotState\(\): BundleSlotState/)
+  assert.match(configSource, /runtimeActivationEnabled: false/)
+  assert.match(tipcSource, /getBundleSlotState: t\.procedure\.action\(async \(\) =>/)
+  assert.match(tipcSource, /const \{ getActiveBundleSlotState \} = await import\("\.\/config"\)/)
+  assert.match(tipcSource, /openBundleSlotsFolder: t\.procedure\.action\(async \(\) =>/)
+  assert.match(tipcSource, /const \{ bundleSlotsFolder \} = await import\("\.\/config"\)/)
+  assert.match(tipcSource, /shell\.openPath\(bundleSlotsFolder\)/)
 })

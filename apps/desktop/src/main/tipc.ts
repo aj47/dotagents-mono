@@ -2273,6 +2273,18 @@ export const router = {
     }
   }),
 
+  getBundleSlotState: t.procedure.action(async () => {
+    const { getActiveBundleSlotState } = await import("./config")
+    return getActiveBundleSlotState()
+  }),
+
+  openBundleSlotsFolder: t.procedure.action(async () => {
+    const { bundleSlotsFolder } = await import("./config")
+    fs.mkdirSync(bundleSlotsFolder, { recursive: true })
+    const error = await shell.openPath(bundleSlotsFolder)
+    return { success: !error, error: error || undefined }
+  }),
+
   openAgentsFolder: t.procedure.action(async () => {
     const { globalAgentsFolder } = await import("./config")
     fs.mkdirSync(globalAgentsFolder, { recursive: true })

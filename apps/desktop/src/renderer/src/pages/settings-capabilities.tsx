@@ -46,6 +46,19 @@ interface RecentBackup {
   }
 }
 
+interface BundleSlotState {
+  slotsFolder: string
+  activeSlotId: string | null
+  lastSwitchedAt: string | null
+  precedence: string
+  runtimeActivationEnabled: boolean
+  slots: Array<{
+    id: string
+    slotDir: string
+    isActive: boolean
+  }>
+}
+
 function formatBackupComponentSummary(components: RecentBackup["components"]): string {
   const parts = [
     ["agents", components.agentProfiles],
@@ -100,13 +113,20 @@ export function Component() {
   const [restoreFilePath, setRestoreFilePath] = useState<string>()
   const [isSelectingRestoreBackup, setIsSelectingRestoreBackup] = useState(false)
   const [isOpeningBackupsFolder, setIsOpeningBackupsFolder] = useState(false)
+  const [isOpeningSlotsFolder, setIsOpeningSlotsFolder] = useState(false)
   const [revealingBackupPath, setRevealingBackupPath] = useState<string | null>(null)
   const recentBackupsQuery = useQuery({
     queryKey: ["bundle-import-backups"],
     queryFn: async () => (await tipcClient.listBundleBackups({ limit: 4 })) as RecentBackup[],
   })
+  const bundleSlotStateQuery = useQuery({
+    queryKey: ["bundle-slot-state"],
+    queryFn: async () => (await tipcClient.getBundleSlotState()) as BundleSlotState,
+  })
 
   const recentBackups = recentBackupsQuery.data ?? []
+  const bundleSlotState = bundleSlotStateQuery.data
+  const bundleSlots = bundleSlotState?.slots ?? []
 
   const openRestoreDialogForFile = (filePath: string) => {
     setRestoreFilePath(filePath)
@@ -140,6 +160,21 @@ export function Component() {
       toast.error(`Failed to open backups folder: ${errorMessage}`)
     } finally {
       setIsOpeningBackupsFolder(false)
+    }
+  }
+
+  const handleOpenSlotsFolderClick = async () => {
+    setIsOpeningSlotsFolder(true)
+    try {
+      const result = await tipcClient.openBundleSlotsFolder()
+      if (!result?.success) {
+        throw new Error(result?.error || "Unknown error")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to open bundle slots folder: ${errorMessage}`)
+    } finally {
+      setIsOpeningSlotsFolder(false)
     }
   }
 
@@ -180,6 +215,7 @@ export function Component() {
     queryClient.invalidateQueries({ queryKey: ["config"] })
     queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
     queryClient.invalidateQueries({ queryKey: ["bundle-import-backups"] })
+    queryClient.invalidateQueries({ queryKey: ["bundle-slot-state"] })
   }
 
   return (
@@ -298,6 +334,90 @@ export function Component() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 pb-3">
+          <div className="rounded-lg border bg-muted/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium">Bundle slots</h2>
+                <p className="text-xs text-muted-foreground">
+                  Read-only status for the `#57` preset/slot groundwork. Planned merge order stays {bundleSlotState?.precedence ?? "global -> active slot -> workspace"} so workspace overrides remain intact.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={handleOpenSlotsFolderClick}
+                disabled={isOpeningSlotsFolder}
+              >
+                {isOpeningSlotsFolder
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <FolderOpen className="h-4 w-4" />}
+                Open Slots Folder
+              </Button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {bundleSlotStateQuery.isLoading && (
+                <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading bundle slot state…
+                </div>
+              )}
+
+              {bundleSlotStateQuery.isError && (
+                <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  Failed to load bundle slot state.
+                </div>
+              )}
+
+              {!bundleSlotStateQuery.isLoading && !bundleSlotStateQuery.isError && (
+                <>
+                  <div className="rounded-md border bg-background px-3 py-2 text-sm">
+                    <p className="font-medium">Active slot</p>
+                    <p className="text-xs text-muted-foreground">
+                      {bundleSlotState?.activeSlotId ?? "No active slot selected"}
+                      {bundleSlotState?.lastSwitchedAt
+                        ? ` · last switched ${new Date(bundleSlotState.lastSwitchedAt).toLocaleString()}`
+                        : " · no switch timestamp recorded yet"}
+                    </p>
+                    <p className="mt-1 font-mono text-[11px] text-muted-foreground/70" title={bundleSlotState?.slotsFolder}>
+                      {bundleSlotState?.slotsFolder}
+                    </p>
+                  </div>
+
+                  {bundleSlots.length === 0 && (
+                    <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+                      No bundle slot directories found yet. Status only for now — switching and runtime activation land in a follow-up slice.
+                    </div>
+                  )}
+
+                  {bundleSlots.map(slot => (
+                    <div key={slot.id} className="rounded-md border bg-background px-3 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium">{slot.id}</p>
+                        <span className="text-xs text-muted-foreground">
+                          {slot.isActive ? "Active pointer" : "Available slot"}
+                        </span>
+                      </div>
+                      <p className="truncate font-mono text-[11px] text-muted-foreground/70" title={slot.slotDir}>
+                        {slot.slotDir}
+                      </p>
+                    </div>
+                  ))}
+
+                  {!bundleSlotState?.runtimeActivationEnabled && bundleSlots.length > 0 && (
+                    <div className="rounded-md border border-dashed bg-background px-3 py-2 text-xs text-muted-foreground">
+                      Status only for now — this slice surfaces slot metadata and the active pointer without yet changing runtime layer loading.
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
