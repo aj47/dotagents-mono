@@ -43,6 +43,7 @@ import { KeyRecorder } from "@renderer/components/key-recorder"
 import {
   getAgentKillSwitchShortcutDisplay,
   getMcpToolsShortcutDisplay,
+  getSettingsHotkeyDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
@@ -294,6 +295,19 @@ export function Component() {
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const settingsHotkeyEnabled = configQuery.data?.settingsHotkeyEnabled ?? true
+  const settingsHotkey = configQuery.data?.settingsHotkey || "ctrl-shift-s"
+  const hasCustomSettingsHotkey = Boolean(configQuery.data?.customSettingsHotkey?.trim())
+  const settingsHotkeyDisplay = getSettingsHotkeyDisplay(
+    settingsHotkey,
+    configQuery.data?.customSettingsHotkey,
+  )
+  const settingsHotkeySummary =
+    !settingsHotkeyEnabled
+      ? "Keyboard shortcut is off. Turn it on to show or focus the main window from anywhere. Changes save immediately."
+      : settingsHotkey === "custom" && !hasCustomSettingsHotkey
+        ? "Record a custom shortcut to finish setup. Until then, the keyboard shortcut to show the main window will stay off. This shortcut also pauses while recording so it doesn't interrupt capture. Changes save immediately."
+        : `Press ${settingsHotkeyDisplay} to show or focus the main window from anywhere. This shortcut pauses while recording so it doesn't interrupt capture. Changes save immediately.`
   const killSwitchHotkey = configQuery.data?.agentKillSwitchHotkey || "ctrl-shift-escape"
   const hasCustomAgentKillSwitchHotkey = Boolean(
     configQuery.data?.customAgentKillSwitchHotkey?.trim(),
@@ -838,22 +852,23 @@ export function Component() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Switch
-                  checked={configQuery.data?.settingsHotkeyEnabled ?? true}
+                  checked={settingsHotkeyEnabled}
                   onCheckedChange={(checked) => {
                     saveConfig({
                       settingsHotkeyEnabled: checked,
                     })
                   }}
                 />
+                <span className="text-sm text-muted-foreground">Enable shortcut</span>
                 <Select
-                  value={configQuery.data?.settingsHotkey || "ctrl-shift-s"}
+                  value={settingsHotkey}
                   onValueChange={(value) => {
                     saveConfig({
                       settingsHotkey:
                         value as typeof configQuery.data.settingsHotkey,
                     })
                   }}
-                  disabled={!configQuery.data?.settingsHotkeyEnabled}
+                  disabled={!settingsHotkeyEnabled}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue />
@@ -867,8 +882,12 @@ export function Component() {
                 </Select>
               </div>
 
-              {configQuery.data?.settingsHotkey === "custom" &&
-                configQuery.data?.settingsHotkeyEnabled && (
+              <div className="text-xs text-muted-foreground">
+                {settingsHotkeySummary}
+              </div>
+
+              {settingsHotkey === "custom" && settingsHotkeyEnabled && (
+                <>
                   <KeyRecorder
                     value={configQuery.data?.customSettingsHotkey || ""}
                     onChange={(keyCombo) => {
@@ -876,9 +895,15 @@ export function Component() {
                         customSettingsHotkey: keyCombo,
                       })
                     }}
-                    placeholder="Click to record custom hotkey"
+                    placeholder="Click to record custom main window shortcut"
                   />
-                )}
+                  {!hasCustomSettingsHotkey && (
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      Record a custom shortcut to finish setup. The main window shortcut stays off until one is saved.
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </Control>
 
