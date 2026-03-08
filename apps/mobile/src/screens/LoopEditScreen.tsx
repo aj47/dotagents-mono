@@ -306,7 +306,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
           accessibilityState={{ selected: !formData.profileId }}
           activeOpacity={0.7}
         >
-          <Text style={[styles.profileOptionText, !formData.profileId && styles.profileOptionTextActive]}>No profile</Text>
+          <Text
+            style={[styles.profileOptionText, !formData.profileId && styles.profileOptionTextActive]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            No profile
+          </Text>
         </TouchableOpacity>
         {profiles.map(profile => (
           <TouchableOpacity
@@ -319,7 +325,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
             accessibilityState={{ selected: formData.profileId === profile.id }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.profileOptionText, formData.profileId === profile.id && styles.profileOptionTextActive]}>{profile.displayName}</Text>
+            <Text
+              style={[styles.profileOptionText, formData.profileId === profile.id && styles.profileOptionTextActive]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {profile.displayName}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -387,15 +399,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.primaryForeground,
       transform: [{ translateX: 16 }],
     },
-    profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, alignItems: 'flex-start' },
     profileOption: {
       ...selectionChipTouchTarget,
+      maxWidth: '100%',
+      alignSelf: 'flex-start',
       borderWidth: 1,
       borderColor: theme.colors.border,
       borderRadius: radius.md,
     },
     profileOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    profileOptionText: { color: theme.colors.foreground, fontSize: 13 },
+    profileOptionText: { color: theme.colors.foreground, fontSize: 13, maxWidth: '100%', flexShrink: 1 },
     profileOptionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
     saveButtonDisabled: { opacity: 0.7 },

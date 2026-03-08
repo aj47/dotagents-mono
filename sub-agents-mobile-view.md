@@ -682,3 +682,44 @@
   - Restore the mobile install in this worktree, then re-run Expo Web and confirm the new edit-flow switch treatment on a narrow viewport.
   - Smoke-test long saved profile names in `LoopEditScreen` once live validation is available again.
   - Continue with the next highest-signal local issue only after a fresh live pass re-establishes which sub-agent mobile surface now has the most friction.
+
+### 2026-03-08 — Iteration 16: keep long loop profile chips from taking over narrow rows
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` `Agent Profile` chip row
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile tooling state before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because the mobile install is still missing in this worktree, Expo Web and device/simulator validation remain blocked for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` now has mobile-sized, accessible profile chips, but saved profile names were still rendered raw inside a wrapping chip row.
+  - The chip row had no max-width or truncation guardrail, so a long saved profile name could monopolize the row width and make the selector harder to scan on narrow screens.
+- Issue selected:
+  - Long saved profile names could destabilize the main loop-profile selector on mobile, pushing nearby options around and weakening quick state recognition.
+- Decision:
+  - Keep the existing chip-based selection UI and the recent accessibility/touch-target improvements.
+  - Do not redesign the edit flow while live validation is blocked.
+  - Make the smallest local fix in `LoopEditScreen`: cap chip width to the row, keep chips top-aligned, and clamp each chip label to a single line with tail truncation.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - render both `No profile` and saved-profile chip labels with `numberOfLines={1}` / `ellipsizeMode="tail"`,
+    - cap each profile chip at the row width with `maxWidth: '100%'`,
+    - add `flexShrink: 1` to chip text so long names truncate instead of stretching the row,
+    - align the wrapping chip row to the top for more stable multi-chip layout.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with a focused regression check for the new long-name guardrails.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native packages in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The long-name profile chip treatment still needs live visual confirmation once Expo Web or a simulator is available again.
+  - `AgentEditScreen` connection-type chips are short today, but the edit flows still need a proper narrow-screen pass once the install is restored.
+  - A broader edit-screen hierarchy pass should wait for fresh live evidence instead of guessing from source alone.
+- Next checks:
+  - Restore the mobile install in this worktree, then re-run Expo Web and confirm long saved profile names truncate cleanly in `LoopEditScreen`.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is driven by real narrow-screen evidence again.
+  - After live validation is back, inspect whether any remaining edit-flow controls still create avoidable horizontal churn on narrow screens.
