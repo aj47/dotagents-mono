@@ -74,7 +74,11 @@ const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
 function getSessionActionErrorMessage(actionLabel: string, error: unknown) {
-  const details = error instanceof Error ? error.message.trim() : ""
+  const details = typeof error === "string"
+    ? error.trim()
+    : error instanceof Error
+      ? error.message.trim()
+      : ""
   return details ? `${actionLabel}. ${details}` : actionLabel
 }
 
@@ -1024,7 +1028,11 @@ export function Component() {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
     try {
-      await tipcClient.showPanelWindowWithTextInput({})
+      const showTextInputResult = await tipcClient.showPanelWindowWithTextInput({})
+      if (showTextInputResult && "success" in showTextInputResult && showTextInputResult.success === false) {
+        console.error("Failed to start text session:", showTextInputResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start text session", showTextInputResult.error))
+      }
     } catch (error) {
       console.error("Failed to start text session:", error)
       toast.error(getSessionActionErrorMessage("Failed to start text session", error))
@@ -1036,8 +1044,18 @@ export function Component() {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
     try {
-      await tipcClient.showPanelWindow({})
-      await tipcClient.triggerMcpRecording({})
+      const showPanelResult = await tipcClient.showPanelWindow({})
+      if (showPanelResult && "success" in showPanelResult && showPanelResult.success === false) {
+        console.error("Failed to start voice session:", showPanelResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start voice session", showPanelResult.error))
+        return
+      }
+
+      const recordingResult = await tipcClient.triggerMcpRecording({})
+      if (recordingResult && "success" in recordingResult && recordingResult.success === false) {
+        console.error("Failed to start voice session:", recordingResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start voice session", recordingResult.error))
+      }
     } catch (error) {
       console.error("Failed to start voice session:", error)
       toast.error(getSessionActionErrorMessage("Failed to start voice session", error))
@@ -1049,7 +1067,11 @@ export function Component() {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
     try {
-      await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+      const showTextInputResult = await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+      if (showTextInputResult && "success" in showTextInputResult && showTextInputResult.success === false) {
+        console.error("Failed to start prompt session:", showTextInputResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start prompt session", showTextInputResult.error))
+      }
     } catch (error) {
       console.error("Failed to start prompt session:", error)
       toast.error(getSessionActionErrorMessage("Failed to start prompt session", error))
@@ -1082,7 +1104,11 @@ export function Component() {
       // Also show the panel window with this session focused
       try {
         await tipcClient.setPanelMode({ mode: "agent" })
-        await tipcClient.showPanelWindow({})
+        const showPanelResult = await tipcClient.showPanelWindow({})
+        if (showPanelResult && "success" in showPanelResult && showPanelResult.success === false) {
+          console.error("Failed to show panel window:", showPanelResult.error)
+          toast.error(getSessionActionErrorMessage("Failed to open session", showPanelResult.error))
+        }
       } catch (error) {
         console.error("Failed to show panel window:", error)
         toast.error(getSessionActionErrorMessage("Failed to open session", error))

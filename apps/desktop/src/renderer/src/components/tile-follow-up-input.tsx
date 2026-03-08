@@ -188,7 +188,14 @@ export function TileFollowUpInput({
     // Mark as fromTile so the floating panel doesn't show - session continues in the tile
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
     try {
-      await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
+      const recordingResult = await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
+      if (recordingResult && "success" in recordingResult && recordingResult.success === false) {
+        const details = typeof recordingResult.error === "string"
+          ? recordingResult.error.trim()
+          : ""
+        console.error("Failed to start tile follow-up voice recording:", recordingResult.error)
+        toast.error(details ? `Failed to start voice follow-up: ${details}` : "Failed to start voice follow-up")
+      }
     } catch (error) {
       console.error("Failed to start tile follow-up voice recording:", error)
       toast.error(

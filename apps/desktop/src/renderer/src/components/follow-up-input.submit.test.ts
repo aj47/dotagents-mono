@@ -29,6 +29,9 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(overlaySource).toContain("Failed to stop agent")
     expect(overlaySource).toContain("console.error(\"Failed to start overlay follow-up voice recording:\", error)")
     expect(overlaySource).toContain("Failed to start voice follow-up")
+    expect(overlaySource).toContain("const recordingResult = await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })")
+    expect(overlaySource).toContain('if (recordingResult && "success" in recordingResult && recordingResult.success === false)')
+    expect(overlaySource).toContain("console.error(\"Failed to start overlay follow-up voice recording:\", recordingResult.error)")
     expect(overlaySource).toContain(
       "const isDisabled = isSubmitting || sendMutation.isPending || (isSessionActive && !isQueueEnabled)",
     )
@@ -51,6 +54,9 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(tileSource).toContain("Failed to stop agent")
     expect(tileSource).toContain("console.error(\"Failed to start tile follow-up voice recording:\", error)")
     expect(tileSource).toContain("Failed to start voice follow-up")
+    expect(tileSource).toContain("const recordingResult = await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })")
+    expect(tileSource).toContain('if (recordingResult && "success" in recordingResult && recordingResult.success === false)')
+    expect(tileSource).toContain("console.error(\"Failed to start tile follow-up voice recording:\", recordingResult.error)")
     expect(tileSource).toMatch(/isInitializingSession \|\|\s+isSubmitting \|\|\s+sendMutation\.isPending/)
   })
 })

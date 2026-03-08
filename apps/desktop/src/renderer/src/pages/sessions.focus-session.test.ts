@@ -17,7 +17,20 @@ describe("sessions tile focus recovery", () => {
     expect(compactSessionsSource).toContain(compact("if (focusResult && \"success\" in focusResult && focusResult.success === false)"))
     expect(compactSessionsSource).toContain(compact("setFocusedSessionId(previousFocusedSessionId ?? null)"))
     expect(compactSessionsSource).toContain(compact("toast.error(details ? `Failed to focus session. ${details}` : \"Failed to focus session\")"))
+    expect(compactSessionsSource).toContain(compact("const showPanelResult = await tipcClient.showPanelWindow({})"))
+    expect(compactSessionsSource).toContain(compact("toast.error(getSessionActionErrorMessage(\"Failed to open session\", showPanelResult.error))"))
     expect(compactSessionsSource).toContain(compact("toast.error(getSessionActionErrorMessage(\"Failed to open session\", error))"))
+  })
+
+  it("surfaces resolved panel-launch failures for new text, prompt, and voice session actions", () => {
+    const compactSessionsSource = compact(sessionsSource)
+
+    expect(compactSessionsSource).toContain(compact("const showTextInputResult = await tipcClient.showPanelWindowWithTextInput({})"))
+    expect(compactSessionsSource).toContain(compact("toast.error(getSessionActionErrorMessage(\"Failed to start text session\", showTextInputResult.error))"))
+    expect(compactSessionsSource).toContain(compact("const showTextInputResult = await tipcClient.showPanelWindowWithTextInput({ initialText: content })"))
+    expect(compactSessionsSource).toContain(compact("toast.error(getSessionActionErrorMessage(\"Failed to start prompt session\", showTextInputResult.error))"))
+    expect(compactSessionsSource).toContain(compact("const recordingResult = await tipcClient.triggerMcpRecording({})"))
+    expect(compactSessionsSource).toContain(compact("toast.error(getSessionActionErrorMessage(\"Failed to start voice session\", recordingResult.error))"))
   })
 
   it("teaches the main-process focusAgentSession route to report panel-unavailable failures instead of always claiming success", () => {
@@ -28,5 +41,9 @@ describe("sessions tile focus recovery", () => {
     expect(compactTipcSource).toContain(compact('error: "Panel window is unavailable."'))
     expect(compactTipcSource).toContain(compact("panelRendererHandlers.focusAgentSession.send(input.sessionId)"))
     expect(compactTipcSource).toContain(compact("return { success: false, error: getErrorMessage(e) }"))
+    expect(compactTipcSource).toContain(compact("const panelWindow = WINDOWS.get(\"panel\")"))
+    expect(compactTipcSource).toContain(compact("await showPanelWindowAndShowTextInput(input.initialText)"))
+    expect(compactTipcSource).toContain(compact("await showPanelWindowAndStartMcpRecording(input.conversationId, input.sessionId, input.fromTile, true)"))
+    expect(compactTipcSource).toContain(compact("return { success: true }"))
   })
 })

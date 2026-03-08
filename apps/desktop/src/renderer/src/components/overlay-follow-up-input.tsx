@@ -207,7 +207,14 @@ export function OverlayFollowUpInput({
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
     try {
-      await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+      const recordingResult = await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+      if (recordingResult && "success" in recordingResult && recordingResult.success === false) {
+        const details = typeof recordingResult.error === "string"
+          ? recordingResult.error.trim()
+          : ""
+        console.error("Failed to start overlay follow-up voice recording:", recordingResult.error)
+        toast.error(details ? `Failed to start voice follow-up: ${details}` : "Failed to start voice follow-up")
+      }
     } catch (error) {
       console.error("Failed to start overlay follow-up voice recording:", error)
       toast.error(
