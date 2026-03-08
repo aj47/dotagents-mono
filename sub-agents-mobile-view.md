@@ -2321,3 +2321,43 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that loop-edit load/save errors now read clearly as alerts.
   - Re-establish live inspection before choosing the next sub-agent mobile tweak so the next change is driven by current narrow-screen evidence again.
   - Revisit the highest-friction remaining edit-flow or selector issue only after Expo Web or simulator validation becomes available again.
+
+### 2026-03-08 — Iteration 54: Clarify temporarily disabled selector rows during agent switching
+
+- Files reviewed this iteration:
+  - `sub-agents-mobile-view.md`
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - `apps/mobile/tests/agent-selector-sheet.test.js`
+- Review notes before changing anything:
+  - Re-read the running ledger first to avoid reworking the recent edit-screen iterations without new evidence.
+  - Recent selector work already improved pending-row feedback and dismiss behavior, so this pass stayed narrowly focused on switching-state clarity rather than broader sheet redesign.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Fresh screenshot-backed Expo Web or simulator validation was still not practical in this worktree.
+- Current behavior observed before the fix:
+  - Source review showed selector rows were behaviorally disabled for the whole list while an agent switch was in flight.
+  - The tapped row already gained a `Switching…` badge, but the other rows still rendered with normal visual weight.
+  - Accessibility hints for those non-pending rows also stayed action-oriented, even though changing selection was temporarily unavailable.
+- Issue selected:
+  - While switching agents, non-pending selector rows did not clearly communicate that they were temporarily unavailable, weakening state clarity on narrow screens.
+- Decision:
+  - Keep the existing switching model: the current agent remains marked as current until the switch completes, and the tapped row stays highlighted as pending.
+  - Make the smallest local improvement instead of reworking selector layout: visibly mute only the non-selected, non-pending rows and update their accessibility hint to explain the temporary lockout.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive `isBlockedBySwitch` for non-selected rows that are temporarily unavailable during an in-flight switch,
+    - apply a muted row style so inactive options no longer look normally tappable while another switch is running,
+    - replace the generic action hint with explicit waiting guidance during the temporary lockout state.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new blocked-row style and switching-state accessibility hint.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The muted blocked-row treatment still needs an actual narrow-screen visual check to confirm the pending row remains dominant without making current-state context feel ambiguous.
+  - Because live inspection is still blocked, broader selector-sheet hierarchy changes should wait for real device or Expo Web evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that blocked selector rows feel clearly unavailable while the pending row still reads as the active transition target.
+  - If live validation shows ambiguity between the current row and the pending row during switching, test a smaller copy or badge refinement before touching layout.

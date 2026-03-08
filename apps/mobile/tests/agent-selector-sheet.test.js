@@ -79,11 +79,13 @@ test('shows switching progress and temporarily prevents dismissing the sheet mid
 
 test('marks the tapped selector row as pending while an agent switch is in flight', () => {
   assert.match(sheetSource, /const isPending = pendingProfileId === item\.id;/);
+  assert.match(sheetSource, /const isBlockedBySwitch = isSwitching && !isPending && !isSelected;/);
   assert.match(sheetSource, /const selectionAccessibilityLabel = isPending[\s\S]*?`Switching to \$\{item\.name\} agent`[\s\S]*?`Current \$\{item\.name\} agent`[\s\S]*?`Select \$\{item\.name\} agent`;/);
-  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current agent to this option\./);
-  assert.match(sheetSource, /style=\{\[[\s\S]*?styles\.profileItem,[\s\S]*?isSelected && styles\.profileItemSelected,[\s\S]*?isPending && styles\.profileItemPending,[\s\S]*?\]\}/);
+  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Another agent switch is in progress\. Wait for it to finish before changing this selection\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current agent to this option\./);
+  assert.match(sheetSource, /style=\{\[[\s\S]*?styles\.profileItem,[\s\S]*?isSelected && styles\.profileItemSelected,[\s\S]*?isPending && styles\.profileItemPending,[\s\S]*?isBlockedBySwitch && styles\.profileItemBlocked,[\s\S]*?\]\}/);
   assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching, busy: isPending \}\}/);
   assert.match(sheetSource, /\{isPending \? \([\s\S]*?<View style=\{styles\.profilePendingBadge\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.profilePendingBadgeText\}>Switching…<\/Text>/);
   assert.match(sheetSource, /profileItemPending:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.primary \+ '12',[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '2E'/);
+  assert.match(sheetSource, /profileItemBlocked:\s*\{[\s\S]*?opacity:\s*0\.6/);
   assert.match(sheetSource, /profilePendingBadge:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?gap:\s*spacing\.xs,[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '2E'/);
 });

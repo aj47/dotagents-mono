@@ -157,6 +157,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
     const isPending = pendingProfileId === item.id;
+    const isBlockedBySwitch = isSwitching && !isPending && !isSelected;
     const secondaryDescription = item.guidelines && item.guidelines !== 'ACP main agent'
       ? item.guidelines
       : null;
@@ -167,6 +168,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         : `Select ${item.name} agent`;
     const selectionAccessibilityHint = isPending
       ? 'Agent switch in progress. Wait for the current request to finish.'
+      : isSwitching
+        ? 'Another agent switch is in progress. Wait for it to finish before changing this selection.'
       : isSelected
         ? 'Currently selected. Double tap to close this selector and keep this agent.'
         : 'Switches the current agent to this option.';
@@ -177,6 +180,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           styles.profileItem,
           isSelected && styles.profileItemSelected,
           isPending && styles.profileItemPending,
+          isBlockedBySwitch && styles.profileItemBlocked,
         ]}
         onPress={() => handleSelectProfile(item)}
         disabled={isSwitching}
@@ -385,6 +389,9 @@ function createStyles(theme: Theme) {
       backgroundColor: theme.colors.primary + '12',
       borderWidth: 1,
       borderColor: theme.colors.primary + '2E',
+    },
+    profileItemBlocked: {
+      opacity: 0.6,
     },
     profileInfo: {
       flex: 1,
