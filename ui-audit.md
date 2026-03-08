@@ -1,5 +1,45 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 40: Desktop WhatsApp settings helper/status rows under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the recently touched mobile `ChatScreen` and desktop remote-server/general settings surfaces. The WhatsApp settings page had only an older broad note, but its `Allowed Senders`, `Auto-Reply`, and `Log Message Content` rows still pass multiline helper/status content through the shared `Control` value lane, making it a fresh, high-signal desktop settings target.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - re-checked runtime readiness before choosing the area: root, desktop, and mobile `node_modules` are still absent, so live Electron and Expo inspection remain blocked in this worktree
+  - inspected the shared settings-row contract in `apps/desktop/src/renderer/src/components/ui/control.tsx`, then inspected the WhatsApp settings rows in `settings-whatsapp.tsx` with narrow settings-column constraints and larger font zoom in mind
+  - cross-checked mobile settings surfaces and found no direct mobile equivalent of this desktop-only WhatsApp integration/settings UI, so this pass remained desktop-only
+
+#### Findings
+
+- Before the fix, the WhatsApp settings section still had one concrete desktop layout issue with clear user impact:
+  - the shared `Control` value slot is horizontally laid out, but the `Allowed Senders`, `Auto-Reply`, and `Log Message Content` rows each passed their primary control plus follow-up helper/status copy directly into that lane
+  - this was most obvious for the allowlist/LID explainer, the auto-reply success/warning text, and the privacy helper under message logging
+  - under narrower settings widths or larger font zoom, those rows had to fight beside the input/switch instead of stacking beneath it intentionally, making critical setup guidance feel cramped and easier to miss
+
+#### Changes made
+
+- Hardened the WhatsApp settings rows in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` with a small, local layout fix:
+  - wrapped `Allowed Senders` in a `min-w-0` vertical container so the input, LID explainer, and empty-allowlist warning now stack intentionally within the control column
+  - wrapped `Auto-Reply` and `Log Message Content` in matching vertical containers with dedicated switch rows, preserving the existing right-aligned desktop toggle behavior while letting follow-up copy sit beneath the control
+  - made the helper/status copy explicitly wrap-safe with `break-words` / `[overflow-wrap:anywhere]`, including the nested LID details content
+- Added `apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts` so this WhatsApp settings-row layout contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop tests: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-whatsapp.layout.test.ts src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` confirmed the new stacked container and wrap-safe helper/status class fragments are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts`
+
+#### Notes
+
+- This chunk is desktop-only: mobile settings screens do not expose the same WhatsApp integration form or shared `Control` row pattern, so no parallel mobile change was needed.
+- Tradeoff/rationale: kept the page’s information architecture intact instead of redesigning WhatsApp setup; the fix only restores the expected vertical relationship between the main control and its explanatory/status copy.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect WhatsApp settings with a long allowlist, the LID details expanded, and auto-reply enabled at increased font zoom.
+- Best next UI audit chunk after this one: stay in `settings-whatsapp.tsx` for the connection-status row / QR instruction block under narrow widths and streamer mode, or move to another fresh desktop surface once runtime dependencies are available for live confirmation.
+
 ### 2026-03-08 — Chunk 39: Mobile chat reconnect/retry banners under narrow widths and larger text
 
 - Area selected:

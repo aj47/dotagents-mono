@@ -345,89 +345,99 @@ export function Component() {
               label={<ControlLabel label="Allowed Senders" tooltip="Only messages from these senders will be processed. Accepts phone numbers (E.164) or WhatsApp LIDs. Leave empty to allow all (not recommended)." />}
               className="px-3"
             >
-              <Input
-                type={streamerMode ? "password" : "text"}
-                value={allowFromDraft}
-                onChange={(e) => {
-                  const nextDraft = e.currentTarget.value
-                  setAllowFromDraft(nextDraft)
-                  scheduleAllowFromSave(nextDraft)
-                }}
-                onBlur={(e) => flushAllowFromSave(e.currentTarget.value)}
-                placeholder={streamerMode ? "••••••••••" : "+14155551234, 98389177934034"}
-                className="w-full"
-              />
-              <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                <p>Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.</p>
-                <details className="cursor-pointer">
-                  <summary className="text-blue-600 dark:text-blue-400 hover:underline">
-                    ℹ️ What are LIDs? How do I find them?
-                  </summary>
-                  <div className="mt-2 p-2 bg-muted/50 rounded-md space-y-2">
-                    <p>
-                      <strong>LIDs (Linked IDs)</strong> are WhatsApp's privacy-focused identifiers that replace phone numbers in some cases.
-                    </p>
-                    <p>
-                      <strong>To find a sender's LID:</strong>
-                    </p>
-                    <ol className="list-decimal list-inside space-y-1 ml-2">
-                      <li>Enable "Log Message Content" below</li>
-                      <li>Have the person send you a message</li>
-                      <li>Check the logs - blocked messages show the LID to add</li>
-                      <li>Copy the LID number and add it here</li>
-                    </ol>
-                    <p className="text-amber-600 dark:text-amber-400">
-                      💡 Tip: Phone numbers still work for many contacts. Try the phone number first, then use LID if messages are blocked.
-                    </p>
-                  </div>
-                </details>
-              </div>
-              {(!cfg.whatsappAllowFrom || cfg.whatsappAllowFrom.length === 0) && (
-                <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  ⚠️ No allowlist set - all incoming messages will be accepted
+              <div className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]">
+                <Input
+                  type={streamerMode ? "password" : "text"}
+                  value={allowFromDraft}
+                  onChange={(e) => {
+                    const nextDraft = e.currentTarget.value
+                    setAllowFromDraft(nextDraft)
+                    scheduleAllowFromSave(nextDraft)
+                  }}
+                  onBlur={(e) => flushAllowFromSave(e.currentTarget.value)}
+                  placeholder={streamerMode ? "••••••••••" : "+14155551234, 98389177934034"}
+                  className="w-full min-w-0"
+                />
+                <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                  <p>Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.</p>
+                  <details className="mt-1 cursor-pointer break-words [overflow-wrap:anywhere]">
+                    <summary className="text-blue-600 dark:text-blue-400 hover:underline break-words [overflow-wrap:anywhere]">
+                      ℹ️ What are LIDs? How do I find them?
+                    </summary>
+                    <div className="mt-2 space-y-2 rounded-md bg-muted/50 p-2 break-words [overflow-wrap:anywhere]">
+                      <p>
+                        <strong>LIDs (Linked IDs)</strong> are WhatsApp's privacy-focused identifiers that replace phone numbers in some cases.
+                      </p>
+                      <p>
+                        <strong>To find a sender's LID:</strong>
+                      </p>
+                      <ol className="ml-2 list-inside list-decimal space-y-1 break-words [overflow-wrap:anywhere]">
+                        <li>Enable "Log Message Content" below</li>
+                        <li>Have the person send you a message</li>
+                        <li>Check the logs - blocked messages show the LID to add</li>
+                        <li>Copy the LID number and add it here</li>
+                      </ol>
+                      <p className="text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                        💡 Tip: Phone numbers still work for many contacts. Try the phone number first, then use LID if messages are blocked.
+                      </p>
+                    </div>
+                  </details>
                 </div>
-              )}
+                {(!cfg.whatsappAllowFrom || cfg.whatsappAllowFrom.length === 0) && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                    ⚠️ No allowlist set - all incoming messages will be accepted
+                  </div>
+                )}
+              </div>
             </Control>
 
             <Control
               label={<ControlLabel label="Auto-Reply" tooltip="Automatically send agent responses back to WhatsApp. Requires Remote Server to be enabled." />}
               className="px-3"
             >
-              <Switch
-                checked={cfg.whatsappAutoReply ?? false}
-                onCheckedChange={(value) => {
-                  saveConfig({ whatsappAutoReply: value })
-                }}
-                disabled={
-                  // Only disable when trying to enable without prerequisites
-                  // Always allow turning OFF (unchecking) so users can opt out
-                  !(cfg.whatsappAutoReply ?? false) && (!remoteServerEnabled || !hasApiKey)
-                }
-              />
-              {cfg.whatsappAutoReply && remoteServerEnabled && hasApiKey && (
-                <div className="mt-1 text-xs text-green-600 dark:text-green-400">
-                  ✓ Auto-reply enabled - incoming messages will be processed and replied to
+              <div className="flex w-full min-w-0 flex-col items-start gap-1 sm:max-w-[360px]">
+                <div className="flex w-full items-center justify-start sm:justify-end">
+                  <Switch
+                    checked={cfg.whatsappAutoReply ?? false}
+                    onCheckedChange={(value) => {
+                      saveConfig({ whatsappAutoReply: value })
+                    }}
+                    disabled={
+                      // Only disable when trying to enable without prerequisites
+                      // Always allow turning OFF (unchecking) so users can opt out
+                      !(cfg.whatsappAutoReply ?? false) && (!remoteServerEnabled || !hasApiKey)
+                    }
+                  />
                 </div>
-              )}
-              {cfg.whatsappAutoReply && (!remoteServerEnabled || !hasApiKey) && (
-                <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                  ⚠️ Auto-reply is enabled but Remote Server or API key is missing
-                </div>
-              )}
+                {cfg.whatsappAutoReply && remoteServerEnabled && hasApiKey && (
+                  <div className="text-xs text-green-600 dark:text-green-400 break-words [overflow-wrap:anywhere]">
+                    ✓ Auto-reply enabled - incoming messages will be processed and replied to
+                  </div>
+                )}
+                {cfg.whatsappAutoReply && (!remoteServerEnabled || !hasApiKey) && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                    ⚠️ Auto-reply is enabled but Remote Server or API key is missing
+                  </div>
+                )}
+              </div>
             </Control>
 
             <Control
               label={<ControlLabel label="Log Message Content" tooltip="Log the content of WhatsApp messages. Disable for privacy." />}
               className="px-3"
             >
-              <Switch
-                checked={cfg.whatsappLogMessages ?? false}
-                onCheckedChange={(value) => {
-                  saveConfig({ whatsappLogMessages: value })
-                }}
-              />
-              <div className="mt-1 text-xs text-muted-foreground">
-                When enabled, message content will appear in logs. Disable for privacy.
+              <div className="flex w-full min-w-0 flex-col items-start gap-1 sm:max-w-[360px]">
+                <div className="flex w-full items-center justify-start sm:justify-end">
+                  <Switch
+                    checked={cfg.whatsappLogMessages ?? false}
+                    onCheckedChange={(value) => {
+                      saveConfig({ whatsappLogMessages: value })
+                    }}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                  When enabled, message content will appear in logs. Disable for privacy.
+                </div>
               </div>
             </Control>
           </ControlGroup>
