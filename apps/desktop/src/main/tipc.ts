@@ -1382,7 +1382,7 @@ export const router = {
   // Kitten (local) TTS model management
   getKittenModelStatus: t.procedure.action(async () => {
     const { getKittenModelStatus } = await import('./kitten-tts')
-    return getKittenModelStatus()
+    return await getKittenModelStatus()
   }),
 
   downloadKittenModel: t.procedure.action(async () => {
@@ -1418,7 +1418,7 @@ export const router = {
   // Supertonic (local) TTS model management
   getSupertonicModelStatus: t.procedure.action(async () => {
     const { getSupertonicModelStatus } = await import('./supertonic-tts')
-    return getSupertonicModelStatus()
+    return await getSupertonicModelStatus()
   }),
 
   downloadSupertonicModel: t.procedure.action(async () => {

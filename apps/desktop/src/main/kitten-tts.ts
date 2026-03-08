@@ -116,6 +116,8 @@ export interface KittenModelStatus {
   progress: number
   error?: string
   path?: string
+  runtimeAvailable?: boolean
+  runtimeError?: string
 }
 
 export interface SynthesisResult {
@@ -339,6 +341,11 @@ async function loadSherpaModule(): Promise<SherpaOnnxModule | null> {
   }
 }
 
+async function isSherpaAvailable(): Promise<boolean> {
+  const sherpa = await loadSherpaModule()
+  return !!sherpa
+}
+
 /**
  * Get the base path for model storage
  */
@@ -378,14 +385,20 @@ function isModelReady(): boolean {
 /**
  * Get current model status
  */
-export function getKittenModelStatus(): KittenModelStatus {
+export async function getKittenModelStatus(): Promise<KittenModelStatus> {
   const downloaded = isModelReady()
+  const runtimeAvailable = await isSherpaAvailable()
+
   return {
     downloaded,
     downloading: downloadState.downloading,
     progress: downloadState.progress,
     error: downloadState.error,
     path: downloaded ? path.join(getModelsPath(), MODEL_DIR_NAME) : undefined,
+    runtimeAvailable,
+    runtimeError: runtimeAvailable
+      ? undefined
+      : sherpaLoadError || "Failed to load the local Kitten speech runtime.",
   }
 }
 

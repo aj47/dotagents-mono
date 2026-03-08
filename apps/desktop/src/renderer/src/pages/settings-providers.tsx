@@ -299,6 +299,51 @@ type ParakeetModelStatus = {
   runtimeError?: string
 }
 
+type LocalTtsModelStatus = {
+  downloaded: boolean
+  downloading: boolean
+  progress: number
+  error?: string
+  runtimeAvailable?: boolean
+  runtimeError?: string
+}
+
+function LocalTtsRuntimeWarning({
+  providerName,
+  status,
+}: {
+  providerName: "Kitten" | "Supertonic"
+  status?: LocalTtsModelStatus
+}) {
+  const runtimeUnavailable = status?.runtimeAvailable === false
+  const runtimeError = status?.runtimeError?.trim()
+
+  if (!runtimeUnavailable) {
+    return null
+  }
+
+  return (
+    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-medium text-amber-700 dark:text-amber-300">
+            Local runtime unavailable
+          </p>
+          <p>
+            {status?.downloaded
+              ? `The model files are on this device, but the ${providerName} speech runtime could not load, so local speech output would still fail until that is fixed.`
+              : `Downloading the model alone will not make ${providerName} usable until the local speech runtime can load on this device.`}
+          </p>
+          {runtimeError && (
+            <p className="break-words text-[11px]">{runtimeError}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Parakeet Model Download Component
 function ParakeetModelDownload() {
   const queryClient = useQueryClient()
@@ -580,18 +625,37 @@ function KittenModelDownload() {
     }
   }
 
-  const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
+  const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
+  const runtimeUnavailable = status?.runtimeAvailable === false
+  const runtimeWarning = <LocalTtsRuntimeWarning providerName="Kitten" status={status} />
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
   }
 
   if (status?.downloaded) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+    const readyLabel = runtimeUnavailable ? "Model Downloaded" : "Model Ready"
+    const readyClassName = runtimeUnavailable ? "text-amber-600 dark:text-amber-400" : "text-green-600"
+    const readyIcon = runtimeUnavailable
+      ? <AlertTriangle className="h-3.5 w-3.5" />
+      : <CheckCircle2 className="h-3.5 w-3.5" />
+
+    const readyIndicator = (
+      <span className={`inline-flex items-center gap-1.5 text-xs ${readyClassName}`}>
+        {readyIcon}
+        {readyLabel}
       </span>
+    )
+
+    if (!runtimeUnavailable) {
+      return readyIndicator
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {readyIndicator}
+        {runtimeWarning}
+      </div>
     )
   }
 
@@ -617,21 +681,25 @@ function KittenModelDownload() {
 
   if (status?.error) {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
           Retry Download
         </Button>
+        {runtimeWarning}
       </div>
     )
   }
 
   return (
-    <Button size="sm" variant="outline" onClick={handleDownload}>
-      <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~24MB)
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button size="sm" variant="outline" onClick={handleDownload}>
+        <Download className="h-3.5 w-3.5 mr-1.5" />
+        Download Model (~24MB)
+      </Button>
+      {runtimeWarning}
+    </div>
   )
 }
 
@@ -656,7 +724,9 @@ function KittenProviderSection({
     queryKey: ["kittenModelStatus"],
     queryFn: () => window.electron.ipcRenderer.invoke("getKittenModelStatus"),
   })
-  const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
+  const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
+  const modelDownloaded = status?.downloaded ?? false
+  const runtimeUnavailable = status?.runtimeAvailable === false
   const handleTestVoice = async () => {
     try {
       const result = await window.electron.ipcRenderer.invoke("synthesizeWithKitten", {
@@ -767,10 +837,15 @@ function KittenProviderSection({
                 }
                 className="px-3"
               >
-                <Button size="sm" variant="outline" onClick={handleTestVoice}>
+                <Button size="sm" variant="outline" onClick={handleTestVoice} disabled={runtimeUnavailable}>
                   <Volume2 className="h-3.5 w-3.5 mr-1.5" />
                   Test Voice
                 </Button>
+                {runtimeUnavailable && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Fix the local runtime issue shown above before testing Kitten audio.
+                  </p>
+                )}
               </Control>
             </>
           )}
@@ -808,18 +883,37 @@ function SupertonicModelDownload() {
     }
   }
 
-  const status = modelStatusQuery.data as { downloaded: boolean; downloading: boolean; progress: number; error?: string } | undefined
+  const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
+  const runtimeUnavailable = status?.runtimeAvailable === false
+  const runtimeWarning = <LocalTtsRuntimeWarning providerName="Supertonic" status={status} />
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
   }
 
   if (status?.downloaded) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+    const readyLabel = runtimeUnavailable ? "Model Downloaded" : "Model Ready"
+    const readyClassName = runtimeUnavailable ? "text-amber-600 dark:text-amber-400" : "text-green-600"
+    const readyIcon = runtimeUnavailable
+      ? <AlertTriangle className="h-3.5 w-3.5" />
+      : <CheckCircle2 className="h-3.5 w-3.5" />
+
+    const readyIndicator = (
+      <span className={`inline-flex items-center gap-1.5 text-xs ${readyClassName}`}>
+        {readyIcon}
+        {readyLabel}
       </span>
+    )
+
+    if (!runtimeUnavailable) {
+      return readyIndicator
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {readyIndicator}
+        {runtimeWarning}
+      </div>
     )
   }
 
@@ -845,21 +939,25 @@ function SupertonicModelDownload() {
 
   if (status?.error) {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
           Retry Download
         </Button>
+        {runtimeWarning}
       </div>
     )
   }
 
   return (
-    <Button size="sm" variant="outline" onClick={handleDownload}>
-      <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~263MB)
-    </Button>
+    <div className="flex flex-col gap-2">
+      <Button size="sm" variant="outline" onClick={handleDownload}>
+        <Download className="h-3.5 w-3.5 mr-1.5" />
+        Download Model (~263MB)
+      </Button>
+      {runtimeWarning}
+    </div>
   )
 }
 
@@ -903,7 +1001,9 @@ function SupertonicProviderSection({
     queryKey: ["supertonicModelStatus"],
     queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
   })
-  const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
+  const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
+  const modelDownloaded = status?.downloaded ?? false
+  const runtimeUnavailable = status?.runtimeAvailable === false
 
   const handleTestVoice = async () => {
     try {
@@ -1085,10 +1185,15 @@ function SupertonicProviderSection({
                 }
                 className="px-3"
               >
-                <Button size="sm" variant="outline" onClick={handleTestVoice}>
+                <Button size="sm" variant="outline" onClick={handleTestVoice} disabled={runtimeUnavailable}>
                   <Volume2 className="h-3.5 w-3.5 mr-1.5" />
                   Test Voice
                 </Button>
+                {runtimeUnavailable && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Fix the local runtime issue shown above before testing Supertonic audio.
+                  </p>
+                )}
               </Control>
             </>
           )}

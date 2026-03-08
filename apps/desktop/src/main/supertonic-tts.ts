@@ -73,6 +73,8 @@ export interface SupertonicModelStatus {
   progress: number
   error?: string
   path?: string
+  runtimeAvailable?: boolean
+  runtimeError?: string
 }
 
 export interface SupertonicSynthesisResult {
@@ -124,14 +126,29 @@ function isModelReady(): boolean {
   }
 }
 
-export function getSupertonicModelStatus(): SupertonicModelStatus {
+async function isOrtAvailable(): Promise<boolean> {
+  try {
+    await loadOrt()
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function getSupertonicModelStatus(): Promise<SupertonicModelStatus> {
   const downloaded = isModelReady()
+  const runtimeAvailable = await isOrtAvailable()
+
   return {
     downloaded,
     downloading: downloadState.downloading,
     progress: downloadState.progress,
     error: downloadState.error,
     path: downloaded ? getModelsPath() : undefined,
+    runtimeAvailable,
+    runtimeError: runtimeAvailable
+      ? undefined
+      : ortLoadError || "Failed to load the local Supertonic speech runtime.",
   }
 }
 
