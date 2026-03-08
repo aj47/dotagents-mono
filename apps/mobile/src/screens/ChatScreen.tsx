@@ -3063,13 +3063,15 @@ export default function ChatScreen({ route, navigation }: any) {
                                   {result ? (
                                     <View style={styles.toolResultItem}>
                                       <View style={styles.toolResultHeader}>
-                                        <Text style={styles.toolSectionLabel}>Output:</Text>
-                                        <Text style={[
-                                          styles.toolResultBadge,
-                                          result.success ? styles.toolResultBadgeSuccess : styles.toolResultBadgeError
-                                        ]}>
-                                          {result.success ? '✅ OK' : '❌ Error'}
-                                        </Text>
+                                        <View style={styles.toolResultHeaderMeta}>
+                                          <Text style={[styles.toolSectionLabel, styles.toolSectionLabelInline]}>Output:</Text>
+                                          <Text style={[
+                                            styles.toolResultBadge,
+                                            result.success ? styles.toolResultBadgeSuccess : styles.toolResultBadgeError
+                                          ]}>
+                                            {result.success ? '✅ OK' : '❌ Error'}
+                                          </Text>
+                                        </View>
                                         <Text style={styles.toolResultCharCount}>
                                           {(result.content?.length || 0).toLocaleString()} chars
                                         </Text>
@@ -4128,6 +4130,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
+    toolSectionLabelInline: {
+      marginBottom: 0,
+    },
     toolParamsScroll: {
       maxHeight: 80,
       borderRadius: radius.sm,
@@ -4178,22 +4183,37 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolResultHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginBottom: 1,
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+    },
+    toolResultHeaderMeta: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
     },
     toolResultCharCount: {
-      fontSize: 8,
+      fontSize: 10,
+      lineHeight: 14,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       color: theme.colors.mutedForeground,
       opacity: 0.6,
+      marginLeft: 'auto',
+      flexShrink: 0,
     },
     toolResultBadge: {
-      fontSize: 9,
+      fontSize: 10,
+      lineHeight: 14,
       fontWeight: '600',
       paddingHorizontal: 4,
       paddingVertical: 1,
       borderRadius: radius.sm,
+      flexShrink: 0,
     },
     toolResultBadgeSuccess: {
       backgroundColor: hexToRgba(theme.colors.success, 0.12),

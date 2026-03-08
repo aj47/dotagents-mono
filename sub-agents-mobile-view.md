@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 159 - Let expanded mobile tool-result metadata wrap before it gets squeezed
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not loop back into the just-shipped selector and routing-copy passes without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-tool-execution-mobile.test.js`, focusing on the delegated tool-execution surface because iteration 155 improved the collapsed row and disclosure header but did not yet address the expanded output-status header.
+  - Tried again to recover live validation in this worktree before editing.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed each expanded tool result still rendered `Output`, the success/error badge, and the character count in one `justifyContent: 'space-between'` row.
+  - That header had no wrap behavior, and the badge / char-count metadata still used especially tiny 8–9px text.
+  - On narrow screens or larger text settings, that made the expanded tool-result header more likely to squeeze or crowd the output status metadata instead of reflowing it cleanly.
+- Issue identified:
+  - The expanded mobile tool-result header treated status metadata as a single fixed row, which weakened readability and state clarity for delegated activity details on narrow screens.
+- Decision and rationale:
+  - Keep the current tool-result structure, scroll behavior, and success/error semantics unchanged.
+  - Avoid another broader redesign of the tool-execution card while live validation remains blocked.
+  - Make the smallest effective fix instead: let the output-status metadata wrap naturally and give the badge / char-count text a modest readability bump so the expanded result state survives narrow widths better.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to add a dedicated `toolResultHeaderMeta` wrapper and inline label style for the expanded `Output` header.
+  - Updated the tool-result header styles so the metadata row now wraps with top alignment and spacing instead of forcing the badge and char count through one rigid line.
+  - Increased the result badge and character-count typography from the previous 8–9px range to 10px with explicit line height, while keeping the char count right-aligned when space allows.
+  - Added focused regression coverage in `apps/mobile/tests/chat-tool-execution-mobile.test.js` for the new header structure and wrap-friendly style contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-tool-execution-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that allowing the output-status metadata to wrap is more valuable than preserving the older denser single-row header on mobile.
+  - Kept the change scoped to the expanded result header only; the result body, tool collapse behavior, and overall delegated-activity card hierarchy remain unchanged.
+  - This remains a source-backed improvement and still needs live confirmation that the wrapped header feels balanced in both success and error cases.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that expanded tool results wrap cleanly around ~320px width and under larger text / browser zoom.
+  - Capture screenshot-backed evidence for both a success result and an error result with a longer character count so the new header reflow can be judged in context.
+  - If live validation shows the header now feels too tall, prefer trimming the gap or metadata wording before changing the structure.
+
 ## Iteration 158 - Let the mobile selector subtitle fully explain the current switching mode
 
 - Date: 2026-03-08

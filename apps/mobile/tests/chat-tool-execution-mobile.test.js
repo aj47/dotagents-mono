@@ -27,3 +27,11 @@ test('gives each expanded tool disclosure header a mobile-sized tap target and c
   assert.match(chatScreenSource, /toolName:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 16,[\s\S]*?flex: 1/);
   assert.match(chatScreenSource, /toolCallExpandHint:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 16,[\s\S]*?fontWeight: '500'/);
 });
+
+test('lets expanded tool result metadata wrap cleanly before the output header gets squeezed on narrow screens', () => {
+  assert.match(chatScreenSource, /<View style=\{styles\.toolResultHeader\}>[\s\S]*?<View style=\{styles\.toolResultHeaderMeta\}>[\s\S]*?<Text style=\{\[styles\.toolSectionLabel, styles\.toolSectionLabelInline\]\}>Output:<\/Text>[\s\S]*?<Text style=\{styles\.toolResultCharCount\}>/);
+  assert.match(chatScreenSource, /toolResultHeader:\s*\{[\s\S]*?alignItems: 'flex-start',[\s\S]*?justifyContent: 'space-between',[\s\S]*?flexWrap: 'wrap',[\s\S]*?gap: spacing\.xs/);
+  assert.match(chatScreenSource, /toolResultHeaderMeta:\s*\{[\s\S]*?flex: 1,[\s\S]*?minWidth: 0,[\s\S]*?flexDirection: 'row',[\s\S]*?alignItems: 'center',[\s\S]*?flexWrap: 'wrap',[\s\S]*?gap: spacing\.xs/);
+  assert.match(chatScreenSource, /toolResultCharCount:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?marginLeft: 'auto',[\s\S]*?flexShrink: 0/);
+  assert.match(chatScreenSource, /toolResultBadge:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?lineHeight: 14,[\s\S]*?flexShrink: 0/);
+});
