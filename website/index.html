@@ -1762,18 +1762,35 @@
             return warnings
         }
 
+        function getAgentProfileInstructions(profile) {
+            const sections = []
+            if (profile.systemPrompt) sections.push(`## System Prompt\n${profile.systemPrompt}`)
+            if (profile.guidelines) sections.push(`## Guidelines\n${profile.guidelines}`)
+            return sections.join('\n\n').trim()
+        }
+
         function renderBundle(bundle) {
             const sections = []
 
             if (bundle.agentProfiles?.length) {
-                const agentHtml = bundle.agentProfiles.map((profile) => `
-                    <article class="bundle-entry">
-                        <h4>🤖 ${escapeHtml(profile.displayName || profile.name)}</h4>
-                        ${profile.description ? `<p class="bundle-entry-subtitle">${escapeHtml(profile.description)}</p>` : ''}
-                        ${profile.systemPrompt ? renderMarkdown(`## System Prompt\n${profile.systemPrompt}`) : ''}
-                        ${profile.guidelines ? renderMarkdown(`## Guidelines\n${profile.guidelines}`) : ''}
-                    </article>
-                `).join('')
+                const agentHtml = bundle.agentProfiles.map((profile) => {
+                    const instructions = getAgentProfileInstructions(profile)
+                    const preview = buildMarkdownPreview(instructions, { maxLines: 8, maxChars: 900 })
+
+                    return `
+                        <article class="bundle-entry">
+                            <h4>🤖 ${escapeHtml(profile.displayName || profile.name)}</h4>
+                            ${profile.description ? `<p class="bundle-entry-subtitle">${escapeHtml(profile.description)}</p>` : ''}
+                            ${preview.preview ? renderMarkdown(preview.preview) : ''}
+                            ${preview.truncated ? `
+                                <details class="bundle-inline-details">
+                                    <summary>Show full prompt + guidelines</summary>
+                                    <div class="bundle-inline-details-body">${renderMarkdown(instructions)}</div>
+                                </details>
+                            ` : ''}
+                        </article>
+                    `
+                }).join('')
                 sections.push(renderSection(`🤖 Agent Profiles (${bundle.agentProfiles.length})`, agentHtml))
             }
 

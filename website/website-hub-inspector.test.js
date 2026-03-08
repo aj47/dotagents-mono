@@ -71,7 +71,17 @@ test('markdown content is formatted before rendering', () => {
     assert.match(source, /bundle-markdown-heading/)
     assert.match(source, /bundle-code-block/)
     assert.match(source, /renderInlineMarkdown\(headingMatch\[2\]\.trim\(\)\)/)
-    assert.match(source, /renderMarkdown\(`## System Prompt\\n\$\{profile\.systemPrompt\}`\)/)
+    assert.match(source, /function getAgentProfileInstructions\(profile\)/)
+    assert.match(source, /if \(profile\.systemPrompt\) sections\.push\(`## System Prompt\\n\$\{profile\.systemPrompt\}`\)/)
+    assert.match(source, /if \(profile\.guidelines\) sections\.push\(`## Guidelines\\n\$\{profile\.guidelines\}`\)/)
+})
+
+test('agent profile sections lead with a preview and keep long prompt content behind an inline details affordance', () => {
+    assert.match(source, /const instructions = getAgentProfileInstructions\(profile\)/)
+    assert.match(source, /const preview = buildMarkdownPreview\(instructions, \{ maxLines: 8, maxChars: 900 \}\)/)
+    assert.match(source, /preview\.preview \? renderMarkdown\(preview\.preview\) : ''/)
+    assert.match(source, /Show full prompt \+ guidelines/)
+    assert.match(source, /bundle-inline-details-body/)
 })
 
 test('skill sections lead with a preview and keep full instructions behind an inline details affordance', () => {

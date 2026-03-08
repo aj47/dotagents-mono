@@ -2407,3 +2407,37 @@
   - Avoid turning the inspector into a full editor/manager; keep it focused on inspect-before-install trust.
 
 - Next recommended issue work item: refresh open issues again and prefer either a concrete desktop bug/reliability slice or the next honest `#57` runtime-slot follow-up only if it actually mounts the active slot contract instead of adding more status-only UI.
+
+##### Issue #56 — Bundle inspector: agent prompt preview first, expandable full instructions
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and avoided re-opening larger, riskier work like `#54` subscription OAuth or `#57` runtime slot activation without a sharper local repro.
+  - `#56` still had a concrete user-facing gap called out by the owner comment: agent profiles should lead with a system-prompt preview, but the landing-page inspector still rendered full agent prompts and guidelines inline immediately.
+  - This was a small, shippable website-only slice with direct mobile/readability value and fast local verification.
+- Investigation:
+  - Re-read issue `#56` plus the owner comment specifying `Agent profiles (name + system prompt preview)` for the modal v1 content model.
+  - Re-inspected `website/index.html` and confirmed `renderBundle(...)` still rendered `renderMarkdown(\`## System Prompt ...\`)` and `renderMarkdown(\`## Guidelines ...\`)` directly for every agent profile, unlike the newer preview-first treatment already added for skills.
+  - Confirmed this made the modal disproportionately dense before users could scan the rest of the bundle sections, especially on smaller viewports.
+- Important assumptions:
+  - Assumption: combining system prompt + guidelines into one preview block is acceptable for this slice.
+  - Why acceptable: the owner comment explicitly prioritizes a system-prompt preview, and keeping guidelines in the same expandable instruction block avoids hiding information while still reducing initial modal density.
+  - Assumption: dependency-free website regression tests plus inline script syntax parsing are sufficient verification for this static landing-page change.
+  - Why acceptable: the slice only changes `website/index.html` and its existing no-dependency test coverage, and both targeted checks pass locally.
+- Changes implemented:
+  - Added `getAgentProfileInstructions(profile)` in `website/index.html` to compose the agent `System Prompt` and `Guidelines` sections into a single markdown source block.
+  - Updated the bundle inspector `Agent Profiles` renderer to use `buildMarkdownPreview(...)` before showing agent instructions.
+  - Added an inline `Show full prompt + guidelines` details affordance that reveals the full rendered markdown only when the agent instruction content exceeds the preview limit.
+  - Extended `website/website-hub-inspector.test.js` with source-level regression coverage for the new agent preview helper and expandable full-instructions path.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: inline website script syntax parse via Node (`new Function(...)`) ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If repeat-task prompts or agent previews still feel too dense on mobile, apply the same preview-first pattern there without obscuring short content.
+  - If the curated landing-page hub grows into a larger catalog, keep the preview/details affordance consistent across all inspector entry points.
+  - Continue keeping the inspector trust-focused rather than turning it into an in-browser bundle editor.
+
+- Next recommended issue work item: refresh the open issues again and prefer a concrete desktop bug/reliability slice next; if `#57` is revisited, the highest-value honest follow-up is runtime consumption of the active slot layer rather than more status-only slot UI.
