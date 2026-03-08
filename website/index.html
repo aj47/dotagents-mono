@@ -1834,14 +1834,25 @@
             }
 
             if (bundle.repeatTasks?.length) {
-                const taskHtml = bundle.repeatTasks.map((task) => `
-                    <article class="bundle-entry">
-                        <h4>⏰ ${escapeHtml(task.name)}</h4>
-                        <p class="bundle-entry-subtitle">${escapeHtml(getRepeatTaskScheduleSummary(task))}</p>
-                        <p class="bundle-entry-note">${escapeHtml(getRepeatTaskBehaviorNote(task))}</p>
-                        ${renderMarkdown(task.prompt)}
-                    </article>
-                `).join('')
+                const taskHtml = bundle.repeatTasks.map((task) => {
+                    const prompt = typeof task.prompt === 'string' ? task.prompt : ''
+                    const preview = buildMarkdownPreview(prompt, { maxLines: 6, maxChars: 700 })
+
+                    return `
+                        <article class="bundle-entry">
+                            <h4>⏰ ${escapeHtml(task.name)}</h4>
+                            <p class="bundle-entry-subtitle">${escapeHtml(getRepeatTaskScheduleSummary(task))}</p>
+                            <p class="bundle-entry-note">${escapeHtml(getRepeatTaskBehaviorNote(task))}</p>
+                            ${preview.preview ? renderMarkdown(preview.preview) : ''}
+                            ${preview.truncated ? `
+                                <details class="bundle-inline-details">
+                                    <summary>Show full repeat task prompt</summary>
+                                    <div class="bundle-inline-details-body">${renderMarkdown(prompt)}</div>
+                                </details>
+                            ` : ''}
+                        </article>
+                    `
+                }).join('')
                 sections.push(renderSection(`⏰ Repeat Tasks (${bundle.repeatTasks.length})`, taskHtml))
             }
 

@@ -2686,3 +2686,36 @@
   - Consider preserving per-item conflict overrides (not just selected items) when users switch between default / active-slot / new-slot targets.
   - Review whether other settings/config write paths should expose similar active-slot vs writable-layer clarity.
 - Next recommended issue work item: refresh the open issues again and only stay on `#57` if there is one more very small write-semantics or preview-sync follow-up; otherwise move to the next concrete desktop reliability/UX issue and keep `#54` blocked until feasibility changes.
+
+##### Issue #56 — Bundle inspector: repeat-task prompts now lead with a preview
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and deliberately pivoted away from another immediate `#57` slot follow-up to avoid over-focusing one issue when other open issues still had clean local UX slices.
+  - `#56` remained open, and the recent ledger entries had already improved skills and agent prompts with preview-first rendering while explicitly noting repeat-task prompts as the next likely density problem on mobile.
+  - This was a small, reviewable website-only slice with direct user value: bundle visitors can scan repeat tasks faster without losing access to the full prompt.
+- Investigation:
+  - Re-read issue `#56` plus the owner comment, which still frames inspect-before-install as a trust surface and explicitly includes repeat tasks in the modal's v1 content model.
+  - Re-inspected `website/index.html` and confirmed the modal already used `buildMarkdownPreview(...)` for agent prompts and skills, but repeat tasks still rendered `renderMarkdown(task.prompt)` inline with no truncation or details affordance.
+  - Re-checked `website/website-hub-inspector.test.js` and confirmed the regression coverage locked schedule/behavior copy for repeat tasks but did not yet assert preview-first rendering for task prompts.
+- Important assumptions:
+  - Assumption: repeat-task prompts should follow the same preview-first pattern already used for skills and agent prompts, even though the original issue text only explicitly called out previews for skills/agents.
+  - Why acceptable: the owner comment emphasizes mobile-friendly inspection and the current repeat-task prompts contribute to the same modal-density problem; keeping full content behind an inline details affordance preserves trust while improving scanability.
+  - Assumption: a dependency-free website regression test plus inline script syntax parsing are sufficient verification for this static landing-page slice.
+  - Why acceptable: the change only touches `website/index.html` and its existing no-dependency test file, and both targeted checks pass locally.
+- Changes implemented:
+  - Updated `website/index.html` so repeat tasks now derive a prompt preview with `buildMarkdownPreview(...)` instead of always rendering the full prompt inline.
+  - Added a `Show full repeat task prompt` inline details affordance for truncated task prompts, reusing the existing `bundle-inline-details` pattern already used by agent and skill previews.
+  - Extended `website/website-hub-inspector.test.js` with source-level assertions covering the repeat-task preview helper usage and full-prompt details affordance.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: inline website script syntax parse via Node (`new Function(...)`) ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If the modal still feels dense on very small screens, consider whether memories or MCP sections need similar compact/expand treatment without hiding important trust signals.
+  - If the landing-page hub grows beyond curated featured bundles, keep the preview/details behavior consistent across all bundle-card entry points.
+  - Continue keeping the inspector trust-focused rather than turning it into a full browser-side bundle manager/editor.
+
+- Next recommended issue work item: refresh the open issues again and prefer either a fresh desktop bug/reliability slice or another equally small website trust improvement; keep `#54` blocked until provider/auth feasibility materially changes.

@@ -41,6 +41,14 @@ test('repeat task preview discloses startup behavior and bundle defaults', () =>
     assert.match(source, /getRepeatTaskBehaviorNote\(task\)/)
 })
 
+test('repeat task sections lead with a preview and keep full prompts behind an inline details affordance', () => {
+    assert.match(source, /const prompt = typeof task\.prompt === 'string' \? task\.prompt : ''/)
+    assert.match(source, /const preview = buildMarkdownPreview\(prompt, \{ maxLines: 6, maxChars: 700 \}\)/)
+    assert.match(source, /preview\.preview \? renderMarkdown\(preview\.preview\) : ''/)
+    assert.match(source, /Show full repeat task prompt/)
+    assert.match(source, /bundle-inline-details-body/)
+})
+
 test('MCP preview discloses transport-aware connection details and setup requirements', () => {
     assert.match(source, /function formatTransportLabel\(transport\)/)
     assert.match(source, /function getMcpConnectionPreview\(server\)/)
