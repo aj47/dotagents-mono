@@ -28,6 +28,20 @@ interface OverlayFollowUpInputProps {
   onStopSession?: () => void | Promise<void>
 }
 
+function getFollowUpSubmitErrorMessage(error: unknown, actionLabel: string): string {
+  if (error instanceof Error) {
+    const detail = error.message.trim()
+    return detail ? `Couldn't ${actionLabel}. ${detail}` : `Couldn't ${actionLabel}. Please try again.`
+  }
+
+  if (typeof error === "string") {
+    const detail = error.trim()
+    return detail ? `Couldn't ${actionLabel}. ${detail}` : `Couldn't ${actionLabel}. Please try again.`
+  }
+
+  return `Couldn't ${actionLabel}. Please try again.`
+}
+
 /**
  * Input component for continuing a conversation in the floating overlay panel.
  * Includes text input, submit button, and voice button for multiple input modalities.
@@ -43,6 +57,7 @@ export function OverlayFollowUpInput({
 }: OverlayFollowUpInputProps) {
   const [isStoppingSession, setIsStoppingSession] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -93,6 +108,7 @@ export function OverlayFollowUpInput({
 
       setText("")
       setImageAttachments([])
+      setSubmissionError(null)
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the overlay without waiting for agent progress updates
       if (sessionId) {
@@ -125,13 +141,17 @@ export function OverlayFollowUpInput({
     if (!message || sendMutation.isPending || isSubmitting || submitInFlightRef.current) return
     if (isSessionActive && !isQueueEnabled) return
 
+    setSubmissionError(null)
     submitInFlightRef.current = true
     setIsSubmitting(true)
 
     try {
       await sendMutation.mutateAsync(message)
     } catch (error) {
+      const actionLabel = isSessionActive && isQueueEnabled ? "queue message" : "send follow-up"
+      const errorMessage = getFollowUpSubmitErrorMessage(error, actionLabel)
       console.error("Failed to submit overlay follow-up message:", error)
+      setSubmissionError(errorMessage)
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)
@@ -157,6 +177,7 @@ export function OverlayFollowUpInput({
       )
 
       if (attachments.length > 0) {
+        setSubmissionError(null)
         setImageAttachments((prev) => [...prev, ...attachments])
       }
 
@@ -177,6 +198,7 @@ export function OverlayFollowUpInput({
 
   const removeImageAttachment = (attachmentId: string) => {
     logUI("[OverlayFollowUpInput] remove image", { attachmentId })
+    setSubmissionError(null)
     setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
 
@@ -305,12 +327,37 @@ export function OverlayFollowUpInput({
         </div>
       )}
 
+      {submissionError && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
+            {submissionError} Your draft is still here.
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 shrink-0 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={!hasMessageContent || isDisabled}
+            onMouseDown={handleInputInteraction}
+            onClick={() => void handleSubmit()}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex w-full flex-wrap items-center gap-2">
         <input
           ref={inputRef}
           type="text"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setSubmissionError(null)
+            setText(e.target.value)
+          }}
           onKeyDown={handleKeyDown}
           onClick={handleInputInteraction}
           onFocus={handleInputInteraction}
@@ -332,7 +379,10 @@ export function OverlayFollowUpInput({
         />
         <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-2">
           <PredefinedPromptsMenu
-            onSelectPrompt={(content) => setText(content)}
+            onSelectPrompt={(content) => {
+              setSubmissionError(null)
+              setText(content)
+            }}
             disabled={isDisabled}
             buttonSize="sm"
           />

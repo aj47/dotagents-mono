@@ -20,13 +20,30 @@ interface TileFollowUpInputProps {
   sessionId?: string
   isSessionActive?: boolean
   isInitializingSession?: boolean
+  preferCompact?: boolean
   className?: string
   /** Agent/profile name to display as indicator */
   agentName?: string
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
+  /** Called when the parent tile should be focused before interacting with the composer */
+  onRequestFocus?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
   onStopSession?: () => void | Promise<void>
+}
+
+function getFollowUpSubmitErrorMessage(error: unknown, actionLabel: string): string {
+  if (error instanceof Error) {
+    const detail = error.message.trim()
+    return detail ? `Couldn't ${actionLabel}. ${detail}` : `Couldn't ${actionLabel}. Please try again.`
+  }
+
+  if (typeof error === "string") {
+    const detail = error.trim()
+    return detail ? `Couldn't ${actionLabel}. ${detail}` : `Couldn't ${actionLabel}. Please try again.`
+  }
+
+  return `Couldn't ${actionLabel}. Please try again.`
 }
 
 /**
@@ -40,9 +57,11 @@ export function TileFollowUpInput({
   className,
   agentName,
   onMessageSent,
+  onRequestFocus,
   onStopSession,
 }: TileFollowUpInputProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
@@ -54,6 +73,10 @@ export function TileFollowUpInput({
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
   const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
+
+  const handleInputInteraction = () => {
+    onRequestFocus?.()
+  }
 
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -81,6 +104,7 @@ export function TileFollowUpInput({
 
       setText("")
       setImageAttachments([])
+      setSubmissionError(null)
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the session tile without waiting for agent progress updates
       if (sessionId) {
@@ -116,13 +140,17 @@ export function TileFollowUpInput({
     }
     if (isSessionActive && !isQueueEnabled) return
 
+    setSubmissionError(null)
     submitInFlightRef.current = true
     setIsSubmitting(true)
 
     try {
       await sendMutation.mutateAsync(message)
     } catch (error) {
+      const actionLabel = isSessionActive && isQueueEnabled ? "queue message" : "send follow-up"
+      const errorMessage = getFollowUpSubmitErrorMessage(error, actionLabel)
       console.error("Failed to submit tile follow-up message:", error)
+      setSubmissionError(errorMessage)
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)
@@ -142,6 +170,7 @@ export function TileFollowUpInput({
       )
 
       if (attachments.length > 0) {
+        setSubmissionError(null)
         setImageAttachments((prev) => [...prev, ...attachments])
       }
 
@@ -162,6 +191,7 @@ export function TileFollowUpInput({
 
   const removeImageAttachment = (attachmentId: string) => {
     logUI("[TileFollowUpInput] remove image", { attachmentId })
+    setSubmissionError(null)
     setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
 
@@ -297,13 +327,40 @@ export function TileFollowUpInput({
         </div>
       )}
 
+      {submissionError && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
+            {submissionError} Your draft is still here.
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 shrink-0 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={!hasMessageContent || isDisabled}
+            onMouseDown={handleInputInteraction}
+            onClick={() => void handleSubmit()}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex w-full items-center gap-2">
         <input
           ref={inputRef}
           type="text"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setSubmissionError(null)
+            setText(e.target.value)
+          }}
           onKeyDown={handleKeyDown}
+          onMouseDown={handleInputInteraction}
+          onFocus={handleInputInteraction}
           placeholder={getPlaceholder()}
           className={cn(
             "flex-1 text-sm bg-transparent border-0 outline-none",
@@ -321,7 +378,10 @@ export function TileFollowUpInput({
           onChange={handleImageSelection}
         />
         <PredefinedPromptsMenu
-          onSelectPrompt={(content) => setText(content)}
+          onSelectPrompt={(content) => {
+            setSubmissionError(null)
+            setText(content)
+          }}
           disabled={isDisabled}
           className="h-6 w-6"
         />
@@ -331,6 +391,7 @@ export function TileFollowUpInput({
           variant="ghost"
           className="h-6 w-6 flex-shrink-0"
           disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+          onMouseDown={handleInputInteraction}
           onClick={() => fileInputRef.current?.click()}
           title="Attach image"
         >
@@ -342,6 +403,7 @@ export function TileFollowUpInput({
           variant="ghost"
           className="h-6 w-6 flex-shrink-0"
           disabled={!hasMessageContent || isDisabled}
+          onMouseDown={handleInputInteraction}
           title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
           aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
         >
@@ -364,6 +426,7 @@ export function TileFollowUpInput({
             "hover:text-red-600 dark:hover:text-red-400"
           )}
           disabled={isVoiceDisabled}
+          onMouseDown={handleInputInteraction}
           onClick={handleVoiceClick}
           title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
         >
@@ -381,6 +444,7 @@ export function TileFollowUpInput({
             "hover:bg-red-100 dark:hover:bg-red-950/30"
           )}
           disabled={isStoppingSession}
+          onMouseDown={handleInputInteraction}
           onClick={handleStopSession}
           title="Stop agent execution"
         >

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop follow-up composer send-error feedback / retry clarity in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with mount wiring reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx`.
 - 2026-03-08: Mobile ChatScreen primary composer submission resilience in `apps/mobile/src/screens/ChatScreen.tsx`, with `apps/mobile/src/store/message-queue.ts` and `apps/mobile/tests/chat-composer-accessibility.test.js` reviewed for queue/startup-guard context.
 - 2026-03-08: Mobile memories action discoverability / accessibility in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts` reviewed for edit-flow context.
 - 2026-03-08: Mobile connection status / verification UX in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/store/tunnelConnection.ts`, and `apps/mobile/src/ui/ConnectionStatusIndicator.tsx`.
@@ -21,6 +22,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop follow-up composers now show an inline send-failure banner with preserved-draft guidance and a `Retry` action instead of silently failing via `console.error` only.
 - 2026-03-08: Mobile ChatScreen composer now blocks the rapid double-submit race during send startup, so fast repeat taps / modifier-enter submits no longer slip duplicate sends through before `responding` catches up.
 - 2026-03-08: Mobile memories rows now show a visible inline `Edit` affordance, expose explicit edit/delete accessibility semantics, use a mobile-sized delete tap target, and name the memory being deleted in the confirmation prompt.
 - 2026-03-08: Mobile connection surfaces now reflect actual tunnel connection state (checking, reconnecting, failed, disconnected) instead of showing a misleading generic “Connected” whenever credentials are merely saved.
@@ -33,6 +35,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: custom `node` source-assertion script verified the new desktop follow-up input error-feedback / retry affordance invariants in `overlay-follow-up-input.tsx` and `tile-follow-up-input.tsx`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test apps/mobile/tests/chat-composer-accessibility.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js`
@@ -49,6 +53,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this follow-up-composer pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Mobile live UI inspection for this iteration is blocked in this worktree because both root and `apps/mobile` `node_modules` are missing; `pnpm --filter @dotagents/mobile exec expo --version` failed with `expo: command not found`.
 - 2026-03-08: Focused desktop shell-parse verification for `src/shared/shell-parse.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Shared package build verification for `@dotagents/shared` is blocked in this worktree because `pnpm --filter @dotagents/shared build` cannot find `tsup`; `node_modules` is missing.
@@ -57,11 +62,46 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop follow-up composer send-error feedback / retry clarity
+- Desktop remaining multiline settings editors with save-on-every-keystroke behavior (for example `groqSttPrompt`)
 
 ### Next Highest-Value Targets
-- Inspect desktop follow-up composers for clearer send-error feedback / recovery without overlapping the recent mobile ChatScreen send-guard pass
-- Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+- Inspect the remaining desktop multiline settings editors (for example `groqSttPrompt`) for the same local-draft / blur-flush resilience pattern without reopening already-covered provider credential fields
+- Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop follow-up composer send-error feedback and retry clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop overlay follow-up composer in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`
+  - desktop tile follow-up composer in `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`
+  - reviewed mount / prop wiring in `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+  - reviewed mobile parity in `apps/mobile/src/screens/ChatScreen.tsx`
+- Why it was chosen:
+  - the ledger explicitly called this out as the next fresh desktop area after the recent follow-up duplicate-submit guard pass
+  - both desktop follow-up composers already preserved draft text on async failure, but the failure path only logged to `console.error`, leaving users without visible feedback or recovery guidance
+  - mobile already exposes clearer send-failure / retry affordances, so desktop was the lagging surface for the same core conversation-continuation workflow
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`
+  - `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` to confirm how tile follow-up props are passed and where retry/error UI would appear
+  - `apps/mobile/src/screens/ChatScreen.tsx` to confirm the product already uses inline retry guidance on another surface
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - both desktop follow-up composers now keep a local `submissionError` state and render an inline error banner when async send startup fails
+  - the banner explains that the draft was preserved and adds a one-click `Retry` action so recovery is explicit instead of implied
+  - editing text, picking a predefined prompt, or changing attachments clears stale error banners so the recovery UI stays tied to the current draft
+  - the tile composer now explicitly accepts the `onRequestFocus` prop already being passed by `agent-progress`, keeping parent-focus handoff aligned while interacting with retry/send controls
+  - extended focused source-level regression coverage in `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts`
+- Assumptions / tradeoffs / rationale:
+  - kept the fix local to the composers instead of introducing a broader toast/error-routing system because the user problem here was a missing inline recovery affordance on a very specific control surface
+  - surfaced the thrown error message when available, but avoided deeper error categorization / settings deep-links in this pass to keep the change small and shippable
+  - accepted source-level verification for this iteration because live Electron inspection and desktop Vitest execution are both constrained in the current workspace
+- Tests / verification:
+  - custom `node` source-assertion script verified the presence of submission-error state, inline alert rendering, preserved-draft guidance, retry affordance, and tile `onRequestFocus` typing
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-trigger a desktop follow-up send failure to confirm the banner hierarchy and retry affordance feel right in both overlay and tile contexts
+  - inspect the remaining desktop multiline settings editors (for example `groqSttPrompt`) for the next non-overlapping draft/save resilience pass
 
 ### 2026-03-08 — Mobile ChatScreen composer startup duplicate-submit guardrails
 - Date:
