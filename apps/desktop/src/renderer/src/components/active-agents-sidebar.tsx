@@ -11,6 +11,7 @@ import {
   Archive,
   Bot,
 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
@@ -223,6 +224,8 @@ export function ActiveAgentsSidebar({
       }
     } catch (error) {
       console.error("Failed to stop session:", error)
+      const details = error instanceof Error ? error.message.trim() : ""
+      toast.error(details ? `Failed to stop session. ${details}` : "Failed to stop session")
     }
   }
 
