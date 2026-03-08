@@ -1202,3 +1202,33 @@
   - If Hub install provenance becomes more important later, consider carrying it into a longer-lived install history or import metadata model instead of only the transient route handoff.
 
 - Next recommended issue work item: stay on `#25` for a similarly small install-status/provenance follow-up once the desktop test runner is available, or only pivot to another issue if it offers an equally concrete, locally verifiable UX/reliability increment.
+
+##### Issue #25 — Hub install completion copy now stays source-aware after the dialog closes
+
+- Selection rationale:
+  - The most obvious remaining `#25` follow-up after the provenance handoff slice was renderer-visible completion status: the Hub flow opened an `Install Hub Bundle` dialog, but the primary action still used generic `Import` wording and the success/error toasts dropped the Hub/source context once the dialog closed.
+  - This was a tiny, reviewable UX/trust slice that could be verified cheaply in the current dependency-light worktree.
+- Investigation:
+  - Re-read the latest `#25` ledger entries and focused specifically on the remaining note to surface renderer-visible post-install status after a Hub bundle import completes.
+  - Re-inspected `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and confirmed the Hub handoff only customized the dialog title/description, not the button label or success verb.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the success/error toasts still emitted generic import copy with backup metadata only, even when `sourceUrl` provenance was available.
+- Important assumptions:
+  - Assumption: source-aware completion copy in the existing dialog/toast flow is the smallest acceptable interpretation of “renderer-visible post-install status.”
+  - Why acceptable: users immediately see the status after the import completes, and the change stays inside the already-established Hub install review surface instead of inventing a new notification/state system.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so source-aware Hub handoffs pass `confirmLabel="Install"` and `successVerb="installed"` into `BundleImportDialog`, keeping the action wording consistent with the Hub install flow.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` with a small `buildSourceOutcomeMessage(...)` helper so success, partial-failure, and thrown-error toasts append the preserved source label/URL whenever a bundle came from the Hub.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx` and the dependency-free `apps/desktop/src/renderer/src/pages/settings-agents.hub-install-provenance.test.js` regression coverage to lock in the new install-specific labels and source-aware outcome messaging contract.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-agents.hub-install-provenance.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Not re-attempted: the desktop Vitest runner is still unavailable in this worktree (`vitest` missing), and this slice only extended the already-covered source-level contract.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the targeted Hub-install Vitest files once the desktop test runner is available in this worktree.
+  - If user research shows the toast-level status is still too transient, consider a longer-lived install history/status surface for Hub bundle installs.
+  - Continue Phase 2 only with similarly narrow, concrete slices (for example, update-status affordances) rather than reopening registry caching or broader Hub marketplace work.
+
+- Next recommended issue work item: treat `#25` as meaningfully advanced for now and pivot next to a fresh issue only if it offers a similarly tight, locally verifiable bug/UX slice.

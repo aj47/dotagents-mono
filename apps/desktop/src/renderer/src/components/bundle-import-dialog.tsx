@@ -344,6 +344,11 @@ function summarizeImportResult(result: BundleImportResult): {
   }
 }
 
+function buildSourceOutcomeMessage(sourceLabel: string, sourceUrl?: string): string {
+  if (!sourceUrl) return ""
+  return ` ${sourceLabel}: ${sourceUrl}`
+}
+
 export function BundleImportDialog({
   open,
   onOpenChange,
@@ -459,23 +464,25 @@ export function BundleImportDialog({
       const backupMessage = result.backupFilePath
         ? ` Pre-import backup: ${result.backupFilePath}`
         : ""
+      const sourceMessage = buildSourceOutcomeMessage(sourceLabel, sourceUrl)
       const importSummary = summarizeImportResult(result)
       if (result.success) {
         const detailMessage = importSummary.detailSummary
           ? ` (${importSummary.detailSummary})`
           : ""
-        toast.success(`Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}`)
+        toast.success(`Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}${sourceMessage}`)
         onImportComplete()
         handleClose()
       } else {
         const detailMessage = importSummary.detailSummary
           ? ` Progress: ${importSummary.detailSummary}.`
           : ""
-        toast.error(`${result.errors.join(", ") || "Import failed"}.${detailMessage}${backupMessage}`)
+        toast.error(`${result.errors.join(", ") || "Import failed"}.${detailMessage}${backupMessage}${sourceMessage}`)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(`Import failed: ${errorMessage}`)
+      const sourceMessage = buildSourceOutcomeMessage(sourceLabel, sourceUrl)
+      toast.error(`Import failed: ${errorMessage}.${sourceMessage}`)
     } finally {
       setImporting(false)
     }

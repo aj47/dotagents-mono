@@ -121,6 +121,8 @@ describe("settings-agents Hub install handoff", () => {
     expect(dialogProps.current.open).toBe(true)
     expect(dialogProps.current.initialFilePath).toBe(bundlePath)
     expect(dialogProps.current.title).toBe("Install Hub Bundle")
+    expect(dialogProps.current.confirmLabel).toBe("Install")
+    expect(dialogProps.current.successVerb).toBe("installed")
     expect(dialogProps.current.sourceLabel).toBe("Downloaded from Hub")
     expect(dialogProps.current.sourceUrl).toBe(bundleSource)
     expect(setSearchParams).toHaveBeenCalled()

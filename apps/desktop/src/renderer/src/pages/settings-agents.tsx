@@ -454,6 +454,8 @@ export function SettingsAgents() {
         description={prefilledImportFilePath
           ? "Preview and import the downloaded Hub .dotagents bundle using the existing conflict-aware flow."
           : undefined}
+        confirmLabel={prefilledImportSourceUrl ? "Install" : undefined}
+        successVerb={prefilledImportSourceUrl ? "installed" : undefined}
         sourceLabel={prefilledImportSourceUrl ? "Downloaded from Hub" : undefined}
         sourceUrl={prefilledImportSourceUrl || undefined}
       />
