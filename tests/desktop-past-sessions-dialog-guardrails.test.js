@@ -22,6 +22,14 @@ test('past sessions row keyboard shortcuts ignore inner controls and show row-sc
   assert.match(source, /<Loader2 className="h-3\.5 w-3\.5 animate-spin" \/>/);
 });
 
+test('past sessions rows use a display-title fallback so blank history titles stay actionable', () => {
+  assert.match(source, /import \{ getConversationHistoryDisplayTitle \} from "@renderer\/lib\/conversation-history-display"/);
+  assert.match(source, /getConversationHistoryDisplayTitle\(session\)\.toLowerCase\(\)\.includes\(q\)/);
+  assert.match(source, /const sessionDisplayTitle = getConversationHistoryDisplayTitle\(session\)/);
+  assert.match(source, /\{ id: session\.id, title: sessionDisplayTitle \}/);
+  assert.match(source, /aria-label=\{pendingDeleteSessionId === session\.id \? `Deleting \$\{sessionDisplayTitle\}` : `Delete \$\{sessionDisplayTitle\}`\}/);
+});
+
 test('past sessions clear-all failures stay inline inside the destructive confirmation', () => {
   assert.match(source, /const \[deleteAllErrorMessage, setDeleteAllErrorMessage\] = useState<string \| null>\(null\)/);
   assert.match(source, /Couldn't delete your past sessions yet\. Your history is still available, so you can try again\./);

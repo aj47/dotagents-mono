@@ -42,6 +42,7 @@ import {
 } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { useConversationHistoryQuery } from "@renderer/lib/queries"
+import { getConversationHistoryDisplayTitle } from "@renderer/lib/conversation-history-display"
 import {
   getMcpToolsShortcutDisplay,
   getTextInputShortcutDisplay,
@@ -595,19 +596,24 @@ function EmptyState({
             )}
           </div>
           <div className="space-y-0.5">
-            {recentSessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => onPastSessionClick(session.id)}
-                className="hover:bg-accent/50 group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors"
-              >
-                <CheckCircle2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{session.title}</span>
-                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
-                  {formatTimestamp(session.updatedAt)}
-                </span>
-              </button>
-            ))}
+            {recentSessions.map((session) => {
+              const sessionDisplayTitle = getConversationHistoryDisplayTitle(session)
+
+              return (
+                <button
+                  key={session.id}
+                  onClick={() => onPastSessionClick(session.id)}
+                  className="hover:bg-accent/50 group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors"
+                  title={sessionDisplayTitle}
+                >
+                  <CheckCircle2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{sessionDisplayTitle}</span>
+                  <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                    {formatTimestamp(session.updatedAt)}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

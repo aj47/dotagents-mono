@@ -15,3 +15,10 @@ test('desktop empty sessions state keeps history reachable and shows loading fee
   assert.match(sessionsSource, /Loading recent sessions\.\.\./);
   assert.match(sessionsSource, /Recent sessions couldn&apos;t load right now\./);
 });
+
+test('desktop empty sessions state falls back to a readable title for recent history rows', () => {
+  assert.match(sessionsSource, /import \{ getConversationHistoryDisplayTitle \} from "@renderer\/lib\/conversation-history-display"/);
+  assert.match(sessionsSource, /const sessionDisplayTitle = getConversationHistoryDisplayTitle\(session\)/);
+  assert.match(sessionsSource, /title=\{sessionDisplayTitle\}/);
+  assert.match(sessionsSource, /<span className="flex-1 truncate">\{sessionDisplayTitle\}<\/span>/);
+});

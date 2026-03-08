@@ -4,6 +4,7 @@ import dayjs from "dayjs"
 import { AlertTriangle, CheckCircle2, Clock, Loader2, Search, Trash2 } from "lucide-react"
 
 import { cn } from "@renderer/lib/utils"
+import { getConversationHistoryDisplayTitle } from "@renderer/lib/conversation-history-display"
 import { useConversationHistoryQuery, useDeleteConversationMutation, useDeleteAllConversationsMutation } from "@renderer/lib/queries"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
@@ -99,7 +100,7 @@ export function PastSessionsDialog({
     if (!q) return allPastSessions
     return allPastSessions.filter(
       (session) =>
-        session.title.toLowerCase().includes(q) ||
+        getConversationHistoryDisplayTitle(session).toLowerCase().includes(q) ||
         session.preview.toLowerCase().includes(q),
     )
   }, [allPastSessions, trimmedSearchQuery])
@@ -372,65 +373,69 @@ export function PastSessionsDialog({
               </div>
             ) : (
               <>
-                {visiblePastSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleOpenPastSession(session.id)}
-                    onKeyDown={(e) => {
-                      if (e.target !== e.currentTarget) return
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault()
-                        handleOpenPastSession(session.id)
-                      }
-                    }}
-                    className={cn(
-                      "group flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                      "hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    )}
-                    title={`${session.preview}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`}
-                  >
-                    <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <div className="flex flex-wrap items-start gap-2">
-                        <span className="min-w-0 flex-1 truncate font-medium">
-                          {session.title}
-                        </span>
-                        <div className="ml-auto grid shrink-0 place-items-center self-start">
-                          {/* Timestamp shown by default, replaced by delete button on hover or keyboard focus */}
-                          <span className="text-muted-foreground col-start-1 row-start-1 text-[10px] tabular-nums transition-opacity group-hover:opacity-0 group-focus-within:opacity-0">
-                            {formatTimestamp(session.updatedAt)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) =>
-                              handleDeleteSession(
-                                { id: session.id, title: session.title },
-                                e,
-                              )
-                            }
-                            disabled={deleteConversationMutation.isPending || deleteAllConversationsMutation.isPending}
-                            className="col-start-1 row-start-1 rounded p-0.5 opacity-0 pointer-events-none transition-all hover:bg-destructive/20 hover:text-destructive focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
-                            title={pendingDeleteSessionId === session.id ? "Deleting session" : "Delete session"}
-                            aria-label={pendingDeleteSessionId === session.id ? `Deleting ${session.title}` : `Delete ${session.title}`}
-                          >
-                            {pendingDeleteSessionId === session.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                      {session.preview && (
-                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]">
-                          {session.preview}
-                        </p>
+                {visiblePastSessions.map((session) => {
+                  const sessionDisplayTitle = getConversationHistoryDisplayTitle(session)
+
+                  return (
+                    <div
+                      key={session.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleOpenPastSession(session.id)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          handleOpenPastSession(session.id)
+                        }
+                      }}
+                      className={cn(
+                        "group flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                        "hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       )}
+                      title={`${session.preview}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`}
+                    >
+                      <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex flex-wrap items-start gap-2">
+                          <span className="min-w-0 flex-1 truncate font-medium">
+                            {sessionDisplayTitle}
+                          </span>
+                          <div className="ml-auto grid shrink-0 place-items-center self-start">
+                            {/* Timestamp shown by default, replaced by delete button on hover or keyboard focus */}
+                            <span className="text-muted-foreground col-start-1 row-start-1 text-[10px] tabular-nums transition-opacity group-hover:opacity-0 group-focus-within:opacity-0">
+                              {formatTimestamp(session.updatedAt)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) =>
+                                handleDeleteSession(
+                                  { id: session.id, title: sessionDisplayTitle },
+                                  e,
+                                )
+                              }
+                              disabled={deleteConversationMutation.isPending || deleteAllConversationsMutation.isPending}
+                              className="col-start-1 row-start-1 rounded p-0.5 opacity-0 pointer-events-none transition-all hover:bg-destructive/20 hover:text-destructive focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+                              title={pendingDeleteSessionId === session.id ? "Deleting session" : "Delete session"}
+                              aria-label={pendingDeleteSessionId === session.id ? `Deleting ${sessionDisplayTitle}` : `Delete ${sessionDisplayTitle}`}
+                            >
+                              {pendingDeleteSessionId === session.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        {session.preview && (
+                          <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]">
+                            {session.preview}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
 
                 {hasMorePastSessions && (
                   <button
