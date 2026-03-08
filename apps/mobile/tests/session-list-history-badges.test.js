@@ -48,3 +48,14 @@ test('session list shows active-versus-total history counts when a compacted cha
   assert.match(sessionListSource, /historyCountSummary\?\.accessibilityLabel/);
   assert.match(sessionListSource, /historyCountSummary\?\.label/);
 });
+
+test('session list persists the selected history filter and resets safely when no history filters remain', () => {
+  assert.match(sessionListSource, /import AsyncStorage from '@react-native-async-storage\/async-storage';/);
+  assert.match(sessionListSource, /const SESSION_HISTORY_FILTER_STORAGE_KEY = 'session_list_history_filter_v1';/);
+  assert.match(sessionListSource, /const isSessionHistoryFilter = \(value: string \| null\): value is SessionHistoryFilter => \(/);
+  assert.match(sessionListSource, /const \[historyFilterLoaded, setHistoryFilterLoaded\] = useState\(false\);/);
+  assert.match(sessionListSource, /AsyncStorage\.getItem\(SESSION_HISTORY_FILTER_STORAGE_KEY\)/);
+  assert.match(sessionListSource, /AsyncStorage\.setItem\(SESSION_HISTORY_FILTER_STORAGE_KEY, historyFilter\)\.catch\(\(\) => \{\}\);/);
+  assert.match(sessionListSource, /if \(historyFilter !== 'all' && !hasHistoryFilterOptions\) \{/);
+  assert.match(sessionListSource, /setHistoryFilter\('all'\);/);
+});

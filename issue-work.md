@@ -3206,3 +3206,37 @@
   - Re-run real mobile TypeScript / Expo verification once the missing Expo config and dependency baseline is restored in this worktree.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, concrete bug/UX slice outside `#58`; if `#58` continues, the next honest mobile step is persisted filter preference or richer stub-session count metadata rather than another storage/backend rewrite.
+
+##### Issue #58 — Mobile session history filter now persists across revisits
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` first, refreshed the remaining open issues, and checked fresh alternatives again.
+  - `#54` remains externally blocked, `#25` has already seen several recent narrow trust/docs slices, and the latest `#58` ledger entry explicitly called out persisted mobile filter preference as the next honest follow-up if `#58` continued.
+  - This made persisted mobile history-filter state the smallest next UX slice with immediate value and a fully local verification path.
+- Investigation:
+  - Re-inspected `apps/mobile/src/screens/SessionListScreen.tsx` and confirmed the new `All / Compacted / Partial` chips still stored selection only in local component state via `useState('all')`.
+  - That meant the chosen filter was lost after screen remounts/app restarts, so users who intentionally browse only compacted or partial chats had to reselect the same chip every time.
+  - While planning persistence, I also confirmed a small edge case: if a persisted non-`all` filter were restored when there were no compacted/partial chats left, the filter chips would disappear entirely and the user could get stranded on an empty list with no visible way back.
+- Important assumptions:
+  - Assumption: AsyncStorage-backed persistence is the right first implementation for this lightweight UI preference.
+  - Why acceptable: the mobile app already uses AsyncStorage for comparable local preferences and session state, so this keeps the change aligned with existing patterns.
+  - Assumption: the app should only auto-reset the persisted filter when there are no history-filter options at all.
+  - Why acceptable: if some compacted/partial chats still exist, preserving the user’s chosen filter is valuable; the reset is only necessary to avoid trapping the user behind a hidden control state.
+- Changes implemented:
+  - Added AsyncStorage-backed persistence in `apps/mobile/src/screens/SessionListScreen.tsx` for the selected session history filter using a dedicated `session_list_history_filter_v1` key.
+  - Added a small `isSessionHistoryFilter(...)` guard plus a `historyFilterLoaded` gate so the restored value is validated before use and the initial default is not eagerly re-saved before loading.
+  - Added a safety effect that resets back to `all` if a persisted non-default filter is restored at a time when there are no compacted/partial chats and therefore no visible filter chips.
+  - Extended `apps/mobile/tests/session-list-history-badges.test.js` with source-level regression assertions covering the new load/save behavior and empty-state reset guard.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/session-list-history-badges.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Note: still did not re-run the broad Expo/mobile TypeScript path here because the worktree remains missing the previously documented mobile baseline (`expo/tsconfig.base` / Expo typings), and this slice added no new package or cross-module dependency surface.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If mobile users need richer trust detail for unopened desktop stub sessions, extend the list payload to distinguish active-window count from represented total.
+  - Consider whether the persisted filter should later become a broader session-list preference model (for example, saved sort/grouping) instead of a one-off key.
+  - Re-run real mobile TypeScript / Expo verification once the missing Expo/mobile baseline is restored in this worktree.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice outside `#58`; if no sharper candidate emerges, the next honest `#58` follow-up is richer stub-session count metadata rather than more filter polish.

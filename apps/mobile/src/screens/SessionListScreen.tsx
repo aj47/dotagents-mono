@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +38,12 @@ type SessionHistoryCountSummary = {
   label: string;
   accessibilityLabel: string;
 };
+
+const SESSION_HISTORY_FILTER_STORAGE_KEY = 'session_list_history_filter_v1';
+
+const isSessionHistoryFilter = (value: string | null): value is SessionHistoryFilter => (
+  value === 'all' || value === 'compacted' || value === 'partial'
+);
 
 const getSessionHistoryFilter = (
   session: Pick<SessionListItem, 'compaction'>,
@@ -767,6 +774,7 @@ export default function SessionListScreen({ navigation }: Props) {
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
   const [historyFilter, setHistoryFilter] = useState<SessionHistoryFilter>('all');
+  const [historyFilterLoaded, setHistoryFilterLoaded] = useState(false);
   const filteredSessions = useMemo(() => {
     if (historyFilter === 'all') {
       return sessions;
@@ -778,6 +786,42 @@ export default function SessionListScreen({ navigation }: Props) {
     () => sessions.some((session) => getSessionHistoryFilter(session) !== null),
     [sessions],
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    AsyncStorage.getItem(SESSION_HISTORY_FILTER_STORAGE_KEY)
+      .then((storedFilter) => {
+        if (isMounted && isSessionHistoryFilter(storedFilter)) {
+          setHistoryFilter(storedFilter);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          setHistoryFilterLoaded(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!historyFilterLoaded) {
+      return;
+    }
+
+    AsyncStorage.setItem(SESSION_HISTORY_FILTER_STORAGE_KEY, historyFilter).catch(() => {});
+  }, [historyFilter, historyFilterLoaded]);
+
+  useEffect(() => {
+    if (historyFilter !== 'all' && !hasHistoryFilterOptions) {
+      setHistoryFilter('all');
+    }
+  }, [hasHistoryFilterOptions, historyFilter]);
+
   const historyFilterCounts = useMemo(() => {
     const counts = {
       all: sessions.length,
