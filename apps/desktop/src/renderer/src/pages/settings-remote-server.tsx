@@ -65,6 +65,18 @@ interface RemoteServerSettingsGroupsProps {
 
 const DEFAULT_REMOTE_SERVER_PORT = 3210
 const REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS = 400
+type NamedTunnelDraftKey =
+  | "cloudflareTunnelId"
+  | "cloudflareTunnelHostname"
+  | "cloudflareTunnelCredentialsPath"
+
+function getNamedTunnelDrafts(config: Config | undefined): Record<NamedTunnelDraftKey, string> {
+  return {
+    cloudflareTunnelId: config?.cloudflareTunnelId ?? "",
+    cloudflareTunnelHostname: config?.cloudflareTunnelHostname ?? "",
+    cloudflareTunnelCredentialsPath: config?.cloudflareTunnelCredentialsPath ?? "",
+  }
+}
 
 function formatRemoteServerPortDraft(port: number | undefined): string {
   return String(port ?? DEFAULT_REMOTE_SERVER_PORT)
@@ -106,6 +118,10 @@ export function RemoteServerSettingsGroups({
   const portSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [corsOriginsDraft, setCorsOriginsDraft] = useState(() => formatCorsOrigins(cfg?.remoteServerCorsOrigins))
   const corsOriginsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [namedTunnelDrafts, setNamedTunnelDrafts] = useState(() => getNamedTunnelDrafts(cfg))
+  const namedTunnelSaveTimeoutsRef = useRef<
+    Partial<Record<NamedTunnelDraftKey, ReturnType<typeof setTimeout>>>
+  >({})
 
   useEffect(() => {
     cfgRef.current = cfg
@@ -187,14 +203,54 @@ export function RemoteServerSettingsGroups({
     setCorsOriginsDraft(formatCorsOrigins(cfg?.remoteServerCorsOrigins))
   }, [cfg?.remoteServerCorsOrigins])
 
+  const clearPendingNamedTunnelSave = useCallback((key: NamedTunnelDraftKey) => {
+    const pendingSave = namedTunnelSaveTimeoutsRef.current[key]
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+      delete namedTunnelSaveTimeoutsRef.current[key]
+    }
+  }, [])
+
+  const clearPendingNamedTunnelSaves = useCallback(() => {
+    for (const key of Object.keys(namedTunnelSaveTimeoutsRef.current) as NamedTunnelDraftKey[]) {
+      clearPendingNamedTunnelSave(key)
+    }
+  }, [clearPendingNamedTunnelSave])
+
+  const flushNamedTunnelSave = useCallback((key: NamedTunnelDraftKey, value: string) => {
+    clearPendingNamedTunnelSave(key)
+    saveConfig({ [key]: value } as Partial<Config>)
+  }, [clearPendingNamedTunnelSave, saveConfig])
+
+  const scheduleNamedTunnelSave = useCallback((key: NamedTunnelDraftKey, value: string) => {
+    clearPendingNamedTunnelSave(key)
+    namedTunnelSaveTimeoutsRef.current[key] = setTimeout(() => {
+      delete namedTunnelSaveTimeoutsRef.current[key]
+      saveConfig({ [key]: value } as Partial<Config>)
+    }, REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingNamedTunnelSave, saveConfig])
+
+  const updateNamedTunnelDraft = useCallback((key: NamedTunnelDraftKey, value: string) => {
+    setNamedTunnelDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [key]: value,
+    }))
+    scheduleNamedTunnelSave(key, value)
+  }, [scheduleNamedTunnelSave])
+
+  useEffect(() => {
+    setNamedTunnelDrafts(getNamedTunnelDrafts(cfg))
+  }, [cfg?.cloudflareTunnelCredentialsPath, cfg?.cloudflareTunnelHostname, cfg?.cloudflareTunnelId])
+
   useEffect(() => {
     return () => {
       clearPendingPortSave()
       if (corsOriginsSaveTimeoutRef.current) {
         clearTimeout(corsOriginsSaveTimeoutRef.current)
       }
+      clearPendingNamedTunnelSaves()
     }
-  }, [clearPendingPortSave])
+  }, [clearPendingNamedTunnelSaves, clearPendingPortSave])
 
   // Cloudflare Tunnel queries and mutations
   const cloudflaredInstalledQuery = useQuery({
@@ -272,6 +328,9 @@ export function RemoteServerSettingsGroups({
 
   const enabled = cfg.remoteServerEnabled ?? false
   const streamerMode = cfg.streamerModeEnabled ?? false
+  const namedTunnelIdDraft = namedTunnelDrafts.cloudflareTunnelId
+  const namedTunnelHostnameDraft = namedTunnelDrafts.cloudflareTunnelHostname
+  const namedTunnelCredentialsPathDraft = namedTunnelDrafts.cloudflareTunnelCredentialsPath
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
@@ -638,8 +697,9 @@ export function RemoteServerSettingsGroups({
                           <div className="flex flex-col gap-2">
                             <Input
                               type="text"
-                              value={cfg?.cloudflareTunnelId ?? ""}
-                              onChange={(e) => saveConfig({ cloudflareTunnelId: e.currentTarget.value })}
+                              value={namedTunnelIdDraft}
+                              onChange={(e) => updateNamedTunnelDraft("cloudflareTunnelId", e.currentTarget.value)}
+                              onBlur={(e) => flushNamedTunnelSave("cloudflareTunnelId", e.currentTarget.value)}
                               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                               className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                             />
@@ -650,10 +710,17 @@ export function RemoteServerSettingsGroups({
                                     key={t.id}
                                     type="button"
                                     className="underline cursor-pointer ml-1 hover:text-foreground"
-                                    onClick={() => saveConfig({
-                                      cloudflareTunnelId: t.id,
-                                      cloudflareTunnelName: t.name,
-                                    })}
+                                    onClick={() => {
+                                      clearPendingNamedTunnelSave("cloudflareTunnelId")
+                                      setNamedTunnelDrafts((currentDrafts) => ({
+                                        ...currentDrafts,
+                                        cloudflareTunnelId: t.id,
+                                      }))
+                                      saveConfig({
+                                        cloudflareTunnelId: t.id,
+                                        cloudflareTunnelName: t.name,
+                                      })
+                                    }}
                                   >
                                     {t.name}
                                   </button>
@@ -666,8 +733,9 @@ export function RemoteServerSettingsGroups({
                         <Control label={<ControlLabel label="Hostname" tooltip="The public hostname for your tunnel (e.g., myapp.example.com). Must be configured in Cloudflare DNS." />} className="px-3">
                           <Input
                             type="text"
-                            value={cfg?.cloudflareTunnelHostname ?? ""}
-                            onChange={(e) => saveConfig({ cloudflareTunnelHostname: e.currentTarget.value })}
+                            value={namedTunnelHostnameDraft}
+                            onChange={(e) => updateNamedTunnelDraft("cloudflareTunnelHostname", e.currentTarget.value)}
+                            onBlur={(e) => flushNamedTunnelSave("cloudflareTunnelHostname", e.currentTarget.value)}
                             placeholder="myapp.example.com"
                             className="w-full sm:w-[300px] max-w-full min-w-0"
                           />
@@ -676,8 +744,9 @@ export function RemoteServerSettingsGroups({
                         <Control label={<ControlLabel label="Credentials Path" tooltip="Path to credentials JSON file. Leave empty to use default (~/.cloudflared/<tunnel-id>.json)" />} className="px-3">
                           <Input
                             type="text"
-                            value={cfg?.cloudflareTunnelCredentialsPath ?? ""}
-                            onChange={(e) => saveConfig({ cloudflareTunnelCredentialsPath: e.currentTarget.value })}
+                            value={namedTunnelCredentialsPathDraft}
+                            onChange={(e) => updateNamedTunnelDraft("cloudflareTunnelCredentialsPath", e.currentTarget.value)}
+                            onBlur={(e) => flushNamedTunnelSave("cloudflareTunnelCredentialsPath", e.currentTarget.value)}
                             placeholder="~/.cloudflared/<tunnel-id>.json (default)"
                             className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                           />
@@ -718,13 +787,20 @@ export function RemoteServerSettingsGroups({
                         size="sm"
                         onClick={() => {
                           if (tunnelMode === "named") {
-                            if (!cfg?.cloudflareTunnelId || !cfg?.cloudflareTunnelHostname) {
+                            if (!namedTunnelIdDraft || !namedTunnelHostnameDraft) {
                               return // Validation handled in UI
                             }
+
+                            clearPendingNamedTunnelSaves()
+                            saveConfig({
+                              cloudflareTunnelId: namedTunnelIdDraft,
+                              cloudflareTunnelHostname: namedTunnelHostnameDraft,
+                              cloudflareTunnelCredentialsPath: namedTunnelCredentialsPathDraft,
+                            })
                             startNamedTunnelMutation.mutate({
-                              tunnelId: cfg.cloudflareTunnelId,
-                              hostname: cfg.cloudflareTunnelHostname,
-                              credentialsPath: cfg.cloudflareTunnelCredentialsPath || undefined,
+                              tunnelId: namedTunnelIdDraft,
+                              hostname: namedTunnelHostnameDraft,
+                              credentialsPath: namedTunnelCredentialsPathDraft || undefined,
                             })
                           } else {
                             startTunnelMutation.mutate()
@@ -733,7 +809,7 @@ export function RemoteServerSettingsGroups({
                         disabled={
                           startTunnelMutation.isPending ||
                           startNamedTunnelMutation.isPending ||
-                          (tunnelMode === "named" && (!cfg?.cloudflareTunnelId || !cfg?.cloudflareTunnelHostname))
+                          (tunnelMode === "named" && (!namedTunnelIdDraft || !namedTunnelHostnameDraft))
                         }
                       >
                         {startTunnelMutation.isPending || startNamedTunnelMutation.isPending
@@ -750,12 +826,12 @@ export function RemoteServerSettingsGroups({
                         {stopTunnelMutation.isPending ? "Stopping..." : "Stop Tunnel"}
                       </Button>
                     )}
-                    {tunnelMode === "named" && !cfg?.cloudflareTunnelId && (
+                    {tunnelMode === "named" && !namedTunnelIdDraft && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">
                         Enter Tunnel ID to start
                       </span>
                     )}
-                    {tunnelMode === "named" && cfg?.cloudflareTunnelId && !cfg?.cloudflareTunnelHostname && (
+                    {tunnelMode === "named" && namedTunnelIdDraft && !namedTunnelHostnameDraft && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">
                         Enter Hostname to start
                       </span>

@@ -48,6 +48,12 @@
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` has no equivalent remote-server port or Cloudflare tunnel editor, so this fix is desktop-only.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the remote-server port draft-save fix and regression test updates.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` named-tunnel `Tunnel ID`, `Hostname`, and `Credentials Path` inputs and confirmed they still rendered from persisted config while calling `saveConfig(...)` directly from each `onChange`.
+- [x] 2026-03-08: Confirmed `useSaveConfigMutation` still invalidates the `config` query on every desktop save in `apps/desktop/src/renderer/src/lib/queries.ts`, so named-tunnel text edits can refetch/reseed the visible fields while the user is still typing.
+- [x] 2026-03-08: Confirmed desktop named-tunnel startup and auto-start paths in `apps/desktop/src/main/index.ts` / `apps/desktop/src/main/cloudflare-tunnel.ts` consume `cloudflareTunnelId`, `cloudflareTunnelHostname`, and `cloudflareTunnelCredentialsPath`, so this is a real user-facing remote-access flow rather than dead settings code.
+- [x] 2026-03-08: Confirmed mobile only uses resolved tunnel/base-URL connection state in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` and `apps/mobile/src/lib/tunnelConnectionManager.ts`; it does not expose an equivalent named-tunnel configuration editor, so this fix is desktop-only.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the remote-server named-tunnel draft fix and regression test updates.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -56,7 +62,7 @@
 - [ ] Whether adjacent numeric/text settings in `settings-general.tsx` still need draft-first handling or blur-only persistence now that `mcpMaxIterations` is covered.
 - [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
 - [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
-- [ ] Whether the remaining remote-server named-tunnel inputs (`Tunnel ID`, `Hostname`, and `Credentials Path`) still need the same draft-first handling once the environment blocker is cleared.
+- [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
 - [x] **Desktop general-settings state-sync bug from uncontrolled persisted controls (directly confirmed in source):**
@@ -104,6 +110,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` rendered `Port` from persisted config with `value={cfg.remoteServerPort ?? 3210}` and called `saveConfig({ remoteServerPort: parseInt(...) })` directly from every `onChange` event.
   - That meant temporary editing states like an empty field were immediately coerced back to `3210`, and every typed intermediate number (`8`, `80`, `808`, `8080`, etc.) was persisted while the user was still editing.
   - `apps/desktop/src/main/tipc.ts` restarts the remote server whenever `remoteServerPort` changes while remote server mode is enabled, so normal typing in the port box could repeatedly restart the live server and churn the visible base URL/status.
+- [x] **Desktop Cloudflare named-tunnel settings editing bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` rendered named-tunnel `Tunnel ID`, `Hostname`, and `Credentials Path` directly from persisted config and called `saveConfig(...)` from each `onChange` event.
+  - Because `useSaveConfigMutation` invalidates `config` on every save, each keystroke in those fields triggered a config mutation + query invalidation round-trip while the user was still editing a tunnel UUID, hostname, or credentials path.
+  - The same page’s `Start Tunnel` action and app-start auto-tunnel path in `apps/desktop/src/main/index.ts` consume those saved values for real named-tunnel startup, so this was a concrete desktop remote-access setup bug rather than speculative cleanup.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the remaining persisted general-settings switches/selects now use controlled `checked` / `value` bindings instead of uncontrolled `defaultChecked` / `defaultValue` props.
@@ -170,6 +180,12 @@
   - keeping an empty port draft local and resetting invalid blur states back to the saved port
   - debounced valid port saving plus config-resync behavior
   - cancelling a pending port save when a once-valid draft becomes invalid before the debounce fires
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so the named-tunnel `Tunnel ID`, `Hostname`, and `Credentials Path` inputs now use local drafts with debounced saves and blur flushes instead of persisting every keystroke from saved config.
+- [x] Updated the named-tunnel `Start Tunnel` action and validation hints to use the current local drafts immediately, while flushing a single combined config save before starting the tunnel so a quick click after typing does not wait on config refetch.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-remote-server.draft.test.tsx` with focused regression coverage for:
+  - keeping an empty named-tunnel ID draft local until blur persistence
+  - debounced hostname saving plus config-resync behavior
+  - enabling/starting a named tunnel from the latest drafts without waiting for a config round-trip
 
 ### Verified
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-general.tsx` no longer contains config-backed `defaultChecked` / `defaultValue` bindings; the affected switches/selects now read from live `configQuery.data` via controlled `checked` / `value` props.
@@ -195,6 +211,9 @@
 - [x] Manual source verification: desktop `Port` no longer persists `remoteServerPort` directly from each `onChange`; it now keeps a local draft, only schedules valid saves, and resets invalid blur states back to the saved port.
 - [x] Manual source verification: main-process remote-server lifecycle still restarts on real persisted port changes in `apps/desktop/src/main/tipc.ts`, so removing per-keystroke saves removes the accidental restart churn without changing runtime restart semantics.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server port draft / regression test updates.
+- [x] Manual source verification: the named-tunnel `Tunnel ID`, `Hostname`, and `Credentials Path` inputs no longer call `saveConfig(...)` directly from each `onChange`; they now keep local drafts and use debounce/blur persistence.
+- [x] Manual source verification: the named-tunnel `Start Tunnel` action and missing-field helper text now read from the current drafts, so a just-typed valid tunnel ID/hostname can be used immediately without waiting for a config invalidation/refetch cycle.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server named-tunnel draft / regression test updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -207,6 +226,7 @@
 - [x] Targeted automated verification for this capabilities tab-routing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server CORS draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server port draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this remote-server named-tunnel draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
@@ -218,6 +238,7 @@
 - [ ] Whether the desktop OpenAI `TTS Speed` control should eventually switch all the way to a slider like mobile, rather than keeping a keyboard-editable number field with draft-state protection.
 - [ ] Whether any additional settings pages should promote explicit query-param deep links for tabbed sections now that `settings/capabilities` supports them.
 - [ ] Whether the remote-server `CORS Origins` field should eventually move from debounce+blur autosave to an explicit save/apply action if users frequently paste larger allowlists.
+- [ ] Whether the named-tunnel `Tunnel ID` / `Hostname` fields should eventually trim whitespace or add stricter UUID/hostname validation once the environment blocker is cleared and the live setup flow can be exercised.
 
 ### Diagnosis / Rationale
 - This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
@@ -243,6 +264,8 @@
 - Keeping the fix local to `settings-remote-server.tsx` is the smallest safe change because it preserves the current persisted format (`string[]` with `"*"` fallback) while aligning the editing behavior with the repo's existing draft-first handling for remote/mobile connection strings and other desktop settings.
 - The remote-server `Port` field is the higher-impact numeric version of the same bug: persisting each intermediate digit is not just noisy config churn, it can also repeatedly restart the live server because the main process treats persisted port changes as restart-worthy.
 - Keeping the fix local to `settings-remote-server.tsx` is the smallest safe change because it preserves the existing numeric range and restart-on-real-change behavior while preventing accidental restarts during normal typing.
+- The named-tunnel `Tunnel ID` / `Hostname` / `Credentials Path` inputs are the Cloudflare-specific text version of the same bug: per-keystroke persistence creates unnecessary config churn and can cause the editor/validation state to lag behind the user’s in-progress values.
+- Making the action button read the current drafts is part of the minimal safe fix here, because otherwise switching the inputs to local drafts would leave `Start Tunnel` disabled or stale until the debounced save/refetch completed.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -257,6 +280,8 @@
 - Assumption: a `?tab=` query-param contract is acceptable for desktop capabilities because the page is already a tabbed combined surface, the default bare route can remain `Skills`, and no equivalent mobile route needs to stay in sync.
 - Assumption: preserving the existing `remoteServerCorsOrigins: ["*"]` fallback on blur/save is acceptable for this pass because the current main-process remote-server startup already treats that as the default permissive mode, and the concrete bug being fixed is the editor fighting temporary user input rather than the semantics of the saved fallback value.
 - Assumption: keeping remote-server `Port` on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it removes restart-on-every-keystroke churn with the smallest code change while preserving the existing autosave behavior for a final valid port.
+- Assumption: keeping named-tunnel text fields on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it preserves the current autosave UX while removing the broken per-keystroke persistence behavior.
+- Assumption: letting `Start Tunnel` use the current drafts immediately is acceptable because the same click now flushes those drafts back into saved config, and the main-process starter already expects plain string values for these fields.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -278,4 +303,5 @@
 - After that, check whether any other desktop buttons or toasts still deep-link to bare `/settings/capabilities` when they really intend a specific tab.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new remote-server CORS draft coverage.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new remote-server port draft coverage alongside the existing CORS cases.
-- After that, inspect the remaining remote-server named-tunnel inputs (`Tunnel ID`, `Hostname`, and `Credentials Path`) to decide whether they need the same draft-first or blur-commit treatment.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new named-tunnel draft coverage alongside the existing CORS/port cases.
+- After that, live-verify the desktop named-tunnel setup flow (`Tunnel ID`, `Hostname`, `Credentials Path`, and `Start Tunnel`) to confirm the fields no longer fight typing and the action enables immediately from the current drafts.
