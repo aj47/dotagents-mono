@@ -395,10 +395,15 @@ function EmptyState({
     () => (conversationHistoryQuery.data ?? []).slice(0, RECENT_SESSIONS_LIMIT),
     [conversationHistoryQuery.data],
   )
+  const hasRecentSessions = recentSessions.length > 0
   const totalCount = conversationHistoryQuery.data?.length ?? 0
 
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-8 text-center">
+    <div
+      className={`flex min-h-full flex-col items-center px-6 text-center ${
+        hasRecentSessions ? "justify-start py-6" : "justify-center py-8"
+      }`}
+    >
       <div className="bg-muted mb-4 rounded-full p-4">
         <MessageCircle className="text-muted-foreground h-8 w-8" />
       </div>
@@ -448,8 +453,8 @@ function EmptyState({
       </div>
 
       {/* Recent past sessions */}
-      {recentSessions.length > 0 && (
-        <div className="mt-8 w-full max-w-lg text-left">
+      {hasRecentSessions && (
+        <div className="mt-6 w-full max-w-lg text-left">
           <div className="mb-2 flex items-center justify-between px-1">
             <h4 className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
               <Clock className="h-3.5 w-3.5" />

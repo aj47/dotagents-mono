@@ -113,3 +113,41 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
   - once dependencies are installed, capture live screenshots of the providers page with multiple active badges to confirm the headers actually wrap cleanly at typical settings widths and zoom levels
   - if screenshots still show crowding after this, the next candidate is reducing badge prominence or moving some feature-usage context into the expanded card body rather than the collapsed header
 
+### Iteration 2026-03-08 / 04
+- Status: complete with before-state live evidence and after-state live blocker documented
+- Screen / area reviewed: desktop sessions page empty state with visible recent session history underneath the start actions
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - explicitly switched away from the `/panel` target before inspection (`agent-browser --cdp 9333 tab 1`)
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-04.png`
+  - live snapshot and DOM box inspection at a `1440x900` viewport showed the empty-state heading at roughly `y=136` while the `Recent Sessions` heading did not begin until roughly `y=398`, even though eight actionable recent sessions were already available below it
+  - because the whole empty-state composition was vertically centered, the page read first as a large hero and only secondarily as a recovery surface, which delayed the most useful no-active-session fallback
+- Issues found:
+  - when recent history exists, vertically centering the whole empty-state block creates avoidable dead space above actionable content
+  - the recent-sessions recovery path started lower than necessary, so the UI emphasized the empty state more than the next likely action
+- Assumptions:
+  - when there are no active sessions but there is past session history, resuming recent work is usually as important as starting a brand-new session
+  - a truly empty state should still feel centered and calm when there is no history at all
+  - the mobile app does not need the same change: `apps/mobile/src/screens/SessionListScreen.tsx` has a separate list/empty-state pattern and does not combine a centered desktop-style hero with an inline recent-history section
+- Design rationale:
+  - keep the no-history state calm and centered, but stop centering the whole composition once useful history exists
+  - move recent recovery actions higher with the smallest possible layout change rather than redesigning the page
+  - reduce visual emphasis on "nothing is active" and increase emphasis on "here is what you can do next"
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/pages/sessions.tsx` to derive `hasRecentSessions` and switch the empty-state container from centered to top-anchored when recent history exists
+  - added `min-h-full` so the truly empty state still has full-height centering behavior when there is no history
+  - tightened the gap above the `Recent Sessions` block from `mt-8` to `mt-6`
+  - added `apps/desktop/src/renderer/src/pages/sessions.empty-state.layout.test.ts` to lock in the conditional top-anchoring rule
+- Verification:
+  - live before-state inspection and screenshot capture via `agent-browser --cdp 9333` against the main `/` renderer target
+  - attempted targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.empty-state.layout.test.ts` → failed because `vitest` is unavailable in the current workspace (`Command "vitest" not found`)
+  - attempted live after-state validation: `REMOTE_DEBUGGING_PORT=9333 pnpm dev -- -d` → failed before Electron launched because this worktree is missing dependencies (`packages/shared` build failed with `sh: tsup: command not found` and `node_modules missing` warnings)
+  - `git diff --check`
+- After-state observation:
+  - source-level after-state only: when recent history exists, the empty-state container now uses `min-h-full` plus `justify-start py-6` instead of vertically centering the full hero/history stack, and the recent-sessions block sits closer to the primary actions via `mt-6`
+  - expected visible effect once the app is runnable again: the page should keep the empty-state explanation near the top of the content area and make recent sessions feel like an immediate next step instead of a secondary afterthought
+- Remaining opportunities:
+  - once dependencies are installed, capture a real after-state screenshot of the empty sessions page and confirm the recent-history block now lands materially higher at common desktop heights
+  - if the page still feels top-heavy after this, the next likely improvement is auditing whether the keyboard shortcut hint row is taking more resting-state attention than it deserves
+
