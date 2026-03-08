@@ -8,6 +8,11 @@ const queuePanelSource = fs.readFileSync(
   'utf8'
 );
 
+const chatScreenSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
+  'utf8'
+);
+
 test('makes busy queue state explicit instead of silently disabling Clear All', () => {
   assert.match(queuePanelSource, /const hasProcessingMessage = messages\.some\(\(m\) => m\.status === 'processing'\);/);
   assert.match(queuePanelSource, /const clearQueueAccessibilityHint = hasProcessingMessage[\s\S]*?processingCount === 1[\s\S]*?Wait for the active queued message to finish before clearing the rest of this queue\.[\s\S]*?Wait for the \$\{processingCount\} queued messages that are sending now to finish before clearing the rest of this queue\.[\s\S]*?Removes all queued messages for this conversation\./);
@@ -132,4 +137,9 @@ test('caps expanded queue height relative to the viewport so it does not crowd s
   assert.match(queuePanelSource, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
   assert.match(queuePanelSource, /const queueListMaxHeight = Math\.min\(200, Math\.max\(160, Math\.round\(windowHeight \* 0\.28\)\)\);/);
   assert.match(queuePanelSource, /list:\s*\{[\s\S]*?maxHeight:\s*queueListMaxHeight,/);
+});
+
+test('keeps the queue panel aligned with the mobile chat gutters instead of stealing extra width', () => {
+  assert.match(chatScreenSource, /<ScrollView[\s\S]*?style=\{\{ flex: 1, paddingHorizontal: spacing\.sm, paddingVertical: spacing\.xs, backgroundColor: theme\.colors\.background \}\}/);
+  assert.match(chatScreenSource, /\{messageQueueEnabled && queuedMessages\.length > 0 && \([\s\S]*?<View style=\{\{ paddingHorizontal: spacing\.sm, paddingTop: spacing\.sm \}\}>[\s\S]*?<MessageQueuePanel/);
 });

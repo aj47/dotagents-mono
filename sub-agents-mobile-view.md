@@ -5407,3 +5407,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the expanded queue panel now feels proportionate on a short mobile viewport while still showing enough queued context on taller screens.
   - Capture screenshot-backed evidence for the expanded queue panel with a short screen height and a taller screen height so the new responsive cap can be judged against the chat/composer space it preserves.
   - Compare the updated queue height against the already-responsive response-history panel to decide whether their stacked hierarchy now feels balanced or whether a later local follow-up is warranted.
+
+## Iteration 122 - Reclaim narrow-screen width by aligning the mobile queue panel with chat gutters
+
+- Date: 2026-03-08
+- Summary: Reduced avoidable width loss in the mobile chat queue surface by aligning the `MessageQueuePanel` wrapper with the same `spacing.sm` horizontal gutter already used by the transcript and `ResponseHistoryPanel`.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent queue-height and response-history sizing work without a fresh local issue.
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/ui/MessageQueuePanel.tsx`, and the focused queue-panel regression coverage because the queue panel remained an active mobile sub-agent surface with no new live evidence available.
+  - Confirmed this exact gutter mismatch had not already been logged in the ledger.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed layout review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ResponseHistoryPanel` already uses a `spacing.sm` horizontal gutter, and the main chat transcript `ScrollView` also uses `paddingHorizontal: spacing.sm`.
+  - Source review showed the queue panel in `ChatScreen` still sat inside a wrapper using `paddingHorizontal: spacing.md`.
+  - On narrow screens, that extra inset reduced the queue card width relative to adjacent chat surfaces, making the queue header, status line, row text, and action rail fight over less space than necessary.
+- Issue identified:
+  - The mobile queue panel was inset more than neighboring chat surfaces, weakening readability and information hierarchy by throwing away usable horizontal space in an already dense sub-agent activity card.
+- Decision and rationale:
+  - Keep the queue panel component layout, header copy, action rail, and responsive height behavior unchanged.
+  - Do not broaden this into a larger queue/composer spacing redesign while live validation is blocked.
+  - Make the smallest local fix instead: align the queue wrapper to the established `spacing.sm` chat gutter so the panel gains width without changing its internal structure.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to change the queue-panel wrapper from `paddingHorizontal: spacing.md` to `paddingHorizontal: spacing.sm`.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with a focused regression check that the queue panel now matches the mobile chat gutter used by the transcript.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed the queue panel should visually align with the transcript and response-history panel unless live evidence suggests it needs deliberate extra inset for separation.
+  - Chose not to alter queue internals in the same pass because the width mismatch itself was a small, self-contained source of mobile squeeze.
+  - This is a low-risk local layout correction, but it still needs live confirmation that the recovered width meaningfully improves queue readability on a narrow viewport.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that its header hierarchy, row actions, failure copy, and responsive height behavior have changed repeatedly without fresh Expo confirmation in this worktree.
+  - The stacked relationship between the response-history panel and the queue panel still deserves a live one-handed scanability pass once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the queue panel now lines up with the chat transcript and gains visibly useful row width on a narrow screen.
+  - Capture screenshot-backed evidence of the queue panel beside the transcript and response-history panel so the gutter alignment can be judged with real mobile constraints.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this gutter-alignment tweak without fresh evidence.

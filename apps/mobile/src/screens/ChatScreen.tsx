@@ -3159,7 +3159,7 @@ export default function ChatScreen({ route, navigation }: any) {
         )}
         {/* Message Queue Panel */}
         {messageQueueEnabled && queuedMessages.length > 0 && (
-          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+          <View style={{ paddingHorizontal: spacing.sm, paddingTop: spacing.sm }}>
             <MessageQueuePanel
               conversationId={currentConversationId}
               messages={queuedMessages}
