@@ -105,6 +105,23 @@ describe("sessions layout controls", () => {
     expectSourceToContain("{activeLayoutCompactDescription}")
   })
 
+  it("packs collapsed tiles after expanded ones so open tiles reclaim the main grid space", () => {
+    expectSourceToContain("const hasCollapsedVisibleTile = useMemo(")
+    expectSourceToContain(
+      "visibleProgressEntries.some(([sessionId]) => collapsedSessions[sessionId] ?? false)",
+    )
+    expectSourceToContain("const orderedVisibleProgressEntries = useMemo(() => {")
+    expectSourceToContain("const expandedEntries: typeof visibleProgressEntries = []")
+    expectSourceToContain("const collapsedEntries: typeof visibleProgressEntries = []")
+    expectSourceToContain("return [...expandedEntries, ...collapsedEntries]")
+    expectSourceToContain(
+      "const canReorderTiles = !isFocusLayout && allProgressEntries.length > 1 && !hasCollapsedVisibleTile",
+    )
+    expectSourceToContain(
+      "{orderedVisibleProgressEntries.map(([sessionId, progress], index) => {",
+    )
+  })
+
   it("adds a direct recovery hint when compare or grid is stacked by width pressure", () => {
     expectSourceToContain("const STACKED_LAYOUT_RECOVERY_HINTS: Record<")
     expectSourceToContain('fullLabel: "Make room to compare"')

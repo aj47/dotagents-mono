@@ -1234,6 +1234,43 @@ export function Component() {
     )
   }, [allProgressEntries, isFocusLayout, maximizedSessionId])
 
+  const hasCollapsedVisibleTile = useMemo(
+    () =>
+      visibleProgressEntries.some(
+        ([sessionId]) => collapsedSessions[sessionId] ?? false,
+      ),
+    [collapsedSessions, visibleProgressEntries],
+  )
+
+  const orderedVisibleProgressEntries = useMemo(() => {
+    if (
+      isFocusLayout ||
+      visibleProgressEntries.length < 2 ||
+      !hasCollapsedVisibleTile
+    ) {
+      return visibleProgressEntries
+    }
+
+    const expandedEntries: typeof visibleProgressEntries = []
+    const collapsedEntries: typeof visibleProgressEntries = []
+
+    for (const entry of visibleProgressEntries) {
+      const [sessionId] = entry
+      if (collapsedSessions[sessionId] ?? false) {
+        collapsedEntries.push(entry)
+      } else {
+        expandedEntries.push(entry)
+      }
+    }
+
+    return [...expandedEntries, ...collapsedEntries]
+  }, [
+    collapsedSessions,
+    hasCollapsedVisibleTile,
+    isFocusLayout,
+    visibleProgressEntries,
+  ])
+
   const showPendingProgressTile =
     !!pendingProgress &&
     !!pendingSessionId &&
@@ -1247,7 +1284,8 @@ export function Component() {
   const visibleTileCount =
     visibleProgressEntries.length + (hasVisiblePendingTile ? 1 : 0)
   const showTileMaximize = !isFocusLayout
-  const canReorderTiles = !isFocusLayout && allProgressEntries.length > 1
+  const canReorderTiles =
+    !isFocusLayout && allProgressEntries.length > 1 && !hasCollapsedVisibleTile
   const focusedLayoutSessionIndex = maximizedSessionId
     ? focusableSessionIds.indexOf(maximizedSessionId)
     : -1
@@ -1743,7 +1781,7 @@ export function Component() {
               </SessionTileWrapper>
             )}
             {/* Regular sessions */}
-            {visibleProgressEntries.map(([sessionId, progress], index) => {
+            {orderedVisibleProgressEntries.map(([sessionId, progress], index) => {
               const isCollapsed = collapsedSessions[sessionId] ?? false
               const adjustedIndex = hasVisiblePendingTile ? index + 1 : index
               const isSessionFocused =
