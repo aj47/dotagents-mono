@@ -255,6 +255,97 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("keeps going when a terminal-run request is answered with manual commands instead of actual execution", async () => {
+    const { setSessionUserResponse, clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-terminal-run-follow-through")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{ name: "iterm:create_window", arguments: {} }],
+      })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{
+          name: "respond_to_user",
+          arguments: {
+            text: "I created the loop files. Run it with: `cd /Users/ajjoobandi/Development/aloops && ./sub-agents-mobile-view-loop.sh`",
+          },
+        }],
+      })
+      .mockImplementationOnce(async (messages: Array<{ role: string; content: string }>) => {
+        expect(messages.some((message) =>
+          message.role === "user"
+          && message.content.includes("Do not just hand back shell commands"),
+        )).toBe(true)
+
+        return {
+          content: "",
+          toolCalls: [{
+            name: "iterm:write_to_terminal",
+            arguments: {
+              session_id: "window-session-1",
+              text: "cd /Users/ajjoobandi/Development/aloops && ./sub-agents-mobile-view-loop.sh\n",
+            },
+          }],
+        }
+      })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{
+          name: "respond_to_user",
+          arguments: { text: "Done — I opened a new terminal window and started the loop in dotagents-mono." },
+        }],
+      })
+
+    mockVerifyCompletion.mockResolvedValue({
+      isComplete: true,
+      confidence: 0.99,
+      missingItems: [],
+      reason: "The requested terminal action was actually carried out and reported back to the user.",
+    })
+
+    const executeToolCall = vi.fn(async (toolCall: any) => {
+      if (toolCall.name === "respond_to_user") {
+        setSessionUserResponse("session-terminal-run-follow-through", toolCall.arguments.text)
+      }
+
+      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Can you run it in a new terminal window so it works in dotagents-mono",
+      [
+        { name: "iterm:create_window", description: "Create iTerm window", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "iterm:write_to_terminal", description: "Write to iTerm session", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } },
+      ] as any,
+      executeToolCall,
+      5,
+      [],
+      "conv-terminal-run-follow-through",
+      "session-terminal-run-follow-through",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Done — I opened a new terminal window and started the loop in dotagents-mono.")
+    expect(mockStreamingCall).toHaveBeenCalledTimes(4)
+    expect(mockVerifyCompletion).toHaveBeenCalledTimes(1)
+    expect(mockVerifyCompletion.mock.calls[0]?.[0]?.[0]?.content).toContain("only gives the user manual instructions")
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-terminal-run-follow-through",
+      expect.objectContaining({ output: result.content }),
+    )
+  })
+
   it("nudges repeated tool-only exploration to synthesize or ask focused follow-up questions", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")

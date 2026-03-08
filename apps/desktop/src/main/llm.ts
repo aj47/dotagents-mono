@@ -1071,6 +1071,35 @@ export async function processTranscriptWithAgentMode(
     return true
   }
 
+  const normalizeForIntentMatching = (content: string): string =>
+    content.toLowerCase().replace(/\s+/g, " ").trim()
+
+  const isTerminalExecutionRequest = (content: string): boolean => {
+    const normalized = normalizeForIntentMatching(content)
+    return /\b(run|start|launch|open)\b/.test(normalized)
+      && /\b(terminal|i ?term|tab|window|shell)\b/.test(normalized)
+  }
+
+  const isManualTerminalInstructionResponse = (content: string): boolean => {
+    const normalized = normalizeForIntentMatching(content)
+    if (!normalized) return false
+
+    const givesManualRunInstructions =
+      /\brun (?:it|this|the command)\b/.test(normalized)
+      || /\brun it with\b/.test(normalized)
+      || /\byou can run\b/.test(normalized)
+      || /\bsmoke test\b/.test(normalized)
+      || /`[^`\n]*(?:cd |pnpm |npm |yarn |python |node |\.\/)[^`\n]*`/.test(content)
+
+    const confirmsExecutionAlreadyHappened =
+      /\b(i (?:ran|started|launched|opened)|done\b|it'?s running|i opened a new terminal|i started it in)\b/.test(normalized)
+
+    return givesManualRunInstructions && !confirmsExecutionAlreadyHappened
+  }
+
+  const didDeferTerminalExecutionToUser = (request: string, response: string): boolean =>
+    isTerminalExecutionRequest(request) && isManualTerminalInstructionResponse(response)
+
   interface IncompleteTaskDetails {
     missingItems?: string[]
     reason?: string
@@ -1254,6 +1283,7 @@ FIRST, CHECK THESE BLOCKERS (if ANY are true, mark INCOMPLETE):
 - The user asked for information/analysis that was NOT directly provided in the agent's response
 - Tool results exist but the agent hasn't synthesized/presented them to the user
 - The response is empty or just acknowledges the request
+- The user asked the agent to perform an action (for example run/open/start something), but the response only gives the user manual instructions or commands instead of confirming the action was actually performed or clearly blocked
 
 ONLY IF NO BLOCKERS, mark COMPLETE if:
 1. The agent directly answered the user's question or fulfilled their request
@@ -1437,6 +1467,42 @@ Return ONLY JSON per schema.`,
       }
     }
 
+    const blockerCandidate = getSessionUserResponse(currentSessionId) || finalContent
+
+    if (didDeferTerminalExecutionToUser(transcript, blockerCandidate)) {
+      const newFailCount = currentFailCount + 1
+      if (newFailCount >= VERIFICATION_FAIL_LIMIT) {
+        verifyStep.status = "error"
+        verifyStep.description = "Verification budget exhausted - ending as incomplete"
+        return {
+          shouldContinue: false,
+          isComplete: false,
+          newFailCount,
+          skipPostVerifySummary: true,
+          forcedByLimit: true,
+          incompleteDetails: {
+            reason: "The user asked for the command to be run in a terminal window, but the response only handed the command back to the user.",
+          },
+        }
+      }
+
+      verifyStep.status = "error"
+      verifyStep.description = "Requested terminal action still needs execution"
+      conversationHistory.push({
+        role: "user",
+        content: "The user asked you to run/start it in a terminal window or tab. Do not just hand back shell commands. Either use the terminal tools to actually run it now, or clearly explain the blocker.",
+        timestamp: Date.now(),
+      })
+      maybeNudgeToolUsage(newFailCount)
+      return {
+        shouldContinue: true,
+        isComplete: false,
+        newFailCount,
+        skipPostVerifySummary,
+        forcedByLimit: false,
+      }
+    }
+
     // Gate 2: run verifier with bounded retries.
     let verification: any = null
     let verified = false
@@ -1471,8 +1537,6 @@ Return ONLY JSON per schema.`,
       typeof verification?.reason === "string" && verification.reason.trim().length > 0
         ? verification.reason.trim()
         : ""
-    const blockerCandidate = getSessionUserResponse(currentSessionId) || finalContent
-
     if (isWaitingOnUserActionResponse(blockerCandidate)) {
       verifyStep.status = "error"
       verifyStep.description = "Waiting on user action - ending current run"
