@@ -1,5 +1,44 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 31: Desktop memories bulk-actions bar under narrow widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/memories.tsx`
+- Why this chunk: chunk 30 explicitly recommended moving to a fresh unlogged desktop top-level page such as `memories.tsx`. That page had prior search/header hardening logged, but the list-level bulk actions bar was still unclaimed and remained the clearest narrow-width pressure point with direct destructive-action impact.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting recently logged mobile editor/list work
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - checked current runtime constraints in this worktree before choosing the surface: root, desktop, and mobile `node_modules` are all absent, so live Electron and Expo inspection remain blocked for this iteration
+  - inspected `memories.tsx` directly, focusing on the bulk-actions strip that appears between the filters and the memory cards
+
+#### Findings
+
+- Before the fix, the memories bulk-actions bar still assumed a roomy single row:
+  - the select-all affordance, selection count, `Delete Selected`, and `Delete All` controls all lived in one inflexible line with only a spacer between status and actions
+  - under narrow desktop widths or increased font zoom, the destructive buttons had no intentional wrap path and could crowd the selection summary instead of reflowing cleanly
+  - the strip also displayed `selectedIds.size`, while the destructive action and confirmation flow already operate on the currently visible filtered set, so the summary copy was more brittle than it needed to be in a list-scoped control
+
+#### Changes made
+
+- Hardened the bulk-actions strip in `apps/desktop/src/renderer/src/pages/memories.tsx` with a small, local layout/state fix:
+  - made the outer bar `flex-wrap` aware so the selection summary and destructive actions can break onto a second line instead of clipping each other
+  - replaced the spacer-only layout with a dedicated trailing action cluster (`ml-auto ... flex-wrap ... justify-end`) so `Delete Selected` and `Delete All` stay grouped and can drop cleanly under tighter widths
+  - made the selection toggle non-shrinking and added an explicit `aria-label` for selecting/deselecting all visible memories
+  - promoted the selection summary into a `min-w-0 flex-1` wrap-safe label with polite live updates, and aligned it with `visibleSelectedCount` so the text matches the visible filtered list the bar controls
+- Added `apps/desktop/src/renderer/src/pages/memories.layout.test.ts` so this responsive bulk-actions contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/memories.tsx` to confirm the new wrap-safe bulk-actions contract is present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/memories.tsx apps/desktop/src/renderer/src/pages/memories.layout.test.ts`
+
+#### Notes
+
+- This chunk is desktop-only: there is no direct mobile memories-management page using this same bulk-actions strip, so no parallel mobile change was needed.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect the memories page with several items selected at narrow main-window widths and increased font zoom.
+- Best next UI audit chunk after this one: stay on `memories.tsx` for the per-card header/meta/action rows under narrow widths and zoom, or move to another fresh desktop top-level/settings surface such as `settings-agents.tsx`.
+
 ### 2026-03-08 — Chunk 30: Mobile Chats list header/actions and session-card headers under narrow widths and larger text
 
 - Area selected:

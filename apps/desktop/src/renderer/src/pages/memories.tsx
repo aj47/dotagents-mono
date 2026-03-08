@@ -401,6 +401,8 @@ export function Component() {
   const highCount = memories.filter(m => m.importance === "high").length
   const allSelected = filteredMemories.length > 0 && visibleSelectedCount === filteredMemories.length
   const someSelected = visibleSelectedCount > 0 && visibleSelectedCount < filteredMemories.length
+  const hasVisibleSelections = visibleSelectedCount > 0
+  const selectionSummaryLabel = hasVisibleSelections ? `${visibleSelectedCount} selected` : "Select all"
 
   const memoryFileTemplate = `---
 kind: memory
@@ -536,10 +538,11 @@ Optional notes go here (saved as userNotes).
 
         {/* Bulk Actions Bar */}
         {filteredMemories.length > 0 && (
-          <div className="flex items-center gap-3 py-2 px-3 bg-muted/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/50 px-3 py-2">
             <button
-              className="text-muted-foreground hover:text-foreground"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
               onClick={handleSelectAll}
+              aria-label={allSelected ? "Deselect all visible memories" : "Select all visible memories"}
             >
               {allSelected ? (
                 <CheckSquare className="h-4 w-4 text-primary" />
@@ -549,37 +552,41 @@ Optional notes go here (saved as userNotes).
                 <Square className="h-4 w-4" />
               )}
             </button>
-            <span className="text-sm text-muted-foreground">
-              {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select all"}
+            <span
+              className="min-w-0 flex-1 text-sm text-muted-foreground break-words [overflow-wrap:anywhere]"
+              aria-live="polite"
+            >
+              {selectionSummaryLabel}
             </span>
-            <div className="flex-1" />
-            {selectedIds.size > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="gap-2"
-                onClick={() => setBulkDeleteConfirm(true)}
-                disabled={deleteMultipleMutation.isPending}
-              >
-                {deleteMultipleMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
+            <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+              {hasVisibleSelections && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2 shrink-0"
+                  onClick={() => setBulkDeleteConfirm(true)}
+                  disabled={deleteMultipleMutation.isPending}
+                >
+                  {deleteMultipleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Delete Selected ({visibleSelectedCount})
+                </Button>
+              )}
+              {memories.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteAllConfirm(true)}
+                  className="gap-2 shrink-0 text-destructive hover:text-destructive"
+                >
                   <Trash2 className="h-4 w-4" />
-                )}
-                Delete Selected ({selectedIds.size})
-              </Button>
-            )}
-            {memories.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteAllConfirm(true)}
-                className="gap-2 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete All
-              </Button>
-            )}
+                  Delete All
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
