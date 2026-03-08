@@ -246,6 +246,8 @@ test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', 
 test('AgentEditScreen explains what the Enabled switch controls in sub-agent flows', () => {
   assert.match(agentEditSource, /<Text style=\{styles\.switchLabel\}>Enabled<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Show this agent in delegation and ACP main-agent choices<\/Text>/);
   assert.match(agentEditSource, /accessibilityHint="Shows or hides this agent in delegation and ACP main-agent choices\."/);
+  assert.match(agentEditSource, /switchRow:\s*\{[\s\S]*?alignItems:\s*'flex-start'/);
+  assert.match(agentEditSource, /switchHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*2,[\s\S]*?lineHeight:\s*17/);
 });
 
 test('AgentEditScreen makes missing server config explicit before the primary save action', () => {
@@ -295,7 +297,8 @@ test('LoopEditScreen wraps the enabled switch in a named mobile-sized control', 
 test('LoopEditScreen explains what the Enabled switch controls in sub-agent loops', () => {
   assert.match(loopEditSource, /<Text style=\{styles\.switchLabel\}>Enabled<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Pause or resume this loop&apos;s schedule without deleting it<\/Text>/);
   assert.match(loopEditSource, /accessibilityHint="Pauses or resumes this loop&apos;s schedule without deleting it\."/);
-  assert.match(loopEditSource, /switchHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+  assert.match(loopEditSource, /switchRow:\s*\{[\s\S]*?alignItems:\s*'flex-start'/);
+  assert.match(loopEditSource, /switchHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*2,[\s\S]*?lineHeight:\s*17/);
 });
 
 test('LoopEditScreen exposes run-on-startup state without dropping it on save', () => {

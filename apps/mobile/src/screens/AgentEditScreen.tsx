@@ -782,7 +782,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     switchRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: spacing.md,
       paddingVertical: spacing.md,
@@ -802,6 +802,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: 2,
+      lineHeight: 17,
     },
     switchButton: {
       ...switchTouchTarget,

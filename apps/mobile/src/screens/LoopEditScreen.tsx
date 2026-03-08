@@ -778,10 +778,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     intervalHelperTextWarning: { color: theme.colors.destructive },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
-    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     switchLabelGroup: { flex: 1, minWidth: 0 },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
-    switchHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
+    switchHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2, lineHeight: 17 },
     switchButton: {
       ...switchTouchTarget,
       borderRadius: radius.full,

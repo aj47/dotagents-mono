@@ -6086,3 +6086,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the stretched `Review in Settings` action feels easy to tap without overpowering the available-agent list below it.
   - Compare the missing-selection notice against the empty and recoverable-error selector states on a narrow viewport so all selector recovery paths feel consistent but appropriately weighted.
   - After that live pass, continue with the next highest-signal local improvement instead of revisiting this notice-action width tweak without fresh evidence.
+
+## Iteration 135 - Top-align wrapped switch rows in mobile sub-agent edit screens
+
+- Date: 2026-03-08
+- Summary: Improved mobile readability in `AgentEditScreen` and `LoopEditScreen` by top-aligning wrapped switch rows and giving their helper copy an explicit line height, so long state explanations read as one coherent block beside the toggle.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recently touched selector-sheet, response-history, and loop-summary surfaces without new evidence.
+  - Re-checked `apps/mobile/src/screens/AgentEditScreen.tsx`, `apps/mobile/src/screens/LoopEditScreen.tsx`, `apps/mobile/tests/sub-agent-edit-mobile.test.js`, and the adjacent switch-row pattern in `SettingsScreen`.
+  - Confirmed the edit screens still used `alignItems: 'center'` for switch rows even though their helper copy now includes longer mobile-facing explanations such as `Auto Spawn` and `Run on Startup`.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `test -d node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed `AgentEditScreen` and `LoopEditScreen` switch rows still centered the toggle vertically beside the label block.
+  - The same rows use multi-line helper copy on mobile, especially for sub-agent state explanations like `Show this agent in delegation and ACP main-agent choices` and `If enabled, run once immediately when DotAgents starts before resuming the regular interval`.
+  - On narrow screens, that combination risks making the switch float midway beside wrapped text, which weakens scanability and makes the control feel less clearly attached to the state description.
+- Issue identified:
+  - The mobile sub-agent edit screens still center-aligned toggles beside multi-line helper text, reducing readability and visual grouping in dense mobile forms.
+- Decision and rationale:
+  - Keep the existing switch visuals, form order, and copy unchanged.
+  - Follow the existing mobile settings pattern rather than inventing a new edit-screen treatment.
+  - Make the smallest local fix instead: top-align the switch rows and add explicit helper-text line height so wrapped explanations read more comfortably without changing the rest of the layout.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to change `switchRow` alignment from `center` to `flex-start` and add `lineHeight: 17` to `switchHelperText`.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` with the same `switchRow` top alignment and helper-text line-height treatment.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new switch-row alignment and helper-text spacing contract in both edit screens.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both repository and `apps/mobile` `node_modules` are missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed that the wrapped helper copy is now important enough that the toggle should visually anchor to the top of the label block, matching the more text-heavy mobile settings rows.
+  - Kept the fix styling-only so it remains low risk while live validation is unavailable.
+  - This remains a source-backed improvement and still needs live confirmation that the top-aligned switches feel balanced with one-line and two-line helper states.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The sub-agent edit screens still lack a fresh narrow-screen pass after several incremental switch, notice, and recovery-path refinements.
+  - The longer `Run on Startup` and `Auto Spawn` rows should still be checked live for one-handed readability once Expo returns.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that wrapped switch rows in `AgentEditScreen` and `LoopEditScreen` now read as a top-aligned label block plus toggle on narrow screens.
+  - Compare one-line rows (`Enabled`) against multi-line rows (`Auto Spawn`, `Run on Startup`) to confirm the new alignment improves readability without making the shorter rows feel visually off.
+  - After that live pass, continue with the next highest-signal local improvement instead of revisiting this switch-row alignment tweak without fresh evidence.
