@@ -140,6 +140,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
+    const secondaryDescription = item.guidelines && item.guidelines !== 'ACP main agent'
+      ? item.guidelines
+      : null;
     return (
       <TouchableOpacity
         style={[styles.profileItem, isSelected && styles.profileItemSelected]}
@@ -157,9 +160,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           >
             {item.name}
           </Text>
-          {item.guidelines && (
+          {secondaryDescription && (
             <Text style={styles.profileDescription} numberOfLines={1} ellipsizeMode="tail">
-              {item.guidelines}
+              {secondaryDescription}
             </Text>
           )}
         </View>

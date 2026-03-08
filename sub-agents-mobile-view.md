@@ -1509,3 +1509,44 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the new unassigned helper is visually distinct from `Loading profiles...`, `No saved profiles yet...`, and the inline warning state.
   - After live validation returns, confirm that leaving a loop on `No profile` feels intentionally safe when saved profiles are available.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 35: remove redundant ACP subtitles from selector rows
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentSelectorSheet`
+  - `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed ACP-mode selector rows are created via `toMainAgentProfile(...)`, which assigns the generic subtitle `ACP main agent`.
+  - `AgentSelectorSheet` rendered any `guidelines` value as the secondary row text, so ACP mode repeated the same subtitle under every option.
+  - On mobile, that extra repeated line added row height without helping users distinguish between agents, weakening scanability in the main switching surface.
+- Issue selected:
+  - The populated ACP selector sheet still spent vertical space on redundant repeated copy, reducing information hierarchy on narrow screens.
+- Decision:
+  - Keep the existing selector-sheet layout, titles, and selection flow unchanged.
+  - Do not remove real profile descriptions or change shared profile data shapes while live validation is blocked.
+  - Make the smallest local fix in `AgentSelectorSheet`: suppress only the generic ACP placeholder subtitle while still showing meaningful per-profile descriptions when available.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive `secondaryDescription` locally for each row,
+    - hide the repeated `ACP main agent` placeholder subtitle,
+    - keep rendering genuine selector descriptions through the existing secondary text slot.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new selector-row description gating.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The leaner ACP selector rows still need a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - If live inspection later shows ACP options still feel too similar, the sheet may need stronger differentiating metadata — but only with evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that ACP selector rows now read as single-line options unless they have real per-agent descriptive text.
+  - Once live validation returns, compare populated ACP selector rows against standard profile rows to confirm the sheet still feels balanced and distinguishable.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

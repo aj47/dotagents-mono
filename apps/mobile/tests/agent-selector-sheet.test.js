@@ -47,3 +47,8 @@ test('keeps long agent names and descriptions stable inside selector rows on nar
   assert.match(sheetSource, /profileDescription:\s*\{[\s\S]*?flexShrink:\s*1/);
   assert.match(sheetSource, /checkmark:\s*\{[\s\S]*?flexShrink:\s*0/);
 });
+
+test('drops the generic ACP placeholder subtitle while keeping real selector descriptions', () => {
+  assert.match(sheetSource, /const secondaryDescription = item\.guidelines && item\.guidelines !== 'ACP main agent'[\s\S]*?\? item\.guidelines[\s\S]*?: null;/);
+  assert.match(sheetSource, /\{secondaryDescription && \([\s\S]*?<Text style=\{styles\.profileDescription\}[\s\S]*?\{secondaryDescription\}/);
+});
