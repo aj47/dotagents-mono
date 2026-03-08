@@ -188,6 +188,11 @@ function formatLoopLastRunLabel(timestamp: number): string {
   })}`;
 }
 
+function getLoopStatusLabel(loop: Loop): 'Running' | 'Active' | 'Paused' {
+  if (loop.isRunning) return 'Running';
+  return loop.enabled ? 'Active' : 'Paused';
+}
+
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -2395,23 +2400,58 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : loops.length === 0 ? (
                   <Text style={styles.helperText}>No agent loops configured</Text>
                 ) : (
-                  loops.map((loop) => (
-                    <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                  loops.map((loop) => {
+                    const loopStatusLabel = getLoopStatusLabel(loop);
+                    const loopStatusHint = loop.isRunning
+                      ? 'This loop is running right now.'
+                      : loop.enabled
+                        ? 'This loop is enabled and waiting for its next run.'
+                        : 'This loop is paused until you enable it again.';
+
+                    return (
+                      <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
                       <TouchableOpacity
                         style={styles.agentInfoPressable}
                         onPress={() => handleLoopEdit(loop)}
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(`Edit ${loop.name} loop`)}
-                        accessibilityHint="Opens this loop so you can review and change its schedule or prompt."
+                        accessibilityHint={`Opens this loop so you can review and change its schedule or prompt. ${loopStatusHint}`}
                         activeOpacity={0.7}
                       >
                         <View style={[styles.serverInfo, { flex: 1 }]}> 
                           <View style={styles.serverNameRow}>
                             <View style={[
                               styles.statusDot,
-                              loop.isRunning ? styles.statusConnected : styles.statusDisconnected,
+                              loop.isRunning
+                                ? styles.statusConnected
+                                : loop.enabled
+                                  ? styles.statusActive
+                                  : styles.statusDisconnected,
                             ]} />
                             <Text style={styles.serverName}>{loop.name}</Text>
+                            <View
+                              style={[
+                                styles.loopStateBadge,
+                                loop.isRunning
+                                  ? styles.loopStateBadgeRunning
+                                  : loop.enabled
+                                    ? styles.loopStateBadgeActive
+                                    : styles.loopStateBadgePaused,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.loopStateBadgeText,
+                                  loop.isRunning
+                                    ? styles.loopStateBadgeTextRunning
+                                    : loop.enabled
+                                      ? styles.loopStateBadgeTextActive
+                                      : styles.loopStateBadgeTextPaused,
+                                ]}
+                              >
+                                {loopStatusLabel}
+                              </Text>
+                            </View>
                           </View>
                           <Text style={styles.serverMeta} numberOfLines={2}>
                             {formatLoopIntervalLabel(loop.intervalMinutes)}
@@ -2467,8 +2507,9 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.loopDeleteText}>🗑 Delete</Text>
                         </TouchableOpacity>
                       </View>
-                    </View>
-                  ))
+                      </View>
+                    );
+                  })
                 )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
@@ -3270,8 +3311,43 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     statusConnected: {
       backgroundColor: '#22c55e', // green-500
     },
+    statusActive: {
+      backgroundColor: theme.colors.primary,
+    },
     statusDisconnected: {
       backgroundColor: theme.colors.muted,
+    },
+    loopStateBadge: {
+      borderRadius: radius.full,
+      borderWidth: 1,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    loopStateBadgeRunning: {
+      borderColor: '#22c55e',
+      backgroundColor: '#22c55e20',
+    },
+    loopStateBadgeActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '12',
+    },
+    loopStateBadgePaused: {
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+    },
+    loopStateBadgeText: {
+      fontSize: 10,
+      fontWeight: '600',
+      lineHeight: 12,
+    },
+    loopStateBadgeTextRunning: {
+      color: '#166534',
+    },
+    loopStateBadgeTextActive: {
+      color: theme.colors.primary,
+    },
+    loopStateBadgeTextPaused: {
+      color: theme.colors.mutedForeground,
     },
     // Agent management styles
     agentInfoPressable: {

@@ -25,6 +25,12 @@ test('adds explicit accessibility semantics for loop actions', () => {
 test('adds an explicit edit affordance to each loop row', () => {
   assert.match(settingsSource, /onPress=\{\(\) => handleLoopEdit\(loop\)\}[\s\S]*?accessibilityRole="button"/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Edit \$\{loop\.name\} loop`\)/);
-  assert.match(settingsSource, /accessibilityHint="Opens this loop so you can review and change its schedule or prompt\."/);
+  assert.match(settingsSource, /const loopStatusHint = loop\.isRunning[\s\S]*?This loop is running right now\.[\s\S]*?This loop is enabled and waiting for its next run\.[\s\S]*?This loop is paused until you enable it again\./);
+  assert.match(settingsSource, /accessibilityHint=\{`Opens this loop so you can review and change its schedule or prompt\. \$\{loopStatusHint\}`\}/);
   assert.match(settingsSource, /renderInlineEditAffordance\(\)/);
+});
+
+test('distinguishes running, active, and paused loops in row status styling', () => {
+  assert.match(settingsSource, /loop\.isRunning[\s\S]*?\? styles\.statusConnected[\s\S]*?: loop\.enabled[\s\S]*?\? styles\.statusActive[\s\S]*?: styles\.statusDisconnected/);
+  assert.match(settingsSource, /statusActive:\s*\{[\s\S]*?backgroundColor: theme\.colors\.primary,/);
 });

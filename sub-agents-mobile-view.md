@@ -1896,3 +1896,49 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that startup loops read clearly beside cadence, profile, and last-run metadata.
   - Check whether loops with both `profileName` and `lastRunAt` still keep the most important schedule state visible without truncation pressure.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 44: make loop list state readable without relying on a tiny dot
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Loops` rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused loop list tests in `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+  - focused loop action/accessibility tests in `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+  - desktop loop list parity in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile loop rows still communicated runtime state mainly through a tiny leading status dot.
+  - When `loop.isRunning` was false, the dot fell back to the same muted styling whether a loop was merely idle-but-enabled or actually paused.
+  - Desktop already surfaced explicit text state (`Running`, `Active`, `Disabled`), so mobile lagged on at-a-glance state clarity in a dense narrow-screen list.
+- Issue selected:
+  - Mobile `Settings > Agent Loops` made loop state too easy to miss or misread because enabled/paused rows relied on nearly identical dot-only cues.
+- Decision:
+  - Keep the existing row structure, metadata ordering, and action rail unchanged.
+  - Make the smallest local fix in the loop name row: add a compact inline state badge, promote the status dot to a true three-state cue, and include the same state in the row's accessibility hint.
+  - Use `Paused` instead of `Disabled` in the mobile badge because the existing loop copy already frames the toggle as pausing/resuming schedule execution rather than deleting or hiding the loop.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `getLoopStatusLabel(...)` for `Running` / `Active` / `Paused`,
+    - show a compact state badge beside each loop name,
+    - style the status dot with distinct running / active / paused colors,
+    - add a state-aware accessibility hint to the row edit affordance.
+  - Updated focused tests in:
+    - `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+    - `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new badge reads clearly without crowding long loop names.
+  - If live validation later shows the added state badge plus `Run on startup` metadata makes rows feel too busy, the next step may need a tighter badge treatment rather than more copy.
+  - `nextRunAt` still is not surfaced in the mobile list, but that should only be reconsidered with fresh live evidence because it would add more density.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `Running`, `Active`, and `Paused` are visually distinct at a glance.
+  - Check a long loop name plus `Run on startup` metadata together to confirm the new badge does not create truncation pressure.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
