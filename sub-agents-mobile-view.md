@@ -4709,3 +4709,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that returning to LoopEdit shows the refresh notice, temporarily disables saved-profile chips, and re-enables them once the fetch completes.
   - Capture screenshot-backed evidence for the profile section on a narrow width while refreshing and after refresh completion.
   - After that live pass, continue with the next highest-signal local mobile state-clarity issue instead of revisiting this loading-state fix without fresh evidence.
+
+## Iteration 107 - Give editable sub-agent form fields explicit mobile accessibility context
+
+- Date: 2026-03-08
+- Summary: Added explicit accessibility labels and field-specific hints to editable inputs in the mobile `AgentEdit` and `LoopEdit` flows so long sub-agent forms are easier to understand with VoiceOver/TalkBack instead of relying on nearby visual labels alone.
+- Review-before-change notes:
+  - Re-read the latest `sub-agents-mobile-view.md` entries first to avoid repeating the recent loop-profile loading and keyboard-dismiss work without new evidence.
+  - Checked `apps/mobile/src/screens/AgentEditScreen.tsx`, `apps/mobile/src/screens/LoopEditScreen.tsx`, and `apps/mobile/tests/sub-agent-edit-mobile.test.js` before editing so the next change would stay local to the sub-agent edit experience.
+  - Compared these edit forms against existing mobile patterns that already use explicit input labeling, including the read-only built-in agent fields and the chat composer / queue editor accessibility helpers.
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection still was not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed accessibility review plus focused Node-based regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - `AgentEditScreen` already gave built-in read-only text inputs explicit accessibility labels and hints, but the editable fields in the same screen mostly relied on nearby visible labels.
+  - `LoopEditScreen` editable fields likewise lacked explicit input labels, except for some adjacent helper copy.
+  - On long mobile forms, that makes the spoken context less reliable for VoiceOver/TalkBack users because the input itself does not clearly announce what field it is or why it matters.
+- Issue identified:
+  - The editable sub-agent form fields were visually labeled, but not consistently self-describing for mobile assistive technology, weakening state clarity in narrow, multi-section edit flows.
+- Decision and rationale:
+  - Reuse the existing `createTextInputAccessibilityLabel` helper already present in the mobile app instead of introducing a new accessibility abstraction.
+  - Keep the change tightly local to `AgentEdit` and `LoopEdit`, adding explicit labels and field-specific hints without changing layout, validation, or copy shown to sighted users.
+  - Mirror the existing read-only accessibility pattern in `AgentEdit` so editable and read-only states now feel more consistent.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to add a shared editable-input accessibility helper and applied explicit labels/hints to editable fields including display name, description, connection fields, system prompt, and guidelines.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to import `createTextInputAccessibilityLabel`, add a loop-input accessibility helper, and apply explicit labels/hints to the name, prompt, and interval fields.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new editable-field accessibility helpers and the field-specific hint strings in both screens.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and `pnpm --filter @dotagents/mobile exec expo --version` fails with `Command "expo" not found`
+- Assumptions and tradeoffs:
+  - Assumed explicit input labeling is a net improvement on mobile even without changing the visible layout, because it makes long forms more self-describing to screen-reader users.
+  - Chose not to add extra visible helper text for every field; that would risk making narrow forms feel denser without first validating the layout live.
+  - This iteration improves accessibility semantics, but still needs live VoiceOver/TalkBack verification to confirm the spoken order feels natural in practice.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The edit forms still need live validation with Expo Web or a simulator to confirm screen readers announce the new hints in a helpful order and do not feel repetitive next to nearby visible helper text.
+  - The broader visual hierarchy of these forms on very narrow screens still lacks screenshot-backed confirmation, especially around helper-text density and save-button balance.
+  - Returning from nested routes like `ConnectionSettings` or `AgentEdit` still deserves live validation to confirm the screen-reader focus position remains sensible after navigation.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that VoiceOver/TalkBack announces the new `AgentEdit` and `LoopEdit` field labels/hints clearly while moving through the form one-handed.
+  - Capture screenshot-backed and, if practical, screen-reader-backed evidence for the `AgentEdit` connection section and `LoopEdit` name/prompt/interval stack on a narrow screen.
+  - After that live pass, continue with the next highest-signal local mobile readability or state-clarity issue instead of revisiting this accessibility-context fix without fresh evidence.

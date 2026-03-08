@@ -305,6 +305,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
     accessibilityHint: 'Built-in agents keep this field fixed here.',
   });
 
+  const getEditableInputAccessibilityProps = (fieldName: string, hint: string) => ({
+    accessibilityLabel: createTextInputAccessibilityLabel(fieldName),
+    accessibilityHint: hint,
+  });
+
   const handleConnectionTypeChange = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => {
       const nextConnectionFields = getConnectionFieldsForType(connectionType, {
@@ -376,7 +381,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
         onChangeText={v => updateField('displayName', v)}
         placeholder="My Agent"
         placeholderTextColor={theme.colors.mutedForeground}
-        {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Display Name') : {})}
+        {...(isBuiltInAgent
+          ? getReadOnlyInputAccessibilityProps('Display Name')
+          : getEditableInputAccessibilityProps('Display Name', 'Used in the UI when choosing or assigning this agent.'))}
         editable={!isBuiltInAgent}
       />
 
@@ -388,7 +395,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
         placeholder="What this agent does..."
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
-        {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Description') : {})}
+        {...(isBuiltInAgent
+          ? getReadOnlyInputAccessibilityProps('Description')
+          : getEditableInputAccessibilityProps('Description', 'Shown only in the UI. Use Guidelines for instructions the agent should follow.'))}
         editable={!isBuiltInAgent}
       />
       <Text style={styles.helperText}>Shown only in the UI. Use Guidelines for instructions the agent should follow.</Text>
@@ -441,7 +450,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder={commandPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
-                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Command') : {})}
+                {...(isBuiltInAgent
+                  ? getReadOnlyInputAccessibilityProps('Command')
+                  : getEditableInputAccessibilityProps('Command', 'Runs this local agent command when the agent starts.'))}
                 editable={!isBuiltInAgent}
               />
               {renderFieldLabel('Arguments', { readOnly: isBuiltInAgent })}
@@ -452,7 +463,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder={argumentsPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
-                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Arguments') : {})}
+                {...(isBuiltInAgent
+                  ? getReadOnlyInputAccessibilityProps('Arguments')
+                  : getEditableInputAccessibilityProps('Arguments', 'Optional command-line arguments for this agent process.'))}
                 editable={!isBuiltInAgent}
               />
               {renderFieldLabel('Working Directory', { readOnly: isBuiltInAgent })}
@@ -463,7 +476,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="/path/to/agent"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
-                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Working Directory') : {})}
+                {...(isBuiltInAgent
+                  ? getReadOnlyInputAccessibilityProps('Working Directory')
+                  : getEditableInputAccessibilityProps('Working Directory', 'Optional working directory used before starting this agent command.'))}
                 editable={!isBuiltInAgent}
               />
             </>
@@ -479,7 +494,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 keyboardType="url"
-                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Base URL') : {})}
+                {...(isBuiltInAgent
+                  ? getReadOnlyInputAccessibilityProps('Base URL')
+                  : getEditableInputAccessibilityProps('Base URL', 'Remote HTTP base URL for this agent.'))}
                 editable={!isBuiltInAgent}
               />
             </>
@@ -497,7 +514,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={4}
         textAlignVertical="top"
-        {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('System Prompt') : {})}
+        {...(isBuiltInAgent
+          ? getReadOnlyInputAccessibilityProps('System Prompt')
+          : getEditableInputAccessibilityProps('System Prompt', 'Sets the core instructions this agent follows.'))}
         editable={!isBuiltInAgent}
       />
 
@@ -511,7 +530,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={3}
         textAlignVertical="top"
-        accessibilityHint="Adds extra instructions for this agent on top of the core tool-calling system prompt."
+        {...getEditableInputAccessibilityProps('Guidelines', 'Adds extra instructions for this agent on top of the core tool-calling system prompt.')}
       />
       <Text style={styles.helperText}>Additional instructions for this agent. These are appended to the core tool-calling system prompt.</Text>
 

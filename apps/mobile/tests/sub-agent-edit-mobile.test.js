@@ -84,6 +84,18 @@ test('AgentEditScreen gives built-in read-only text inputs explicit accessibilit
   assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('System Prompt'\)/);
 });
 
+test('AgentEditScreen gives editable text inputs explicit accessibility labels and field-specific hints', () => {
+  assert.match(agentEditSource, /const getEditableInputAccessibilityProps = \(fieldName: string, hint: string\) => \(\{[\s\S]*?accessibilityLabel: createTextInputAccessibilityLabel\(fieldName\),[\s\S]*?accessibilityHint: hint,[\s\S]*?\}\);/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Display Name', 'Used in the UI when choosing or assigning this agent\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Description', 'Shown only in the UI\. Use Guidelines for instructions the agent should follow\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Command', 'Runs this local agent command when the agent starts\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Arguments', 'Optional command-line arguments for this agent process\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Working Directory', 'Optional working directory used before starting this agent command\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Base URL', 'Remote HTTP base URL for this agent\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('System Prompt', 'Sets the core instructions this agent follows\.'/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Guidelines', 'Adds extra instructions for this agent on top of the core tool-calling system prompt\.'/);
+});
+
 test('AgentEditScreen clarifies that Description is UI-only and not agent instruction text', () => {
   assert.match(agentEditSource, /renderFieldLabel\('Description', \{ readOnly: isBuiltInAgent \}\)/);
   assert.match(agentEditSource, /placeholder="What this agent does\.\.\."/);
@@ -93,7 +105,7 @@ test('AgentEditScreen clarifies that Description is UI-only and not agent instru
 test('AgentEditScreen explains how Guidelines build on the core system prompt', () => {
   assert.match(agentEditSource, /<Text style=\{styles\.label\}>Guidelines<\/Text>/);
   assert.match(agentEditSource, /placeholder="Additional instructions for the agent\.\.\."/);
-  assert.match(agentEditSource, /accessibilityHint="Adds extra instructions for this agent on top of the core tool-calling system prompt\."/);
+  assert.match(agentEditSource, /getEditableInputAccessibilityProps\('Guidelines', 'Adds extra instructions for this agent on top of the core tool-calling system prompt\.'/);
   assert.match(agentEditSource, /<Text style=\{styles\.helperText\}>Additional instructions for this agent\. These are appended to the core tool-calling system prompt\.<\/Text>/);
 });
 
@@ -208,8 +220,16 @@ test('LoopEditScreen previews interval minutes with readable cadence labels', ()
 test('LoopEditScreen clarifies that Prompt is the instruction sent on each run', () => {
   assert.match(loopEditSource, /<Text style=\{styles\.label\}>Prompt \*<\/Text>/);
   assert.match(loopEditSource, /placeholder="Summarize the latest updates and notify me"/);
-  assert.match(loopEditSource, /accessibilityHint="Sends this instruction to the agent each time the loop runs\."/);
+  assert.match(loopEditSource, /getLoopInputAccessibilityProps\('Loop prompt', 'Sends this instruction to the agent each time the loop runs\.'/);
   assert.match(loopEditSource, /<Text style=\{styles\.helperText\}>Sent to the agent every time this loop runs\.<\/Text>/);
+});
+
+test('LoopEditScreen gives editable loop fields explicit accessibility labels and hints', () => {
+  assert.match(loopEditSource, /createTextInputAccessibilityLabel/);
+  assert.match(loopEditSource, /const getLoopInputAccessibilityProps = \(fieldName: string, hint: string\) => \(\{[\s\S]*?accessibilityLabel: createTextInputAccessibilityLabel\(fieldName\),[\s\S]*?accessibilityHint: hint,[\s\S]*?\}\);/);
+  assert.match(loopEditSource, /getLoopInputAccessibilityProps\('Loop name', 'Shown in the loops list and settings\.'/);
+  assert.match(loopEditSource, /getLoopInputAccessibilityProps\('Loop prompt', 'Sends this instruction to the agent each time the loop runs\.'/);
+  assert.match(loopEditSource, /getLoopInputAccessibilityProps\('Loop interval in minutes', 'Set how often this loop runs, in whole minutes\.'/);
 });
 
 test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', () => {

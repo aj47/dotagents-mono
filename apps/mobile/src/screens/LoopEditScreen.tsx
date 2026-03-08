@@ -21,7 +21,12 @@ import {
   LoopUpdateRequest,
 } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createSwitchAccessibilityLabel } from '../lib/accessibility';
+import {
+  createButtonAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+  createSwitchAccessibilityLabel,
+  createTextInputAccessibilityLabel,
+} from '../lib/accessibility';
 
 type LoopFormData = {
   name: string;
@@ -373,6 +378,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
       : isEditing
         ? 'Saves your changes to this loop.'
         : 'Creates this loop with the current settings.';
+  const getLoopInputAccessibilityProps = (fieldName: string, hint: string) => ({
+    accessibilityLabel: createTextInputAccessibilityLabel(fieldName),
+    accessibilityHint: hint,
+  });
   const handleOpenConnectionSettings = useCallback(() => {
     navigation.navigate('ConnectionSettings');
   }, [navigation]);
@@ -423,6 +432,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         onChangeText={v => updateField('name', v)}
         placeholder="Daily review"
         placeholderTextColor={theme.colors.mutedForeground}
+        {...getLoopInputAccessibilityProps('Loop name', 'Shown in the loops list and settings.')}
       />
 
       <Text style={styles.label}>Prompt *</Text>
@@ -435,7 +445,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={5}
         textAlignVertical="top"
-        accessibilityHint="Sends this instruction to the agent each time the loop runs."
+        {...getLoopInputAccessibilityProps('Loop prompt', 'Sends this instruction to the agent each time the loop runs.')}
       />
       <Text style={styles.helperText}>Sent to the agent every time this loop runs.</Text>
 
@@ -447,6 +457,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         placeholder="60"
         placeholderTextColor={theme.colors.mutedForeground}
         keyboardType="numeric"
+        {...getLoopInputAccessibilityProps('Loop interval in minutes', 'Set how often this loop runs, in whole minutes.')}
       />
       <Text style={[styles.intervalHelperText, intervalPreview.isInvalid && styles.intervalHelperTextWarning]}>
         {intervalPreview.text}
