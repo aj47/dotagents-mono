@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
@@ -20,14 +20,19 @@ interface TileFollowUpInputProps {
   sessionId?: string
   isSessionActive?: boolean
   isInitializingSession?: boolean
+  preferCompact?: boolean
   className?: string
   /** Agent/profile name to display as indicator */
   agentName?: string
+  /** Request focus for the parent tile before interacting with the composer */
+  onRequestFocus?: () => void
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
   onStopSession?: () => void | Promise<void>
 }
+
+const COMPACT_TILE_INPUT_WIDTH = 240
 
 /**
  * Compact text input for continuing a conversation within a session tile.
@@ -37,8 +42,10 @@ export function TileFollowUpInput({
   sessionId,
   isSessionActive = false,
   isInitializingSession = false,
+  preferCompact = false,
   className,
   agentName,
+  onRequestFocus,
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
@@ -46,10 +53,37 @@ export function TileFollowUpInput({
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+  const shouldUseCompactLayout = preferCompact || isNarrow
+
+  useEffect(() => {
+    const node = formRef.current
+    if (!node) return undefined
+
+    const update = (width: number) => {
+      setIsNarrow(width < COMPACT_TILE_INPUT_WIDTH)
+    }
+
+    update(Math.round(node.getBoundingClientRect().width))
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      update(Math.round(entry.contentRect.width))
+    })
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
@@ -172,6 +206,10 @@ export function TileFollowUpInput({
     }
   }
 
+  const handleInputInteraction = () => {
+    onRequestFocus?.()
+  }
+
   const handleVoiceClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isInitializingSession) return
@@ -261,11 +299,14 @@ export function TileFollowUpInput({
 
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit}
       className={cn(
         "flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5",
         className
       )}
+      onMouseDown={handleInputInteraction}
+      onFocusCapture={handleInputInteraction}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Agent indicator - shows which agent is handling this session */}
@@ -297,7 +338,7 @@ export function TileFollowUpInput({
         </div>
       )}
 
-      <div className="flex w-full flex-wrap items-center gap-1.5">
+      <div className={cn("flex w-full flex-wrap items-center", shouldUseCompactLayout ? "gap-1" : "gap-1.5")}>
         <input
           ref={inputRef}
           type="text"
@@ -306,7 +347,9 @@ export function TileFollowUpInput({
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholder()}
           className={cn(
-            "min-w-0 flex-[1_1_7rem] text-sm bg-transparent border-0 outline-none",
+            shouldUseCompactLayout
+              ? "min-w-0 flex-[1_1_100%] text-sm bg-transparent border-0 outline-none"
+              : "min-w-0 flex-[1_1_7rem] text-sm bg-transparent border-0 outline-none",
             "placeholder:text-muted-foreground/60",
             "focus:ring-0"
           )}
@@ -320,7 +363,12 @@ export function TileFollowUpInput({
           className="hidden"
           onChange={handleImageSelection}
         />
-        <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-1.5">
+        <div
+          className={cn(
+            "flex max-w-full flex-wrap items-center",
+            shouldUseCompactLayout ? "w-full justify-end gap-1" : "ml-auto shrink-0 gap-1.5"
+          )}
+        >
           <PredefinedPromptsMenu
             onSelectPrompt={(content) => setText(content)}
             disabled={isDisabled}

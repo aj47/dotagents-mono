@@ -3287,3 +3287,78 @@ Three distinct issues in frequently-used surfaces: skills settings toolbar overf
 ### Next opportunities
 - Live-inspect the analogous compact tool summary row on mobile / Expo web and decide whether it needs the same readability treatment.
 - Return to the Sessions shell and audit another fresh live surface not touched today, likely `pendingToolApproval` cards or a currently unreviewed empty/loading state.
+
+---
+
+## 2026-03-08 — chunk 11: sessions compare-view follow-up composer overflow
+
+### Sources consulted
+- `ui-audit.md` (picked a fresh follow-up surface instead of re-auditing a recently fixed one)
+- `apps/desktop/DEBUGGING.md`
+- `apps/mobile/README.md`
+- `visible-ui.md`
+- `improve-app.md`
+- live desktop renderer inspection via the running Electron debug target plus the Vite renderer on `http://localhost:5174`
+- `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`
+- `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- `apps/mobile/src/screens/ChatScreen.tsx` (cross-check only; no change made)
+
+### Area selected
+- Desktop Sessions compare view, specifically the **follow-up composer at the bottom of a narrow session tile**.
+- Chosen because the ledger had already covered tile chrome/body sub-surfaces, and live inspection showed this composer still had a clear user-facing breakage under real tile constraints.
+
+### Live inspection setup
+- Reused the running desktop renderer that already had recent-session data available.
+- Inspected the compare-view recent-session tile at constrained desktop widths around `680px`, `720px`, and `900px`.
+- Cross-checked the live DOM after a hard reload to distinguish a real layout bug from a transient rendering artifact.
+
+### Issue found
+
+**sessions compare-view tile composer — footer controls overflow and clip horizontally in narrow tiles**
+- In the live compare-view tile, the composer stayed as a single horizontal row even when the tile compressed to roughly `246px` wide.
+- Measured live layout after hard reload:
+  - tile client width: `246px`
+  - composer row client width: `230px`
+  - composer row scroll width: `284px`
+  - form scroll width: `292px`
+- Practical impact:
+  - the third action button was only about **46% visible**
+  - the fourth action button was **fully clipped**
+  - users in compare view lose access to parts of the continue-conversation toolbar exactly when the UI is most constrained
+
+### Changes made
+
+**apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx**
+- Added the missing `preferCompact` + `onRequestFocus` props that the tile caller was already passing.
+- Added a local width-aware compact-layout guard using `ResizeObserver` with a `240px` threshold so the composer can reflow based on the **actual tile width**, not only focus state.
+- Reworked the footer row so narrow tiles switch to:
+  - full-width input on the first row
+  - action buttons on a wrapped second row aligned to the right
+- Wired input/button interaction back to the parent tile focus callback so the focused-tile behavior remains intentional.
+
+**apps/desktop/src/renderer/src/components/tile-follow-up-input.layout.test.ts**
+- Extended the existing source-contract coverage so the width-aware compact threshold and wrapped action-row contract are explicitly asserted.
+
+### Before / after observation
+- **Before (live):** compare-view tiles rendered the follow-up composer as a rigid single line, clipping trailing controls.
+- **After source change:** the composer source now uses a width-aware two-row fallback intended specifically for those narrow-tile conditions.
+- **Important verification note:** the currently running Electron target continued to expose an older single-row DOM that did not match the updated source even after hard reload, so this iteration could not get a trustworthy post-fix live screenshot from the active runtime.
+
+### Verification
+- Normal targeted verification was **blocked in this worktree**:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tile-follow-up-input.layout.test.ts` failed because local test tooling is unavailable here (`vitest` missing / local install not wired up)
+  - `pnpm --filter @dotagents/desktop typecheck:web` could not resolve the expected local toolchain / tsconfig dependency path in this worktree state
+- Browser-only fallback verification was also blocked because `http://localhost:5174/` crashes outside Electron at startup (`window.electron.ipcRenderer` is required immediately).
+- Performed targeted fallback verification instead:
+  - Node source-assertion script confirmed the width-aware compact threshold, wrapped action-row classes, and focus handoff are present in `tile-follow-up-input.tsx`
+  - the same script confirmed `tile-follow-up-input.layout.test.ts` asserts the new contract
+  - `git diff --check` passed cleanly
+- Fallback verification result: `tile-follow-up-input width-aware layout assertions: ok`
+
+### Mobile cross-check
+- `apps/mobile/src/screens/ChatScreen.tsx` does not use this desktop tile-composer pattern.
+- The mobile chat composer already relies on a different React Native layout model, so no parity change was applied without dedicated mobile evidence.
+
+### Next opportunities
+- Re-run this exact compare-view composer check once the Electron debug target is confirmed to be serving the current worktree build, then capture a true after screenshot.
+- If that verification passes, return to the ledger’s next fresh high-value surface: markdown-heavy session content / summaries under zoom and constrained widths.
