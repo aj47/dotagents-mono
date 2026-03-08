@@ -4,7 +4,7 @@ import type {
   ConversationHistoryMessage,
   ChatApiResponse
 } from '@dotagents/shared';
-import { normalizeApiBaseUrl } from '@dotagents/shared';
+import { normalizeApiBaseUrl } from '@dotagents/shared/connection-recovery';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import {

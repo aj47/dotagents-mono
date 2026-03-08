@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed the unresolved Expo Web runtime follow-up in `mobile-app-improvement.md` and picked the `normalizeApiBaseUrl is not a function` crash as a fresh bug candidate not yet covered in this ledger.
+- [x] 2026-03-08: Confirmed `packages/shared/package.json` explicitly exports `./connection-recovery`, but the three current mobile call sites in `apps/mobile/src/store/config.ts`, `apps/mobile/src/lib/openaiClient.ts`, and `apps/mobile/src/lib/settingsApi.ts` still imported `normalizeApiBaseUrl` from the package barrel (`@dotagents/shared`).
+- [x] 2026-03-08: Confirmed this worktree still has no installed dependencies (`node_modules` absent at the repo root and in `apps/mobile`), so live Expo Web repro and Vitest execution remain environment-blocked even though the earlier mobile notes already flagged the runtime error.
 - [x] 2026-03-08: Reviewed `mobile-app-improvement.md` follow-up notes and picked the unresolved mobile Settings warning lead (`⚠️ Failed to load: settings`) as a fresh bug candidate that was not already covered in this ledger.
 - [x] 2026-03-08: Re-reviewed `apps/mobile/src/screens/SettingsScreen.tsx` and confirmed `fetchRemoteSettings()` only updated `remoteSettings`, `profiles`, and `mcpServers` on successful endpoint responses; partial reconnect failures left previous successful state objects intact.
 - [x] 2026-03-08: Confirmed this stale-state path is user-visible: the mobile screen renders a warning banner from `remoteError`, but `remoteSettings && ...` still allowed old desktop settings controls to remain mounted whenever an earlier fetch had succeeded and a later `getSettings()` call failed.
@@ -272,6 +275,7 @@
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
 - [ ] Current desktop/mobile logs or reproducible failing tests tied to user-facing regressions once the environment blocker is cleared.
+- [ ] The separate Expo Web runtime warning from the same mobile notes: `Unexpected text node ... child of a <View>` once live mobile tooling is available again.
 - [ ] Other desktop settings text inputs that may still save on every keystroke.
 - [ ] Whether adjacent numeric/text settings in `settings-general.tsx` still need draft-first handling or blur-only persistence now that `mcpMaxIterations` is covered.
 - [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
@@ -294,6 +298,10 @@
 - [x] 2026-03-08: Assumption accepted: surfacing `Panel window is unavailable.` through the existing settings-page toast flow is acceptable because this is an explicit desktop-only user action, adjacent floating-panel controls on the same page already use `toast.success(...)` / `toast.error(...)`, and a larger inline status treatment would broaden scope beyond this concrete false-success bug.
 
 ### Reproduced
+- [x] **Expo Web mobile could hit `normalizeApiBaseUrl is not a function` because three mobile callers imported it through the shared package barrel (confirmed from earlier live notes plus current source):**
+  - `mobile-app-improvement.md` repeatedly carried forward an earlier live Expo Web runtime error for `normalizeApiBaseUrl is not a function`, so this was already a concrete observed failure rather than a hypothetical cleanup idea.
+  - In the current source, `apps/mobile/src/store/config.ts`, `apps/mobile/src/lib/openaiClient.ts`, and `apps/mobile/src/lib/settingsApi.ts` all imported `normalizeApiBaseUrl` from `@dotagents/shared`, even though `packages/shared/package.json` separately exports `./connection-recovery` for that helper.
+  - Given the repo guidance that `packages/shared` often needs a rebuild before app runs, routing mobile runtime code through the barrel made these three call sites more brittle against stale/missing barrel exports than a direct helper import, which matches the recorded runtime failure.
 - [x] **Expo Web mobile connection exposed a dead `Scan QR Code` path instead of a usable pairing flow (confirmed from existing live notes plus current source):**
   - `mobile-app-improvement.md` already recorded a live Expo Web follow-up that `Scan QR Code` did not surface a visible scanner modal, leaving the web connection flow nonfunctional.
   - In the current `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, the visible connect action still had no web branch: `handleScanQR()` only requested camera permission and opened the `CameraView` modal, even though this worktree cannot currently run Expo Web again.
@@ -628,6 +636,8 @@
   - That meant the visible Settings → General button could look successful while the panel did not appear at all, which is a concrete desktop broken-flow/error-handling bug rather than speculative cleanup.
 
 ### Fixed
+- [x] Updated `apps/mobile/src/store/config.ts`, `apps/mobile/src/lib/openaiClient.ts`, and `apps/mobile/src/lib/settingsApi.ts` so mobile now imports `normalizeApiBaseUrl` from the dedicated `@dotagents/shared/connection-recovery` subpath instead of the shared package barrel.
+- [x] Added `apps/mobile/src/lib/normalize-api-base-url-imports.test.ts` as a focused regression guard that locks the three mobile call sites to the direct helper export and confirms the shared package still exposes `./connection-recovery`.
 - [x] Updated `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` so Expo Web now swaps the dead camera-first `Scan QR Code` action for a visible `Paste DotAgents Link` flow, keeps native scanner behavior unchanged on non-web platforms, and reuses the existing `parseQRCode(...)` parsing path to populate the same connection draft fields.
 - [x] Added a small web-only paste modal in the same screen with clearer guidance, inline validation, and accessible labels/buttons so users can paste the desktop `dotagents://config?...` deep link instead of hitting a no-op scanner flow.
 - [x] Extended `apps/mobile/tests/connection-settings-validation.test.js` with focused regression assertions that lock in the new web branch, copy, and parser reuse.
@@ -872,6 +882,8 @@
 - [x] Added `apps/desktop/src/renderer/src/pages/settings-general.floating-panel-feedback.test.ts` with focused source-level regression coverage for both the settings-page guard and the main-process panel-unavailable contract.
 
 ### Verified
+- [x] Source verification passed: the only three mobile `normalizeApiBaseUrl` imports now point at `@dotagents/shared/connection-recovery`, and a direct Node assertion over those files completed successfully with `Verified direct normalizeApiBaseUrl imports in mobile files.`
+- [x] Repository diff sanity check passed for this fix: `git diff --check -- apps/mobile/src/store/config.ts apps/mobile/src/lib/openaiClient.ts apps/mobile/src/lib/settingsApi.ts apps/mobile/src/lib/normalize-api-base-url-imports.test.ts` exited cleanly.
 - [x] Manual source verification: `ConnectionSettingsScreen.tsx` now branches on `Platform.OS === 'web'`, labels the action as `Paste DotAgents Link`, explains that Expo Web cannot reliably open the scanner there yet, and routes pasted deep-link input back through the existing `parseQRCode(...)` helper instead of inventing a second connection parser.
 - [x] Targeted automated verification passed: `node --test apps/mobile/tests/connection-settings-validation.test.js` completed with exit code 0 after the new web fallback assertions were added.
 - [x] Repository diff sanity check: `git diff --check -- apps/mobile/src/screens/ConnectionSettingsScreen.tsx apps/mobile/tests/connection-settings-validation.test.js bug-fix.md` completed cleanly after the mobile Expo Web pairing fallback fix.
@@ -1112,6 +1124,8 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the floating-panel feedback fix and regression test addition.
 
 ### Blocked
+- [x] Targeted mobile Vitest verification for this import-path regression test is still blocked by missing dependencies in the worktree: `pnpm --filter @dotagents/mobile test -- normalize-api-base-url-imports.test.ts` failed with `sh: vitest: command not found` and PNPM warned that `node_modules` is missing.
+- [x] Live Expo Web repro for the original `normalizeApiBaseUrl is not a function` runtime error is still blocked by the same environment issue: this worktree currently has no repo-level or mobile `node_modules`, so `pnpm dev:mobile` / Expo web validation cannot be completed safely without first installing dependencies.
 - [x] Live Expo Web repro/validation for this mobile pairing fix is still blocked by the dependency state of this worktree: `pnpm --filter @dotagents/mobile exec expo --version` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, and `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because Expo/React Native inputs (`expo/tsconfig.base`, Expo modules, JSX config) are unavailable here.
 - [x] Broader mobile type-check verification is blocked by the worktree environment rather than this patch: `pnpm --filter @dotagents/mobile exec tsc --noEmit` fails because Expo/React Native inputs are unavailable here (`tsconfig.json` cannot resolve `expo/tsconfig.base`, React Native/Expo modules are missing, and JSX/lib settings do not load), so only dependency-free targeted verification was possible in this loop.
 - [x] Targeted automated verification for this desktop global-TTS feedback fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/app-layout.emergency-stop.test.tsx src/renderer/src/pages/settings-general.controlled-controls.test.ts` fails during `pretest` because `packages/shared` cannot find `tsup` (`node_modules` is missing), so Vitest never starts.
@@ -1475,7 +1489,8 @@
 - Assumption: using a pasted `dotagents://config?...` deep link as the minimal Expo Web fallback is acceptable because desktop already exposes the same payload for pairing, `parseQRCode(...)` already trusts that contract, and replacing the dead web scan button with a working/manual path has clearer user value than waiting for live camera debugging in a dependency-blocked worktree.
 
 ### Still uncertain
-- Whether the other desktop `tipcClient.showPanelWindow(...)` callers in `sessions.tsx` and `panel.tsx` should also start checking the new `{ success: false, error }` contract; this loop fixed the directly confirmed Settings → General false-success button only, and the broader panel-launch surfaces should be validated separately instead of widened speculatively.
+- Whether the other Expo Web runtime note from `mobile-app-improvement.md` (`Unexpected text node ... child of a <View>`) is still reproducible after this import-path hardening, or whether the prior runtime state masked a second independent mobile warning that still needs a separate live debugging pass once dependencies are restored.
+- Whether any remaining non-user-driven panel-local launch helpers in `apps/desktop/src/renderer/src/pages/panel.tsx` should ever check the `showPanelWindow(...)` result explicitly for extra defensive logging, even though those calls only execute once the panel renderer is already alive and were not a directly confirmed user-visible false-success path in this loop.
 
 ### Next Leads
 - Revisit the remaining mobile Settings follow-up notes from `mobile-app-improvement.md`, especially whether the unrelated `⚠️ Failed to load: settings` reconnect warning still has any live repro edge cases and whether the `Unexpected text node ... child of a <View>` runtime warning is still reproducible once live Expo Web tooling is available in this worktree.
