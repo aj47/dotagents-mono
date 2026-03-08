@@ -20,9 +20,52 @@ import {
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { ModelPreset, Config } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Key, Globe, Bot, FileText, Settings2 } from "lucide-react"
+import { Plus, Trash2, Key, Globe, Bot, Settings2 } from "lucide-react"
 import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@shared/index"
 import { PresetModelSelector } from "./preset-model-selector"
+
+type PresetDraft = {
+  name: string
+  baseUrl: string
+  apiKey: string
+  mcpToolsModel: string
+  transcriptProcessingModel: string
+  summarizationModel: string
+}
+
+const EMPTY_PRESET_DRAFT: PresetDraft = {
+  name: "",
+  baseUrl: "",
+  apiKey: "",
+  mcpToolsModel: "",
+  transcriptProcessingModel: "",
+  summarizationModel: "",
+}
+
+function toPresetDraft(preset?: Partial<ModelPreset> | null): PresetDraft {
+  return {
+    name: preset?.name ?? "",
+    baseUrl: preset?.baseUrl ?? "",
+    apiKey: preset?.apiKey ?? "",
+    mcpToolsModel: preset?.mcpToolsModel ?? "",
+    transcriptProcessingModel: preset?.transcriptProcessingModel ?? "",
+    summarizationModel: preset?.summarizationModel ?? "",
+  }
+}
+
+function hasPresetDraftChanges(
+  draft?: PresetDraft | null,
+  baseline?: PresetDraft | null,
+): boolean {
+  if (!draft || !baseline) return false
+
+  return draft.name !== baseline.name
+    || draft.baseUrl !== baseline.baseUrl
+    || draft.apiKey !== baseline.apiKey
+    || draft.mcpToolsModel !== baseline.mcpToolsModel
+    || draft.transcriptProcessingModel !== baseline.transcriptProcessingModel
+    || draft.summarizationModel !== baseline.summarizationModel
+}
 
 export function ModelPresetManager() {
   const configQuery = useConfigQuery()
@@ -30,14 +73,10 @@ export function ModelPresetManager() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPreset, setEditingPreset] = useState<ModelPreset | null>(null)
-  const [newPreset, setNewPreset] = useState<Partial<ModelPreset>>({
-    name: "",
-    baseUrl: "",
-    apiKey: "",
-    mcpToolsModel: "",
-    transcriptProcessingModel: "",
-    summarizationModel: "",
-  })
+  const [editingPresetBaseline, setEditingPresetBaseline] = useState<PresetDraft | null>(null)
+  const [newPreset, setNewPreset] = useState<PresetDraft>(EMPTY_PRESET_DRAFT)
+  const [createSaveErrorMessage, setCreateSaveErrorMessage] = useState<string | null>(null)
+  const [editSaveErrorMessage, setEditSaveErrorMessage] = useState<string | null>(null)
 
   const config = configQuery.data
 
@@ -76,6 +115,12 @@ export function ModelPresetManager() {
 
   const saveConfig = useCallback((updates: Partial<Config>) => {
     saveConfigMutation.mutate({
+      config: { ...config, ...updates },
+    })
+  }, [config, saveConfigMutation])
+
+  const saveConfigAsync = useCallback(async (updates: Partial<Config>) => {
+    await saveConfigMutation.mutateAsync({
       config: { ...config, ...updates },
     })
   }, [config, saveConfigMutation])
@@ -155,7 +200,68 @@ export function ModelPresetManager() {
     }
   }
 
-  const handleCreatePreset = () => {
+  const resetNewPresetForm = () => {
+    setNewPreset(EMPTY_PRESET_DRAFT)
+    setCreateSaveErrorMessage(null)
+  }
+
+  const closeCreateDialog = () => {
+    setIsCreateDialogOpen(false)
+    resetNewPresetForm()
+  }
+
+  const closeEditDialog = () => {
+    setIsEditDialogOpen(false)
+    setEditingPreset(null)
+    setEditingPresetBaseline(null)
+    setEditSaveErrorMessage(null)
+  }
+
+  const updateNewPreset = (updates: Partial<PresetDraft>) => {
+    setCreateSaveErrorMessage(null)
+    setNewPreset((current) => ({
+      ...current,
+      ...updates,
+    }))
+  }
+
+  const updateEditingPreset = (updates: Partial<ModelPreset>) => {
+    setEditSaveErrorMessage(null)
+    setEditingPreset((current) => (current ? {
+      ...current,
+      ...updates,
+    } : current))
+  }
+
+  const isCreatePresetDirty = hasPresetDraftChanges(newPreset, EMPTY_PRESET_DRAFT)
+  const isEditPresetDirty = hasPresetDraftChanges(toPresetDraft(editingPreset), editingPresetBaseline)
+  const editingPresetLabel = editingPresetBaseline?.name || editingPreset?.name || "this preset"
+
+  const handleCreateDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setIsCreateDialogOpen(true)
+      return
+    }
+
+    if (saveConfigMutation.isPending) return
+    if (isCreatePresetDirty && !confirm("Discard this new preset draft? Your unsaved changes will be lost.")) return
+
+    closeCreateDialog()
+  }
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setIsEditDialogOpen(true)
+      return
+    }
+
+    if (saveConfigMutation.isPending) return
+    if (isEditPresetDirty && !confirm(`Discard your changes to \"${editingPresetLabel}\"? Your unsaved edits will be lost.`)) return
+
+    closeEditDialog()
+  }
+
+  const handleCreatePreset = async () => {
     if (!newPreset.name?.trim()) {
       toast.error("Preset name is required")
       return
@@ -180,16 +286,20 @@ export function ModelPresetManager() {
     }
 
     const existingPresets = config?.modelPresets || []
-    saveConfig({
-      modelPresets: [...existingPresets, preset],
-    })
+    setCreateSaveErrorMessage(null)
 
-    setIsCreateDialogOpen(false)
-    setNewPreset({ name: "", baseUrl: "", apiKey: "", mcpToolsModel: "", transcriptProcessingModel: "", summarizationModel: "" })
-    toast.success("Preset created successfully")
+    try {
+      await saveConfigAsync({
+        modelPresets: [...existingPresets, preset],
+      })
+      closeCreateDialog()
+      toast.success("Preset created successfully")
+    } catch {
+      setCreateSaveErrorMessage("Couldn't save this new preset yet. Your draft is still open, so you can try again.")
+    }
   }
 
-  const handleUpdatePreset = () => {
+  const handleUpdatePreset = async () => {
     if (!editingPreset) return
 
     const existingPresets = config?.modelPresets || []
@@ -213,10 +323,19 @@ export function ModelPresetManager() {
       updates.openaiApiKey = editingPreset.apiKey
     }
 
-    saveConfig(updates)
-    setIsEditDialogOpen(false)
-    setEditingPreset(null)
-    toast.success("Preset updated successfully")
+    setEditSaveErrorMessage(null)
+
+    try {
+      await saveConfigAsync(updates)
+      closeEditDialog()
+      toast.success("Preset updated successfully")
+    } catch {
+      setEditSaveErrorMessage(
+        editingPreset.isBuiltIn
+          ? `Couldn't save your ${editingPreset.name} preset settings yet. Your changes are still open, so you can try again.`
+          : `Couldn't save your changes to \"${editingPreset.name}\" yet. Your draft is still open, so you can try again.`,
+      )
+    }
   }
 
   const handleDeletePreset = (preset: ModelPreset) => {
@@ -244,6 +363,8 @@ export function ModelPresetManager() {
 
   const handleEditPreset = (preset: ModelPreset) => {
     setEditingPreset({ ...preset })
+    setEditingPresetBaseline(toPresetDraft(preset))
+    setEditSaveErrorMessage(null)
     setIsEditDialogOpen(true)
   }
 
@@ -267,7 +388,11 @@ export function ModelPresetManager() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsCreateDialogOpen(true)}
+            onClick={() => {
+              if (saveConfigMutation.isPending) return
+              resetNewPresetForm()
+              setIsCreateDialogOpen(true)
+            }}
           >
             <Plus className="h-3 w-3 mr-1" />
             New Preset
@@ -343,7 +468,7 @@ export function ModelPresetManager() {
       )}
 
       {/* Create Preset Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogOpenChange}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Preset</DialogTitle>
@@ -351,13 +476,23 @@ export function ModelPresetManager() {
               Create a custom preset with its own API key, base URL, and model preferences.
             </DialogDescription>
           </DialogHeader>
+          {isCreatePresetDirty && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              You have unsaved changes. Save before closing to keep this preset draft.
+            </div>
+          )}
+          {createSaveErrorMessage && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {createSaveErrorMessage}
+            </div>
+          )}
           <div className="space-y-4">
             <div>
               <Label htmlFor="preset-name">Preset Name</Label>
               <Input
                 id="preset-name"
                 value={newPreset.name}
-                onChange={(e) => setNewPreset({ ...newPreset, name: e.target.value })}
+                onChange={(e) => updateNewPreset({ name: e.target.value })}
                 placeholder="e.g., My OpenRouter"
               />
             </div>
@@ -367,7 +502,7 @@ export function ModelPresetManager() {
                 id="preset-url"
                 type="url"
                 value={newPreset.baseUrl}
-                onChange={(e) => setNewPreset({ ...newPreset, baseUrl: e.target.value })}
+                onChange={(e) => updateNewPreset({ baseUrl: e.target.value })}
                 placeholder="https://api.example.com/v1"
               />
             </div>
@@ -377,7 +512,7 @@ export function ModelPresetManager() {
                 id="preset-key"
                 type="password"
                 value={newPreset.apiKey}
-                onChange={(e) => setNewPreset({ ...newPreset, apiKey: e.target.value })}
+                onChange={(e) => updateNewPreset({ apiKey: e.target.value })}
                 placeholder="sk-..."
               />
             </div>
@@ -399,9 +534,7 @@ export function ModelPresetManager() {
                     baseUrl={newPreset.baseUrl || ""}
                     apiKey={newPreset.apiKey || ""}
                     value={newPreset.mcpToolsModel || ""}
-                    onValueChange={(value) =>
-                      setNewPreset({ ...newPreset, mcpToolsModel: value })
-                    }
+                    onValueChange={(value) => updateNewPreset({ mcpToolsModel: value })}
                     label="Agent/MCP Tools Model"
                     placeholder="Select model for agent mode"
                   />
@@ -411,9 +544,7 @@ export function ModelPresetManager() {
                     baseUrl={newPreset.baseUrl || ""}
                     apiKey={newPreset.apiKey || ""}
                     value={newPreset.transcriptProcessingModel || ""}
-                    onValueChange={(value) =>
-                      setNewPreset({ ...newPreset, transcriptProcessingModel: value })
-                    }
+                    onValueChange={(value) => updateNewPreset({ transcriptProcessingModel: value })}
                     label="Transcript Processing Model"
                     placeholder="Select model for transcripts"
                   />
@@ -423,9 +554,7 @@ export function ModelPresetManager() {
                     baseUrl={newPreset.baseUrl || ""}
                     apiKey={newPreset.apiKey || ""}
                     value={newPreset.summarizationModel || ""}
-                    onValueChange={(value) =>
-                      setNewPreset({ ...newPreset, summarizationModel: value })
-                    }
+                    onValueChange={(value) => updateNewPreset({ summarizationModel: value })}
                     label="Summarization Model"
                     placeholder="Select model for dual-model summarization"
                   />
@@ -434,18 +563,18 @@ export function ModelPresetManager() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleCreateDialogOpenChange(false)} disabled={saveConfigMutation.isPending}>
               Cancel
             </Button>
             <Button onClick={handleCreatePreset} disabled={saveConfigMutation.isPending}>
-              Create Preset
+              {saveConfigMutation.isPending ? "Creating..." : "Create Preset"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Preset Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogOpenChange}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -457,6 +586,16 @@ export function ModelPresetManager() {
                 : "Update the preset settings and model preferences."}
             </DialogDescription>
           </DialogHeader>
+          {isEditPresetDirty && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              You have unsaved changes. Save before closing to keep this preset draft.
+            </div>
+          )}
+          {editSaveErrorMessage && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {editSaveErrorMessage}
+            </div>
+          )}
           {editingPreset && (
             <div className="space-y-4">
               <div>
@@ -464,9 +603,7 @@ export function ModelPresetManager() {
                 <Input
                   id="edit-preset-name"
                   value={editingPreset.name}
-                  onChange={(e) =>
-                    setEditingPreset({ ...editingPreset, name: e.target.value })
-                  }
+                  onChange={(e) => updateEditingPreset({ name: e.target.value })}
                   disabled={editingPreset.isBuiltIn}
                 />
               </div>
@@ -476,9 +613,7 @@ export function ModelPresetManager() {
                   id="edit-preset-url"
                   type="url"
                   value={editingPreset.baseUrl}
-                  onChange={(e) =>
-                    setEditingPreset({ ...editingPreset, baseUrl: e.target.value })
-                  }
+                  onChange={(e) => updateEditingPreset({ baseUrl: e.target.value })}
                   disabled={editingPreset.isBuiltIn}
                 />
               </div>
@@ -488,9 +623,7 @@ export function ModelPresetManager() {
                   id="edit-preset-key"
                   type="password"
                   value={editingPreset.apiKey}
-                  onChange={(e) =>
-                    setEditingPreset({ ...editingPreset, apiKey: e.target.value })
-                  }
+                  onChange={(e) => updateEditingPreset({ apiKey: e.target.value })}
                   placeholder="sk-..."
                 />
               </div>
@@ -511,9 +644,7 @@ export function ModelPresetManager() {
                     baseUrl={editingPreset.baseUrl}
                     apiKey={editingPreset.apiKey}
                     value={editingPreset.mcpToolsModel || ""}
-                    onValueChange={(value) =>
-                      setEditingPreset({ ...editingPreset, mcpToolsModel: value })
-                    }
+                    onValueChange={(value) => updateEditingPreset({ mcpToolsModel: value })}
                     label="Agent/MCP Tools Model"
                     placeholder="Select model for agent mode"
                   />
@@ -523,9 +654,7 @@ export function ModelPresetManager() {
                     baseUrl={editingPreset.baseUrl}
                     apiKey={editingPreset.apiKey}
                     value={editingPreset.transcriptProcessingModel || ""}
-                    onValueChange={(value) =>
-                      setEditingPreset({ ...editingPreset, transcriptProcessingModel: value })
-                    }
+                    onValueChange={(value) => updateEditingPreset({ transcriptProcessingModel: value })}
                     label="Transcript Processing Model"
                     placeholder="Select model for transcripts"
                   />
@@ -535,9 +664,7 @@ export function ModelPresetManager() {
                     baseUrl={editingPreset.baseUrl}
                     apiKey={editingPreset.apiKey}
                     value={editingPreset.summarizationModel || ""}
-                    onValueChange={(value) =>
-                      setEditingPreset({ ...editingPreset, summarizationModel: value })
-                    }
+                    onValueChange={(value) => updateEditingPreset({ summarizationModel: value })}
                     label="Summarization Model"
                     placeholder="Select model for dual-model summarization"
                   />
@@ -546,11 +673,11 @@ export function ModelPresetManager() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleEditDialogOpenChange(false)} disabled={saveConfigMutation.isPending}>
               Cancel
             </Button>
             <Button onClick={handleUpdatePreset} disabled={saveConfigMutation.isPending}>
-              Save Changes
+              {saveConfigMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop model preset manager create/edit dialog draft-loss / failed-save guardrails in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx`, with shared dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`.
 - 2026-03-08: Desktop predefined prompts add/edit dialog draft-loss / destructive-delete guardrails in `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`, with composer usage reviewed in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` / `apps/desktop/src/renderer/src/pages/sessions.tsx`, save-mutation behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked across `apps/mobile/src/`.
 - 2026-03-08: Desktop bundle import conflict-resolution / overwrite clarity in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, with preview-conflict source review in `apps/desktop/src/main/bundle-service.ts`, Hub install handoff coverage review in `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx`, and mobile parity check confirming no equivalent bundle-import surface under `apps/mobile/src/`.
 - 2026-03-08: Desktop bundle export / Hub publish dialog discard-safety and pending-close guardrails in `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx` and `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx`, with shared selection-state helper review in `apps/desktop/src/renderer/src/components/bundle-selection.tsx`, settings-page launch wiring checked in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
@@ -28,6 +29,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop model preset create/edit dialogs now track dirty draft baselines, warn before backdrop / Escape / close-button / cancel dismissal would discard unsaved preset edits, and keep the dialog open with inline retry guidance if async config save fails instead of closing immediately.
 - 2026-03-08: Desktop predefined prompts now track dirty draft baselines, warn before dialog dismissal would discard unsaved prompt edits, keep the dialog open with inline failure guidance if config save fails, and confirm before deleting a saved prompt from quick access.
 - 2026-03-08: Desktop bundle import dialog now explains the exact consequence of skip / overwrite / rename conflict strategies in-context and previews the affected conflicting items by component, including existing names when they differ, so destructive bundle imports are easier to understand before committing.
 - 2026-03-08: Desktop bundle export and Hub publish dialogs now track dirty drafts, warn before backdrop / Escape / close-button dismissal can discard selected items or metadata, and ignore close attempts while generate/save work is in flight so multi-step export/publish prep is harder to lose accidentally.
@@ -47,6 +49,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-model-preset-guardrails.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-predefined-prompts-guardrails.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-bundle-dialog-guardrails.test.js`
@@ -78,6 +82,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this model-preset dialog pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this predefined-prompts draft-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this bundle import conflict-clarity pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this bundle export / publish pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
@@ -93,16 +98,54 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop model preset create/edit dialogs unsaved-change / failed-save guardrails (`apps/desktop/src/renderer/src/components/model-preset-manager.tsx`)
+- Desktop preset-model selector loading / error / empty-state clarity (`apps/desktop/src/renderer/src/components/preset-model-selector.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect the desktop model preset manager create/edit dialogs for draft-loss, failed-save, and destructive-delete guardrails so long multi-field provider presets are harder to lose accidentally
+- Inspect the desktop preset-model selector loading / error / empty-state UX so users configuring provider presets get clearer feedback when model discovery is unavailable, slow, or returns no compatible models
+- Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
 - Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
 - Once a runnable Electron target is available, live-check the desktop bundle export/publish dialogs to confirm the new discard warning and pending-action guardrails feel right during backdrop click, Escape, titlebar close, preview back, and file-save flows
 - Once a runnable Electron target is available, live-check the desktop agent editor dirty-cancel, Quick Setup overwrite, advanced reset, and pending-save behavior to confirm the confirmation cadence feels right
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop model preset dialog draft safety and failed-save resilience
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop model preset management in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx`
+  - reviewed shared dialog close semantics in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`
+  - reviewed config save mutation behavior in `apps/desktop/src/renderer/src/lib/queries.ts`
+  - checked mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts`; confirmed mobile currently exposes preset selection only, not desktop-style preset authoring dialogs
+- Why it was chosen:
+  - the ledger explicitly marked the desktop model preset manager dialogs as the next fresh area that had not been investigated recently
+  - these dialogs contain multi-field provider configuration (name, base URL, API key, and per-feature model defaults), so accidental dismissal or save-failure loss has immediate user cost
+  - source inspection showed a concrete reliability issue: both create and edit flows kicked off async config saves and then immediately closed the dialog, so a failed save could still discard the draft
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` create/edit state, save flows, and dialog open/close wiring
+  - `apps/desktop/src/renderer/src/components/ui/dialog.tsx` to confirm backdrop click, Escape, and the titlebar close button all funnel through `onOpenChange`
+  - `apps/desktop/src/renderer/src/lib/queries.ts` to confirm `useSaveConfigMutation()` exposes pending and async save behavior plus centralized error reporting
+  - `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts` to confirm mobile currently supports preset picking but not preset authoring, so no parity edit was needed in this pass
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - added focused preset-draft helpers and edit baselines so both create and edit dialogs can detect unsaved changes consistently across all fields
+  - backdrop click, Escape, the titlebar close button, and Cancel now all funnel through guarded close handlers that confirm before discarding a dirty preset draft
+  - both dialogs now show a visible unsaved-change callout once the draft diverges from its baseline
+  - create/update now await the async config mutation and only close on success, preventing silent draft loss on failed saves
+  - failed saves keep the dialog open and show inline guidance that the preset draft is still available to retry
+  - added focused regression coverage in `tests/desktop-model-preset-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the fix local to `model-preset-manager.tsx` instead of introducing a shared preset-dialog abstraction, because the immediate product problem was isolated and the repo guidance favors small, pattern-matching changes
+  - reused the same lightweight confirmation and unsaved-change callout pattern already established in nearby desktop editors so the new behavior stays familiar
+  - kept the change desktop-only because mobile does not currently expose comparable preset-authoring dialogs; mobile only needed a parity check in this pass
+  - kept save-failure detail lightweight in-dialog because the shared config save mutation already reports the fuller error elsewhere; the inline message focuses on the key reassurance that the draft was preserved
+- Tests / verification:
+  - `node --test tests/desktop-model-preset-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check dirty preset dismissal via backdrop click, Escape, the titlebar close button, and save-failure retry behavior
+  - inspect `apps/desktop/src/renderer/src/components/preset-model-selector.tsx` next for loading / empty-state / fetch-failure clarity during model discovery
 
 ### 2026-03-08 — Desktop predefined prompts draft safety and delete clarity
 - Date:
