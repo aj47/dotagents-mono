@@ -1,6 +1,7 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and confirmed the visible MCP Servers cards still stored `oauthState.error` inside `refreshOAuthStatus(...)`, but only used `oauthState.authenticated` / `.configured` at render time, leaving OAuth status refresh failures effectively console-only on the desktop diagnostics surface.
 - [x] 2026-03-08: Reviewed the unresolved Expo Web runtime follow-up in `mobile-app-improvement.md` and picked the `normalizeApiBaseUrl is not a function` crash as a fresh bug candidate not yet covered in this ledger.
 - [x] 2026-03-08: Confirmed `packages/shared/package.json` explicitly exports `./connection-recovery`, but the three current mobile call sites in `apps/mobile/src/store/config.ts`, `apps/mobile/src/lib/openaiClient.ts`, and `apps/mobile/src/lib/settingsApi.ts` still imported `normalizeApiBaseUrl` from the package barrel (`@dotagents/shared`).
 - [x] 2026-03-08: Confirmed this worktree still has no installed dependencies (`node_modules` absent at the repo root and in `apps/mobile`), so live Expo Web repro and Vitest execution remain environment-blocked even though the earlier mobile notes already flagged the runtime error.
@@ -301,6 +302,10 @@
 - [x] 2026-03-08: Compared the remaining `showPanelWindow(...)` callers in `apps/desktop/src/renderer/src/pages/panel.tsx`; those invocations only run from the panel renderer after the panel already exists, so leaving them unchanged in this pass is an acceptable minimal-scope assumption rather than another visible false-success bug.
 
 ### Reproduced
+- [x] **Desktop MCP server cards kept OAuth status refresh failures effectively invisible (directly confirmed in source):**
+  - In `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`, `refreshOAuthStatus(...)` already caught per-server and all-server OAuth status failures, logged them, and persisted a fallback `oauthStatus[name]` object with `error: getLogFetchErrorMessage(error)`.
+  - The same server-card render path derived `const oauthState = serverConfig ? oauthStatus[name] ?? getOAuthStatusFallback(serverConfig) : undefined`, but only used that state to decide whether to show `Authenticate` / `Revoke`; it did not render `oauthState.error` anywhere in the visible UI.
+  - That meant Settings → MCP Servers could keep the auth controls available while still hiding the fact that OAuth status was stale/unavailable, which is misleading on a diagnostics surface because the user only had console logs as evidence of the failure.
 - [x] **Expo Web mobile could hit `normalizeApiBaseUrl is not a function` because three mobile callers imported it through the shared package barrel (confirmed from earlier live notes plus current source):**
   - `mobile-app-improvement.md` repeatedly carried forward an earlier live Expo Web runtime error for `normalizeApiBaseUrl is not a function`, so this was already a concrete observed failure rather than a hypothetical cleanup idea.
   - In the current source, `apps/mobile/src/store/config.ts`, `apps/mobile/src/lib/openaiClient.ts`, and `apps/mobile/src/lib/settingsApi.ts` all imported `normalizeApiBaseUrl` from `@dotagents/shared`, even though `packages/shared/package.json` separately exports `./connection-recovery` for that helper.
@@ -643,6 +648,8 @@
   - Those renderer paths only handled thrown errors, so a panel-unavailable/no-op launch could still make a core desktop session or voice-follow-up action appear to do nothing even after the earlier settings-page and sessions-focus fixes.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so streamable-HTTP MCP server cards now surface OAuth status refresh failures with an `OAuth status unavailable` badge beside the auth controls plus inline warning copy in the expanded details, while still keeping the config-derived auth fallback available.
+- [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` so the focused regression file now asserts the new OAuth degraded-state badge/copy alongside the existing fallback/auth-control coverage.
 - [x] Updated `apps/mobile/src/store/config.ts`, `apps/mobile/src/lib/openaiClient.ts`, and `apps/mobile/src/lib/settingsApi.ts` so mobile now imports `normalizeApiBaseUrl` from the dedicated `@dotagents/shared/connection-recovery` subpath instead of the shared package barrel.
 - [x] Added `apps/mobile/src/lib/normalize-api-base-url-imports.test.ts` as a focused regression guard that locks the three mobile call sites to the direct helper export and confirms the shared package still exposes `./connection-recovery`.
 - [x] Updated `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` so Expo Web now swaps the dead camera-first `Scan QR Code` action for a visible `Paste DotAgents Link` flow, keeps native scanner behavior unchanged on non-web platforms, and reuses the existing `parseQRCode(...)` parsing path to populate the same connection draft fields.
@@ -893,6 +900,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/sessions.focus-session.test.ts` and `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that lock in the new panel-unavailable contract and the renderer-side `success === false` guardrails.
 
 ### Verified
+- [x] Manual source verification: `mcp-config-manager.tsx` now renders both a compact `OAuth status unavailable` badge near the auth controls and expanded inline warning copy (`Showing saved OAuth configuration only.`) whenever `oauthState.error` is present, so OAuth status failures are no longer console-only on the desktop MCP Servers surface.
+- [x] Dependency-free verification passed: a plain `node` file-read assertion script confirmed the new OAuth warning badge/copy and regression-test expectations in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts`.
+- [x] Repository diff sanity check: `git diff --check -- apps/desktop/src/renderer/src/components/mcp-config-manager.tsx apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` completed cleanly after the OAuth diagnostics warning fix.
 - [x] Source verification passed: the only three mobile `normalizeApiBaseUrl` imports now point at `@dotagents/shared/connection-recovery`, and a direct Node assertion over those files completed successfully with `Verified direct normalizeApiBaseUrl imports in mobile files.`
 - [x] Repository diff sanity check passed for this fix: `git diff --check -- apps/mobile/src/store/config.ts apps/mobile/src/lib/openaiClient.ts apps/mobile/src/lib/settingsApi.ts apps/mobile/src/lib/normalize-api-base-url-imports.test.ts` exited cleanly.
 - [x] Manual source verification: `ConnectionSettingsScreen.tsx` now branches on `Platform.OS === 'web'`, labels the action as `Paste DotAgents Link`, explains that Expo Web cannot reliably open the scanner there yet, and routes pasted deep-link input back through the existing `parseQRCode(...)` helper instead of inventing a second connection parser.
@@ -1137,6 +1147,7 @@
 - [x] Targeted dependency-free verification passed: a plain `node` file-read assertion script completed with exit code 0 after checking `sessions.tsx`, `overlay-follow-up-input.tsx`, `tile-follow-up-input.tsx`, `tipc.ts`, and the updated regression tests for the new `success === false` guardrails (`Verified panel-launch failure guards in sessions, follow-up inputs, tipc routes, and regression tests.`).
 
 ### Blocked
+- [x] Targeted automated verification for this OAuth diagnostics warning fix is still blocked by the dependency state of this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
 - [x] Targeted mobile Vitest verification for this import-path regression test is still blocked by missing dependencies in the worktree: `pnpm --filter @dotagents/mobile test -- normalize-api-base-url-imports.test.ts` failed with `sh: vitest: command not found` and PNPM warned that `node_modules` is missing.
 - [x] Live Expo Web repro for the original `normalizeApiBaseUrl is not a function` runtime error is still blocked by the same environment issue: this worktree currently has no repo-level or mobile `node_modules`, so `pnpm dev:mobile` / Expo web validation cannot be completed safely without first installing dependencies.
 - [x] Live Expo Web repro/validation for this mobile pairing fix is still blocked by the dependency state of this worktree: `pnpm --filter @dotagents/mobile exec expo --version` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, and `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because Expo/React Native inputs (`expo/tsconfig.base`, Expo modules, JSX config) are unavailable here.
@@ -1257,7 +1268,6 @@
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
-- [ ] Whether the MCP server cards should also render inline OAuth error text/badges when status refresh fails, or whether keeping the auth button available via config-derived fallback is the better low-noise UX once live desktop verification is available.
 - [ ] Whether the desktop post-processing prompt editor should eventually gain explicit save/cancel dialog affordances instead of autosaving a local draft.
 - [ ] Whether the Groq STT prompt should eventually move to an explicit save/cancel affordance if the field grows beyond a short guidance prompt in real usage.
 - [ ] Whether any other desktop provider editors still need temporary local-draft handling once the current numeric fixes are covered and the environment blocker is cleared.
@@ -1280,7 +1290,6 @@
 - [ ] Whether the sampling dialog should eventually expose a clearer in-flight approval state (for example button text/spinner) while an approved request is executing, rather than only disabling the buttons during submission.
 - [ ] Whether the mobile queue actions should eventually move from `Alert.alert(...)` to a less interruptive inline/snackbar pattern once the queue flow can be exercised live and the new stale-action feedback can be judged in context.
 - [ ] Whether the completed-session `AgentProgress` close button should also gain a tiny in-flight disabled/busy guard to prevent double-click close races once the desktop app can be exercised live.
-- [ ] Whether the adjacent `refreshOAuthStatus(...)` failure path in `mcp-config-manager.tsx` should also surface explicit inline status instead of staying console-only once desktop settings can be exercised live.
 - [ ] Whether adjacent desktop repeat-task actions that also depend on boolean TIPC results (`triggerLoop`, `startLoop`, `stopLoop`) should gain the same explicit false-result feedback once loop management can be exercised in a runnable environment.
 - [ ] Whether new repeat tasks should eventually default to the workspace `.agents/tasks` layer when a workspace config is active, or whether the current global-default creation behavior is intentional now that update/delete paths preserve origin.
 

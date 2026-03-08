@@ -33,6 +33,9 @@ describe("desktop MCP config manager server diagnostics", () => {
     expect(source).toContain("return [name, normalizeOAuthStatus(config, status)] as const")
     expect(source).toContain("Failed to load OAuth status for ${name}:")
     expect(source).toContain("const oauthState = serverConfig ? oauthStatus[name] ?? getOAuthStatusFallback(serverConfig) : undefined")
+    expect(source).toContain("OAuth status unavailable")
+    expect(source).toContain("Showing saved OAuth configuration only.")
+    expect(source).toContain("{oauthState?.error}")
     expect(source).toContain("await refreshOAuthStatus(name)")
   })
 

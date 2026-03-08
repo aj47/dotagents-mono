@@ -2502,6 +2502,15 @@ export function MCPConfigManager({
                           {/* OAuth authorization controls */}
                           {serverConfig.transport === "streamableHttp" && serverConfig.url && (
                             <>
+                              {oauthState?.error && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] border-amber-500/40 text-amber-700 dark:text-amber-200"
+                                  title={oauthState.error}
+                                >
+                                  OAuth status unavailable
+                                </Badge>
+                              )}
                               {oauthState?.authenticated ? (
                                 <Button
                                   variant="destructive"
@@ -2617,6 +2626,16 @@ export function MCPConfigManager({
                                   <div className="text-sm">
                                     <span className="font-medium text-muted-foreground">Timeout:</span>{" "}
                                     <span className="text-xs text-muted-foreground">{serverConfig.timeout}ms</span>
+                                  </div>
+                                )}
+
+                                {oauthState?.error && (
+                                  <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
+                                    <div className="font-medium">OAuth status unavailable.</div>
+                                    <div className="mt-1 [overflow-wrap:anywhere]">{oauthState.error}</div>
+                                    <div className="mt-1 text-amber-700/80 dark:text-amber-200/80">
+                                      Showing saved OAuth configuration only.
+                                    </div>
                                   </div>
                                 )}
 
