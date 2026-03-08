@@ -358,14 +358,49 @@ export default function SettingsScreen({ navigation }: any) {
     return null;
   }, [config.baseUrl, config.apiKey]);
 
+  const canFetchRemoteSettings = Boolean(settingsClient)
+    && isTunnelConnectionInitialized
+    && connectionInfo.state === 'connected';
+  const canFetchDotAgentsData = canFetchRemoteSettings && isDotAgentsServer;
+  const remoteSettingsRequestIdRef = useRef(0);
+  const latestCanFetchRemoteSettingsRef = useRef(canFetchRemoteSettings);
+
   // Clear pending model update timeout when settingsClient changes
-  // to prevent sending updates to the previous server
+  // to prevent sending updates or remote-settings results to the previous server
   useEffect(() => {
     if (modelUpdateTimeoutRef.current) {
       clearTimeout(modelUpdateTimeoutRef.current);
       modelUpdateTimeoutRef.current = null;
     }
+
+    remoteSettingsRequestIdRef.current += 1;
+    setProfiles([]);
+    setCurrentProfileId(undefined);
+    setMcpServers([]);
+    setRemoteSettings(null);
+    setIsLoadingRemote(false);
+    setRemoteError(null);
+    setIsDotAgentsServer(false);
+    setSkills([]);
+    setMemories([]);
+    setAgentProfiles([]);
+    setLoops([]);
+    setLoopsError(null);
   }, [settingsClient]);
+
+  useEffect(() => {
+    latestCanFetchRemoteSettingsRef.current = canFetchRemoteSettings;
+  }, [canFetchRemoteSettings]);
+
+  useEffect(() => {
+    if (canFetchRemoteSettings) {
+      return;
+    }
+
+    remoteSettingsRequestIdRef.current += 1;
+    setIsLoadingRemote(false);
+    setRemoteError(null);
+  }, [canFetchRemoteSettings]);
 
   // Fetch remote settings from desktop
   const fetchRemoteSettings = useCallback(async () => {
@@ -377,6 +412,11 @@ export default function SettingsScreen({ navigation }: any) {
       return;
     }
 
+    if (!latestCanFetchRemoteSettingsRef.current) {
+      return;
+    }
+
+    const requestId = ++remoteSettingsRequestIdRef.current;
     setIsLoadingRemote(true);
     setRemoteError(null);
 
@@ -415,6 +455,10 @@ export default function SettingsScreen({ navigation }: any) {
         successCount++;
       }
 
+      if (requestId !== remoteSettingsRequestIdRef.current || !latestCanFetchRemoteSettingsRef.current) {
+        return;
+      }
+
       // Consider it a DotAgents server if at least one endpoint succeeded
       // This gates the Desktop Settings section for non-DotAgents endpoints (e.g., OpenAI)
       setIsDotAgentsServer(successCount > 0);
@@ -427,10 +471,18 @@ export default function SettingsScreen({ navigation }: any) {
         setIsDotAgentsServer(false);
       }
     } catch (error: any) {
+      if (requestId !== remoteSettingsRequestIdRef.current || !latestCanFetchRemoteSettingsRef.current) {
+        return;
+      }
+
       console.error('[Settings] Failed to fetch remote settings:', error);
       setRemoteError(error.message || 'Failed to load remote settings');
       setIsDotAgentsServer(false);
     } finally {
+      if (requestId !== remoteSettingsRequestIdRef.current || !latestCanFetchRemoteSettingsRef.current) {
+        return;
+      }
+
       setIsLoadingRemote(false);
     }
   }, [settingsClient]);
@@ -495,45 +547,51 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Fetch remote settings when client becomes available
   useEffect(() => {
-    if (settingsClient) {
+    if (settingsClient && canFetchRemoteSettings) {
       fetchRemoteSettings();
     }
-  }, [settingsClient, fetchRemoteSettings]);
+  }, [settingsClient, canFetchRemoteSettings, fetchRemoteSettings]);
 
   // Fetch DotAgents-specific data only after confirming it's a DotAgents server
   useEffect(() => {
-    if (settingsClient && isDotAgentsServer) {
+    if (canFetchDotAgentsData) {
       fetchSkills();
       fetchMemories();
       fetchAgentProfiles();
       fetchLoops();
     }
-  }, [settingsClient, isDotAgentsServer, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
+  }, [canFetchDotAgentsData, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
 
   // Refresh key remote data when returning from nested screens (e.g. agent editor)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!settingsClient) return;
-      fetchRemoteSettings();
-      if (isDotAgentsServer) {
+
+      if (canFetchRemoteSettings) {
+        fetchRemoteSettings();
+      }
+      if (canFetchDotAgentsData) {
         fetchAgentProfiles();
         fetchMemories();
         fetchLoops();
       }
     });
     return unsubscribe;
-  }, [navigation, settingsClient, isDotAgentsServer, fetchRemoteSettings, fetchAgentProfiles, fetchMemories, fetchLoops]);
+  }, [navigation, settingsClient, canFetchRemoteSettings, canFetchDotAgentsData, fetchRemoteSettings, fetchAgentProfiles, fetchMemories, fetchLoops]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    const fetches: Promise<void>[] = [fetchRemoteSettings()];
-    if (isDotAgentsServer) {
+    const fetches: Promise<void>[] = [];
+    if (canFetchRemoteSettings) {
+      fetches.push(fetchRemoteSettings());
+    }
+    if (canFetchDotAgentsData) {
       fetches.push(fetchSkills(), fetchMemories(), fetchAgentProfiles(), fetchLoops());
     }
     await Promise.all(fetches);
     setIsRefreshing(false);
-  }, [isDotAgentsServer, fetchRemoteSettings, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
+  }, [canFetchRemoteSettings, canFetchDotAgentsData, fetchRemoteSettings, fetchSkills, fetchMemories, fetchAgentProfiles, fetchLoops]);
 
   // Handle profile switch
   const handleProfileSwitch = async (profileId: string) => {
