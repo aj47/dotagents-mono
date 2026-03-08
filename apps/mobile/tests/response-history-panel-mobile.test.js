@@ -22,7 +22,9 @@ test('gives per-response speak controls a mobile touch target and clearer playba
   assert.match(responseHistorySource, /const responseSpeakTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(responseHistorySource, /speakButton:\s*\{[\s\S]*?\.\.\.responseSpeakTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(responseHistorySource, /speakButtonActive:\s*\{[\s\S]*?theme\.colors\.primary/);
-  assert.match(responseHistorySource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\([\s\S]*?Stop speaking response from \$\{responseTimestampLabel\}[\s\S]*?Speak response from \$\{responseTimestampLabel\} aloud[\s\S]*?\)/);
+  assert.match(responseHistorySource, /function formatResponseAccessibilityContext\(text: string, timestampLabel: string\): string \{[\s\S]*?const normalizedText = text\.replace\(/);
+  assert.match(responseHistorySource, /const responseAccessibilityContext = formatResponseAccessibilityContext\(response\.text, responseTimestampLabel\);/);
+  assert.match(responseHistorySource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\([\s\S]*?Stop speaking response \$\{responseAccessibilityContext\}[\s\S]*?Speak response \$\{responseAccessibilityContext\} aloud[\s\S]*?\)/);
   assert.match(responseHistorySource, /accessibilityHint=\{isSpeaking[\s\S]*?Stops text to speech for this agent response\.[\s\S]*?Reads the latest agent response aloud with text to speech\.[\s\S]*?Reads this agent response aloud with text to speech\./);
   assert.match(responseHistorySource, /accessibilityState=\{\{ selected: isSpeaking \}\}/);
 });

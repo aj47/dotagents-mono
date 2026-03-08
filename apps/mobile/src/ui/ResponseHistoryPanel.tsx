@@ -29,6 +29,17 @@ export interface ResponseHistoryEntry {
   timestamp: number;
 }
 
+function formatResponseAccessibilityContext(text: string, timestampLabel: string): string {
+  const normalizedText = text.replace(/\s+/g, ' ').trim();
+  if (!normalizedText) return `from ${timestampLabel}`;
+
+  const preview = normalizedText.length > 56
+    ? `${normalizedText.slice(0, 53).replace(/\s+$/g, '')}…`
+    : normalizedText;
+
+  return `"${preview}" from ${timestampLabel}`;
+}
+
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
   ttsRate?: number;
@@ -369,6 +380,7 @@ export function ResponseHistoryPanel({
             const isSpeaking = speakingIndex === originalIndex;
             const isLatest = originalIndex === newestOriginalIndex;
             const responseTimestampLabel = formatTime(response.timestamp, false);
+            const responseAccessibilityContext = formatResponseAccessibilityContext(response.text, responseTimestampLabel);
             // Animate newest entry (shown at top after reverse)
             const isNewestEntry =
               shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
@@ -399,8 +411,8 @@ export function ResponseHistoryPanel({
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(
                           isSpeaking
-                            ? `Stop speaking response from ${responseTimestampLabel}`
-                            : `Speak response from ${responseTimestampLabel} aloud`
+                            ? `Stop speaking response ${responseAccessibilityContext}`
+                            : `Speak response ${responseAccessibilityContext} aloud`
                         )}
                         accessibilityHint={isSpeaking
                           ? 'Stops text to speech for this agent response.'

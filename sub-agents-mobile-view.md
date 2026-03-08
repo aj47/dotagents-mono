@@ -4009,3 +4009,48 @@
   - Restore the mobile install in this worktree, then verify with Expo Web or a simulator that multiple queued rows now announce clearly distinct actions in a mobile accessibility pass.
   - Compare queue rows with very similar timestamps live to confirm the added message preview meaningfully reduces ambiguity.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting queued-message row labeling again without new evidence.
+
+### 2026-03-08 — Iteration 92: disambiguate response playback controls
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - focused response-history regression coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Reconfirmed the current worktree blocker before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install and missing Expo / React Native type dependencies, ending with `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `ResponseHistoryPanel` already used minute-level timestamps plus `Latest` / `Speaking` badges to keep rows compact on narrow screens.
+  - The per-row playback control still exposed labels like `Speak response from 03:14 PM aloud` and `Stop speaking response from 03:14 PM`.
+  - If multiple agent responses landed within the same minute, adjacent playback controls could announce the same label even though they targeted different responses.
+- Issue selected:
+  - Response playback controls were still too timestamp-only, weakening row-level state clarity and user control for mobile assistive-tech users when several responses shared the same minute.
+- Decision:
+  - Keep the visible layout, badges, and timestamp treatment unchanged so this stays a low-risk local improvement.
+  - Reuse the same general accessibility pattern recently applied to queued-message row actions instead of introducing a new mobile UI pattern.
+  - Make the smallest effective fix: derive one short, whitespace-normalized response preview plus timestamp context and reuse it in the speak / stop button labels.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - add `formatResponseAccessibilityContext()` for a truncated response preview plus row timestamp,
+    - derive one reusable `responseAccessibilityContext` per history row,
+    - use that context in the per-row speak / stop accessibility labels so same-minute responses announce as distinct controls.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new response-context helper and the row-specific playback labels.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by missing mobile dependencies / missing `expo/tsconfig.base`
+- Remaining nearby issues noted, not addressed this iteration:
+  - This round improves playback control clarity for assistive tech, but it still needs a live pass once Expo is restored to confirm the longer labels are not overly verbose in mobile screen-reader use.
+  - The response-history rows are still visually differentiated mainly by timestamp plus badges, so after live validation is possible it is worth checking whether any same-minute rows still feel too similar visually.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify with Expo Web or a simulator that same-minute response rows now announce clearly distinct playback controls.
+  - Compare several short responses arriving within one minute to confirm the preview-based labels reduce ambiguity without feeling noisy.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history playback labeling again without new evidence.
