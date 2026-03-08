@@ -1404,6 +1404,11 @@ export function MCPConfigManager({
     const serverTools = tools.filter((tool) => tool.serverName === serverName)
     if (serverTools.length === 0) return
 
+    const originalStates = new Map<string, boolean>()
+    serverTools.forEach((tool) => {
+      originalStates.set(tool.name, tool.enabled)
+    })
+
     // Update local state immediately for better UX
     const updatedTools = tools.map((tool) => {
       if (tool.serverName === serverName) {
@@ -1439,9 +1444,12 @@ export function MCPConfigManager({
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const revertedTools = tools.map((tool) => {
+        const revertedTools = updatedTools.map((tool) => {
           if (tool.serverName === serverName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
+            return {
+              ...tool,
+              enabled: originalStates.get(tool.name) ?? tool.enabled,
+            }
           }
           return tool
         })
@@ -1453,9 +1461,12 @@ export function MCPConfigManager({
       }
     } catch (error: any) {
       // Revert all tools on error
-      const revertedTools = tools.map((tool) => {
+      const revertedTools = updatedTools.map((tool) => {
         if (tool.serverName === serverName) {
-          return { ...tool, enabled: !enable }
+          return {
+            ...tool,
+            enabled: originalStates.get(tool.name) ?? tool.enabled,
+          }
         }
         return tool
       })
