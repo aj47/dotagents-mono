@@ -264,6 +264,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [loops, setLoops] = useState<Loop[]>([]);
+  const [pendingLoopRunIds, setPendingLoopRunIds] = useState<string[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
@@ -794,15 +795,22 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Handle loop run
   const handleLoopRun = async (loopId: string) => {
-    if (!settingsClient) return;
+    if (!settingsClient || pendingLoopRunIds.includes(loopId)) return;
+
+    setPendingLoopRunIds(prev => (
+      prev.includes(loopId) ? prev : [...prev, loopId]
+    ));
+
     try {
       await settingsClient.runLoop(loopId);
-      Alert.alert('Success', 'Loop triggered successfully');
       // Refresh loops to get updated lastRunAt
-      fetchLoops();
+      await fetchLoops();
+      Alert.alert('Success', 'Loop triggered successfully');
     } catch (error: any) {
       console.error('[Settings] Failed to run loop:', error);
       Alert.alert('Error', error.message || 'Failed to run loop');
+    } finally {
+      setPendingLoopRunIds(prev => prev.filter(id => id !== loopId));
     }
   };
 
@@ -2449,6 +2457,7 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>No agent loops configured</Text>
                 ) : (
                   loops.map((loop) => {
+                    const isLoopRunPending = pendingLoopRunIds.includes(loop.id);
                     const loopStatusLabel = getLoopStatusLabel(loop);
                     const loopStatusHint = loop.isRunning
                       ? 'This loop is running right now.'
@@ -2541,14 +2550,27 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={styles.loopActionButton}
+                          style={[
+                            styles.loopActionButton,
+                            isLoopRunPending && styles.loopActionButtonPending,
+                          ]}
                           onPress={() => handleLoopRun(loop.id)}
+                          disabled={isLoopRunPending}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
-                          accessibilityHint="Triggers this loop immediately."
-                          activeOpacity={0.7}
+                          accessibilityLabel={createButtonAccessibilityLabel(
+                            isLoopRunPending
+                              ? `Running ${loop.name} loop now`
+                              : `Run ${loop.name} loop now`
+                          )}
+                          accessibilityHint={isLoopRunPending
+                            ? 'This loop is being triggered now. Wait for the current request to finish.'
+                            : 'Triggers this loop immediately.'}
+                          accessibilityState={{ disabled: isLoopRunPending, busy: isLoopRunPending }}
+                          activeOpacity={isLoopRunPending ? 1 : 0.7}
                         >
-                          <Text style={styles.loopRunText}>▶ Run</Text>
+                          <Text style={[styles.loopRunText, isLoopRunPending && styles.loopRunTextPending]}>
+                            {isLoopRunPending ? 'Running…' : '▶ Run'}
+                          </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.loopActionButton}
@@ -3519,10 +3541,18 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.secondary,
     },
+    loopActionButtonPending: {
+      borderColor: theme.colors.primary + '2E',
+      backgroundColor: theme.colors.primary + '10',
+      opacity: 0.85,
+    },
     loopRunText: {
       color: theme.colors.primary,
       fontSize: 12,
       fontWeight: '600',
+    },
+    loopRunTextPending: {
+      color: theme.colors.primary,
     },
     loopDeleteText: {
       color: theme.colors.destructive,

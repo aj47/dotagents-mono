@@ -3310,3 +3310,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queue edit mode now supports both first-tap action handling and drag-to-dismiss keyboard behavior.
   - Compare queue edit mode before and after dragging to confirm the preserved context text and helper copy still read clearly once more vertical space is available.
   - If live validation shows the queue edit stack still feels cramped, tighten edit-mode spacing before attempting any broader queue-panel redesign.
+
+### 2026-03-08 — Iteration 77: show loop Run progress and prevent duplicate mobile taps
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused loop list coverage in `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web` → failed with `sh: expo: command not found`
+    - the same Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator validation was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `Settings > Agent Loops` renders a `Run` action for every loop row.
+  - `handleLoopRun(loopId)` immediately fired the server request and only showed a success alert after it returned.
+  - The tapped `Run` button itself stayed visually unchanged and tappable during that request, so narrow-screen users had no inline confirmation that the action registered and could easily double-trigger the same loop.
+- Issue selected:
+  - Loop `Run` actions lacked local in-flight state, weakening action clarity and inviting duplicate taps in a dense mobile action rail.
+- Decision:
+  - Keep the existing loop row layout, action ordering, and success/error alerts unchanged.
+  - Do not redesign the whole action rail while live validation is blocked.
+  - Make the smallest local control fix: track per-loop pending run state, disable only the in-flight `Run` button, and surface that state inline with clearer copy and accessibility semantics.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `pendingLoopRunIds` state for per-loop run requests,
+    - guard `handleLoopRun` against duplicate taps on the same loop while a run request is still in flight,
+    - await the loop refresh before clearing the pending state so the row stays busy until fresh metadata arrives,
+    - render pending `Run` actions as disabled `Running…` buttons with busy/disabled accessibility state and a subtle pending style.
+  - Updated `apps/mobile/tests/settings-loop-actions-mobile.test.js` with focused regression coverage for the new pending-state contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the temporary `Running…` label reads clearly without making the loop action rail feel jumpy.
+  - The success alert plus refreshed row metadata still needs live validation to confirm the handoff from inline pending state to updated loop state feels smooth on mobile.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that tapping `Run` immediately flips the tapped button to `Running…` and blocks duplicate taps until the request settles.
+  - Check whether the temporary pending label causes unwanted width churn on especially narrow screens; if so, tighten the pending treatment without removing the inline progress cue.
+  - Continue with the next highest-signal local mobile issue only after a fresh live pass re-establishes which sub-agent surface now has the most friction.
