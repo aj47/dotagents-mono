@@ -60,6 +60,29 @@ function getCapabilityLoadErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
+function getSaveAgentFailureMessage(): string {
+  return "This agent no longer exists. Refreshed the agent list."
+}
+
+function getDeleteAgentFailureMessage(): string {
+  return "This agent could not be deleted. Refreshed the agent list."
+}
+
+function getAgentMutationErrorMessage(action: "save" | "delete", error: unknown): string {
+  const actionLabel = action === "save" ? "save" : "delete"
+  const fallback = `Failed to ${actionLabel} agent`
+
+  if (error instanceof Error && error.message.trim()) {
+    return `${fallback}: ${error.message.trim()}`
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return `${fallback}: ${error.trim()}`
+  }
+
+  return fallback
+}
+
 interface EditingAgent {
   id?: string
   displayName: string
@@ -287,17 +310,45 @@ export function SettingsAgents() {
       properties: editing.properties && Object.keys(editing.properties).length > 0 ? editing.properties : undefined,
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }
-    if (isCreating) await tipcClient.createAgentProfile({ profile: data })
-    else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
-    setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); loadAgents()
-    // Invalidate sidebar query so it reflects changes immediately
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+
+    try {
+      const savedAgent = isCreating
+        ? await tipcClient.createAgentProfile({ profile: data })
+        : editing.id
+          ? await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
+          : undefined
+
+      if (!savedAgent) {
+        loadAgents()
+        queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+        toast.error(getSaveAgentFailureMessage())
+        return
+      }
+
+      setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); loadAgents()
+      // Invalidate sidebar query so it reflects changes immediately
+      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to save agent:", error)
+      toast.error(getAgentMutationErrorMessage("save", error))
+    }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this agent?")) return
-    await tipcClient.deleteAgentProfile({ id }); loadAgents()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+
+    try {
+      const didDelete = await tipcClient.deleteAgentProfile({ id })
+      loadAgents()
+      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+
+      if (!didDelete) {
+        toast.error(getDeleteAgentFailureMessage())
+      }
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to delete agent:", error)
+      toast.error(getAgentMutationErrorMessage("delete", error))
+    }
   }
 
   const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue("") }
