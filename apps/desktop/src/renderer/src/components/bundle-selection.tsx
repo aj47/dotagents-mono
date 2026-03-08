@@ -79,6 +79,22 @@ export const EMPTY_BUNDLE_SELECTION: BundleDetailedSelectionState = {
   memoryIds: [],
 }
 
+const BUNDLE_COMPONENT_KEYS: (keyof BundleComponentSelectionState)[] = [
+  "agentProfiles",
+  "mcpServers",
+  "skills",
+  "repeatTasks",
+  "memories",
+]
+
+const BUNDLE_SELECTION_KEYS: (keyof BundleDetailedSelectionState)[] = [
+  "agentProfileIds",
+  "mcpServerNames",
+  "skillIds",
+  "repeatTaskIds",
+  "memoryIds",
+]
+
 export function createDetailedBundleSelection(items: BundleExportableItems): BundleDetailedSelectionState {
   return {
     agentProfileIds: items.agentProfiles.map((item) => item.id),
@@ -87,6 +103,26 @@ export function createDetailedBundleSelection(items: BundleExportableItems): Bun
     repeatTaskIds: items.repeatTasks.map((item) => item.id),
     memoryIds: items.memories.map((item) => item.id),
   }
+}
+
+export function hasBundleComponentSelectionChanges(
+  current: BundleComponentSelectionState,
+  baseline: BundleComponentSelectionState,
+): boolean {
+  return BUNDLE_COMPONENT_KEYS.some((key) => current[key] !== baseline[key])
+}
+
+export function hasDetailedBundleSelectionChanges(
+  current: BundleDetailedSelectionState,
+  baseline: BundleDetailedSelectionState,
+): boolean {
+  return BUNDLE_SELECTION_KEYS.some((key) => {
+    const currentIds = current[key]
+    const baselineIds = baseline[key]
+
+    return currentIds.length !== baselineIds.length
+      || currentIds.some((value, index) => value !== baselineIds[index])
+  })
 }
 
 export function getBundleDependencyWarnings(

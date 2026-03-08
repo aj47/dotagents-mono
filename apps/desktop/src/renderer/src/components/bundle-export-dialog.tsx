@@ -15,6 +15,8 @@ import {
   DEFAULT_EXPORT_COMPONENTS,
   EMPTY_BUNDLE_SELECTION,
   createDetailedBundleSelection,
+  hasBundleComponentSelectionChanges,
+  hasDetailedBundleSelectionChanges,
   type BundleComponentSelectionState,
   type BundleDetailedSelectionState,
 } from "@renderer/components/bundle-selection"
@@ -24,10 +26,22 @@ interface ExportForm { name: string; description: string }
 
 const EMPTY: ExportForm = { name: "", description: "" }
 
+function hasExportDraftChanges(
+  form: ExportForm,
+  components: BundleComponentSelectionState,
+  selection: BundleDetailedSelectionState,
+  selectionBaseline: BundleDetailedSelectionState | null,
+): boolean {
+  return !!(form.name.trim() || form.description.trim())
+    || hasBundleComponentSelectionChanges(components, DEFAULT_EXPORT_COMPONENTS)
+    || hasDetailedBundleSelectionChanges(selection, selectionBaseline || EMPTY_BUNDLE_SELECTION)
+}
+
 export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogProps) {
   const [form, setForm] = useState<ExportForm>({ ...EMPTY })
   const [components, setComponents] = useState<BundleComponentSelectionState>({ ...DEFAULT_EXPORT_COMPONENTS })
   const [selection, setSelection] = useState<BundleDetailedSelectionState>({ ...EMPTY_BUNDLE_SELECTION })
+  const [selectionBaseline, setSelectionBaseline] = useState<BundleDetailedSelectionState | null>(null)
   const [selectionInitialized, setSelectionInitialized] = useState(false)
   const [saving, setSaving] = useState(false)
   const exportableItemsQuery = useQuery({
@@ -38,19 +52,34 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
 
   useEffect(() => {
     if (!open || !exportableItemsQuery.data || selectionInitialized) return
-    setSelection(createDetailedBundleSelection(exportableItemsQuery.data))
+    const initialSelection = createDetailedBundleSelection(exportableItemsQuery.data)
+    setSelection(initialSelection)
+    setSelectionBaseline(initialSelection)
     setSelectionInitialized(true)
   }, [open, exportableItemsQuery.data, selectionInitialized])
 
-  const close = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      setForm({ ...EMPTY })
-      setComponents({ ...DEFAULT_EXPORT_COMPONENTS })
-      setSelection({ ...EMPTY_BUNDLE_SELECTION })
-      setSelectionInitialized(false)
-      setSaving(false)
+  const isExportDirty = hasExportDraftChanges(form, components, selection, selectionBaseline)
+
+  const closeDialog = () => {
+    setForm({ ...EMPTY })
+    setComponents({ ...DEFAULT_EXPORT_COMPONENTS })
+    setSelection({ ...EMPTY_BUNDLE_SELECTION })
+    setSelectionBaseline(null)
+    setSelectionInitialized(false)
+    setSaving(false)
+    onOpenChange(false)
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true)
+      return
     }
-    onOpenChange(nextOpen)
+
+    if (saving) return
+    if (isExportDirty && !confirm("Discard this bundle export draft? Your selected items and metadata will be lost.")) return
+
+    closeDialog()
   }
 
   const saveBundle = async () => {
@@ -68,7 +97,7 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
       })
       if (result.success) {
         toast.success("Bundle exported successfully")
-        close(false)
+        closeDialog()
       } else if (result.canceled) {
         toast.message("Bundle export canceled")
       } else {
@@ -82,13 +111,18 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
   }
 
   return (
-    <Dialog open={open} onOpenChange={close}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Download className="h-5 w-5" />Export Bundle</DialogTitle>
           <DialogDescription>Choose what to include in the local <code>.dotagents</code> export before saving the bundle.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {isExportDirty && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              You have unsaved export changes. Save the bundle before closing to keep this selection and metadata.
+            </div>
+          )}
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200 flex gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>Secrets are stripped automatically, but any included memories, repeat tasks, and other content are saved into the exported bundle file.</p>
@@ -114,7 +148,7 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => close(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={saving}>Cancel</Button>
           <Button
             onClick={saveBundle}
             disabled={saving || exportableItemsQuery.isLoading || !!exportableItemsQuery.error}

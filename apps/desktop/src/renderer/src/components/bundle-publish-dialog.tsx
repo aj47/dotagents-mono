@@ -17,6 +17,8 @@ import {
   BundleDetailedSelectionCard,
   EMPTY_BUNDLE_SELECTION,
   createDetailedBundleSelection,
+  hasBundleComponentSelectionChanges,
+  hasDetailedBundleSelectionChanges,
   type BundleComponentSelectionState,
   type BundleDetailedSelectionState,
 } from "@renderer/components/bundle-selection"
@@ -27,6 +29,10 @@ interface PublishComponents extends BundleComponentSelectionState {}
 interface PublishPreviewState { payloadJson: string; bundleJson: string; installUrl: string; submissionJson: string; catalogId: string }
 const EMPTY: PublishForm = { name: "", catalogId: "", artifactUrl: "", description: "", summary: "", authorName: "", authorHandle: "", authorUrl: "", tags: "" }
 const DEFAULT_PUBLISH_COMPONENTS: PublishComponents = { agentProfiles: true, mcpServers: true, skills: true, repeatTasks: false, memories: false }
+
+function hasPublishFormChanges(form: PublishForm): boolean {
+  return Object.values(form).some((value) => value.trim().length > 0)
+}
 
 function buildMeta(f: PublishForm) {
   return {
@@ -49,8 +55,11 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
   const [form, setForm] = useState<PublishForm>({ ...EMPTY })
   const [components, setComponents] = useState<PublishComponents>({ ...DEFAULT_PUBLISH_COMPONENTS })
   const [selection, setSelection] = useState<BundleDetailedSelectionState>({ ...EMPTY_BUNDLE_SELECTION })
+  const [selectionBaseline, setSelectionBaseline] = useState<BundleDetailedSelectionState | null>(null)
   const [selectionInitialized, setSelectionInitialized] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [savingBundle, setSavingBundle] = useState(false)
+  const [savingSubmission, setSavingSubmission] = useState(false)
   const [preview, setPreview] = useState<PublishPreviewState | null>(null)
   const exportableItemsQuery = useQuery({
     queryKey: ["bundle-exportable-items"],
@@ -60,20 +69,48 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
 
   useEffect(() => {
     if (!open || !exportableItemsQuery.data || selectionInitialized) return
-    setSelection(createDetailedBundleSelection(exportableItemsQuery.data))
+    const initialSelection = createDetailedBundleSelection(exportableItemsQuery.data)
+    setSelection(initialSelection)
+    setSelectionBaseline(initialSelection)
     setSelectionInitialized(true)
   }, [open, exportableItemsQuery.data, selectionInitialized])
 
-  const close = (v: boolean) => {
-    if (!v) {
-      setStep("metadata")
-      setForm({ ...EMPTY })
-      setComponents({ ...DEFAULT_PUBLISH_COMPONENTS })
-      setSelection({ ...EMPTY_BUNDLE_SELECTION })
-      setSelectionInitialized(false)
-      setPreview(null)
+  const isBusy = loading || savingBundle || savingSubmission
+  const isPublishDirty = hasPublishFormChanges(form)
+    || hasBundleComponentSelectionChanges(components, DEFAULT_PUBLISH_COMPONENTS)
+    || hasDetailedBundleSelectionChanges(selection, selectionBaseline || EMPTY_BUNDLE_SELECTION)
+    || preview !== null
+  const discardMessage = preview
+    ? "Discard this Hub publish draft? Your selected items, metadata, and generated preview will be lost."
+    : "Discard this Hub publish draft? Your selected items and metadata will be lost."
+  const draftNotice = preview
+    ? "You have unsaved publish work. Save the bundle or Hub package before closing if you still need this generated preview."
+    : "You have unsaved publish details. Generate the preview or save files before closing to keep this draft."
+
+  const closeDialog = () => {
+    setStep("metadata")
+    setForm({ ...EMPTY })
+    setComponents({ ...DEFAULT_PUBLISH_COMPONENTS })
+    setSelection({ ...EMPTY_BUNDLE_SELECTION })
+    setSelectionBaseline(null)
+    setSelectionInitialized(false)
+    setLoading(false)
+    setSavingBundle(false)
+    setSavingSubmission(false)
+    setPreview(null)
+    onOpenChange(false)
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true)
+      return
     }
-    onOpenChange(v)
+
+    if (isBusy) return
+    if (isPublishDirty && !confirm(discardMessage)) return
+
+    closeDialog()
   }
   const ok = !!(form.name.trim() && form.summary.trim() && form.authorName.trim() && exportableItemsQuery.data)
   const copy = async (t: string, l: string) => { try { await copyTextToClipboard(t); toast.success(`${l} copied`) } catch { toast.error("Copy failed") } }
@@ -108,6 +145,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
     } catch (e) { toast.error(`Failed: ${e instanceof Error ? e.message : String(e)}`) } finally { setLoading(false) }
   }
   const saveFile = async () => {
+    setSavingBundle(true)
     try {
       const r = await tipcClient.exportBundle({
         name: form.name.trim(),
@@ -122,9 +160,11 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
       })
       if (r.success) toast.success("Bundle saved"); else if (r.canceled) toast.message("Canceled"); else toast.error(r.error || "Failed")
     } catch (e) { toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`) }
+    finally { setSavingBundle(false) }
   }
   const saveSubmissionFile = async () => {
     if (!preview) return
+    setSavingSubmission(true)
     try {
       const r = await tipcClient.saveHubPublishPayloadFile({
         catalogId: preview.catalogId,
@@ -134,14 +174,20 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
       else if (r.canceled) toast.message("Canceled")
       else toast.error("Failed to save Hub publish package")
     } catch (e) { toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`) }
+    finally { setSavingSubmission(false) }
   }
   return (
-    <Dialog open={open} onOpenChange={close}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{step === "metadata" ? "Export for Hub" : "Hub Export Preview"}</DialogTitle>
           <DialogDescription>{step === "metadata" ? "Choose what goes into the public artifact, then add listing metadata. Enabled content is public." : "Review the generated payload, artifact URL, install link, and submission package. Saving here prepares files for Hub submission but does not upload them yet."}</DialogDescription>
         </DialogHeader>
+        {isPublishDirty && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+            {draftNotice}
+          </div>
+        )}
         {step === "metadata" ? (
           <>
             <div className="space-y-4 py-2">
@@ -167,8 +213,8 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => close(false)}>Cancel</Button>
-              <Button onClick={generate} disabled={!ok || loading || exportableItemsQuery.isLoading || !!exportableItemsQuery.error} className="gap-2">{loading && <Loader2 className="h-4 w-4 animate-spin" />}Generate Payload</Button>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isBusy}>Cancel</Button>
+              <Button onClick={generate} disabled={!ok || isBusy || exportableItemsQuery.isLoading || !!exportableItemsQuery.error} className="gap-2">{loading && <Loader2 className="h-4 w-4 animate-spin" />}Generate Payload</Button>
             </DialogFooter>
           </>
         ) : (
@@ -193,10 +239,10 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
               </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setStep("metadata")}>← Back</Button>
-              <Button variant="outline" className="gap-2" onClick={saveSubmissionFile}><FileJson className="h-4 w-4" /> Save Hub Package</Button>
-              <Button variant="outline" className="gap-2" onClick={() => copy(preview?.bundleJson || "", "Bundle JSON")}><Copy className="h-4 w-4" /> Copy Bundle</Button>
-              <Button className="gap-2" onClick={saveFile}><Download className="h-4 w-4" /> Save .dotagents File</Button>
+              <Button variant="outline" onClick={() => setStep("metadata")} disabled={isBusy}>← Back</Button>
+              <Button variant="outline" className="gap-2" onClick={saveSubmissionFile} disabled={isBusy}>{savingSubmission ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileJson className="h-4 w-4" />} {savingSubmission ? "Saving Hub Package..." : "Save Hub Package"}</Button>
+              <Button variant="outline" className="gap-2" onClick={() => copy(preview?.bundleJson || "", "Bundle JSON")} disabled={isBusy}><Copy className="h-4 w-4" /> Copy Bundle</Button>
+              <Button className="gap-2" onClick={saveFile} disabled={isBusy}>{savingBundle ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {savingBundle ? "Saving .dotagents File..." : "Save .dotagents File"}</Button>
             </DialogFooter>
           </>
         )}
