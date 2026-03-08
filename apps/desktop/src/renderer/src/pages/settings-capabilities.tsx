@@ -4,7 +4,7 @@ import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { Button } from "@renderer/components/ui/button"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
-import { FolderOpen, Loader2, RotateCcw } from "lucide-react"
+import { ExternalLink, FolderOpen, Loader2, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import { Component as McpToolsPage } from "./settings-mcp-tools"
 import { Component as SkillsPage } from "./settings-skills"
@@ -71,6 +71,7 @@ export function Component() {
   const [restoreFilePath, setRestoreFilePath] = useState<string>()
   const [isSelectingRestoreBackup, setIsSelectingRestoreBackup] = useState(false)
   const [isOpeningBackupsFolder, setIsOpeningBackupsFolder] = useState(false)
+  const [revealingBackupPath, setRevealingBackupPath] = useState<string | null>(null)
   const recentBackupsQuery = useQuery({
     queryKey: ["bundle-import-backups"],
     queryFn: async () => (await tipcClient.listBundleBackups({ limit: 4 })) as RecentBackup[],
@@ -110,6 +111,21 @@ export function Component() {
       toast.error(`Failed to open backups folder: ${errorMessage}`)
     } finally {
       setIsOpeningBackupsFolder(false)
+    }
+  }
+
+  const handleRevealBackupFileClick = async (filePath: string) => {
+    setRevealingBackupPath(filePath)
+    try {
+      const result = await tipcClient.revealBundleBackupFile({ filePath })
+      if (!result?.success) {
+        throw new Error(result?.error || "Unknown error")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to reveal backup bundle: ${errorMessage}`)
+    } finally {
+      setRevealingBackupPath(currentPath => (currentPath === filePath ? null : currentPath))
     }
   }
 
@@ -213,9 +229,24 @@ export function Component() {
                       {backup.filePath}
                     </p>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => openRestoreDialogForFile(backup.filePath)}>
-                    Restore
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => handleRevealBackupFileClick(backup.filePath)}
+                      disabled={revealingBackupPath === backup.filePath}
+                    >
+                      {revealingBackupPath === backup.filePath
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <ExternalLink className="h-4 w-4" />}
+                      Reveal
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => openRestoreDialogForFile(backup.filePath)}>
+                      Restore
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

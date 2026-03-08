@@ -4674,6 +4674,25 @@ export const router = {
     return { success: !error, error: error || undefined }
   }),
 
+  revealBundleBackupFile: t.procedure
+    .input<{ filePath: string }>()
+    .action(async ({ input }) => {
+      const { getDefaultImportBackupDirectory } = await import("./bundle-service")
+      const backupDir = path.resolve(getDefaultImportBackupDirectory())
+      const resolvedFilePath = path.resolve(input.filePath)
+      const relativePath = path.relative(backupDir, resolvedFilePath)
+
+      if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+        return {
+          success: false,
+          path: resolvedFilePath,
+          error: "Backup file must be inside the backups directory",
+        }
+      }
+
+      return revealFileInFolder(resolvedFilePath)
+    }),
+
   listBundleBackups: t.procedure
     .input<{ limit?: number } | undefined>()
     .action(async ({ input }) => {

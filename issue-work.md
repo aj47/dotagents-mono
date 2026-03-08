@@ -687,3 +687,35 @@
   - Re-run broader desktop typecheck/Vitest once the worktree has the missing desktop dependency/tooling baseline restored.
 
 - Next recommended issue work item: either manually review `#58` in a full desktop run and close out any remaining UI polish, or pivot to a fresh issue with a tighter local repro path than the still-speculative `#54`.
+
+##### Issue #57 — Bundle backups: reveal individual backup bundles from Settings → Capabilities
+
+- Selection rationale:
+  - Re-reviewed `#57` and its trust-track comments, then chose the smallest remaining backup-management gap already called out in this ledger: users could open the whole backups folder, but each recent backup row still lacked a direct reveal action for the exact bundle they were about to restore or inspect.
+  - This stayed tightly aligned with the issue’s trust goal of making backup paths visible and recovery easy without inventing a separate backup manager.
+- Investigation:
+  - Refreshed issue `#57` details/comments and confirmed the trust-track still emphasizes visible backup paths, restore from Settings → Capabilities, and keeping the existing import/restore pipeline rather than creating side flows.
+  - Re-inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed each recent backup row already renders the full file path but only exposes a `Restore` action.
+  - Re-inspected `apps/desktop/src/main/tipc.ts` and confirmed the main process already has a reusable `revealFileInFolder(filePath)` helper based on `shell.showItemInFolder(...)`, making this a narrow TIPC/UI follow-up rather than a new filesystem abstraction.
+  - Checked mobile parity and confirmed there is no equivalent mobile Settings → Capabilities backup-restore surface; mobile settings live in `apps/mobile/src/screens/SettingsScreen.tsx` and do not expose desktop-style bundle backup management.
+- Important assumptions:
+  - Assumption: adding a per-backup `Reveal` affordance is a valid next slice even without also adding copy-path or delete/cleanup controls in the same pass.
+  - Why acceptable: it directly closes the most obvious individual-backup discoverability gap with minimal UI churn, while the existing path text and folder-level action still cover broader file-management needs.
+  - Assumption: restricting the reveal action to files inside the managed backups directory is acceptable even though the renderer already receives absolute backup paths from the recent-backups query.
+  - Why acceptable: it preserves the intended Settings → Capabilities contract and avoids turning the new TIPC action into a generic arbitrary-file reveal endpoint.
+- Changes implemented:
+  - Added `revealBundleBackupFile` to `apps/desktop/src/main/tipc.ts`, reusing `revealFileInFolder(...)` and validating that the requested file resolves inside the default backups directory before revealing it in Finder/Explorer.
+  - Added per-row `Reveal` actions to the `Recent backups` panel in `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, including spinner/error handling alongside the existing `Restore` action.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with source-level assertions covering the new renderer affordance and the guarded TIPC reveal action.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider adding `Copy path` if users still need faster handoff into terminal/Finder workflows beyond reveal + folder open.
+  - Consider per-backup cleanup/remove actions only after there is a clear retention-management design that complements the existing automatic pruning.
+  - Reuse the same reveal/provenance affordances in Hub install flows if bundle install history becomes a first-class surface.
+
+- Next recommended issue work item: treat `#57` as substantially wrapped unless a very small `Copy path` polish proves necessary, and otherwise pivot to a fresh issue with a tighter validated repro path than `#54`.
