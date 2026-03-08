@@ -50,6 +50,20 @@ function hasSkillDraftChanges(draft?: Partial<SkillDraft> | null, baseline?: Par
     || nextDraft.instructions !== nextBaseline.instructions
 }
 
+function DialogActionError({ message }: { message: string | null }) {
+  if (!message) return null
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className="rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+    >
+      {message}
+    </div>
+  )
+}
+
 
 export function Component() {
   const queryClient = useQueryClient()
@@ -63,6 +77,8 @@ export function Component() {
   const [isGitHubDialogOpen, setIsGitHubDialogOpen] = useState(false)
   const [isBundleImportDialogOpen, setIsBundleImportDialogOpen] = useState(false)
   const [gitHubRepoInput, setGitHubRepoInput] = useState("")
+  const [createSkillError, setCreateSkillError] = useState<string | null>(null)
+  const [editSkillError, setEditSkillError] = useState<string | null>(null)
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set())
   const [deleteConfirmSkill, setDeleteConfirmSkill] = useState<AgentSkill | null>(null)
@@ -112,6 +128,7 @@ export function Component() {
     setNewSkillName("")
     setNewSkillDescription("")
     setNewSkillInstructions("")
+    setCreateSkillError(null)
   }
 
   const closeCreateDialog = () => {
@@ -123,6 +140,7 @@ export function Component() {
     setIsEditDialogOpen(false)
     setEditingSkill(null)
     setEditingSkillBaseline(null)
+    setEditSkillError(null)
   }
 
   const closeDeleteSkillDialog = () => {
@@ -141,27 +159,11 @@ export function Component() {
     mutationFn: async ({ name, description, instructions }: { name: string; description: string; instructions: string }) => {
       return await tipcClient.createSkill({ name, description, instructions })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["skills"] })
-      closeCreateDialog()
-      toast.success("Skill created successfully")
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to create skill: ${error.message}`)
-    },
   })
 
   const updateSkillMutation = useMutation({
     mutationFn: async ({ id, name, description, instructions }: { id: string; name?: string; description?: string; instructions?: string }) => {
       return await tipcClient.updateSkill({ id, name, description, instructions })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["skills"] })
-      closeEditDialog()
-      toast.success("Skill updated successfully")
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update skill: ${error.message}`)
     },
   })
 
@@ -386,9 +388,16 @@ export function Component() {
   const isCreateSkillDirty = hasSkillDraftChanges(createSkillDraft, EMPTY_SKILL_DRAFT)
   const isEditSkillDirty = hasSkillDraftChanges(editingSkill, editingSkillBaseline)
   const editingSkillLabel = editingSkillBaseline?.name || editingSkill?.name || "this skill"
+  const trimmedNewSkillName = newSkillName.trim()
+  const trimmedNewSkillInstructions = newSkillInstructions.trim()
+  const trimmedEditingSkillName = editingSkill?.name.trim() ?? ""
+  const trimmedEditingSkillInstructions = editingSkill?.instructions.trim() ?? ""
+  const canCreateSkill = isCreateSkillDirty
+  const canUpdateSkill = !!editingSkill && isEditSkillDirty
 
   const handleCreateDialogOpenChange = (open: boolean) => {
     if (open) {
+      setCreateSkillError(null)
       setIsCreateDialogOpen(true)
       return
     }
@@ -401,6 +410,7 @@ export function Component() {
 
   const handleEditDialogOpenChange = (open: boolean) => {
     if (open) {
+      setEditSkillError(null)
       setIsEditDialogOpen(true)
       return
     }
@@ -411,30 +421,69 @@ export function Component() {
     closeEditDialog()
   }
 
-  const handleCreateSkill = () => {
-    if (!newSkillName.trim()) {
-      toast.error("Skill name is required")
+  const handleCreateSkill = async () => {
+    setCreateSkillError(null)
+
+    if (!trimmedNewSkillName) {
+      setCreateSkillError("Skill name is required")
       return
     }
-    if (!newSkillInstructions.trim()) {
-      toast.error("Skill instructions are required")
+    if (!trimmedNewSkillInstructions) {
+      setCreateSkillError("Skill instructions are required")
       return
     }
-    createSkillMutation.mutate({
-      name: newSkillName,
-      description: newSkillDescription,
-      instructions: newSkillInstructions,
-    })
+
+    try {
+      await createSkillMutation.mutateAsync({
+        name: trimmedNewSkillName,
+        description: newSkillDescription,
+        instructions: newSkillInstructions,
+      })
+      queryClient.invalidateQueries({ queryKey: ["skills"] })
+      closeCreateDialog()
+      toast.success("Skill created successfully")
+    } catch (error) {
+      console.error("[SettingsSkills] Failed to create skill", error)
+      const errorMessage = error instanceof Error && error.message.trim()
+        ? error.message
+        : "Couldn't create this new skill yet. Your draft is still open, so you can review it and try again."
+      setCreateSkillError(errorMessage)
+      toast.error(errorMessage)
+    }
   }
 
-  const handleUpdateSkill = () => {
+  const handleUpdateSkill = async () => {
     if (!editingSkill) return
-    updateSkillMutation.mutate({
-      id: editingSkill.id,
-      name: editingSkill.name,
-      description: editingSkill.description,
-      instructions: editingSkill.instructions,
-    })
+    setEditSkillError(null)
+
+    if (!trimmedEditingSkillName) {
+      setEditSkillError("Skill name is required")
+      return
+    }
+
+    if (!trimmedEditingSkillInstructions) {
+      setEditSkillError("Skill instructions are required")
+      return
+    }
+
+    try {
+      await updateSkillMutation.mutateAsync({
+        id: editingSkill.id,
+        name: trimmedEditingSkillName,
+        description: editingSkill.description,
+        instructions: editingSkill.instructions,
+      })
+      queryClient.invalidateQueries({ queryKey: ["skills"] })
+      closeEditDialog()
+      toast.success("Skill updated successfully")
+    } catch (error) {
+      console.error("[SettingsSkills] Failed to update skill", error)
+      const errorMessage = error instanceof Error && error.message.trim()
+        ? error.message
+        : `Couldn't save your changes to "${editingSkillLabel}" yet. Your draft is still open, so you can review it and try again.`
+      setEditSkillError(errorMessage)
+      toast.error(errorMessage)
+    }
   }
 
   const handleDeleteSkill = (skill: AgentSkill) => {
@@ -559,6 +608,7 @@ export function Component() {
   const handleEditSkill = (skill: AgentSkill) => {
     setEditingSkill({ ...skill })
     setEditingSkillBaseline(toSkillDraft(skill))
+    setEditSkillError(null)
     setIsEditDialogOpen(true)
   }
 
@@ -864,13 +914,17 @@ Write your skill instructions here.
                 You have unsaved changes. Save before closing to keep this draft.
               </div>
             )}
+            <DialogActionError message={createSkillError} />
             <div className="space-y-4">
               <div>
                 <Label htmlFor="skill-name">Name</Label>
                 <Input
                   id="skill-name"
                   value={newSkillName}
-                  onChange={(e) => setNewSkillName(e.target.value)}
+                  onChange={(e) => {
+                    setNewSkillName(e.target.value)
+                    setCreateSkillError(null)
+                  }}
                   placeholder="e.g., Code Review Expert"
                 />
               </div>
@@ -879,7 +933,10 @@ Write your skill instructions here.
                 <Input
                   id="skill-description"
                   value={newSkillDescription}
-                  onChange={(e) => setNewSkillDescription(e.target.value)}
+                  onChange={(e) => {
+                    setNewSkillDescription(e.target.value)
+                    setCreateSkillError(null)
+                  }}
                   placeholder="Brief description of what this skill does"
                 />
               </div>
@@ -888,7 +945,10 @@ Write your skill instructions here.
                 <Textarea
                   id="skill-instructions"
                   value={newSkillInstructions}
-                  onChange={(e) => setNewSkillInstructions(e.target.value)}
+                  onChange={(e) => {
+                    setNewSkillInstructions(e.target.value)
+                    setCreateSkillError(null)
+                  }}
                   rows={12}
                   className="font-mono text-sm"
                   placeholder="Enter the instructions for this skill in markdown format..."
@@ -899,8 +959,8 @@ Write your skill instructions here.
               <Button variant="outline" onClick={() => handleCreateDialogOpenChange(false)} disabled={createSkillMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateSkill} disabled={createSkillMutation.isPending}>
-                {createSkillMutation.isPending ? "Creating..." : "Create Skill"}
+              <Button onClick={() => void handleCreateSkill()} disabled={createSkillMutation.isPending || !canCreateSkill}>
+                {createSkillMutation.isPending ? "Creating..." : createSkillError ? "Retry create" : "Create Skill"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -920,6 +980,7 @@ Write your skill instructions here.
                 You have unsaved changes. Save before closing to keep this draft.
               </div>
             )}
+            <DialogActionError message={editSkillError} />
             {editingSkill && (
               <div className="space-y-4">
                 <div>
@@ -927,9 +988,10 @@ Write your skill instructions here.
                   <Input
                     id="edit-skill-name"
                     value={editingSkill.name}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setEditingSkill({ ...editingSkill, name: e.target.value })
-                    }
+                      setEditSkillError(null)
+                    }}
                   />
                 </div>
                 <div>
@@ -937,9 +999,10 @@ Write your skill instructions here.
                   <Input
                     id="edit-skill-description"
                     value={editingSkill.description}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setEditingSkill({ ...editingSkill, description: e.target.value })
-                    }
+                      setEditSkillError(null)
+                    }}
                   />
                 </div>
                 <div>
@@ -947,9 +1010,10 @@ Write your skill instructions here.
                   <Textarea
                     id="edit-skill-instructions"
                     value={editingSkill.instructions}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setEditingSkill({ ...editingSkill, instructions: e.target.value })
-                    }
+                      setEditSkillError(null)
+                    }}
                     rows={12}
                     className="font-mono text-sm"
                   />
@@ -960,8 +1024,8 @@ Write your skill instructions here.
               <Button variant="outline" onClick={() => handleEditDialogOpenChange(false)} disabled={updateSkillMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleUpdateSkill} disabled={updateSkillMutation.isPending}>
-                {updateSkillMutation.isPending ? "Saving..." : "Save Changes"}
+              <Button onClick={() => void handleUpdateSkill()} disabled={updateSkillMutation.isPending || !canUpdateSkill}>
+                {updateSkillMutation.isPending ? "Saving..." : editSkillError ? "Retry save" : "Save Changes"}
               </Button>
             </DialogFooter>
           </DialogContent>
