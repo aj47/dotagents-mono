@@ -1,5 +1,57 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 75: Desktop agents sidebar rows hid their real click targets and kept the expand control too tiny to feel trustworthy under cramped width
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/agent-capabilities-sidebar.tsx` (root sidebar `Agents` section → per-agent rows like `augustus`, `Worker Agent`, and `Web Browser`)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched root empty/loading states, `settings-general`, `settings-remote-server`, and other very recent desktop follow-ups unless a fresh live issue appeared.
+  - I initially checked the mobile workflow path as requested, but this worktree has no local `node_modules`, so `pnpm --filter @dotagents/mobile web` could not start Expo; rather than thrash, I moved to a reusable live Electron surface that was already available.
+  - The expanded desktop `Agents` sidebar exposed a fresh high-frequency navigation/configuration surface with real live data, and this exact per-agent row treatment was not logged recently in the ledger.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, repo workflow/design guidance, and the mobile workflow notes before choosing the next area
+  - confirmed the mobile live path was blocked in this checkout because local dependencies are missing (`expo` / `node_modules` unavailable), then reused the live Electron renderer reachable through `agent-browser --cdp 9333`
+  - stress-tested the mounted root sidebar at `620×900` with larger base text (`document.documentElement.style.fontSize = '24px'`), captured screenshot-backed evidence in `tmp/ui-audit/agents-sidebar-before-620x900-root24.png`, and measured representative per-agent rows directly in the live DOM
+  - used those live measurements to pinpoint the exact desktop implementation in `agent-capabilities-sidebar.tsx`, then made the smallest local row-level fix instead of redesigning the whole sidebar
+  - cross-checked mobile and confirmed this `AgentCapabilitiesSidebar` is desktop-only; `apps/mobile/src/screens/SessionListScreen.tsx` and the mobile settings flows do not share this sidebar component
+
+#### Findings
+
+- Before the fix, the desktop `Agents` sidebar had one concrete discoverability/hit-target issue with clear user impact:
+  - in live inspection at `620×900` with `24px` base text, representative per-agent rows were only about `139px` wide, but the visible edit button for rows like `Worker Agent`, `Main Agent`, and `Web Browser` collapsed to about `32px` of actual button width, while even `augustus` only used about `53px`
+  - the adjacent expand/collapse chevron button was only about `18×18`, which is undersized for a cramped sidebar control and visually easy to miss
+  - the live mounted controls also exposed no explicit `aria-label` / `title` on either the tiny chevron or the edit button, so the row gave weak affordance both visually and semantically
+  - practical impact: the sidebar rows look like compact structured entries, but the real interactive affordances are smaller and more ambiguous than the surrounding row chrome suggests, making expand/edit actions harder to discover and target when the sidebar is narrow or text is larger
+
+#### Changes made
+
+- Hardened only the per-agent rows in `apps/desktop/src/renderer/src/components/agent-capabilities-sidebar.tsx` with the smallest effective affordance/layout fix:
+  - introduced local row class constants so the row treatment is explicit and easier to keep consistent
+  - enlarged the per-agent expand/collapse control to a deliberate `24×24` button with hover/focus styling plus explicit `aria-label`, `aria-expanded`, and `title`
+  - promoted the edit affordance from bare text to a bounded, focusable row button with hover/focus chrome, explicit `aria-label` / `title`, and a wrap-safe two-line title span
+  - grouped the title button and connection-type badge in a `min-w-0 flex-1` lane and removed the old `ml-auto` badge push so the title area is no longer artificially starved by the badge layout contract
+  - added a safe `agent.displayName || agent.name` fallback for row labels so the control copy stays meaningful even if a display name is missing
+- Added `apps/desktop/src/renderer/src/components/agent-capabilities-sidebar.layout.test.ts` with focused source-contract coverage for the larger labeled controls and shrink-safe row structure
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-capabilities-sidebar.layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: a Node script confirmed the new per-row class constants, the expand/collapse `aria-label` / `aria-expanded` contract, the edit-button `aria-label`, the shrink-safe badge class, and the focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5173/` via `agent-browser --cdp 9333`:
+  - screenshot: `tmp/ui-audit/agents-sidebar-before-620x900-root24.png`
+  - representative mounted measurements: row width about `139px`; edit-button width about `32–53px`; chevron control about `18×18`; badge width about `32–53px`
+- Post-edit live verification blocker:
+  - after reloading the reusable Electron renderer, the mounted sidebar still reflected the old unlabeled `18×18` control contract, which indicates the running app is not serving this checkout’s rebuilt bundle
+  - I therefore did **not** claim literal post-edit runtime confirmation from this worktree and treated the live renderer strictly as pre-fix evidence for this chunk
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/agent-capabilities-sidebar.tsx apps/desktop/src/renderer/src/components/agent-capabilities-sidebar.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: practical mobile live inspection was attempted first but blocked by missing local dependencies, and the reusable Electron renderer is useful for evidence gathering but not guaranteed to be serving this checkout’s edited bundle. I therefore combined live pre-fix inspection with direct source verification instead of pretending a rebuilt post-fix runtime pass succeeded.
+- Mobile cross-check: no matching mobile code change was needed because this issue lives in a desktop-only sidebar component rather than a shared cross-app list row.
+- Tradeoff/rationale: the per-agent rows now spend a little more space on explicit focus/hover chrome and a larger chevron target, but that is a better product tradeoff than leaving the controls undersized and more ambiguous than the row visually implies.
+- Best next UI audit chunk after this one: once a renderer from this exact checkout is available, visually confirm the updated per-agent row treatment in the live desktop sidebar; otherwise continue on another fresh live-inspectable desktop/mobile surface instead of revisiting the agents sidebar again immediately.
+
 ### 2026-03-08 — Chunk 74: Desktop root empty-state quick-start actions broke into an awkward staggered cluster under larger text
 
 - Area selected:

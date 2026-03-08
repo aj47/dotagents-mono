@@ -14,6 +14,14 @@ type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: bool
 type ToolInfo = { name: string; description: string; serverName: string }
 
 const STORAGE_KEY = "agent-capabilities-sidebar-expanded"
+const AGENT_ROW_BASE_CLASS_NAME =
+  "flex w-full items-start gap-1.5 rounded px-1.5 py-1 text-xs transition-all"
+const AGENT_ROW_TOGGLE_BUTTON_CLASS_NAME =
+  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+const AGENT_ROW_EDIT_BUTTON_CLASS_NAME =
+  "min-w-0 flex-1 rounded-md px-1 py-0.5 text-left text-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+const AGENT_ROW_TITLE_CLASS_NAME =
+  "block min-w-0 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
 
 export function AgentCapabilitiesSidebar() {
   const navigate = useNavigate()
@@ -310,35 +318,49 @@ export function AgentCapabilitiesSidebar() {
         <div className="mt-1 space-y-0.5 pl-2">
           {enabledAgents.length === 0 ? (
             <p className="text-[11px] text-muted-foreground px-2 py-2">No enabled agents. Create agents in Settings → Agents.</p>
-          ) : enabledAgents.map(agent => (
-            <div key={agent.id}>
-              <div
-                className={cn(
-                  "flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-all",
-                  expandedAgentId === agent.id ? "bg-accent/50 text-foreground" : "text-muted-foreground hover:bg-accent/30 hover:text-foreground"
-                )}
-              >
-                <button
-                  onClick={() => setExpandedAgentId(prev => prev === agent.id ? null : agent.id)}
-                  className="shrink-0 focus:outline-none"
+          ) : enabledAgents.map(agent => {
+            const agentLabel = agent.displayName || agent.name
+            const isAgentExpanded = expandedAgentId === agent.id
+
+            return (
+              <div key={agent.id}>
+                <div
+                  className={cn(
+                    AGENT_ROW_BASE_CLASS_NAME,
+                    isAgentExpanded
+                      ? "bg-accent/50 text-foreground"
+                      : "text-muted-foreground hover:bg-accent/30 hover:text-foreground",
+                  )}
                 >
-                  {expandedAgentId === agent.id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                </button>
-                <button
-                  onClick={() => navigate(`/settings/agents?edit=${agent.id}`)}
-                  className="truncate flex-1 text-left focus:outline-none hover:underline"
-                >
-                  {agent.displayName}
-                </button>
-                <Badge variant="outline" className="ml-auto text-[10px] px-1 py-0 h-3.5">{agent.connection.type}</Badge>
-              </div>
-              {expandedAgentId === agent.id && (
-                <div className="pl-3 py-1">
-                  {renderAgentCapabilities(agent)}
+                  <button
+                    onClick={() => setExpandedAgentId(prev => prev === agent.id ? null : agent.id)}
+                    className={AGENT_ROW_TOGGLE_BUTTON_CLASS_NAME}
+                    aria-label={`${isAgentExpanded ? "Collapse" : "Expand"} ${agentLabel} capabilities`}
+                    aria-expanded={isAgentExpanded}
+                    title={`${isAgentExpanded ? "Collapse" : "Expand"} ${agentLabel} capabilities`}
+                  >
+                    {isAgentExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  </button>
+                  <div className="flex min-w-0 flex-1 items-start gap-1.5">
+                    <button
+                      onClick={() => navigate(`/settings/agents?edit=${agent.id}`)}
+                      className={AGENT_ROW_EDIT_BUTTON_CLASS_NAME}
+                      aria-label={`Edit ${agentLabel}`}
+                      title={`Edit ${agentLabel}`}
+                    >
+                      <span className={AGENT_ROW_TITLE_CLASS_NAME}>{agentLabel}</span>
+                    </button>
+                    <Badge variant="outline" className="shrink-0 text-[10px] px-1 py-0 h-3.5">{agent.connection.type}</Badge>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+                {isAgentExpanded && (
+                  <div className="pl-3 py-1">
+                    {renderAgentCapabilities(agent)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
