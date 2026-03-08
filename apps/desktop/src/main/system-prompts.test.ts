@@ -40,4 +40,13 @@ describe("constructSystemPrompt", () => {
 
     expect(prompt.split(skills).length - 1).toBe(1)
   })
+
+  it("teaches internal delegation to use waitForResult false for background work", async () => {
+    const { getSubSessionPromptAddition } = await import("./system-prompts")
+
+    const prompt = getSubSessionPromptAddition()
+
+    expect(prompt).toContain("waitForResult: false")
+    expect(prompt).toContain("keep working")
+  })
 })

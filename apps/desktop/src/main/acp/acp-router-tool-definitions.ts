@@ -32,7 +32,7 @@ export const acpRouterToolDefinitions = [
   {
     name: 'delegate_to_agent',
     description:
-      'Delegate a sub-task to a specialized ACP agent. The agent will work autonomously and return results. Use this when a task is better suited for a specialist.',
+      'Delegate a sub-task to a specialized ACP agent. The agent will work autonomously and return results. Use this when a task is better suited for a specialist. Set waitForResult=false when you want the main agent run to continue while the delegated agent works in the background.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -59,7 +59,7 @@ export const acpRouterToolDefinitions = [
         },
         waitForResult: {
           type: 'boolean',
-          description: 'Whether to wait for the agent to complete (default: true)',
+          description: 'Whether to wait for the agent to complete before continuing (default: true). Set to false for background delegation when the main agent should keep working.',
           default: true,
         },
       },
@@ -143,7 +143,7 @@ export const acpRouterToolDefinitions = [
   {
     name: 'send_to_agent',
     description:
-      'Send a task to an agent. Alias for delegate_to_agent. The agent will process the task and return results.',
+      'Send a task to an agent. Alias for delegate_to_agent. The agent will process the task and return results. Set waitForResult=false when you want background delegation and the main agent should continue immediately.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -174,7 +174,7 @@ export const acpRouterToolDefinitions = [
         },
         waitForResult: {
           type: 'boolean',
-          description: 'Whether to wait for the agent to complete (default: true)',
+          description: 'Whether to wait for the agent to complete before continuing (default: true). Set to false for background delegation when the main agent should keep working.',
           default: true,
         },
       },

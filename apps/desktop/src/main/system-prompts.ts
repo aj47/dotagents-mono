@@ -156,6 +156,7 @@ export function getSubSessionPromptAddition(): string {
 
   return `
 INTERNAL AGENT: Use \`delegate_to_agent\` with \`agentName: "internal"\` to spawn parallel sub-agents. Batch multiple calls for efficiency.
+- For fire-and-forget delegation, set \`waitForResult: false\` so the main agent can keep working while the sub-agent finishes in the background.
 - USE FOR: Independent parallel tasks (analyzing multiple files, researching different topics, divide-and-conquer)
 - AVOID FOR: Sequential dependencies, shared state/file conflicts, simple tasks
 - LIMITS: Max depth ${info.maxRecursionDepth}, max ${info.maxConcurrent} concurrent per parent

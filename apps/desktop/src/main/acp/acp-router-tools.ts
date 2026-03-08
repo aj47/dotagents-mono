@@ -186,6 +186,54 @@ function createRunningResult(subAgentState: DelegatedRun): DelegationResult {
   };
 }
 
+function setDelegatedConversationFromHistory(
+  subAgentState: DelegatedRun,
+  conversationHistory: Awaited<ReturnType<typeof runInternalSubSession>>['conversationHistory']
+): ACPSubAgentMessage[] {
+  subAgentState.conversation = conversationHistory.map((msg) => ({
+    role: msg.role,
+    content: msg.content,
+    timestamp: msg.timestamp,
+  }));
+
+  return subAgentState.conversation;
+}
+
+function finalizeInternalDelegationResult(
+  subAgentState: DelegatedRun,
+  result: Awaited<ReturnType<typeof runInternalSubSession>>
+): DelegationResult {
+  const conversation = setDelegatedConversationFromHistory(subAgentState, result.conversationHistory);
+  const endTime = Date.now();
+
+  if (result.success) {
+    const preferredOutput = getPreferredDelegationOutput(result.result || '', conversation);
+    subAgentState.result = {
+      runId: subAgentState.runId,
+      agentName: subAgentState.agentName,
+      status: 'completed',
+      startTime: subAgentState.startTime,
+      endTime,
+      metadata: { duration: endTime - subAgentState.startTime },
+      output: [{ role: 'assistant', parts: [{ content: preferredOutput }] }],
+    };
+
+    return createCompletedResult(subAgentState, preferredOutput, conversation);
+  }
+
+  subAgentState.result = {
+    runId: subAgentState.runId,
+    agentName: subAgentState.agentName,
+    status: 'failed',
+    startTime: subAgentState.startTime,
+    endTime,
+    metadata: { duration: endTime - subAgentState.startTime },
+    error: result.error || 'Unknown error',
+  };
+
+  return createFailedResult(subAgentState, result.error || 'Unknown error', conversation);
+}
+
 /**
  * Register agent name to run ID mapping for session update fallback.
  */
@@ -818,30 +866,32 @@ async function executeInternalAgent(
   const preGeneratedSubSessionId = generateSubSessionId();
   subAgentState.subSessionId = preGeneratedSubSessionId;
 
-  // Internal agent always executes synchronously
-  // waitForResult is ignored for internal agent (always waits)
+  const runSubSession = () => runInternalSubSession({
+    task: args.task,
+    context: args.context,
+    parentSessionId,
+    subSessionId: preGeneratedSubSessionId,
+    personaName: args.personaName,
+  });
+
+  if (!waitForResult) {
+    void runSubSession().then(
+      (result) => {
+        finalizeInternalDelegationResult(subAgentState, result);
+      },
+      (error) => {
+        finalizeAsyncRunWithError(subAgentState, agentName, error);
+      }
+    );
+
+    return createRunningResult(subAgentState);
+  }
+
   try {
-    const result = await runInternalSubSession({
-      task: args.task,
-      context: args.context,
-      parentSessionId,
-      subSessionId: preGeneratedSubSessionId,
-      personaName: args.personaName,
-    });
-
-    // Update conversation history in consolidated state
-    subAgentState.conversation = result.conversationHistory.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-      timestamp: msg.timestamp,
-    }));
-
-    if (result.success) {
-      return createCompletedResult(subAgentState, result.result || '', subAgentState.conversation);
-    } else {
-      return createFailedResult(subAgentState, result.error || 'Unknown error', subAgentState.conversation);
-    }
+    const result = await runSubSession();
+    return finalizeInternalDelegationResult(subAgentState, result);
   } catch (error) {
+    finalizeAsyncRunWithError(subAgentState, agentName, error);
     return createFailedResult(subAgentState, error instanceof Error ? error.message : String(error));
   }
 }
