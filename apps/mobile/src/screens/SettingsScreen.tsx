@@ -2165,17 +2165,32 @@ export default function SettingsScreen({ navigation }: any) {
                         </View>
                       </TouchableOpacity>
                       <View style={styles.agentActions}>
-                        <Switch
-                          value={profile.enabled}
-                          onValueChange={() => handleAgentProfileToggle(profile.id)}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                          thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                        />
+                        <TouchableOpacity
+                          style={styles.agentSwitchButton}
+                          onPress={() => handleAgentProfileToggle(profile.id)}
+                          accessibilityRole="switch"
+                          accessibilityLabel={createSwitchAccessibilityLabel(`${profile.displayName} agent`)}
+                          accessibilityHint="Enables or disables this agent for delegation."
+                          accessibilityState={{ checked: profile.enabled }}
+                          activeOpacity={0.7}
+                        >
+                          <View pointerEvents="none">
+                            <Switch
+                              accessible={false}
+                              value={profile.enabled}
+                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                              thumbColor={profile.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                          </View>
+                        </TouchableOpacity>
                         {!profile.isBuiltIn && (
                           <TouchableOpacity
                             style={styles.agentDeleteButton}
                             onPress={() => handleAgentProfileDelete(profile)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Delete ${profile.displayName} agent`)}
+                            accessibilityHint="Removes this agent after confirmation."
+                            activeOpacity={0.7}
                           >
                             <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
                           </TouchableOpacity>
@@ -3039,13 +3054,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     agentActions: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
+      alignItems: 'stretch',
+      gap: spacing.xs,
       flexShrink: 0,
       alignSelf: 'flex-start',
     },
+    agentSwitchButton: {
+      ...compactActionTouchTarget,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.secondary,
+    },
     agentDeleteButton: {
-      padding: spacing.xs,
+      ...compactActionTouchTarget,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
     },
     loopActions: {
       alignItems: 'stretch',

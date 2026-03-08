@@ -118,3 +118,45 @@
   - Remove the duplicate unnamed inner loop switch exposure on web without regressing the larger hit target.
   - Reduce loop-card text density with a local hierarchy improvement once action semantics are clean.
   - Revisit the `Settings > Agents` action rail for similar touch-target improvements.
+
+### 2026-03-08 — Iteration 3: name agent toggles and normalize agent action targets
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agents`
+  - `Settings > Agent Loops` for the existing action-rail pattern
+  - mobile workflow notes in `AGENTS.md` / `apps/mobile/package.json`
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Opened `Settings > Agents` and inspected the rendered accessibility tree.
+  - Found agent rows for `augustus`, `Worker Agent`, `Iterm Agent`, `Main Agent`, and `Web Browser`.
+  - Confirmed each enable toggle rendered at roughly `40x20` and exposed `role="switch"` with an empty accessible name.
+- Issue selected:
+  - The main per-agent enable/disable control in `Settings > Agents` was effectively unlabeled for assistive tech, and its native hit area stayed below comfortable mobile size.
+- Decision:
+  - Keep the change local to the agent action rail.
+  - Reuse the same wrapped-switch/mobile touch-target pattern already used for loop controls instead of inventing a new component.
+  - Add explicit delete-button semantics while touching the same high-density action cluster.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - wrap each agent toggle in a named `TouchableOpacity` with switch semantics,
+    - give the agent toggle a shared minimum `44px` touch target,
+    - make the inner visual `Switch` non-accessible so the outer control owns the label/state,
+    - promote the delete action to the same mobile-sized target with explicit accessibility label and hint.
+  - Added `apps/mobile/tests/settings-agent-actions-mobile.test.js` covering the new toggle/delete semantics and touch-target styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - named toggles such as `augustus agent toggle`, `Worker Agent agent toggle`, `Web Browser agent toggle`
+    - switch targets at roughly `56x44`
+    - delete buttons at `44x44` with names like `Delete augustus agent button`
+- Remaining nearby issues noted, not addressed this iteration:
+  - Web accessibility still shows an extra unnamed inner switch node beside each named wrapped agent toggle.
+  - `Agent Loops` still has the same duplicate-inner-switch caveat from the prior iteration.
+  - Loop cards remain text-heavy for narrow-screen scanning.
+- Next checks:
+  - Remove the duplicate unnamed inner switch exposure for both `Agents` and `Agent Loops` without shrinking the hit target.
+  - Reduce `Agent Loops` text density with a small hierarchy/readability improvement.
+  - Inspect the chat/session header trigger sizing again after settings-row affordances feel solid.
