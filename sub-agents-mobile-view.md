@@ -4661,3 +4661,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that both `AgentEdit` and `LoopEdit` now dismiss the keyboard when users drag the form.
   - Live-test while editing long text fields and then dragging toward the save CTA, profile section, and blocking notices to confirm those lower controls are easier to reach without awkward extra taps.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this keyboard-recovery fix without fresh evidence.
+
+## Iteration 106 - Disable stale saved-profile chips while LoopEdit is refreshing
+
+- Date: 2026-03-08
+- Summary: Kept previously loaded LoopEdit profile chips visible for context during profile refreshes, but made them temporarily non-interactive and clarified the loading copy so mobile users do not act on a list that is explicitly mid-refresh.
+- Review-before-change notes:
+  - Re-read the latest `sub-agents-mobile-view.md` entries first to avoid repeating the recent blocked-save, stale-profile, and keyboard-dismiss work without new evidence.
+  - Focused on `apps/mobile/src/screens/LoopEditScreen.tsx` because the last few iterations already concentrated on the loop profile section and that surface still had the clearest remaining mobile state-clarity risk.
+  - Re-checked `apps/mobile/tests/sub-agent-edit-mobile.test.js` before editing so the next change would stay consistent with the existing source-backed mobile regression style.
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection still was not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - A broader TypeScript pass also remains blocked by the missing Expo/mobile install: `pnpm --filter @dotagents/mobile exec tsc --noEmit` fails immediately with missing module / missing Expo base config errors.
+  - Because Expo is still unavailable locally, this iteration used source-backed state review plus focused Node-based regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - `LoopEditScreen` already surfaced a loading notice whenever saved profiles were refreshing.
+  - At the same time, any previously loaded saved-profile chips remained tappable until the refresh finished.
+  - On a narrow mobile screen that mixes two competing states: the UI says the list is updating, but the controls still imply the visible options are safe to change immediately.
+- Issue identified:
+  - During a profile refresh, LoopEdit let users interact with saved-profile chips that the screen itself was treating as potentially outdated, which weakens state clarity and can make the profile assignment feel unreliable.
+- Decision and rationale:
+  - Keep previous chips visible so the profile area does not collapse or lose context during refreshes.
+  - Make only the saved-profile chips temporarily passive while refreshing; keep `No profile` available so users still have an immediate, intentional escape hatch.
+  - Reuse the same muted disabled styling and accessibility pattern already introduced for stale post-error chips so loading and failure states behave consistently.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to derive `hasRefreshingProfileOptions` and a shared `areSavedProfileOptionsUnavailable` state.
+  - Replaced the generic loading copy with refresh-aware text when prior chips stay visible: the notice now explains that the visible options are from the last successful load and users should wait before changing the assignment.
+  - Disabled saved-profile chips while that refresh is in progress, dimmed them with the existing disabled style, and added a refresh-specific accessibility hint.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new refresh-state copy and the shared unavailable-chip behavior.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked because `apps/mobile/node_modules` is missing and `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by the same missing install / missing Expo config dependencies, so no live or typed mobile runtime validation was possible here
+- Assumptions and tradeoffs:
+  - Assumed temporarily disabling saved-profile chips during refresh is less confusing than allowing taps on data the screen itself marks as in-flight.
+  - Chose not to hide the old chips entirely, because that would make the section jump more noticeably and remove useful context about the current assignment.
+  - Kept the change tightly local to the LoopEdit profile section instead of broadening into a larger loading-state redesign without live inspection.
+- Remaining nearby issues noted, not addressed this iteration:
+  - This still needs live Expo Web or simulator validation to confirm the disabled chips feel understandable and not broken when the refresh notice appears.
+  - The relative balance between the loading notice, disabled chips, and `No profile` chip still needs screenshot-backed review on narrow devices.
+  - Returning from nested agent/profile creation still deserves live validation to confirm the refreshed list re-enables cleanly once new data arrives.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that returning to LoopEdit shows the refresh notice, temporarily disables saved-profile chips, and re-enables them once the fetch completes.
+  - Capture screenshot-backed evidence for the profile section on a narrow width while refreshing and after refresh completion.
+  - After that live pass, continue with the next highest-signal local mobile state-clarity issue instead of revisiting this loading-state fix without fresh evidence.

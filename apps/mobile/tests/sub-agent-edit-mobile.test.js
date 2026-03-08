@@ -103,7 +103,7 @@ test('LoopEditScreen makes profile chips mobile-sized buttons with selected-stat
   assert.match(loopEditSource, /createButtonAccessibilityLabel\('Select no profile'\)/);
   assert.match(loopEditSource, /createButtonAccessibilityLabel\(`Use \$\{profile\.displayName\} profile`\)/);
   assert.match(loopEditSource, /accessibilityState=\{\{ selected: !formData\.profileId \}\}/);
-  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: hasStaleProfileOptions \}\}/);
+  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: areSavedProfileOptionsUnavailable \}\}/);
 });
 
 test('LoopEditScreen keeps long profile chips stable on narrow screens', () => {
@@ -136,7 +136,9 @@ test('LoopEditScreen clears missing saved-profile assignments after a successful
 
 test('LoopEditScreen makes profile loading feel in-progress instead of passive helper text', () => {
   assert.match(loopEditSource, /const showProfileLoadingNotice = !!settingsClient && isLoadingProfiles;/);
-  assert.match(loopEditSource, /showProfileLoadingNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?<View style=\{styles\.profileLoadingNoticeRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?Loading saved profiles\. You can keep No profile if you want this loop unassigned\.[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(loopEditSource, /const hasRefreshingProfileOptions = showProfileLoadingNotice && profiles\.length > 0;/);
+  assert.match(loopEditSource, /const profileLoadingNoticeText = hasRefreshingProfileOptions[\s\S]*?Refreshing saved profiles\. The options below are from the last successful load, so wait for the update before changing this assignment\. You can still choose No profile\.[\s\S]*?Loading saved profiles\. You can keep No profile if you want this loop unassigned\./);
+  assert.match(loopEditSource, /showProfileLoadingNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?<View style=\{styles\.profileLoadingNoticeRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?\{profileLoadingNoticeText\}[\s\S]*?<\/View>[\s\S]*?\)/);
   assert.match(loopEditSource, /profileLoadingNoticeRow:\s*\{[\s\S]*?flexDirection:\s*'row'[\s\S]*?alignItems:\s*'center'[\s\S]*?gap:\s*spacing\.sm/);
   assert.match(loopEditSource, /profileLoadingNoticeText:\s*\{[\s\S]*?flex:\s*1/);
   assert.doesNotMatch(loopEditSource, /\{isLoadingProfiles && <Text style=\{styles\.helperText\}>Loading profiles\.\.\.<\/Text>\}/);
@@ -167,11 +169,12 @@ test('LoopEditScreen keeps profile load failures local to the Agent Profile sect
   assert.doesNotMatch(loopEditSource, /setError\(err\.message \|\| 'Failed to load agent profiles'\);/);
 });
 
-test('LoopEditScreen disables stale saved-profile chips until profile refresh succeeds', () => {
-  assert.match(loopEditSource, /style=\{\[[\s\S]*?styles\.profileOption,[\s\S]*?formData\.profileId === profile\.id && styles\.profileOptionActive,[\s\S]*?hasStaleProfileOptions && styles\.profileOptionDisabled,[\s\S]*?\]\}/);
-  assert.match(loopEditSource, /disabled=\{hasStaleProfileOptions\}/);
-  assert.match(loopEditSource, /accessibilityHint=\{[\s\S]*?hasStaleProfileOptions[\s\S]*?Saved profiles are shown from the last successful load\. Retry loading them before changing this assignment\.[\s\S]*?Assigns this loop to run with the selected saved profile\.[\s\S]*?\}/);
-  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: hasStaleProfileOptions \}\}/);
+test('LoopEditScreen disables unavailable saved-profile chips while refreshing or after refresh failures', () => {
+  assert.match(loopEditSource, /const areSavedProfileOptionsUnavailable = hasRefreshingProfileOptions \|\| hasStaleProfileOptions;/);
+  assert.match(loopEditSource, /style=\{\[[\s\S]*?styles\.profileOption,[\s\S]*?formData\.profileId === profile\.id && styles\.profileOptionActive,[\s\S]*?areSavedProfileOptionsUnavailable && styles\.profileOptionDisabled,[\s\S]*?\]\}/);
+  assert.match(loopEditSource, /disabled=\{areSavedProfileOptionsUnavailable\}/);
+  assert.match(loopEditSource, /accessibilityHint=\{[\s\S]*?hasRefreshingProfileOptions[\s\S]*?Saved profiles are refreshing\. Wait for the latest list before changing this assignment\.[\s\S]*?hasStaleProfileOptions[\s\S]*?Saved profiles are shown from the last successful load\. Retry loading them before changing this assignment\.[\s\S]*?Assigns this loop to run with the selected saved profile\.[\s\S]*?\}/);
+  assert.match(loopEditSource, /accessibilityState=\{\{ selected: formData\.profileId === profile\.id, disabled: areSavedProfileOptionsUnavailable \}\}/);
   assert.match(loopEditSource, /profileOptionDisabled:\s*\{[\s\S]*?opacity:\s*0\.6/);
 });
 

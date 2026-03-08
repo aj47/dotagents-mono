@@ -337,8 +337,13 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
   const showProfileLoadingNotice = !!settingsClient && isLoadingProfiles;
+  const hasRefreshingProfileOptions = showProfileLoadingNotice && profiles.length > 0;
   const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
   const hasStaleProfileOptions = showProfileLoadErrorNotice && profiles.length > 0;
+  const areSavedProfileOptionsUnavailable = hasRefreshingProfileOptions || hasStaleProfileOptions;
+  const profileLoadingNoticeText = hasRefreshingProfileOptions
+    ? 'Refreshing saved profiles. The options below are from the last successful load, so wait for the update before changing this assignment. You can still choose No profile.'
+    : 'Loading saved profiles. You can keep No profile if you want this loop unassigned.';
   const profileLoadErrorNoticeText = hasStaleProfileOptions
     ? 'Saved profiles couldn\'t refresh right now. The list below is from the last successful load, so retry before changing this assignment. You can still choose No profile.'
     : 'Saved profiles couldn\'t load right now. You can still save this loop with No profile, or retry loading them.';
@@ -520,18 +525,20 @@ export default function LoopEditScreen({ navigation, route }: any) {
             style={[
               styles.profileOption,
               formData.profileId === profile.id && styles.profileOptionActive,
-              hasStaleProfileOptions && styles.profileOptionDisabled,
+              areSavedProfileOptionsUnavailable && styles.profileOptionDisabled,
             ]}
             onPress={() => handleSelectProfile(profile.id)}
-            disabled={hasStaleProfileOptions}
+            disabled={areSavedProfileOptionsUnavailable}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${profile.displayName} profile`)}
             accessibilityHint={
-              hasStaleProfileOptions
+              hasRefreshingProfileOptions
+                ? 'Saved profiles are refreshing. Wait for the latest list before changing this assignment.'
+                : hasStaleProfileOptions
                 ? 'Saved profiles are shown from the last successful load. Retry loading them before changing this assignment.'
                 : 'Assigns this loop to run with the selected saved profile.'
             }
-            accessibilityState={{ selected: formData.profileId === profile.id, disabled: hasStaleProfileOptions }}
+            accessibilityState={{ selected: formData.profileId === profile.id, disabled: areSavedProfileOptionsUnavailable }}
             activeOpacity={0.7}
           >
             <Text
@@ -549,7 +556,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           <View style={styles.profileLoadingNoticeRow}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
             <Text style={[styles.profileNoticeText, styles.profileLoadingNoticeText]}>
-              Loading saved profiles. You can keep No profile if you want this loop unassigned.
+              {profileLoadingNoticeText}
             </Text>
           </View>
         </View>
