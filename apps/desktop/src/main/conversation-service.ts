@@ -135,21 +135,22 @@ export class ConversationService {
     await this.enqueueIndexMutation(async () => {
       try {
         let index = await this.ensureIndexLoaded()
+        const storedMessages = this.getStoredRawMessages(conversation)
 
         // Remove existing entry if it exists
         index = index.filter((item) => item.id !== conversation.id)
 
         // Create new index entry
         const lastMessage =
-          conversation.messages[conversation.messages.length - 1]
+          storedMessages[storedMessages.length - 1]
         const indexItem: ConversationHistoryItem = {
           id: conversation.id,
           title: conversation.title,
           createdAt: conversation.createdAt,
           updatedAt: conversation.updatedAt,
-          messageCount: conversation.messages.length,
+          messageCount: this.getRepresentedMessageCount(conversation),
           lastMessage: lastMessage?.content || "",
-          preview: this.generatePreview(conversation.messages),
+          preview: this.generatePreview(storedMessages),
         }
 
         // Add to beginning of array (most recent first)
@@ -329,7 +330,9 @@ export class ConversationService {
         logApp(`[ConversationService] Invalid conversation shape for ${conversationId}`)
         return null
       }
-      return conversation
+      const normalizedConversation = conversation as Conversation
+      await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, normalizedConversation)
+      return normalizedConversation
     } catch (error) {
       const repairedConversation = this.tryRepairConversationFromCorruptedData(conversationData)
       if (!repairedConversation) {
@@ -349,7 +352,34 @@ export class ConversationService {
         logApp(`[ConversationService] Recovered conversation ${conversationId} in-memory, but failed to persist repaired file.`, repairSaveError)
       }
 
+      await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, repairedConversation)
+
       return repairedConversation
+    }
+  }
+
+  private async persistStorageMetadataIfNeeded(
+    conversationId: string,
+    conversationPath: string,
+    conversation: Conversation,
+  ): Promise<void> {
+    const storageMetadataChanged = this.syncConversationStorageMetadata(conversation)
+    if (!storageMetadataChanged) {
+      return
+    }
+
+    try {
+      await this.writeConversationFileAtomic(
+        conversationPath,
+        JSON.stringify(conversation, null, 2),
+      )
+      await this.updateConversationIndex(conversation)
+      logApp(`[ConversationService] Normalized conversation storage metadata for ${conversationId}`)
+    } catch (persistError) {
+      logApp(
+        `[ConversationService] Failed to persist storage metadata normalization for ${conversationId}`,
+        persistError,
+      )
     }
   }
 
@@ -368,6 +398,8 @@ export class ConversationService {
     if (!preserveTimestamp) {
       conversation.updatedAt = Date.now()
     }
+
+    this.syncConversationStorageMetadata(conversation)
 
     await this.writeConversationFileAtomic(
       conversationPath,
@@ -409,6 +441,79 @@ export class ConversationService {
       .map((msg) => `${msg.role}: ${sanitizePreviewText(msg.content || "").slice(0, 100)}`)
       .join(" | ")
     return preview.length > 200 ? `${preview.slice(0, 200)}...` : preview
+  }
+
+  private hasSummaryMessages(messages: ConversationMessage[]): boolean {
+    return messages.some((message) => message.isSummary)
+  }
+
+  private getSummaryRepresentationCount(messages: ConversationMessage[]): number {
+    const summarizedMessageCount = messages
+      .filter((message) => message.isSummary)
+      .reduce((total, message) => total + (message.summarizedMessageCount ?? 0), 0)
+
+    return summarizedMessageCount + messages.filter((message) => !message.isSummary).length
+  }
+
+  private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {
+    if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
+      return conversation.rawMessages
+    }
+
+    return conversation.messages
+  }
+
+  private getRepresentedMessageCount(conversation: Conversation): number {
+    if (this.hasSummaryMessages(conversation.messages)) {
+      return this.getSummaryRepresentationCount(conversation.messages)
+    }
+
+    return this.getStoredRawMessages(conversation).length
+  }
+
+  private syncConversationStorageMetadata(conversation: Conversation): boolean {
+    let changed = false
+
+    if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length === 0) {
+      delete conversation.rawMessages
+      changed = true
+    }
+
+    const hasSummaryMessages = this.hasSummaryMessages(conversation.messages)
+    const hasRawMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    const isLegacyPartial = hasSummaryMessages && !hasRawMessages
+
+    if (!hasSummaryMessages && !hasRawMessages) {
+      if (conversation.compaction) {
+        delete conversation.compaction
+        changed = true
+      }
+      return changed
+    }
+
+    const nextCompaction = {
+      ...conversation.compaction,
+      rawHistoryPreserved: !isLegacyPartial,
+      storedRawMessageCount: hasRawMessages ? conversation.rawMessages?.length : undefined,
+      representedMessageCount: this.getRepresentedMessageCount(conversation),
+      partialReason: isLegacyPartial ? "legacy_summary_without_raw_messages" : undefined,
+    }
+
+    if (!hasSummaryMessages) {
+      delete nextCompaction.compactedAt
+    }
+
+    const previousCompactionJson = conversation.compaction
+      ? JSON.stringify(conversation.compaction)
+      : null
+    const nextCompactionJson = JSON.stringify(nextCompaction)
+
+    if (previousCompactionJson !== nextCompactionJson) {
+      conversation.compaction = nextCompaction
+      changed = true
+    }
+
+    return changed
   }
 
   private isConsecutiveDuplicate(
@@ -579,8 +684,10 @@ export class ConversationService {
           return null
         }
 
+        const storedMessages = this.getStoredRawMessages(conversation)
+
         // Idempotency guard: avoid pushing consecutive duplicate messages
-        const last = conversation.messages[conversation.messages.length - 1]
+        const last = storedMessages[storedMessages.length - 1]
         if (this.isConsecutiveDuplicate(last, role, content)) {
           conversation.updatedAt = Date.now()
           await this.saveConversationUnlocked(conversation)
@@ -598,6 +705,9 @@ export class ConversationService {
         }
 
         conversation.messages.push(message)
+        if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
+          conversation.rawMessages.push(message)
+        }
         await this.saveConversationUnlocked(conversation)
 
         return conversation
@@ -618,14 +728,26 @@ export class ConversationService {
    * @returns The compacted conversation
    */
   private async compactOnLoad(conversation: Conversation, sessionId?: string): Promise<Conversation> {
-    const messageCount = conversation.messages.length
+    const fullMessageHistory = this.getStoredRawMessages(conversation)
+    const messageCount = fullMessageHistory.length
     if (messageCount <= COMPACTION_MESSAGE_THRESHOLD) {
       return conversation
     }
 
+    const activeNonSummaryCount = conversation.messages.filter((message) => !message.isSummary).length
+    if (
+      Array.isArray(conversation.rawMessages) &&
+      conversation.rawMessages.length > 0 &&
+      this.hasSummaryMessages(conversation.messages) &&
+      this.getRepresentedMessageCount(conversation) === messageCount &&
+      activeNonSummaryCount <= COMPACTION_KEEP_LAST
+    ) {
+      return conversation
+    }
+
     // Calculate how many messages to summarize
-    const messagesToSummarize = conversation.messages.slice(0, messageCount - COMPACTION_KEEP_LAST)
-    const messagesToKeep = conversation.messages.slice(messageCount - COMPACTION_KEEP_LAST)
+    const messagesToSummarize = fullMessageHistory.slice(0, messageCount - COMPACTION_KEEP_LAST)
+    const messagesToKeep = fullMessageHistory.slice(messageCount - COMPACTION_KEEP_LAST)
 
     if (messagesToSummarize.length === 0) {
       return conversation
@@ -696,6 +818,14 @@ export class ConversationService {
     const compactedConversation: Conversation = {
       ...conversation,
       messages: [summaryMessage, ...messagesToKeep],
+      rawMessages: [...fullMessageHistory],
+      compaction: {
+        ...conversation.compaction,
+        rawHistoryPreserved: true,
+        storedRawMessageCount: fullMessageHistory.length,
+        representedMessageCount: fullMessageHistory.length,
+        compactedAt: Date.now(),
+      },
       updatedAt: Date.now(),
     }
 
