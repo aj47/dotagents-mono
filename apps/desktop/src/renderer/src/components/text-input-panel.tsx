@@ -3,17 +3,85 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
 import { AgentProcessingView } from "./agent-processing-view"
-import { AgentProgressUpdate } from "../../../shared/types"
+import { AgentProgressUpdate, AgentSkill } from "../../../shared/types"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { AgentSelector } from "./agent-selector"
-import { ImagePlus, X } from "lucide-react"
+import { ImagePlus, Sparkles, X } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { tipcClient } from "@renderer/lib/tipc-client"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
+
+const normalizeSkillSlashToken = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/^\/+/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+const getSkillSlashTokens = (skill: AgentSkill) =>
+  [skill.id, skill.name]
+    .map(normalizeSkillSlashToken)
+    .filter(Boolean)
+
+function getSlashCommandState(text: string, skills: AgentSkill[]) {
+  const trimmedStartText = text.replace(/^\s+/, "")
+  if (!trimmedStartText.startsWith("/")) {
+    return null
+  }
+
+  const commandMatch = trimmedStartText.match(/^\/([^\s\n]*)/)
+  if (!commandMatch) {
+    return null
+  }
+
+  const query = commandMatch[1] ?? ""
+  const normalizedQuery = normalizeSkillSlashToken(query)
+  const exactSkill = normalizedQuery
+    ? skills.find((skill) => getSkillSlashTokens(skill).includes(normalizedQuery)) ?? null
+    : null
+  const suggestions = skills
+    .filter((skill) => {
+      if (!normalizedQuery) {
+        return true
+      }
+      return getSkillSlashTokens(skill).some((token) => token.includes(normalizedQuery))
+    })
+    .slice(0, 6)
+  const nextCharacter = trimmedStartText.slice(commandMatch[0].length, commandMatch[0].length + 1)
+
+  return {
+    query,
+    exactSkill,
+    suggestions,
+    shouldShowSuggestions: nextCharacter === "",
+  }
+}
+
+function expandSlashCommandText(text: string, exactSkill: AgentSkill | null) {
+  if (!exactSkill) {
+    return text
+  }
+
+  const trimmedStartText = text.replace(/^\s+/, "")
+  const commandMatch = trimmedStartText.match(/^\/([^\s\n]+)([\s\S]*)$/)
+  if (!commandMatch) {
+    return text
+  }
+
+  const trailingText = commandMatch[2].trim()
+  if (!trailingText) {
+    return exactSkill.instructions.trim()
+  }
+
+  return `${exactSkill.instructions.trim()}\n\nUser request:\n${trailingText}`
+}
 
 interface TextInputPanelProps {
   onSubmit: (text: string) => void | Promise<boolean | void>
@@ -44,11 +112,24 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   const [text, setText] = useState(initialText || "")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedSlashSkillIndex, setSelectedSlashSkillIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const { isDark } = useTheme()
   const isBusy = isProcessing || isSubmitting
+  const skillsQuery = useQuery<AgentSkill[]>({
+    queryKey: ["skills"],
+    queryFn: () => tipcClient.getSkills(),
+    staleTime: 60_000,
+  })
+  const availableSkills = skillsQuery.data ?? []
+  const slashCommandState = React.useMemo(
+    () => getSlashCommandState(text, availableSkills),
+    [availableSkills, text],
+  )
+  const matchedSlashSkill = slashCommandState?.exactSkill ?? null
+  const selectedSlashSkill = slashCommandState?.suggestions[selectedSlashSkillIndex] ?? null
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -79,8 +160,28 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
     return undefined
   }, [isBusy])
 
+  useEffect(() => {
+    setSelectedSlashSkillIndex(0)
+  }, [slashCommandState?.query, slashCommandState?.suggestions.length])
+
+  const handleSelectSlashSkill = (skill: AgentSkill) => {
+    setText((currentText) => {
+      const commandMatch = currentText.match(/^(\s*)\/([^\s\n]*)/)
+      if (!commandMatch) {
+        return currentText
+      }
+
+      const leadingWhitespace = commandMatch[1] ?? ""
+      const remainder = currentText.slice(commandMatch[0].length)
+      const spacer = remainder.length === 0 ? " " : ""
+      return `${leadingWhitespace}/${skill.id}${spacer}${remainder}`
+    })
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }
+
   const handleSubmit = async () => {
-    const message = buildMessageWithImages(text, imageAttachments)
+    const expandedText = expandSlashCommandText(text, matchedSlashSkill)
+    const message = buildMessageWithImages(expandedText, imageAttachments)
     if (!message || isBusy || submitInFlightRef.current) return
 
     submitInFlightRef.current = true
@@ -130,6 +231,28 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (slashCommandState?.shouldShowSuggestions && selectedSlashSkill) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setSelectedSlashSkillIndex((currentIndex) =>
+          Math.min(currentIndex + 1, slashCommandState.suggestions.length - 1),
+        )
+        return
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault()
+        setSelectedSlashSkillIndex((currentIndex) => Math.max(currentIndex - 1, 0))
+        return
+      }
+
+      if ((e.key === "Tab" || e.key === "Enter") && !e.shiftKey) {
+        e.preventDefault()
+        handleSelectSlashSkill(selectedSlashSkill)
+        return
+      }
+    }
+
     const isModifierPressed = e.metaKey || e.ctrlKey;
 
     if (isModifierPressed && (e.key === '=' || e.key === 'Equal' || e.key === '+')) {
@@ -205,10 +328,18 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
             )}
           </div>
           <div className="modern-text-muted flex items-center justify-between gap-2 text-xs">
-            <span className="min-w-0 truncate">
-              <span className="hidden sm:inline">Type your message • Enter to send • Shift+Enter for new line • Esc to cancel</span>
-              <span className="sm:hidden">Enter to send • Esc to cancel</span>
-            </span>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="min-w-0 truncate">
+                <span className="hidden sm:inline">Type your message • Enter to send • Shift+Enter for new line • Esc to cancel • Type `/` for skills</span>
+                <span className="sm:hidden">Enter to send • Type `/` for skills</span>
+              </span>
+              {matchedSlashSkill && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                  <Sparkles className="h-3 w-3" />
+                  Skill: {matchedSlashSkill.name}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1">
               <PredefinedPromptsMenu
                 onSelectPrompt={(content) => setText(content)}
@@ -246,6 +377,46 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+          {slashCommandState?.shouldShowSuggestions && (
+            <div className="overflow-hidden rounded-lg border border-border/60 bg-muted/20">
+              <div className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Skill commands
+              </div>
+              <div
+                role="listbox"
+                aria-label="Skill slash command suggestions"
+                className="max-h-40 overflow-y-auto p-1"
+              >
+                {skillsQuery.isLoading ? (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">Loading skills…</div>
+                ) : slashCommandState.suggestions.length === 0 ? (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">
+                    No skills match `/{slashCommandState.query}`.
+                  </div>
+                ) : (
+                  slashCommandState.suggestions.map((skill, index) => (
+                    <button
+                      key={skill.id}
+                      type="button"
+                      className={cn(
+                        "flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left transition-colors",
+                        index === selectedSlashSkillIndex
+                          ? "bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+                          : "hover:bg-accent hover:text-accent-foreground",
+                      )}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => handleSelectSlashSkill(skill)}
+                    >
+                      <span className="font-medium">{skill.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        /{skill.id} • {skill.description || "Use this skill as a reusable prompt."}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           )}
           <Textarea

@@ -27,6 +27,7 @@ function createHookRuntime() {
     useRef,
     useContext: (context: { _currentValue: any }) => context?._currentValue,
     useEffect: () => undefined,
+    useMemo: (factory: () => any) => factory(),
     useImperativeHandle: (ref: { current: any } | null, create: () => any) => {
       if (ref) ref.current = create()
     },
@@ -94,13 +95,31 @@ async function flushPromises() {
 async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
   const Null = () => null
+  const mockSkills = [
+    {
+      id: "browse",
+      name: "Browse",
+      description: "Research a URL or page.",
+      instructions: "Use the browsing skill instructions.",
+      createdAt: 0,
+      updatedAt: 0,
+    },
+  ]
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
+  vi.doMock("@tanstack/react-query", () => ({
+    useQuery: () => ({ data: mockSkills, isLoading: false })
+  }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ") }))
+  vi.doMock("@renderer/lib/tipc-client", () => ({
+    tipcClient: {
+      getSkills: vi.fn(async () => mockSkills),
+    },
+  }))
   vi.doMock("./agent-processing-view", () => ({ AgentProcessingView: Null }))
   const themeContextMock = { useTheme: () => ({ isDark: false }) }
   vi.doMock("@renderer/contexts/theme-context", () => themeContextMock)
@@ -109,7 +128,7 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
   vi.doMock("./agent-selector", () => ({ AgentSelector: Null }))
   vi.doMock("lucide-react", () => {
     const Icon = () => null
-    return { ImagePlus: Icon, X: Icon }
+    return { ImagePlus: Icon, Sparkles: Icon, X: Icon }
   })
   vi.doMock("@renderer/lib/message-image-utils", () => ({
     buildMessageWithImages: (text: string) => text.trim(),
@@ -222,5 +241,73 @@ describe("TextInputPanel submit behavior", () => {
     expect(textarea.props.disabled).toBe(false)
     expect(retrySendButton.props.disabled).toBe(false)
     expect(consoleError).toHaveBeenCalledWith("Failed to submit text input panel message:", error)
+  })
+
+  it("expands exact slash skill commands into skill instructions and keeps inline arguments on submit", async () => {
+    const runtime = createHookRuntime()
+    const { TextInputPanel } = await loadTextInputPanel(runtime)
+    const onSubmit = vi.fn(async () => true)
+
+    let tree = runtime.render(TextInputPanel, {
+      onSubmit,
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "/browse https://example.com/docs",
+    } as any)
+
+    const sendButton = findNode(tree, (node) => node.type === "button" && getText(node) === "Send")
+    sendButton.props.onClick()
+    await flushPromises()
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      "Use the browsing skill instructions.\n\nUser request:\nhttps://example.com/docs",
+    )
+
+    tree = runtime.render(TextInputPanel, {
+      onSubmit,
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "/browse https://example.com/docs",
+    } as any)
+
+    expect(findTextarea(tree).props.value).toBe("")
+  })
+
+  it("uses Enter to accept the highlighted slash skill suggestion before sending", async () => {
+    const runtime = createHookRuntime()
+    const { TextInputPanel } = await loadTextInputPanel(runtime)
+    const onSubmit = vi.fn(async () => true)
+
+    let tree = runtime.render(TextInputPanel, {
+      onSubmit,
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "/bro",
+    } as any)
+
+    const textarea = findTextarea(tree)
+    const preventDefault = vi.fn()
+    textarea.props.onKeyDown({
+      key: "Enter",
+      shiftKey: false,
+      metaKey: false,
+      ctrlKey: false,
+      preventDefault,
+    })
+
+    tree = runtime.render(TextInputPanel, {
+      onSubmit,
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "/bro",
+    } as any)
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(findTextarea(tree).props.value).toBe("/browse ")
   })
 })
