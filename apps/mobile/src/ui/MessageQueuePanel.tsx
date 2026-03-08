@@ -491,13 +491,21 @@ export function MessageQueuePanel({
     return null;
   }
 
+  const headerActionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 8,
+    verticalPadding: 6,
+    horizontalMargin: 0,
+  });
+  const headerDisclosureTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 0,
+    verticalPadding: 0,
+    horizontalMargin: 0,
+  });
+
   const styles = StyleSheet.create({
-    headerActionTouchTarget: createMinimumTouchTargetStyle({
-      minSize: 44,
-      horizontalPadding: 8,
-      verticalPadding: 6,
-      horizontalMargin: 0,
-    }),
+    headerActionTouchTarget,
     container: {
       borderRadius: 8,
       borderWidth: 1,
@@ -508,12 +516,24 @@ export function MessageQueuePanel({
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: 4,
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
       backgroundColor: `${theme.colors.muted}50`,
+    },
+    headerCollapsed: {
+      borderBottomWidth: 0,
+    },
+    headerDisclosureButton: {
+      ...headerDisclosureTouchTarget,
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
     },
     headerLeft: {
       flexDirection: 'row',
@@ -624,58 +644,57 @@ export function MessageQueuePanel({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, isListCollapsed && { borderBottomWidth: 0 }]}>
-        <View style={styles.headerLeft}>
-          <Ionicons name="time-outline" size={16} color={theme.colors.mutedForeground} />
-        <View style={styles.headerTitleGroup}>
-          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-            Queued Messages ({messages.length})
-          </Text>
-          <Text
-            style={[
-              styles.headerStatusText,
-              failedCount > 0
-                ? styles.headerStatusTextDanger
-                : hasProcessingMessage
-                  ? styles.headerStatusTextActive
-                  : null,
-            ]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {queueHeaderStatusText}
-          </Text>
-        </View>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {!isListCollapsed && (
-            <TouchableOpacity
-              style={[styles.headerActionTouchTarget, styles.clearButton, hasProcessingMessage && styles.clearButtonDisabled]}
-              onPress={onClear}
-              disabled={hasProcessingMessage}
-              accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Clear queued messages')}
-              accessibilityHint={clearQueueAccessibilityHint}
-              accessibilityState={{ disabled: hasProcessingMessage }}
-            >
-              <Text style={styles.clearButtonText}>Clear All</Text>
-            </TouchableOpacity>
-          )}
+      <View style={[styles.header, isListCollapsed && styles.headerCollapsed]}>
+        <TouchableOpacity
+          style={styles.headerDisclosureButton}
+          onPress={() => setIsListCollapsed((prev) => !prev)}
+          accessibilityRole="button"
+          accessibilityLabel={queueDisclosureLabel}
+          accessibilityHint="Shows or hides queued messages for this conversation."
+          accessibilityState={{ expanded: !isListCollapsed }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.headerLeft}>
+            <Ionicons name="time-outline" size={16} color={theme.colors.mutedForeground} />
+            <View style={styles.headerTitleGroup}>
+              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+                Queued Messages ({messages.length})
+              </Text>
+              <Text
+                style={[
+                  styles.headerStatusText,
+                  failedCount > 0
+                    ? styles.headerStatusTextDanger
+                    : hasProcessingMessage
+                      ? styles.headerStatusTextActive
+                      : null,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {queueHeaderStatusText}
+              </Text>
+            </View>
+          </View>
+          <Ionicons
+            name={isListCollapsed ? 'chevron-down' : 'chevron-up'}
+            size={16}
+            color={theme.colors.mutedForeground}
+          />
+        </TouchableOpacity>
+        {!isListCollapsed && (
           <TouchableOpacity
-            style={[styles.headerActionTouchTarget, styles.clearButton]}
-            onPress={() => setIsListCollapsed((prev) => !prev)}
+            style={[styles.headerActionTouchTarget, styles.clearButton, hasProcessingMessage && styles.clearButtonDisabled]}
+            onPress={onClear}
+            disabled={hasProcessingMessage}
             accessibilityRole="button"
-            accessibilityLabel={queueDisclosureLabel}
-            accessibilityHint="Shows or hides queued messages for this conversation."
-            accessibilityState={{ expanded: !isListCollapsed }}
+            accessibilityLabel={createButtonAccessibilityLabel('Clear queued messages')}
+            accessibilityHint={clearQueueAccessibilityHint}
+            accessibilityState={{ disabled: hasProcessingMessage }}
           >
-            <Ionicons
-              name={isListCollapsed ? 'chevron-down' : 'chevron-up'}
-              size={16}
-              color={theme.colors.mutedForeground}
-            />
+            <Text style={styles.clearButtonText}>Clear All</Text>
           </TouchableOpacity>
-        </View>
+        )}
       </View>
       {hasProcessingMessage && !isListCollapsed && (
         <View style={styles.processingNotice}>

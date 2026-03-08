@@ -17,11 +17,13 @@ test('makes busy queue state explicit instead of silently disabling Clear All', 
   assert.match(queuePanelSource, /processingNoticeText:\s*\{[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.primary/);
 });
 
-test('gives queue header actions mobile-sized button semantics and explanatory hints', () => {
-  assert.match(queuePanelSource, /headerActionTouchTarget: createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
+test('turns the queue header disclosure into a broad mobile tap target while keeping clear semantics separate', () => {
+  assert.match(queuePanelSource, /const headerActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(queuePanelSource, /const headerDisclosureTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalPadding:\s*0,[\s\S]*?verticalPadding:\s*0,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(queuePanelSource, /headerDisclosureButton:\s*\{[\s\S]*?\.\.\.headerDisclosureTouchTarget,[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?justifyContent:\s*'space-between'/);
+  assert.match(queuePanelSource, /<View style=\{\[styles\.header, isListCollapsed && styles\.headerCollapsed\]\}>[\s\S]*?<TouchableOpacity[\s\S]*?style=\{styles\.headerDisclosureButton\}[\s\S]*?onPress=\{\(\) => setIsListCollapsed\(\(prev\) => !prev\)\}[\s\S]*?accessibilityLabel=\{queueDisclosureLabel\}[\s\S]*?accessibilityHint="Shows or hides queued messages for this conversation\."[\s\S]*?accessibilityState=\{\{ expanded: !isListCollapsed \}\}[\s\S]*?activeOpacity=\{0\.7\}/);
+  assert.match(queuePanelSource, /<Ionicons[\s\S]*?name=\{isListCollapsed \? 'chevron-down' : 'chevron-up'\}[\s\S]*?\/\>[\s\S]*?<\/TouchableOpacity>/);
   assert.match(queuePanelSource, /style=\{\[styles\.headerActionTouchTarget, styles\.clearButton, hasProcessingMessage && styles\.clearButtonDisabled\]\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Clear queued messages'\)[\s\S]*?accessibilityHint=\{clearQueueAccessibilityHint\}[\s\S]*?accessibilityState=\{\{ disabled: hasProcessingMessage \}\}/);
-  assert.match(queuePanelSource, /createExpandCollapseAccessibilityLabel\('queued messages', !isListCollapsed\)/);
-  assert.match(queuePanelSource, /accessibilityHint="Shows or hides queued messages for this conversation\."/);
   assert.match(queuePanelSource, /clearButtonDisabled:\s*\{[\s\S]*?opacity:\s*0\.7/);
 });
 

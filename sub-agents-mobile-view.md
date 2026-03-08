@@ -4754,3 +4754,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that VoiceOver/TalkBack announces the new `AgentEdit` and `LoopEdit` field labels/hints clearly while moving through the form one-handed.
   - Capture screenshot-backed and, if practical, screen-reader-backed evidence for the `AgentEdit` connection section and `LoopEdit` name/prompt/interval stack on a narrow screen.
   - After that live pass, continue with the next highest-signal local mobile readability or state-clarity issue instead of revisiting this accessibility-context fix without fresh evidence.
+
+## Iteration 108 - Make the queued-messages header itself the primary mobile disclosure target
+
+- Date: 2026-03-08
+- Summary: Reworked the mobile `MessageQueuePanel` header so the queued-messages disclosure uses a broad tappable header control instead of depending on a small chevron hit area, while keeping `Clear All` as a separate action.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid looping back into the recent `AgentEdit` / `LoopEdit` work without new evidence.
+  - Audited the nearby mobile sub-agent surfaces again, including `apps/mobile/src/ui/MessageQueuePanel.tsx`, `ResponseHistoryPanel.tsx`, and the existing queue-panel regression tests, before choosing the next issue.
+  - Picked a queue-panel issue that was still local, high-signal, and not already covered in the newest ledger entries: the disclosure affordance was semantically clear but visually concentrated into a small chevron tap target.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing (`apps/mobile/node_modules` is absent and `expo` is unavailable here).
+  - This iteration therefore used source-backed mobile review plus focused regression coverage instead of screenshot-backed validation.
+- Current behavior observed before the fix:
+  - The queue header already exposed title and status copy like `Queued Messages (N)` plus `Sending now` / `waiting` / `failed` summaries.
+  - On mobile, collapsing or reopening the queue still depended on a separate chevron button at the far edge of the header.
+  - That meant the visually dominant part of the header looked like the disclosure surface, but most of it was passive; only the small icon-sized affordance actually toggled the queue.
+- Issue identified:
+  - The queued-messages disclosure target was narrower than the visual header affordance, which weakens tap confidence and slows one-handed use on small screens.
+- Decision and rationale:
+  - Promote the whole informational side of the header into the disclosure control rather than adding another button or redesigning the panel.
+  - Keep `Clear All` separate so its destructive meaning stays explicit and accidental queue collapse does not compete with the clear action.
+  - Reuse the existing touch-target helper and current header copy instead of broadening into a larger queue-panel redesign without live Expo validation.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to create a dedicated `headerDisclosureTouchTarget` and a new `headerDisclosureButton` that spans the main header content.
+  - Moved the chevron into that broad disclosure button so the title, status summary, and disclosure icon now behave as one tap surface.
+  - Kept `Clear All` as a separate trailing action that only appears while the list is expanded, preserving its current disabled/busy semantics.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new broad-header disclosure structure and touch-target semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed that making the visible header content tappable is a safer, more intuitive mobile improvement than keeping a precise edge-only disclosure target.
+  - Chose not to make the entire header row—including `Clear All`—toggle the queue, because that would blur a destructive action with a disclosure action.
+  - This improves the interaction target in source, but still needs live validation to confirm the updated spacing and tap feel on narrow screens.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review on a narrow device to confirm the expanded header plus `Clear All` button balance well once the broader disclosure button is in place.
+  - The relationship between the queue panel and nearby response-history controls still deserves live inspection for one-handed reach and hierarchy.
+  - The broader sub-agent mobile flow still remains partially blocked on this worktree until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that tapping anywhere across the queue header content collapses and reopens the panel reliably while `Clear All` remains distinct.
+  - Capture screenshot-backed evidence for the queue panel in both expanded and collapsed states on a narrow width.
+  - After that live pass, continue with the next highest-signal local mobile hierarchy or state-clarity issue instead of revisiting this disclosure-target fix without fresh evidence.
