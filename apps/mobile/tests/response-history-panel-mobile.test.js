@@ -73,6 +73,11 @@ test('adds an inline speaking badge so the active playback row is obvious on nar
   assert.match(responseHistorySource, /\{isSpeaking \? \([\s\S]*?<Text style=\{styles\.speakingBadgeText\}>Speaking<\/Text>[\s\S]*?\) : null\}/);
 });
 
+test('lets response row metadata wrap before the speak control gets squeezed on narrow screens', () => {
+  assert.match(responseHistorySource, /responseHeader:\s*\{[\s\S]*?alignItems:\s*'flex-start',[\s\S]*?justifyContent:\s*'space-between'/);
+  assert.match(responseHistorySource, /responseMeta:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?flexDirection:\s*'row',[\s\S]*?flexWrap:\s*'wrap',[\s\S]*?minWidth:\s*0,[\s\S]*?flexShrink:\s*1/);
+});
+
 test('keeps response-history controls usable while the chat keyboard is open', () => {
   assert.match(responseHistorySource, /<ScrollView[\s\S]*?style=\{styles\.list\}[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"/);
 });

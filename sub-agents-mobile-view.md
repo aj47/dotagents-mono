@@ -1,5 +1,51 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 132 - Response history row metadata wraps before speak controls get squeezed
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-updated collapsed `Agents` / `Agent Settings` / `Agent Loops` header summaries without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree, ending with `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules because the mobile install is missing
+- Current behavior observed before the fix:
+  - Source review of `apps/mobile/src/ui/ResponseHistoryPanel.tsx` showed each response row still placed the timestamp and `Latest` / `Speaking` badges in a single horizontal `responseMeta` row.
+  - That metadata row sat beside the inline speak control with no wrap guardrail on the metadata cluster itself.
+  - On narrow screens, larger text, or longer locale time strings, the activity metadata would get squeezed sooner than necessary even though it is the primary scan target for delegated-response state.
+- Issue identified:
+  - Response history rows protected the speak button affordance, but not the readability of the timestamp-and-badge cluster that explains recency and playback state.
+- Decision and rationale:
+  - Keep the existing disclosure pattern, row ordering, and inline speak button unchanged.
+  - Do not broaden this into a redesign of the response row while live validation is blocked.
+  - Make the smallest hierarchy fix instead: let the metadata cluster claim the flexible width and wrap when needed, while top-aligning it with the speak control so the first line remains easy to scan.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - top-align `responseHeader` children with `alignItems: 'flex-start'`,
+    - give `responseMeta` flexible width with `flex: 1`,
+    - allow the timestamp / badge cluster to wrap with `flexWrap: 'wrap'` before the speak control gets crowded.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new row-level wrap guardrail.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+  - Mobile typecheck re-validation ⚠️ still blocked by the same missing install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+- Assumptions and tradeoffs:
+  - Assumed preserving timestamp / playback-state readability is more important than forcing the metadata onto one line beside the speak CTA.
+  - Chose wrapping instead of shrinking badge copy or weakening the speak affordance, which keeps the fix local and consistent with recent narrow-screen queue-row adjustments.
+  - This remains a source-backed change and still needs live confirmation that wrapped metadata feels balanced, not visually noisy, when several rows contain both `Latest` and `Speaking` badges.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `ResponseHistoryPanel` still lacks fresh screenshot-backed validation after the recent header-summary, latest-badge, speaking-badge, and row-wrap improvements.
+  - The response-history surface may still need one more live pass to confirm expanded rows, wrapped metadata, and inline speak buttons feel stable together on very narrow viewports.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that response rows with timestamps plus `Latest` / `Speaking` badges wrap cleanly beside the speak button without clipping or awkward vertical centering.
+  - Capture screenshot-backed evidence for collapsed vs expanded response-history states so the header summary, row metadata, and speak controls can be reviewed together on a narrow viewport.
+  - After that live pass, continue with the next highest-signal local sub-agent mobile issue instead of revisiting this row-wrap fix without fresh evidence.
 ## Purpose
 
 - Track focused, shippable improvements to the mobile sub-agents experience.

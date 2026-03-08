@@ -293,12 +293,14 @@ export function ResponseHistoryPanel({
     },
     responseHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       marginBottom: 4,
     },
     responseMeta: {
+      flex: 1,
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       gap: 6,
       minWidth: 0,
