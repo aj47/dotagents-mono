@@ -86,7 +86,13 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function loadOnboarding(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadOnboarding(
+  runtime: ReturnType<typeof createHookRuntime>,
+  overrides?: {
+    setMcpServerRuntimeEnabled?: ReturnType<typeof vi.fn>
+    restartMcpServer?: ReturnType<typeof vi.fn>
+  },
+) {
   vi.resetModules()
 
   let currentConfig: any = {
@@ -96,9 +102,10 @@ async function loadOnboarding(runtime: ReturnType<typeof createHookRuntime>) {
   const mutateAsync = vi.fn(async ({ config }: any) => {
     currentConfig = config
   })
-  const setMcpServerRuntimeEnabled = vi.fn(async () => {
+  const setMcpServerRuntimeEnabled = overrides?.setMcpServerRuntimeEnabled ?? vi.fn(async () => {
     throw new Error("Server failed to start")
   })
+  const restartMcpServer = overrides?.restartMcpServer ?? vi.fn(async () => ({ success: true }))
   const navigate = vi.fn()
 
   vi.doMock("react", () => runtime.reactMock)
@@ -129,7 +136,7 @@ async function loadOnboarding(runtime: ReturnType<typeof createHookRuntime>) {
       createRecording: vi.fn(),
       createMcpTextInput: vi.fn(),
       setMcpServerRuntimeEnabled,
-      restartMcpServer: vi.fn(),
+      restartMcpServer,
     },
   }))
   vi.doMock("@renderer/lib/recorder", () => ({
@@ -141,7 +148,13 @@ async function loadOnboarding(runtime: ReturnType<typeof createHookRuntime>) {
   }))
 
   const mod = await import("./onboarding")
-  return { Component: mod.Component, mutateAsync, setMcpServerRuntimeEnabled, navigate }
+  return {
+    Component: mod.Component,
+    mutateAsync,
+    setMcpServerRuntimeEnabled,
+    restartMcpServer,
+    navigate,
+  }
 }
 
 afterEach(() => {
@@ -180,6 +193,92 @@ describe("Onboarding Exa install errors", () => {
     expect(setMcpServerRuntimeEnabled).toHaveBeenCalledWith({ serverName: "exa", enabled: true })
     expect(getText(tree)).toContain("Exa was added to Settings, but we couldn't start it.")
     expect(getText(tree)).toContain("You can retry from Settings → MCP Tools.")
+    expect(findButton(tree, "Installed").props.disabled).toBe(true)
+    expect(consoleError).toHaveBeenCalledWith("Failed to install Exa:", expect.any(Error))
+  })
+
+  it("shows the same recovery message when restartMcpServer resolves with success false", async () => {
+    const runtime = createHookRuntime()
+    const setMcpServerRuntimeEnabled = vi.fn(async () => ({ success: true }))
+    const restartMcpServer = vi.fn(async () => ({
+      success: false,
+      error: "OAuth setup is incomplete",
+    }))
+    const { Component, mutateAsync } = await loadOnboarding(runtime, {
+      setMcpServerRuntimeEnabled,
+      restartMcpServer,
+    })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Get Started").props.onClick()
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Skip for Now").props.onClick()
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Skip Demo").props.onClick()
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Install").props.onClick()
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    expect(mutateAsync).toHaveBeenCalledOnce()
+    expect(setMcpServerRuntimeEnabled).toHaveBeenCalledWith({ serverName: "exa", enabled: true })
+    expect(restartMcpServer).toHaveBeenCalledWith({ serverName: "exa" })
+    expect(getText(tree)).toContain("Exa was added to Settings, but we couldn't start it.")
+    expect(getText(tree)).toContain("OAuth setup is incomplete")
+    expect(findButton(tree, "Installed").props.disabled).toBe(true)
+    expect(consoleError).toHaveBeenCalledWith("Failed to install Exa:", expect.any(Error))
+  })
+
+  it("surfaces a runtime-enable success=false result instead of showing a false success state", async () => {
+    const runtime = createHookRuntime()
+    const setMcpServerRuntimeEnabled = vi.fn(async () => ({
+      success: false,
+      error: "Server exa not found in configuration",
+    }))
+    const restartMcpServer = vi.fn(async () => ({ success: true }))
+    const { Component, mutateAsync } = await loadOnboarding(runtime, {
+      setMcpServerRuntimeEnabled,
+      restartMcpServer,
+    })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Get Started").props.onClick()
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Skip for Now").props.onClick()
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Skip Demo").props.onClick()
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    findButton(tree, "Install").props.onClick()
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    expect(mutateAsync).toHaveBeenCalledOnce()
+    expect(setMcpServerRuntimeEnabled).toHaveBeenCalledWith({ serverName: "exa", enabled: true })
+    expect(restartMcpServer).not.toHaveBeenCalled()
+    expect(getText(tree)).toContain("Exa was added to Settings, but we couldn't start it.")
+    expect(getText(tree)).toContain("Server exa not found in configuration")
     expect(findButton(tree, "Installed").props.disabled).toBe(true)
     expect(consoleError).toHaveBeenCalledWith("Failed to install Exa:", expect.any(Error))
   })

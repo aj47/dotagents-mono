@@ -223,6 +223,9 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` and confirmed the visible floating panel drag bar still relied on `onMouseDown={handleMouseDown}` plus `tipcClient.getPanelPosition()` / `updatePanelPosition(...)` / `savePanelCustomPosition(...)` for its custom drag + persistence flow.
 - [x] 2026-03-08: Confirmed the same drag bar previously set `WebkitAppRegion: disabled ? "no-drag" : "drag"` on that exact interactive `<div>`, while Electron drag regions suppress normal pointer interaction; that meant the custom `onMouseDown` drag-start handler could be skipped on the active desktop panel surface.
 - [x] 2026-03-08: Compared this desktop floating-panel drag bar against `apps/mobile/src`; mobile has no equivalent floating frameless panel or drag-bar component, so this fix is desktop-only rather than a shared renderer/mobile behavior change.
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/onboarding.tsx` and confirmed `handleInstallExa()` still awaited `tipcClient.setMcpServerRuntimeEnabled(...)` and `tipcClient.restartMcpServer(...)` without checking resolved `{ success: false, error }` results, so the onboarding CTA could continue down its success path even when the Exa runtime reported a non-throwing failure.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/mcp-service.ts` that the underlying runtime/start flow already uses structured failure results (`setServerRuntimeEnabled(...)` can return `false` when the saved server is missing, and `restartServer(...)` returns `{ success: false, error }` for restart/setup failures), making this a real contract mismatch rather than speculative cleanup.
+- [x] 2026-03-08: Checked `apps/mobile/src` for an equivalent onboarding Exa install flow and found none; this regression/fix remains desktop-only.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -496,6 +499,10 @@
   - In `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx`, the visible floating panel handle used `onMouseDown={handleMouseDown}` to read the current panel position and start a renderer-driven `mousemove` → `tipcClient.updatePanelPosition(...)` / `savePanelCustomPosition(...)` flow.
   - The same element previously styled itself with `WebkitAppRegion: disabled ? "no-drag" : "drag"`, but Electron drag regions are not normal interactive DOM hit targets, so the component was mixing native frameless-window dragging semantics with a custom pointer-event-driven drag-start contract on the same node.
   - Because `PanelDragBar` is mounted at the top of the live desktop `/panel` window, this could make the primary floating-panel reposition affordance appear unresponsive and prevent custom-position persistence from ever starting.
+- [x] **Desktop onboarding could show `Installed` after a failed Exa runtime/start step (directly confirmed in source):**
+  - In `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `handleInstallExa()` saved the MCP config and then awaited `tipcClient.setMcpServerRuntimeEnabled(...)` plus `tipcClient.restartMcpServer(...)`, but it only entered the visible recovery path when one of those promises threw.
+  - The main-process MCP service already returns structured non-throwing failures for these steps (`false` / `{ success: false, error }`), so onboarding could receive a real backend failure while still continuing to `setExaInstalled(true)` and clearing the install error.
+  - That meant the visible onboarding CTA could disable itself as `Installed` even though Exa had not actually started, leaving the user with a misleading partial-success state and no inline explanation.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so MCP server-status polling now tracks loading/error state, logs rejected status refreshes, and surfaces retryable initial/partial failure banners instead of swallowing the failure completely.
@@ -692,6 +699,8 @@
 
 - [x] Updated `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` so the floating panel drag handle now always uses `WebkitAppRegion: "no-drag"`, keeping the handle interactive for its existing custom `onMouseDown` / `mousemove` / `savePanelCustomPosition(...)` drag-persistence flow instead of delegating to Electron's native drag region hit testing.
 - [x] Added `apps/desktop/src/renderer/src/components/panel-drag-bar.layout.test.ts` with focused source-level assertions locking in the interactive `onMouseDown` contract, the persisted custom-position path, and the explicit `WebkitAppRegion: "no-drag"` guardrail.
+- [x] Updated `apps/desktop/src/renderer/src/pages/onboarding.tsx` so onboarding now captures the resolved results from `setMcpServerRuntimeEnabled(...)` and `restartMcpServer(...)`, and reuses the existing recovery/error UI whenever either call reports `success === false` instead of treating every resolved promise like a completed install.
+- [x] Extended `apps/desktop/src/renderer/src/pages/onboarding.exa-install.test.tsx` with focused regression coverage for both non-throwing failure contracts: a restart step that resolves `{ success: false, error }` and a runtime-enable step that resolves `success: false` before restart is attempted.
 
 ### Verified
 - [x] Manual source verification: `mcp-config-manager.tsx` now keeps `isLoadingServerStatus` / `hasLoadedServerStatus` / `serverStatusLoadError`, clears the error on successful polls, and renders explicit `Checking...` / `Unavailable` / `Disconnected` server badges instead of collapsing unknown status into disconnected.
@@ -880,6 +889,8 @@
 - [x] Manual source verification: `PanelDragBar` still starts dragging from `onMouseDown={handleMouseDown}` and persists the final position with `savePanelCustomPosition(...)`, but now keeps the visible handle in `WebkitAppRegion: "no-drag"` with an inline reminder that Electron drag regions ignore pointer events.
 - [x] Dependency-free verification: a plain `node` file-read assertion script passed for `apps/desktop/src/renderer/src/components/panel-drag-bar.tsx` and `apps/desktop/src/renderer/src/components/panel-drag-bar.layout.test.ts`, confirming the new `no-drag` contract, interactive drag handler, and regression-test expectations are present in source.
 - [x] Repository diff sanity check: `git diff --check -- apps/desktop/src/renderer/src/components/panel-drag-bar.tsx apps/desktop/src/renderer/src/components/panel-drag-bar.layout.test.ts` completed cleanly after the floating-panel drag-bar fix.
+- [x] Manual source verification: `handleInstallExa()` now throws into the existing inline recovery path when either `setMcpServerRuntimeEnabled(...)` or `restartMcpServer(...)` resolves with `success === false`, so `setExaInstalled(true)` no longer runs for those non-throwing backend failures.
+- [x] Dependency-free verification passed: a plain `node` file-read assertion script confirmed the new Exa false-result guards in `apps/desktop/src/renderer/src/pages/onboarding.tsx` and the new restart-false/runtime-enable-false regression tests in `apps/desktop/src/renderer/src/pages/onboarding.exa-install.test.tsx`.
 
 ### Blocked
 - [x] Targeted automated verification for this MCP server-status feedback fix is blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
@@ -950,6 +961,7 @@
 
 - [x] Targeted automated verification for this floating-panel drag-bar fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-drag-bar.layout.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction for this floating-panel drag-bar bug is blocked by the same missing renderer tooling in this worktree: `pnpm --filter @dotagents/desktop exec vite --version` and `pnpm --filter @dotagents/desktop exec electron-vite --version` both fail with `Command "vite" not found` / `Command "electron-vite" not found`, so I could not bring up the panel under the documented Electron remote-debugging workflow in this iteration.
+- [x] Targeted automated verification for this onboarding Exa-install false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop test tooling is still unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the MCP Servers section should eventually surface the same style of page-level partial-warning feedback for OAuth status refresh failures too, or whether the existing per-server OAuth fallback/error copy is sufficient once live desktop validation is available.
@@ -997,6 +1009,7 @@
 
  - [ ] Whether the integrated `MCPConfigManager` Tools section should eventually show a compact stale-data badge near the tool counts instead of the current warning banner + `Unavailable` empty-failure badge once live desktop polling behavior can be exercised.
 - [ ] Whether a stale desktop tool approval should eventually dismiss/hide the approval bubble immediately after `{ success: false }`, rather than only resetting the local responding state and waiting for the next progress sync, once live multi-window desktop validation is available.
+- [ ] Whether the onboarding Exa step should eventually expose an explicit `Retry start` action in-place once runtime enable/start fails after config save, rather than keeping the current conservative `Installed` + recovery-copy state that sends the user to Settings → MCP Tools.
 
 ### Diagnosis / Rationale
 - The MCP issue was not just missing feedback; it was also incorrect state labeling. Because missing `status` and genuinely disconnected `status` shared the same renderer branch, a failed diagnostics poll could actively tell the user the wrong thing (`Disconnected`) rather than simply omitting status.
@@ -1103,6 +1116,8 @@
 
 - The floating-panel issue is a direct contract mismatch between Electron window-drag regions and this component's own implementation: `PanelDragBar` was not using native frameless dragging; it was using a custom pointer-driven drag lifecycle that needs `onMouseDown` / `mousemove` events to fire on the handle itself.
 - For that implementation, forcing the visible handle into `WebkitAppRegion: "no-drag"` is the smallest safe fix because it preserves the existing IPC throttling, screen-constrained movement, and custom-position persistence without widening into main-process window-drag refactors.
+- The onboarding issue is another explicit boolean/result-contract mismatch on a primary setup CTA: the config-save step can succeed while the later runtime-enable/start step reports a non-throwing failure, and treating every resolved promise as success makes the user-visible install state less honest than the backend state.
+- Reusing the existing saved-but-not-started recovery UI is the smallest safe fix because it preserves the current onboarding layout, keeps successful installs unchanged, and only broadens the failure detection to match the main-process contract instead of inventing a new setup flow.
 
 ### Assumptions
 - Assumption: using inline retry banners plus `Checking...` / `Unavailable` badges for MCP server-status failures is acceptable because this page already functions as a diagnostics surface, while toast spam on every 1-second poll failure would be noisy and less actionable.
@@ -1167,6 +1182,7 @@
 - Assumption: surfacing `This tool approval is no longer pending.` through the existing approval-failure toast/reset path is acceptable because the main-process contract already distinguishes that stale state, and resetting the local in-flight flag is safer than inventing a new renderer-side approval-clear mechanism in this loop.
 
 - Assumption: keeping the floating panel drag handle permanently in `WebkitAppRegion: "no-drag"` is acceptable because this component already implements its own pointer-driven window movement and persistence, while native Electron drag-region behavior would fight that contract rather than add useful fallback behavior.
+- Assumption: keeping the onboarding Exa button in the existing saved-to-config `Installed` state after a runtime/start failure is acceptable for this pass because the server really was written to config, the inline recovery copy already explains that startup failed, and adding a richer retry/start control would widen the change beyond this concrete false-success bug.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` and live-verify desktop Settings → MCP Servers by forcing both an initial `getMcpServerStatus()` failure and a later poll failure, confirming the UI now shows `Checking...` / `Unavailable` / `Couldn't refresh MCP server status.` instead of incorrectly collapsing those cases into `Disconnected`.
@@ -1222,6 +1238,7 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-processing-view.stop-session.test.tsx` and live-verify the early-loading desktop panel/text-input stop flow to confirm it no longer no-ops before progress appears.
 - After that, decide whether the equivalent `AgentProgress` fallback stop path should also gain the same explicit warning copy and visible error feedback for complete consistency.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` and live-verify onboarding by forcing an Exa runtime-start failure so the new inline recovery message appears instead of a silent/misleading install result.
+- After that, inspect whether onboarding should offer a one-click retry/start affordance after partial Exa setup failure, or whether the current Settings → MCP Tools recovery path is sufficient once the live desktop flow is runnable again.
 - After that, inspect adjacent onboarding setup actions for any remaining console-only failures, especially other install/setup steps that can partially succeed before a later runtime/API call rejects.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts` and live-verify the desktop summary tab by forcing both a rejected save and a `no_durable_content` result so the new visible feedback appears instead of a silent no-op.
 - After that, decide whether summary cards should expose an upfront disabled/hint state when there is nothing durable to save, rather than relying only on post-click feedback.

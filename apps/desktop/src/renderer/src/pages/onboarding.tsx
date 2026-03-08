@@ -546,11 +546,18 @@ function AgentStep({
       exaSavedToConfig = true
 
       // Enable and start the server
-      await tipcClient.setMcpServerRuntimeEnabled({
+      const enableResult = await tipcClient.setMcpServerRuntimeEnabled({
         serverName: "exa",
         enabled: true,
       })
-      await tipcClient.restartMcpServer({ serverName: "exa" })
+      if (enableResult?.success === false) {
+        throw new Error(enableResult.error || "Failed to enable Exa in runtime.")
+      }
+
+      const restartResult = await tipcClient.restartMcpServer({ serverName: "exa" })
+      if (restartResult?.success === false) {
+        throw new Error(restartResult.error || "Failed to start Exa server.")
+      }
 
       setExaInstalled(true)
       setExaInstallError(null)
