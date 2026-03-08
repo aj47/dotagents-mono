@@ -69,6 +69,9 @@ AGENT FILE & COMMAND EXECUTION:
 - For small files (<200 lines): "cat path/to/file" is fine
 - For large files: read specific ranges with "sed -n 'START,ENDp' file" — never cat the whole thing
 - Write files: execute_command with "cat > path/to/file << 'EOF'\\n...content...\\nEOF" or "echo 'content' > file"
+- Before creating a new file, inspect nearby directories and existing naming patterns so the file lands in a sensible location
+- Unless the user explicitly asks for repo root or a specific path, do not drop ad-hoc notes/exports in repo root; prefer a source-adjacent location or a dedicated subdirectory named for the source/topic
+- When splitting or extracting content, use collision-safe filenames if headings/titles may repeat (for example add a slug or stable disambiguator)
 - List directories: execute_command with "ls -la path/"
 - Create directories: execute_command with "mkdir -p path/to/dir"
 - Run scripts: execute_command with "./script.sh" or "python script.py" etc.

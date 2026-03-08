@@ -69,4 +69,14 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("If delegation fails to start")
     expect(prompt).not.toContain("ALWAYS delegate")
   })
+
+  it("guides ad-hoc file creation away from repo root and toward collision-safe names", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+
+    expect(prompt).toContain("inspect nearby directories and existing naming patterns")
+    expect(prompt).toContain("do not drop ad-hoc notes/exports in repo root")
+    expect(prompt).toContain("collision-safe filenames")
+  })
 })

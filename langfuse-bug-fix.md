@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772927920519_2lnwf0iww | session_1772927920521_cdsbzo6kx, session_1772928514587_t5m8i3m15 | fix implemented (verification blocked) | User asked `can you extract it into its own md`; the first run created `tiling-ux-iteration-20.md` directly in repo root with a simplistic iteration-based name, then the follow-up complaint (`why did you do that`) triggered a second run to audit and reorganize the notes. Root repo issue found: agent-mode file-creation guidance had no instruction to inspect nearby organization patterns, avoid ad-hoc repo-root exports, or choose collision-safe filenames for extracted docs. |
 | 2026-03-08 | conv_1772915850389_hzuikwa8l | session_1772915850391_hzuikwa8l | fix implemented (verification blocked) | User asked `can you check my Claude usage stats`; the run correctly told them manual Google login was required, but verification kept treating the request as unfinished, so the loop continued through more browser/login attempts and Langfuse still ended with `output: null`. Root repo issue found: verification had no terminal handoff path for deliverable responses that were explicitly waiting on user action. |
 | 2026-03-08 | conv_1772919043420_3iszm2xnb | session_1772919043422_6u1wcgxu6, session_1772928508394_om0h5iwsg | fix implemented (verification blocked) | User asked `return-shape probe`; the first run delegated immediately to the coding agent, the coding agent failed to start, and the fallback reply only asked for clarification. A later `contniue` trace in the same session actually performed the likely intended probe. Root repo issue found: delegation prompt rules were too mandatory, so terse in-repo coding follow-ups were pushed to delegation before the main agent tried to continue directly. |
 | 2026-03-08 | conv_1772432432747_7ibvlw0k0 | session_1772432432218_cdjv7gyla | fix implemented (verification blocked) | User clarified `I meant Claude Code by Anthropic.`; the run hit max iterations and Langfuse `output` ended as stale progress text (`Let me search for the correct URL and browse to it.`) plus a timeout note instead of a real blocker/partial-result summary. Root repo issue found: max-iteration finalization trusted the latest assistant text even when it was only an in-progress status update. |
@@ -265,10 +266,50 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts apps/desktop/src/main/user-action-blocker.ts langfuse-bug-fix.md`
   - result: passed with exit code `0`
 
+### 2026-03-08 — Ad-hoc extraction runs need file-placement guidance, not repo-root dumps
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1772927920519_2lnwf0iww`
+  - failing trace: `session_1772927920521_cdsbzo6kx`
+    - user input: `can you extract it into its own md`
+    - trace output said the task was done and pointed to `/Users/ajjoobandi/Development/dotagents-mono/tiling-ux-iteration-20.md`
+    - trace observations show `execute_command` created that file directly in repo root with a plain iteration-number filename
+    - Langfuse verification marked the run complete because a standalone markdown file existed and was delivered to the user
+  - recovery trace: `session_1772928514587_t5m8i3m15`
+    - immediate user follow-up: `why did you do that. can you audit and organize notes`
+    - later output explicitly explained the first naming/location choice and then moved the extracted docs into `tiling-ux-extracted/` with a collision-proof naming pattern and index
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` had generic execute-command guidance for reading/writing files, but nothing about choosing the right destination for ad-hoc generated docs.
+  - there was no built-in instruction to inspect nearby directory conventions before writing, avoid cluttering repo root, or account for repeated section titles/iteration numbers when naming extracted files.
+- Concrete root cause:
+  - file-creation guidance optimized for tool mechanics (`cat > file`, `mkdir -p`, etc.) but not for placement or naming quality.
+  - that made it easy for a single run to satisfy the literal extraction request while still missing the user's practical intent: create a standalone note in a sensible, organized place.
+- Fix implemented:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - tell the agent to inspect nearby directories and naming patterns before creating files
+    - tell the agent not to drop ad-hoc notes/exports in repo root unless the user explicitly asked for that location
+    - tell the agent to use collision-safe filenames when extracting repeated headings/titles
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - added a regression test that asserts the prompt now includes repo-root avoidance and collision-safe naming guidance for ad-hoc file creation
+
+- Targeted test command attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - `pnpm --filter @dotagents/desktop test -- --run src/main/system-prompts.test.ts`
+- Result:
+  - direct `exec vitest` path failed because this worktree is missing local `node_modules/.bin` tools
+  - `pnpm test` reached desktop `pretest` but failed while building `@dotagents/shared`
+  - exact blocker: `tsup: command not found`, with pnpm warning that local `node_modules` are missing in this worktree
+- Dependency-free sanity check completed:
+  - `git diff --check -- apps/desktop/src/main/system-prompts.ts apps/desktop/src/main/system-prompts.test.ts langfuse-bug-fix.md`
+  - result: passed with exit code `0`
+  - confirmed the agent-mode prompt now contains explicit guidance to inspect nearby directories, avoid repo-root note dumps by default, and choose collision-safe filenames for extracted content
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
+- Recheck a fresh ad-hoc extraction trace after dependencies are restored, to confirm the agent now chooses a source-adjacent or dedicated subdirectory instead of writing extracted notes straight into repo root.
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
