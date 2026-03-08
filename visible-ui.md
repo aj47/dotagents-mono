@@ -78,3 +78,38 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
   - once the app is runnable, capture a real screenshot of the advanced agent editor and confirm the warning row looks calm at typical settings widths and higher zoom
   - other `Settings > Agents` rows with long text plus trailing actions may deserve the same narrow-width audit, but only after live evidence confirms they are visible pain points
 
+### Iteration 2026-03-08 / 03
+- Status: complete with live-inspection blocker documented
+- Screen / area reviewed: `Settings > Providers`, specifically collapsible provider section headers that show active usage badges (`OpenAI Compatible`, `Groq`, `Gemini`, local providers, and dual-model section)
+- Renderer target used:
+  - attempted desktop renderer main page via `REMOTE_DEBUGGING_PORT=9333` and `ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339"`
+  - no renderer target became available because the app failed in predev before Electron launched
+- Before-state screenshot evidence:
+  - blocked: no screenshot captured this iteration
+  - exact blocker: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm dev -- -d` failed in `packages/shared` with `sh: tsup: command not found` plus `node_modules missing` warnings, so the desktop renderer never opened for CDP attachment
+  - fallback source-level observation: `apps/desktop/src/renderer/src/pages/settings-providers.tsx` used the same single-line `flex items-center justify-between` header row across nine collapsible provider sections, while six active sections also rendered trailing usage badges on that same row
+- Issues found:
+  - provider names, collapse chevrons, active-state checks, and feature-usage badges all competed horizontally in one rigid row
+  - this likely makes the provider headers look cramped or wrap awkwardly in narrower settings panes, weakening the quick scan of "what provider is this?" versus "what is it currently used for?"
+- Assumptions:
+  - the provider name and collapse state are the primary header content; usage badges are supportive context and can wrap beneath or beside that title when width gets tight
+  - mobile does not need the same edit because `apps/mobile/src/screens/SettingsScreen.tsx` uses a different provider-selector pattern rather than collapsible badge-bearing provider cards
+- Design rationale:
+  - keep the header readable first, then let usage badges adapt to available width instead of stealing title space
+  - preserve existing information density while making the hierarchy more predictable under constrained widths
+  - improve multiple provider cards through one shared layout rule rather than making a one-off exception for a single provider
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to use shared wrapping header/title/badge class constants for the nine provider section headers
+  - let header buttons wrap with top alignment, give titles flexible width, and constrain badge rows to wrap within the available header width
+  - added `apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts` to lock in the new class usage and prevent the old rigid single-line header pattern from returning
+- Verification:
+  - attempted live app launch: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm dev -- -d` → failed before renderer launch because dependencies are missing in this worktree (`tsup: command not found`)
+  - attempted targeted test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.layout.test.ts` → failed because `vitest` is not installed in the current workspace (`Command "vitest" not found`)
+  - `git diff --check`
+- After-state observation:
+  - source-level after-state only: provider section headers now use a wrapping `flex` layout with a `min-w-0 flex-1` title region and a `max-w-full flex-wrap` usage-badge row, so badges can yield space to the provider title instead of forcing everything into a brittle single line
+  - the change stays local to existing card styling and should make active-provider headers read more calmly once the app is runnable again
+- Remaining opportunities:
+  - once dependencies are installed, capture live screenshots of the providers page with multiple active badges to confirm the headers actually wrap cleanly at typical settings widths and zoom levels
+  - if screenshots still show crowding after this, the next candidate is reducing badge prominence or moving some feature-usage context into the expanded card body rather than the collapsed header
+
