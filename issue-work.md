@@ -845,3 +845,33 @@
   - Consider whether very old compacted sessions below current thresholds need a one-time fuller index migration if real user data disproves the threshold-based backfill assumption.
 
 - Next recommended issue work item: refresh the remaining open issues and choose a new concrete slice outside `#58` unless a specific provenance inconsistency is still observable, because the highest-value trust/visibility gaps for compacted history are now largely covered.
+
+##### Issue #54 — ChatGPT subscription provider feasibility triage + ambiguity-reduction copy
+
+- Selection rationale:
+  - After two `#58` slices, `#54` was the most obvious remaining open issue, but it needed a feasibility pass before any implementation work because the request explicitly depends on OAuth/session semantics outside the repo's current API-key provider model.
+- Investigation:
+  - Read issue `#54` and confirmed the requested behavior is specifically `ChatGPT (Subscription)` via OAuth/session billing, not just another OpenAI-compatible API preset.
+  - Inspected provider definitions and settings wiring in `packages/shared/src/providers.ts`, `apps/desktop/src/shared/types.ts`, `apps/desktop/src/main/ai-sdk-provider.ts`, `apps/desktop/src/main/models-service.ts`, and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`.
+  - Confirmed the current architecture only supports explicit API-backed providers (`openai`, `groq`, `gemini`) plus local voice providers; there is no existing OAuth/session-token provider abstraction or ChatGPT-specific transport.
+  - Queried official OpenAI help center search results and found explicit guidance that ChatGPT subscriptions and API billing are separate (`How can I move my ChatGPT subscription to the API?` / `How can I access the ChatGPT API?`).
+- Important assumptions:
+  - Assumption: it is not responsible to add a fake or unofficial `ChatGPT (Subscription)` provider option without a documented, supportable auth + billing path.
+  - Why acceptable: the current repo routes all model traffic through API-style providers, and the official OpenAI help guidance says ChatGPT Plus/Pro does not grant API access. Shipping a UI option that implies otherwise would create broken expectations and likely reliability/security debt.
+  - Assumption: a small UX clarification in provider settings is a worthwhile issue slice even though it does not implement the requested provider.
+  - Why acceptable: it directly addresses the user confusion motivating `#54`, reduces support ambiguity immediately, and preserves honesty about current platform constraints while keeping the door open for a future supported integration.
+- Changes implemented:
+  - Added clarifying copy to `apps/desktop/src/renderer/src/pages/settings-providers.tsx` explaining that ChatGPT Plus/Pro subscriptions are billed separately from the OpenAI API and that OpenAI usage in DotAgents still requires API billing credentials or an OpenAI-compatible preset.
+  - Added a no-install regression test at `apps/desktop/src/renderer/src/pages/settings-providers.subscription-guidance.test.js` to assert the new guidance text and ensure the shared provider list still only exposes officially supported API-backed chat providers.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-providers.subscription-guidance.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #54:
+  - Revisit only if OpenAI exposes a documented OAuth/session-based integration path that explicitly permits third-party app usage against ChatGPT subscription entitlements.
+  - If the product still wants to pursue this sooner, the next step is a dedicated feasibility/legal/reliability review of any unofficial session approach before code implementation.
+  - If no official path emerges, consider reframing the user ask toward easier-to-support alternatives (for example, clearer OpenAI-compatible preset onboarding or cost-awareness UX) rather than pretending subscription billing works via the API.
+
+- Next recommended issue work item: refresh the open issue list again and prefer a new bug or tightly-scoped enhancement with a direct implementation path, since `#54` is now better triaged but still fundamentally blocked on external platform support.

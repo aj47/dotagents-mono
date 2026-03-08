@@ -1056,6 +1056,9 @@ export function Component() {
                 <p className="text-xs text-muted-foreground mt-3">
                   Create presets with individual API keys for different providers (OpenRouter, Together AI, etc.)
                 </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  ChatGPT Plus/Pro subscriptions are billed separately from the OpenAI API. To use OpenAI here, add API billing credentials or an OpenAI-compatible preset.
+                </p>
               </div>
 
               {/* OpenAI TTS - only shown for native OpenAI preset */}
