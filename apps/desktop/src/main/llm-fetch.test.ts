@@ -124,6 +124,33 @@ describe('LLM Fetch with AI SDK', () => {
     )
   })
 
+  it('records a readable Langfuse error status when plain streaming throws binary-like noise', async () => {
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+    const { isLangfuseEnabled, endLLMGeneration } = await import('./langfuse-service')
+
+    vi.mocked(isLangfuseEnabled).mockReturnValue(true)
+    streamTextMock.mockImplementation(() => {
+      throw new Error('\u001f\u008b\b\u0000binary-gzip-noise', {
+        cause: new Error('Cannot connect to API: upstream reset the connection'),
+      })
+    })
+
+    const { makeLLMCallWithStreaming } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithStreaming([{ role: 'user', content: 'test' }], vi.fn())
+    ).rejects.toThrow('Cannot connect to API: upstream reset the connection')
+
+    expect(vi.mocked(endLLMGeneration)).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        level: 'ERROR',
+        statusMessage: 'Cannot connect to API: upstream reset the connection',
+      })
+    )
+  })
+
   it('should return plain text when JSON parsing fails', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)

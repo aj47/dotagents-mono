@@ -980,18 +980,22 @@ export async function makeLLMCallWithStreaming(
       toolCalls: undefined,
     }
   } catch (error: any) {
+    const normalizedError = error?.name === "AbortError"
+      ? error
+      : normalizeError(error, "Streaming LLM call failed")
+
     // End Langfuse generation with error
     if (generationId) {
       endLLMGeneration(generationId, {
         level: "ERROR",
-        statusMessage: error?.message || "Streaming LLM call failed",
+        statusMessage: getErrorMessage(normalizedError, "Streaming LLM call failed"),
       })
     }
-    if (error?.name === "AbortError") {
-      throw error
+    if (normalizedError?.name === "AbortError") {
+      throw normalizedError
     }
-    diagnosticsService.logError("llm-fetch", "Streaming LLM call failed", error)
-    throw error
+    diagnosticsService.logError("llm-fetch", "Streaming LLM call failed", normalizedError)
+    throw normalizedError
   } finally {
     // Only unregister if we created the controller internally
     if (isInternalController) {

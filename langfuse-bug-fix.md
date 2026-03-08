@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772762736666_7bj08qdgg | session_1772762736667_04xp96wqz | fix implemented | User sent `hi`; the run ended with `output: null` after a single `Streaming LLM Call` error whose Langfuse status was only `Bad Request`. Fresh corroborating traces `conv_1772915623974_19t5gv3u6` / `session_1772915623977_t1j6if9gz`, `conv_1772905378777_q5hq0r5xs` / `session_1772905378779_d58nx1yvg`, and `conv_1772901755817_jhfxav45q` / `session_1772901755821_xnjfwsv3t` showed the same blank-output failure class with low-signal plain-streaming error statuses like `Cannot connect to API:`. Root repo issue found: the plain streaming LLM catch path still finalized Langfuse generations and rethrew with raw `error.message`, bypassing the repo's normalized nested-cause extraction used elsewhere. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx | session_1772912334717_md47yr0ht | fix implemented (verification blocked) | User asked for `.agent protocol hub` context plus starter-pack recommendations and follow-up questions. Langfuse showed multiple successful `github:get_file_contents` / `execute_command` context-gathering batches, then the run ended with `output: null` and no user-facing synthesis or questions. Later traces in the same session continued the same hub / starter-pack topic. Root repo issue found: repeated successful non-communication tool batches kept resetting the no-op safeguards, so the loop never nudged the model to stop gathering and synthesize or ask the focused questions it had promised. |
 | 2026-03-08 | conv_1772916005809_qqlggnsj6 | session_1772916005810_0a4il8g4j | fix implemented (verification blocked) | User asked to create a GitHub issue about preserving full conversation data. Langfuse showed `github:create_issue` succeeded, then `respond_to_user` succeeded with the finished issue link/summary, but the run still ended with `output: null` after one extra empty `Streaming LLM Call`. Root repo issue found: the tool-driven completion path only treated `mark_work_complete` or repeated `respond_to_user` loops as completion signals, so a deliverable `respond_to_user` after real work could still trigger another LLM turn and lose the already-delivered answer. |
 | 2026-03-08 | conv_1772927920519_2lnwf0iww | session_1772927920521_cdsbzo6kx, session_1772928514587_t5m8i3m15 | fix implemented (verification blocked) | User asked `can you extract it into its own md`; the first run created `tiling-ux-iteration-20.md` directly in repo root with a simplistic iteration-based name, then the follow-up complaint (`why did you do that`) triggered a second run to audit and reorganize the notes. Root repo issue found: agent-mode file-creation guidance had no instruction to inspect nearby organization patterns, avoid ad-hoc repo-root exports, or choose collision-safe filenames for extracted docs. |
@@ -737,13 +738,46 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/error-utils.ts apps/desktop/src/main/error-utils.test.ts apps/desktop/src/main/llm-fetch.ts apps/desktop/src/main/llm-fetch.test.ts langfuse-bug-fix.md`
   - ✅ passed
 
+### 2026-03-08 — Plain streaming errors should use normalized nested causes in Langfuse + thrown failures
+
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772762736666_7bj08qdgg` / `session_1772762736667_04xp96wqz`
+    - user input: `hi`
+    - trace outcome: `output: null`
+    - only observation: `Streaming LLM Call` error with status `Bad Request`
+  - corroborating recent traces:
+    - `conv_1772915623974_19t5gv3u6` / `session_1772915623977_t1j6if9gz`
+    - `conv_1772905378777_q5hq0r5xs` / `session_1772905378779_d58nx1yvg`
+    - `conv_1772901755817_jhfxav45q` / `session_1772901755821_xnjfwsv3t`
+    - all three ended after a single plain `Streaming LLM Call` with `output: null` and low-signal status text like `Failed after 3 attempts. Last error: Cannot connect to API:`
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm-fetch.ts` already uses `getErrorMessage(...)` / `normalizeError(...)` in several non-streaming and streaming+tools paths.
+  - the plain `makeLLMCallWithStreaming(...)` catch block was still special-casing errors with raw `error.message` for Langfuse generation finalization and then rethrowing the original error object unchanged.
+  - that left observability and downstream callers with generic top-level text (`Bad Request`, truncated transport noise, etc.) even when a richer nested cause was available.
+- Concrete root cause:
+  - plain streaming failures bypassed the repo's normalized error extraction on the final catch path.
+  - as a result, blank-output traces in this failure class were harder to diagnose because Langfuse kept the low-signal outer message instead of the readable nested cause the app already knows how to extract.
+- Change made:
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - normalize non-abort errors in the plain streaming catch path before logging/rethrowing
+    - finalize the Langfuse generation with `getErrorMessage(...)` instead of raw `error.message`
+    - rethrow the normalized error so outer layers also receive the readable message
+  - `apps/desktop/src/main/llm-fetch.test.ts`
+    - added a regression proving plain streaming binary-like / nested-cause failures now record the readable Langfuse status and throw the readable cause
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-fetch.test.ts`
+  - ✅ passed (`30 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test exits successfully
+  - `git diff --check -- apps/desktop/src/main/llm-fetch.ts apps/desktop/src/main/llm-fetch.test.ts`
+  - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
 - Recheck a fresh ad-hoc extraction trace after dependencies are restored, to confirm the agent now chooses a source-adjacent or dedicated subdirectory instead of writing extracted notes straight into repo root.
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
-- Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now surface the normalized readable error message instead of binary/gzip transport noise.
+- Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now surface the normalized readable error message instead of binary/gzip transport noise or low-signal plain-streaming statuses like `Bad Request`.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
