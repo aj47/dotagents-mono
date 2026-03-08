@@ -251,14 +251,17 @@ export function ModelPresetManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label>Model Provider Preset</Label>
-        <div className="flex gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <Label className="min-w-[min(100%,10rem)] flex-[1_1_10rem] leading-5">
+          Model Provider Preset
+        </Label>
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
           {currentPreset && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleEditPreset(currentPreset)}
+              className="h-7 shrink-0 gap-1.5 px-2 text-[11px]"
             >
               <Settings2 className="h-3 w-3 mr-1" />
               {currentPreset.isBuiltIn ? "Configure" : "Edit"}
@@ -268,6 +271,7 @@ export function ModelPresetManager() {
             variant="outline"
             size="sm"
             onClick={() => setIsCreateDialogOpen(true)}
+            className="h-7 shrink-0 gap-1.5 px-2 text-[11px]"
           >
             <Plus className="h-3 w-3 mr-1" />
             New Preset
@@ -282,13 +286,13 @@ export function ModelPresetManager() {
         <SelectContent>
           {allPresets.map((preset) => (
             <SelectItem key={preset.id} value={preset.id}>
-              <div className="flex items-center gap-2">
-                <span>{preset.name}</span>
+              <div className="flex w-full min-w-0 items-center gap-2">
+                <span className="min-w-0 flex-1 truncate">{preset.name}</span>
                 {preset.isBuiltIn && (
-                  <span className="text-xs text-muted-foreground">(Built-in)</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">(Built-in)</span>
                 )}
                 {preset.apiKey && (
-                  <Key className="h-3 w-3 text-green-500" />
+                  <Key className="h-3 w-3 shrink-0 text-green-500" />
                 )}
               </div>
             </SelectItem>
@@ -298,9 +302,11 @@ export function ModelPresetManager() {
 
       {currentPreset && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Globe className="h-4 w-4" />
-            <span className="truncate">{currentPreset.baseUrl || "No URL set"}</span>
+          <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+            <Globe className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate" title={currentPreset.baseUrl || "No URL set"}>
+              {currentPreset.baseUrl || "No URL set"}
+            </span>
           </div>
 
           {/* Inline model selectors - changes are auto-saved to preset */}
