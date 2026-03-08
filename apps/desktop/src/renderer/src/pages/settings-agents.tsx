@@ -733,20 +733,20 @@ export function SettingsAgents() {
             <TabsContent value="capabilities" className="space-y-4">
               {/* ── Skills Section ── */}
               <div className="rounded-lg border">
-                <div className="flex items-center justify-between w-full px-4 py-3">
-                  <button type="button" className="flex items-center gap-2 hover:bg-muted/50 transition-colors rounded-md px-1 py-0.5 -mx-1" onClick={() => toggleSection("skills")}>
+                <div className="flex w-full flex-wrap items-start gap-2 px-4 py-3">
+                  <button type="button" className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/50" onClick={() => toggleSection("skills")}>
                     {isSectionCollapsed("skills") ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     <Sparkles className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold text-sm">Skills</span>
                   </button>
-                  <div className="flex items-center gap-2">
+                  <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
                     {skills.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsEnabled} onClick={(e) => { e.stopPropagation(); enableAllSkills() }}>Enable All</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>Disable All</Button>
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-[11px]" disabled={allSkillsEnabled} onClick={(e) => { e.stopPropagation(); enableAllSkills() }}>Enable All</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
+                    <Badge variant="secondary" className="shrink-0 text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
                   </div>
                 </div>
                 {!isSectionCollapsed("skills") && (
@@ -771,20 +771,20 @@ export function SettingsAgents() {
 
               {/* ── MCP Servers Section ── */}
               <div className="rounded-lg border">
-                <div className="flex items-center justify-between w-full px-4 py-3">
-                  <button type="button" className="flex items-center gap-2 hover:bg-muted/50 transition-colors rounded-md px-1 py-0.5 -mx-1" onClick={() => toggleSection("mcp-servers")}>
+                <div className="flex w-full flex-wrap items-start gap-2 px-4 py-3">
+                  <button type="button" className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/50" onClick={() => toggleSection("mcp-servers")}>
                     {isSectionCollapsed("mcp-servers") ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     <Server className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold text-sm">MCP Servers</span>
                   </button>
-                  <div className="flex items-center gap-2">
+                  <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
                     {serverNames.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allServersEnabled} onClick={(e) => { e.stopPropagation(); enableAllServers() }}>Enable All</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allServersDisabled} onClick={(e) => { e.stopPropagation(); disableAllServers() }}>Disable All</Button>
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-[11px]" disabled={allServersEnabled} onClick={(e) => { e.stopPropagation(); enableAllServers() }}>Enable All</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-[11px]" disabled={allServersDisabled} onClick={(e) => { e.stopPropagation(); disableAllServers() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
+                    <Badge variant="secondary" className="shrink-0 text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
                   </div>
                 </div>
                 {!isSectionCollapsed("mcp-servers") && (
@@ -844,20 +844,20 @@ export function SettingsAgents() {
 
               {/* ── Built-in Tools Section ── */}
               <div className="rounded-lg border">
-                <div className="flex items-center justify-between w-full px-4 py-3">
-                  <button type="button" className="flex items-center gap-2 hover:bg-muted/50 transition-colors rounded-md px-1 py-0.5 -mx-1" onClick={() => toggleSection("builtin-tools")}>
+                <div className="flex w-full flex-wrap items-start gap-2 px-4 py-3">
+                  <button type="button" className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/50" onClick={() => toggleSection("builtin-tools")}>
                     {isSectionCollapsed("builtin-tools") ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     <Wrench className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold text-sm">Built-in Tools</span>
                   </button>
-                  <div className="flex items-center gap-2">
+                  <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
                     {builtinTools.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allBuiltinEnabled} onClick={(e) => { e.stopPropagation(); enableAllBuiltinTools() }}>Enable All</Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allBuiltinDisabled} onClick={(e) => { e.stopPropagation(); disableAllBuiltinTools() }}>Disable All</Button>
+                      <div className="flex flex-wrap items-center justify-end gap-1">
+                        <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-[11px]" disabled={allBuiltinEnabled} onClick={(e) => { e.stopPropagation(); enableAllBuiltinTools() }}>Enable All</Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-[11px]" disabled={allBuiltinDisabled} onClick={(e) => { e.stopPropagation(); disableAllBuiltinTools() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{builtinTools.filter(t => isBuiltinToolEnabled(t.name)).length} of {builtinTools.length} enabled</Badge>
+                    <Badge variant="secondary" className="shrink-0 text-xs">{builtinTools.filter(t => isBuiltinToolEnabled(t.name)).length} of {builtinTools.length} enabled</Badge>
                   </div>
                 </div>
                 {!isSectionCollapsed("builtin-tools") && (

@@ -1,5 +1,44 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 32: Desktop agent editor capabilities section headers under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+- Why this chunk: chunk 31 explicitly suggested `settings-agents.tsx` as the next fresh desktop top-level/settings surface. The page had older badge/toolbar fixes logged, but the agent edit form’s `Capabilities` tab still had an unlogged high-density control strip with clear narrow-width risk and direct impact on bulk configuration actions.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting the just-logged memories/mobile surfaces
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `README.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - re-checked current runtime constraints before choosing the surface: root, desktop, and mobile `node_modules` are still absent, so live Electron and Expo inspection remain blocked in this worktree
+  - inspected `settings-agents.tsx` directly, focusing on the edit form’s `Skills`, `MCP Servers`, and `Built-in Tools` section headers and their adjacent bulk-action controls
+
+#### Findings
+
+- Before the fix, the `Capabilities` tab still had one concrete desktop responsiveness issue with clear user impact:
+  - each section header used a rigid `justify-between` row, so the collapse trigger, `Enable All`, `Disable All`, and the enabled-count badge all competed for a single line
+  - the trailing action group had no intentional wrap path, so narrow settings widths or larger font zoom could crowd or clip the bulk controls users need to manage large agent configurations
+  - the enabled-count badge also had no explicit non-shrinking contract, so the status summary could be squeezed unpredictably instead of remaining legible beside wrapped actions
+
+#### Changes made
+
+- Hardened the `Capabilities` tab header chrome in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` with a small, local layout fix:
+  - made each of the three section headers `flex-wrap` and top-aligned so the title row can yield before the bulk actions are forced off-canvas
+  - upgraded each section toggle button to `min-w-0 flex-1 text-left` so the section title remains the primary flexible lane
+  - moved the trailing controls into a dedicated `ml-auto ... flex-wrap ... justify-end` cluster so `Enable All`, `Disable All`, and the enabled-count badge can reflow intentionally under tighter widths
+  - marked the bulk action buttons and summary badges non-shrinking so the controls stay readable once they wrap
+- Added `apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts` so this wrap-safe capabilities-header contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout tests: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.layout.test.ts src/renderer/src/pages/settings-agents.install-handoff.test.tsx` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/settings-agents.tsx` to confirm the three wrap-safe header/action clusters are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-agents.tsx apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts`
+
+#### Notes
+
+- This chunk is desktop-only: mobile `AgentEditScreen` uses a different React Native layout system and already had recent narrow-width/touch-target hardening, so no parallel mobile edit was needed here.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect the `Capabilities` tab with the window narrowed and font zoom increased while bulk-action buttons are visible.
+- Best next UI audit chunk after this one: stay on `settings-agents.tsx` for the `MCP Servers` per-row action strip and the general-tab advanced warning/toggle rows, or move to another fresh desktop surface such as `setup.tsx`.
+
 ### 2026-03-08 — Chunk 31: Desktop memories bulk-actions bar under narrow widths and zoom
 
 - Area selected:
