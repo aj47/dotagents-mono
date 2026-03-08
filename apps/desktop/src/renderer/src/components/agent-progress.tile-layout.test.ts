@@ -16,6 +16,14 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
   })
 
+  it("avoids showing a second maximize-style action when snoozed tiles already expose restore", () => {
+    expect(agentProgressSource).toContain(
+      'const showTileExpandAction = !!onExpand && !isExpanded && !isSnoozed'
+    )
+    expect(agentProgressSource).toContain('{showTileExpandAction && (')
+    expect(agentProgressSource).toContain('title="Restore session"')
+  })
+
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex flex-wrap items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"')

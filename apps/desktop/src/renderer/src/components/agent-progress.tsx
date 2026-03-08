@@ -3221,6 +3221,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const isSnoozed = progress.isSnoozed
     const shouldLimitTileTranscript = !isFocused && !isExpanded
     const shouldUseCompactTileFooter = !isFocused && !isExpanded
+    const showTileExpandAction = !!onExpand && !isExpanded && !isSnoozed
     const tileDisplayItems = shouldLimitTileTranscript
       ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
       : displayItems
@@ -3268,7 +3269,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
             </Button>
 
-            {onExpand && !isExpanded && (
+            {showTileExpandAction && (
               <Button
                 variant="ghost"
                 size="icon"
