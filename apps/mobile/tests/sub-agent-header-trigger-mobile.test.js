@@ -24,8 +24,9 @@ for (const [screenName, source] of [
 
   test(`${screenName} keeps the header agent label legible on narrow screens`, () => {
     assert.match(source, /style=\{styles\.headerAgentSelectorBadge\}/);
-    assert.match(source, /style=\{styles\.headerAgentSelectorBadgeText\} numberOfLines=\{1\} ellipsizeMode="tail"/);
-    assert.match(source, /headerAgentSelectorBadgeText:\s*\{[\s\S]*?flexShrink: 1/);
+    assert.match(source, /style=\{styles\.headerAgentSelectorBadgeText\} numberOfLines=\{2\} ellipsizeMode="tail"/);
+    assert.match(source, /headerAgentSelectorBadge:\s*\{[\s\S]*?alignItems: 'flex-start',[\s\S]*?paddingVertical: 4,[\s\S]*?maxWidth: 180,[\s\S]*?minWidth: 0/);
+    assert.match(source, /headerAgentSelectorBadgeText:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 15,[\s\S]*?flexShrink: 1,[\s\S]*?minWidth: 0/);
     assert.match(source, /maxWidth: 180/);
   });
 
@@ -55,7 +56,7 @@ for (const [screenName, source] of [
 
   test(`${screenName} styles the no-options header badge as passive status instead of an active selector`, () => {
     assert.match(source, /style=\{\[styles\.headerAgentSelectorBadge, styles\.headerAgentSelectorBadgeStatic\]\}/);
-    assert.match(source, /style=\{\[styles\.headerAgentSelectorBadgeText, styles\.headerAgentSelectorBadgeTextStatic\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"/);
+    assert.match(source, /style=\{\[styles\.headerAgentSelectorBadgeText, styles\.headerAgentSelectorBadgeTextStatic\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"/);
     assert.match(source, /headerAgentSelectorBadgeStatic:\s*\{[\s\S]*?backgroundColor: theme\.colors\.muted/);
     assert.match(source, /headerAgentSelectorBadgeTextStatic:\s*\{[\s\S]*?color: theme\.colors\.mutedForeground/);
   });

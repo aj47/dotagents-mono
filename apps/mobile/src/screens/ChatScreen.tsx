@@ -522,7 +522,7 @@ export default function ChatScreen({ route, navigation }: any) {
           >
             <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
             <View style={styles.headerAgentSelectorBadge}>
-              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1} ellipsizeMode="tail">
+              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={2} ellipsizeMode="tail">
                 {currentAgentLabel}
               </Text>
               <Text style={styles.headerAgentSelectorBadgeChevron}>
@@ -540,7 +540,7 @@ export default function ChatScreen({ route, navigation }: any) {
             <View style={[styles.headerAgentSelectorBadge, styles.headerAgentSelectorBadgeStatic]}>
               <Text
                 style={[styles.headerAgentSelectorBadgeText, styles.headerAgentSelectorBadgeTextStatic]}
-                numberOfLines={1}
+                numberOfLines={2}
                 ellipsizeMode="tail"
               >
                 {currentAgentLabel}
@@ -3621,21 +3621,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerAgentSelectorBadge: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       paddingHorizontal: 10,
+      paddingVertical: 4,
       minHeight: 24,
       borderRadius: radius.full,
       backgroundColor: theme.colors.primary + '1a',
       maxWidth: 180,
+      minWidth: 0,
     },
     headerAgentSelectorBadgeStatic: {
       backgroundColor: theme.colors.muted,
     },
     headerAgentSelectorBadgeText: {
       fontSize: 12,
+      lineHeight: 15,
       color: theme.colors.primary,
       fontWeight: '600',
       flexShrink: 1,
+      minWidth: 0,
     },
     headerAgentSelectorBadgeChevron: {
       fontSize: 11,
