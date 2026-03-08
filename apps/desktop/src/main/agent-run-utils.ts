@@ -108,3 +108,18 @@ export function getPreferredDelegationOutput(
     (typeof output === "string" ? output : "")
   )
 }
+
+export function preferStoredUserResponse(
+  currentFinalContent: string,
+  storedUserResponse?: string | null,
+): string {
+  if (typeof currentFinalContent === "string" && currentFinalContent.trim().length > 0) {
+    return currentFinalContent
+  }
+
+  if (typeof storedUserResponse === "string" && storedUserResponse.trim().length > 0) {
+    return storedUserResponse
+  }
+
+  return typeof currentFinalContent === "string" ? currentFinalContent : ""
+}

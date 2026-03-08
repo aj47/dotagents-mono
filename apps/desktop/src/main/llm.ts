@@ -43,6 +43,7 @@ import {
 } from "../shared/builtin-tool-names"
 import {
   appendAgentStopNote,
+  preferStoredUserResponse,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 import { filterEphemeralMessages } from "./conversation-history-utils"
@@ -2574,6 +2575,13 @@ Return ONLY JSON per schema.`,
     const hasErrors = toolResults.some((result) => result.isError)
     const allToolsSuccessful = toolResults.length > 0 && !hasErrors
 
+    if (allToolsSuccessful) {
+      finalContent = preferStoredUserResponse(
+        finalContent,
+        getSessionUserResponse(currentSessionId),
+      )
+    }
+
     // Deferred completion signal: only treat mark_work_complete as a completion signal
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
@@ -2906,6 +2914,11 @@ Return ONLY JSON per schema.`,
     }
   }
 
+  finalContent = preferStoredUserResponse(
+    finalContent,
+    getSessionUserResponse(currentSessionId),
+  )
+
   if (iteration >= maxIterations) {
     // Handle maximum iterations reached - always ensure we have a meaningful summary
     const hasRecentErrors = progressSteps
@@ -2980,6 +2993,11 @@ Return ONLY JSON per schema.`,
   } finally {
     // End Langfuse trace for this agent session if enabled
     // This is in a finally block to ensure traces are closed even on unexpected exceptions
+    finalContent = preferStoredUserResponse(
+      finalContent,
+      getSessionUserResponse(currentSessionId),
+    )
+
     if (isLangfuseEnabled()) {
       endAgentTrace(currentSessionId, {
         output: finalContent,

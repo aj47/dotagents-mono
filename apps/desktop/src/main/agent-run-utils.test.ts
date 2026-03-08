@@ -5,6 +5,7 @@ import {
   appendAgentStopNote,
   buildProfileContext,
   getPreferredDelegationOutput,
+  preferStoredUserResponse,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 
@@ -103,6 +104,22 @@ describe("agent-run-utils", () => {
           { role: "assistant", content: "Real final output" },
         ]),
       ).toBe("Real final output")
+    })
+  })
+
+  describe("preferStoredUserResponse", () => {
+    it("preserves an existing final content value", () => {
+      expect(preferStoredUserResponse("Explicit final summary", "Delivered to user")).toBe(
+        "Explicit final summary",
+      )
+    })
+
+    it("falls back to a stored respond_to_user message when final content is blank", () => {
+      expect(preferStoredUserResponse("   ", "Delivered to user")).toBe("Delivered to user")
+    })
+
+    it("returns the original blank content when no stored user response exists", () => {
+      expect(preferStoredUserResponse("", undefined)).toBe("")
     })
   })
 })

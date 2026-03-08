@@ -10,7 +10,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | --- | --- | --- | --- | --- |
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
 | 2026-03-08 | conv_1772944149514_dhmqtdvqt | session_1772944149515_tgt7e6ykh | fix implemented (verification blocked) | Simple user input `Hi` produced trace `output: null`; the only observation was `LLM Call` with error `API key expired. Please renew the API key.` Root repo issue found: provider/API errors could escape before `finalContent` was populated, leaving the run trace blank instead of preserving a terminal error message. |
-| 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | inspected-not-chosen | Follow-up recovery case (`continue`, then `i dont see 35`) with stalled/null trace outputs after tool use. Kept as a lead for a later loop if the current delegation fix is insufficient. |
+| 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
 
 ## Investigations
 
@@ -64,6 +64,37 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - tests added/updated:
     - `apps/desktop/src/main/error-utils.test.ts`
 
+### 2026-03-08 — Successful `respond_to_user` output could still collapse to blank trace output
+
+- Langfuse evidence reviewed:
+  - `conv_1772646724648_5kkw3rvk0`
+  - `session_1772646831952_uu14j453h`
+    - user input: `can you check if we have branches for the worktrees for 35 and 36 locally and open them up in iterm`
+    - observations show mixed tool recovery: initial `execute_command` failed on `cd ~/dotagents-mono`, `iterm:create_tab` warned because there was no current iTerm window, then `iterm:create_window`/`iterm:write_to_terminal` succeeded, and the final `Streaming LLM Call` never closed.
+    - trace outcome: `output: null`
+  - `session_1772647013485_6tkgbaizi`
+    - user input: `continue`
+    - `respond_to_user` succeeded with a concrete completion message saying both PR #35 and #36 iTerm windows were open and ready.
+    - immediately after that, the next generation said it would also inspect PR details and started `github:get_pull_request_files`; one of those spans never closed.
+    - trace outcome: `output: null`
+  - later recovery trace `session_1772647900900_1wdgjhgq2` (`i dont see 35`) partially recovered the user experience by bringing PR #35 to the front, confirming the earlier run had not cleanly finished the user-visible flow.
+- Repo reconstruction:
+  - `apps/desktop/src/main/builtin-tools.ts` stores `respond_to_user` content in `session-user-response-store`.
+  - `apps/desktop/src/main/llm.ts` only promoted that stored response into `finalContent` inside selected completion branches.
+  - if the agent sent a valid `respond_to_user` message, then kept iterating into speculative extra work and later errored/stalled/interrupted before one of those completion branches ran, the run could still end with blank `finalContent`.
+- Concrete root cause:
+  - a successful `respond_to_user` message was not preserved as fallback final output for the run.
+  - this made single-run user success fragile: if later unnecessary work stalled, Langfuse and any consumers of `finalContent` could lose the already-generated user-facing answer and show a blank/null terminal result.
+- Fix implemented:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - added `preferStoredUserResponse()` to keep an existing final response but fall back to the stored `respond_to_user` message when `finalContent` is blank.
+  - `apps/desktop/src/main/llm.ts`
+    - after successful tool batches, seed blank `finalContent` from the stored `respond_to_user` value
+    - reapply that fallback before returning and before Langfuse trace finalization so later speculative work cannot blank out an already delivered response
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+    - `apps/desktop/src/main/llm.test.ts`
+
 ## Verification Log
 
 - Targeted test command attempted:
@@ -84,11 +115,19 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Manual verification completed:
   - confirmed the chosen trace has a concrete upstream error (`API key expired`) but no terminal trace output
   - confirmed the new non-abort error path now records a cleaned terminal error string into `finalContent` before rethrowing, which should prevent future blank Langfuse outputs for this failure class
+- Targeted test command attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts src/main/llm.test.ts`
+- Result:
+  - blocked by missing local desktop dependencies / `node_modules`
+  - exact blocker: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
+- Manual verification completed:
+  - confirmed the `continue` trace successfully executed `respond_to_user` with the completed user-facing message before later speculative GitHub tool calls started
+  - confirmed the updated loop now captures a blank `finalContent` from the stored `respond_to_user` message after successful tool batches and again before trace finalization, which should prevent future null trace outputs for this failure pattern even if later work is interrupted
 
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
-- Revisit `conv_1772646724648_5kkw3rvk0` if more evidence is needed; its null-output traces after tool activity may indicate a second issue in completion/finalization after successful tool calls.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
+- Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.
