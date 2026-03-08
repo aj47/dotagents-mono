@@ -3355,3 +3355,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that tapping `Run` immediately flips the tapped button to `Running…` and blocks duplicate taps until the request settles.
   - Check whether the temporary pending label causes unwanted width churn on especially narrow screens; if so, tighten the pending treatment without removing the inline progress cue.
   - Continue with the next highest-signal local mobile issue only after a fresh live pass re-establishes which sub-agent surface now has the most friction.
+
+### 2026-03-08 — Iteration 78: strengthen create-agent and create-loop entry points on mobile
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused mobile coverage in `apps/mobile/tests/settings-agent-actions-mobile.test.js` and `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because `apps/mobile/node_modules` is still missing in this worktree, fresh Expo Web / simulator validation was not practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `Settings > Agents` and `Settings > Agent Loops` both end with dashed `+ Create ...` buttons rendered with `styles.createAgentButton`.
+  - Those create actions did not use the shared `createMinimumTouchTargetStyle(...)` / `compactActionTouchTarget` mobile baseline.
+  - They also lacked explicit button labels and hints, even though nearby sub-agent controls already expose clear mobile accessibility semantics.
+- Issue selected:
+  - The main create-agent and create-loop entry points were easier to miss or mis-tap on mobile than the surrounding sub-agent controls, weakening user control at the exact point where users need to add new agents or loops.
+- Decision:
+  - Keep the existing dashed tertiary CTA style and current placement at the bottom of each section.
+  - Do not redesign the sections or add new create flows while live validation is blocked.
+  - Make the smallest local fix: give those two create actions the shared mobile touch-target guardrail, stretch them across the available width for easier tapping, and add explicit creation semantics.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add a dedicated `subAgentCreateButton` style based on `compactActionTouchTarget`,
+    - stretch the `Create New Agent` and `Create New Loop` actions across the section width,
+    - add explicit button labels, hints, and pressed-state behavior for both creation entry points.
+  - Updated focused regression coverage in:
+    - `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+    - `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the full-width dashed create buttons feel appropriately prominent without visually overpowering the surrounding helper text.
+  - The `Settings > Agents` and `Settings > Agent Loops` sections still need fresh live validation to re-rank whether the next highest-friction issue is in row density, action-rail balance, or empty-state guidance.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Create New Agent` and `Create New Loop` are easy to spot and tap at narrow widths.
+  - Confirm the wider create actions still leave enough visual separation from the helper text and adjacent rows on a real mobile viewport.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting these create actions without new evidence.

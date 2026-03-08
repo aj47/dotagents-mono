@@ -2437,8 +2437,12 @@ export default function SettingsScreen({ navigation }: any) {
                   ))
                 )}
                 <TouchableOpacity
-                  style={styles.createAgentButton}
+                  style={styles.subAgentCreateButton}
                   onPress={() => handleAgentProfileEdit()}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Create new agent')}
+                  accessibilityHint="Opens the agent editor so you can add another delegation or main-agent option."
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.createAgentButtonText}>+ Create New Agent</Text>
                 </TouchableOpacity>
@@ -2588,8 +2592,12 @@ export default function SettingsScreen({ navigation }: any) {
                   })
                 )}
                 <TouchableOpacity
-                  style={styles.createAgentButton}
+                  style={styles.subAgentCreateButton}
                   onPress={() => handleLoopEdit()}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Create new loop')}
+                  accessibilityHint="Opens the loop editor so you can add another scheduled agent task."
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
                 </TouchableOpacity>
@@ -3590,6 +3598,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.primary,
       borderStyle: 'dashed',
       alignItems: 'center',
+    },
+    subAgentCreateButton: {
+      ...compactActionTouchTarget,
+      marginTop: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'stretch',
     },
     createAgentButtonText: {
       fontSize: 14,

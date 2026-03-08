@@ -38,6 +38,13 @@ test('shows loop Run actions as busy and prevents duplicate taps while a trigger
   assert.match(settingsSource, /loopActionButtonPending:\s*\{[\s\S]*?borderColor: theme\.colors\.primary \+ '2E',[\s\S]*?backgroundColor: theme\.colors\.primary \+ '10',[\s\S]*?opacity: 0\.85,/);
 });
 
+test('makes the create-loop action a full-width mobile button with explicit creation semantics', () => {
+  assert.match(settingsSource, /style=\{styles\.subAgentCreateButton\}[\s\S]*?onPress=\{\(\) => handleLoopEdit\(\)\}[\s\S]*?accessibilityRole="button"/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Create new loop'\)/);
+  assert.match(settingsSource, /accessibilityHint="Opens the loop editor so you can add another scheduled agent task\."/);
+  assert.match(settingsSource, /subAgentCreateButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget,[\s\S]*?justifyContent:\s*'center',[\s\S]*?alignSelf:\s*'stretch'/);
+});
+
 test('adds an explicit edit affordance to each loop row', () => {
   assert.match(settingsSource, /onPress=\{\(\) => handleLoopEdit\(loop\)\}[\s\S]*?accessibilityRole="button"/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Edit \$\{loop\.name\} loop`\)/);

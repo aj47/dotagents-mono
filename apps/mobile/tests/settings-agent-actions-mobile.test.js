@@ -25,6 +25,13 @@ test('gives agent delete actions explicit button semantics and a mobile-sized ta
   assert.match(settingsSource, /agentDeleteButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget/);
 });
 
+test('makes the create-agent action a full-width mobile button with explicit creation semantics', () => {
+  assert.match(settingsSource, /style=\{styles\.subAgentCreateButton\}[\s\S]*?onPress=\{\(\) => handleAgentProfileEdit\(\)\}[\s\S]*?accessibilityRole="button"/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Create new agent'\)/);
+  assert.match(settingsSource, /accessibilityHint="Opens the agent editor so you can add another delegation or main-agent option\."/);
+  assert.match(settingsSource, /subAgentCreateButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget,[\s\S]*?justifyContent:\s*'center',[\s\S]*?alignSelf:\s*'stretch'/);
+});
+
 test('adds an explicit edit affordance to each agent row', () => {
   assert.match(settingsSource, /onPress=\{\(\) => handleAgentProfileEdit\(profile\.id\)\}[\s\S]*?accessibilityRole="button"/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Edit \$\{profile\.displayName\} agent`\)/);
