@@ -2357,15 +2357,25 @@ export default function SettingsScreen({ navigation }: any) {
                       >
                         <View style={styles.serverInfo}>
                           <View style={styles.serverNameRow}>
-                            <Text style={styles.serverName}>{profile.displayName}</Text>
-                            {profile.isBuiltIn && (
-                              <View style={styles.agentRowBadge}>
-                                <Text style={styles.agentRowBadgeText}>Built-in</Text>
-                              </View>
-                            )}
-                            {!profile.enabled && (
-                              <View style={[styles.agentRowBadge, styles.agentRowBadgeDisabled]}>
-                                <Text style={[styles.agentRowBadgeText, styles.agentRowBadgeTextDisabled]}>Disabled</Text>
+                            <Text
+                              style={[styles.serverName, styles.agentRowName]}
+                              numberOfLines={2}
+                              ellipsizeMode="tail"
+                            >
+                              {profile.displayName}
+                            </Text>
+                            {(profile.isBuiltIn || !profile.enabled) && (
+                              <View style={styles.agentRowBadges}>
+                                {profile.isBuiltIn && (
+                                  <View style={styles.agentRowBadge}>
+                                    <Text style={styles.agentRowBadgeText}>Built-in</Text>
+                                  </View>
+                                )}
+                                {!profile.enabled && (
+                                  <View style={[styles.agentRowBadge, styles.agentRowBadgeDisabled]}>
+                                    <Text style={[styles.agentRowBadgeText, styles.agentRowBadgeTextDisabled]}>Disabled</Text>
+                                  </View>
+                                )}
                               </View>
                             )}
                           </View>
@@ -3309,6 +3319,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       flexWrap: 'wrap',
       gap: spacing.xs,
+    },
+    agentRowName: {
+      flexGrow: 1,
+      minWidth: 0,
+    },
+    agentRowBadges: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      flexShrink: 0,
+      alignItems: 'center',
     },
     agentRowBadge: {
       paddingHorizontal: 6,

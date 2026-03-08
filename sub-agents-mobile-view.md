@@ -2108,3 +2108,44 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Description` now hands off cleanly to a clearly explained `Guidelines` field.
   - Compare the `Description`, `Guidelines`, and `System Prompt` cluster on mobile to confirm the extra helper improves understanding without making the form feel too text-heavy.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 49: keep long agent names from crowding mobile row badges
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agents` row header rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused mobile agent-row regression coverage in `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile agent rows now combine the agent name with optional `Built-in` and `Disabled` badges in the same wrapping header row.
+  - The agent name itself had no line clamp or dedicated badge grouping, so a long mobile agent name could grow freely and crowd those badges on narrow screens.
+- Issue selected:
+  - Long agent names could destabilize the main `Settings > Agents` row header on mobile, making newly added state badges harder to notice at a glance.
+- Decision:
+  - Keep the existing row layout, metadata line, edit affordance, and action rail unchanged.
+  - Do not hide badges or add another metadata row without live evidence.
+  - Make the smallest local fix: clamp the agent name and group row badges together so the header stays more stable on narrow screens.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - clamp the mobile agent name to two lines with tail truncation,
+    - add a dedicated `agentRowBadges` wrapper for `Built-in` / `Disabled`,
+    - keep badges grouped together beside the clamped name instead of leaving them as separate loose siblings in the wrapping row.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new long-name stability contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The stabilized name/badge header still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - If live validation later shows two lines are still too tall for some agent names, the next step may need a stricter clamp or badge placement refinement — but only with evidence.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that long agent names keep `Built-in` / `Disabled` readable in `Settings > Agents`.
+  - Check a deliberately long agent name plus description together to confirm the new two-line clamp improves stability without hiding too much useful context.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

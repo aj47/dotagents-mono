@@ -53,3 +53,10 @@ test('surfaces disabled agent state directly in the mobile row header', () => {
   assert.match(settingsSource, /agentRowBadgeDisabled:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.secondary/);
   assert.match(settingsSource, /agentRowBadgeTextDisabled:\s*\{[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?fontWeight:\s*'600'/);
 });
+
+test('keeps long agent names stable when built-in and disabled badges are present', () => {
+  assert.match(settingsSource, /<Text[\s\S]*?style=\{\[styles\.serverName, styles\.agentRowName\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{profile\.displayName\}/);
+  assert.match(settingsSource, /\{\(profile\.isBuiltIn \|\| !profile\.enabled\) && \([\s\S]*?<View style=\{styles\.agentRowBadges\}>[\s\S]*?Built-in[\s\S]*?Disabled[\s\S]*?\)\}/);
+  assert.match(settingsSource, /agentRowName:\s*\{[\s\S]*?flexGrow:\s*1,[\s\S]*?minWidth:\s*0/);
+  assert.match(settingsSource, /agentRowBadges:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?flexWrap:\s*'wrap',[\s\S]*?gap:\s*spacing\.xs,[\s\S]*?flexShrink:\s*0/);
+});
