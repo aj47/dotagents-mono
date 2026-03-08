@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop composer image-attachment failure UX in `apps/desktop/src/renderer/src/components/text-input-panel.tsx`, `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with shared attachment-reading/error copy reviewed in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`, mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change in this pass because mobile uses a separate React Native image-picker + native `Alert.alert(...)` path rather than the desktop browser-`window.alert` attachment flow), focused source-level coverage added in `tests/desktop-composer-image-attachment-feedback.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
 - 2026-03-08: Desktop past-sessions dialog loading / refresh-failure / search-empty-state polish in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, with adjacent retry/stale-data patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, session handoff/navigation context reviewed in `apps/desktop/src/renderer/src/pages/sessions.tsx`, mobile parity checked in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile shows a local session list rather than a query-backed desktop history dialog), focused source-level coverage extended in `tests/desktop-past-sessions-dialog-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
 - 2026-03-08: Desktop `AgentProgress` session-scoped transcript/tab view-state handling in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, with focused-session reuse rechecked in `apps/desktop/src/renderer/src/pages/panel.tsx`, existing session-cleanup coverage extended in `tests/desktop-agent-progress-session-cleanup.test.js`, mobile parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile chat surface is screen-scoped rather than a reused overlay), and live desktop inspection still blocked by the missing Electron/CDP target.
 - 2026-03-08: Mobile automatic assistant read-aloud failure feedback in `apps/mobile/src/screens/ChatScreen.tsx`, including both streaming `respond_to_user` and final-response `Speech.speak(...)` paths, nearby inline composer warning patterns in `ChatScreen`, focused source-level coverage added in `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
@@ -70,6 +71,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop text / overlay / tile composer image-attachment warnings still need live Electron validation once a runnable target is available, especially to confirm the new inline warning banner, `Choose again` / `Add more` recovery action, partial-success copy, and cramped-layout behavior feel clear without pushing primary send controls around.
 - 2026-03-08: Desktop past-sessions dialog loading/search recovery still needs live Electron validation once a runnable target is available, especially to confirm the blocking-load card, cached-list refresh-warning banner, `Retry loading` affordance, and `Clear search` empty state feel clear without crowding the compact dialog.
 - 2026-03-08: Desktop `AgentProgress` per-session tab/expansion restore still needs live Electron validation once a runnable target is available, especially to confirm that switching A → B → A restores each run's prior chat/summary selection and expanded transcript/tool rows without feeling sticky or surprising when a brand-new run starts.
 - 2026-03-08: Mobile automatic assistant read-aloud warning/retry states still need live device or Expo-web validation once the mobile toolchain is available, especially for invalid voice selection, mid-stream `respond_to_user` playback failure followed by final-response fallback, and retry-to-success recovery from the composer banner.
@@ -81,6 +83,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop text, overlay, and tile composers now keep image-attachment read/validation failures inline with the draft instead of interrupting the flow with blocking browser alerts, normalize partial-success copy so users know any successfully added images remain attached, and offer a local `Choose again` / `Add more` recovery action beside the warning so a bad file selection no longer feels like a dead-end; tradeoff: this pass stays desktop-only because mobile image attachment uses a separate React Native picker + native alert stack and needs its own dedicated UX follow-up.
 - 2026-03-08: Desktop `Past Sessions` now keeps previously loaded history visible when a background refresh fails, distinguishes a blocking load failure from a stale-data refresh warning, offers a local `Retry loading` action in both cases, and explains when a search returned no matches with a one-click `Clear search` affordance, so transient history-query failures no longer make all past sessions look deleted or make a filtered-empty result read like the user has no history at all; tradeoff: this pass intentionally stops short of deeper focus-restoration/navigation changes because the highest-value gap was misleading state feedback inside the existing dialog.
 - 2026-03-08: Desktop `AgentProgress` now keeps chat-vs-summary tab choice and transcript/tool expansion state scoped to the active `sessionId` + `runId`, so switching the focused overlay from session A to session B no longer leaks A's open tab/expanded rows into B, while switching back to A in the same overlay lifecycle restores the view the user last had there; tradeoff: this pass keeps the state cache local to the component instead of promoting it into a shared store because the reuse bug is isolated to the existing overlay instance and the smallest fix is the safest one.
 - 2026-03-08: Mobile `ChatScreen` automatic assistant read-aloud now routes both streaming and final-response `Speech.speak(...)` calls through one guarded helper, surfaces startup/playback failures in a compact composer-level banner with `Retry read aloud`, clears stale auto-read-aloud errors when a new request or manual read-aloud begins, and only marks mid-turn playback as handled after speech actually starts so a startup failure no longer fails silently or suppresses the final-response fallback attempt; tradeoff: this pass intentionally stays scoped to `ChatScreen`’s automatic speech path and does not yet widen the same retry UX into `ResponseHistoryPanel`’s separate manual playback controls.
@@ -142,6 +145,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-composer-image-attachment-feedback.test.js`
+- 2026-03-08: `git diff --check` after the desktop composer image-attachment feedback pass
 - 2026-03-08: `node --test tests/desktop-past-sessions-dialog-guardrails.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
 - 2026-03-08: `git diff --check` after the desktop past-sessions loading/search recovery pass
@@ -297,6 +302,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this composer image-attachment feedback pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this past-sessions loading/search recovery pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this `AgentProgress` session-scoped view-state pass was blocked because no Electron renderer/CDP target is available in this environment (`electron_execute` returns `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this automatic response TTS feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
@@ -363,6 +369,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity remains the freshest non-attachment desktop reliability seam that has not been investigated recently, now that the composer image-attachment path no longer drops users into blocking alerts.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest adjacent history follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
 - Once a runnable Electron target is available, live-check desktop `Settings → WhatsApp` across first load, QR-required connect, reconnect with cached credentials, disconnect, logout, and background-status refresh overlap to confirm the new loading/pending hierarchy feels trustworthy in the real UI
 - Once a runnable Electron target is available, live-check desktop agent deletion in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` across confirm, cancel, failed-delete retry, and successful removal to validate the new inline guardrails in a dense agent grid.
@@ -401,6 +408,41 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the desktop overlay follow-up composer across session switching plus late success/failure/image-read completions to confirm stale drafts/errors no longer leak across focused sessions in the actual UI
+
+### 2026-03-08 — Desktop composer image-attachment inline recovery
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop text composer in `apps/desktop/src/renderer/src/components/text-input-panel.tsx`
+  - desktop overlay and tile follow-up composers in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`
+  - shared attachment error-copy helpers in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`
+  - focused source-level guardrail coverage added in `tests/desktop-composer-image-attachment-feedback.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx`; confirmed no equivalent change is needed in this pass because mobile image attachment uses a separate React Native image picker plus native `Alert.alert(...)` flow rather than the desktop browser alert path
+- Why it was chosen:
+  - the ledger had been heavily mining session, settings, and destructive-action recovery paths, so I looked for a fresh but still user-visible reliability seam rather than revisiting those same surfaces again
+  - investigation found a concrete UX problem shared by all three desktop composer variants: attachment read/validation failures still escalated to blocking `window.alert(...)`, which interrupts drafting, hides recovery near the affected control, and gives poor feedback when some selected images succeeded while others failed
+  - the issue had a small local implementation path with clear user value and an obvious consistency win across the desktop composing surfaces
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/text-input-panel.tsx`, `overlay-follow-up-input.tsx`, and `tile-follow-up-input.tsx` to trace attachment reads, error handling, and existing inline submit-error patterns
+  - `apps/desktop/src/renderer/src/lib/message-image-utils.ts` to confirm how attachment validation/read failures are produced and what shared helper seam already existed
+  - `apps/mobile/src/screens/ChatScreen.tsx` to confirm mobile uses a different image-picker + native alert flow and should be treated as a separate follow-up rather than changed opportunistically here
+  - attempted live desktop inspection via `electron_execute` first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - replaced blocking desktop attachment alerts with inline composer warnings in all three desktop composer variants, keeping failure feedback anchored beside the draft and attachments instead of throwing a browser modal
+  - added shared helper copy that normalizes attachment errors and explicitly preserves partial-success context (`Any added images are still here.`) so users understand when only some selected files failed
+  - added a local `Choose again` / `Add more` recovery action inside each warning banner, matching the current attachment affordance without broad composer refactors
+  - cleared stale attachment warnings on successful send or attachment removal so old image errors do not linger once the composer state has materially changed
+- Assumptions / tradeoffs / rationale:
+  - reused the existing inline composer-warning pattern rather than introducing a new toast/modal system because the value here is local recovery at the point of attachment, not a broader notification abstraction
+  - kept the change desktop-only because the mobile attachment flow is implemented differently and deserves its own product pass instead of a parity-by-assumption edit
+  - accepted source inspection plus focused source-level verification for this UI-facing change because live Electron validation is still blocked in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-composer-image-attachment-feedback.test.js`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check all three desktop composers with invalid files, oversize files, image-budget exhaustion, partial-success selection, and retry-to-success recovery to confirm the warning density and action placement feel clear in the real UI
+  - if another attachment-focused pass is warranted later, inspect mobile `ChatScreen` image-attachment failures separately so React Native picker errors can adopt a less disruptive recovery pattern than the current native alert flow
 
 ### 2026-03-08 — Desktop `AgentProgress` session-scoped tab and transcript view state
 - Date:

@@ -10,6 +10,8 @@ import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
 import {
   buildMessageWithImages,
+  getImageAttachmentFeedbackMessage,
+  getImageAttachmentUnexpectedErrorMessage,
   MAX_IMAGE_ATTACHMENTS,
   MessageImageAttachment,
   readImageAttachments,
@@ -43,6 +45,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
 }, ref) => {
   const [text, setText] = useState(initialText || "")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -83,6 +86,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
     const message = buildMessageWithImages(text, imageAttachments)
     if (!message || isBusy || submitInFlightRef.current) return
 
+    setAttachmentError(null)
     submitInFlightRef.current = true
     setIsSubmitting(true)
 
@@ -91,6 +95,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       if (didSubmit !== false) {
         setText("")
         setImageAttachments([])
+        setAttachmentError(null)
       }
     } catch (error) {
       console.error("Failed to submit text input panel message:", error)
@@ -101,6 +106,8 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }
 
   const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAttachmentError(null)
+
     try {
       const { attachments, errors } = await readImageAttachments(
         e.target.files,
@@ -112,10 +119,10 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       }
 
       if (errors.length > 0) {
-        window.alert(errors.join("\n"))
+        setAttachmentError(getImageAttachmentFeedbackMessage(errors, attachments.length))
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+      setAttachmentError(getImageAttachmentUnexpectedErrorMessage(error))
     } finally {
       e.target.value = ""
     }
@@ -126,6 +133,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }
 
   const removeImageAttachment = (attachmentId: string) => {
+    setAttachmentError(null)
     setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
 
@@ -246,6 +254,24 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+          {attachmentError && (
+            <div
+              className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300"
+              role="alert"
+            >
+              <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{attachmentError}</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-6 shrink-0 px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+                disabled={isBusy || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+                onClick={handleImageButtonClick}
+              >
+                {imageAttachments.length > 0 ? "Add more" : "Choose again"}
+              </Button>
             </div>
           )}
           <Textarea

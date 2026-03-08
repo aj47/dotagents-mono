@@ -17,6 +17,38 @@ const INITIAL_JPEG_QUALITY = 0.82
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`
 
+const normalizeAttachmentErrorDetail = (value: string) => value.trim().replace(/\s+/g, " ")
+
+export const getImageAttachmentFeedbackMessage = (errors: string[], addedCount = 0) => {
+  const details = errors.map(normalizeAttachmentErrorDetail).filter(Boolean)
+
+  if (details.length === 0) {
+    return addedCount > 0
+      ? "Some selected images couldn't be attached. Any added images are still here."
+      : "Couldn't attach image. Please try again."
+  }
+
+  const intro = details.length > 1 || addedCount > 0
+    ? "Some selected images couldn't be attached."
+    : "Couldn't attach image."
+  const suffix = addedCount > 0 ? " Any added images are still here." : ""
+  return `${intro} ${details.join(" ")}${suffix}`.trim()
+}
+
+export const getImageAttachmentUnexpectedErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    const detail = normalizeAttachmentErrorDetail(error.message)
+    return detail ? `Couldn't attach image. ${detail}` : "Couldn't attach image. Please try again."
+  }
+
+  if (typeof error === "string") {
+    const detail = normalizeAttachmentErrorDetail(error)
+    return detail ? `Couldn't attach image. ${detail}` : "Couldn't attach image. Please try again."
+  }
+
+  return "Couldn't attach image. Please try again."
+}
+
 const estimateDataUrlSizeBytes = (dataUrl: string) => {
   const base64 = dataUrl.split(",", 2)[1] ?? ""
   if (!base64) return 0

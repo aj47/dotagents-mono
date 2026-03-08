@@ -10,6 +10,8 @@ import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import {
   buildMessageWithImages,
+  getImageAttachmentFeedbackMessage,
+  getImageAttachmentUnexpectedErrorMessage,
   MAX_IMAGE_ATTACHMENTS,
   MessageImageAttachment,
   readImageAttachments,
@@ -61,6 +63,7 @@ export function TileFollowUpInput({
   onStopSession,
 }: TileFollowUpInputProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
@@ -104,6 +107,7 @@ export function TileFollowUpInput({
 
       setText("")
       setImageAttachments([])
+      setAttachmentError(null)
       setSubmissionError(null)
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the session tile without waiting for agent progress updates
@@ -140,6 +144,7 @@ export function TileFollowUpInput({
     }
     if (isSessionActive && !isQueueEnabled) return
 
+    setAttachmentError(null)
     setSubmissionError(null)
     submitInFlightRef.current = true
     setIsSubmitting(true)
@@ -158,6 +163,8 @@ export function TileFollowUpInput({
   }
 
   const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAttachmentError(null)
+
     try {
       logUI("[TileFollowUpInput] image selection started", {
         existingCount: imageAttachments.length,
@@ -180,10 +187,10 @@ export function TileFollowUpInput({
       })
 
       if (errors.length > 0) {
-        window.alert(errors.join("\n"))
+        setAttachmentError(getImageAttachmentFeedbackMessage(errors, attachments.length))
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+      setAttachmentError(getImageAttachmentUnexpectedErrorMessage(error))
     } finally {
       e.target.value = ""
     }
@@ -191,6 +198,7 @@ export function TileFollowUpInput({
 
   const removeImageAttachment = (attachmentId: string) => {
     logUI("[TileFollowUpInput] remove image", { attachmentId })
+    setAttachmentError(null)
     setSubmissionError(null)
     setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
@@ -324,6 +332,26 @@ export function TileFollowUpInput({
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {attachmentError && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{attachmentError}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 shrink-0 px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+            disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+            onMouseDown={handleInputInteraction}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {imageAttachments.length > 0 ? "Add more" : "Choose again"}
+          </Button>
         </div>
       )}
 

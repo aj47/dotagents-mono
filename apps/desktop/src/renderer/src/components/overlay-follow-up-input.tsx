@@ -10,6 +10,8 @@ import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import {
   buildMessageWithImages,
+  getImageAttachmentFeedbackMessage,
+  getImageAttachmentUnexpectedErrorMessage,
   MAX_IMAGE_ATTACHMENTS,
   MessageImageAttachment,
   readImageAttachments,
@@ -57,6 +59,7 @@ export function OverlayFollowUpInput({
 }: OverlayFollowUpInputProps) {
   const [isStoppingSession, setIsStoppingSession] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
@@ -98,6 +101,7 @@ export function OverlayFollowUpInput({
     submitInFlightRef.current = false
     setIsSubmitting(false)
     setIsStoppingSession(false)
+    setAttachmentError(null)
     setSubmissionError(null)
     setText("")
     setImageAttachments([])
@@ -140,6 +144,7 @@ export function OverlayFollowUpInput({
     if (!message || sendMutation.isPending || isSubmitting || submitInFlightRef.current) return
     if (isSessionActive && !isQueueEnabled) return
 
+    setAttachmentError(null)
     setSubmissionError(null)
     const submittedScopeKey = composerScopeKey
     const submittedConversationId = conversationId
@@ -176,6 +181,7 @@ export function OverlayFollowUpInput({
       if (latestComposerScopeKeyRef.current === submittedScopeKey) {
         setText("")
         setImageAttachments([])
+        setAttachmentError(null)
         setSubmissionError(null)
       }
     } catch (error) {
@@ -202,6 +208,7 @@ export function OverlayFollowUpInput({
 
   const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectionScopeKey = composerScopeKey
+    setAttachmentError(null)
 
     try {
       logUI("[OverlayFollowUpInput] image selection started", {
@@ -229,11 +236,11 @@ export function OverlayFollowUpInput({
       })
 
       if (errors.length > 0) {
-        window.alert(errors.join("\n"))
+        setAttachmentError(getImageAttachmentFeedbackMessage(errors, attachments.length))
       }
     } catch (error) {
       if (latestComposerScopeKeyRef.current === selectionScopeKey) {
-        window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+        setAttachmentError(getImageAttachmentUnexpectedErrorMessage(error))
       }
     } finally {
       e.target.value = ""
@@ -242,6 +249,7 @@ export function OverlayFollowUpInput({
 
   const removeImageAttachment = (attachmentId: string) => {
     logUI("[OverlayFollowUpInput] remove image", { attachmentId })
+    setAttachmentError(null)
     setSubmissionError(null)
     setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
   }
@@ -368,6 +376,26 @@ export function OverlayFollowUpInput({
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {attachmentError && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{attachmentError}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 shrink-0 px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+            disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+            onMouseDown={handleInputInteraction}
+            onClick={handleImageButtonClick}
+          >
+            {imageAttachments.length > 0 ? "Add more" : "Choose again"}
+          </Button>
         </div>
       )}
 
