@@ -36,6 +36,22 @@ describe("memories page layout", () => {
     )
   })
 
+  it("gives per-memory icon controls full-size affordances and explicit labels", () => {
+    expect(memoriesSource).toContain(
+      'className="mt-0.5 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"',
+    )
+    expect(memoriesSource).toContain(
+      'aria-label={isSelected ? `Deselect memory: ${memory.title}` : `Select memory: ${memory.title}`}',
+    )
+    expect(memoriesSource).toContain('aria-pressed={isSelected}')
+    expect(memoriesSource).toContain(
+      'aria-label={isExpanded ? `Collapse memory: ${memory.title}` : `Expand memory: ${memory.title}`}',
+    )
+    expect(memoriesSource).toContain('aria-expanded={isExpanded}')
+    expect(memoriesSource).toContain('aria-label={`Edit memory: ${memory.title}`}')
+    expect(memoriesSource).toContain('aria-label={`Delete memory: ${memory.title}`}')
+  })
+
   it("shows a dedicated error state with retry instead of falling through to the empty list copy", () => {
     expect(memoriesSource).toContain(") : memoriesQuery.isError ? (")
     expect(memoriesSource).toContain("Couldn't load memories")

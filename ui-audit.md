@@ -1,5 +1,111 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 60: Desktop memory-card controls were inconsistent, tiny, and anonymous in the live list chrome
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/memories.tsx` (`Memories` route → per-memory card controls)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and deliberately moved away from the just-touched providers, agents, and MCP settings surfaces.
+  - A real Electron renderer session was available on `:9333`, and `Memories` was a fresh top-level desktop route with existing layout-test coverage but no recent card-controls pass.
+  - This made it a strong small-scope target with real runtime evidence instead of another speculative source-only settings tweak.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a concrete follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, repo guidance/docs, and renderer `AGENTS.md` to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer on `http://localhost:5174/memories`
+  - stress-tested the live page at `620×670` with larger root text (`24px`), captured screenshot-backed evidence in `tmp/ui-audit/memories-card-controls-620-root24-before.png`, and used the live accessibility snapshot plus DOM measurements to inspect the per-card icon controls before editing source
+  - prototyped the same enlarged/labeled icon-control treatment directly in the mounted DOM and captured `tmp/ui-audit/memories-card-controls-620-root24-prototype.png`
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/` does not expose an equivalent memories-management route with these list-card controls
+
+#### Findings
+
+- Before the fix, the desktop `Memories` list still had one concrete polish/usability issue with clear user impact:
+  - every memory card exposed four icon-only controls (select, expand/collapse, edit, delete), but the live accessibility snapshot showed the per-card controls as anonymous buttons with no discoverable names or tooltips
+  - under live inspection at `620×670` with `24px` root text, the select and disclosure buttons were only about `24×24`, while the neighboring edit/delete actions already rendered at about `42×42`
+  - this created an inconsistent control lane where the two most frequently used browsing actions (selecting and expanding a memory) had the weakest affordance and smallest hit areas on the row
+  - that is materially risky because users reviewing a dense memories list are more likely to browse/select items than immediately edit or delete them; making the safe, reversible actions the hardest to recognize and click makes the surface feel less polished and easier to misoperate
+
+#### Changes made
+
+- Hardened the per-memory control lane in `apps/desktop/src/renderer/src/pages/memories.tsx` with the smallest effective consistency fix:
+  - replaced the plain select/disclosure icon buttons with the same ghost icon-button treatment already used for edit/delete (`h-7 w-7`, shrink-safe, explicit button semantics)
+  - added explicit `aria-label`, `title`, and pressed/expanded state metadata to the select and disclosure controls
+  - added matching `aria-label` and `title` metadata to the existing edit/delete icon buttons so all four card actions are discoverable and consistently exposed
+  - made the disclosure button own its toggle click explicitly instead of relying on the parent clickable header to interpret the interaction
+- Extended `apps/desktop/src/renderer/src/pages/memories.layout.test.ts` with focused source-contract coverage for the enlarged/labeled card-control treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.layout.test.ts` *(blocked: `vitest` not found in this worktree’s filtered desktop exec path)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new select/disclosure button sizing, the dynamic labels/states, and the focused regression test coverage are present
+- Live Electron evidence before the fix at `http://localhost:5174/memories`:
+  - screenshot: `tmp/ui-audit/memories-card-controls-620-root24-before.png`
+  - the live accessibility snapshot exposed the memory-card icon buttons as anonymous controls with no visible names
+  - DOM inspection measured the first card’s select/disclosure buttons at about `24×24` while the adjacent edit/delete buttons were already about `42×42`
+- Live DOM prototype verification of the intended fix:
+  - after applying the same local control treatment directly in the mounted DOM, the first card’s select, disclosure, edit, and delete buttons all measured about `42×42`
+  - the same prototype also exposed labels/tooltips for all four icon controls (`Select memory`, `Expand memory`, `Edit memory`, `Delete memory`)
+  - screenshot: `tmp/ui-audit/memories-card-controls-620-root24-prototype.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/memories.tsx apps/desktop/src/renderer/src/pages/memories.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. I paired live pre-fix renderer evidence with a DOM prototype of the exact small control treatment and direct source verification of the patch instead.
+- This chunk is desktop-only: mobile does not expose an equivalent memories-management card list, so no parallel mobile code change was needed.
+- Tradeoff/rationale: the first two icon controls now occupy slightly more row width than before, but that is an intentional and safer tradeoff than keeping the most common browse/select actions smaller and less discoverable than edit/delete.
+- Best next UI audit chunk after this one: move away from `Memories` unless a fresh dialog- or empty-state-specific live follow-up appears; the next strongest pass is another top-level desktop/mobile surface with direct runtime evidence.
+
+### 2026-03-08 — Chunk 59: Desktop providers preset manager had no intentional wrap/shrink path for built-in/custom preset identity under tighter settings widths
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` (`Settings` → `Providers` → `OpenAI Compatible` → `Model Provider Preset`)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched `settings-agents`, MCP, and sessions surfaces.
+  - A real Electron renderer session was still available on `:9333`, and the providers page exposed a fresh, dense preset-management sub-area with real runtime data.
+  - This was the best remaining small-scope improvement opportunity on a top-level settings surface without redoing an area investigated more recently.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a concrete follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer on `http://localhost:5174/settings/providers`
+  - stressed the live page at `620×670` with larger root text (`24px`) and measured the mounted `Model Provider Preset` header/actions directly in the DOM before editing source
+  - simulated the supported built-in preset state (`Configure` instead of `Edit`) in the mounted DOM to test how much slack the current one-line header actually had
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` does not expose this desktop-only preset manager / provider preset editor
+
+#### Findings
+
+- Before the fix, the desktop preset manager still had one concrete narrow-width resilience problem with clear user impact:
+  - the header used a rigid single-row `flex items-center justify-between` layout with a non-wrapping `flex gap-2` action group, and the preset identity rows still relied on inline `truncate` / badge patterns without `min-w-0` + `shrink-0` safeguards
+  - in live inspection at `620×670` with `24px` root text, the preset-manager header lived inside only about `507px` of usable card width
+  - simulating the built-in preset state increased the action cluster to about `311px` while the title still needed about `196px`, leaving effectively no remaining slack (`overlap = 0`) before the header would start colliding instead of wrapping intentionally
+  - because users can create arbitrarily named presets and switch between built-in/custom states with badges and API-key indicators, this meant the preset manager depended on lucky short labels rather than an intentional narrow-width contract
+  - that is materially risky because preset management is where users identify which provider/key/model bundle they are about to edit or select; once preset identity gets crowded or clipped, it becomes easier to misread or modify the wrong preset
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` with the smallest effective wrap/shrink-safe treatment:
+  - changed the header to a wrap-safe `flex-wrap` row with a flexible label lane and a wrapping action cluster instead of a rigid single line
+  - tightened the `Edit` / `Configure` and `New Preset` buttons into small, shrink-safe controls so they remain readable without dominating the row
+  - made preset-option rows `min-w-0` with a truncating flexible name lane plus `shrink-0` built-in/key badges so long preset names can yield space predictably
+  - made the selected preset base-URL row explicitly `min-w-0 flex-1 truncate` and added a `title` tooltip for the full value
+- Added `apps/desktop/src/renderer/src/components/model-preset-manager.layout.test.ts` with focused source-contract coverage for the new wrap-safe preset-manager layout treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/model-preset-manager.layout.test.ts` *(blocked: `vitest` was not available through the filtered exec path in this worktree)*
+- Targeted desktop script attempt: `pnpm run test:run -- src/renderer/src/components/model-preset-manager.layout.test.ts` from `apps/desktop` *(blocked in `pretest` because `packages/shared` cannot run `tsup`; this worktree is still missing local package dependencies / `node_modules` there)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe header, shrink-safe preset rows, base-URL truncation lane, and focused regression test are present
+- Live Electron evidence before the fix at `http://localhost:5174/settings/providers`:
+  - screenshots: `tmp/ui-audit/settings-providers-preset-header-620-root24-before.png`, `tmp/ui-audit/model-preset-header-configure-before.png`
+  - the mounted preset-manager header measured about `507px` wide inside the settings card
+  - the simulated built-in `Configure` state consumed about `311px` for the action cluster and about `196px` for the heading, leaving effectively zero slack before collision
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/model-preset-manager.tsx apps/desktop/src/renderer/src/components/model-preset-manager.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. I paired live pre-fix renderer evidence with direct source verification of the patch instead.
+- This chunk is desktop-only: mobile does not share this preset-manager implementation, so no parallel mobile code change was needed.
+- Tradeoff/rationale: under tighter settings widths or larger text, the preset-manager header may now wrap to two lines sooner than before, but that is a deliberate and safer tradeoff than depending on short labels and badge combinations to avoid crowding.
+- Best next UI audit chunk after this one: move away from the just-touched providers preset manager unless a real model-selector overflow shows up in live inspection; the next strongest target is another fresh desktop/mobile surface with more direct runtime evidence.
+
 ### 2026-03-08 — Chunk 58: Desktop agent create-form ACP toggle row spills past the settings column under tighter widths and larger text
 
 - Area selected:

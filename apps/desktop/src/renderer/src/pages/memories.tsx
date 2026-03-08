@@ -79,8 +79,14 @@ function MemoryCard({
         className="flex items-start gap-3 p-4 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <button
-          className="mt-0.5 text-muted-foreground hover:text-foreground"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          type="button"
+          aria-label={isSelected ? `Deselect memory: ${memory.title}` : `Select memory: ${memory.title}`}
+          aria-pressed={isSelected}
+          title={isSelected ? `Deselect memory: ${memory.title}` : `Select memory: ${memory.title}`}
           onClick={(e) => {
             e.stopPropagation()
             onToggleSelect(memory.id)
@@ -91,10 +97,22 @@ function MemoryCard({
           ) : (
             <Square className="h-4 w-4" />
           )}
-        </button>
-        <button className="mt-0.5 text-muted-foreground hover:text-foreground">
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          type="button"
+          aria-label={isExpanded ? `Collapse memory: ${memory.title}` : `Expand memory: ${memory.title}`}
+          aria-expanded={isExpanded}
+          title={isExpanded ? `Collapse memory: ${memory.title}` : `Expand memory: ${memory.title}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded(!isExpanded)
+          }}
+        >
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
+        </Button>
 
         <div className="flex-1 min-w-0">
           <div className="mb-1 flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
@@ -127,6 +145,9 @@ function MemoryCard({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            type="button"
+            aria-label={`Edit memory: ${memory.title}`}
+            title={`Edit memory: ${memory.title}`}
             onClick={(e) => {
               e.stopPropagation()
               onEdit(memory)
@@ -138,6 +159,9 @@ function MemoryCard({
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-destructive hover:text-destructive"
+            type="button"
+            aria-label={`Delete memory: ${memory.title}`}
+            title={`Delete memory: ${memory.title}`}
             onClick={(e) => {
               e.stopPropagation()
               onDelete(memory.id)
