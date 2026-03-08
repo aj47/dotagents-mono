@@ -79,6 +79,8 @@ function formatBackupTargetLabel(backup: RecentBackup["backup"]): string {
       return "Global layer"
     case "workspace":
       return "Workspace layer"
+    case "slot":
+      return "Bundle slot"
     case "custom":
       return "Custom layer"
     default:
@@ -539,6 +541,7 @@ export function Component() {
         description="Preview and restore a previously created .dotagents backup bundle. DotAgents will create a fresh safety snapshot before any restore writes."
         confirmLabel="Restore"
         successVerb="restored"
+        allowImportTargetSelection={false}
       />
     </div>
   )

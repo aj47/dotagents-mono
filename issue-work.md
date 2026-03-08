@@ -2566,3 +2566,44 @@
   - Re-run the new Vitest coverage once package dependencies are available in the workspace.
 
 - Next recommended issue work item: stay on `#57` only if the next slice is another narrow slot workflow (most likely slot-targeted import/promote actions or broader config-save semantics); otherwise refresh open issues and pick the next concrete desktop reliability/UX bug.
+
+##### Issue #57 — Bundle import: explicit active-slot target in the existing import dialog
+
+- Selection rationale:
+  - Stayed on `#57` because the previous ledger entry explicitly called out slot-targeted import as the next concrete, user-facing gap.
+  - This is a narrow trust/UX slice with immediate value: users can now route an import into the active bundle slot instead of always merging into the writable workspace/global layer.
+  - It fits the issue’s stretch-goal direction without attempting the larger “new slot” authoring workflow in one pass.
+- Investigation:
+  - Re-read issue `#57` and confirmed the remaining slot-related gap sits under the same bundle-safety/try-without-fear theme.
+  - Re-inspected `apps/desktop/src/main/tipc.ts` and confirmed both `previewBundleWithConflicts` and `importBundle` always resolved `writableLayer.paths.agentsDir`, so there was no explicit way to preview/import into the active slot.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the existing dialog already owned the pre-import preview/import flow, making it the smallest place to add an explicit target selector.
+  - Re-inspected `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed restore-backup uses the same dialog, so restore-specific behavior needed to stay pinned to the restore path rather than inherit slot targeting automatically.
+- Important assumptions:
+  - Assumption: the most valuable first slot-targeted import slice is `import into active slot`, not full `import into new slot` creation.
+  - Why acceptable: the issue already has active-slot runtime state and recent slot activation UX; using that existing state keeps the change small and directly useful.
+  - Assumption: active slot state can be treated as stable for the lifetime of one import dialog session.
+  - Why acceptable: slot switches are a local desktop action, the dialog re-previews when the user toggles target mode, and the main process still guards against missing active-slot state during import.
+  - Assumption: restore-backup should not expose slot-target selection in this slice.
+  - Why acceptable: restore is framed as safety recovery, so keeping it anchored to the current restore flow avoids surprising target changes while still allowing normal bundle imports to use slots.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: this workflow is desktop/Electron-specific and depends on the desktop `.agents` layering + filesystem slot model.
+- Changes implemented:
+  - Extended `apps/desktop/src/main/tipc.ts` with a narrow `targetMode` contract (`default` vs `active-slot`) plus centralized target resolution so preview/import can resolve either the writable layer or the active slot while still merging conflict previews across `global -> slot -> workspace` ordering.
+  - Updated `apps/desktop/src/main/bundle-service.ts` so callers can label slot-targeted previews and automatic pre-import backups with `targetLayer: "slot"` instead of falling back to `custom`.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to fetch current slot state, show an `Import target` selector when an active slot exists, re-preview the same bundle when the user switches target mode, and pass the explicit active-slot target through the existing import pipeline.
+  - Kept restore-backup pinned to the current restore semantics by passing `allowImportTargetSelection={false}` from `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, while also teaching the settings page to render `Bundle slot` labels for backup metadata.
+  - Extended lightweight regression coverage in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js`, `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js`, and `apps/desktop/src/main/agents-layer-resolution.foundation.test.js` to lock in the new target-mode wiring and restore guardrail.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js apps/desktop/src/main/agents-layer-resolution.foundation.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Add a complementary `import into new slot` flow so users can create a fresh isolated slot during import rather than only targeting the current active slot.
+  - Consider whether the dialog should preserve per-item conflict overrides when re-previewing across targets, not just item selections.
+  - Extend similar slot-target clarity to other write paths that may still implicitly save into the writable layer while an active slot is mounted.
+  - Add deeper runtime/integration coverage once the full desktop test runner environment is reliably available.
+
+- Next recommended issue work item: either stay on `#57` for one last narrow slot-authoring/import slice (`import into new slot` or config-save semantics), or refresh open issues and switch to the next concrete desktop reliability bug if another `#57` slice would stop being obviously reviewable.

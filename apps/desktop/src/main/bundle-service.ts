@@ -51,7 +51,7 @@ export interface BundlePublicMetadata {
   compatibility?: BundlePublicMetadataCompatibility
 }
 
-export type BundleBackupTargetLayer = "global" | "workspace" | "custom"
+export type BundleBackupTargetLayer = "global" | "workspace" | "slot" | "custom"
 
 export interface BundleBackupMetadata {
   kind: "pre-import-snapshot"
@@ -259,6 +259,8 @@ export interface ImportOptions {
   selectedItems?: BundleItemSelectionOptions
   /** Optional per-conflict overrides for specific items */
   conflictStrategyOverrides?: ImportConflictStrategyOverrides
+  /** Optional explicit target-layer label when the caller resolves a slot/custom destination */
+  targetLayer?: BundleBackupTargetLayer
   /** Optional snapshot config for automated pre-import backups */
   backup?: {
     dir?: string
@@ -1125,7 +1127,12 @@ function formatImportBackupTimestamp(value: Date): string {
   return value.toISOString().replace(/[:.]/g, "-")
 }
 
-function getImportBackupTargetLayer(targetAgentsDir: string): BundleBackupTargetLayer {
+function getImportBackupTargetLayer(
+  targetAgentsDir: string,
+  targetLayer?: BundleBackupTargetLayer
+): BundleBackupTargetLayer {
+  if (targetLayer) return targetLayer
+
   const resolvedTargetAgentsDir = path.resolve(targetAgentsDir)
   const resolvedGlobalAgentsDir = path.resolve(path.join(os.homedir(), AGENTS_DIR_NAME))
 
@@ -1140,17 +1147,23 @@ function getImportBackupTargetLayer(targetAgentsDir: string): BundleBackupTarget
   return "custom"
 }
 
-function createImportBackupMetadata(targetAgentsDir: string): BundleBackupMetadata {
+function createImportBackupMetadata(
+  targetAgentsDir: string,
+  targetLayer?: BundleBackupTargetLayer
+): BundleBackupMetadata {
   return {
     kind: "pre-import-snapshot",
-    targetLayer: getImportBackupTargetLayer(targetAgentsDir),
+    targetLayer: getImportBackupTargetLayer(targetAgentsDir, targetLayer),
     targetAgentsDir: path.resolve(targetAgentsDir),
   }
 }
 
-function createBundleImportTargetPreview(targetAgentsDir: string): NonNullable<BundlePreviewResult["importTarget"]> {
+function createBundleImportTargetPreview(
+  targetAgentsDir: string,
+  targetLayer?: BundleBackupTargetLayer
+): NonNullable<BundlePreviewResult["importTarget"]> {
   return {
-    layer: getImportBackupTargetLayer(targetAgentsDir),
+    layer: getImportBackupTargetLayer(targetAgentsDir, targetLayer),
     agentsDir: path.resolve(targetAgentsDir),
     backupDir: path.resolve(getDefaultImportBackupDirectory()),
   }
@@ -1206,6 +1219,7 @@ function pruneImportBackups(backupDir: string, maxBackups: number): void {
 
 async function createPreImportBackup(
   targetAgentsDir: string,
+  targetLayer: BundleBackupTargetLayer | undefined,
   options?: ImportOptions["backup"],
 ): Promise<string> {
   const timestamp = formatImportBackupTimestamp(new Date())
@@ -1216,7 +1230,7 @@ async function createPreImportBackup(
   const bundle = await exportBundle(targetAgentsDir, {
     name: `Backup ${timestamp}`,
     description: "Automatic pre-import backup created by DotAgents before bundle import.",
-    backupMetadata: createImportBackupMetadata(targetAgentsDir),
+    backupMetadata: createImportBackupMetadata(targetAgentsDir, targetLayer),
     components: {
       agentProfiles: true,
       mcpServers: true,
@@ -1353,7 +1367,7 @@ function isBundlePublicMetadata(value: unknown): value is BundlePublicMetadata {
 }
 
 function isBundleBackupTargetLayer(value: unknown): value is BundleBackupTargetLayer {
-  return value === "global" || value === "workspace" || value === "custom"
+  return value === "global" || value === "workspace" || value === "slot" || value === "custom"
 }
 
 function isBundleBackupMetadata(value: unknown): value is BundleBackupMetadata {
@@ -1553,7 +1567,8 @@ export function previewBundle(filePath: string): DotAgentsBundle | null {
  */
 export function previewBundleWithConflicts(
   filePath: string,
-  targetAgentsDir: string
+  targetAgentsDir: string,
+  options?: { targetLayer?: BundleBackupTargetLayer }
 ): BundlePreviewResult {
   const bundle = previewBundle(filePath)
   if (!bundle) {
@@ -1625,7 +1640,7 @@ export function previewBundleWithConflicts(
     success: true,
     filePath,
     bundle,
-    importTarget: createBundleImportTargetPreview(targetAgentsDir),
+    importTarget: createBundleImportTargetPreview(targetAgentsDir, options?.targetLayer),
     conflicts,
   }
 }
@@ -1789,7 +1804,7 @@ export async function importBundle(
   const selectedMemoryIds = createImportSelectionSet(selectedItems.memoryIds)
 
   try {
-    result.backupFilePath = await createPreImportBackup(targetAgentsDir, options.backup)
+    result.backupFilePath = await createPreImportBackup(targetAgentsDir, options.targetLayer, options.backup)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     result.errors.push(`Pre-import backup failed: ${errorMessage}`)

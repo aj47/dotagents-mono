@@ -680,11 +680,19 @@ type BundleConflictMap = {
 type BundleConflictPreview = {
   success: boolean
   importTarget?: {
-    layer: "global" | "workspace" | "custom"
+    layer: "global" | "workspace" | "slot" | "custom"
     agentsDir: string
     backupDir: string
   }
   conflicts?: BundleConflictMap
+}
+
+type BundleImportTargetMode = "default" | "active-slot"
+
+type ResolvedBundleImportTarget = {
+  targetDir: string
+  targetLayer: NonNullable<BundleConflictPreview["importTarget"]>["layer"]
+  comparisonLayerDirs: string[]
 }
 
 const BUNDLE_CONFLICT_KEYS: Array<keyof BundleConflictMap> = [
@@ -732,6 +740,37 @@ function mergeConflictMaps(
   }
 
   return merged
+}
+
+async function resolveBundleImportTarget(
+  targetMode: BundleImportTargetMode | undefined
+): Promise<ResolvedBundleImportTarget> {
+  const { getRuntimeAgentsLayers } = await import("./config")
+  const { globalLayer, activeSlotLayer, workspaceLayer, writableLayer } = getRuntimeAgentsLayers()
+
+  if (targetMode === "active-slot") {
+    if (!activeSlotLayer) {
+      throw new Error("No active bundle slot is selected")
+    }
+
+    return {
+      targetDir: activeSlotLayer.paths.agentsDir,
+      targetLayer: "slot",
+      comparisonLayerDirs: [
+        globalLayer.paths.agentsDir,
+        activeSlotLayer.paths.agentsDir,
+        ...(workspaceLayer ? [workspaceLayer.paths.agentsDir] : []),
+      ],
+    }
+  }
+
+  return {
+    targetDir: writableLayer.paths.agentsDir,
+    targetLayer: writableLayer.name === "workspace" ? "workspace" : "global",
+    comparisonLayerDirs: workspaceLayer
+      ? [globalLayer.paths.agentsDir, workspaceLayer.paths.agentsDir]
+      : [writableLayer.paths.agentsDir],
+  }
 }
 
 /**
@@ -4711,29 +4750,23 @@ export const router = {
     }),
 
   previewBundleWithConflicts: t.procedure
-    .input<{ filePath: string }>()
+    .input<{ filePath: string; targetMode?: BundleImportTargetMode }>()
     .action(async ({ input }) => {
-      const { getRuntimeAgentsLayers } = await import("./config")
       const { previewBundleWithConflicts } = await import("./bundle-service")
-      const { globalLayer, workspaceLayer, writableLayer } = getRuntimeAgentsLayers()
-      const targetDir = writableLayer.paths.agentsDir
-      const targetPreview = previewBundleWithConflicts(input.filePath, targetDir)
+      const { comparisonLayerDirs, targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode)
+      const targetPreview = previewBundleWithConflicts(input.filePath, targetDir, { targetLayer })
 
-      // With workspace overlays, merge conflicts from global + workspace so preview
-      // matches the merged UI view and catches shadowing collisions.
-      if (!workspaceLayer || !targetPreview.success) {
-        return targetPreview
-      }
+      if (!targetPreview.success) return targetPreview
 
-      const globalPreview = previewBundleWithConflicts(input.filePath, globalLayer.paths.agentsDir)
-      if (!globalPreview.success) {
-        return targetPreview
-      }
+      const mergedConflicts = comparisonLayerDirs.reduce<BundleConflictMap | undefined>((acc, layerDir) => {
+        const layerPreview = layerDir === targetDir
+          ? targetPreview
+          : previewBundleWithConflicts(input.filePath, layerDir)
 
-      const mergedConflicts = mergeConflictMaps(
-        (globalPreview as BundleConflictPreview).conflicts,
-        (targetPreview as BundleConflictPreview).conflicts
-      )
+        return layerPreview.success
+          ? mergeConflictMaps(acc, (layerPreview as BundleConflictPreview).conflicts)
+          : acc
+      }, undefined)
 
       return {
         ...targetPreview,
@@ -4744,6 +4777,7 @@ export const router = {
   importBundle: t.procedure
     .input<{
       filePath: string
+      targetMode?: BundleImportTargetMode
       conflictStrategy: "skip" | "overwrite" | "rename"
       components?: {
         agentProfiles?: boolean
@@ -4767,15 +4801,14 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { getRuntimeAgentsLayers } = await import("./config")
       const { importBundle } = await import("./bundle-service")
-      const { writableLayer } = getRuntimeAgentsLayers()
-      const targetDir = writableLayer.paths.agentsDir
+      const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode)
       const result = await importBundle(input.filePath, targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
         selectedItems: input.selectedItems,
         conflictStrategyOverrides: input.conflictStrategyOverrides,
+        targetLayer,
       })
       await refreshRuntimeAfterAgentsLayerChange()
       return result
@@ -4783,6 +4816,7 @@ export const router = {
 
   importBundleFromDialog: t.procedure
     .input<{
+      targetMode?: BundleImportTargetMode
       conflictStrategy: "skip" | "overwrite" | "rename"
       components?: {
         agentProfiles?: boolean
@@ -4806,15 +4840,14 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { getRuntimeAgentsLayers } = await import("./config")
       const { importBundleFromDialog } = await import("./bundle-service")
-      const { writableLayer } = getRuntimeAgentsLayers()
-      const targetDir = writableLayer.paths.agentsDir
+      const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode)
       const result = await importBundleFromDialog(targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
         selectedItems: input.selectedItems,
         conflictStrategyOverrides: input.conflictStrategyOverrides,
+        targetLayer,
       })
       if (result) {
         await refreshRuntimeAfterAgentsLayerChange()

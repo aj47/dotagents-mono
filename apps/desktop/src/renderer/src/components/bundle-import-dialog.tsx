@@ -20,11 +20,17 @@ import { toast } from "sonner"
 type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type ConflictStrategyOverrideKey = Exclude<BundleComponentKey, "memories">
-type BundleImportTargetLayer = "global" | "workspace" | "custom"
+type BundleImportTargetLayer = "global" | "workspace" | "slot" | "custom"
+type BundleImportTargetMode = "default" | "active-slot"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 type BundleItemSelectionKey = "agentProfileIds" | "mcpServerNames" | "skillIds" | "repeatTaskIds" | "memoryIds"
 type BundleItemSelectionState = Record<BundleItemSelectionKey, string[]>
 type ConflictStrategyOverrideState = Partial<Record<ConflictStrategyOverrideKey, Record<string, ConflictStrategy>>>
+
+type BundleSlotState = {
+  activeSlotId: string | null
+  slots: Array<{ id: string; slotDir: string; isActive: boolean }>
+}
 
 const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
   agentProfiles: "Agent Profiles",
@@ -165,12 +171,18 @@ interface BundleImportDialogProps {
   description?: string
   confirmLabel?: string
   successVerb?: string
+  allowImportTargetSelection?: boolean
   sourceLabel?: string
   sourceUrl?: string
 }
 
-export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
-  return (await tipcClient.previewBundleWithConflicts({ filePath })) as BundlePreview
+export async function previewProvidedBundleFile(
+  filePath: string,
+  targetMode: BundleImportTargetMode = "default"
+): Promise<BundlePreview> {
+  return (await tipcClient.previewBundleWithConflicts(
+    targetMode === "active-slot" ? { filePath, targetMode } : { filePath }
+  )) as BundlePreview
 }
 
 function getSelectedConflictCount(
@@ -217,6 +229,8 @@ function formatImportTargetLayerLabel(layer?: BundleImportTargetLayer): string {
       return "Global layer"
     case "workspace":
       return "Workspace layer"
+    case "slot":
+      return "Bundle slot"
     case "custom":
       return "Custom layer"
     default:
@@ -560,6 +574,7 @@ export function BundleImportDialog({
   description = "Preview and import a .dotagents bundle file.",
   confirmLabel = "Import",
   successVerb = "imported",
+  allowImportTargetSelection = true,
   sourceLabel = "Bundle source",
   sourceUrl,
 }: BundleImportDialogProps) {
@@ -568,6 +583,8 @@ export function BundleImportDialog({
   const [importing, setImporting] = useState(false)
   const [isOpeningBackupFolder, setIsOpeningBackupFolder] = useState(false)
   const [preview, setPreview] = useState<BundlePreview | null>(null)
+  const [bundleSlotState, setBundleSlotState] = useState<BundleSlotState | null>(null)
+  const [importTargetMode, setImportTargetMode] = useState<BundleImportTargetMode>("default")
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
   const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
   const [selectedItems, setSelectedItems] = useState<BundleItemSelectionState>(() => createDefaultItemSelections())
@@ -589,12 +606,43 @@ export function BundleImportDialog({
     if (!open) {
       previewRequestIdRef.current += 1
       setPreview(null)
+      setBundleSlotState(null)
+      setImportTargetMode("default")
       setConflictStrategy("skip")
       setComponents(resolveComponents(initialComponents))
       setSelectedItems(createDefaultItemSelections())
       setConflictStrategyOverrides(createDefaultConflictStrategyOverrides())
     }
   }, [initialComponents, open])
+
+  useEffect(() => {
+    if (!open || !allowImportTargetSelection) {
+      setBundleSlotState(null)
+      setImportTargetMode("default")
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const nextState = await tipcClient.getBundleSlotState() as BundleSlotState
+        if (cancelled) return
+        setBundleSlotState(nextState)
+        if (!nextState.activeSlotId) {
+          setImportTargetMode("default")
+        }
+      } catch {
+        if (cancelled) return
+        setBundleSlotState(null)
+        setImportTargetMode("default")
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [allowImportTargetSelection, open])
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -607,11 +655,18 @@ export function BundleImportDialog({
     }
   }, [initialFilePath, open, preview])
 
-  const loadPreviewForFile = async (filePath: string, requestId: number) => {
-    const fullResult = await previewProvidedBundleFile(filePath)
+  const loadPreviewForFile = async (
+    filePath: string,
+    requestId: number,
+    options: { resetSelections?: boolean; targetMode?: BundleImportTargetMode } = {}
+  ) => {
+    const { resetSelections = true, targetMode = importTargetMode } = options
+    const fullResult = await previewProvidedBundleFile(filePath, targetMode)
     if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
     setPreview(fullResult as BundlePreview)
-    setSelectedItems(createDefaultItemSelections(fullResult.bundle))
+    if (resetSelections) {
+      setSelectedItems(createDefaultItemSelections(fullResult.bundle))
+    }
     setConflictStrategyOverrides(createDefaultConflictStrategyOverrides())
   }
 
@@ -657,12 +712,39 @@ export function BundleImportDialog({
     }
   }
 
+  const handleImportTargetModeChange = async (value: string) => {
+    const nextTargetMode = value as BundleImportTargetMode
+    const previousTargetMode = importTargetMode
+    setImportTargetMode(nextTargetMode)
+
+    if (!preview?.filePath) return
+
+    const requestId = ++previewRequestIdRef.current
+    setLoading(true)
+    try {
+      await loadPreviewForFile(preview.filePath, requestId, {
+        resetSelections: false,
+        targetMode: nextTargetMode,
+      })
+    } catch (error) {
+      if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
+      setImportTargetMode(previousTargetMode)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to refresh bundle preview: ${errorMessage}`)
+    } finally {
+      if (previewRequestIdRef.current === requestId && isOpenRef.current) {
+        setLoading(false)
+      }
+    }
+  }
+
   const handleImport = async () => {
     if (!preview?.filePath) return
     setImporting(true)
     try {
       const result = await tipcClient.importBundle({
         filePath: preview.filePath,
+        ...(importTargetMode === "active-slot" ? { targetMode: importTargetMode } : {}),
         conflictStrategy,
         components: normalizedComponents,
         selectedItems,
@@ -719,6 +801,8 @@ export function BundleImportDialog({
     previewRequestIdRef.current += 1
     setLoading(false)
     setPreview(null)
+    setBundleSlotState(null)
+    setImportTargetMode("default")
     setConflictStrategy("skip")
     setComponents(resolveComponents(initialComponents))
     setSelectedItems(createDefaultItemSelections())
@@ -729,6 +813,10 @@ export function BundleImportDialog({
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
   const importTarget = preview?.importTarget
+  const activeBundleSlot = bundleSlotState?.activeSlotId
+    ? (bundleSlotState.slots.find((slot) => slot.id === bundleSlotState.activeSlotId) ?? null)
+    : null
+  const showImportTargetSelector = allowImportTargetSelection && Boolean(activeBundleSlot)
   const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
   const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
@@ -906,6 +994,25 @@ export function BundleImportDialog({
             <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-3">
               <div className="space-y-2">
                 <Label>Automatic safety backup</Label>
+                {showImportTargetSelector && activeBundleSlot && (
+                  <div className="rounded-md border border-emerald-200 bg-background/70 p-2">
+                    <div className="space-y-2">
+                      <Label>Import target</Label>
+                      <Select value={importTargetMode} onValueChange={(value) => void handleImportTargetModeChange(value)}>
+                        <SelectTrigger className="h-8" disabled={loading || importing}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Default writable layer</SelectItem>
+                          <SelectItem value="active-slot">Active bundle slot ({activeBundleSlot.id})</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Default writes into the current workspace/global layer. Active slot keeps this import inside <span className="font-mono text-foreground">{activeBundleSlot.slotDir}</span> so slot content stays isolated beneath any workspace overrides.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup. This import will update the {formatImportTargetLayerLabel(importTarget?.layer)} and store the backup in <span className="font-mono">{importTarget?.backupDir ?? "~/.agents/backups"}</span>. You can restore it later from Settings → Capabilities → Restore Backup.
                 </p>

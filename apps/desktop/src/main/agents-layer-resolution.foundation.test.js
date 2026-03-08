@@ -37,7 +37,7 @@ test('tipc bundle and cleanup flows share the centralized layer contract', () =>
   assert.match(tipcSource, /const \{ globalLayer, workspaceLayer, workspaceSource \} = getRuntimeAgentsLayers\(\)/)
   assert.match(tipcSource, /const \{ orderedLayers \} = getRuntimeAgentsLayers\(\)/)
   assert.match(tipcSource, /const \{ globalLayer, orderedLayers, workspaceLayer \} = getRuntimeAgentsLayers\(\)/)
-  assert.match(tipcSource, /const \{ globalLayer, workspaceLayer, writableLayer \} = getRuntimeAgentsLayers\(\)/)
+  assert.match(tipcSource, /const \{ globalLayer, activeSlotLayer, workspaceLayer, writableLayer \} = getRuntimeAgentsLayers\(\)/)
   assert.match(tipcSource, /const \{ writableLayer \} = getRuntimeAgentsLayers\(\)/)
   assert.match(configSource, /export function setActiveBundleSlot\(slotId: string \| null\): BundleSlotState/)
   assert.match(configSource, /safeWriteJsonFileSync\(\s*activeBundleSlotStatePath,/)

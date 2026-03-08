@@ -11,9 +11,9 @@ test('bundle preview conflicts include default skip policy and deterministic ren
   assert.match(bundleServiceSource, /function createPreviewConflict\([\s\S]*defaultStrategy: "skip"[\s\S]*renameTargetId: generateUniqueId\(id, existingIds\)/);
   assert.match(tipcSource, /type BundleConflictItem = \{[\s\S]*defaultStrategy: "skip"[\s\S]*renameTargetId\?: string/);
   assert.match(bundleServiceSource, /export interface BundlePreviewResult \{[\s\S]*importTarget\?: \{[\s\S]*layer: BundleBackupTargetLayer[\s\S]*agentsDir: string[\s\S]*backupDir: string/);
-  assert.match(bundleServiceSource, /function createBundleImportTargetPreview\(targetAgentsDir: string\): NonNullable<BundlePreviewResult\["importTarget"\]> \{[\s\S]*backupDir: path\.resolve\(getDefaultImportBackupDirectory\(\)\)/);
-  assert.match(bundleServiceSource, /return \{[\s\S]*importTarget: createBundleImportTargetPreview\(targetAgentsDir\),[\s\S]*conflicts,[\s\S]*\}/);
-  assert.match(tipcSource, /type BundleConflictPreview = \{[\s\S]*importTarget\?: \{[\s\S]*layer: "global" \| "workspace" \| "custom"[\s\S]*backupDir: string/);
+  assert.match(bundleServiceSource, /function createBundleImportTargetPreview\([\s\S]*targetAgentsDir: string,[\s\S]*targetLayer\?: BundleBackupTargetLayer[\s\S]*backupDir: path\.resolve\(getDefaultImportBackupDirectory\(\)\)/);
+  assert.match(bundleServiceSource, /return \{[\s\S]*importTarget: createBundleImportTargetPreview\(targetAgentsDir, options\?\.targetLayer\),[\s\S]*conflicts,[\s\S]*\}/);
+  assert.match(tipcSource, /type BundleConflictPreview = \{[\s\S]*importTarget\?: \{[\s\S]*layer: "global" \| "workspace" \| "slot" \| "custom"[\s\S]*backupDir: string/);
 });
 
 test('bundle import dialog renders an import plan with add and rename outcome details', () => {
@@ -48,6 +48,22 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
   assert.match(dialogSource, /label: "Reveal Backup"/);
   assert.match(dialogSource, /toast\.success\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
   assert.match(dialogSource, /toast\.error\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
+});
+
+test('bundle import can explicitly target the active bundle slot through the existing preview and import pipeline', () => {
+  assert.match(tipcSource, /type BundleImportTargetMode = "default" \| "active-slot"/);
+  assert.match(tipcSource, /async function resolveBundleImportTarget\([\s\S]*activeSlotLayer[\s\S]*targetLayer: "slot"/);
+  assert.match(tipcSource, /previewBundleWithConflicts: t\.procedure[\s\S]*targetMode\?: BundleImportTargetMode/);
+  assert.match(tipcSource, /importBundle: t\.procedure[\s\S]*targetMode\?: BundleImportTargetMode/);
+  assert.match(bundleServiceSource, /targetLayer\?: BundleBackupTargetLayer/);
+  assert.match(dialogSource, /allowImportTargetSelection\?: boolean/);
+  assert.match(dialogSource, /type BundleImportTargetMode = "default" \| "active-slot"/);
+  assert.match(dialogSource, /targetMode === "active-slot" \? \{ filePath, targetMode \} : \{ filePath \}/);
+  assert.match(dialogSource, /const \[importTargetMode, setImportTargetMode\] = useState<BundleImportTargetMode>\("default"\)/);
+  assert.match(dialogSource, /const handleImportTargetModeChange = async \(value: string\) => \{/);
+  assert.match(dialogSource, /<Label>Import target<\/Label>/);
+  assert.match(dialogSource, /<SelectItem value="active-slot">Active bundle slot \(\{activeBundleSlot\.id\}\)<\/SelectItem>/);
+  assert.match(dialogSource, /importTargetMode === "active-slot" \? \{ targetMode: importTargetMode \} : \{\}/);
 });
 
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {
