@@ -43,6 +43,8 @@ import {
 } from "../shared/builtin-tool-names"
 import {
   appendAgentStopNote,
+  isToolCallPlaceholderResponse,
+  needsNativeToolCallingReminder,
   preferStoredUserResponse,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
@@ -1032,12 +1034,6 @@ export async function processTranscriptWithAgentMode(
   }
 
   // Helper to check if content is just a tool call placeholder (not real content)
-  const isToolCallPlaceholder = (content: string): boolean => {
-    const trimmed = content.trim()
-    // Match patterns like "[Calling tools: ...]" or "[Tool: ...]"
-    return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
-  }
-
   // Helper to detect "status update" responses that describe future work instead of delivering results
   const isProgressUpdateResponse = (content: string): boolean => {
     const trimmed = content.trim()
@@ -1066,7 +1062,7 @@ export async function processTranscriptWithAgentMode(
   const isDeliverableResponse = (content: string, minLength: number = 1): boolean => {
     const trimmed = content.trim()
     if (trimmed.length < minLength) return false
-    if (isToolCallPlaceholder(trimmed)) return false
+    if (isToolCallPlaceholderResponse(trimmed)) return false
     if (isProgressUpdateResponse(trimmed)) return false
     return true
   }
@@ -2040,9 +2036,11 @@ Return ONLY JSON per schema.`,
       const trimmedContent = contentText.trim()
       const hasToolMarkers = /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(contentText)
 
-      if (hasToolMarkers) {
-        const cleaned = contentText.replace(/<\|[^|]*\|>/g, "").trim()
-        if (cleaned.length > 0) {
+      if (needsNativeToolCallingReminder(contentText)) {
+        const cleaned = hasToolMarkers
+          ? contentText.replace(/<\|[^|]*\|>/g, "").trim()
+          : trimmedContent
+        if (cleaned.length > 0 && !isToolCallPlaceholderResponse(cleaned)) {
           addMessage("assistant", cleaned)
         }
         addMessage(
@@ -2287,7 +2285,7 @@ Return ONLY JSON per schema.`,
           break
         }
 
-        if (trimmedContent.length > 0 && !isToolCallPlaceholder(contentText)) {
+        if (trimmedContent.length > 0 && !isToolCallPlaceholderResponse(contentText)) {
           addMessage("assistant", contentText)
         }
 

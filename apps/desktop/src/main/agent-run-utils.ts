@@ -180,6 +180,19 @@ function normalizeUserFacingContent(content: string | undefined | null): string 
     ?? (typeof content === "string" ? content : "")
 }
 
+export function isToolCallPlaceholderResponse(content: string): boolean {
+  const trimmed = content.trim()
+  return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
+}
+
+export function needsNativeToolCallingReminder(content: string): boolean {
+  const trimmed = content.trim()
+  if (!trimmed) return false
+
+  return /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(trimmed)
+    || isToolCallPlaceholderResponse(trimmed)
+}
+
 function isLikelyProgressOnlyResponse(content: string): boolean {
   const trimmed = content.trim()
   if (!trimmed) return false

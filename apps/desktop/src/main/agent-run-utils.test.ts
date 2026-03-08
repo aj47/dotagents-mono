@@ -5,6 +5,8 @@ import {
   appendAgentStopNote,
   buildProfileContext,
   getPreferredDelegationOutput,
+    isToolCallPlaceholderResponse,
+    needsNativeToolCallingReminder,
   preferStoredUserResponse,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
@@ -158,6 +160,26 @@ describe("agent-run-utils", () => {
           undefined,
         ),
       ).toBe("See screenshot\n\n![Shot](/tmp/shot.png)")
+    })
+  })
+
+  describe("native tool-calling reminder detection", () => {
+    it("flags raw tool marker tokens for correction", () => {
+      expect(
+        needsNativeToolCallingReminder(
+          "<|tool_calls_section_begin|><|tool_call_begin|>search<|tool_call_end|>",
+        ),
+      ).toBe(true)
+    })
+
+    it("flags pseudo tool placeholders for correction", () => {
+      expect(isToolCallPlaceholderResponse("[Calling tools: iterm:read_terminal_output]")).toBe(true)
+      expect(needsNativeToolCallingReminder("[Calling tools: iterm:read_terminal_output]")).toBe(true)
+    })
+
+    it("does not flag normal assistant text", () => {
+      expect(isToolCallPlaceholderResponse("Done — the page shows the updated address.")).toBe(false)
+      expect(needsNativeToolCallingReminder("Done — the page shows the updated address.")).toBe(false)
     })
   })
 })

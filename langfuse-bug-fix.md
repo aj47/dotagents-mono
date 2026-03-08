@@ -660,6 +660,43 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/agent-run-utils.ts apps/desktop/src/main/agent-run-utils.test.ts apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts`
     - ✅ passed
 
+### 2026-03-08 — Pseudo tool placeholders should trigger an immediate native tool-calling retry
+
+- Langfuse evidence reviewed:
+  - `conv_1772420535824_w7p0afmvy` / trace `session_1772420535489_tna6qvr9u`
+  - user input: `I need to update my address on amazon. can you help?`
+  - trace outcome: final `output` was only `I'll delegate this to the Web Browser agent to help you update your address on Amazon.` plus the max-iteration note, so the user intent was not completed in a single run
+  - observation timeline showed real progress deep into the task:
+    - terminal/browser automation launched and navigated Amazon successfully
+    - the run filled the address form and clicked the final `Update address` button
+    - after that click, several `Streaming LLM Call` observations emitted plain text placeholders such as `[Calling tools: iterm:read_terminal_output]` instead of actual native tool-call events
+    - those placeholder-only iterations burned loop budget and the run eventually hit max iterations before it could reliably confirm the final page state
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` already detected raw provider tool markers like `<|tool_call_begin|>` and immediately corrected the model with `Please use the native tool-calling interface ...`
+  - the same loop also had a local `isToolCallPlaceholder(...)` helper for placeholder text like `[Calling tools: ...]`, but it only used that helper to avoid treating the placeholder as a deliverable response
+  - there was no dedicated immediate correction path for these placeholder-only generations, so the loop could still spend extra iterations on faux tool text before the generic no-op nudges kicked in
+- Concrete root cause:
+  - placeholder-only assistant outputs that describe a tool call in text (`[Calling tools: ...]`) were not treated as native tool-calling protocol failures, even though they are functionally the same failure mode as the raw `<|tool_call_begin|>` marker case
+  - that let browser/terminal flows waste budget on pseudo tool text after real work, increasing the chance of max-iteration failure before a final verification or user-facing summary
+- Change made:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - added `isToolCallPlaceholderResponse(...)` and `needsNativeToolCallingReminder(...)` so raw tool markers and pure pseudo-tool placeholders share one detection path
+  - `apps/desktop/src/main/llm.ts`
+    - switched the native-tool-calling reminder branch to use the shared helper, so `[Calling tools: ...]` outputs now trigger the same immediate retry instruction as raw tool markers instead of idling through more loop turns
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+      - added regressions for raw tool markers, pseudo-tool placeholders, and normal text so the detection stays narrow and intentional
+    - `apps/desktop/src/main/llm.test.ts`
+      - added a higher-level regression covering placeholder -> reminder -> real tool call -> final answer, but this file is still blocked in the current worktree by a pre-existing Electron/Vitest harness issue unrelated to this patch
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts`
+    - ✅ passed (`19 passed`)
+    - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted helper test exits successfully
+  - `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.json` (from `apps/desktop`)
+    - ✅ passed
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+    - ❌ blocked by a pre-existing desktop test-harness issue in this worktree (`Named export 'ipcMain' not found` from the Electron module after wider main-process imports load), before the new regression could complete
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -678,4 +715,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
+- Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

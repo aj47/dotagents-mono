@@ -406,6 +406,65 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("nudges pseudo tool placeholders to use native tool calls before continuing", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-pseudo-tool-placeholder")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "[Calling tools: iterm:read_terminal_output]",
+        toolCalls: [],
+      })
+      .mockImplementationOnce(async (messages: Array<{ role: string; content: string }>) => {
+        expect(messages.some((message) =>
+          message.role === "user"
+          && message.content.includes("Please use the native tool-calling interface"),
+        )).toBe(true)
+
+        return {
+          content: "",
+          toolCalls: [{
+            name: "iterm:read_terminal_output",
+            arguments: { session_id: "terminal-1", linesOfOutput: 5 },
+          }],
+        }
+      })
+      .mockResolvedValueOnce({
+        content: "Done — the page shows the updated address.",
+        toolCalls: [],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "Please verify the address update went through.",
+      [{
+        name: "iterm:read_terminal_output",
+        description: "Read terminal output",
+        inputSchema: { type: "object", properties: {}, required: [] },
+      } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      4,
+      [],
+      "conv-pseudo-tool-placeholder",
+      "session-pseudo-tool-placeholder",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Done — the page shows the updated address.")
+    expect(mockStreamingCall).toHaveBeenCalledTimes(3)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-pseudo-tool-placeholder",
+      expect.objectContaining({ output: result.content }),
+    )
+  })
+
   it("nudges repeated tool-only exploration to synthesize or ask focused follow-up questions", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")
