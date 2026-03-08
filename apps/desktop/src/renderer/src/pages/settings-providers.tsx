@@ -209,12 +209,12 @@ function ParakeetProviderSection({
     <div className={`rounded-lg border ${isActive ? 'border-primary/30 bg-primary/5' : ''}`}>
       <button
         type="button"
-        className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+        className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
         onClick={onToggleCollapse}
         aria-expanded={!isCollapsed}
         aria-controls="parakeet-provider-content"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold">
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           ) : (
@@ -227,7 +227,7 @@ function ParakeetProviderSection({
           )}
         </span>
         {isActive && usageBadges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap justify-end">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
             {usageBadges.map((badge) => (
               <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
             ))}
@@ -418,12 +418,12 @@ function KittenProviderSection({
     <div className={`rounded-lg border ${isActive ? 'border-primary/30 bg-primary/5' : ''}`}>
       <button
         type="button"
-        className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+        className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
         onClick={onToggleCollapse}
         aria-expanded={!isCollapsed}
         aria-controls="kitten-provider-content"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold">
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           ) : (
@@ -436,7 +436,7 @@ function KittenProviderSection({
           )}
         </span>
         {isActive && usageBadges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap justify-end">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
             {usageBadges.map((badge) => (
               <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
             ))}
@@ -660,12 +660,12 @@ function SupertonicProviderSection({
     <div className={`rounded-lg border ${isActive ? 'border-primary/30 bg-primary/5' : ''}`}>
       <button
         type="button"
-        className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+        className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
         onClick={onToggleCollapse}
         aria-expanded={!isCollapsed}
         aria-controls="supertonic-provider-content"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold">
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           ) : (
@@ -678,7 +678,7 @@ function SupertonicProviderSection({
           )}
         </span>
         {isActive && usageBadges.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap justify-end">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
             {usageBadges.map((badge) => (
               <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
             ))}
@@ -1017,12 +1017,12 @@ export function Component() {
         <div className={`rounded-lg border ${activeProviders.openai.length > 0 ? 'border-primary/30 bg-primary/5' : ''}`}>
           <button
             type="button"
-            className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+            className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
             onClick={() => saveConfig({ providerSectionCollapsedOpenai: !configQuery.data.providerSectionCollapsedOpenai })}
             aria-expanded={!configQuery.data.providerSectionCollapsedOpenai}
             aria-controls="openai-provider-content"
           >
-            <span className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
               {configQuery.data.providerSectionCollapsedOpenai ? (
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -1034,7 +1034,7 @@ export function Component() {
               )}
             </span>
             {activeProviders.openai.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap justify-end">
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
                 {activeProviders.openai.map((badge) => (
                   <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
                 ))}
@@ -1126,12 +1126,12 @@ export function Component() {
           <div className="rounded-lg border border-primary/30 bg-primary/5">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
               onClick={() => saveConfig({ providerSectionCollapsedGroq: !configQuery.data.providerSectionCollapsedGroq })}
               aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
               aria-controls="groq-provider-content"
             >
-              <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGroq ? (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -1140,7 +1140,7 @@ export function Component() {
                 Groq
                 <CheckCircle2 className="h-4 w-4 text-primary" />
               </span>
-              <div className="flex gap-1.5 flex-wrap justify-end">
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
                 {activeProviders.groq.map((badge) => (
                   <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
                 ))}
@@ -1243,12 +1243,12 @@ export function Component() {
           <div className="rounded-lg border border-primary/30 bg-primary/5">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
               onClick={() => saveConfig({ providerSectionCollapsedGemini: !configQuery.data.providerSectionCollapsedGemini })}
               aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
               aria-controls="gemini-provider-content"
             >
-              <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGemini ? (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -1257,7 +1257,7 @@ export function Component() {
                 Gemini
                 <CheckCircle2 className="h-4 w-4 text-primary" />
               </span>
-              <div className="flex gap-1.5 flex-wrap justify-end">
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
                 {activeProviders.gemini.map((badge) => (
                   <ActiveProviderBadge key={badge.label} label={badge.label} icon={badge.icon} />
                 ))}
@@ -1395,12 +1395,12 @@ export function Component() {
           <div className="rounded-lg border">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
               onClick={() => saveConfig({ providerSectionCollapsedGroq: !configQuery.data.providerSectionCollapsedGroq })}
               aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
               aria-controls="groq-provider-content-inactive"
             >
-              <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGroq ? (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -1512,12 +1512,12 @@ export function Component() {
           <div className="rounded-lg border">
             <button
               type="button"
-              className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+              className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
               onClick={() => saveConfig({ providerSectionCollapsedGemini: !configQuery.data.providerSectionCollapsedGemini })}
               aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
               aria-controls="gemini-provider-content-inactive"
             >
-              <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
                 {configQuery.data.providerSectionCollapsedGemini ? (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -1663,12 +1663,12 @@ export function Component() {
         <div className={`rounded-lg border ${dualModelEnabled ? 'border-primary/30 bg-primary/5' : ''}`}>
           <button
             type="button"
-            className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
+            className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer hover:bg-muted/30"
             onClick={() => saveConfig({ dualModelSectionCollapsed: !config.dualModelSectionCollapsed })}
             aria-expanded={!config.dualModelSectionCollapsed}
             aria-controls="dual-model-content"
           >
-            <span className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
               {config.dualModelSectionCollapsed ? (
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               ) : (

@@ -1,5 +1,45 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 36: Desktop provider accordion headers and active-usage badges under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the recently touched MCP/settings surfaces and chose a fresh dense settings page instead. `settings-providers.tsx` is a high-traffic configuration screen with multiple accordion headers that still depended on rigid single-row header assumptions, especially once active-usage badges (`STT`, `Transcript`, `Agent`, `TTS`) appear.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating the just-logged settings work
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - checked runtime readiness again before choosing the area: root, desktop, and mobile `node_modules` are still absent, so live Electron and Expo inspection are not practical in this worktree right now
+  - inspected `settings-providers.tsx` directly with narrow settings-column constraints and font zoom pressure in mind, focusing on the accordion headers for OpenAI, Groq, Gemini, Parakeet, Kitten, Supertonic, the inactive provider sections, and Dual-Model Summarization
+  - cross-checked mobile settings surfaces (`apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`) and found no direct mobile equivalent for this desktop-only provider accordion pattern
+
+#### Findings
+
+- Before the fix, the provider settings page still had one concrete desktop responsiveness issue with clear user impact:
+  - nine accordion headers on the page used a rigid `justify-between` row, so the section title and any active-state chrome had to compete for a single horizontal lane
+  - the active provider sections could show several usage badges at once (`STT`, `Transcript`, `Agent`, `TTS`), but that trailing badge cluster had no deliberate flexible lane or wrap-safe containment
+  - under narrower settings widths or larger font zoom, those headers were more likely to feel cramped or force abrupt crowding instead of reflowing intentionally
+
+#### Changes made
+
+- Hardened the provider accordion header chrome in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` with a small, local layout fix:
+  - converted all nine provider/dual-model header buttons from a rigid single-row layout into `flex-wrap` / top-aligned header rows with a consistent gap
+  - upgraded each header title cluster to `min-w-0 flex-1` so the provider title remains the primary flexible lane
+  - moved the six active usage-badge groups into `ml-auto ... max-w-full ... flex-wrap` clusters so badges can reflow instead of crowding the title row
+- Added `apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts` so this provider-header responsiveness contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/settings-providers.tsx` confirmed the new wrap-safe header/title/badge class counts are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-providers.tsx apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts`
+
+#### Notes
+
+- This chunk is desktop-only: mobile settings has connection and management lists, but no direct React Native equivalent of this dense multi-provider accordion header pattern, so no matching mobile code change was needed.
+- Tradeoff/rationale: kept the provider page’s information architecture intact instead of redesigning provider settings; the fix only adds reliable wrap paths where the headers previously assumed more horizontal room than they always get.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect the provider settings page with several active badges visible and font zoom increased.
+- Best next UI audit chunk after this one: stay in `settings-providers.tsx` for the inner model-download/error/status rows, or move to another fresh desktop settings surface once runtime dependencies are available for live confirmation.
+
 ### 2026-03-08 — Chunk 35: Desktop MCP server dialog tabs and example cards under narrow settings widths and zoom
 
 - Area selected:
