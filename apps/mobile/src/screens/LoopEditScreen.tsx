@@ -121,6 +121,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [profileReloadNonce, setProfileReloadNonce] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -165,7 +166,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
       });
 
     return () => { cancelled = true; };
-  }, [settingsClient]);
+  }, [settingsClient, profileReloadNonce]);
+
+  const handleRetryProfiles = useCallback(() => {
+    if (isLoadingProfiles || !settingsClient) return;
+    setProfileReloadNonce(prev => prev + 1);
+  }, [isLoadingProfiles, settingsClient]);
 
   useEffect(() => {
     if (!isEditing || loopFromRoute || !settingsClient || !effectiveLoopId) {
@@ -287,7 +293,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const trimmedPrompt = formData.prompt.trim();
   const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
-  const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
+  const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
   const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length > 0 && !formData.profileId;
   const showNoSavedProfilesHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
   const saveValidationMessage = !trimmedName && !trimmedPrompt
@@ -462,10 +468,22 @@ export default function LoopEditScreen({ navigation, route }: any) {
         ))}
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
-      {showProfileLoadErrorHelper && (
-        <Text style={[styles.helperText, styles.helperTextWarning]}>
-          Saved profiles couldn't load right now. You can still save this loop with No profile.
-        </Text>
+      {showProfileLoadErrorNotice && (
+        <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
+          <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>
+            Saved profiles couldn't load right now. You can still save this loop with No profile, or retry loading them.
+          </Text>
+          <TouchableOpacity
+            style={styles.profileNoticeRetryButton}
+            onPress={handleRetryProfiles}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Retry loading saved profiles')}
+            accessibilityHint="Attempts to load saved profiles for this loop again."
+            activeOpacity={0.7}
+          >
+            <Text style={styles.profileNoticeRetryButtonText}>Retry profiles</Text>
+          </TouchableOpacity>
+        </View>
       )}
       {showNoProfileSelectedHelper && (
         <Text style={styles.helperText}>No profile selected. This loop will run without a saved profile until you choose one.</Text>
@@ -508,6 +526,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     horizontalMargin: 0,
   });
 
+  const noticeActionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: { padding: spacing.lg },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -539,6 +564,40 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
     helperTextWarning: { color: theme.colors.destructive, lineHeight: 17 },
+    profileNoticeContainer: {
+      marginTop: spacing.xs,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      gap: spacing.sm,
+    },
+    profileNoticeWarningContainer: {
+      backgroundColor: theme.colors.destructive + '12',
+      borderColor: theme.colors.destructive + '24',
+    },
+    profileNoticeText: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: theme.colors.foreground,
+    },
+    profileNoticeWarningText: {
+      color: theme.colors.destructive,
+    },
+    profileNoticeRetryButton: {
+      ...noticeActionTouchTarget,
+      alignSelf: 'flex-start',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    profileNoticeRetryButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
     saveHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.md },
     intervalHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs, lineHeight: 17 },
     intervalHelperTextWarning: { color: theme.colors.destructive },

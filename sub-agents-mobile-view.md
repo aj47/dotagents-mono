@@ -2565,3 +2565,46 @@
 - Next checks:
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that opening the selector always shows the active agent first without creating confusing reorder jumps.
   - Check a long list in both profile mode and ACP mode to confirm the new ordering improves orientation without making the rest of the list feel unstable.
+
+### 2026-03-08 — Iteration 60: add an in-place retry path for loop profile loading
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` `Agent Profile` section
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the `Agent Profile` section already kept profile fetch failures local instead of turning them into a full-screen form error.
+  - But that state still rendered only as a red helper-text line under the profile chips.
+  - There was also no in-place retry action, so a transient profile fetch failure forced users to leave and re-enter the loop editor just to try again.
+- Issue selected:
+  - The loop editor treated profile-loading failures as passive helper text, weakening state clarity and user control in a narrow, high-density mobile section.
+- Decision:
+  - Keep the existing chip layout, `No profile` path, and surrounding form flow unchanged.
+  - Do not promote ordinary `No profile selected` / `No saved profiles yet` helpers in the same iteration.
+  - Make the smallest local fix: turn only the profile-load failure into a compact inline warning notice with a direct retry action.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - track a local `profileReloadNonce` so the profile fetch effect can be retriggered in place,
+    - render profile-load failures inside a bordered inline warning notice instead of plain helper text,
+    - add a `Retry profiles` action with explicit button semantics and a `44px` mobile touch target.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the retry wiring and new notice treatment.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new warning notice feels proportionate under the profile chips and that the retry button does not crowd the section.
+  - If live validation later shows the ordinary `No saved profiles yet` helper is still too easy to miss, that state may need a lighter informational notice rather than another warning block.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Retry profiles` notice is easy to spot and use on a narrow screen.
+  - Confirm the retry path behaves well after a transient fetch failure and still leaves `No profile` usable as the fallback path.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

@@ -121,9 +121,14 @@ test('LoopEditScreen surfaces load and save errors in a dedicated alert block', 
 });
 
 test('LoopEditScreen keeps profile load failures local to the Agent Profile section', () => {
-  assert.match(loopEditSource, /const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;/);
-  assert.match(loopEditSource, /showProfileLoadErrorHelper && \([\s\S]*?Saved profiles couldn't load right now\. You can still save this loop with No profile\.[\s\S]*?\)/);
-  assert.match(loopEditSource, /helperTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive[\s\S]*?lineHeight:\s*17/);
+  assert.match(loopEditSource, /const \[profileReloadNonce, setProfileReloadNonce\] = useState\(0\);/);
+  assert.match(loopEditSource, /\}, \[settingsClient, profileReloadNonce\]\);/);
+  assert.match(loopEditSource, /const handleRetryProfiles = useCallback\(\(\) => \{[\s\S]*?if \(isLoadingProfiles \|\| !settingsClient\) return;[\s\S]*?setProfileReloadNonce\(prev => prev \+ 1\);[\s\S]*?\}, \[isLoadingProfiles, settingsClient\]\);/);
+  assert.match(loopEditSource, /const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;/);
+  assert.match(loopEditSource, /showProfileLoadErrorNotice && \([\s\S]*?style=\{\[styles\.profileNoticeContainer, styles\.profileNoticeWarningContainer\]\}[\s\S]*?Saved profiles couldn't load right now\. You can still save this loop with No profile, or retry loading them\.[\s\S]*?style=\{styles\.profileNoticeRetryButton\}[\s\S]*?onPress=\{handleRetryProfiles\}[\s\S]*?createButtonAccessibilityLabel\('Retry loading saved profiles'\)[\s\S]*?Attempts to load saved profiles for this loop again\.[\s\S]*?Retry profiles[\s\S]*?\)/);
+  assert.match(loopEditSource, /const noticeActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(loopEditSource, /profileNoticeRetryButton:\s*\{[\s\S]*?\.\.\.noticeActionTouchTarget,[\s\S]*?alignSelf:\s*'flex-start'/);
+  assert.match(loopEditSource, /profileNoticeWarningContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.destructive \+ '12',[\s\S]*?borderColor:\s*theme\.colors\.destructive \+ '24'/);
   assert.doesNotMatch(loopEditSource, /setError\(err\.message \|\| 'Failed to load agent profiles'\);/);
 });
 
