@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 80: Desktop expanded settings sidebar rows sized themselves to content width and clipped core nav labels under stressed width
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/app-layout.tsx` (root expanded sidebar → `Settings` section header and per-link rows such as `Capabilities`, `WhatsApp`, and `Repeat Tasks`)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched memories surface unless a clearly fresh sub-surface appeared.
+  - A live Electron renderer was still reachable on `:9333`, and the root page at `http://localhost:5174/` exposed a fresh sidebar/settings sub-surface that was not logged recently in the audit ledger.
+  - `visible-ui.md` already pointed at remaining root-shell chrome opportunities, so the live settings-nav fit issue was a higher-signal follow-up than another source-only pass.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `visible-ui.md`, and the repo’s mobile workflow notes before choosing the next area
+  - reused the live Electron renderer target on `http://localhost:5174/` through direct CDP WebSocket inspection from a Node script because `electron_execute` could not attach without a main-process `--inspect` port
+  - stress-tested the mounted root page at `620×900` with `document.documentElement.style.fontSize = '24px'`, captured screenshot-backed evidence in `tmp/ui-audit/root-settings-sidebar-before-620x900-root24.png`, and measured the expanded settings sidebar DOM directly before editing source
+  - confirmed current source still matched the live issue: expanded settings rows in `app-layout.tsx` were content-width `flex h-7 ...` links with a `truncate` label, and the `Settings` section header label also still used `truncate`
+  - prototyped the exact wrap-safe `w-full min-w-0 items-start` row treatment plus wrap-safe labels in the live DOM and captured `tmp/ui-audit/root-settings-sidebar-prototype-620x900-root24.png`
+  - cross-checked mobile scope and confirmed the mobile app uses its own `SettingsScreen.tsx` section flow rather than this desktop app-layout sidebar, so no parallel mobile patch was needed
+
+#### Findings
+
+- Before the fix, the desktop expanded `Settings` sidebar had one concrete navigation/readability issue with clear user impact:
+  - the expanded settings nav rows were not constrained to the available sidebar lane; they sized themselves to content width instead of the sidebar width
+  - in live inspection at `620×900` with `24px` base text, the settings links lived in a lane only about `151px` wide, but representative rows like `Capabilities`, `WhatsApp`, and `Repeat Tasks` rendered at about `181px` width
+  - the mounted settings nav group reported `clientWidth = 151` and `scrollWidth = 181`, and the `Settings` section label itself also truncated (`clientWidth = 67`, `scrollWidth = 78`)
+  - practical impact: core navigation labels in the root sidebar become partially clipped or ambiguously shortened exactly when the app shell is tight or text is larger, which makes high-frequency navigation feel less trustworthy
+
+#### Changes made
+
+- Hardened only the desktop root sidebar settings section in `apps/desktop/src/renderer/src/components/app-layout.tsx`:
+  - introduced focused class constants for the settings section button, settings section label, settings nav links, and settings nav labels so the shrink/wrap contract is explicit
+  - changed expanded settings nav rows from content-width single-line links to `w-full min-w-0 items-start` rows so they stay inside the sidebar lane
+  - replaced the old truncated nav labels with wrap-safe `break-words text-left leading-tight [overflow-wrap:anywhere]` labels so long items can break cleanly instead of clipping
+  - applied the same wrap-safe label treatment to the `Settings` section header and top-aligned its icons so the row remains deliberate when labels wrap
+- Added `apps/desktop/src/renderer/src/components/app-layout.layout.test.ts` with focused source-contract coverage for the wrap-safe settings section/header treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Dependency-free source-contract verification: a Node script confirmed the new settings section/link class constants, the wrap-safe label usage, removal of the old truncated label markup, and the new focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5174/` via direct CDP WebSocket inspection:
+  - screenshot: `tmp/ui-audit/root-settings-sidebar-before-620x900-root24.png`
+  - mounted measurements: settings nav group `clientWidth = 151`, `scrollWidth = 181`; representative settings rows rendered at about `181px` width inside that lane; `Settings` label `clientWidth = 67`, `scrollWidth = 78`
+- Live DOM prototype verification of the intended fix:
+  - screenshot: `tmp/ui-audit/root-settings-sidebar-prototype-620x900-root24.png`
+  - after applying the same row/label treatment in the mounted DOM, the settings nav group dropped to `clientWidth = 151`, `scrollWidth = 151`; each settings row measured `151px` wide, and the header label no longer truncated (`clientWidth = scrollWidth = 61`)
+  - representative wrapped rows like `Capabilities`, `WhatsApp`, and `Repeat Tasks` stayed fully visible inside the sidebar lane at about `52.5px` height instead of overflowing horizontally
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/app-layout.tsx apps/desktop/src/renderer/src/components/app-layout.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is still valuable for screenshot-backed evidence and DOM prototyping, but it is not guaranteed to be serving this checkout’s edited bundle. I therefore treated the renderer as pre-fix evidence plus DOM prototype verification, and used direct source verification for the shipped code.
+- Mobile cross-check: no matching mobile code change was needed because the mobile app does not use this desktop `app-layout.tsx` sidebar pattern; it renders settings through its own screen/section flow.
+- Tradeoff/rationale: some settings rows now take a second line under stress, but that is a better product tradeoff than letting core navigation labels clip out of their sidebar lane.
+- Best next UI audit chunk after this one: move away from the just-touched root settings sidebar unless a rebuilt renderer from this checkout becomes available; the next strongest target is another fresh desktop or mobile surface with a real empty/loading/error or cramped-width state.
+
 ### 2026-03-08 — Chunk 79: Desktop memories stats strip kept count and importance badges in a single clipped row under stressed width
 
 - Area selected:

@@ -43,6 +43,18 @@ interface AgentSessionsResponse {
   activeSessions: AgentSession[]
 }
 
+const SETTINGS_SECTION_BUTTON_CLASS_NAME =
+  "flex w-full min-w-0 items-start gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+
+const SETTINGS_SECTION_LABEL_CLASS_NAME =
+  "min-w-0 flex-1 break-words text-left leading-tight [overflow-wrap:anywhere]"
+
+const SETTINGS_NAV_LINK_CLASS_NAME =
+  "flex min-h-7 w-full min-w-0 items-start gap-2 rounded-md px-2 py-1.5 font-medium transition-all duration-200"
+
+const SETTINGS_NAV_LABEL_CLASS_NAME =
+  "min-w-0 flex-1 break-words text-left leading-tight [overflow-wrap:anywhere]"
+
 export const Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -235,17 +247,16 @@ export const Component = () => {
         aria-current={isActive ? "page" : undefined}
         className={() => {
           return cn(
-            "flex h-7 items-center rounded-md px-2 font-medium transition-all duration-200",
-            isCollapsed ? "justify-center" : "gap-2",
+            isCollapsed ? "flex h-7 items-center justify-center rounded-md px-2 font-medium transition-all duration-200" : SETTINGS_NAV_LINK_CLASS_NAME,
             isActive
               ? "bg-accent text-accent-foreground"
               : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
           )
         }}
       >
-        <span className={cn(link.icon, "shrink-0")}></span>
+        <span className={cn(link.icon, !isCollapsed && "mt-0.5 shrink-0")}></span>
         {!isCollapsed && (
-          <span className="truncate font-medium">{link.text}</span>
+          <span className={SETTINGS_NAV_LABEL_CLASS_NAME}>{link.text}</span>
         )}
       </NavLink>
     )
@@ -558,21 +569,18 @@ export const Component = () => {
               <div className="px-2">
                 <button
                   onClick={() => setSettingsExpanded(!settingsExpanded)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200",
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                  )}
+                  className={SETTINGS_SECTION_BUTTON_CLASS_NAME}
                 >
                   <span
                     className={cn(
-                      "transition-transform duration-200",
+                      "mt-0.5 shrink-0 transition-transform duration-200",
                       settingsExpanded
                         ? "i-mingcute-down-line"
                         : "i-mingcute-right-line",
                     )}
                   ></span>
-                  <span className="i-mingcute-settings-3-line"></span>
-                  <span className="truncate">Settings</span>
+                  <span className="i-mingcute-settings-3-line mt-0.5 shrink-0"></span>
+                  <span className={SETTINGS_SECTION_LABEL_CLASS_NAME}>Settings</span>
                 </button>
 
                 {settingsExpanded && (
