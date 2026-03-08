@@ -106,7 +106,10 @@ test('LoopEditScreen explains when no saved profiles are available to assign', (
   assert.match(loopEditSource, /setProfileLoadError\(null\);[\s\S]*?settingsClient\.getAgentProfiles\(\)/);
   assert.match(loopEditSource, /setProfileLoadError\(err\.message \|\| 'Failed to load agent profiles'\);/);
   assert.match(loopEditSource, /const showNoSavedProfilesNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length === 0;/);
-  assert.match(loopEditSource, /showNoSavedProfilesNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?No saved profiles yet\. This loop can still run with No profile, or you can create an agent in Settings → Agents and come back to assign it here\.[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(loopEditSource, /const handleCreateAgentProfile = useCallback\(\(\) => \{[\s\S]*?navigation\.navigate\('AgentEdit'\);[\s\S]*?\}, \[navigation\]\);/);
+  assert.match(loopEditSource, /showNoSavedProfilesNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?No saved profiles yet\. This loop can still run with No profile, or you can create an agent now and come back to assign it here\.[\s\S]*?style=\{styles\.profileNoticeActionButton\}[\s\S]*?onPress=\{handleCreateAgentProfile\}[\s\S]*?createButtonAccessibilityLabel\('Create agent'\)[\s\S]*?Create Agent[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(loopEditSource, /profileNoticeActionButton:\s*\{[\s\S]*?\.\.\.noticeActionTouchTarget,[\s\S]*?alignSelf:\s*'stretch',[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '26',[\s\S]*?justifyContent:\s*'center'/);
+  assert.match(loopEditSource, /profileNoticeActionButtonText:\s*\{[\s\S]*?fontSize:\s*14,[\s\S]*?fontWeight:\s*'600',[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?textAlign:\s*'center'/);
 });
 
 test('LoopEditScreen makes profile loading feel in-progress instead of passive helper text', () => {
@@ -138,6 +141,13 @@ test('LoopEditScreen keeps profile load failures local to the Agent Profile sect
   assert.match(loopEditSource, /profileNoticeRetryButton:\s*\{[\s\S]*?\.\.\.noticeActionTouchTarget,[\s\S]*?alignSelf:\s*'flex-start'/);
   assert.match(loopEditSource, /profileNoticeWarningContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.destructive \+ '12',[\s\S]*?borderColor:\s*theme\.colors\.destructive \+ '24'/);
   assert.doesNotMatch(loopEditSource, /setError\(err\.message \|\| 'Failed to load agent profiles'\);/);
+});
+
+test('LoopEditScreen refreshes saved profiles when returning from nested agent creation', () => {
+  assert.match(loopEditSource, /import \{ useCallback, useEffect, useMemo, useRef, useState \} from 'react';/);
+  assert.match(loopEditSource, /const hasSeenScreenFocusRef = useRef\(false\);/);
+  assert.match(loopEditSource, /navigation\.addListener\('focus', \(\) => \{[\s\S]*?if \(!settingsClient\) return;[\s\S]*?if \(!hasSeenScreenFocusRef\.current\) \{[\s\S]*?hasSeenScreenFocusRef\.current = true;[\s\S]*?return;[\s\S]*?\}[\s\S]*?setProfileReloadNonce\(prev => prev \+ 1\);[\s\S]*?\}\);/);
+  assert.match(loopEditSource, /return unsubscribe;[\s\S]*?\}, \[navigation, settingsClient\]\);/);
 });
 
 test('LoopEditScreen previews interval minutes with readable cadence labels', () => {

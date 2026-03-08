@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -124,6 +124,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const [profileReloadNonce, setProfileReloadNonce] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasSeenScreenFocusRef = useRef(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -168,10 +169,27 @@ export default function LoopEditScreen({ navigation, route }: any) {
     return () => { cancelled = true; };
   }, [settingsClient, profileReloadNonce]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (!settingsClient) return;
+      if (!hasSeenScreenFocusRef.current) {
+        hasSeenScreenFocusRef.current = true;
+        return;
+      }
+      setProfileReloadNonce(prev => prev + 1);
+    });
+
+    return unsubscribe;
+  }, [navigation, settingsClient]);
+
   const handleRetryProfiles = useCallback(() => {
     if (isLoadingProfiles || !settingsClient) return;
     setProfileReloadNonce(prev => prev + 1);
   }, [isLoadingProfiles, settingsClient]);
+
+  const handleCreateAgentProfile = useCallback(() => {
+    navigation.navigate('AgentEdit');
+  }, [navigation]);
 
   useEffect(() => {
     if (!isEditing || loopFromRoute || !settingsClient || !effectiveLoopId) {
@@ -516,8 +534,18 @@ export default function LoopEditScreen({ navigation, route }: any) {
       {showNoSavedProfilesNotice && (
         <View style={styles.profileNoticeContainer}>
           <Text style={styles.profileNoticeText}>
-            No saved profiles yet. This loop can still run with No profile, or you can create an agent in Settings → Agents and come back to assign it here.
+            No saved profiles yet. This loop can still run with No profile, or you can create an agent now and come back to assign it here.
           </Text>
+          <TouchableOpacity
+            style={styles.profileNoticeActionButton}
+            onPress={handleCreateAgentProfile}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Create agent')}
+            accessibilityHint="Opens the agent editor so you can create a saved agent profile and return to assign it to this loop."
+            activeOpacity={0.7}
+          >
+            <Text style={styles.profileNoticeActionButtonText}>Create Agent</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -651,6 +679,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 13,
       fontWeight: '600',
       color: theme.colors.primary,
+    },
+    profileNoticeActionButton: {
+      ...noticeActionTouchTarget,
+      alignSelf: 'stretch',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '26',
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    profileNoticeActionButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.primary,
+      textAlign: 'center',
     },
     saveHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.md },
     intervalHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs, lineHeight: 17 },

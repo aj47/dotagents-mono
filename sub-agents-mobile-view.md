@@ -4418,3 +4418,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Open Connection Settings` button is easy to tap and does not crowd the blocked-save notice on narrow screens.
   - Live-test the recovery path end-to-end: open a blocked agent/loop edit form, jump to `ConnectionSettings`, configure credentials, return, and confirm the save CTA becomes understandable without extra backtracking.
   - After that live pass, continue with the next highest-signal local sub-agent mobile issue rather than revisiting this recovery action without fresh evidence.
+
+### 2026-03-08 — Iteration 101: add a direct create-agent path from empty loop profile assignment
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iteration 100 so the next edit stayed in a fresh sub-agent mobile surface
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - focused edit-flow coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+  - current mobile workflow / install state before attempting live validation
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --help` → failed with `sh: expo: command not found` and `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo remains unavailable here, this iteration used source-backed mobile-flow review plus focused regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - Source review showed the `Agent Profile (optional)` section already handled loading, retry, and `No profile selected` states.
+  - When `profiles.length === 0`, the loop editor only showed explanatory copy telling users to create an agent in `Settings → Agents` and come back.
+  - On mobile that empty-assignment state was still a dead end, and returning from a nested agent-creation flow would also leave the loop editor's profile list stale until a later reload.
+- Issue selected:
+  - The loop editor's no-saved-profiles state lacked a direct recovery path and did not proactively refresh assignment choices after nested agent creation.
+- Assumptions / tradeoffs:
+  - Assumed opening `AgentEdit` directly is a better recovery path than bouncing users through the broader Settings screen because the blocker is specifically the lack of any assignable agent profile.
+  - Kept the existing `No profile` option and section layout unchanged so this remains a small, local improvement rather than a broader loop-form redesign.
+- Decision:
+  - Keep the existing profile chips, helper copy, and retry path intact.
+  - Add one explicit full-width `Create Agent` action inside the no-saved-profiles notice.
+  - Refresh saved profiles whenever `LoopEditScreen` regains focus after the initial mount so returning from nested agent creation can repopulate the assignment choices.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - add `handleCreateAgentProfile` that navigates straight to `AgentEdit`,
+    - replace the no-saved-profiles dead-end copy with a notice that includes a full-width `Create Agent` action,
+    - add a focus listener that bumps the existing profile reload nonce after the first focus so the profile list refreshes when users return from nested agent creation.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new `Create Agent` notice action, its mobile button styling, and the focus-triggered profile refresh path.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --help` ⚠️ blocked because `expo` is unavailable and both repository and `apps/mobile` `node_modules` are missing in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - This new notice action still needs a real narrow-screen pass once Expo is restored to confirm it feels clearly secondary to `No profile` while still being easy to tap.
+  - After creating an agent, the loop editor refreshes the available profiles, but it still leaves the new profile unselected; live use will determine whether auto-selecting the newly created profile would actually help or feel presumptuous.
+  - The edit flows still lack screenshot-backed validation for keyboard overlap, safe-area spacing, and return-flow clarity on small devices.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Create Agent` action is easy to tap and does not crowd the profile-assignment notice on narrow screens.
+  - Live-test the full return flow: open `LoopEdit`, hit `Create Agent`, save a new agent, return, and confirm the profile chips refresh without requiring a manual reopen.
+  - After that live pass, decide whether selecting the newly created profile automatically would improve clarity or whether keeping explicit user choice is better.
