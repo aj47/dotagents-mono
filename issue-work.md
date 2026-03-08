@@ -2009,3 +2009,38 @@
   - Keep broader hub catalog/search work out of scope here unless the repo intentionally adopts the full hub app surface.
 
 - Next recommended issue work item: refresh open issues again and prefer either a concrete bug or another small trust/reliability slice; if `#57` slots is revisited, only do so after slot-vs-workspace precedence is explicitly documented in code or issue comments.
+
+##### Issue #57 — Runtime layer-resolution foundation: executable helper coverage
+
+- Selection rationale:
+  - The latest `#57` ledger entry had already landed the shared runtime `.agents` layer helper, but its strongest regression guard was still a source-inspection test.
+  - This worktree can currently run dependency-free Node tests and desktop TypeScript checks, so the highest-value next slice was to add executable coverage for the helper behavior itself without changing the runtime contract.
+- Investigation:
+  - Re-read issue `#57` and its slot follow-up comments, then re-inspected `apps/desktop/src/main/config.ts`, `config.persistence.test.ts`, and `agents-layer-resolution.foundation.test.js`.
+  - Confirmed `getRuntimeAgentsLayers()` is now the central contract for the current runtime stack (`global` plus optional `workspace` overlay), but there was no executable test asserting the actual behavior for env-driven workspaces, upward-discovered workspaces, or the same-as-global guardrail.
+  - Confirmed the worktree still lacks installed desktop dependencies (`pnpm` reported missing local `node_modules`, and the desktop `pretest` path failed while trying to run `packages/shared` `tsup`), so fully running Vitest is currently blocked locally.
+- Important assumptions:
+  - Assumption: adding a real Vitest test file for `getRuntimeAgentsLayers()` is still worthwhile even though this worktree cannot execute Vitest until dependencies are present.
+  - Why acceptable: the new test captures the intended runtime behavior in executable form for CI / a fully bootstrapped checkout, while local verification can still prove the new file type-checks and that the existing no-dependency foundation guard continues to pass.
+  - Assumption: not changing runtime code is the safest `#57` step here.
+  - Why acceptable: the issue’s current open question is future slot precedence, not the already-landed global/workspace contract; strengthening verification reduces regression risk without speculating on slot behavior.
+- Changes implemented:
+  - Added `apps/desktop/src/main/config.runtime-layers.test.ts` with focused tests covering:
+    - global-only resolution when no workspace overlay exists
+    - `DOTAGENTS_WORKSPACE_DIR` as the writable overlay source
+    - upward `.agents` discovery when no env override is set
+    - ignoring env workspaces that collapse to the global `~/.agents` layer
+  - Kept the existing dependency-free `agents-layer-resolution.foundation.test.js` in place so cross-file usage of the shared helper remains guarded even in minimally bootstrapped environments.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop run test:run -- src/main/config.runtime-layers.test.ts src/main/config.persistence.test.ts` ⚠️ blocked locally because desktop/shared dependencies are not installed in this worktree (`tsup: command not found`, `node_modules missing`).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - In a fully bootstrapped environment, rerun the new Vitest file and keep it green alongside `config.persistence.test.ts`.
+  - Before adding `active-slot.json` or slot-targeted imports, explicitly document slot-vs-workspace precedence in code/comments so runtime layering stays intentional.
+  - After that precedence decision, extend the same shared helper to include the active slot and add the smallest read-only UI/status surface first.
+
+- Next recommended issue work item: if dependencies become available, re-run the new `#57` Vitest coverage first; otherwise refresh the backlog again and pick a fresh concrete bug or small trust/UX slice rather than speculative slot UI work.
