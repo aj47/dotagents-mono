@@ -335,7 +335,7 @@ export function ResponseHistoryPanel({
                   <View style={styles.responseItem}>
                     <View style={styles.responseHeader}>
                       <Text style={styles.timestamp}>
-                        {formatTime(response.timestamp)}
+                        {formatTime(response.timestamp, false)}
                       </Text>
                       <TouchableOpacity
                         style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}

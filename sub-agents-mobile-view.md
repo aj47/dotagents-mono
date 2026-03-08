@@ -3570,3 +3570,44 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed header summary stays legible at narrow widths in both idle and active playback states.
   - If live validation still shows the response-history rows feeling dense, decide whether compacting the per-response timestamps is the next smallest readability win.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this header summary without new evidence.
+
+### 2026-03-08 — Iteration 82: compact response-history row timestamps for narrow screens
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - focused mobile coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`
+  - nearby mobile timestamp formatting patterns in `apps/mobile/src/screens/SettingsScreen.tsx`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review confirmed the `ResponseHistoryPanel` header already summarized recency as `Latest HH:MM`.
+  - The expanded per-response rows still rendered full `HH:MM:SS` timestamps.
+  - On a narrow mobile list stacked above chat content, those extra seconds added detail without helping the main scan question of which response is newest or recent.
+- Issue selected:
+  - Per-response response-history timestamps were denser than necessary on mobile, weakening readability in an already compact activity panel.
+- Decision:
+  - Keep the response-history layout, ordering, playback behavior, and collapsed header summary unchanged.
+  - Do not introduce relative-time wording or broader timestamp heuristics while live validation is blocked.
+  - Make the smallest local readability fix: mirror the existing mobile minute-precision pattern already used for loop metadata and drop seconds from visible response-row timestamps.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to render each response-row timestamp with hour/minute precision instead of hour/minute/second precision.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the minute-precision row-timestamp contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the shorter timestamps feel cleaner without making adjacent responses too similar when several arrive within the same minute.
+  - The `ResponseHistoryPanel` still lacks fresh live validation overall, so any larger hierarchy changes should wait for screenshot-backed evidence instead of continued source-only tweaking.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the compact row timestamps reduce visual noise in the expanded response-history list.
+  - If live validation shows multiple responses often land in the same minute, decide whether the next smallest improvement is a subtle recency cue (`Just now`, `1m ago`) rather than restoring second-level precision.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history formatting again without new evidence.

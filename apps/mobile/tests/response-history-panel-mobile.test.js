@@ -35,3 +35,8 @@ test('surfaces response recency and active playback state directly in the histor
   assert.match(responseHistorySource, /headerStatusTextActive:\s*\{[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?fontWeight:\s*'600'/);
   assert.match(responseHistorySource, /style=\{\[styles\.headerStatusText, speakingIndex !== null && styles\.headerStatusTextActive\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{headerStatusText\}/);
 });
+
+test('uses minute-precision timestamps in each response row to reduce narrow-screen noise', () => {
+  assert.match(responseHistorySource, /const formatTime = \(timestamp: number, includeSeconds = true\) =>/);
+  assert.match(responseHistorySource, /<Text style=\{styles\.timestamp\}>[\s\S]*?\{formatTime\(response\.timestamp, false\)\}[\s\S]*?<\/Text>/);
+});
