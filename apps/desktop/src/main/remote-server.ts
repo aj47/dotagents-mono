@@ -1620,7 +1620,20 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           timestamp: msg.timestamp,
           toolCalls: msg.toolCalls,
           toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
         })),
+        rawMessages: conversation.rawMessages?.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
+        })),
+        compaction: conversation.compaction,
         metadata: conversation.metadata,
       })
     } catch (error: any) {

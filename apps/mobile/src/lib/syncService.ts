@@ -6,6 +6,7 @@
 import { Session, ChatMessage } from '../types/session';
 import { getSummaryMetadata } from '@dotagents/shared';
 import {
+  ConversationCompactionMetadata,
   SettingsApiClient,
   ServerConversation,
   ServerConversationFull,
@@ -235,14 +236,24 @@ export async function syncConversations(
  * @param serverConversationId - The server-side conversation ID
  * @returns The messages and updated metadata, or null on failure
  */
+export interface FetchedConversationState {
+  messages: ChatMessage[];
+  fullHistoryMessages?: ChatMessage[];
+  compaction?: ConversationCompactionMetadata;
+  title: string;
+  updatedAt: number;
+}
+
 export async function fetchFullConversation(
   client: SettingsApiClient,
   serverConversationId: string
-): Promise<{ messages: ChatMessage[]; title: string; updatedAt: number } | null> {
+): Promise<FetchedConversationState | null> {
   try {
     const fullConv = await client.getConversation(serverConversationId);
     return {
       messages: fullConv.messages.map(fromServerMessage),
+      fullHistoryMessages: fullConv.rawMessages?.map(fromServerMessage),
+      compaction: fullConv.compaction,
       title: fullConv.title,
       updatedAt: fullConv.updatedAt,
     };

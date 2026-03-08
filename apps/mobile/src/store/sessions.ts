@@ -4,7 +4,7 @@ import { getSummaryMetadata } from '@dotagents/shared';
 import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem } from '../types/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
-import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';
+import { syncConversations, SyncResult, fetchFullConversation, FetchedConversationState } from '../lib/syncService';
 
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
@@ -41,7 +41,7 @@ export interface SessionStore {
   lastSyncResult: SyncResult | null;
 
   // Lazy loading
-  loadSessionMessages: (sessionId: string, client: SettingsApiClient) => Promise<{ messages: ChatMessage[]; freshlyFetched: boolean } | null>;
+  loadSessionMessages: (sessionId: string, client: SettingsApiClient) => Promise<(FetchedConversationState & { freshlyFetched: boolean }) | null>;
   isLoadingMessages: boolean;
 }
 
@@ -582,11 +582,18 @@ export function useSessions(): SessionStore {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
   // Lazy-load messages for a stub session from server
-  const loadSessionMessages = useCallback(async (sessionId: string, client: SettingsApiClient): Promise<{ messages: ChatMessage[]; freshlyFetched: boolean } | null> => {
+  const loadSessionMessages = useCallback(async (sessionId: string, client: SettingsApiClient): Promise<(FetchedConversationState & { freshlyFetched: boolean }) | null> => {
     const session = sessionsRef.current.find(s => s.id === sessionId);
     if (!session?.serverConversationId) return null;
     // Already has messages - no need to fetch
-    if (session.messages.length > 0) return { messages: session.messages, freshlyFetched: false };
+    if (session.messages.length > 0) {
+      return {
+        messages: session.messages,
+        title: session.title,
+        updatedAt: session.updatedAt,
+        freshlyFetched: false,
+      };
+    }
 
     setIsLoadingMessages(true);
     try {
@@ -599,7 +606,12 @@ export function useSessions(): SessionStore {
       const currentSessions = sessionsRef.current;
       const latestSession = currentSessions.find(s => s.id === sessionId);
       if (latestSession && latestSession.messages.length > 0) {
-        return { messages: latestSession.messages, freshlyFetched: false };
+        return {
+          messages: latestSession.messages,
+          title: latestSession.title,
+          updatedAt: latestSession.updatedAt,
+          freshlyFetched: false,
+        };
       }
 
       const sessionsToSave = currentSessions.map(s => {
@@ -621,7 +633,7 @@ export function useSessions(): SessionStore {
         await saveSessions(sessionsToSave);
       });
 
-      return { messages: result.messages, freshlyFetched: true };
+      return { ...result, freshlyFetched: true };
     } catch (err: any) {
       console.error('[sessions] Failed to load session messages:', err);
       return null;

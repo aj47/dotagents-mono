@@ -219,12 +219,22 @@ export interface ServerConversation {
   preview?: string;
 }
 
+export interface ConversationCompactionMetadata {
+  rawHistoryPreserved: boolean;
+  storedRawMessageCount?: number;
+  representedMessageCount: number;
+  compactedAt?: number;
+  partialReason?: 'legacy_summary_without_raw_messages';
+}
+
 export interface ServerConversationFull {
   id: string;
   title: string;
   createdAt: number;
   updatedAt: number;
   messages: ServerConversationMessage[];
+  rawMessages?: ServerConversationMessage[];
+  compaction?: ConversationCompactionMetadata;
   metadata?: Record<string, unknown>;
 }
 

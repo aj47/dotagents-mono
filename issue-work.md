@@ -1640,3 +1640,42 @@
   - If collapsed tiles should remain drag-reorderable, revisit how reorder affordances interact with the derived collapsed-tile presentation.
 
 - Next recommended issue work item: pivot back to `#58` for another small history provenance/reliability slice, or continue `#25`/`#57` only if another equally narrow trust-focused follow-up is directly observable.
+
+##### Issue #58 — Mobile full-history fetch now preserves summary metadata and exposes a basic stored-history viewer
+
+- Selection rationale:
+  - After the `#55` follow-up, `#58` was the next highest-value open issue with a concrete local trust/reliability gap.
+  - The clearest remaining gap was on mobile: the desktop/mobile recovery endpoint for `GET /v1/conversations/:id` still stripped summary metadata and did not expose preserved raw history / compaction information, so mobile could not faithfully browse the stored transcript for summarized conversations.
+- Investigation:
+  - Re-read the recent `#58` ledger entries to avoid repeating already-landed desktop history-viewer work.
+  - Inspected `apps/desktop/src/main/remote-server.ts` and confirmed the recovery route only returned compacted `messages` fields (`role`, `content`, timestamps, tool data) while dropping `isSummary`, `summarizedMessageCount`, `rawMessages`, and `compaction`.
+  - Inspected `apps/mobile/src/lib/syncService.ts`, `apps/mobile/src/store/sessions.ts`, and `apps/mobile/src/screens/ChatScreen.tsx` and confirmed mobile lazy-loads server conversations through that stripped response, so the preserved full transcript could not be surfaced there.
+- Important assumptions:
+  - Assumption: a first mobile full-history slice that adds a simple toggle/banner is acceptable without building a dedicated modal or desktop-style viewer.
+  - Why acceptable: it is the smallest user-visible improvement that lets mobile users switch between the active compacted window and the preserved stored transcript for summarized conversations.
+  - Assumption: environment failures in this worktree’s mobile/build tooling do not invalidate the source-level/mobile logic change itself as long as the direct source regressions are covered and desktop typecheck still passes.
+  - Why acceptable: the failing commands are missing-tool / missing-config problems that affect the broader mobile package, not a targeted runtime error introduced by this slice.
+- Changes implemented:
+  - Extended `packages/shared/src/api-types.ts` so `ServerConversationFull` can carry `rawMessages` and `compaction` metadata via a shared `ConversationCompactionMetadata` type.
+  - Updated `apps/desktop/src/main/remote-server.ts` so `GET /v1/conversations/:id` now preserves `isSummary`, `summarizedMessageCount`, `rawMessages`, and `compaction` instead of stripping them from the response.
+  - Updated `apps/mobile/src/lib/syncService.ts` and `apps/mobile/src/store/sessions.ts` so lazy-loaded mobile conversations retain that extra full-history/compaction payload.
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` so summarized conversations can show a compact banner with `Show Full History` / `Show Active Window`, using the preserved raw transcript when available.
+  - Added focused regression tests:
+    - `apps/desktop/src/main/remote-server.conversation-history-response.test.js`
+    - `apps/mobile/src/lib/syncService.full-history-response.test.js`
+    - `apps/mobile/src/screens/ChatScreen.full-history-banner.test.js`
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/remote-server.conversation-history-response.test.js apps/mobile/src/lib/syncService.full-history-response.test.js apps/mobile/src/screens/ChatScreen.full-history-banner.test.js apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js apps/desktop/src/renderer/src/pages/sessions.pending-tile-layout.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Attempted: `pnpm build:shared`
+  - Result: blocked in this worktree because the shared package build tool is unavailable (`tsup: command not found`; PNPM also warns that local `node_modules` are missing there).
+  - Attempted: `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - Result: blocked by pre-existing mobile environment/config problems in this worktree (`expo/tsconfig.base` missing plus widespread missing mobile package typings/deps), but the only new targeted regression it surfaced during the run (`ServerConversationFull` import omission in `syncService.ts`) was fixed before the final focused verification rerun.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If mobile needs parity with desktop’s richer history UX, promote the banner/toggle into a dedicated full-history viewer with clearer provenance copy and navigation between compacted vs stored views.
+  - Re-run shared/mobile package builds once this worktree has the missing package-manager artifacts/tooling restored.
+
+- Next recommended issue work item: revisit `#57` or `#25` for another narrow trust/preview follow-up, or continue `#58` only if the next slice is similarly self-contained and does not depend on broader mobile environment repair.

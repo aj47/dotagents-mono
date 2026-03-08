@@ -34,6 +34,8 @@ import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
+import type { ConversationCompactionMetadata } from '../lib/settingsApi';
+import { fetchFullConversation } from '../lib/syncService';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
@@ -612,6 +614,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const [respondToUserHistory, setRespondToUserHistory] = useState<
     Array<{ text: string; timestamp: number }>
   >([]);
+  const [fullHistoryMessages, setFullHistoryMessages] = useState<ChatMessage[] | null>(null);
+  const [historyCompaction, setHistoryCompaction] = useState<ConversationCompactionMetadata | null>(null);
+  const [showFullHistory, setShowFullHistory] = useState(false);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string) => Promise<void>>(async () => {});
@@ -829,6 +834,25 @@ export default function ChatScreen({ route, navigation }: any) {
   // persistence effect doesn't re-save the just-fetched messages (which would
   // regenerate IDs/timestamps and cause unnecessary updatedAt drift).
   const skipNextPersistRef = useRef(false);
+  const withSummaryMetadata = useCallback((sourceMessages: ChatMessage[]) => (
+    sourceMessages.map(message => ({
+      ...message,
+      ...getSummaryMetadata(message),
+    }))
+  ), []);
+
+  const hydrateStoredFullHistory = useCallback(async (sessionId: string, serverConversationId: string) => {
+    try {
+      const client = new SettingsApiClient(config.baseUrl, config.apiKey);
+      const result = await fetchFullConversation(client, serverConversationId);
+      if (!result || currentSessionIdRef.current !== sessionId) return;
+
+      setFullHistoryMessages(result.fullHistoryMessages ? withSummaryMetadata(result.fullHistoryMessages) : null);
+      setHistoryCompaction(result.compaction ?? null);
+    } catch (err) {
+      console.warn('[ChatScreen] Failed to hydrate stored full history:', err);
+    }
+  }, [config.apiKey, config.baseUrl, withSummaryMetadata]);
 
   // Load messages when currentSession changes (fixes #470)
   useEffect(() => {
@@ -860,6 +884,9 @@ export default function ChatScreen({ route, navigation }: any) {
       // Clear skipNextPersistRef to prevent the first real message in the new session
       // from being skipped if a lazy-load from the previous session had set it.
       skipNextPersistRef.current = false;
+      setFullHistoryMessages(null);
+      setHistoryCompaction(null);
+      setShowFullHistory(false);
     }
 
     // If we have an existing session, always load its messages regardless of deletions
@@ -867,19 +894,16 @@ export default function ChatScreen({ route, navigation }: any) {
       lastLoadedSessionIdRef.current = currentSession.id;
 
       if (currentSession.messages.length > 0) {
-        const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
-          role: m.role,
-          content: m.content,
-          timestamp: m.timestamp,
-          toolCalls: m.toolCalls,
-          toolResults: m.toolResults,
-          ...getSummaryMetadata(m),
-        }));
+        const chatMessages: ChatMessage[] = withSummaryMetadata(currentSession.messages as ChatMessage[]);
         setMessages(chatMessages);
 
         // Extract respond_to_user content from saved messages for display (#32, #33)
         const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
         setRespondToUserHistory(savedResponses);
+
+        if (chatMessages.some(message => message.isSummary) && currentSession.serverConversationId && hasServerAuth) {
+          void hydrateStoredFullHistory(currentSession.id, currentSession.serverConversationId);
+        }
       } else if (currentSession.serverConversationId && hasServerAuth) {
         // Stub session — lazy-load messages from server
         setMessages([]);
@@ -901,16 +925,10 @@ export default function ChatScreen({ route, navigation }: any) {
             if (result.messages.length > 0) {
               skipNextPersistRef.current = true;
             }
-            const loadedMessages = result.messages.map(m => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              timestamp: m.timestamp,
-              toolCalls: m.toolCalls,
-              toolResults: m.toolResults,
-              ...getSummaryMetadata(m),
-            }));
+            const loadedMessages = withSummaryMetadata(result.messages);
             setMessages(loadedMessages);
+            setFullHistoryMessages(result.fullHistoryMessages ? withSummaryMetadata(result.fullHistoryMessages) : null);
+            setHistoryCompaction(result.compaction ?? null);
 
             // Extract respond_to_user content from lazy-loaded messages (#32, #33)
             const lazyResponses = extractRespondToUserHistory(
@@ -928,6 +946,8 @@ export default function ChatScreen({ route, navigation }: any) {
           });
       } else {
         setMessages([]);
+        setFullHistoryMessages(null);
+        setHistoryCompaction(null);
       }
       return;
     }
@@ -942,14 +962,7 @@ export default function ChatScreen({ route, navigation }: any) {
     lastLoadedSessionIdRef.current = currentSession.id;
 
     if (currentSession.messages.length > 0) {
-      const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp,
-        toolCalls: m.toolCalls,
-        toolResults: m.toolResults,
-        ...getSummaryMetadata(m),
-      }));
+      const chatMessages: ChatMessage[] = withSummaryMetadata(currentSession.messages as ChatMessage[]);
       setMessages(chatMessages);
 
       // Extract respond_to_user content from new session messages (#32, #33)
@@ -957,8 +970,22 @@ export default function ChatScreen({ route, navigation }: any) {
       setRespondToUserHistory(newResponses);
     } else {
       setMessages([]);
+      setFullHistoryMessages(null);
+      setHistoryCompaction(null);
     }
-  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey]);
+  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, hydrateStoredFullHistory, withSummaryMetadata]);
+
+  const storedHistoryMessageCount = historyCompaction?.storedRawMessageCount ?? fullHistoryMessages?.length ?? 0;
+  const hasStoredFullHistory = !!fullHistoryMessages && fullHistoryMessages.length > messages.length;
+  const hasLegacyPartialHistoryWarning = messages.some(message => message.isSummary)
+    && historyCompaction?.partialReason === 'legacy_summary_without_raw_messages'
+    && !hasStoredFullHistory;
+  const hiddenEarlierHistoryCount = hasStoredFullHistory
+    ? Math.max(0, storedHistoryMessageCount - messages.length)
+    : 0;
+  const visibleMessages = showFullHistory && hasStoredFullHistory && fullHistoryMessages
+    ? fullHistoryMessages
+    : messages;
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -2841,7 +2868,36 @@ export default function ChatScreen({ route, navigation }: any) {
               />
             </View>
           )}
-          {messages.map((m, i) => {
+          {(hasStoredFullHistory || hasLegacyPartialHistoryWarning) && (
+            <View style={styles.fullHistoryBanner}>
+              <View style={styles.fullHistoryBannerCopy}>
+                <Text style={styles.fullHistoryBannerTitle}>
+                  {showFullHistory && hasStoredFullHistory ? 'Showing stored full history' : 'Showing active history window'}
+                </Text>
+                <Text style={styles.fullHistoryBannerBody}>
+                  {showFullHistory && hasStoredFullHistory
+                    ? `Loaded ${storedHistoryMessageCount} stored desktop messages for this conversation.`
+                    : hasStoredFullHistory
+                      ? `${hiddenEarlierHistoryCount} earlier messages are preserved on desktop but omitted from the active context window.`
+                      : 'This legacy session was summarized before raw history preservation, so only the compacted window is available.'}
+                </Text>
+              </View>
+
+              {hasStoredFullHistory && (
+                <TouchableOpacity
+                  onPress={() => setShowFullHistory(prev => !prev)}
+                  style={styles.fullHistoryToggle}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.fullHistoryToggleText}>
+                    {showFullHistory ? 'Show Active Window' : 'Show Full History'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {visibleMessages.map((m, i) => {
             const shouldCollapse = shouldCollapseMessage(m.content, m.toolCalls, m.toolResults);
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
@@ -3639,6 +3695,42 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 11,
       color: hexToRgba(theme.colors.primary, 0.82),
       fontWeight: '500',
+    },
+    fullHistoryBanner: {
+      marginBottom: spacing.md,
+      padding: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: theme.hairline,
+      borderColor: hexToRgba(theme.colors.primary, 0.22),
+      backgroundColor: hexToRgba(theme.colors.primary, 0.06),
+      gap: spacing.xs,
+    },
+    fullHistoryBannerCopy: {
+      gap: 4,
+    },
+    fullHistoryBannerTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    fullHistoryBannerBody: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: hexToRgba(theme.colors.primary, 0.86),
+    },
+    fullHistoryToggle: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+      backgroundColor: hexToRgba(theme.colors.primary, 0.14),
+      borderWidth: theme.hairline,
+      borderColor: hexToRgba(theme.colors.primary, 0.28),
+    },
+    fullHistoryToggleText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.primary,
     },
     messageHeader: {
       flexDirection: 'row',
