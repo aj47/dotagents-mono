@@ -71,9 +71,12 @@ test('bundle import dialog surfaces backup provenance when restoring an automati
   assert.match(dialogSource, /const backupMetadata = manifest\?\.backup/);
   assert.match(dialogSource, /const backupProvenance = formatBackupProvenance\(backupMetadata, bundleSlotState\)/);
   assert.match(dialogSource, /const importTargetSlotId = getImportTargetSlotId\(importTarget, bundleSlotState\)/);
-  assert.match(dialogSource, /const shouldOfferPostRestoreSlotActivation = successVerb === "restored"[\s\S]*bundleSlotState\?\.activeSlotId !== importTargetSlotId/);
+  assert.match(dialogSource, /const shouldOfferPostImportTargetSlotActivation = Boolean\(importTargetSlotId\)[\s\S]*bundleSlotState\?\.activeSlotId !== importTargetSlotId/);
+  assert.match(dialogSource, /const shouldOfferPostRestoreSlotActivation = successVerb === "restored"[\s\S]*shouldOfferPostImportTargetSlotActivation/);
+  assert.match(dialogSource, /const shouldOfferPostImportSlotActivation = successVerb !== "restored"[\s\S]*shouldOfferPostImportTargetSlotActivation/);
   assert.match(dialogSource, /const handleActivateImportedSlot = async \(slotId: string\) => \{[\s\S]*tipcClient\.setActiveBundleSlot\(\{ slotId \}\)/);
-  assert.match(dialogSource, /toast\.success\(`Activated restored bundle slot "\$\{slotId\}"`\)/);
+  assert.match(dialogSource, /const activationSourceLabel = successVerb === "restored" \? "restored" : "imported"/);
+  assert.match(dialogSource, /toast\.success\(`Activated \$\{activationSourceLabel\} bundle slot "\$\{slotId\}"`\)/);
   assert.match(dialogSource, /toast\.info\([\s\S]*Restore wrote files back into bundle slot "\$\{importTargetSlotId\}", but it is not the active runtime slot yet\./);
   assert.match(dialogSource, /label: `Activate Slot \$\{importTargetSlotId\}`/);
   assert.match(dialogSource, /<Label>Backup provenance<\/Label>/);
@@ -82,6 +85,12 @@ test('bundle import dialog surfaces backup provenance when restoring an automati
   assert.match(dialogSource, /This restore is currently pointed at \{formatImportTargetLabel\(importTarget, bundleSlotState\)\} instead of the original snapshot target\./);
   assert.match(dialogSource, /This restore will repopulate bundle slot "\{importTargetSlotId\}" but keep the current runtime slot unchanged\. After restore, DotAgents will offer a one-click action to activate it\./);
   assert.match(dialogSource, /This restore is defaulting back to the original snapshot target recorded in the backup\./);
+});
+
+test('bundle import into a non-active slot offers the same one-click activation follow-up', () => {
+  assert.match(dialogSource, /toast\.error\(`Failed to activate \$\{activationSourceLabel\} bundle slot: \$\{errorMessage\}`\)/);
+  assert.match(dialogSource, /toast\.info\([\s\S]*Import wrote files into bundle slot "\$\{importTargetSlotId\}", but it is not the active runtime slot yet\./);
+  assert.match(dialogSource, /This import will populate bundle slot "\{importTargetSlotId\}" but keep the current runtime slot unchanged\. After import, DotAgents will offer a one-click action to activate it\./);
 });
 
 test('bundle import can explicitly target the active bundle slot through the existing preview and import pipeline', () => {

@@ -1000,6 +1000,19 @@ export function BundleImportDialog({
             }
           )
         }
+        if (shouldOfferPostImportSlotActivation && importTargetSlotId) {
+          toast.info(
+            `Import wrote files into bundle slot "${importTargetSlotId}", but it is not the active runtime slot yet.`,
+            {
+              action: {
+                label: `Activate Slot ${importTargetSlotId}`,
+                onClick: () => {
+                  void handleActivateImportedSlot(importTargetSlotId)
+                },
+              },
+            }
+          )
+        }
         onImportComplete()
         handleClose()
       } else {
@@ -1082,18 +1095,22 @@ export function BundleImportDialog({
   const backupProvenance = formatBackupProvenance(backupMetadata, bundleSlotState)
   const restoreTargetDiffersFromBackupOrigin = doesRestoreTargetDiffer(importTarget, backupMetadata)
   const importTargetSlotId = getImportTargetSlotId(importTarget, bundleSlotState)
-  const shouldOfferPostRestoreSlotActivation = successVerb === "restored"
-    && Boolean(importTargetSlotId)
+  const shouldOfferPostImportTargetSlotActivation = Boolean(importTargetSlotId)
     && bundleSlotState?.activeSlotId !== importTargetSlotId
+  const shouldOfferPostRestoreSlotActivation = successVerb === "restored"
+    && shouldOfferPostImportTargetSlotActivation
+  const shouldOfferPostImportSlotActivation = successVerb !== "restored"
+    && shouldOfferPostImportTargetSlotActivation
 
   const handleActivateImportedSlot = async (slotId: string) => {
+    const activationSourceLabel = successVerb === "restored" ? "restored" : "imported"
     try {
       await tipcClient.setActiveBundleSlot({ slotId })
-      toast.success(`Activated restored bundle slot "${slotId}"`)
+      toast.success(`Activated ${activationSourceLabel} bundle slot "${slotId}"`)
       onImportComplete()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(`Failed to activate restored bundle slot: ${errorMessage}`)
+      toast.error(`Failed to activate ${activationSourceLabel} bundle slot: ${errorMessage}`)
     }
   }
 
@@ -1356,6 +1373,11 @@ export function BundleImportDialog({
                       Import target: <span className="font-medium text-foreground">{formatImportTargetLabel(importTarget, bundleSlotState)}</span>
                     </p>
                     <p className="mt-1 break-all font-mono">{importTargetPath}</p>
+                    {shouldOfferPostImportSlotActivation && importTargetSlotId && (
+                      <p className="mt-2 text-sky-700">
+                        This import will populate bundle slot "{importTargetSlotId}" but keep the current runtime slot unchanged. After import, DotAgents will offer a one-click action to activate it.
+                      </p>
+                    )}
                   </div>
                 )}
                 <div>

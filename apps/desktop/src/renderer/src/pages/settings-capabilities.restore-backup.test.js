@@ -95,6 +95,7 @@ test('bundle import dialog supports restore-specific labels and clearer import p
   assert.match(dialogSource, /This restore will repopulate bundle slot "\{importTargetSlotId\}" but keep the current runtime slot unchanged\. After restore, DotAgents will offer a one-click action to activate it\./)
   assert.match(dialogSource, /This restore is defaulting back to the original snapshot target recorded in the backup\./)
   assert.match(dialogSource, /const handleActivateImportedSlot = async \(slotId: string\) => \{[\s\S]*tipcClient\.setActiveBundleSlot\(\{ slotId \}\)/)
+  assert.match(dialogSource, /const activationSourceLabel = successVerb === "restored" \? "restored" : "imported"/)
   assert.match(dialogSource, /toast\.info\([\s\S]*label: `Activate Slot \$\{importTargetSlotId\}`/)
   assert.match(dialogSource, /function summarizeSelectedConflictPlan\(importPlanSections: Array<\{ key: BundleComponentKey; items: ImportPlanItem\[\] \}>\): \{/)
   assert.match(dialogSource, /function formatExpectedConflictOutcome\(summary: \{[\s\S]*skip: number[\s\S]*overwrite: number[\s\S]*rename: number[\s\S]*\}\): string \| null/)

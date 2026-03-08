@@ -3413,3 +3413,41 @@
   - Decide whether any non-tile ACP surfaces should also de-duplicate `profileName` vs ACP agent identity, or whether that compactness trade-off should remain tile-only.
 
 - Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` still needs confidence after this fix, do a direct Electron smoke validation pass once dependencies are available, otherwise pivot to a fresh narrow slice outside the recent `#55`/`#58` work.
+
+##### Issue #57 — Bundle import: offer one-click activation after importing into an inactive slot
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and refreshed the still-open repo issues again after the preceding `#55` commit.
+  - `#54` remains blocked on external auth/model-transport feasibility, while the most recent `#57` ledger entry already identified one small remaining trust/slot UX gap with a direct local path: new-slot imports still did not offer the same post-success activation affordance as restores.
+  - This was the smallest shippable follow-up because the dialog already knew the concrete slot target and already had a restore-only activation toast, so the gap was symmetry rather than missing infrastructure.
+- Investigation:
+  - Re-read issue `#57` plus its owner comments, especially the slot/preset follow-up requiring easy multi-bundle swapping and explicit slot targeting.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the success path already offered `Activate Slot {slotId}` only when `successVerb === "restored"`.
+  - Confirmed the dialog’s normal import path can now target `new-slot`, and the UI already warns that new-slot imports do not auto-activate, but there was no one-click follow-up after a successful import into that newly created inactive slot.
+  - Re-checked the lightweight renderer source tests in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to lock the new affordance without depending on the missing desktop package-install baseline.
+- Important assumptions:
+  - Assumption: the right first symmetry slice is to offer the same activation action after successful import into any non-active slot, not only after restore.
+  - Why acceptable: the dialog already infers `importTargetSlotId`, slot-targeted imports are an explicit user choice, and the existing restore flow established that one-click post-write activation is a safe pattern.
+  - Assumption: a toast action plus one short pre-import note is enough for this iteration; no new persistent status UI is required.
+  - Why acceptable: the issue’s value here is minimizing friction after a successful import, and the existing toast-based restore affordance already proves this interaction model fits the current desktop UI.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: bundle slot targeting and activation are desktop/Electron configuration workflows with no equivalent mobile surface.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to derive a shared `shouldOfferPostImportTargetSlotActivation` state for any successful import/restore targeting a non-active slot.
+  - Kept the existing restore behavior, but generalized the slot-activation handler/toast copy so the same path now works for both restored and imported slots.
+  - Added a new post-success toast for normal imports into an inactive slot: `Import wrote files into bundle slot "{slotId}", but it is not the active runtime slot yet.` with an `Activate Slot {slotId}` action.
+  - Added a small note in the import target card so users know a new-slot import will keep the current runtime slot unchanged and will offer one-click activation afterward.
+  - Extended dependency-free source regression coverage in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to cover the shared activation-state helper and the new non-restore activation affordance.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm exec tsc --pretty false --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider whether the import dialog should surface the same inactive-slot activation status in a slightly more persistent place (for example, recent-backup rows or slot history) if users still miss the toast.
+  - Consider whether any remaining settings/config save paths should expose similar slot-activation clarity when users are editing values with an inactive bundle slot target in play.
+  - Re-run the real desktop package test target once the missing workspace dependency baseline is restored so the renderer/package Vitest path can cover the same dialog flow.
+
+- Next recommended issue work item: refresh the open issues again and prefer a fresh source-confirmed bug or high-value UX gap outside the now-heavily-worked `#57`/`#58` threads; if staying on bundle trust, only do so for a very small remaining slot/write-semantics polish.
