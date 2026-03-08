@@ -5312,3 +5312,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new loop delete pill stays readable, aligned, and appropriately weighted on a narrow screen.
   - Capture screenshot-backed evidence for at least one paused loop row and one running loop row after this affordance update.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this loop delete affordance tweak without fresh evidence.
+
+## Iteration 120 - Keep expanded mobile response history from taking over short screens
+
+- Date: 2026-03-08
+- Summary: Reduced the risk of the mobile `ResponseHistoryPanel` crowding the active chat by replacing its fixed `300px` expanded height cap with a viewport-aware limit that stays compact on shorter screens while preserving the existing roomier cap on taller ones.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recently touched queue/header/settings areas without a fresh local issue.
+  - Re-checked `apps/mobile/src/ui/ResponseHistoryPanel.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, and the focused response-history test file because the response-history panel remained a high-frequency sub-agent surface that still lacked fresh live review.
+  - Confirmed this exact fixed-height issue had not already been logged in the ledger, even though nearby entries had already improved playback badges, keyboard handling, and conversation-switch state reset.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker before and during this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed layout review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ChatScreen` renders `ResponseHistoryPanel` above the main chat transcript, so any expanded height there directly competes with visible conversation space on mobile.
+  - Source review showed the history list still used a fixed `maxHeight: 300` regardless of viewport height.
+  - On shorter mobile screens, that meant a secondary reference panel could claim a large, static slice of vertical space before the user even reached the active transcript and composer context.
+- Issue identified:
+  - The expanded mobile response-history panel used a one-size-fits-all height cap, weakening information hierarchy by letting a secondary activity surface dominate short screens.
+- Decision and rationale:
+  - Keep the current response-history layout, row content, playback controls, and collapsed behavior unchanged.
+  - Do not redesign the chat stack or move the panel while live validation is blocked.
+  - Make the smallest local fix instead: keep the existing `300px` upper bound for taller screens, but derive the expanded list cap from viewport height with a protective floor so the panel stays useful without crowding the chat on shorter devices.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - read the current viewport height via `useWindowDimensions()`,
+    - derive `historyListMaxHeight` as `min(300, max(200, round(windowHeight * 0.35)))`,
+    - apply that responsive cap to the expanded history `ScrollView` instead of the previous fixed `300px` value.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new viewport-aware height contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree (`expo/tsconfig.base` missing plus unresolved Expo / React Native modules because the mobile install is unavailable here)
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed the response-history panel should remain a secondary reference surface above the chat, so protecting transcript space on shorter screens is more valuable than always maximizing visible response rows.
+  - Kept a `200px` minimum so the expanded panel still shows multiple entries and does not collapse into an overly cramped scroller on compact devices.
+  - Chose a viewport-aware cap instead of a hard smaller constant so taller phones keep nearly the same expanded room as before while shorter screens get relief.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The response-history panel still needs screenshot-backed review overall now that its height behavior, badges, keyboard handling, and conversation-switch reset logic have all evolved without fresh Expo confirmation in this worktree.
+  - The relationship between the response-history panel and the nearby queue panel still deserves live one-handed hierarchy review once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the expanded response-history panel now feels proportionate on a short mobile viewport while still showing enough context on taller screens.
+  - Capture screenshot-backed evidence for the expanded panel with a short screen height and a taller screen height so the new responsive cap can be judged against the chat transcript space it preserves.
+  - Compare the updated expanded response-history height against the nearby queue panel to decide whether their stacked hierarchy now feels balanced or whether a later local follow-up is warranted.

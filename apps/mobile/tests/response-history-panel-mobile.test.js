@@ -43,6 +43,13 @@ test('surfaces response recency and active playback state directly in the histor
   assert.match(responseHistorySource, /style=\{\[styles\.headerStatusText, speakingIndex !== null && styles\.headerStatusTextActive\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{headerStatusText\}/);
 });
 
+test('caps expanded response history height relative to the viewport so it does not take over shorter mobile screens', () => {
+  assert.match(responseHistorySource, /useWindowDimensions/);
+  assert.match(responseHistorySource, /const \{ height: windowHeight \} = useWindowDimensions\(\);/);
+  assert.match(responseHistorySource, /const historyListMaxHeight = Math\.min\(300, Math\.max\(200, Math\.round\(windowHeight \* 0\.35\)\)\);/);
+  assert.match(responseHistorySource, /list:\s*\{[\s\S]*?maxHeight:\s*historyListMaxHeight,/);
+});
+
 test('uses minute-precision timestamps in each response row to reduce narrow-screen noise', () => {
   assert.match(responseHistorySource, /const formatTime = \(timestamp: number, includeSeconds = true\) =>/);
   assert.match(responseHistorySource, /const responseTimestampLabel = formatTime\(response\.timestamp, false\);/);

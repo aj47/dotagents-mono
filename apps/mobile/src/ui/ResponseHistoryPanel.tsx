@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -85,6 +86,7 @@ export function ResponseHistoryPanel({
   ttsVoiceId,
 }: ResponseHistoryPanelProps) {
   const { theme } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const isMountedRef = useRef(true);
@@ -202,6 +204,7 @@ export function ResponseHistoryPanel({
   const shouldAnimateNewest = responses.length > prevCountRef.current;
   const newestOriginalIndex = responses.length - 1;
   const responseCountLabel = responses.length === 1 ? '1 response' : `${responses.length} responses`;
+  const historyListMaxHeight = Math.min(300, Math.max(200, Math.round(windowHeight * 0.35)));
   const headerStatusText = speakingIndex !== null
     ? 'Speaking now'
     : newestTimestamp
@@ -281,7 +284,7 @@ export function ResponseHistoryPanel({
       fontWeight: '600',
     },
     list: {
-      maxHeight: 300,
+      maxHeight: historyListMaxHeight,
     },
     responseItem: {
       paddingHorizontal: 12,
