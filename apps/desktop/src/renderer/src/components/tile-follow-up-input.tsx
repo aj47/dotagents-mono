@@ -34,6 +34,12 @@ interface TileFollowUpInputProps {
   onStopSession?: () => void | Promise<void>
 }
 
+type FollowUpActionError = {
+  title: string
+  message: string
+  retryAction: "voice" | "stop"
+}
+
 function getFollowUpSubmitErrorMessage(error: unknown, actionLabel: string): string {
   if (error instanceof Error) {
     const detail = error.message.trim()
@@ -46,6 +52,75 @@ function getFollowUpSubmitErrorMessage(error: unknown, actionLabel: string): str
   }
 
   return `Couldn't ${actionLabel}. Please try again.`
+}
+
+function getFollowUpActionErrorText(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error) {
+    const detail = error.message.trim()
+    return detail || fallbackMessage
+  }
+
+  if (typeof error === "string") {
+    const detail = error.trim()
+    return detail || fallbackMessage
+  }
+
+  return fallbackMessage
+}
+
+function getFollowUpVoiceStartErrorDetails(error: unknown) {
+  const rawMessage = getFollowUpActionErrorText(error, "Unknown microphone error")
+
+  if (
+    rawMessage.includes("Permission denied") ||
+    rawMessage.includes("NotAllowedError") ||
+    rawMessage.includes("Permission dismissed")
+  ) {
+    return {
+      title: "Microphone access needed",
+      message:
+        "Microphone access was denied. Allow microphone access in your system settings, then try recording again.",
+    }
+  }
+
+  if (
+    rawMessage.includes("NotFoundError") ||
+    rawMessage.includes("DevicesNotFoundError") ||
+    rawMessage.includes("Requested device not found") ||
+    rawMessage.includes("no audio input")
+  ) {
+    return {
+      title: "No microphone found",
+      message: "No microphone was found. Connect or enable a microphone, then try recording again.",
+    }
+  }
+
+  if (
+    rawMessage.includes("NotReadableError") ||
+    rawMessage.includes("TrackStartError") ||
+    rawMessage.includes("Could not start audio source")
+  ) {
+    return {
+      title: "Microphone unavailable",
+      message:
+        "Your microphone is busy or unavailable right now. Close any other app using it, then try recording again.",
+    }
+  }
+
+  return {
+    title: "Recording failed to start",
+    message: `Failed to start recording: ${rawMessage}`,
+  }
+}
+
+function getFollowUpStopErrorDetails(error: unknown) {
+  return {
+    title: "Stop request failed",
+    message: getFollowUpActionErrorText(
+      error,
+      "The agent may still be running. Check your connection and try again.",
+    ),
+  }
 }
 
 /**
@@ -63,6 +138,7 @@ export function TileFollowUpInput({
   onStopSession,
 }: TileFollowUpInputProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [actionError, setActionError] = useState<FollowUpActionError | null>(null)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [text, setText] = useState("")
@@ -144,6 +220,7 @@ export function TileFollowUpInput({
     }
     if (isSessionActive && !isQueueEnabled) return
 
+    setActionError(null)
     setAttachmentError(null)
     setSubmissionError(null)
     submitInFlightRef.current = true
@@ -163,6 +240,7 @@ export function TileFollowUpInput({
   }
 
   const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setActionError(null)
     setAttachmentError(null)
 
     try {
@@ -198,6 +276,7 @@ export function TileFollowUpInput({
 
   const removeImageAttachment = (attachmentId: string) => {
     logUI("[TileFollowUpInput] remove image", { attachmentId })
+    setActionError(null)
     setAttachmentError(null)
     setSubmissionError(null)
     setImageAttachments((prev) => prev.filter((attachment) => attachment.id !== attachmentId))
@@ -210,57 +289,84 @@ export function TileFollowUpInput({
     }
   }
 
-  const handleVoiceClick = async (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const startVoiceRecording = async () => {
     if (isInitializingSession) return
 
-    // Pass conversationId and sessionId directly through IPC to continue in the same session
-    // This is more reliable than using Zustand store which has timing issues
-    // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
-    // Mark as fromTile so the floating panel doesn't show - session continues in the tile
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
     await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
+  }
+
+  const handleVoiceClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setActionError(null)
+
+    try {
+      await startVoiceRecording()
+    } catch (error) {
+      console.error("Failed to start tile follow-up recording:", error)
+      const errorDetails = getFollowUpVoiceStartErrorDetails(error)
+      setActionError({ ...errorDetails, retryAction: "voice" })
+    }
+  }
+
+  const stopSessionAction = async () => {
+    if (onStopSession) {
+      await onStopSession()
+      return
+    }
+
+    if (!sessionId || sessionId.startsWith('pending-')) {
+      await tipcClient.emergencyStopAgent()
+      return
+    }
+
+    await tipcClient.stopAgentSession({ sessionId })
   }
 
   // Handle stop session - kill switch functionality
   const handleStopSession = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isStoppingSession) return
-
-    // Use custom handler if provided, otherwise call stopAgentSession directly
-    if (onStopSession) {
-      setIsStoppingSession(true)
-      try {
-        await onStopSession()
-      } catch (error) {
-        console.error("Failed to stop agent session via callback:", error)
-      } finally {
-        setIsStoppingSession(false)
-      }
-      return
-    }
-
-    // For undefined or fake "pending-*" sessions, fall back to global emergency stop
-    // so the kill switch always works regardless of session state
-    if (!sessionId || sessionId.startsWith('pending-')) {
-      setIsStoppingSession(true)
-      try {
-        await tipcClient.emergencyStopAgent()
-      } catch (error) {
-        console.error("Failed to emergency stop agent:", error)
-      } finally {
-        setIsStoppingSession(false)
-      }
-      return
-    }
+    setActionError(null)
 
     setIsStoppingSession(true)
     try {
-      await tipcClient.stopAgentSession({ sessionId })
+      await stopSessionAction()
     } catch (error) {
-      console.error("Failed to stop agent session:", error)
+      console.error("Failed to stop tile follow-up session:", error)
+      const errorDetails = getFollowUpStopErrorDetails(error)
+      setActionError({ ...errorDetails, retryAction: "stop" })
     } finally {
       setIsStoppingSession(false)
+    }
+  }
+
+  const retryActionError = async () => {
+    if (!actionError) return
+
+    if (actionError.retryAction === "stop") {
+      if (isStoppingSession) return
+
+      setIsStoppingSession(true)
+      try {
+        await stopSessionAction()
+        setActionError(null)
+      } catch (error) {
+        const errorDetails = getFollowUpStopErrorDetails(error)
+        setActionError({ ...errorDetails, retryAction: "stop" })
+      } finally {
+        setIsStoppingSession(false)
+      }
+
+      return
+    }
+
+    try {
+      await startVoiceRecording()
+      setActionError(null)
+    } catch (error) {
+      const errorDetails = getFollowUpVoiceStartErrorDetails(error)
+      setActionError({ ...errorDetails, retryAction: "voice" })
     }
   }
 
@@ -377,12 +483,35 @@ export function TileFollowUpInput({
         </div>
       )}
 
+      {actionError && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
+            <span className="font-medium">{actionError.title}.</span> {actionError.message}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 shrink-0 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={actionError.retryAction === "stop" ? isStoppingSession : isVoiceDisabled}
+            onMouseDown={handleInputInteraction}
+            onClick={() => void retryActionError()}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex w-full items-center gap-2">
         <input
           ref={inputRef}
           type="text"
           value={text}
           onChange={(e) => {
+            setActionError(null)
             setSubmissionError(null)
             setText(e.target.value)
           }}
@@ -407,6 +536,7 @@ export function TileFollowUpInput({
         />
         <PredefinedPromptsMenu
           onSelectPrompt={(content) => {
+            setActionError(null)
             setSubmissionError(null)
             setText(content)
           }}
