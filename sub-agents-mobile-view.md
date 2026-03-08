@@ -3095,3 +3095,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that unchanged drafts now present a clearly disabled `Save` action and changed drafts recover a confident primary CTA.
   - Compare empty, unchanged, and changed queue-edit states on a narrow screen to confirm the button affordance ladder feels intuitive.
   - If the disabled state still feels too subtle in live use, add a compact inline explanation before attempting any broader queue-panel changes.
+
+### 2026-03-08 — Iteration 72: explain why queue edit save is disabled
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed queue edit mode now correctly disabled `Save` for empty and unchanged drafts.
+  - The edit UI still gave no visible explanation for that disabled state, so the primary action could look broken or inert on a narrow screen.
+  - The queued-message edit `TextInput` also lacked explicit field semantics to explain the current state to assistive tech.
+- Issue selected:
+  - Queue edit mode hid the reason `Save` was unavailable, weakening state clarity at the exact moment users were trying to safely revise a queued sub-agent message.
+- Decision:
+  - Keep the queue edit layout, buttons, and copy structure unchanged.
+  - Do not add a broader redesign or secondary info row while live validation is blocked.
+  - Make the smallest state-clarity pass: show a compact inline helper for empty vs unchanged drafts and mirror that guidance in the edit field semantics.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add an `editValidationMessage` for empty and unchanged queued-message drafts,
+    - render that message inline inside queue edit mode so disabled `Save` states are visibly explained,
+    - tint the helper more strongly when the draft is empty,
+    - give the queued-message edit `TextInput` an explicit label and state-aware accessibility hint.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new inline helper copy, warning treatment, and edit-input semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new helper text improves clarity without making queue edit mode feel too tall once the keyboard is up.
+  - The queued-message edit `TextInput` still deserves live validation to confirm the field, helper, and action stack stay balanced on smaller devices.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that empty and unchanged drafts now explain the disabled `Save` state clearly on a narrow screen.
+  - Compare the empty, unchanged, and changed queue-edit states to confirm the helper disappears at the right time and does not crowd the edit actions.
+  - If the helper text feels too tall in live use, tighten the vertical spacing before attempting any broader queue-panel changes.

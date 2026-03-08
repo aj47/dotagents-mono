@@ -54,10 +54,16 @@ test('gives queued-message edit actions mobile-sized targets and explicit save/c
   assert.match(queuePanelSource, /const queueEditActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalPadding:\s*14,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(queuePanelSource, /const trimmedOriginalText = message\.text\.trim\(\);/);
   assert.match(queuePanelSource, /const trimmedEditText = editText\.trim\(\);/);
+  assert.match(queuePanelSource, /const editValidationMessage = !trimmedEditText[\s\S]*?Enter message text to save your queued message changes\.[\s\S]*?Save stays disabled until you change the queued message text\.[\s\S]*?: null;/);
   assert.match(queuePanelSource, /const isSaveEditDisabled = !trimmedEditText \|\| trimmedEditText === trimmedOriginalText;/);
   assert.match(queuePanelSource, /editActions:\s*\{[\s\S]*?justifyContent:\s*'flex-end',[\s\S]*?flexWrap:\s*'wrap',[\s\S]*?alignItems:\s*'center'/);
+  assert.match(queuePanelSource, /editHelperText:\s*\{[\s\S]*?lineHeight:\s*17,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+  assert.match(queuePanelSource, /editHelperTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
   assert.match(queuePanelSource, /editButton:\s*\{[\s\S]*?\.\.\.queueEditActionTouchTarget[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',[\s\S]*?borderRadius:\s*999,[\s\S]*?borderWidth:\s*1/);
   assert.match(queuePanelSource, /saveButtonDisabled:\s*\{[\s\S]*?opacity:\s*0\.6/);
+  assert.match(queuePanelSource, /createTextInputAccessibilityLabel\('Queued message edit'\)/);
+  assert.match(queuePanelSource, /accessibilityHint=\{editValidationMessage \?\? 'Revise this queued message before it sends\.'\}/);
+  assert.match(queuePanelSource, /\{editValidationMessage && \([\s\S]*?<Text[\s\S]*?styles\.editHelperText,[\s\S]*?!trimmedEditText && styles\.editHelperTextWarning,[\s\S]*?\{editValidationMessage\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Cancel queued message edit'\)/);
   assert.match(queuePanelSource, /accessibilityHint="Restores the original queued message text without saving your changes\."/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Save queued message edit'\)/);

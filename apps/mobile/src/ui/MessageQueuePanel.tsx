@@ -20,6 +20,7 @@ import {
   createButtonAccessibilityLabel,
   createExpandCollapseAccessibilityLabel,
   createMinimumTouchTargetStyle,
+  createTextInputAccessibilityLabel,
 } from '../lib/accessibility';
 import { useTheme } from './ThemeProvider';
 
@@ -104,6 +105,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const isProcessing = message.status === 'processing';
   const isAddedToHistory = message.addedToHistory === true;
   const trimmedEditText = editText.trim();
+  const editValidationMessage = !trimmedEditText
+    ? 'Enter message text to save your queued message changes.'
+    : trimmedEditText === trimmedOriginalText
+    ? 'Save stays disabled until you change the queued message text.'
+    : null;
   const isSaveEditDisabled = !trimmedEditText || trimmedEditText === trimmedOriginalText;
 
   const styles = StyleSheet.create({
@@ -203,6 +209,14 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
       alignItems: 'center',
       gap: 8,
     },
+    editHelperText: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: theme.colors.mutedForeground,
+    },
+    editHelperTextWarning: {
+      color: theme.colors.destructive,
+    },
     editButton: {
       ...queueEditActionTouchTarget,
       alignItems: 'center',
@@ -245,7 +259,19 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             onChangeText={setEditText}
             multiline
             autoFocus
+            accessibilityLabel={createTextInputAccessibilityLabel('Queued message edit')}
+            accessibilityHint={editValidationMessage ?? 'Revise this queued message before it sends.'}
           />
+          {editValidationMessage && (
+            <Text
+              style={[
+                styles.editHelperText,
+                !trimmedEditText && styles.editHelperTextWarning,
+              ]}
+            >
+              {editValidationMessage}
+            </Text>
+          )}
           <View style={styles.editActions}>
             <TouchableOpacity
               style={[styles.editButton, styles.cancelButton]}
