@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/memories.tsx` and confirmed the visible desktop `deleteMemory` / `updateMemory` mutations still treated any resolved promise as success, even though both TIPC calls resolve to booleans rather than throwing on every failure.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/memory-service.ts` that `updateMemory(...)` and `deleteMemory(...)` return `false` when the memory is missing or persistence fails, so the desktop Memories page could honestly receive a non-throwing failed result.
+- [x] 2026-03-08: Compared the desktop Memories page against mobile `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx`; mobile appears to have a similar `{ success: false }` contract gap, but this loop fixes the already confirmed desktop bug only and leaves mobile as a separate follow-up lead.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/resize-handle.tsx` and confirmed the floating-panel resize handles still awaited `tipcClient.getPanelSize()` on drag start, but invalid responses and thrown IPC failures only hit `console.error(...)` before returning.
 - [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` still logged final size-persistence failures (`savePanelModeSize(...)` plus fallback `savePanelCustomSize(...)`) to the console only.
 - [x] 2026-03-08: Confirmed `PanelResizeWrapper` is mounted by the live floating desktop panel in `apps/desktop/src/renderer/src/pages/panel.tsx`, and `apps/mobile` has no equivalent resizable floating panel surface, so this is a desktop-only visible UI bug rather than dead code or a shared mobile flow.
@@ -192,6 +195,9 @@
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
+- [x] **Desktop Memories page could show false success for failed edit/delete actions (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/memories.tsx` previously ran the `deleteMemory` and `updateMemory` success toasts/UI cleanup from React Query `onSuccess(...)` without checking whether the returned boolean was actually `true`.
+  - `apps/desktop/src/main/memory-service.ts` explicitly returns `false` from `updateMemory(...)` when the memory no longer exists and from `deleteMemory(...)` when the id is missing or file deletion/persistence fails, so the desktop UI could claim success even when nothing changed.
 - [x] **Desktop floating-panel resize failures could still be silent (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/components/resize-handle.tsx` still treated a rejected/invalid `getPanelSize()` response during `handleMouseDown(...)` as console-only logging plus early return, so dragging a visible resize handle could look like a dead/no-op gesture.
   - `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` still only logged when both final persistence paths failed after a drag, so a resize could appear to work in the moment but quietly fail to persist for the next panel open.
@@ -390,6 +396,8 @@
    - The card actions were gated directly by `oauthStatus[name]?.authenticated` / `.configured`, and revoke/auth-completion paths refreshed all servers instead of the active one, so an unrelated server failure could block the current card's visible auth controls.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/pages/memories.tsx` so `deleteMemory` / `updateMemory` only invalidate queries, close dialogs, and show success toasts when the backend result is actually `true`; `false` results now surface a visible failure toast instead of pretending the action worked.
+- [x] Added `apps/desktop/src/renderer/src/pages/memories.feedback.test.ts` with narrow regression coverage locking in the new false-result handling for the desktop Memories page.
 - [x] Updated `apps/desktop/src/renderer/src/components/resize-handle.tsx` so rejected or invalid drag-start size reads now keep console logging but also surface a visible `toast.error(...)` instead of making the resize handle appear dead.
 - [x] Updated `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` so a fully failed final size-persistence path now raises a visible toast explaining that the floating panel resize may not persist.
 - [x] Added `apps/desktop/src/renderer/src/components/panel-resize.feedback.test.ts` to lock in the new floating-panel resize feedback contract with narrow source-level regression coverage.
@@ -552,6 +560,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new OAuth fallback/normalization contract and targeted per-server refresh behavior.
 
 ### Verified
+- [x] Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.feedback.test.ts`, but this worktree still has no installed desktop test tooling (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL: Command "vitest" not found`).
+- [x] Ran a low-cost Node file-read sanity check for `apps/desktop/src/renderer/src/pages/memories.tsx` and `apps/desktop/src/renderer/src/pages/memories.feedback.test.ts`; the assertions passed for the new false-result guards and regression coverage.
+- [x] `git diff --check` completed cleanly after the desktop Memories false-success fix.
 - [x] Ran a low-cost Node file-read sanity check for `resize-handle.tsx`, `panel-resize-wrapper.tsx`, and `panel-resize.feedback.test.ts`; the assertions passed for the new floating-panel resize toast wiring and regression test coverage.
 - [x] `git diff --check` completed cleanly after the floating-panel resize feedback fix and regression test addition.
 - [x] Manual source verification: both desktop follow-up voice handlers now wrap `tipcClient.triggerMcpRecording(...)` in `try/catch`, log `Failed to start overlay/tile follow-up voice recording:`, and surface `Failed to start voice follow-up...` toasts instead of leaving the mic action silent.
@@ -859,6 +870,7 @@
 
 ### Assumptions
 - Assumption: surfacing only drag-start and final-persistence resize failures with `toast.error(...)` is acceptable because those are the user-meaningful breakpoints in the floating-panel resize flow, while the high-frequency throttled `updatePanelSize(...)` path would risk noisy toast spam during normal drags.
+- Assumption: showing a visible toast and keeping the desktop memory delete/edit UI open on `deleteMemory(...) === false` or `updateMemory(...) === false` is acceptable because the backend has explicitly not completed the requested action, and auto-closing the dialog/editor would be more misleading than preserving the user's chance to retry or refresh.
 - Assumption: using the existing desktop toast pattern for rejected follow-up `triggerMcpRecording(...)` calls is acceptable because `sonner` is already mounted app-wide, adjacent follow-up send/stop actions already surface visible errors the same way, and mobile already treats notable voice-start failures as user-visible.
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
 - Assumption: surfacing provider model-download failures with `toast.error(...)` is acceptable because `settings-providers.tsx` already uses the same helper/toast pattern for failed Kitten / Supertonic voice-test actions, and mobile has no equivalent local download UI that would need synchronized copy changes.
@@ -908,6 +920,8 @@
 - Assumption: keeping this pass desktop-only is acceptable because the confirmed bug and fixed contracts depend on the desktop `MessageQueuePanel`'s TIPC/main-process failure semantics, while mobile uses a separate local-store queue flow that should be validated as its own follow-up rather than widened speculatively.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.feedback.test.ts` and live-verify the desktop Memories page by forcing one stale/missing memory id plus one persistence failure to confirm it now keeps the editor/delete dialog open and shows the new failure toast instead of a false success message.
+- After that, inspect the analogous mobile memory edit/delete flows in `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx`, which appear to have the same `{ success: false }` contract gap but were intentionally left out of this single-bug desktop fix.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-resize.feedback.test.ts` and live-verify one forced `getPanelSize()` failure plus one forced final size-persistence failure to confirm the new floating-panel resize toasts appear without spamming during normal drag updates.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify the overlay/tile mic buttons with one forced `triggerMcpRecording(...)` failure to confirm the new voice-start toast appears without breaking the happy path.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
