@@ -45,6 +45,20 @@ describe("settings agents page layout", () => {
     expect(settingsAgentsSource).toContain('className="flex flex-wrap gap-2"')
   })
 
+  it("keeps the create-agent name field ahead of avatar setup and compacts the form header", () => {
+    const nameIndex = settingsAgentsSource.indexOf('<Label htmlFor="displayName">Name</Label>')
+    const avatarIndex = settingsAgentsSource.indexOf('<Label>Avatar</Label>')
+    const quickSetupIndex = settingsAgentsSource.indexOf('<Label>Quick Setup (Optional)</Label>')
+
+    expect(nameIndex).toBeGreaterThan(-1)
+    expect(nameIndex).toBeLessThan(avatarIndex)
+    expect(nameIndex).toBeLessThan(quickSetupIndex)
+    expect(settingsAgentsSource).toContain('<CardHeader className="space-y-1 p-4 pb-3">')
+    expect(settingsAgentsSource).toContain('<CardDescription className="text-xs">')
+    expect(settingsAgentsSource).toContain('Click a preset to auto-fill the form, or continue configuring manually.')
+    expect(settingsAgentsSource).not.toContain('Click a preset to auto-fill, or configure manually below.')
+  })
+
   it("lets the ACP auto-spawn toggle wrap instead of overflowing narrow settings widths", () => {
     expect(settingsAgentsSource).toContain('className="flex flex-wrap items-start gap-x-4 gap-y-3 pt-2"')
     expect(settingsAgentsSource.match(/className="flex items-start gap-2"/g)).toHaveLength(2)

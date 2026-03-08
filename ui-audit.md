@@ -1,5 +1,52 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 84: Desktop create-agent form buried the required Name field below optional chrome under constrained height + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-agents.tsx` (`Settings → Agents` → `Add Agent` → `General` tab top-of-form hierarchy)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the most recently touched desktop settings-skills/repeat-tasks/sidebar/memories surfaces unless a clear follow-up fix was needed.
+  - `Settings → Agents` was still live-inspectable through the reusable desktop renderer, and this was a distinct create-form hierarchy issue rather than a repeat of the earlier quick-setup-row wrapping work.
+  - Live inspection exposed a clearer user-impact problem than another source-only pass: the first required field was pushed below optional setup chrome at a realistic constrained desktop size.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo’s mobile workflow notes before choosing the area
+  - used live product inspection on `http://localhost:5174/settings/agents`, opened `Add Agent`, and stress-tested the `General` tab at about `820×640` with approximately `135%` zoom
+  - measured the mounted `Name` label/input positions before editing source, then prototyped the smallest source-realistic fix directly in the mounted DOM
+  - validated that reordering `Name` ahead of optional `Avatar` / `Quick Setup` improved discoverability but still left the input slightly below the fold, then verified that a compact form header completed the fix without broader redesign churn
+  - cross-checked mobile scope and kept this desktop-only: `apps/mobile/src/screens/AgentEditScreen.tsx` does not expose this desktop quick-setup/avatar create-form hierarchy
+
+#### Findings
+
+- Before the fix, the desktop `Create Agent` flow had one concrete hierarchy/visibility issue with clear user impact:
+  - at about `820×640` with `~135%` zoom, the `General` tab showed header chrome, wrapped tabs, `Avatar`, and `Quick Setup (Optional)` before the first required text field
+  - in live inspection, the `Name` label started around `y=1033` and the `Name` input around `y=1092` inside a `640px`-tall viewport, so users had to scroll before they could even start typing the agent name
+  - this is materially risky because `Name` is the primary identity field for the create flow, while avatar upload and presets are optional accelerators rather than the first thing users need to act on
+
+#### Changes made
+
+- Hardened only the top of the desktop create/edit form in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`:
+  - moved the `Name` field above the optional `Avatar` and `Quick Setup` blocks so the required identity input appears first in the general editing flow
+  - compacted only this form’s header with `space-y-1 p-4 pb-3` plus a smaller `CardDescription` treatment so the top chrome yields space back to the first field under constrained heights
+  - updated the `Quick Setup` helper copy to `Click a preset to auto-fill the form, or continue configuring manually.` so the text still matches the new field order
+- Extended `apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts` with focused source-contract coverage for the new field order, compact form header, and updated helper copy
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.layout.test.ts` *(blocked: `vitest` was not found because this worktree still has no local desktop dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the compact header classes, updated helper copy, removal of the old helper copy, and the `Name` field appearing before both `Avatar` and `Quick Setup` in source and test coverage ✅
+- Live DOM prototype verification on `http://localhost:5174/settings/agents` at about `820×640` / `~135%` zoom:
+  - before the fix: `Name` label `top≈1033`, input `top≈1092` in a `640px` viewport
+  - reorder only: `Name` label `top≈610`, input `top≈669` — materially better, but the input was still slightly below the fold
+  - reorder + compact header: `Name` label `top≈519`, input `top≈578`, making the first required field fully visible without scrolling in the stressed viewport
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-agents.tsx apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable renderer on `:5174` is still not guaranteed to be serving this checkout’s rebuilt bundle, so I treated the live app as pre-fix evidence plus DOM-prototype validation and used direct source verification for the shipped code.
+- This chunk is desktop-only: mobile uses a separate stacked editor flow and does not expose the same create-form quick-setup/avatar hierarchy.
+- Tradeoff/rationale: the form header is slightly denser than before, but that is a safer tradeoff than letting optional chrome hide the first required field in a constrained desktop window.
+- Best next UI audit chunk after this one: move away from the just-touched create-form top section unless a rebuilt renderer for this checkout becomes available; the next strongest target is another fresh desktop or mobile empty/loading/error or dense-controls surface with live runtime evidence.
+
 ### 2026-03-08 — Chunk 83: Desktop capabilities skills list exposed anonymous icon-only row actions in live product inspection
 
 - Area selected:

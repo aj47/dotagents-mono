@@ -532,9 +532,9 @@ export function SettingsAgents() {
 
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-1 p-4 pb-3">
           <CardTitle>{isCreating ? "Create Agent" : `Edit: ${editing.displayName}`}</CardTitle>
-          <CardDescription>Configure agent identity, behavior, model, and capabilities.</CardDescription>
+          <CardDescription className="text-xs">Configure agent identity, behavior, model, and capabilities.</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="general" className="w-full">
@@ -547,6 +547,10 @@ export function SettingsAgents() {
 
             {/* ── General Tab ── */}
             <TabsContent value="general" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Name</Label>
+                <Input id="displayName" value={editing.displayName} onChange={e => setEditing({ ...editing, displayName: e.target.value })} placeholder="My Agent" />
+              </div>
               {/* Avatar upload */}
               <div className="space-y-2">
                 <Label>Avatar</Label>
@@ -581,13 +585,9 @@ export function SettingsAgents() {
                       >{preset.displayName}</Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">Click a preset to auto-fill, or configure manually below.</p>
+                  <p className="text-xs text-muted-foreground">Click a preset to auto-fill the form, or continue configuring manually.</p>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Name</Label>
-                <Input id="displayName" value={editing.displayName} onChange={e => setEditing({ ...editing, displayName: e.target.value })} placeholder="My Agent" />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Input id="description" value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} placeholder="What this agent does..." />
