@@ -1113,6 +1113,17 @@ export async function processTranscriptWithAgentMode(
     return parts.join(" ")
   }
 
+  const getLatestDeliverableAssistantMessageInCurrentTurn = (): string | undefined => {
+    for (let index = conversationHistory.length - 1; index > currentPromptIndex; index--) {
+      const message = conversationHistory[index]
+      if (message?.role !== "assistant") continue
+      if (!isDeliverableResponse(message.content || "")) continue
+      return message.content
+    }
+
+    return undefined
+  }
+
   // Helper to map conversation history to LLM messages format (filters empty content)
   const mapConversationToMessages = (
     addSummaryPrompt: boolean = false
@@ -2924,21 +2935,17 @@ Return ONLY JSON per schema.`,
     const hasRecentErrors = progressSteps
       .slice(-5)
       .some((step) => step.status === "error")
+    const storedUserResponse = getSessionUserResponse(currentSessionId)
 
-    // If we don't have final content, get the last assistant response or provide fallback
+    // If we don't have final content, get the last assistant response from the current turn.
     if (!finalContent) {
       const lastAssistantMessage = conversationHistory
-        .slice()
+        .slice(currentPromptIndex + 1)
         .reverse()
         .find((msg) => msg.role === "assistant")
 
       if (lastAssistantMessage) {
         finalContent = lastAssistantMessage.content
-      } else {
-        // Provide a fallback summary
-        finalContent = hasRecentErrors
-          ? "Task was interrupted due to repeated tool failures. Please review the errors above and try again with alternative approaches."
-          : "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above."
       }
     }
 
@@ -2947,7 +2954,30 @@ Return ONLY JSON per schema.`,
       ? "\n\n(Note: Task incomplete due to repeated tool failures. Please try again or use alternative methods.)"
       : "\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
 
-    finalContent += terminationNote
+    let shouldAppendTerminationNote = false
+
+    if (isDeliverableResponse(finalContent)) {
+      shouldAppendTerminationNote = true
+    } else if (typeof storedUserResponse === "string" && storedUserResponse.trim().length > 0) {
+      finalContent = storedUserResponse
+    } else {
+      const latestDeliverableAssistantMessage = getLatestDeliverableAssistantMessageInCurrentTurn()
+
+      if (latestDeliverableAssistantMessage) {
+        finalContent = latestDeliverableAssistantMessage
+        shouldAppendTerminationNote = true
+      } else {
+        finalContent = buildIncompleteTaskFallback(finalContent, {
+          reason: hasRecentErrors
+            ? "Task stopped due to repeated tool failures before the request was completed."
+            : "Reached maximum iteration limit while the agent was still in progress.",
+        })
+      }
+    }
+
+    if (shouldAppendTerminationNote) {
+      finalContent += terminationNote
+    }
 
     // Make sure the final message is added to conversation history
     const lastMessage = conversationHistory[conversationHistory.length - 1]

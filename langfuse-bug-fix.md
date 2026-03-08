@@ -8,12 +8,36 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772432432747_7ibvlw0k0 | session_1772432432218_cdjv7gyla | fix implemented (verification blocked) | User clarified `I meant Claude Code by Anthropic.`; the run hit max iterations and Langfuse `output` ended as stale progress text (`Let me search for the correct URL and browse to it.`) plus a timeout note instead of a real blocker/partial-result summary. Root repo issue found: max-iteration finalization trusted the latest assistant text even when it was only an in-progress status update. |
 | 2026-03-08 | conv_1772942234347_xyec3dx8u | session_1772942234349_piwpgovtd | fix implemented | User asked `What should I do`; the trace contained the right guidance but `output` was raw pseudo-tool text starting with `[respond_to_user] { ... }` instead of the clean user-facing answer. Root repo issue found: final output helpers preserved pseudo-tool wrappers when the model wrote them as plain assistant text instead of making a native tool call. |
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
 | 2026-03-08 | conv_1772944149514_dhmqtdvqt | session_1772944149515_tgt7e6ykh | fix implemented (verification blocked) | Simple user input `Hi` produced trace `output: null`; the only observation was `LLM Call` with error `API key expired. Please renew the API key.` Root repo issue found: provider/API errors could escape before `finalContent` was populated, leaving the run trace blank instead of preserving a terminal error message. |
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
 
 ## Investigations
+
+### 2026-03-08 — Max-iteration timeout could preserve stale progress text as final output
+
+- Langfuse evidence reviewed:
+  - `conv_1772432432747_7ibvlw0k0` / `session_1772432432218_cdjv7gyla`
+  - user input: `I meant Claude Code by Anthropic.`
+  - trace outcome: final `output` was `Let me search for the correct URL and browse to it.` followed by the generic timeout note
+  - observations showed repeated `Streaming LLM Call` outputs that were still in-progress status updates (`Let me open Claude Code by Anthropic...`, `Let me search for the correct URL...`) rather than a user-ready answer
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` uses the max-iteration branch to finalize timed-out runs.
+  - before this change, that branch pulled the latest assistant message from the current turn and blindly appended the timeout note.
+  - when the latest assistant text was only a progress update, the user-facing result became stale intent-to-act text instead of a useful blocker summary.
+- Concrete root cause:
+  - max-iteration finalization treated any assistant text as acceptable final content, even if it was a non-deliverable progress update.
+  - this let single-run failures surface as `Let me ...` text plus a timeout note, which still failed the user's intent because no concrete result or blocker summary was delivered.
+- Fix implemented:
+  - `apps/desktop/src/main/llm.ts`
+    - added `getLatestDeliverableAssistantMessageInCurrentTurn()` to recover a real assistant answer from the current run when one exists
+    - in the max-iteration finalizer, prefer a stored `respond_to_user` message if present
+    - otherwise prefer the latest deliverable assistant message from the current turn
+    - otherwise replace stale progress text with `buildIncompleteTaskFallback(...)` using an explicit timeout/failure reason instead of echoing `Let me ...`
+  - tests added/updated:
+    - `apps/desktop/src/main/llm.test.ts`
 
 ### 2026-03-08 — Pseudo `respond_to_user` text leaked into final trace output
 
@@ -121,6 +145,18 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 ## Verification Log
 
 - Targeted test command attempted:
+  - `npx -y vitest run apps/desktop/src/main/llm.test.ts`
+  - `npx -y -p vitest -p @electron-toolkit/tsconfig vitest run apps/desktop/src/main/llm.test.ts`
+  - `npx -y -p vitest vitest run --config /tmp/langfuse-bug-fix-vitest.config.mjs apps/desktop/src/main/llm.test.ts`
+- Result:
+  - blocked by missing local desktop dependencies / `node_modules`
+  - immediate blocker during transform: Vite could not resolve desktop tsconfig inheritance from `@electron-toolkit/tsconfig/tsconfig.node.json`
+- Manual verification completed:
+  - confirmed the chosen Langfuse timeout trace ended with stale progress text rather than a deliverable answer
+  - confirmed the updated max-iteration branch now distinguishes deliverable assistant text from in-progress status updates
+  - confirmed the new fallback order is: stored `respond_to_user` message → latest deliverable assistant message from the current turn → explicit incomplete-task fallback
+
+- Targeted test command attempted:
   - `pnpm --filter @dotagents/desktop test -- --run src/main/acp/acp-router-tools.test.ts src/main/system-prompts.test.ts`
 - Result:
   - blocked by missing local dependencies / `node_modules`
@@ -160,6 +196,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
+- Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.

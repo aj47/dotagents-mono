@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+const defaultConfig = {
+  mcpToolsProviderId: "openai",
+  mcpVerifyCompletionEnabled: false,
+  mcpFinalSummaryEnabled: false,
+}
+const mockConfigGet = vi.fn(() => ({ ...defaultConfig }))
 const mockStreamingCall = vi.fn()
 const mockEndAgentTrace = vi.fn()
 
 vi.mock("./config", () => ({
-  configStore: { get: () => ({ mcpToolsProviderId: "openai", mcpVerifyCompletionEnabled: false, mcpFinalSummaryEnabled: false }) },
+  configStore: { get: mockConfigGet },
 }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
 vi.mock("./llm-fetch", () => ({ makeLLMCallWithFetch: vi.fn(), makeTextCompletionWithFetch: vi.fn(), verifyCompletionWithFetch: vi.fn(), makeLLMCallWithStreamingAndTools: mockStreamingCall }))
@@ -24,6 +30,9 @@ vi.mock("./llm-tool-gating", () => ({ filterNamedItemsToAllowedTools: vi.fn((ite
 describe("processTranscriptWithAgentMode", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfigGet.mockReturnValue({ ...defaultConfig })
+    mockStreamingCall.mockReset()
+    mockEndAgentTrace.mockReset()
   })
 
   it("keeps a successful respond_to_user message as trace output when a later iteration errors", async () => {
@@ -59,5 +68,78 @@ describe("processTranscriptWithAgentMode", () => {
       "session-respond-fallback",
       expect.objectContaining({ output: "Done! Two iTerm windows are ready." }),
     )
+  })
+
+  it("replaces stale progress text with an incomplete fallback when max iterations are reached", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-timeout-fallback")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall.mockResolvedValue({
+      content: "Let me search for the correct URL and browse to it.",
+      toolCalls: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "I meant Claude Code by Anthropic.",
+      [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      1,
+      [],
+      "conv-timeout-fallback",
+      "session-timeout-fallback",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("I couldn't complete the request after multiple attempts.")
+    expect(result.content).toContain("Reached maximum iteration limit while the agent was still in progress.")
+    expect(result.content).not.toContain("Let me search for the correct URL")
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-timeout-fallback",
+      expect.objectContaining({ output: result.content }),
+    )
+  })
+
+  it("uses the latest deliverable assistant message from the current turn instead of a later progress update on timeout", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-timeout-deliverable")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "The correct URL is https://claude.ai/code.",
+        toolCalls: [],
+      })
+      .mockResolvedValueOnce({
+        content: "Let me browse to it now.",
+        toolCalls: [],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "I meant Claude Code by Anthropic.",
+      [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      2,
+      [],
+      "conv-timeout-deliverable",
+      "session-timeout-deliverable",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("The correct URL is https://claude.ai/code.")
+    expect(result.content).toContain("Task may not be fully complete - reached maximum iteration limit")
+    expect(result.content).not.toContain("Let me browse to it now")
   })
 })
