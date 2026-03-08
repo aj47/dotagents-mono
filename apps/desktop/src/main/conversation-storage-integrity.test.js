@@ -63,4 +63,6 @@ test('ACP recreated sessions bootstrap only the compacted active conversation wi
   assert.match(acpMainAgentSource, /buildAcpBootstrapConversationContext\(loadedConversation, transcript\)/)
   assert.match(acpMainAgentSource, /active window only, not the full raw transcript/)
   assert.match(acpMainAgentSource, /conversation\.messages\.slice\(0, -1\)/)
+  assert.match(acpMainAgentSource, /isSummary: m\.isSummary/)
+  assert.match(acpMainAgentSource, /summarizedMessageCount: m\.summarizedMessageCount/)
 })

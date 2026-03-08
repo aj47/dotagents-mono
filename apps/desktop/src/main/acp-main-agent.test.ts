@@ -222,6 +222,55 @@ describe("acp-main-agent", () => {
     expect(promptContext).toContain("Assistant: Latest active assistant message")
   })
 
+  it("preserves compacted summary metadata on ACP progress history updates", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+    const updates: Array<any> = []
+
+    mockLoadConversationWithCompaction.mockResolvedValue({
+      messages: [
+        {
+          id: "summary-1",
+          role: "assistant",
+          content: "Earlier context summary",
+          timestamp: 1,
+          isSummary: true,
+          summarizedMessageCount: 12,
+        },
+        {
+          id: "user-1",
+          role: "user",
+          content: "hello",
+          timestamp: 2,
+        },
+      ],
+      compaction: {
+        rawHistoryPreserved: true,
+        storedRawMessageCount: 14,
+        representedMessageCount: 14,
+      },
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      onProgress: (update) => updates.push(update),
+    })
+
+    expect(updates[0]?.conversationHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "summary-1",
+          role: "assistant",
+          content: "Earlier context summary",
+          isSummary: true,
+          summarizedMessageCount: 12,
+        }),
+      ]),
+    )
+  })
+
   it("adds ACP content blocks to conversation history progressively instead of only at completion", async () => {
     const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
     const updates: Array<any> = []

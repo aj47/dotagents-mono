@@ -2189,3 +2189,38 @@
   - Consider applying the same per-profile filtering to `PredefinedPromptsMenu` if skill prompt insertion is also meant to honor profile-level skill gating, but keep that as a separate follow-up since this slice intentionally focused on slash invocation.
 
 - Next recommended issue work item: if the workspace dependencies become available, finish the blocked desktop verification for this `#53` slice first; otherwise refresh open issues again and prefer either a new well-scoped bug or a narrow follow-up from `#58` rather than re-opening the broader blocked `#54` work.
+
+##### Issue #58 — ACP live progress preserves compaction summary metadata for history UI hydration
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md`, the current open issue list, and live issue `#58` metadata/comments before selecting this pass. The issue body plus the scope-locking comment still emphasize preserved raw history, a `Show Full History` affordance, and a clear stored-history-vs-active-window contract.
+  - I avoided recently worked issues where possible and chose a fresh, narrowly verifiable `#58` follow-up with direct desktop UX value: summarized ACP sessions were still dropping the summary markers needed by the already-landed full-history/provenance UI.
+- Investigation:
+  - Inspected `apps/desktop/src/main/acp-main-agent.ts` and confirmed continued ACP sessions load conversation state via `conversationService.loadConversationWithCompaction(conversationId, sessionId)`, but immediately remap those messages into `conversationHistory` while stripping `id`, `isSummary`, and `summarizedMessageCount`.
+  - Cross-checked the renderer history affordance work in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed live full-history hydration is gated off summary metadata in `conversationHistory` when `fullConversationHistory` is not already attached.
+  - Inspected `apps/desktop/src/main/acp-main-agent.test.ts` and `apps/desktop/src/main/conversation-storage-integrity.test.js` to extend the existing ACP compaction coverage without broadening scope.
+  - Re-read issue `#58` labels/comments (`enhancement`, `ui`, `conversation-history`) and the scope comment calling this a foundational data-integrity item before more summarization work.
+- Important assumptions:
+  - Assumption: preserving summary metadata on ACP live `conversationHistory` is the smallest effective fix, even without also pushing `fullConversationHistory` through every live progress update.
+  - Why acceptable: the renderer already knows how to lazily hydrate preserved disk history when summary markers are present, so restoring those markers unblocks the existing UX with a very small, low-risk main-process change.
+  - Assumption: not attaching potentially stale `fullConversationHistory` payloads from ACP bootstrap is preferable for this slice.
+  - Why acceptable: the lazy fetch path can read the freshest persisted history, while this fix focuses only on restoring the missing provenance signal that enables that fetch.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/acp-main-agent.ts` so compacted ACP bootstrap history now preserves `id`, `isSummary`, and `summarizedMessageCount` when mapping loaded messages into progress `conversationHistory`.
+  - Added a targeted unit test in `apps/desktop/src/main/acp-main-agent.test.ts` asserting the initial ACP progress update still carries compacted summary metadata.
+  - Extended `apps/desktop/src/main/conversation-storage-integrity.test.js` with source-level regression assertions covering the new ACP summary-metadata mapping.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run src/main/acp-main-agent.test.ts`
+  - Blocked: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` in this worktree, so the new Vitest coverage could not be executed locally yet.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Re-run `apps/desktop/src/main/acp-main-agent.test.ts` once the desktop Vitest entrypoint is available again in this worktree.
+  - Check whether any non-ACP live progress paths still strip `isSummary` / `summarizedMessageCount` before reaching shared renderer transcript surfaces.
+  - Only continue `#58` if another similarly concrete provenance/reliability gap is directly observable; otherwise pivot to a different open issue next.
+
+- Next recommended issue work item: prefer a fresh open issue for the next pass unless another comparably tight `#58` live-history gap appears immediately from source or manual repro.

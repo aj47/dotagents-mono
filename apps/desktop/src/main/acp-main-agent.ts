@@ -420,11 +420,14 @@ export async function processTranscriptWithACPAgent(
     loadedConversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
     if (loadedConversation) {
       conversationHistory = loadedConversation.messages.map(m => ({
+        id: m.id,
         role: m.role,
         content: m.content,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,
+        isSummary: m.isSummary,
+        summarizedMessageCount: m.summarizedMessageCount,
       }))
     }
   } catch (err) {
