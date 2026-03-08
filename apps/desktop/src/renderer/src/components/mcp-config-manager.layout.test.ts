@@ -44,4 +44,16 @@ describe("mcp config manager layout", () => {
       'className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4"',
     )
   })
+
+  it("keeps individual MCP tool rows identifiable when inline controls compete for narrow width", () => {
+    expect(mcpConfigManagerSource).toContain('className="flex flex-wrap items-start gap-3 rounded-lg border p-3"')
+    expect(mcpConfigManagerSource).toContain('className="min-w-[min(100%,10rem)] flex-[1_1_10rem]"')
+    expect(mcpConfigManagerSource).toContain('className="mb-1 flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1"')
+    expect(mcpConfigManagerSource).toContain(
+      'className="min-w-[min(100%,10rem)] flex-[1_1_10rem] text-sm font-medium leading-snug break-words [overflow-wrap:anywhere]"',
+    )
+    expect(mcpConfigManagerSource).toContain('className="ml-auto flex max-w-full shrink-0 items-center gap-2"')
+    expect(mcpConfigManagerSource).not.toContain('className="flex items-center justify-between rounded-lg border p-3"')
+    expect(mcpConfigManagerSource).not.toContain('className="truncate text-sm font-medium"')
+  })
 })

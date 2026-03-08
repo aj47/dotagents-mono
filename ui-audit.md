@@ -1,5 +1,60 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 57: Desktop MCP individual tool rows hide tool identity under tighter settings widths and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (`Settings` → `Capabilities` → `MCP Servers` → expanded per-server `Tools` rows)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided jumping to an unrelated surface while a strong live follow-up was still open in the same MCP area.
+  - Chunk 56 explicitly left individual tool-row title/action pressure as the best next live follow-up.
+  - A real Electron renderer session was still available on `:9333` at `http://localhost:5174/settings/capabilities`, so this was another case where real product evidence was more valuable than source-only speculation.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a concrete follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer on `http://localhost:5174/settings/capabilities`
+  - switched to the `MCP Servers` tab, kept the live page at `760×670` with simulated `150%` zoom, and captured screenshot-backed evidence in `tmp/ui-audit/settings-capabilities-tool-rows-before-wrap.png`
+  - measured representative mounted tool rows directly in the DOM before editing source, then prototyped the smallest wrap-safe reflow directly in the mounted DOM and captured `tmp/ui-audit/settings-capabilities-tool-rows-prototype-wrap.png`
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` exposes server toggles, but not this dense desktop per-tool inspector with inline info and enable/disable controls
+
+#### Findings
+
+- Before the fix, the desktop expanded `Tools` list had one concrete user-impacting layout issue:
+  - each tool row forced the tool name, info button, and switch into a single non-wrapping `justify-between` lane
+  - in live inspection at `760×670` with simulated `150%` zoom, a representative row such as `create_or_update_file` had only about `81px` of visible title width while the tool name needed about `145px`
+  - the full row itself was only about `207px` wide, so long tool names lost a large part of their identity exactly where users need to understand which tool they are about to inspect or toggle
+  - this is materially risky because tool management is a recognition-heavy task; if the name collapses into an ellipsis while the controls remain pinned inline, users can more easily toggle or inspect the wrong tool
+
+#### Changes made
+
+- Hardened the expanded MCP tool rows in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` with the smallest effective layout fix verified live:
+  - changed the outer tool row from a single-line `justify-between` layout to a wrap-safe `flex-wrap` row with top alignment
+  - gave the text lane and heading a real minimum/flex basis so the tool name gets priority width before the controls try to stay inline
+  - replaced the title-only `truncate` treatment with wrap-safe `break-words` / `[overflow-wrap:anywhere]` handling so long tool names remain identifiable instead of collapsing into ellipses
+  - kept the existing information architecture intact: the info button and switch still sit in the same row cluster, but now they can drop beneath the title when the settings column gets tight
+- Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts` with focused source-contract coverage for the new wrap-safe tool-row treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe tool-row classes, removal of the old single-row `justify-between` / truncating title fragments, and the focused regression test are present
+- Live Electron evidence before the fix at `http://localhost:5174/settings/capabilities`:
+  - screenshot: `tmp/ui-audit/settings-capabilities-tool-rows-before-wrap.png`
+  - representative `create_or_update_file` row measured about `rowWidth = 207px`, `titleClientWidth = 81px`, and `titleScrollWidth = 145px`
+  - the mounted row still used the old single-line classes (`flex items-center justify-between` + `truncate`), confirming the visible issue in the running product session
+- Live DOM prototype verification of the intended fix:
+  - after applying the same wrap-safe treatment directly in the mounted DOM, the same representative row kept the same `207px` row width but increased the visible title width to about `181px`
+  - the title then measured `titleClientWidth = titleScrollWidth = 181px`, eliminating the truncation pressure without hiding the info button or switch
+  - the row became taller (`height ≈ 92px`), which is an intentional and safer tradeoff than hiding tool identity
+  - screenshot: `tmp/ui-audit/settings-capabilities-tool-rows-prototype-wrap.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/mcp-config-manager.tsx apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired real pre-fix renderer evidence with a live DOM prototype of the exact wrap treatment and direct source verification of the patch.
+- This chunk is desktop-only: mobile `SettingsScreen` does not expose the same per-tool row layout, so no matching mobile code change was needed.
+- Tradeoff/rationale: under tighter settings widths or larger text, some tool rows will now become taller sooner than before, but that is a deliberate and safer tradeoff than obscuring the tool name users are being asked to manage.
+- Best next UI audit chunk after this one: move away from the just-touched MCP area unless another concrete live follow-up emerges; the next highest-value pass is likely a fresh desktop or mobile surface with real runtime data rather than another speculative tweak here.
+
 ### 2026-03-08 — Chunk 56: Desktop MCP tools search/bulk-action controls overflow out of the card under tighter settings widths and larger text
 
 - Area selected:

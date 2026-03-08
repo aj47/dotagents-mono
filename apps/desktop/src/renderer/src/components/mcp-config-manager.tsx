@@ -1999,11 +1999,11 @@ export function MCPConfigManager({
                         {serverTools.map((tool) => (
                           <div
                             key={tool.name}
-                            className="flex items-center justify-between rounded-lg border p-3"
+                            className="flex flex-wrap items-start gap-3 rounded-lg border p-3"
                           >
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-1 flex items-center gap-2">
-                                <h4 className="truncate text-sm font-medium">
+                            <div className="min-w-[min(100%,10rem)] flex-[1_1_10rem]">
+                              <div className="mb-1 flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+                                <h4 className="min-w-[min(100%,10rem)] flex-[1_1_10rem] text-sm font-medium leading-snug break-words [overflow-wrap:anywhere]">
                                   {tool.name.includes(":")
                                     ? tool.name.split(":").slice(1).join(":")
                                     : tool.name}
@@ -2013,10 +2013,9 @@ export function MCPConfigManager({
                                     Disabled
                                   </Badge>
                                 )}
-
-	                              </div>
+                              </div>
                             </div>
-                            <div className="ml-4 flex items-center gap-2">
+                            <div className="ml-auto flex max-w-full shrink-0 items-center gap-2">
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button variant="ghost" size="sm">
