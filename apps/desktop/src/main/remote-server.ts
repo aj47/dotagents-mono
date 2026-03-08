@@ -3018,7 +3018,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const loopService = await loadLoopService()
       if (loopService) {
-        loopService.saveLoop(newLoop)
+        const saved = loopService.saveLoop(newLoop)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task" })
+        }
+
         if (newLoop.enabled) {
           loopService.startLoop(newLoop.id)
         }
@@ -3108,7 +3112,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       if (loopService) {
-        loopService.saveLoop(updated)
+        const saved = loopService.saveLoop(updated)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task" })
+        }
+
         if (updated.enabled) {
           loopService.stopLoop(params.id)
           loopService.startLoop(params.id)

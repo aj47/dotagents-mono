@@ -101,4 +101,38 @@ describe("remote-server route registration", () => {
     expect(failureIndex).toBeGreaterThan(saveIndex)
     expect(successIndex).toBeGreaterThan(failureIndex)
   })
+
+  it("does not report repeat task creation as successful when loop persistence fails", () => {
+    const source = getRemoteServerSource()
+    const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+
+    expect(createLoopSection).toContain("const saved = loopService.saveLoop(newLoop)")
+    expect(createLoopSection).toContain('if (!saved) {')
+    expect(createLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+
+    const saveIndex = createLoopSection.indexOf("const saved = loopService.saveLoop(newLoop)")
+    const failureIndex = createLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+    const successIndex = createLoopSection.indexOf('return reply.send({ loop: await formatLoopResponse(loopService?.getLoop(newLoop.id) ?? newLoop) })')
+
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(failureIndex).toBeGreaterThan(saveIndex)
+    expect(successIndex).toBeGreaterThan(failureIndex)
+  })
+
+  it("does not report repeat task updates as successful when loop persistence fails", () => {
+    const source = getRemoteServerSource()
+    const updateLoopSection = getSection(source, 'fastify.patch("/v1/loops/:id"', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+
+    expect(updateLoopSection).toContain("const saved = loopService.saveLoop(updated)")
+    expect(updateLoopSection).toContain('if (!saved) {')
+    expect(updateLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+
+    const saveIndex = updateLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
+    const failureIndex = updateLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+    const successIndex = updateLoopSection.indexOf('return reply.send({ success: true, loop: await formatLoopResponse(loopService?.getLoop(params.id) ?? updated) })')
+
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(failureIndex).toBeGreaterThan(saveIndex)
+    expect(successIndex).toBeGreaterThan(failureIndex)
+  })
 })
