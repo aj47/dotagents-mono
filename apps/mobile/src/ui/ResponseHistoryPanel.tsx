@@ -379,6 +379,7 @@ export function ResponseHistoryPanel({
             const originalIndex = responses.length - 1 - index;
             const isSpeaking = speakingIndex === originalIndex;
             const isLatest = originalIndex === newestOriginalIndex;
+            const shouldShowLatestBadge = isLatest && !isSpeaking;
             const responseTimestampLabel = formatTime(response.timestamp, false);
             const responseAccessibilityContext = formatResponseAccessibilityContext(response.text, responseTimestampLabel);
             // Animate newest entry (shown at top after reverse)
@@ -399,7 +400,7 @@ export function ResponseHistoryPanel({
                             <Text style={styles.speakingBadgeText}>Speaking</Text>
                           </View>
                         ) : null}
-                        {isLatest ? (
+                        {shouldShowLatestBadge ? (
                           <View style={styles.latestBadge}>
                             <Text style={styles.latestBadgeText}>Latest</Text>
                           </View>

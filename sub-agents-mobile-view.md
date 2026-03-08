@@ -4891,3 +4891,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that history-locked queue rows read clearly and that the extra inline note stays balanced on a narrow width.
   - Capture screenshot-backed evidence for at least one failed history-locked row and one non-history-locked row to confirm the distinction is easy to scan.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this history-lock clarification without fresh evidence.
+
+## Iteration 111 - Reduce redundant response-history badges on narrow rows
+
+- Date: 2026-03-08
+- Summary: Reduced badge crowding in the mobile response-history panel by suppressing the redundant `Latest` badge when the same row is already marked `Speaking`.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid redoing the recent queue-header and queue-row clarification work without new evidence.
+  - Re-checked `apps/mobile/src/ui/ResponseHistoryPanel.tsx` and its focused mobile test file to find one still-local readability issue adjacent to the queue/history surfaces.
+  - Confirmed the ledger had already called out the `Speaking` + `Latest` combination as a state worth revisiting, but no implementation change had been logged for that exact badge-crowding case.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed row-state review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Source review showed each response row can render a `Speaking` badge for active playback and a `Latest` badge for the newest response.
+  - When the newest response was also the one currently speaking, the row could render both badges side-by-side on the same narrow metadata line.
+  - On mobile widths, that duplicated state signaling and risked crowding the most glanceable part of the response row.
+- Issue identified:
+  - The response-history panel could show redundant simultaneous `Speaking` and `Latest` badges for the same row, weakening hierarchy and wasting horizontal space on narrow screens.
+- Decision and rationale:
+  - Keep the response-history layout, header status text, timestamp highlighting, and speaking control unchanged.
+  - Do not redesign the badge system or add a new combined label while live validation is blocked.
+  - Make the smallest local hierarchy fix instead: if a row is already marked `Speaking`, omit the separate `Latest` badge and rely on the existing highlighted timestamp plus active playback state.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - derive `shouldShowLatestBadge` from `isLatest && !isSpeaking`,
+    - keep the existing latest timestamp emphasis,
+    - render the `Latest` badge only when it adds distinct information beyond the speaking state.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new `shouldShowLatestBadge` gating.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed that the active `Speaking` badge plus highlighted latest timestamp is enough context when the newest response is currently being read aloud.
+  - Chose not to alter the header-level `Speaking now` summary, since it already provides a broader activity cue and this iteration only needed a local row-density reduction.
+  - This trims redundant visual noise in source, but still needs live validation to confirm the updated row reads cleanly beside the playback button on a narrow screen.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The response-history panel still needs screenshot-backed review overall now that several state cues (`Latest`, `Speaking`, header status`) have accumulated without fresh Expo confirmation in this worktree.
+  - The relationship between the response-history panel and the nearby queue panel still deserves live one-handed hierarchy review once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that a currently speaking newest response row now reads cleanly with one less badge.
+  - Capture screenshot-backed evidence for both a speaking-latest row and a non-speaking latest row to confirm the distinction is still easy to scan.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this response-history badge tweak without fresh evidence.

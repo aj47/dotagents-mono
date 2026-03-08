@@ -47,10 +47,11 @@ test('uses minute-precision timestamps in each response row to reduce narrow-scr
 test('marks the newest response row with a compact latest badge for same-minute scanning', () => {
   assert.match(responseHistorySource, /const newestOriginalIndex = responses\.length - 1;/);
   assert.match(responseHistorySource, /const isLatest = originalIndex === newestOriginalIndex;/);
+  assert.match(responseHistorySource, /const shouldShowLatestBadge = isLatest && !isSpeaking;/);
   assert.match(responseHistorySource, /responseMeta:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*6/);
   assert.match(responseHistorySource, /timestampLatest:\s*\{[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?fontWeight:\s*'600'/);
   assert.match(responseHistorySource, /latestBadge:\s*\{[\s\S]*?borderRadius:\s*999,[\s\S]*?backgroundColor:\s*`\$\{theme\.colors\.primary\}12`/);
-  assert.match(responseHistorySource, /<View style=\{styles\.responseMeta\}>[\s\S]*?<Text style=\{\[styles\.timestamp, isLatest && styles\.timestampLatest\]\}>[\s\S]*?\{isLatest \? \([\s\S]*?<Text style=\{styles\.latestBadgeText\}>Latest<\/Text>/);
+  assert.match(responseHistorySource, /<View style=\{styles\.responseMeta\}>[\s\S]*?<Text style=\{\[styles\.timestamp, isLatest && styles\.timestampLatest\]\}>[\s\S]*?\{shouldShowLatestBadge \? \([\s\S]*?<Text style=\{styles\.latestBadgeText\}>Latest<\/Text>/);
 });
 
 test('adds an inline speaking badge so the active playback row is obvious on narrow screens', () => {
