@@ -1557,6 +1557,39 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ✅ passed
   - debugging-guided live verification per `apps/desktop/DEBUGGING.md` was not required for this prompt-only change after targeted prompt tests + desktop TypeScript verification passed
 
+## 2026-03-08 — Post-tool follow-up generations must normalize `tool` history entries
+
+- Reviewed `langfuse-bug-fix.md` first and skipped already-logged timeout / stale-output / delegation cases while looking for an unlogged single-run user-intent miss with concrete Langfuse evidence.
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1771651502079_2yah2sp1p` / `session_1771651502080_1s7238vip`
+    - user input: `how was the colleseum built`
+    - trace behavior: the run successfully called Exa search, then a later follow-up generation failed and the final trace output stayed `null`
+    - key failing observation: `LLM Call` → `Invalid prompt: The messages do not match the ModelMessage[] schema.`
+    - the trace then showed a blank `Streaming LLM Call`, so the user never received the requested answer in that single run
+  - corroborating unlogged traces from the same family:
+    - `session_1771651378044_ve90w0f63` (`hi`) and `session_1771647607074_s9lrrbp52` (`what is 10 + 15`) also showed invalid follow-up prompt / blank-output behavior rather than a user-facing answer
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` appends successful tool outputs back into `conversationHistory` with `role: "tool"`
+  - `apps/desktop/src/main/llm-fetch.ts` `convertMessages(...)` combined system messages correctly, but it only *typed* the non-system messages as `user | assistant` while actually passing any other role string through unchanged
+  - that meant follow-up `generateText(...)` / `streamText(...)` calls could receive `role: "tool"` in `messages`, which matches the Langfuse provider error exactly
+- Concrete root cause:
+  - after a successful tool call, the next LLM turn could be built from an invalid message array because `tool` history entries were not normalized into a valid AI SDK `ModelMessage[]` role
+  - the provider rejected that malformed prompt, and the run collapsed to `output: null` instead of surfacing the researched answer
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - changed `convertMessages(...)` to normalize every non-`system` non-`assistant` history entry (including `tool`) to a valid `user` message before calling the AI SDK
+    - kept the original content text unchanged so existing tool-result context still reaches the follow-up generation
+  - tests added/updated:
+    - `apps/desktop/src/main/llm-fetch.test.ts`
+      - added a regression proving a `tool` history entry is converted into a valid `user` message before `generateText(...)` runs
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-fetch.test.ts`
+  - ✅ passed (`34 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test exits successfully
+  - `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.node.json`
+  - ❌ blocked by pre-existing unrelated desktop/worktree issues (`uuid` resolution in `src/main/acp/internal-agent.ts` and existing strict mock typing errors in `src/main/acp-service.test.ts` / `src/main/llm.test.ts`)
+  - debugging-guided live verification per `apps/desktop/DEBUGGING.md` was not required for this message-normalization change after targeted trace reconstruction plus focused unit coverage
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1582,6 +1615,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh follow-up ACP delegation trace on the same specialist (for example `Recap Discord` followed by `post it!`) to confirm the delegated output now comes from a new session instead of resurfacing stale prior-turn results.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
+- Recheck a fresh post-tool follow-up generation trace (search/tool result → second model turn) after the next desktop smoke run, to confirm Langfuse no longer records `Invalid prompt: The messages do not match the ModelMessage[] schema.` and the user receives the final answer in the same run.
 - Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
 - Recheck a fresh capability/introspection trace (for example asking why tools were `cut off` or whether a server/agent is available) to confirm the agent now inspects `list_mcp_servers` / `list_server_tools` / `list_running_agents` / `list_agent_profiles` first instead of speculating.
 - Recheck a fresh `Scroll probe` / `Jump probe` / `Focus jump probe` style trace after the next desktop smoke run, to confirm the model now answers with the concrete observed range/result directly instead of bouncing into `What would you like me to do with it?`.

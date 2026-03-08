@@ -97,6 +97,36 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('Hello, world!')
   })
 
+  it('normalizes tool-role history entries into valid AI SDK messages', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: 'Follow-up answer',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [
+        { role: 'user', content: 'How was the Colosseum built?' },
+        { role: 'assistant', content: 'Let me research that.' },
+        { role: 'tool', content: '[exa:web_search_exa] Britannica summary' },
+      ],
+      'openai'
+    )
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [
+        { role: 'user', content: 'How was the Colosseum built?' },
+        { role: 'assistant', content: 'Let me research that.' },
+        { role: 'user', content: '[exa:web_search_exa] Britannica summary' },
+      ],
+    }))
+  })
+
   it('records a readable Langfuse error status when generateText throws binary-like noise', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)

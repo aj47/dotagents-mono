@@ -627,8 +627,9 @@ function convertMessages(messages: Array<{ role: string; content: string }>): {
     if (msg.role === "system") {
       systemMessages.push(msg.content)
     } else {
+      const normalizedRole = msg.role === "assistant" ? "assistant" : "user"
       otherMessages.push({
-        role: msg.role as "user" | "assistant",
+        role: normalizedRole,
         content: msg.content,
       })
     }
