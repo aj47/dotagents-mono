@@ -22,11 +22,17 @@ test('AgentEditScreen makes connection-type chips mobile-sized buttons with sele
 
 test('AgentEditScreen makes built-in read-only fields look passive instead of editable', () => {
   assert.match(agentEditSource, /Built-in agents keep their name, connection, and prompts\. You can still update guidelines,[\s\S]*?enabled, and auto spawn\./);
+  assert.match(agentEditSource, /const renderFieldLabel = \(label: string, options\?: \{ required\?: boolean; readOnly\?: boolean \}\) =>/);
+  assert.match(agentEditSource, /options\?\.readOnly \? <Text style=\{styles\.labelReadOnlyText\}> · Read only<\/Text> : null/);
+  assert.match(agentEditSource, /renderFieldLabel\('Display Name', \{ required: true, readOnly: isBuiltInAgent \}\)/);
+  assert.match(agentEditSource, /renderFieldLabel\('Connection Type', \{ readOnly: isBuiltInAgent \}\)/);
+  assert.match(agentEditSource, /renderFieldLabel\('System Prompt', \{ readOnly: isBuiltInAgent \}\)/);
   assert.match(agentEditSource, /style=\{\[styles\.input, isBuiltInAgent && styles\.inputReadOnly\]\}/);
   assert.match(agentEditSource, /isBuiltInAgent && styles\.connectionTypeOptionReadOnly/);
   assert.match(agentEditSource, /isBuiltInAgent && formData\.connectionType === ct\.value && styles\.connectionTypeOptionReadOnlyActive/);
   assert.match(agentEditSource, /Built-in agent connections are fixed and cannot be changed here\./);
   assert.match(agentEditSource, /inputReadOnly:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.secondary[\s\S]*?borderColor:\s*theme\.colors\.input/);
+  assert.match(agentEditSource, /labelReadOnlyText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
   assert.match(agentEditSource, /connectionTypeTextReadOnly:\s*\{[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
 });
 

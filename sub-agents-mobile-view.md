@@ -806,3 +806,43 @@
   - Restore the mobile install in this worktree, then re-run Expo Web and confirm the built-in warning/read-only treatment feels clear at a narrow viewport.
   - Re-establish live inspection before taking on another edit-flow tweak so the next change is again driven by current evidence.
   - After live validation returns, decide whether the next highest-friction sub-agent mobile issue is still in the edit flow or has moved back to settings/header surfaces.
+
+### 2026-03-08 — Iteration 19: keep built-in lock state visible while scrolling the agent form
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen` built-in warning + read-only field treatment
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Reconfirmed the mobile workflow is still blocked in this worktree before changing code:
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the mobile install / `expo/tsconfig.base` / Expo + React Native packages are unavailable
+    - Expo Web remains unavailable for the same reason, so no fresh screenshot-backed narrow-screen pass was practical this iteration
+- Current behavior observed before the fix:
+  - Source review showed the recent built-in warning and passive field styling were only visible near the top of `AgentEditScreen`.
+  - Once a user scrolled deeper into the form, labels like `Display Name`, `Connection Type`, `Base URL`, and `System Prompt` still looked like standard editable section labels even though the fields below were locked.
+- Issue selected:
+  - The built-in lock state could fade out of context on mobile scrolling, making read-only sections look more editable than they really were.
+- Decision:
+  - Keep the existing warning copy and passive field/chip styling from Iteration 18.
+  - Do not redesign the form or add another persistent banner while live validation is blocked.
+  - Make the smallest local fix in `AgentEditScreen`: add inline `Read only` label cues to built-in-only locked fields so the restriction stays visible in-context.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - add a small `renderFieldLabel(...)` helper for form labels,
+    - append a muted inline `· Read only` cue to built-in locked labels such as `Display Name`, `Description`, `Connection Type`, connection details, and `System Prompt`,
+    - keep editable controls like `Guidelines`, `Enabled`, and `Auto Spawn` unchanged.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the inline read-only label treatment.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native packages in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install
+- Remaining nearby issues noted, not addressed this iteration:
+  - The inline read-only cues still need a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - Built-in text inputs may still benefit from stronger screen-reader-specific read-only semantics after live validation is restored.
+  - The broader edit-flow hierarchy should still wait for fresh live evidence instead of continuing source-only tweaks too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then visually confirm the new inline `Read only` cues in `AgentEditScreen` on a narrow viewport.
+  - After live validation returns, decide whether built-in read-only fields also need extra assistive-tech hints or whether the next highest-friction issue has shifted back to settings/header surfaces.
+  - Avoid another edit-flow-only change until a fresh live pass re-establishes where the current mobile friction is highest.

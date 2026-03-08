@@ -195,6 +195,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
 
+  const renderFieldLabel = (label: string, options?: { required?: boolean; readOnly?: boolean }) => (
+    <Text style={styles.label}>
+      {label}
+      {options?.required ? ' *' : ''}
+      {options?.readOnly ? <Text style={styles.labelReadOnlyText}> · Read only</Text> : null}
+    </Text>
+  );
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -225,7 +233,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
       )}
 
-      <Text style={styles.label}>Display Name *</Text>
+      {renderFieldLabel('Display Name', { required: true, readOnly: isBuiltInAgent })}
       <TextInput
         style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
         value={formData.displayName}
@@ -235,7 +243,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         editable={!isBuiltInAgent}
       />
 
-      <Text style={styles.label}>Description</Text>
+      {renderFieldLabel('Description', { readOnly: isBuiltInAgent })}
       <TextInput
         style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
         value={formData.description}
@@ -246,7 +254,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         editable={!isBuiltInAgent}
       />
 
-      <Text style={styles.label}>Connection Type</Text>
+      {renderFieldLabel('Connection Type', { readOnly: isBuiltInAgent })}
       <View style={styles.connectionTypeRow}>
         {CONNECTION_TYPES.map(ct => (
           <TouchableOpacity
@@ -285,7 +293,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <>
           {(formData.connectionType === 'stdio') && (
             <>
-              <Text style={styles.label}>Command</Text>
+              {renderFieldLabel('Command', { readOnly: isBuiltInAgent })}
               <TextInput
                 style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionCommand}
@@ -295,7 +303,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 autoCapitalize="none"
                 editable={!isBuiltInAgent}
               />
-              <Text style={styles.label}>Arguments</Text>
+              {renderFieldLabel('Arguments', { readOnly: isBuiltInAgent })}
               <TextInput
                 style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionArgs}
@@ -305,7 +313,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 autoCapitalize="none"
                 editable={!isBuiltInAgent}
               />
-              <Text style={styles.label}>Working Directory</Text>
+              {renderFieldLabel('Working Directory', { readOnly: isBuiltInAgent })}
               <TextInput
                 style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionCwd}
@@ -319,7 +327,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           )}
           {(formData.connectionType === 'remote' || formData.connectionType === 'acp') && (
             <>
-              <Text style={styles.label}>Base URL</Text>
+              {renderFieldLabel('Base URL', { readOnly: isBuiltInAgent })}
               <TextInput
                 style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionBaseUrl}
@@ -335,7 +343,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </>
       )}
 
-      <Text style={styles.label}>System Prompt</Text>
+      {renderFieldLabel('System Prompt', { readOnly: isBuiltInAgent })}
       <TextInput
         style={[styles.input, styles.textArea, isBuiltInAgent && styles.inputReadOnly]}
         value={formData.systemPrompt}
@@ -478,6 +486,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       marginBottom: spacing.xs,
       marginTop: spacing.md,
+    },
+    labelReadOnlyText: {
+      fontSize: 12,
+      fontWeight: '400',
+      color: theme.colors.mutedForeground,
     },
     input: {
       borderWidth: 1,
