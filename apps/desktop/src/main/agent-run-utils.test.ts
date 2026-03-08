@@ -217,6 +217,15 @@ describe("agent-run-utils", () => {
         "Done — the browser task is ready.",
       )
     })
+
+    it("treats curly-apostrophe progress updates as non-deliverable", () => {
+      const staleProgress = "I’ll check the issue body first and then report back."
+
+      expect(isLikelyProgressOnlyResponse(staleProgress)).toBe(true)
+      expect(preferStoredUserResponse(staleProgress, "Done — I checked the issue body.")).toBe(
+        "Done — I checked the issue body.",
+      )
+    })
   })
 
   describe("native tool-calling reminder detection", () => {

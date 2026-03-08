@@ -54,6 +54,9 @@ vi.mock('../agent-run-utils', () => ({
     const latestAssistant = [...conversation].reverse().find((msg) => msg.role === 'assistant')
     return latestAssistant?.content ?? output
   }),
+  normalizeProgressHeuristicText: vi.fn((content: string) => content
+    .replace(/[\u2018\u2019\u00B4`]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')),
 }))
 
 vi.mock('./internal-agent', () => ({
@@ -217,6 +220,34 @@ describe('handleDelegateToAgent', () => {
     await expect(handleDelegateToAgent(
       { agentName: 'internal', task: 'Return only concrete results' },
       'parent-session-3',
+    )).resolves.toMatchObject({
+      success: false,
+      status: 'failed',
+      error: expect.stringContaining('without a final deliverable'),
+    })
+  })
+
+  it('fails delegated reasoning output that only uses curly-apostrophe progress markers', async () => {
+    mockRunInternalSubSession.mockResolvedValue({
+      success: true,
+      result: 'Fallback output',
+      conversationHistory: [
+        { role: 'user', content: 'Generate exactly 200 numbered bullet points.', timestamp: 1 },
+        {
+          role: 'assistant',
+          content: [
+            '**Evaluating system lag issues**',
+            '',
+            'I’m focusing on how to consistently reproduce the slowdown. I’ll note the exact times when the lag occurs and check overall CPU usage. It’s important to sort processes by CPU and RAM to see if there’s any memory pressure. I’ll also look at any disk activity spikes and check GPU usage if that’s available.',
+          ].join('\n'),
+          timestamp: 2,
+        },
+      ],
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: 'internal', task: 'Return only concrete bullet points' },
+      'parent-session-4',
     )).resolves.toMatchObject({
       success: false,
       status: 'failed',

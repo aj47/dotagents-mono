@@ -12,7 +12,11 @@ import type {
 import { acpBackgroundNotifier } from './acp-background-notifier';
 import { configStore } from '../config';
 import { acpService, ACPContentBlock } from '../acp-service';
-import { buildProfileContext, getPreferredDelegationOutput } from '../agent-run-utils';
+import {
+  buildProfileContext,
+  getPreferredDelegationOutput,
+  normalizeProgressHeuristicText,
+} from '../agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
@@ -143,7 +147,7 @@ function buildRunningDelegationGuidance(agentName: string, runId: string): strin
 }
 
 function isProgressOnlyDelegationOutput(output: string): boolean {
-  const trimmed = output.trim();
+  const trimmed = normalizeProgressHeuristicText(output.trim());
   if (!trimmed) return true;
 
   const lowerRaw = trimmed.toLowerCase();

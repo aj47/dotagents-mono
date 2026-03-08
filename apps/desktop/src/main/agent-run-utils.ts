@@ -217,6 +217,12 @@ function stripTrailingAgentStatusNote(content: string): string {
   return content.replace(TRAILING_AGENT_STATUS_NOTE_REGEX, "").trim()
 }
 
+export function normalizeProgressHeuristicText(content: string): string {
+  return content
+    .replace(/[\u2018\u2019\u00B4`]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+}
+
 export function isToolCallPlaceholderResponse(content: string): boolean {
   const trimmed = content.trim()
   return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
@@ -231,7 +237,9 @@ export function needsNativeToolCallingReminder(content: string): boolean {
 }
 
 export function isLikelyProgressOnlyResponse(content: string): boolean {
-  const trimmed = stripTrailingAgentStatusNote(content.trim())
+  const trimmed = normalizeProgressHeuristicText(
+    stripTrailingAgentStatusNote(content.trim()),
+  )
   if (!trimmed) return false
 
   const lowerRaw = trimmed.toLowerCase()

@@ -31,6 +31,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772760072745_y04jxkisp | session_1772760071840_tx7z5kq1e | fix implemented (verification blocked) | User asked to tile laptop windows neatly. Langfuse showed repeated successful `execute_command` window-management passes, then a completed `delegate_to_agent` call for `Computer Use` whose output was still just a progress update (`I can see the windows are partially arranged... Let me do a more precise tiling pass now.`). The parent run treated that as successful delegated work, re-delegated again with empty content, and still ended with `output: null`. Root repo issue found: delegation plumbing accepted progress-only sub-agent output as a completed result instead of surfacing it as an incomplete/failed delegation for the parent agent to recover from. |
 | 2026-03-08 | conv_1772854646654_q7kryv45t | session_1772854646655_k5gmpg0wu | fix implemented (verification blocked) | User asked `what's next`; Langfuse showed a parallel batch where `execute_command` completed, but `Tool: github:list_issues` never recorded an end time. The run then closed with `output: null` and no answer. Root repo issue found: MCP server tool execution had connection/test timeouts, but `client.callTool(...)` itself had no timeout, so one hung tool in a parallel batch could stall the entire agent run forever. |
 | 2026-03-08 | conv_1772943712464_m4bk9psxl | session_1772943712469_klewsrmuj | fix implemented | User asked `Execute and monitor`; Langfuse showed multiple `delegate_to_agent` calls to `augustus` where outputs began with long reasoning/progress text like `**Analyzing the codebase** ... I'm considering ...` or `## Actions ... then I'll patch ...`, plus a timeout retry, even when the delegated prompt explicitly said `return only concrete results (no reasoning)`. Root repo issue found: the delegation completion heuristic only rejected short future-tense updates, so long reasoning-style progress dumps with markdown headers still counted as successful delegated results. |
+| 2026-03-08 | conv_1772943712464_m4bk9psxl (fresh corroborating evidence: conv_1772949140796_y9100s0gl) | session_1772943712469_klewsrmuj, session_1772949140798_7egb3rl1d | fix implemented | Same delegated-output failure class reappeared after the earlier reasoning-output fix: fresh Langfuse evidence from `Write 200 numbered bullet points...` showed a `delegate_to_agent` span return only `**Evaluating system lag issues** ... I’ll note ... It’s important ... I’ll also look ...`, yet the heuristic still did not classify it as progress-only. Root repo issue found: the progress-only regexes matched straight ASCII apostrophes (`I'll`, `I'm`) but not curly unicode punctuation (`I’ll`, `I’m`, `It’s`), so smart-quoted reasoning text could still slip through as a deliverable. |
 | 2026-03-08 | conv_1772917123572_de9jk57jd | session_1772917979621_p7x7puoru, session_1772922892781_i3o21grlf | fix implemented (desktop smoke blocked) | User said `continue working on this next step`; Langfuse showed one `delegate_to_agent` result that was only a `## Plan ... I'll first gather ...` handoff, then two later `delegate_to_agent` spans with `endTime: null` before the run ended as `(Agent mode was stopped by emergency kill switch)`. A later follow-up in the same conversation succeeded only after the user restated the intent more concretely. Root repo issue found: synchronous ACP delegation had no fail-fast watchdog, and local ACP `runTask()` ignored per-request abort/timeout signals, so a hung delegated prompt could block the parent run until the user killed agent mode. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh sub-agent evidence) | subsession_1772916424066_82e0fba0, subsession_1772916435166_cb8bb364, subsession_1772916449139_f650fc9f | fix implemented | Fresh Langfuse sub-session traces for the same starter-pack planning conversation showed the delegated internal `Web Browser` specialist repeatedly calling `delegate_to_agent` again instead of doing the browsing/research work itself. That caused recursive delegation failures (`Maximum recursion depth (3) reached`), oversized delegated-request failures (`request body size is too large, must be less than 512000`), blank `output: null` sub-runs, and only delayed recovery after extra turns. Root repo issue found: specialist internal sub-sessions were still built with the generic delegation guidance, so delegated agents could re-delegate the very task they had been chosen to execute. |
 | 2026-03-08 | conv_1771714066742_a3r3bqee6, conv_1771817444023_7v2d8szph | session_1771714066745_wb6k5ig9v, session_1771817444027_h74z83ol9 | fix implemented | Fresh unlogged output-leak class: one trace answering `Did it work` ended with raw pseudo tool-result text starting `Let me check right now. [iterm:list_sessions] { ... }`; corroborating trace `do we need to make more skills to make this easier` ended with `... [Calling tools: speakmcp-settings:execute_command]`. Root repo issue found: final-output helpers only unwrapped pseudo `respond_to_user` text, not generic pseudo tool scaffolding or raw tool-result wrappers, so tool-intent text and structured tool payloads could leak into final user-visible output. |
@@ -791,6 +792,42 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts`
   - ✅ passed (4 tests)
   - Vite still logs the pre-existing `apps/mobile/tsconfig.json` Expo-base parse warning in this worktree, but the targeted desktop ACP test run exits successfully
+
+### 2026-03-08 — Curly apostrophes still bypass delegated progress-only detection
+
+- Langfuse evidence reviewed:
+  - original failing intent remained `conv_1772943712464_m4bk9psxl` / `session_1772943712469_klewsrmuj`
+    - user asked `Execute and monitor`
+    - delegated `augustus` runs still counted long progress-only reasoning as completed work instead of concrete deliverables
+  - fresh corroborating trace: `conv_1772949140796_y9100s0gl` / `session_1772949140798_7egb3rl1d`
+    - user asked `Write 200 numbered bullet points. Each item should be one short sentence about desktop performance debugging. Stream the full answer.`
+    - a `Tool: delegate_to_agent` span returned `success: true` with output beginning `**Evaluating system lag issues** ... I’ll note ... It’s important ... I’ll also look ...`
+    - the parent run later recovered and produced the requested bullets, but the delegated-output filter still failed to recognize that smart-quoted text as progress-only
+- Repo reconstruction:
+  - the earlier reasoning-output fix in `apps/desktop/src/main/acp/acp-router-tools.ts` depended on regexes such as `i'?ll`, `i'm going to`, and related progress markers
+  - both `isProgressOnlyDelegationOutput(...)` and the shared `isLikelyProgressOnlyResponse(...)` helper matched only straight ASCII apostrophes, not curly unicode quotes from live model output (`I’ll`, `I’m`, `It’s`)
+  - that left a gap where the same progress-only delegated output class could slip past the filter whenever the model used smart punctuation
+- Concrete root cause:
+  - progress-only heuristics did not normalize unicode apostrophes/quotes before matching future-tense / progress regexes
+- Change made:
+  - added `normalizeProgressHeuristicText(...)` in `apps/desktop/src/main/agent-run-utils.ts`
+  - applied that normalization in:
+    - `isLikelyProgressOnlyResponse(...)`
+    - `apps/desktop/src/main/acp/acp-router-tools.ts` `isProgressOnlyDelegationOutput(...)`
+  - added focused regressions for:
+    - curly-apostrophe progress-only helper text in `apps/desktop/src/main/agent-run-utils.test.ts`
+    - the real delegated `**Evaluating system lag issues** ... I’ll ... It’s ...` phrasing in `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+  - updated the ACP router test mock to expose the new shared normalization helper
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts src/main/acp/acp-router-tools.test.ts`
+  - ✅ passed (`36 passed`)
+  - `git diff --check -- apps/desktop/src/main/agent-run-utils.ts apps/desktop/src/main/agent-run-utils.test.ts apps/desktop/src/main/acp/acp-router-tools.ts apps/desktop/src/main/acp/acp-router-tools.test.ts langfuse-bug-fix.md`
+  - ✅ passed
+  - desktop live-debug attempt from `apps/desktop/DEBUGGING.md`:
+    - `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm --filter @dotagents/desktop dev -- -dapp -dt`
+    - blocked during `apps/desktop` `predev` by a pre-existing worktree/env issue: missing `node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs`
+- Remaining promising leads:
+  - fresh-but-unlogged historical structural classes still worth revisiting once this branch is merged: `proxy_*` tool-name restoration failures (`session_1771788646813_ow2rc18r3`) and older `respond_to_user` schema rejection traces from `2026-02-28` if either signature reappears in new evidence
 
 ### 2026-03-08 — Hung synchronous ACP delegation should fail fast instead of waiting for an emergency stop
 
