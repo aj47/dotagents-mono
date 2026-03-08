@@ -212,7 +212,8 @@ const getConfig = (): LoadedConfig => {
     // Theme preference defaults
     themePreference: "system",
 
-    // Parakeet STT defaults
+    // Speech-to-Text defaults
+    transcriptionPreviewEnabled: false,
     parakeetNumThreads: 2,
     parakeetModelDownloaded: false,
 

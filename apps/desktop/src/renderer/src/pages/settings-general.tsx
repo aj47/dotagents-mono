@@ -296,6 +296,16 @@ export function Component() {
 
   const sttProviderId: STT_PROVIDER_ID =
     (configQuery.data as any)?.sttProviderId || "openai"
+  const transcriptionPreviewEnabled =
+    configQuery.data?.transcriptionPreviewEnabled ?? false
+  const transcriptionPreviewSummary =
+    !transcriptionPreviewEnabled
+      ? "Live transcription preview is off. Turn it on to see partial transcript updates while recording. When enabled, audio is sent to your STT provider about every 10 seconds, so preview chunks can add extra billing. Changes save immediately."
+      : sttProviderId === "parakeet"
+        ? "Transcription preview is saved on, but Parakeet skips live preview during recording right now to avoid expensive local chunk conversion. You'll still get the final transcript after you stop recording. Changes save immediately."
+        : sttProviderId === "groq"
+          ? "Live transcription preview is on. Audio is sent to Groq about every 10 seconds while you record, and each preview chunk is billed separately with a 10-second minimum per request. Changes save immediately."
+          : "Live transcription preview is on. Audio is sent to your STT provider about every 10 seconds while you record so you can see partial transcripts before you stop. Each preview chunk adds extra API usage. Changes save immediately."
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const customRecordingShortcutMode = configQuery.data?.customShortcutMode || "hold"
   const hasCustomRecordingShortcut = Boolean(configQuery.data?.customShortcut?.trim())
@@ -1143,15 +1153,28 @@ export function Component() {
             </Control>
           )}
 
-          <Control label={<ControlLabel label="Transcription Preview" tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider every ~10 seconds to display partial results. Note: this increases API usage — each chunk is billed separately (Groq has a 10-second minimum billing per request)." />} className="px-3">
-            <Switch
-              defaultChecked={configQuery.data.transcriptionPreviewEnabled}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  transcriptionPreviewEnabled: value,
-                })
-              }}
-            />
+          <Control label={<ControlLabel label="Transcription Preview" tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider about every 10 seconds to display partial results. Each preview chunk increases API usage, Groq bills a 10-second minimum per request, and Parakeet currently skips live preview during recording." />} className="px-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={transcriptionPreviewEnabled}
+                  onCheckedChange={(value) => {
+                    saveConfig({
+                      transcriptionPreviewEnabled: value,
+                    })
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">
+                  Show partial transcript updates while you record
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground">{transcriptionPreviewSummary}</div>
+              {transcriptionPreviewEnabled && sttProviderId === "parakeet" && (
+                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Parakeet currently skips live preview during recording. Switch to OpenAI or Groq if you want partial transcripts before you stop.
+                </div>
+              )}
+            </div>
           </Control>
 
           <Control label={<ControlLabel label="Post-Processing" tooltip="Enable AI-powered post-processing to clean up and improve transcripts" />} className="px-3">

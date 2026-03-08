@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop general settings transcription preview cost / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime preview gating reviewed in `apps/desktop/src/renderer/src/pages/panel.tsx`, desktop/mobile config exposure checked in `apps/desktop/src/main/config.ts` / `apps/desktop/src/main/remote-server.ts` / `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings primary recording shortcut hold/toggle completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with onboarding dictation-step parity reviewed in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, sessions shortcut hint usage updated in `apps/desktop/src/renderer/src/pages/sessions.tsx`, runtime recording behavior checked in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers updated in `apps/desktop/src/shared/key-utils.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings toggle-voice-dictation shortcut completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime toggle behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers updated in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings text-input shortcut completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime text-input trigger behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, sessions shortcut pill usage checked in `apps/desktop/src/renderer/src/pages/sessions.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -44,6 +45,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop transcription preview settings now default to the current cost-safe off state explicitly, keep the switch tied to the saved setting, explain off/on/provider-specific billing behavior inline, and warn when Parakeet is selected because live preview is unavailable during recording even if the preference is enabled.
 - 2026-03-08: Desktop primary voice-dictation shortcut settings and onboarding now explain the active hold-vs-toggle behavior in plain language, keep the shortcut summary aligned with the actual saved custom mode, warn when a custom recording shortcut is still incomplete, and stop sessions/onboarding from silently falling back to `Hold Ctrl` when custom setup is unfinished.
 - 2026-03-08: Desktop Toggle Voice Dictation settings now keep the selected hotkey visible even while the feature is off, explain whether keyboard toggle dictation is currently active or still incomplete, show the active Fn/F-key/custom shortcut in plain language, and warn explicitly when a custom toggle shortcut has not been fully recorded yet.
 - 2026-03-08: Desktop Text Input shortcut settings now explain whether the shortcut is enabled, show the active shortcut in plain language, spell out when Shift can continue the most recent conversation, warn when a custom shortcut has not been fully recorded yet, and stop other surfaces from implying `Ctrl+T` is active when custom text-input setup is still incomplete.
@@ -79,6 +81,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-general-transcription-preview-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/main/config.ts`, and `apps/desktop/src/main/remote-server.ts`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-general-recording-shortcut-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/shared/key-utils.ts`
 - 2026-03-08: `git diff --check`
@@ -154,6 +159,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this transcription-preview settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this primary recording-shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this toggle-voice-dictation shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this text-input shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -188,10 +194,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop general settings transcription preview cost / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
+- Desktop Parakeet provider settings model readiness / preview limitation clarity (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop general settings transcription preview cost / saved-state clarity next so the nearby STT billing-sensitive toggle communicates current behavior and cost implications with the same confidence as the shortcut controls
+- Inspect desktop Parakeet provider settings model readiness / live-preview limitation clarity next so users choosing local STT understand both model-download state and the current no-live-preview tradeoff before they hit Recording settings
+- Once a runnable Electron target is available, live-check the desktop transcription preview switch across off, Groq, and Parakeet states to confirm the new cost/availability guidance reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop primary recording shortcut settings plus onboarding dictation step to confirm the new hold/toggle summaries, incomplete-custom warning, and shortcut hints feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop toggle-voice-dictation shortcut settings to confirm the new off/active/incomplete-custom guidance feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop text-input shortcut settings to confirm the enabled/disabled summary, continue-conversation guidance, and incomplete-custom warning feel right in the actual UI
@@ -210,6 +217,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop transcription preview cost and saved-state clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop general settings speech-to-text section in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - desktop recording panel runtime preview gating in `apps/desktop/src/renderer/src/pages/panel.tsx`
+  - desktop config defaults in `apps/desktop/src/main/config.ts`
+  - desktop/mobile config exposure reviewed in `apps/desktop/src/main/remote-server.ts` and `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused source-level regression coverage added in `tests/desktop-settings-general-transcription-preview-feedback.test.js`
+- Why it was chosen:
+  - the ledger explicitly called out transcription preview as the next unchecked nearby STT setting
+  - investigation found three concrete UX gaps: desktop had no explicit preview default, the setting relied on tooltip-only cost guidance, and Parakeet silently disabled live preview at runtime even when the preference was enabled
+  - this was a small local change with clear user value because recording users need confidence about whether live preview is actually active and what it costs before turning it on
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` to confirm the switch only exposed a tooltip and used `defaultChecked` instead of reflecting the saved setting directly
+  - `apps/desktop/src/renderer/src/pages/panel.tsx` to confirm live preview only runs when the setting is on and the STT provider is not `parakeet`
+  - `apps/desktop/src/main/config.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/mobile/src/screens/SettingsScreen.tsx` to confirm preview state/default exposure across desktop and remote/mobile surfaces
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - added an explicit desktop default of `transcriptionPreviewEnabled: false` so desktop settings, runtime behavior, and remote/mobile config exposure all start from the same cost-safe baseline
+  - made the desktop transcription-preview switch controlled by the saved setting rather than relying on `defaultChecked`
+  - added inline off/on summary copy explaining the ~10 second preview cadence, general extra API usage, and Groq's 10-second minimum billing behavior
+  - added an explicit Parakeet warning when preview is enabled so Settings no longer implies that local STT will show live preview during recording
+  - updated the tooltip copy to surface both billing impact and the Parakeet limitation in-place
+- Assumptions / tradeoffs / rationale:
+  - treated the current desktop runtime behavior (preview stays off unless explicitly enabled) as the intended default because the feature increases cost and the panel already behaved that way today
+  - kept the UI change desktop-focused; mobile remote settings inherit the explicit default through the shared desktop config path, so a dedicated mobile copy pass can remain a separate iteration if needed
+  - preferred inline explanatory text plus a single warning callout over a broader STT settings refactor so the improvement stays small and shippable
+- Tests / verification:
+  - `node --test tests/desktop-settings-general-transcription-preview-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/main/config.ts`, and `apps/desktop/src/main/remote-server.ts`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check the desktop transcription preview switch across off, Groq, and Parakeet states to confirm the new cost/availability guidance reads clearly
+  - inspect desktop Parakeet provider settings next for model readiness and live-preview limitation clarity
 
 ### 2026-03-08 — Desktop primary recording shortcut hold/toggle completion and saved-state clarity
 - Date:

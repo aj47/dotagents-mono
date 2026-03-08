@@ -1286,7 +1286,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         streamerModeEnabled: cfg.streamerModeEnabled ?? false,
         // Speech-to-Text
         sttLanguage: cfg.sttLanguage ?? "",
-        transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
+        transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? false,
         transcriptPostProcessingPrompt: cfg.transcriptPostProcessingPrompt ?? "",
         // Text-to-Speech
         ttsAutoPlay: cfg.ttsAutoPlay ?? true,
