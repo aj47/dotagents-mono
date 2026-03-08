@@ -49,6 +49,20 @@ test('general settings explains ACP main-agent setup gaps and offers recovery ac
   assert.match(settingsSource, /navigate\("\/settings\/agents"\)/);
 });
 
+test('general settings clarifies active modular config layer and related skills\/memories folders', () => {
+  assert.match(settingsSource, /function getWorkspaceAgentsSourceLabel\(source: "env" \| "upward" \| null \| undefined\): string \| null/);
+  assert.match(settingsSource, /via DOTAGENTS_WORKSPACE_DIR/);
+  assert.match(settingsSource, /found upward from the current workspace/);
+  assert.match(settingsSource, /label="Active prompt layer"/);
+  assert.match(settingsSource, /Main-agent system prompt and guidelines are read from this layer\./);
+  assert.match(settingsSource, /Reveal actions below target this layer\./);
+  assert.match(settingsSource, /label="Skills folders"/);
+  assert.match(settingsSource, /label="Memories folders"/);
+  assert.match(settingsSource, /Reveal active prompt files/);
+  assert.match(settingsSource, /Reveal Active System Prompt/);
+  assert.match(settingsSource, /Reveal Active Guidelines/);
+});
+
 test('shared MCP shortcut display reflects custom mode and unset custom shortcuts', () => {
   assert.match(keyUtilsSource, /customMode: "hold" \| "toggle" = "hold"/);
   assert.match(keyUtilsSource, /return customMode === "toggle"\s*\? `Press \$\{formattedShortcut\}`\s*:\s*`Hold \$\{formattedShortcut\}`/);

@@ -78,6 +78,12 @@ function getOptionalStringConfigUpdate<Key extends GeneralTextDraftKey>(
   } as Pick<Config, Key>
 }
 
+function getWorkspaceAgentsSourceLabel(source: "env" | "upward" | null | undefined): string | null {
+  if (source === "env") return "via DOTAGENTS_WORKSPACE_DIR"
+  if (source === "upward") return "found upward from the current workspace"
+  return null
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
@@ -131,6 +137,18 @@ export function Component() {
   const hasAvailableConfiguredMainAgent = selectableMainAcpAgents.some(
     agent => agent.name.trim().toLowerCase() === normalizedConfiguredMainAgentName,
   )
+  const globalAgentsLayer = agentsFoldersQuery.data?.global
+  const workspaceAgentsLayer = agentsFoldersQuery.data?.workspace
+  const hasWorkspaceAgentsLayer = Boolean(workspaceAgentsLayer?.agentsDir)
+  const workspaceSourceLabel = getWorkspaceAgentsSourceLabel(agentsFoldersQuery.data?.workspaceSource)
+  const activePromptLayerLabel = agentsFoldersQuery.isLoading
+    ? "Loading..."
+    : hasWorkspaceAgentsLayer
+      ? `Workspace .agents (${workspaceSourceLabel ?? "detected"})`
+      : "Global .agents"
+  const activePromptLayerPath = agentsFoldersQuery.isLoading
+    ? "Loading..."
+    : (hasWorkspaceAgentsLayer ? workspaceAgentsLayer?.agentsDir : globalAgentsLayer?.agentsDir) ?? "Loading..."
 
   const openGlobalAgentsFolder = useCallback(async () => {
     try {
@@ -737,9 +755,28 @@ export function Component() {
             <span className="font-mono">memories/&lt;id&gt;.md</span>. Frontmatter uses simple{" "}
             <span className="font-mono">key: value</span> lines (not YAML).
           </div>
+          <Control
+            label={
+              <ControlLabel
+                label="Active prompt layer"
+                tooltip="Main-agent system prompt and guidelines are read from this layer. The reveal actions below target this same layer."
+              />
+            }
+            className="px-3"
+          >
+            <div className="space-y-1 text-right">
+              <div className="text-xs font-medium text-foreground">{activePromptLayerLabel}</div>
+              <div className="font-mono text-xs text-muted-foreground break-all">{activePromptLayerPath}</div>
+              {!agentsFoldersQuery.isLoading && (
+                <div className="text-xs text-muted-foreground sm:ml-auto sm:max-w-[24rem]">
+                  Reveal actions below target this layer.
+                </div>
+              )}
+            </div>
+          </Control>
           <Control label="Global folder" className="px-3">
             <div className="text-right font-mono text-xs text-muted-foreground break-all">
-              {agentsFoldersQuery.data?.global?.agentsDir ?? "Loading..."}
+              {globalAgentsLayer?.agentsDir ?? "Loading..."}
             </div>
           </Control>
           <Control
@@ -754,10 +791,48 @@ export function Component() {
             <div className="text-right font-mono text-xs text-muted-foreground break-all">
               {agentsFoldersQuery.isLoading
                 ? "Loading..."
-                : agentsFoldersQuery.data?.workspace?.agentsDir ?? "Not detected"}
-              {agentsFoldersQuery.data?.workspace?.agentsDir && agentsFoldersQuery.data?.workspaceSource
-                ? ` (${agentsFoldersQuery.data.workspaceSource})`
+                : workspaceAgentsLayer?.agentsDir ?? "Not detected"}
+              {workspaceAgentsLayer?.agentsDir && workspaceSourceLabel
+                ? ` (${workspaceSourceLabel})`
                 : ""}
+            </div>
+          </Control>
+          <Control
+            label={
+              <ControlLabel
+                label="Skills folders"
+                tooltip="Global skills are always available. When a workspace .agents folder exists, matching workspace skill IDs can override global ones."
+              />
+            }
+            className="px-3"
+          >
+            <div className="space-y-1 text-right text-xs text-muted-foreground">
+              <div>
+                Global: <span className="font-mono break-all">{globalAgentsLayer?.skillsDir ?? "Loading..."}</span>
+              </div>
+              <div>
+                Workspace: <span className="font-mono break-all">{workspaceAgentsLayer?.skillsDir ?? "Not detected"}</span>
+                {workspaceAgentsLayer?.skillsDir && workspaceSourceLabel ? ` (${workspaceSourceLabel})` : ""}
+              </div>
+            </div>
+          </Control>
+          <Control
+            label={
+              <ControlLabel
+                label="Memories folders"
+                tooltip="Global memories are always available. When a workspace .agents folder exists, matching workspace memory IDs can override global ones."
+              />
+            }
+            className="px-3"
+          >
+            <div className="space-y-1 text-right text-xs text-muted-foreground">
+              <div>
+                Global: <span className="font-mono break-all">{globalAgentsLayer?.memoriesDir ?? "Loading..."}</span>
+              </div>
+              <div>
+                Workspace: <span className="font-mono break-all">{workspaceAgentsLayer?.memoriesDir ?? "Not detected"}</span>
+                {workspaceAgentsLayer?.memoriesDir && workspaceSourceLabel ? ` (${workspaceSourceLabel})` : ""}
+              </div>
             </div>
           </Control>
           <Control label="Open" className="px-3">
@@ -778,15 +853,15 @@ export function Component() {
               </Button>
             </div>
           </Control>
-          <Control label="Reveal files in Finder/Explorer" className="px-3">
+          <Control label="Reveal active prompt files" className="px-3">
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={openSystemPromptFile}>
                 <FileText className="h-3 w-3" />
-                Reveal System Prompt
+                Reveal Active System Prompt
               </Button>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={openAgentsGuidelinesFile}>
                 <FileText className="h-3 w-3" />
-                Reveal Guidelines
+                Reveal Active Guidelines
               </Button>
             </div>
           </Control>
