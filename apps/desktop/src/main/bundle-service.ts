@@ -238,6 +238,11 @@ export interface GeneratePublishPayloadOptions extends ExportBundleOptions {
 // ============================================================================
 
 export type ImportConflictStrategy = "skip" | "overwrite" | "rename"
+export type ConflictStrategyOverrideKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks"
+
+export type ImportConflictStrategyOverrides = Partial<
+  Record<ConflictStrategyOverrideKey, Record<string, ImportConflictStrategy>>
+>
 
 export interface ImportOptions {
   /** How to handle conflicts when an item with the same ID already exists */
@@ -252,6 +257,8 @@ export interface ImportOptions {
   }
   /** Optional per-item selection within enabled components */
   selectedItems?: BundleItemSelectionOptions
+  /** Optional per-conflict overrides for specific items */
+  conflictStrategyOverrides?: ImportConflictStrategyOverrides
   /** Optional snapshot config for automated pre-import backups */
   backup?: {
     dir?: string
@@ -288,6 +295,18 @@ export interface PreviewConflict {
   existingName?: string
   defaultStrategy: ImportConflictStrategy
   renameTargetId?: string
+}
+
+function resolveImportConflictStrategy(
+  overrides: ImportConflictStrategyOverrides | undefined,
+  key: ConflictStrategyOverrideKey,
+  id: string,
+  defaultStrategy: ImportConflictStrategy
+): ImportConflictStrategy {
+  const override = overrides?.[key]?.[id]
+  return override === "skip" || override === "overwrite" || override === "rename"
+    ? override
+    : defaultStrategy
 }
 
 export interface BundlePreviewResult {
@@ -1735,6 +1754,7 @@ export async function importBundle(
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
   const { conflictStrategy } = options
+  const conflictStrategyOverrides = options.conflictStrategyOverrides
   const components = options.components ?? {
     agentProfiles: true,
     mcpServers: true,
@@ -1782,8 +1802,14 @@ export async function importBundle(
         }
 
         const exists = existingIds.has(bundleProfile.id)
+        const itemConflictStrategy = resolveImportConflictStrategy(
+          conflictStrategyOverrides,
+          "agentProfiles",
+          bundleProfile.id,
+          conflictStrategy
+        )
 
-        if (exists && conflictStrategy === "skip") {
+        if (exists && itemConflictStrategy === "skip") {
           result.agentProfiles.push({
             id: bundleProfile.id,
             name: bundleProfile.name,
@@ -1795,10 +1821,10 @@ export async function importBundle(
         let finalId = bundleProfile.id
         let action: ImportItemResult["action"] = "imported"
 
-        if (exists && conflictStrategy === "rename") {
+        if (exists && itemConflictStrategy === "rename") {
           finalId = generateUniqueId(bundleProfile.id, existingIds)
           action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
+        } else if (exists && itemConflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
@@ -1878,8 +1904,14 @@ export async function importBundle(
         }
 
         const exists = existingNames.has(bundleServer.name)
+        const itemConflictStrategy = resolveImportConflictStrategy(
+          conflictStrategyOverrides,
+          "mcpServers",
+          bundleServer.name,
+          conflictStrategy
+        )
 
-        if (exists && conflictStrategy === "skip") {
+        if (exists && itemConflictStrategy === "skip") {
           result.mcpServers.push({
             id: bundleServer.name,
             name: bundleServer.name,
@@ -1891,10 +1923,10 @@ export async function importBundle(
         let finalName = bundleServer.name
         let action: ImportItemResult["action"] = "imported"
 
-        if (exists && conflictStrategy === "rename") {
+        if (exists && itemConflictStrategy === "rename") {
           finalName = generateUniqueId(bundleServer.name, existingNames)
           action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
+        } else if (exists && itemConflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
@@ -1944,8 +1976,14 @@ export async function importBundle(
         }
 
         const exists = existingIds.has(bundleSkill.id)
+        const itemConflictStrategy = resolveImportConflictStrategy(
+          conflictStrategyOverrides,
+          "skills",
+          bundleSkill.id,
+          conflictStrategy
+        )
 
-        if (exists && conflictStrategy === "skip") {
+        if (exists && itemConflictStrategy === "skip") {
           result.skills.push({
             id: bundleSkill.id,
             name: bundleSkill.name,
@@ -1957,10 +1995,10 @@ export async function importBundle(
         let finalId = bundleSkill.id
         let action: ImportItemResult["action"] = "imported"
 
-        if (exists && conflictStrategy === "rename") {
+        if (exists && itemConflictStrategy === "rename") {
           finalId = generateUniqueId(bundleSkill.id, existingIds)
           action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
+        } else if (exists && itemConflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
@@ -2017,8 +2055,14 @@ export async function importBundle(
         }
 
         const exists = existingIds.has(bundleTask.id)
+        const itemConflictStrategy = resolveImportConflictStrategy(
+          conflictStrategyOverrides,
+          "repeatTasks",
+          bundleTask.id,
+          conflictStrategy
+        )
 
-        if (exists && conflictStrategy === "skip") {
+        if (exists && itemConflictStrategy === "skip") {
           result.repeatTasks.push({
             id: bundleTask.id,
             name: bundleTask.name,
@@ -2030,10 +2074,10 @@ export async function importBundle(
         let finalId = bundleTask.id
         let action: ImportItemResult["action"] = "imported"
 
-        if (exists && conflictStrategy === "rename") {
+        if (exists && itemConflictStrategy === "rename") {
           finalId = generateUniqueId(bundleTask.id, existingIds)
           action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
+        } else if (exists && itemConflictStrategy === "overwrite") {
           action = "overwritten"
         }
 

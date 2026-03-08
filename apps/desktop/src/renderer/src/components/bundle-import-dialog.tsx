@@ -18,9 +18,11 @@ import { toast } from "sonner"
 
 type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
+type ConflictStrategyOverrideKey = Exclude<BundleComponentKey, "memories">
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 type BundleItemSelectionKey = "agentProfileIds" | "mcpServerNames" | "skillIds" | "repeatTaskIds" | "memoryIds"
 type BundleItemSelectionState = Record<BundleItemSelectionKey, string[]>
+type ConflictStrategyOverrideState = Partial<Record<ConflictStrategyOverrideKey, Record<string, ConflictStrategy>>>
 
 const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
   agentProfiles: "Agent Profiles",
@@ -59,6 +61,10 @@ function createDefaultItemSelections(bundle?: BundlePreview["bundle"]): BundleIt
     repeatTaskIds: (bundle?.repeatTasks ?? []).map((task) => task.id),
     memoryIds: (bundle?.memories ?? []).map((memory) => memory.id),
   }
+}
+
+function createDefaultConflictStrategyOverrides(): ConflictStrategyOverrideState {
+  return {}
 }
 
 function getSelectedItemIds(
@@ -170,23 +176,18 @@ function formatCount(label: string, count: number): string {
   return `${count} ${label}${count === 1 ? "" : "s"}`
 }
 
-function formatExpectedConflictOutcome(conflictCount: number, strategy: ConflictStrategy): string | null {
-  if (conflictCount === 0) return null
-
-  if (strategy === "skip") {
-    return `${formatCount("existing item", conflictCount)} will be skipped.`
-  }
-
-  if (strategy === "overwrite") {
-    return `${formatCount("existing item", conflictCount)} will be overwritten.`
-  }
-
-  return `${formatCount("existing item", conflictCount)} will be imported with renamed IDs.`
-}
-
 function formatExpectedMemoryConflictOutcome(conflictCount: number): string | null {
   if (conflictCount === 0) return null
   return `${formatCount("existing memory", conflictCount)} will be skipped because memory imports are additive-only.`
+}
+
+function getConflictStrategyOverride(
+  overrides: ConflictStrategyOverrideState,
+  key: ConflictStrategyOverrideKey,
+  id: string,
+  defaultStrategy: ConflictStrategy,
+): ConflictStrategy {
+  return overrides[key]?.[id] ?? defaultStrategy
 }
 
 function formatRedactedSecretFields(fields: string[]): string {
@@ -273,6 +274,7 @@ function buildImportPlanItems(
   preview: BundlePreview | null,
   key: BundleComponentKey,
   strategy: ConflictStrategy,
+  conflictStrategyOverrides: ConflictStrategyOverrideState,
   selectedIds: string[],
 ): ImportPlanItem[] {
   const bundle = preview?.bundle
@@ -304,6 +306,10 @@ function buildImportPlanItems(
       }
     }
 
+    const resolvedStrategy = key === "memories"
+      ? "skip"
+      : getConflictStrategyOverride(conflictStrategyOverrides, key as ConflictStrategyOverrideKey, item.id, strategy)
+
     if (key === "memories") {
       return {
         ...item,
@@ -318,11 +324,49 @@ function buildImportPlanItems(
       ...item,
       componentKey: key,
       existingName: conflict.existingName,
-      action: strategy,
+      action: resolvedStrategy,
       selected: true,
       renameTargetId: conflict.renameTargetId,
     }
   })
+}
+
+function summarizeSelectedConflictPlan(importPlanSections: Array<{ key: BundleComponentKey; items: ImportPlanItem[] }>): {
+  skip: number
+  overwrite: number
+  rename: number
+  memorySkips: number
+} {
+  const summary = { skip: 0, overwrite: 0, rename: 0, memorySkips: 0 }
+
+  for (const section of importPlanSections) {
+    for (const item of section.items) {
+      if (!item.selected || !item.existingName) continue
+      if (item.componentKey === "memories") {
+        summary.memorySkips += 1
+        continue
+      }
+      if (item.action === "skip") summary.skip += 1
+      if (item.action === "overwrite") summary.overwrite += 1
+      if (item.action === "rename") summary.rename += 1
+    }
+  }
+
+  return summary
+}
+
+function formatExpectedConflictOutcome(summary: {
+  skip: number
+  overwrite: number
+  rename: number
+}): string | null {
+  const parts = [
+    summary.skip > 0 ? `${formatCount("existing item", summary.skip)} will be skipped.` : null,
+    summary.overwrite > 0 ? `${formatCount("existing item", summary.overwrite)} will be overwritten.` : null,
+    summary.rename > 0 ? `${formatCount("existing item", summary.rename)} will be imported with renamed IDs.` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0 ? parts.join(" ") : null
 }
 
 function getImportPlanActionBadgeLabel(action: ImportPlanAction): string {
@@ -433,6 +477,7 @@ export function BundleImportDialog({
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
   const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
   const [selectedItems, setSelectedItems] = useState<BundleItemSelectionState>(() => createDefaultItemSelections())
+  const [conflictStrategyOverrides, setConflictStrategyOverrides] = useState<ConflictStrategyOverrideState>(() => createDefaultConflictStrategyOverrides())
   const isOpenRef = useRef(open)
   const previewRequestIdRef = useRef(0)
   isOpenRef.current = open
@@ -452,6 +497,7 @@ export function BundleImportDialog({
       setConflictStrategy("skip")
       setComponents(resolveComponents(initialComponents))
       setSelectedItems(createDefaultItemSelections())
+      setConflictStrategyOverrides(createDefaultConflictStrategyOverrides())
     }
   }, [initialComponents, open])
 
@@ -471,6 +517,7 @@ export function BundleImportDialog({
     if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
     setPreview(fullResult as BundlePreview)
     setSelectedItems(createDefaultItemSelections(fullResult.bundle))
+    setConflictStrategyOverrides(createDefaultConflictStrategyOverrides())
   }
 
   const handleSelectFile = async () => {
@@ -524,6 +571,7 @@ export function BundleImportDialog({
         conflictStrategy,
         components: normalizedComponents,
         selectedItems,
+        conflictStrategyOverrides,
       }) as BundleImportResult
       const backupMessage = result.backupFilePath
         ? ` Pre-import backup: ${result.backupFilePath}`
@@ -566,29 +614,24 @@ export function BundleImportDialog({
     setConflictStrategy("skip")
     setComponents(resolveComponents(initialComponents))
     setSelectedItems(createDefaultItemSelections())
+    setConflictStrategyOverrides(createDefaultConflictStrategyOverrides())
     onOpenChange(false)
   }
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
   const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
-  const selectedMemoryConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems, ["memories"])
-  const selectedNonMemoryConflictCount = getSelectedConflictCount(
-    conflicts,
-    normalizedComponents,
-    selectedItems,
-    ["agentProfiles", "mcpServers", "skills", "repeatTasks"],
-  )
-  const expectedConflictOutcome = formatExpectedConflictOutcome(selectedNonMemoryConflictCount, conflictStrategy)
-  const expectedMemoryConflictOutcome = formatExpectedMemoryConflictOutcome(selectedMemoryConflictCount)
   const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
     key,
     label: COMPONENT_LABELS[key],
     items: normalizedComponents[key]
-      ? buildImportPlanItems(preview, key, conflictStrategy, getSelectedItemIds(selectedItems, key))
+      ? buildImportPlanItems(preview, key, conflictStrategy, conflictStrategyOverrides, getSelectedItemIds(selectedItems, key))
       : [],
   })).filter((section) => section.items.length > 0)
+  const selectedConflictPlanSummary = summarizeSelectedConflictPlan(importPlanSections)
+  const expectedConflictOutcome = formatExpectedConflictOutcome(selectedConflictPlanSummary)
+  const expectedMemoryConflictOutcome = formatExpectedMemoryConflictOutcome(selectedConflictPlanSummary.memorySkips)
   const selectedPlanItemCount = importPlanSections.reduce(
     (total, section) => total + section.items.filter((item) => item.selected).length,
     0,
@@ -614,6 +657,32 @@ export function BundleImportDialog({
       return {
         ...prev,
         [selectionKey]: nextIds,
+      }
+    })
+  }
+
+  const setConflictOverride = (
+    key: ConflictStrategyOverrideKey,
+    itemId: string,
+    nextStrategy: ConflictStrategy,
+  ) => {
+    setConflictStrategyOverrides((prev) => {
+      const currentForKey = prev[key] ?? {}
+      if (nextStrategy === conflictStrategy) {
+        const { [itemId]: _removed, ...remainingForKey } = currentForKey
+        if (Object.keys(remainingForKey).length === 0) {
+          const { [key]: _removedKey, ...remaining } = prev
+          return remaining
+        }
+        return { ...prev, [key]: remainingForKey }
+      }
+
+      return {
+        ...prev,
+        [key]: {
+          ...currentForKey,
+          [itemId]: nextStrategy,
+        },
       }
     })
   }
@@ -801,7 +870,7 @@ export function BundleImportDialog({
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Default conflict policy is <span className="font-medium">skip</span>; you can change it for this import before any writes occur.
+                      Choose the default policy for conflicting items, then override individual rows below when a bundle needs a mix of skip / overwrite / rename decisions.
                     </p>
                   </>
                 ) : (
@@ -826,8 +895,12 @@ export function BundleImportDialog({
                       key={section.key}
                       label={section.label}
                       items={section.items}
+                      defaultConflictStrategy={conflictStrategy}
                       selectedCount={section.items.filter((item) => item.selected).length}
                       onToggleItem={(itemId) => toggleImportPlanItem(section.key, itemId)}
+                      onConflictStrategyChange={section.key === "memories"
+                        ? undefined
+                        : (itemId, nextStrategy) => setConflictOverride(section.key as ConflictStrategyOverrideKey, itemId, nextStrategy)}
                       onSelectAll={() => setImportPlanSectionSelection(section.key, true)}
                       onClearAll={() => setImportPlanSectionSelection(section.key, false)}
                     />
@@ -889,13 +962,24 @@ function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }
 interface ImportPlanSectionProps {
   label: string
   items: ImportPlanItem[]
+  defaultConflictStrategy: ConflictStrategy
   selectedCount: number
   onToggleItem: (itemId: string) => void
+  onConflictStrategyChange?: (itemId: string, strategy: ConflictStrategy) => void
   onSelectAll: () => void
   onClearAll: () => void
 }
 
-function ImportPlanSection({ label, items, selectedCount, onToggleItem, onSelectAll, onClearAll }: ImportPlanSectionProps) {
+function ImportPlanSection({
+  label,
+  items,
+  defaultConflictStrategy,
+  selectedCount,
+  onToggleItem,
+  onConflictStrategyChange,
+  onSelectAll,
+  onClearAll,
+}: ImportPlanSectionProps) {
   const allSelected = items.length > 0 && selectedCount === items.length
   const noneSelected = selectedCount === 0
 
@@ -918,6 +1002,8 @@ function ImportPlanSection({ label, items, selectedCount, onToggleItem, onSelect
       <div className="space-y-2">
         {items.map((item) => {
           const showExistingName = item.existingName && item.existingName !== item.name
+          const canOverrideConflict = item.selected && Boolean(item.existingName) && item.componentKey !== "memories"
+          const isUsingDefaultConflictStrategy = item.action === defaultConflictStrategy
 
           return (
             <div key={`${label}:${item.id}`} className="rounded-md border bg-muted/20 p-2">
@@ -945,6 +1031,25 @@ function ImportPlanSection({ label, items, selectedCount, onToggleItem, onSelect
               <p className="mt-2 text-xs text-muted-foreground">
                 {formatImportPlanOutcome(item)}
               </p>
+
+              {canOverrideConflict && onConflictStrategyChange && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Conflict action</Label>
+                  <Select value={item.action} onValueChange={(value) => onConflictStrategyChange(item.id, value as ConflictStrategy)}>
+                    <SelectTrigger className="h-8 w-[210px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="skip">Skip existing item</SelectItem>
+                      <SelectItem value="overwrite">Overwrite existing item</SelectItem>
+                      <SelectItem value="rename">Rename imported item</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">
+                    {isUsingDefaultConflictStrategy ? "Using import default" : "Overrides import default"}
+                  </span>
+                </div>
+              )}
 
               {item.action === "rename" && item.renameTargetId && (
                 <p className="mt-1 text-xs text-muted-foreground">

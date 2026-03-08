@@ -1509,3 +1509,38 @@
   - If bundle preview payloads later grow richer item metadata, consider threading explicit per-field reconfiguration reasons through the preview/import result instead of keeping today’s light `redactedSecretFields` summary.
 
 - Next recommended issue work item: pivot to another open issue for the next loop; `#54` still looks too speculative for a code-first slice, so prefer a fresh direct repro for `#55` or a narrow follow-up on `#57` / `#58` with similarly local verification.
+
+##### Issue #57 — Per-conflict mixed import actions now work inside the bundle import plan
+
+- Selection rationale:
+  - `#57` remained open even after the recent preview/cherry-pick/backups work because the dialog still forced one global conflict strategy across all conflicting non-memory items.
+  - That gap was concrete, locally implementable, and high-value: mixed imports are common when a user wants to overwrite one known-good item but rename or skip others in the same bundle.
+- Investigation:
+  - Re-read the current `#57` state in the ledger and verified the remaining acceptance gap was still the lack of per-conflict mixed choices.
+  - Inspected `apps/desktop/src/main/bundle-service.ts` and confirmed `ImportOptions` only accepted one `conflictStrategy`, with each import loop applying that same choice to every conflicting agent profile, MCP server, skill, and repeat task.
+  - Inspected `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`; the dialog computed the import plan from a single global strategy and rendered no per-row override control.
+- Important assumptions:
+  - Assumption: keeping the existing global conflict strategy as the default while adding optional per-row overrides is the least disruptive path.
+  - Why acceptable: it preserves current behavior for simple imports while unlocking the missing mixed-action workflow only when the user needs it.
+  - Assumption: memories should stay additive-only and skip-only even after adding mixed conflict controls elsewhere.
+  - Why acceptable: that matches the existing additive memory import contract and avoids regressing the dedupe/safety behavior already shipped.
+- Changes implemented:
+  - Extended `ImportOptions` / bundle-service conflict handling with `conflictStrategyOverrides`, keyed by component type and item ID/name, plus a small resolver helper that falls back to the global default.
+  - Updated the agent profile, MCP server, skill, and repeat-task import loops so conflicting items can now resolve to different actions within the same import instead of sharing one import-wide choice.
+  - Threaded the new override payload through both bundle import TIPC procedures.
+  - Updated the bundle import dialog to maintain per-item override state, render a `Conflict action` selector on each selected conflicting non-memory row, and summarize the expected outcomes from the actual row-level plan instead of from the global default alone.
+  - Added a deferred Vitest regression case in `apps/desktop/src/main/bundle-service.test.ts` covering a mixed import where agent profiles/tasks overwrite while skills/MCP servers rename under the same global default.
+  - Added dependency-light source-contract coverage in `apps/desktop/src/main/bundle-service.conflict-overrides.test.js` and extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` so the new service/TIPC/dialog wiring is locked in for this worktree.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/bundle-service.conflict-overrides.test.js apps/desktop/src/main/bundle-service.mcp-placeholder.test.js apps/desktop/src/main/bundle-service.memory-secret-warning.test.js apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Deferred until the desktop dependency baseline is restored in this worktree: the new `bundle-service.test.ts` mixed-conflict case should be re-run under Vitest together with desktop typecheck.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Re-run the new runtime regression case and desktop typecheck once the worktree has its normal dependency/tooling baseline.
+  - Consider whether the dialog should eventually expose an explicit `Use default` option per row if users want to revert an override after changing the global default multiple times in the same session.
+  - Consider persisting row-level conflict overrides across dialog reopen/refresh events only if user testing shows that matters; for now they intentionally reset with a new preview to keep the state model simple.
+
+- Next recommended issue work item: look next at `#58` for another small history/UX slice or confirm a direct repro for `#55`; `#54` still appears too under-specified for a safe code-first implementation pass.

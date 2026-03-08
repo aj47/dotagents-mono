@@ -1506,6 +1506,58 @@ describe("bundle-service", () => {
       expect(result.agentProfiles[0].action).toBe("overwritten")
     })
 
+    it("allows per-item conflict strategy overrides during a mixed import", async () => {
+      const layer = getAgentsLayerPaths(targetDir)
+      writeAgentsProfileFiles(layer, createTestProfile("import-agent", "Existing Agent"))
+      writeAgentsSkillFile(layer, createTestSkill("import-skill", "Existing Skill"))
+      writeTaskFile(layer, createTestTask("import-task", "Existing Task"))
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+            },
+          },
+        },
+      })
+
+      const bundle = createTestBundle()
+      bundle.manifest.components.mcpServers = 1
+      bundle.mcpServers = createTestMcpBundle("github").mcpServers
+      const bundlePath = path.join(tempDir, "import-mixed-conflict-overrides.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundleForTest(bundlePath, {
+        conflictStrategy: "skip",
+        conflictStrategyOverrides: {
+          agentProfiles: { "import-agent": "overwrite" },
+          mcpServers: { github: "rename" },
+          skills: { "import-skill": "rename" },
+          repeatTasks: { "import-task": "overwrite" },
+        },
+      })
+      const importedProfiles = loadAgentProfilesLayer(layer).profiles
+      const importedSkills = loadAgentsSkillsLayer(layer).skills
+      const importedTasks = loadTasksLayer(layer).tasks
+      const mcpJson = readTestMcpJson(targetDir)
+
+      expect(result.success).toBe(true)
+      expect(result.agentProfiles).toEqual([{ id: "import-agent", name: "Import Agent", action: "overwritten" }])
+      expect(result.mcpServers).toEqual([
+        { id: "github", name: "github", action: "renamed", newId: "github_imported" },
+      ])
+      expect(result.skills).toEqual([
+        { id: "import-skill", name: "Import Skill", action: "renamed", newId: "import-skill_imported" },
+      ])
+      expect(result.repeatTasks).toEqual([{ id: "import-task", name: "Import Task", action: "overwritten" }])
+
+      expect(importedProfiles.find((profile) => profile.id === "import-agent")?.name).toBe("Import Agent")
+      expect(importedSkills.map((skill) => skill.id).sort()).toEqual(["import-skill", "import-skill_imported"])
+      expect(importedTasks.find((task) => task.id === "import-task")?.name).toBe("Import Task")
+      expect(Object.keys(mcpJson.mcpConfig?.mcpServers ?? {}).sort()).toEqual(["github", "github_imported"])
+    })
+
     it("imports agent profiles with non-secret connection fields intact", async () => {
       const bundle: DotAgentsBundle = {
         manifest: {

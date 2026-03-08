@@ -72,3 +72,16 @@ test('bundle import preserves MCP placeholder metadata and warns about post-impo
   assert.match(dialogSource, /Settings → Capabilities/);
   assert.match(dialogSource, /toast\.warning\(/);
 });
+
+test('bundle import dialog supports per-item conflict overrides alongside the global default strategy', () => {
+  assert.match(dialogSource, /type ConflictStrategyOverrideKey = Exclude<BundleComponentKey, "memories">/);
+  assert.match(dialogSource, /const \[conflictStrategyOverrides, setConflictStrategyOverrides\] = useState<ConflictStrategyOverrideState>/);
+  assert.match(dialogSource, /function getConflictStrategyOverride\(/);
+  assert.match(dialogSource, /function summarizeSelectedConflictPlan\(/);
+  assert.match(dialogSource, /setConflictOverride\(/);
+  assert.match(dialogSource, /Choose the default policy for conflicting items, then override individual rows below/);
+  assert.match(dialogSource, /Conflict action/);
+  assert.match(dialogSource, /Overrides import default/);
+  assert.match(dialogSource, /Using import default/);
+  assert.match(dialogSource, /conflictStrategyOverrides,/);
+});

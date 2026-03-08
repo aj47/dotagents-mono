@@ -4751,6 +4751,12 @@ export const router = {
         repeatTaskIds?: string[]
         memoryIds?: string[]
       }
+      conflictStrategyOverrides?: {
+        agentProfiles?: Record<string, "skip" | "overwrite" | "rename">
+        mcpServers?: Record<string, "skip" | "overwrite" | "rename">
+        skills?: Record<string, "skip" | "overwrite" | "rename">
+        repeatTasks?: Record<string, "skip" | "overwrite" | "rename">
+      }
     }>()
     .action(async ({ input }) => {
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
@@ -4761,6 +4767,7 @@ export const router = {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
         selectedItems: input.selectedItems,
+        conflictStrategyOverrides: input.conflictStrategyOverrides,
       })
       await refreshRuntimeAfterBundleImport()
       return result
@@ -4783,6 +4790,12 @@ export const router = {
         repeatTaskIds?: string[]
         memoryIds?: string[]
       }
+      conflictStrategyOverrides?: {
+        agentProfiles?: Record<string, "skip" | "overwrite" | "rename">
+        mcpServers?: Record<string, "skip" | "overwrite" | "rename">
+        skills?: Record<string, "skip" | "overwrite" | "rename">
+        repeatTasks?: Record<string, "skip" | "overwrite" | "rename">
+      }
     }>()
     .action(async ({ input }) => {
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
@@ -4793,6 +4806,7 @@ export const router = {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
         selectedItems: input.selectedItems,
+        conflictStrategyOverrides: input.conflictStrategyOverrides,
       })
       if (result) {
         await refreshRuntimeAfterBundleImport()
