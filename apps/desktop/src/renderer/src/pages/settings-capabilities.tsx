@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { cn } from "@renderer/lib/utils"
 import { Component as McpToolsPage } from "./settings-mcp-tools"
 import { Component as SkillsPage } from "./settings-skills"
@@ -10,8 +10,24 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"]
 
+const DEFAULT_TAB: TabId = "skills"
+
+function isTabId(value: string | null): value is TabId {
+  return tabs.some(tab => tab.id === value)
+}
+
 export function Component() {
-  const [activeTab, setActiveTab] = useState<TabId>("skills")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get("tab")
+  const activeTab = isTabId(requestedTab) ? requestedTab : DEFAULT_TAB
+
+  const handleTabChange = (tabId: TabId) => {
+    if (tabId === activeTab) return
+
+    const nextSearchParams = new URLSearchParams(searchParams)
+    nextSearchParams.set("tab", tabId)
+    setSearchParams(nextSearchParams)
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -21,7 +37,8 @@ export function Component() {
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
+            aria-pressed={activeTab === tab.id}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               activeTab === tab.id

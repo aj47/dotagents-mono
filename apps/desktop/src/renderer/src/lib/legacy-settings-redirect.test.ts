@@ -29,4 +29,24 @@ describe("getLegacySettingsRedirectPath", () => {
       )
     ).toBe("/settings/repeat-tasks#scheduled")
   })
+
+  it("adds a default capabilities tab when redirecting a legacy sub-route", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/capabilities",
+        "http://localhost/settings/mcp-tools",
+        { tab: "mcp-servers" }
+      )
+    ).toBe("/settings/capabilities?tab=mcp-servers")
+  })
+
+  it("preserves an explicit tab query param instead of overwriting it", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/capabilities",
+        "http://localhost/settings/mcp-tools?tab=skills#focus",
+        { tab: "mcp-servers" }
+      )
+    ).toBe("/settings/capabilities?tab=skills#focus")
+  })
 })

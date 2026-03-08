@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop capabilities subtab navigation / legacy deep-link continuity in `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with existing redirect coverage reviewed in `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.test.ts`, mobile settings parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop models-route navigation clarity and provider/model wayfinding in `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx`, and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with router/nav wiring reviewed in `apps/desktop/src/renderer/src/components/app-layout.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop MCP tools settings add/edit save recovery and validation clarity in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`, with config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, shared save-error copy checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, adjacent dialog behavior cross-checked against `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop remote-server settings startup failure recovery / share-status clarity in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server lifecycle/status reviewed in `apps/desktop/src/main/remote-server.ts` and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
@@ -37,6 +38,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop `Settings → Capabilities` now keeps the selected Skills vs MCP Servers tab in the URL, preserves that intent when legacy `/settings/skills` and `/settings/mcp-tools` links redirect into the combined page, and sends agent settings “Edit” links directly to the matching subtab so refreshes and deep links stop dumping users back onto the wrong view.
 - 2026-03-08: Desktop `Settings → Models` now leads with a model-configuration guide, current provider-role summary, and quick-jump shortcuts into provider/model sections, while the combined providers/models page now uses a single scroll container and shows the guide only on the models route so users land on model-focused context instead of a generic provider page.
 - 2026-03-08: Desktop MCP server add/edit dialogs now keep drafts open when config persistence fails, show inline validation/save guidance with a local `Retry save` action, block accidental duplicate server names during manual add/rename, and only auto-start newly added servers after the config save actually succeeds.
 - 2026-03-08: Desktop remote-server settings now show inline startup failure details, provide a local `Start now` / `Retry start` recovery action, and only show the local share URL when the remote server is actually running so failed startup states are clearer and less misleading.
@@ -65,6 +67,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-capabilities-navigation.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-models-navigation.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `settings-providers.tsx`, and `settings-providers-and-models.tsx`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` (blocked: this worktree is missing the dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json`, so focused desktop renderer typecheck could not run here).
@@ -119,6 +124,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this capabilities-navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this models-route/navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop renderer typecheck for this models-route/navigation pass is blocked in this worktree because the dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json` cannot be resolved locally, so `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` cannot complete here.
 - 2026-03-08: Live desktop UI inspection for this MCP save-recovery/validation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -146,10 +152,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop capabilities/settings discoverability and save-state clarity (`apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`)
+- Desktop general settings agent-mode shortcut / custom keybinding discoverability and save-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop capabilities settings discoverability/save-state feedback next so another core desktop settings surface gives clearer local guidance without relying on trial-and-error
+- Inspect desktop general settings agent-mode shortcut / custom keybinding discoverability and save-state feedback next so another core desktop settings surface gives clearer local guidance without relying on trial-and-error
 - Once a runnable Electron target is available, live-check the desktop remote-server settings startup failure, `Start now` / `Retry start`, bind-address warnings, and local/tunnel sharing states to confirm the new recovery hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop `Settings → Models` route to confirm the new guide, provider-role summary, section jump targets, and single-scroll layout feel right in the real UI
 - Once a runnable Electron target is available, live-check the desktop MCP server add/edit dialog for duplicate-name validation, failed-save retry, pending-save lockout, and post-save auto-start timing to confirm the recovery hierarchy feels right in the real UI
@@ -162,6 +168,45 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop capabilities subtab persistence and legacy deep-link continuity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - combined capabilities settings page in `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`
+  - legacy settings-route redirects in `apps/desktop/src/renderer/src/router.tsx` and `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`
+  - agent settings deep links in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - future-focused redirect coverage extended in `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.test.ts`
+  - focused source-level regression coverage added in `tests/desktop-settings-capabilities-navigation.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile does not expose a separate capabilities route/subtab split, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger explicitly marked desktop capabilities settings discoverability/save-state clarity as the next fresh target
+  - investigation found a concrete usability/navigation bug: the combined capabilities page kept its active tab only in component state, so refresh/back-forward/shareable links lost context and the legacy `/settings/skills` and `/settings/mcp-tools` routes both dropped users onto the default Skills tab
+  - this was high leverage because the app already exposes combined capabilities management from multiple places, so wrong-tab landings create avoidable hunting and make “Edit” handoffs feel unreliable
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` to confirm tab choice lived only in local state with no URL persistence
+  - `apps/desktop/src/renderer/src/router.tsx` and `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts` to confirm legacy routes preserved search/hash but had no way to encode the intended capabilities subview
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` to find existing cross-links into capabilities settings and verify they were routing to the combined page without tab context
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to confirm there is no equivalent mobile route split before broadening scope
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - `Settings → Capabilities` now derives the active subtab from `?tab=skills|mcp-servers` and updates the URL when the user switches tabs, so refresh/back-forward/shareable links preserve the current surface
+  - legacy `/settings/mcp-tools` and `/settings/skills` redirects now inject the matching default `tab` query param when one is not already present, preserving old deep links without clobbering explicit search params
+  - agent settings “Edit skill” and “Edit server” links now open the matching capabilities subtab directly instead of sending both actions to the generic combined page entry point
+  - added focused regression coverage for the URL-backed tab selection, redirect defaults, and deep-link targets
+- Assumptions / tradeoffs / rationale:
+  - kept the combined capabilities page structure intact instead of splitting it into separate routes again, because the immediate product issue was lost navigation intent rather than the page composition itself
+  - chose query-param state over local storage so links, redirects, refreshes, and browser history all preserve the same user-visible context
+  - kept direct `/settings/capabilities` clean and defaulting to Skills rather than forcing a `?tab=skills` rewrite on first load, because the usability gain comes from preserving explicit intent, not adding URL churn for the default case
+  - accepted source-level verification for this pass because live Electron inspection is still unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-capabilities-navigation.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check tab persistence, back/forward behavior, and legacy-link handoff into the correct capabilities subtab to confirm the updated navigation feels natural in the real UI
+  - inspect desktop general settings agent-mode shortcut / custom keybinding discoverability next so another high-traffic settings surface gets clearer local guidance
 
 ### 2026-03-08 — Desktop models-route navigation clarity and provider/model wayfinding
 - Date:

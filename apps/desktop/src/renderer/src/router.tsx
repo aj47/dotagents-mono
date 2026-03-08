@@ -3,9 +3,9 @@ import { createBrowserRouter, redirect } from "react-router-dom"
 import { getLegacySettingsRedirectPath } from "./lib/legacy-settings-redirect"
 
 const legacySettingsRedirect =
-  (targetPath: string) =>
+  (targetPath: string, defaultSearchParams?: Record<string, string>) =>
   ({ request }: LoaderFunctionArgs) =>
-    redirect(getLegacySettingsRedirectPath(targetPath, request.url))
+    redirect(getLegacySettingsRedirectPath(targetPath, request.url, defaultSearchParams))
 
 export const router: ReturnType<typeof createBrowserRouter> =
   createBrowserRouter([
@@ -52,11 +52,11 @@ export const router: ReturnType<typeof createBrowserRouter> =
         },
         {
           path: "settings/mcp-tools",
-          loader: legacySettingsRedirect("/settings/capabilities"),
+          loader: legacySettingsRedirect("/settings/capabilities", { tab: "mcp-servers" }),
         },
         {
           path: "settings/skills",
-          loader: legacySettingsRedirect("/settings/capabilities"),
+          loader: legacySettingsRedirect("/settings/capabilities", { tab: "skills" }),
         },
         {
           path: "settings/remote-server",
