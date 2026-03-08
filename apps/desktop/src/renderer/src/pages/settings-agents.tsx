@@ -218,6 +218,13 @@ export function SettingsAgents() {
     const all = await tipcClient.getAgentProfiles()
     setAgents(all)
   }
+
+  const refreshAgentProfileViews = () => {
+    void loadAgents()
+    void queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    void queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
+  }
+
   const loadServers = async () => {
     setIsLoadingServerStatus(true)
 
@@ -319,15 +326,12 @@ export function SettingsAgents() {
           : undefined
 
       if (!savedAgent) {
-        loadAgents()
-        queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+        refreshAgentProfileViews()
         toast.error(getSaveAgentFailureMessage())
         return
       }
 
-      setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); loadAgents()
-      // Invalidate sidebar query so it reflects changes immediately
-      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+      setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); refreshAgentProfileViews()
     } catch (error) {
       console.error("[SettingsAgents] Failed to save agent:", error)
       toast.error(getAgentMutationErrorMessage("save", error))
@@ -339,8 +343,7 @@ export function SettingsAgents() {
 
     try {
       const didDelete = await tipcClient.deleteAgentProfile({ id })
-      loadAgents()
-      queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+      refreshAgentProfileViews()
 
       if (!didDelete) {
         toast.error(getDeleteAgentFailureMessage())
@@ -539,12 +542,10 @@ export function SettingsAgents() {
   }
 
   const handleImportComplete = () => {
-    void loadAgents()
+    refreshAgentProfileViews()
     void loadSkills()
     void loadServers()
     void loadAllTools()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
     queryClient.invalidateQueries({ queryKey: ["skills"] })
     queryClient.invalidateQueries({ queryKey: ["skillsSidebar"] })
     queryClient.invalidateQueries({ queryKey: ["mcp-server-status"] })
@@ -555,6 +556,11 @@ export function SettingsAgents() {
     queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     queryClient.invalidateQueries({ queryKey: ["memories"] })
     queryClient.invalidateQueries({ queryKey: ["config"] })
+  }
+
+  const handleRescanFiles = async () => {
+    await tipcClient.reloadAgentProfiles()
+    refreshAgentProfileViews()
   }
 
   const handleImportDialogOpenChange = (open: boolean) => {
@@ -577,7 +583,7 @@ export function SettingsAgents() {
           <Button variant="outline" className="gap-2" onClick={() => setIsPublishDialogOpen(true)}>
             <Globe className="h-4 w-4" />Export for Hub
           </Button>
-          <Button variant="outline" className="gap-2" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
+          <Button variant="outline" className="gap-2" onClick={handleRescanFiles}>
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
           <Button className="gap-2" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
