@@ -28,6 +28,7 @@ type ProfileContextSource = {
   displayName?: string
   guidelines?: string
   systemPrompt?: string
+  disableDelegation?: boolean
 }
 
 export function resolveAgentIterationLimits(
@@ -266,6 +267,11 @@ export function buildProfileContext(
   if (profileName) parts.push(`[Acting as: ${profileName}]`)
   if (profile?.systemPrompt) parts.push(`System Prompt: ${profile.systemPrompt}`)
   if (profile?.guidelines) parts.push(`Guidelines: ${profile.guidelines}`)
+  if (profile?.disableDelegation) {
+    parts.push(
+      "Delegation rule: this is already a delegated run. Execute the task directly and do not delegate to other agents or sub-sessions.",
+    )
+  }
 
   return parts.length > 0 ? parts.join("\n\n") : undefined
 }

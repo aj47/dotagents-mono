@@ -37,6 +37,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1771906984773_vmb3xu66b | session_1771906984466_gy5dfya2s, session_1771907772476_dae5yojje | fix implemented | Fresh follow-up delegation recovery case around posting a Discord recap. On `post it!`, Langfuse showed `delegate_to_agent` sending `Post the Discord recap tweet...`, but the completed result still returned the earlier recap-prep output (`All files are ready — just say the word to post to @techfren_ai!`). The user had to send `try again` to recover. Root repo issue found: external ACP delegation reused the prior ACP session by default, so a new delegated task could inherit stale session context/output from the previous task instead of starting clean. |
 | 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
 | 2026-03-08 | conv_1772249976658_045heyp88, conv_1772250042517_yukonvxdj | session_1772249976661_2mliad71c, session_1772250042521_skxsyi7og | fix implemented | User asked twice to make a note of repo changes after checking commit history; both runs ended `output: null` and Langfuse recorded unreadable binary-gzip provider noise in the failing generation/text-completion error path. Repo reconstruction showed the main text-completion path was already normalized, but `verifyCompletionWithFetch(...)` still finalized verification generations with raw `error.message`, leaving the same upstream-noise class reachable in live verification traces. |
+| 2026-03-08 | delegated specialist sub-session chain (no parent session id on trace rows) | subsession_1772927398142_3a13b1c5, subsession_1772927403156_46973064, subsession_1772927413450_6da59930 | fix implemented | Fresh delegated `Find blog post referred to as permanent underclass` evidence showed a `Web Browser` specialist sub-run re-delegating to `internal`, then another delegated run re-delegating to `main-agent`, even though the deepest run already had the correct Exa result. The chain still ended with emergency-stop text instead of a single-run answer. Root repo issue found: ACP/stdio/remote delegated specialist profiles did not carry the same no-redelegation execution guidance already applied to internal named sub-sessions. |
 
 ## Investigations
 
@@ -1331,6 +1332,50 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.node.json`
   - ❌ still blocked by pre-existing unrelated desktop typecheck failures (existing `llm.test.ts` mock typing issues, existing missing `uuid` typing/module, and other non-touching test harness errors)
 
+## 2026-03-08 — Delegated ACP/remote specialist profiles should execute directly instead of re-delegating
+
+- Reviewed `langfuse-bug-fix.md` first and skipped already-logged internal specialist recursion fixes unless fresh evidence pointed to a different delegation path.
+- Langfuse evidence reviewed:
+  - primary delegated trace chain (no parent conversation/session id recorded on the sub-session rows):
+    - `subsession_1772927398142_3a13b1c5`
+      - `profileId: web-browser`
+      - input: `Find blog post referred to as permanent underclass. Output path or URL and one-line summary only.`
+      - observation timeline showed the delegated specialist immediately calling `delegate_to_agent` again instead of doing the research directly
+      - final output: `(Agent mode was stopped by emergency kill switch)`
+    - `subsession_1772927403156_46973064`
+      - follow-on delegated run again called `delegate_to_agent`, this time targeting `main-agent`
+      - final output again collapsed to the emergency-stop fallback
+    - `subsession_1772927413450_6da59930`
+      - deepest delegated run actually called Exa and found the correct post (`No Longer Human: The rise of the permanent underclass` on `techfren.net`)
+      - despite already having the answer, the parent delegated chain still did not resolve back to the user in that run
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/internal-agent.ts` already marks named internal delegated sub-sessions with `disableDelegation: true`, so their prompts omit the generic delegation guidance.
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` did not apply an equivalent flag when routing delegated `AgentProfile` runs through ACP / stdio / remote connections.
+  - those external delegated runs build their prompt context through `buildProfileContext(...)`, which previously only injected profile identity/system prompt/guidelines and never told the delegated specialist to execute directly.
+- Concrete root cause:
+  - the earlier no-redelegation fix only covered internal named sub-sessions.
+  - delegated ACP/stdio/remote specialist profiles still looked like fully-orchestrating agents, so they could bounce the task into `internal` or `main-agent` instead of executing the delegated work themselves.
+- Minimal fix applied:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - when delegating to ACP / stdio / remote `AgentProfile` targets, wrap the profile context with `disableDelegation: true` before building the delegated prompt context
+    - this makes delegated external/specialist runs match the direct-execution behavior already used for internal named sub-sessions
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - extended `buildProfileContext(...)` to honor `disableDelegation`
+    - append an explicit prompt-context note telling already-delegated runs to execute directly and not delegate again
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+      - regression proving delegated specialist contexts include the direct-execution / no-redelegation note
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - regression proving ACP-profile delegation now passes `disableDelegation: true` into `buildProfileContext(...)`
+- Targeted verification:
+  - first attempted: `pnpm --filter @dotagents/desktop run test:run -- src/main/agent-run-utils.test.ts src/main/acp/acp-router-tools.test.ts`
+  - ⚠️ this repo script ignored the file filter and ran the full desktop Vitest suite; the changed tests passed, but the command failed on two unrelated pre-existing renderer source-string assertions (`agent-progress.tile-layout.test.ts` and `agent-progress.performance.test.ts`)
+  - targeted rerun: `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts src/main/acp/acp-router-tools.test.ts`
+  - ✅ passed (`34 passed`)
+  - `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.node.json`
+  - ❌ still blocked by pre-existing unrelated desktop typecheck issues (`src/main/acp-service.test.ts` mock typing, missing `uuid` types in `src/main/acp/internal-agent.ts`, and long-standing `src/main/llm.test.ts` mock typing mismatches)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1342,7 +1387,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
-- Recheck a fresh delegated specialist trace (especially `Web Browser` or other internal profiles) after dependencies are restored, to confirm internal sub-agents now execute directly instead of re-delegating into `internal` / `augustus` and hitting recursion or oversized-request failures.
+- Recheck a fresh delegated specialist trace (especially `Web Browser`, `main-agent`, or other ACP/remote profiles) after dependencies are restored, to confirm both internal and external delegated sub-agents now execute directly instead of re-delegating into `internal` / `main-agent` / `augustus` and burning the run.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh image-bearing `respond_to_user` trace (for example browser/social posting with screenshots) after the next desktop smoke run, to confirm Langfuse now stores compact readable final text instead of collapsing the trace `output` to `<truncated due to size exceeding limit>`.
 - Recheck a fresh post-`respond_to_user` trace where the first assistant turn is only a progress opener (`Let me ...`, `I'll ...`) and a later provider/stream error occurs, to confirm the stored user-facing answer now overrides the stale opener in Langfuse/UI.

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { acpService } from '../acp-service'
+import { buildProfileContext } from '../agent-run-utils'
 
 const mockConfig = {
   acpAgents: [
@@ -18,8 +19,8 @@ const { mockRunInternalSubSession, mockCancelSubSession } = vi.hoisted(() => ({
 }))
 
 const { mockGetByName, mockGetById } = vi.hoisted(() => ({
-  mockGetByName: vi.fn(() => undefined),
-  mockGetById: vi.fn(() => undefined),
+  mockGetByName: vi.fn((_identifier?: string) => undefined as any),
+  mockGetById: vi.fn((_identifier?: string) => undefined as any),
 }))
 
 vi.mock('./acp-client-service', () => ({
@@ -372,6 +373,10 @@ describe('handleDelegateToAgent', () => {
     })
 
     expect(acpService.spawnAgent).toHaveBeenCalledWith('augustus', expect.any(Object))
+    expect(buildProfileContext).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'augustus',
+      disableDelegation: true,
+    }), undefined)
     expect(acpService.runTask).toHaveBeenCalledWith(expect.objectContaining({
       agentName: 'augustus',
       input: 'Run pwd and return exact output',

@@ -872,7 +872,10 @@ async function executeAgentProfileDelegation(
     case 'acp':
     case 'stdio':
       // Add profile context (system prompt, guidelines) to the task context
-      const profileContext = buildProfileContext(profile, args.context);
+      const profileContext = buildProfileContext({
+        ...profile,
+        disableDelegation: true,
+      }, args.context);
       return executeACPAgent(
         { ...args, agentName: profile.name, context: profileContext },
         parentSessionId,
@@ -881,7 +884,10 @@ async function executeAgentProfileDelegation(
 
     case 'remote':
       // Remote HTTP endpoint - add profile context
-      const remoteContext = buildProfileContext(profile, args.context);
+      const remoteContext = buildProfileContext({
+        ...profile,
+        disableDelegation: true,
+      }, args.context);
       return executeACPAgent(
         { ...args, agentName: profile.name, context: remoteContext },
         parentSessionId,

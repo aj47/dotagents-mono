@@ -78,6 +78,13 @@ describe("agent-run-utils", () => {
         profileName: "  trimmed-agent  ",
       })).toContain("[Acting as: trimmed-agent]")
     })
+
+    it("adds a direct-execution note for delegated specialist runs", () => {
+      expect(buildProfileContext({
+        displayName: "Web Browser",
+        disableDelegation: true,
+      })).toContain("do not delegate to other agents or sub-sessions")
+    })
   })
 
   describe("getPreferredDelegationOutput", () => {
