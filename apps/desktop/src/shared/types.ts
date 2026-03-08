@@ -492,6 +492,8 @@ export type SessionProfileSnapshot = {
   /** Dynamic agent properties exposed in system prompt (from agent's properties) */
   agentProperties?: Record<string, string>
   skillsConfig?: ProfileSkillsConfig
+  /** Disable delegation guidance for specialist sub-sessions that should execute directly */
+  disableDelegation?: boolean
 }
 
 // ============================================================================

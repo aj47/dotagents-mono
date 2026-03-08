@@ -30,6 +30,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh sub-agent evidence) | subsession_1772916424066_82e0fba0, subsession_1772916435166_cb8bb364, subsession_1772916449139_f650fc9f | fix implemented | Fresh Langfuse sub-session traces for the same starter-pack planning conversation showed the delegated internal `Web Browser` specialist repeatedly calling `delegate_to_agent` again instead of doing the browsing/research work itself. That caused recursive delegation failures (`Maximum recursion depth (3) reached`), oversized delegated-request failures (`request body size is too large, must be less than 512000`), blank `output: null` sub-runs, and only delayed recovery after extra turns. Root repo issue found: specialist internal sub-sessions were still built with the generic delegation guidance, so delegated agents could re-delegate the very task they had been chosen to execute. |
 | 2026-03-08 | conv_1771714066742_a3r3bqee6, conv_1771817444023_7v2d8szph | session_1771714066745_wb6k5ig9v, session_1771817444027_h74z83ol9 | fix implemented | Fresh unlogged output-leak class: one trace answering `Did it work` ended with raw pseudo tool-result text starting `Let me check right now. [iterm:list_sessions] { ... }`; corroborating trace `do we need to make more skills to make this easier` ended with `... [Calling tools: speakmcp-settings:execute_command]`. Root repo issue found: final-output helpers only unwrapped pseudo `respond_to_user` text, not generic pseudo tool scaffolding or raw tool-result wrappers, so tool-intent text and structured tool payloads could leak into final user-visible output. |
 | 2026-03-08 | conv_1771906984773_vmb3xu66b | session_1771906984466_gy5dfya2s, session_1771907772476_dae5yojje | fix implemented | Fresh follow-up delegation recovery case around posting a Discord recap. On `post it!`, Langfuse showed `delegate_to_agent` sending `Post the Discord recap tweet...`, but the completed result still returned the earlier recap-prep output (`All files are ready — just say the word to post to @techfren_ai!`). The user had to send `try again` to recover. Root repo issue found: external ACP delegation reused the prior ACP session by default, so a new delegated task could inherit stale session context/output from the previous task instead of starting clean. |
+| 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
 
 ## Investigations
 
@@ -969,6 +970,30 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop ACP test exits successfully
   - `git diff --check -- apps/desktop/src/main/acp/acp-router-tools.ts apps/desktop/src/main/acp/acp-router-tools.test.ts langfuse-bug-fix.md`
   - ✅ passed
+
+### 2026-03-08 — Finalized the specialist no-redelegation patch into a minimal commit-ready scope
+
+- Reviewed `langfuse-bug-fix.md` first, then sampled fresh null-output traces to avoid reusing already-inspected evidence blindly.
+- Fresh trace checked during this pass:
+  - conversation: `conv_1772296995433_edqj7m4pq`
+  - trace: `session_1772296995436_z0f1boi1x`
+  - outcome: stalled delegated specialist flow with no user-facing answer; kept as adjacent corroboration, but not the primary trace for the fix because the `subsession_1772916424066_82e0fba0` / `subsession_1772916435166_cb8bb364` / `subsession_1772916449139_f650fc9f` trio still provides the tighter reproduction of internal specialists re-delegating instead of executing.
+- Change scope finalized:
+  - kept the specialist-focused `disableDelegation` snapshot/prompt plumbing in:
+    - `apps/desktop/src/shared/types.ts`
+    - `apps/desktop/src/main/llm.ts`
+    - `apps/desktop/src/main/system-prompts.ts`
+    - `apps/desktop/src/main/acp/internal-agent.ts`
+  - kept only the regression coverage proving named specialist sub-sessions omit generic delegation guidance:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+    - `apps/desktop/src/main/acp/internal-agent.test.ts`
+  - dropped an extra unverified internal-subsession output-selection experiment from the worktree so this commit stays trace-backed and minimal.
+- Targeted verification (final pass before commit):
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts src/main/acp/internal-agent.test.ts`
+  - ✅ passed (`6 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `pnpm --filter @dotagents/desktop typecheck:node`
+  - ⚠️ blocked by pre-existing worktree issues unrelated to this patch (`Cannot find name 'agentSessionTracker'` / `processChatRequestViaSdk` / `currentSessionId` etc. in `apps/desktop/src/main/llm.ts`)
 
 ## Remaining Leads
 

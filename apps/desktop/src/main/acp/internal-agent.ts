@@ -394,7 +394,10 @@ export async function runInternalSubSession(
       logSubSession(`Loaded ${agentProfile.skillsConfig!.enabledSkillIds!.length} skill(s) for AgentProfile "${agentProfile.name}"`);
     }
 
-    effectiveProfileSnapshot = createSessionSnapshotFromProfile(agentProfile, skillsInstructions);
+    effectiveProfileSnapshot = {
+      ...createSessionSnapshotFromProfile(agentProfile, skillsInstructions),
+      disableDelegation: true,
+    };
   }
   // Priority 2: Look up by name in agent profile service
   else if (personaName) {
@@ -426,7 +429,10 @@ export async function runInternalSubSession(
         logSubSession(`Loaded ${unifiedProfile.skillsConfig!.enabledSkillIds!.length} skill(s) for AgentProfile "${personaName}"`);
       }
 
-      effectiveProfileSnapshot = createSessionSnapshotFromProfile(unifiedProfile, skillsInstructions);
+      effectiveProfileSnapshot = {
+        ...createSessionSnapshotFromProfile(unifiedProfile, skillsInstructions),
+        disableDelegation: true,
+      };
     }
 
     // If not found, log and fall back to parent profile

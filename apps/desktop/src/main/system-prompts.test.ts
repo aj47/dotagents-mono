@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
+const mockGetByRole = vi.fn(() => [])
+const mockGetCurrentProfile = vi.fn(() => undefined)
+
 // Avoid pulling in real ACP/services (can have side effects / require Electron runtime)
 vi.mock("./acp/acp-smart-router", () => ({
   acpSmartRouter: {
@@ -22,14 +25,16 @@ vi.mock("./acp/internal-agent", () => ({
 
 vi.mock("./agent-profile-service", () => ({
   agentProfileService: {
-    getByRole: () => [],
-    getCurrentProfile: () => undefined,
+    getByRole: mockGetByRole,
+    getCurrentProfile: mockGetCurrentProfile,
   },
 }))
 
 describe("constructSystemPrompt", () => {
   beforeEach(() => {
     vi.resetModules()
+    mockGetByRole.mockReturnValue([])
+    mockGetCurrentProfile.mockReturnValue(undefined)
   })
 
   it("injects skillsInstructions only once", async () => {
@@ -78,5 +83,25 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("inspect nearby directories and existing naming patterns")
     expect(prompt).toContain("do not drop ad-hoc notes/exports in repo root")
     expect(prompt).toContain("collision-safe filenames")
+  })
+
+  it("omits delegation guidance for specialist sub-sessions that should execute directly", async () => {
+    const { agentProfileService } = await import("./agent-profile-service")
+    vi.mocked(agentProfileService.getByRole).mockReturnValue([
+      {
+        id: "web-browser",
+        enabled: true,
+        displayName: "Web Browser",
+        description: "Specialized browsing agent",
+      } as any,
+    ])
+
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true, undefined, undefined, undefined, undefined, undefined, undefined, false)
+
+    expect(prompt).not.toContain("DELEGATION RULES")
+    expect(prompt).not.toContain("AVAILABLE AGENTS")
+    expect(prompt).not.toContain("INTERNAL AGENT:")
   })
 })

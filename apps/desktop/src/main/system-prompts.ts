@@ -224,27 +224,30 @@ export function constructSystemPrompt(
   agentProperties?: Record<string, string>,
   memories?: AgentMemory[],
   excludeAgentId?: string,
+  includeDelegationGuidance: boolean = true,
 ): string {
   let prompt = getEffectiveSystemPrompt(customSystemPrompt)
 
   if (isAgentMode) {
     prompt += AGENT_MODE_ADDITIONS
 
-    // Add ACP agent delegation information if agents are available
-    const acpPromptAddition = getACPRoutingPromptAddition()
-    if (acpPromptAddition) {
-      prompt += '\n\n' + acpPromptAddition
-    }
+    if (includeDelegationGuidance) {
+      // Add ACP agent delegation information if agents are available
+      const acpPromptAddition = getACPRoutingPromptAddition()
+      if (acpPromptAddition) {
+        prompt += '\n\n' + acpPromptAddition
+      }
 
-    // Add agents (delegation-targets) in a discoverable format
-    // Pass excludeAgentId so sub-sessions don't list themselves as delegation targets
-    const agentsAddition = getAgentsPromptAddition(excludeAgentId)
-    if (agentsAddition) {
-      prompt += '\n\n' + agentsAddition
-    }
+      // Add agents (delegation-targets) in a discoverable format
+      // Pass excludeAgentId so sub-sessions don't list themselves as delegation targets
+      const agentsAddition = getAgentsPromptAddition(excludeAgentId)
+      if (agentsAddition) {
+        prompt += '\n\n' + agentsAddition
+      }
 
-    // Add internal sub-session instructions (always available in agent mode)
-    prompt += '\n\n' + getSubSessionPromptAddition()
+      // Add internal sub-session instructions (always available in agent mode)
+      prompt += '\n\n' + getSubSessionPromptAddition()
+    }
   }
 
   // Add agent skills instructions if provided

@@ -927,6 +927,7 @@ export async function processTranscriptWithAgentMode(
 
   // The agent's profile ID is used to exclude itself from delegation targets in the system prompt
   const excludeAgentId = effectiveProfileSnapshot?.profileId
+  const includeDelegationGuidance = effectiveProfileSnapshot?.disableDelegation !== true
 
   // Construct system prompt using the new approach
   const systemPrompt = constructSystemPrompt(
@@ -939,6 +940,7 @@ export async function processTranscriptWithAgentMode(
     agentProperties, // dynamic agent properties
     relevantMemories, // memories from previous sessions
     excludeAgentId, // exclude this agent from delegation targets
+    includeDelegationGuidance,
   )
 
   logLLM(`[llm.ts processTranscriptWithAgentMode] Initializing conversationHistory for session ${currentSessionId}`)
@@ -1233,6 +1235,7 @@ export async function processTranscriptWithAgentMode(
       agentProperties, // dynamic agent properties
       relevantMemories, // memories from previous sessions
       excludeAgentId, // exclude this agent from delegation targets
+      includeDelegationGuidance,
     )
 
     const postVerifySummaryMessages = [
@@ -1666,6 +1669,7 @@ Return ONLY JSON per schema.`,
         undefined, // agentProperties
         undefined, // memories
         excludeAgentId, // exclude this agent from delegation targets
+        includeDelegationGuidance,
       )
       logLLM(`[processTranscriptWithAgentMode] Rebuilt system prompt with ${activeTools.length} active tools (excluded ${excludedToolCount})`)
     }
@@ -2907,6 +2911,7 @@ Return ONLY JSON per schema.`,
           agentProperties, // dynamic agent properties
           relevantMemories, // memories from previous sessions
           excludeAgentId, // exclude this agent from delegation targets
+          includeDelegationGuidance,
         )
 
         const summaryMessages = [
