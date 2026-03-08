@@ -25,6 +25,7 @@ test('adds explicit accessibility semantics for loop actions', () => {
 test('adds an explicit edit affordance to each loop row', () => {
   assert.match(settingsSource, /onPress=\{\(\) => handleLoopEdit\(loop\)\}[\s\S]*?accessibilityRole="button"/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Edit \$\{loop\.name\} loop`\)/);
-  assert.match(settingsSource, /accessibilityHint="Opens this loop so you can review and change its schedule or prompt\."/);
+  assert.match(settingsSource, /Wait for the current loop action to finish before editing this loop\./);
+  assert.match(settingsSource, /Opens this loop so you can review and change its schedule or prompt\./);
   assert.match(settingsSource, /renderInlineEditAffordance\(\)/);
 });

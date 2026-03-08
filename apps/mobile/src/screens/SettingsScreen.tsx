@@ -47,6 +47,18 @@ type ModelDiscoveryMeta = {
   fallbackMessage?: string;
 };
 
+type LoopPendingActionKind = 'run' | 'toggle' | 'delete';
+
+type LoopPendingAction = {
+  kind: LoopPendingActionKind;
+  targetEnabled?: boolean;
+};
+
+type LoopActionError = {
+  kind: LoopPendingActionKind;
+  message: string;
+};
+
 function getChatProviderName(providerId?: ChatProviderId): string {
   return CHAT_PROVIDER_LABELS[providerId || 'openai'];
 }
@@ -268,6 +280,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const [loopsError, setLoopsError] = useState<string | null>(null);
+  const [pendingLoopActionById, setPendingLoopActionById] = useState<Record<string, LoopPendingAction>>({});
+  const [loopActionErrorById, setLoopActionErrorById] = useState<Record<string, LoopActionError>>({});
   const availableAcpMainAgents = useMemo(
     () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -780,46 +794,142 @@ export default function SettingsScreen({ navigation }: any) {
     </View>
   ), [styles]);
 
+  const setPendingLoopAction = useCallback((loopId: string, action?: LoopPendingAction) => {
+    setPendingLoopActionById((prev) => {
+      if (!action) {
+        if (!(loopId in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[loopId];
+        return next;
+      }
+
+      return {
+        ...prev,
+        [loopId]: action,
+      };
+    });
+  }, []);
+
+  const setLoopActionError = useCallback((loopId: string, error?: LoopActionError) => {
+    setLoopActionErrorById((prev) => {
+      if (!error) {
+        if (!(loopId in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[loopId];
+        return next;
+      }
+
+      return {
+        ...prev,
+        [loopId]: error,
+      };
+    });
+  }, []);
+
   const handleLoopDelete = useCallback((loop: Loop) => {
-    if (!settingsClient) return;
+    if (!settingsClient || pendingLoopActionById[loop.id]) return;
     confirmDestructiveAction('Delete Loop', `Are you sure you want to delete "${loop.name}"?`, async () => {
+      setLoopActionError(loop.id);
+      setPendingLoopAction(loop.id, { kind: 'delete' });
       try {
-        await settingsClient.deleteLoop(loop.id);
+        const res = await settingsClient.deleteLoop(loop.id);
+        if (!res?.success) {
+          setLoopActionError(loop.id, {
+            kind: 'delete',
+            message: `Failed to delete "${loop.name}".`,
+          });
+          return;
+        }
         setLoops(prev => prev.filter(item => item.id !== loop.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete loop:', error);
-        Alert.alert('Error', error.message || 'Failed to delete loop');
+        setLoopActionError(loop.id, {
+          kind: 'delete',
+          message: error.message || `Failed to delete "${loop.name}".`,
+        });
+      } finally {
+        setPendingLoopAction(loop.id);
       }
     });
-  }, [settingsClient, confirmDestructiveAction]);
+  }, [settingsClient, pendingLoopActionById, confirmDestructiveAction, setLoopActionError, setPendingLoopAction]);
 
   // Handle loop toggle
-  const handleLoopToggle = async (loopId: string) => {
-    if (!settingsClient) return;
+  const handleLoopToggle = useCallback(async (loop: Loop) => {
+    if (!settingsClient || pendingLoopActionById[loop.id]) return;
+    const targetEnabled = !loop.enabled;
+    setLoopActionError(loop.id);
+    setPendingLoopAction(loop.id, { kind: 'toggle', targetEnabled });
     try {
-      const res = await settingsClient.toggleLoop(loopId);
+      const res = await settingsClient.toggleLoop(loop.id);
+      if (!res?.success) {
+        setLoopActionError(loop.id, {
+          kind: 'toggle',
+          message: targetEnabled
+            ? `Failed to enable "${loop.name}".`
+            : `Failed to pause "${loop.name}".`,
+        });
+        return;
+      }
       setLoops(prev =>
-        prev.map(l => (l.id === loopId ? { ...l, enabled: res.enabled } : l))
+        prev.map(l => (l.id === loop.id ? { ...l, enabled: res.enabled } : l))
       );
     } catch (error: any) {
       console.error('[Settings] Failed to toggle loop:', error);
-      Alert.alert('Error', 'Failed to toggle loop');
+      setLoopActionError(loop.id, {
+        kind: 'toggle',
+        message: error.message || (targetEnabled
+          ? `Failed to enable "${loop.name}".`
+          : `Failed to pause "${loop.name}".`),
+      });
+    } finally {
+      setPendingLoopAction(loop.id);
     }
-  };
+  }, [settingsClient, pendingLoopActionById, setLoopActionError, setPendingLoopAction]);
 
   // Handle loop run
-  const handleLoopRun = async (loopId: string) => {
-    if (!settingsClient) return;
+  const handleLoopRun = useCallback(async (loop: Loop) => {
+    if (!settingsClient || pendingLoopActionById[loop.id]) return;
+    setLoopActionError(loop.id);
+    setPendingLoopAction(loop.id, { kind: 'run' });
     try {
-      await settingsClient.runLoop(loopId);
-      Alert.alert('Success', 'Loop triggered successfully');
-      // Refresh loops to get updated lastRunAt
-      fetchLoops();
+      const res = await settingsClient.runLoop(loop.id);
+      if (!res?.success) {
+        setLoopActionError(loop.id, {
+          kind: 'run',
+          message: `Failed to run "${loop.name}".`,
+        });
+        return;
+      }
+      setLoops(prev =>
+        prev.map(item => (item.id === loop.id ? { ...item, lastRunAt: Date.now() } : item))
+      );
+      void fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to run loop:', error);
-      Alert.alert('Error', error.message || 'Failed to run loop');
+      setLoopActionError(loop.id, {
+        kind: 'run',
+        message: error.message || `Failed to run "${loop.name}".`,
+      });
+    } finally {
+      setPendingLoopAction(loop.id);
     }
-  };
+  }, [settingsClient, pendingLoopActionById, fetchLoops, setLoopActionError, setPendingLoopAction]);
+
+  const retryLoopAction = useCallback((loop: Loop, kind: LoopPendingActionKind) => {
+    if (kind === 'run') {
+      void handleLoopRun(loop);
+      return;
+    }
+    if (kind === 'toggle') {
+      void handleLoopToggle(loop);
+      return;
+    }
+    handleLoopDelete(loop);
+  }, [handleLoopDelete, handleLoopRun, handleLoopToggle]);
 
   // Handle push notification toggle
   const handleNotificationToggle = async (enabled: boolean) => {
@@ -2450,14 +2560,32 @@ export default function SettingsScreen({ navigation }: any) {
                     {loops.length === 0 && !loopsError ? (
                       <Text style={styles.helperText}>No agent loops configured</Text>
                     ) : (
-                      loops.map((loop) => (
+                      loops.map((loop) => {
+                        const pendingLoopAction = pendingLoopActionById[loop.id];
+                        const loopActionError = loopActionErrorById[loop.id];
+                        const isBusy = Boolean(pendingLoopAction);
+                        const loopStatusText = pendingLoopAction?.kind === 'run'
+                          ? 'Running now...'
+                          : pendingLoopAction?.kind === 'toggle'
+                            ? pendingLoopAction.targetEnabled
+                              ? 'Enabling loop...'
+                              : 'Pausing loop...'
+                            : pendingLoopAction?.kind === 'delete'
+                              ? 'Deleting loop...'
+                              : null;
+
+                        return (
                         <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
                           <TouchableOpacity
-                            style={styles.agentInfoPressable}
+                            style={[styles.agentInfoPressable, isBusy && styles.agentInfoPressableDisabled]}
                             onPress={() => handleLoopEdit(loop)}
+                            disabled={isBusy}
                             accessibilityRole="button"
                             accessibilityLabel={createButtonAccessibilityLabel(`Edit ${loop.name} loop`)}
-                            accessibilityHint="Opens this loop so you can review and change its schedule or prompt."
+                            accessibilityHint={isBusy
+                              ? 'Wait for the current loop action to finish before editing this loop.'
+                              : 'Opens this loop so you can review and change its schedule or prompt.'}
+                            accessibilityState={{ disabled: isBusy, busy: isBusy }}
                             activeOpacity={0.7}
                           >
                             <View style={[styles.serverInfo, { flex: 1 }]}>
@@ -2475,16 +2603,42 @@ export default function SettingsScreen({ navigation }: any) {
                               </Text>
                               <Text style={styles.loopPromptPreview} numberOfLines={1}>{loop.prompt}</Text>
                               {renderInlineEditAffordance()}
+                              {loopStatusText ? (
+                                <Text style={styles.loopActionStatusText}>{loopStatusText}</Text>
+                              ) : null}
+                              {loopActionError ? (
+                                <View style={styles.inlineLoopWarning}>
+                                  <Text style={styles.inlineLoopWarningText}>⚠️ {loopActionError.message}</Text>
+                                  <TouchableOpacity
+                                    onPress={() => retryLoopAction(loop, loopActionError.kind)}
+                                    disabled={isBusy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={createButtonAccessibilityLabel(`Retry ${loop.name} loop action`)}
+                                    accessibilityHint="Retries the last failed loop action for this loop."
+                                  >
+                                    <Text style={styles.retryText}>Retry</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : null}
                             </View>
                           </TouchableOpacity>
                           <View style={styles.loopActions}>
                             <TouchableOpacity
-                              style={styles.loopSwitchButton}
-                              onPress={() => handleLoopToggle(loop.id)}
+                              style={[styles.loopSwitchButton, isBusy && styles.loopActionButtonDisabled]}
+                              onPress={() => {
+                                void handleLoopToggle(loop);
+                              }}
+                              disabled={isBusy}
                               accessibilityRole="switch"
                               accessibilityLabel={createSwitchAccessibilityLabel(`${loop.name} loop`)}
-                              accessibilityHint="Enables or pauses this scheduled loop."
-                              accessibilityState={{ checked: loop.enabled }}
+                              accessibilityHint={pendingLoopAction?.kind === 'toggle'
+                                ? (pendingLoopAction.targetEnabled
+                                  ? 'This loop is being enabled.'
+                                  : 'This loop is being paused.')
+                                : isBusy
+                                  ? 'Wait for the current loop action to finish before changing this schedule.'
+                                  : 'Enables or pauses this scheduled loop.'}
+                              accessibilityState={{ checked: loop.enabled, disabled: isBusy, busy: pendingLoopAction?.kind === 'toggle' }}
                               activeOpacity={0.7}
                             >
                               <View
@@ -2496,28 +2650,43 @@ export default function SettingsScreen({ navigation }: any) {
                               </View>
                             </TouchableOpacity>
                             <TouchableOpacity
-                              style={styles.loopActionButton}
-                              onPress={() => handleLoopRun(loop.id)}
+                              style={[styles.loopActionButton, isBusy && styles.loopActionButtonDisabled]}
+                              onPress={() => {
+                                void handleLoopRun(loop);
+                              }}
+                              disabled={isBusy}
                               accessibilityRole="button"
                               accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
-                              accessibilityHint="Triggers this loop immediately."
+                              accessibilityHint={pendingLoopAction?.kind === 'run'
+                                ? 'This loop is running now.'
+                                : isBusy
+                                  ? 'Wait for the current loop action to finish before triggering this loop.'
+                                  : 'Triggers this loop immediately.'}
+                              accessibilityState={{ disabled: isBusy, busy: pendingLoopAction?.kind === 'run' }}
                               activeOpacity={0.7}
                             >
-                              <Text style={styles.loopRunText}>▶ Run</Text>
+                              <Text style={styles.loopRunText}>{pendingLoopAction?.kind === 'run' ? 'Running...' : '▶ Run'}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                              style={styles.loopActionButton}
+                              style={[styles.loopActionButton, isBusy && styles.loopActionButtonDisabled]}
                               onPress={() => handleLoopDelete(loop)}
+                              disabled={isBusy}
                               accessibilityRole="button"
                               accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
-                              accessibilityHint="Removes this scheduled loop after confirmation."
+                              accessibilityHint={pendingLoopAction?.kind === 'delete'
+                                ? 'This loop is being deleted.'
+                                : isBusy
+                                  ? 'Wait for the current loop action to finish before deleting this loop.'
+                                  : 'Removes this scheduled loop after confirmation.'}
+                              accessibilityState={{ disabled: isBusy, busy: pendingLoopAction?.kind === 'delete' }}
                               activeOpacity={0.7}
                             >
-                              <Text style={styles.loopDeleteText}>🗑 Delete</Text>
+                              <Text style={styles.loopDeleteText}>{pendingLoopAction?.kind === 'delete' ? 'Deleting...' : '🗑 Delete'}</Text>
                             </TouchableOpacity>
                           </View>
                         </View>
-                      ))
+                        );
+                      })
                     )}
                   </>
                 )}
@@ -3297,6 +3466,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flex: 1,
       minWidth: 0,
     },
+    agentInfoPressableDisabled: {
+      opacity: 0.7,
+    },
     editAffordance: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -3356,6 +3528,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.secondary,
     },
+    loopActionButtonDisabled: {
+      opacity: 0.5,
+    },
     loopRunText: {
       color: theme.colors.primary,
       fontSize: 12,
@@ -3365,6 +3540,30 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.destructive,
       fontSize: 12,
       fontWeight: '600',
+    },
+    loopActionStatusText: {
+      marginTop: spacing.xs,
+      fontSize: 12,
+      fontWeight: '500',
+      color: theme.colors.primary,
+    },
+    inlineLoopWarning: {
+      marginTop: spacing.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      backgroundColor: '#f59e0b20',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    inlineLoopWarningText: {
+      flex: 1,
+      fontSize: 12,
+      color: '#d97706',
     },
     actionRailSwitchTrack: {
       width: 36,
