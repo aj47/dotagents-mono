@@ -3611,3 +3611,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the compact row timestamps reduce visual noise in the expanded response-history list.
   - If live validation shows multiple responses often land in the same minute, decide whether the next smallest improvement is a subtle recency cue (`Just now`, `1m ago`) rather than restoring second-level precision.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history formatting again without new evidence.
+
+### 2026-03-08 — Iteration 83: keep the full queue header informative when collapsed
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the full `MessageQueuePanel` header still rendered only `Queued Messages (N)` plus the clear/collapse actions.
+  - The panel already exposed `Sending now` in compact summaries, but the full header dropped that context once the list was collapsed.
+  - Failed queued messages were also invisible from the collapsed header state, so users had to reopen the queue just to learn whether anything needed attention.
+- Issue selected:
+  - The full mobile queue header hid the most important queue-state summary when collapsed, weakening transparency and state clarity in the sub-agent activity flow.
+- Decision:
+  - Keep the queue list layout, row actions, and processing notice unchanged.
+  - Do not redesign the queue panel while live validation is blocked.
+  - Make the smallest local hierarchy fix: add a single-line status summary under the header title and mirror that summary in the collapse/expand control's accessibility label.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - derive concise header summary parts for `Sending now`, waiting queued messages, and failed messages,
+    - render that summary under `Queued Messages (N)` with truncation-safe mobile styling,
+    - tint the summary toward active/destructive states when processing or failures are present,
+    - include the summary in the collapse/expand button accessibility label.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new collapsed-header summary and disclosure semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new queue summary line stays balanced beside the clear/collapse actions and does not crowd the header.
+  - Failed + processing combinations still need live confirmation to make sure the destructive summary tint reads clearly without overpowering the rest of the queue panel.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed queue header now communicates `sending`, `waiting`, and `failed` state clearly at narrow widths.
+  - Compare idle, processing, and failed queue states to confirm the new summary text and tinting feel proportional in each case.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting the queue header again without new evidence.

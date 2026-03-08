@@ -445,13 +445,22 @@ export function MessageQueuePanel({
   }, [conversationId]);
 
   const hasProcessingMessage = messages.some((m) => m.status === 'processing');
+  const processingCount = messages.filter((m) => m.status === 'processing').length;
+  const waitingCount = messages.filter((m) => m.status === 'pending').length;
+  const failedCount = messages.filter((m) => m.status === 'failed').length;
   const queuedMessageLabel = `${messages.length} queued message${messages.length > 1 ? 's' : ''}`;
+  const queueHeaderStatusParts: string[] = [];
+  if (processingCount > 0) queueHeaderStatusParts.push('Sending now');
+  if (waitingCount > 0) queueHeaderStatusParts.push(`${waitingCount} waiting`);
+  if (failedCount > 0) queueHeaderStatusParts.push(`${failedCount} failed`);
+  const queueHeaderStatusText = queueHeaderStatusParts.join(' • ') || 'Queue activity updated';
   const compactSummaryText = hasProcessingMessage
     ? `${queuedMessageLabel} • Sending now`
     : queuedMessageLabel;
   const clearQueueAccessibilityHint = hasProcessingMessage
     ? 'Wait for the active queued message to finish before clearing the rest of this queue.'
     : 'Removes all queued messages for this conversation.';
+  const queueDisclosureLabel = `${createExpandCollapseAccessibilityLabel('queued messages', !isListCollapsed)}. ${queuedMessageLabel}. ${queueHeaderStatusText}.`;
 
   if (messages.length === 0) {
     return null;
@@ -483,14 +492,35 @@ export function MessageQueuePanel({
     },
     headerLeft: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
+      flex: 1,
+      minWidth: 0,
+    },
+    headerTitleGroup: {
+      flex: 1,
+      minWidth: 0,
     },
     headerTitle: {
       fontSize: 14,
       fontWeight: '500',
       color: theme.colors.foreground,
       flexShrink: 1,
+      minWidth: 0,
+    },
+    headerStatusText: {
+      marginTop: 2,
+      fontSize: 12,
+      lineHeight: 16,
+      color: theme.colors.mutedForeground,
+    },
+    headerStatusTextActive: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    headerStatusTextDanger: {
+      color: theme.colors.destructive,
+      fontWeight: '600',
     },
     clearButton: {
       borderRadius: 8,
@@ -572,9 +602,25 @@ export function MessageQueuePanel({
       <View style={[styles.header, isListCollapsed && { borderBottomWidth: 0 }]}>
         <View style={styles.headerLeft}>
           <Ionicons name="time-outline" size={16} color={theme.colors.mutedForeground} />
-          <Text style={styles.headerTitle}>
+        <View style={styles.headerTitleGroup}>
+          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
             Queued Messages ({messages.length})
           </Text>
+          <Text
+            style={[
+              styles.headerStatusText,
+              failedCount > 0
+                ? styles.headerStatusTextDanger
+                : hasProcessingMessage
+                  ? styles.headerStatusTextActive
+                  : null,
+            ]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {queueHeaderStatusText}
+          </Text>
+        </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           {!isListCollapsed && (
@@ -594,7 +640,7 @@ export function MessageQueuePanel({
             style={[styles.headerActionTouchTarget, styles.clearButton]}
             onPress={() => setIsListCollapsed((prev) => !prev)}
             accessibilityRole="button"
-            accessibilityLabel={createExpandCollapseAccessibilityLabel('queued messages', !isListCollapsed)}
+            accessibilityLabel={queueDisclosureLabel}
             accessibilityHint="Shows or hides queued messages for this conversation."
             accessibilityState={{ expanded: !isListCollapsed }}
           >

@@ -30,6 +30,23 @@ test('surfaces processing state in the compact queue summary too', () => {
   assert.match(queuePanelSource, /<Text style=\{styles\.compactText\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{compactSummaryText\}[\s\S]*?<\/Text>/);
 });
 
+test('keeps the full queue header informative when the list is collapsed', () => {
+  assert.match(queuePanelSource, /const processingCount = messages\.filter\(\(m\) => m\.status === 'processing'\)\.length;/);
+  assert.match(queuePanelSource, /const waitingCount = messages\.filter\(\(m\) => m\.status === 'pending'\)\.length;/);
+  assert.match(queuePanelSource, /const failedCount = messages\.filter\(\(m\) => m\.status === 'failed'\)\.length;/);
+  assert.match(queuePanelSource, /const queueHeaderStatusParts: string\[\] = \[];[\s\S]*?if \(processingCount > 0\) queueHeaderStatusParts\.push\('Sending now'\);[\s\S]*?if \(waitingCount > 0\) queueHeaderStatusParts\.push\(`\$\{waitingCount\} waiting`\);[\s\S]*?if \(failedCount > 0\) queueHeaderStatusParts\.push\(`\$\{failedCount\} failed`\);/);
+  assert.match(queuePanelSource, /const queueHeaderStatusText = queueHeaderStatusParts\.join\(' • '\) \|\| 'Queue activity updated';/);
+  assert.match(queuePanelSource, /const queueDisclosureLabel = `\$\{createExpandCollapseAccessibilityLabel\('queued messages', !isListCollapsed\)\}\. \$\{queuedMessageLabel\}\. \$\{queueHeaderStatusText\}\.`;/);
+  assert.match(queuePanelSource, /headerTitleGroup:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0/);
+  assert.match(queuePanelSource, /headerStatusText:\s*\{[\s\S]*?lineHeight:\s*16,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+  assert.match(queuePanelSource, /headerStatusTextActive:\s*\{[\s\S]*?color:\s*theme\.colors\.primary/);
+  assert.match(queuePanelSource, /headerStatusTextDanger:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
+  assert.match(queuePanelSource, /<Text style=\{styles\.headerTitle\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?Queued Messages \(\{messages\.length\}\)[\s\S]*?<\/Text>/);
+  assert.match(queuePanelSource, /style=\{\[[\s\S]*?styles\.headerStatusText,[\s\S]*?failedCount > 0[\s\S]*?styles\.headerStatusTextDanger[\s\S]*?hasProcessingMessage[\s\S]*?styles\.headerStatusTextActive/);
+  assert.match(queuePanelSource, /\{queueHeaderStatusText\}/);
+  assert.match(queuePanelSource, /accessibilityLabel=\{queueDisclosureLabel\}/);
+});
+
 test('gives queued-message row actions mobile-sized targets and explicit labels', () => {
   assert.match(queuePanelSource, /const queueActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(queuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.queueActionTouchTarget[\s\S]*?borderRadius:\s*999/);
