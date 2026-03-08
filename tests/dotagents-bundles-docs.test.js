@@ -18,6 +18,13 @@ test('bundle doc reflects current restore and MCP trust defaults', () => {
   assert.match(bundleDoc, /<YOUR_USERNAME>/)
 })
 
+test('bundle doc reflects current memory and conflict-handling defaults', () => {
+  assert.match(bundleDoc, /per-item override/)
+  assert.match(bundleDoc, /memories \*\*off by default\*\* until the user explicitly opts in/)
+  assert.match(bundleDoc, /imports are additive-only: existing memories are never overwritten or renamed/)
+  assert.match(bundleDoc, /normalized content fingerprint\/content hash matches existing memory content/)
+})
+
 test('bundle doc reflects current website inspection warnings', () => {
   assert.match(bundleDoc, /Contains MCP commands/)
   assert.match(bundleDoc, /Requires setup/)
@@ -29,5 +36,7 @@ test('README keeps the bundle doc discoverable from the repo homepage', () => {
   assert.match(readme, /Portable `\.dotagents` Bundles/)
   assert.match(readme, /original snapshot target/)
   assert.match(readme, /one-click slot activation afterward/)
+  assert.match(readme, /per-item overwrite\/rename overrides/)
+  assert.match(readme, /memories stay opt-in on export/)
   assert.match(readme, /DOTAGENTS_BUNDLES\.md/)
 })

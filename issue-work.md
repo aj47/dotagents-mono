@@ -3884,3 +3884,36 @@
   - If the export dialog evolves further, consider whether enabling the Memories switch should also surface an explicit `Select memories` affordance or summary badge before export.
 
 - Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` still cannot be directly validated in this dependency-light worktree, prefer another fresh, source-confirmed desktop or website UX/reliability slice outside the now-heavier `#25` / `#53` tracks.
+
+##### Issue #25 — Bundle docs/spec synced to the current trust and memory defaults
+
+- Selection rationale:
+  - Re-read `issue-work.md` first, refreshed the current open issues, and avoided reopening the already-landed code slices for `#25`, `#56`, and `#57` without a fresh implementation gap.
+  - Re-read issue `#25` plus its latest planning comment and found an explicit follow-up: extend the bundle docs/spec so the finalized trust UX from `#56` and `#57` is documented clearly.
+  - Chose this slice because it was concrete, issue-aligned, reviewable, and useful in a dependency-light worktree where broader desktop runtime validation is still constrained by missing installs.
+- Investigation:
+  - Inspected `DOTAGENTS_BUNDLES.md` and confirmed the repo already has a current-state bundle spec document plus a lightweight doc-contract test in `tests/dotagents-bundles-docs.test.js`.
+  - Compared the existing doc against the implemented import/export flow and found a few finalized behaviors that were still under-documented: per-item conflict overrides, local memory export staying opt-in by default, and additive-only memory import with duplicate detection by normalized content fingerprint/content hash.
+  - Re-checked `README.md` and confirmed the homepage bundle summary was already linked to `DOTAGENTS_BUNDLES.md`, making it the right place for a small synchronized update instead of adding a new document.
+- Important assumptions:
+  - Assumption: `DOTAGENTS_BUNDLES.md` is the authoritative current-state spec note for bundle workflow behavior, and the README should stay a concise summary rather than a second full spec.
+  - Why acceptable: the repo already links the README bundle section directly to `DOTAGENTS_BUNDLES.md`, and there is an existing targeted test specifically guarding that relationship.
+  - Assumption: for a docs-focused slice, source-backed contract tests are sufficient verification in this worktree.
+  - Why acceptable: no runtime behavior changed, and the goal here was to reduce spec drift by validating the updated language directly.
+- Changes implemented:
+  - Updated `DOTAGENTS_BUNDLES.md` to document that the import preview now exposes whether a conflict row is using the import-wide default or a per-item override.
+  - Added an explicit memory-handling section clarifying that memories stay off by default for local export, can be cherry-picked, import additively only, and skip duplicates by normalized content fingerprint/content hash.
+  - Tightened the local export defaults section so the privacy-first memory default is explicit in the trust summary.
+  - Updated `README.md` to reflect the same current-state bundle posture: safe default conflict handling with per-item overrides plus opt-in/additive memory behavior.
+  - Extended `tests/dotagents-bundles-docs.test.js` so future edits catch drift around the documented conflict and memory defaults.
+- Verification run:
+  - Completed: `node --test tests/dotagents-bundles-docs.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Keep `DOTAGENTS_BUNDLES.md` updated as the larger hub/community workflow evolves so the current-state trust model does not drift again.
+  - The umbrella issue still has larger product work open beyond docs, especially broader Hub workflows and any deeper restore/import provenance that exceeds the current safety baseline.
+
+- Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` is still not practically reproducible here, prefer a narrow desktop trust/history slice under `#58` or another concrete source-confirmed issue rather than revisiting already-documented bundle behavior.

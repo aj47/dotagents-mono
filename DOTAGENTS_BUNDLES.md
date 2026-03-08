@@ -74,6 +74,7 @@ Bundle import uses a preview dialog that shows:
 - which effective runtime layer will ultimately supply the imported config (`global -> active slot -> workspace`, with workspace still winning on conflicts)
 - which items are selected versus excluded from the current import plan
 - the current conflict strategy outcome before import starts
+- which conflicting rows are still using the import-wide default versus an explicit per-item override
 
 ### 4. Slot-aware import isolation
 
@@ -108,6 +109,8 @@ Other supported import-wide strategies remain:
 - `overwrite`
 - `rename`
 
+Users can keep that safe global default while overriding individual conflicting rows when a specific item should be overwritten or renamed instead.
+
 ### 7. Component and per-item cherry-pick
 
 Import is no longer all-or-nothing.
@@ -118,6 +121,15 @@ Users can:
 - deselect individual agent profiles, MCP servers, skills, repeat tasks, or memories
 - review excluded items directly in the import plan
 
+### 8. Memory handling stays privacy-first and additive
+
+Current memory-specific behavior:
+
+- local export keeps memories **off by default** until the user explicitly opts in
+- users can cherry-pick specific memories instead of exporting or importing the whole memory set
+- imports are additive-only: existing memories are never overwritten or renamed
+- duplicate bundle memories are skipped when the memory id already exists or the normalized content fingerprint/content hash matches existing memory content
+
 ## Export and sharing defaults
 
 ### Local export
@@ -126,6 +138,7 @@ Desktop bundle export lets users choose exactly what to include in a local `.dot
 
 Current local-export trust defaults:
 
+- memories are **off by default** until the user explicitly enables them
 - MCP secrets are stripped automatically from exported config
 - selected memories, repeat task prompts, and other chosen content are exported as-is
 - if selected memories appear to contain secret-like text, the export dialog warns before save

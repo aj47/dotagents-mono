@@ -76,8 +76,10 @@ DotAgents also supports portable `.dotagents` bundle files for sharing and resto
 
 - import is preview-first, conflict-aware, and backed by automatic pre-import snapshots
 - imports can target the default writable layer, the active slot, or a freshly created slot for safer isolation
+- conflict review keeps `skip` as the safe default while still allowing per-item overwrite/rename overrides before import
 - restore is available from `Settings -> Capabilities`, including recent-backup recovery tools and safe defaulting back to the original snapshot target
 - imports/restores into inactive bundle slots keep runtime state explicit and offer one-click slot activation afterward
+- memories stay opt-in on export, warn on secret-like content, and import additively without overwriting existing memories
 - public Hub-style sharing uses inspect-before-install, setup disclosure, expandable MCP config details, and sanitized export defaults
 
 See **[DOTAGENTS_BUNDLES.md](DOTAGENTS_BUNDLES.md)** for the current workflow and trust defaults.
