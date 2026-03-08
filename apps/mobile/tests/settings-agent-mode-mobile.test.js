@@ -42,3 +42,10 @@ test('wraps Require Tool Approval in the same named mobile-sized switch control'
   assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpRequireApprovalBeforeToolCall \?\? false \}\}/);
   assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.mcpRequireApprovalBeforeToolCall \?\? false\)/);
 });
+
+test('hides max iterations while unlimited iterations is enabled', () => {
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Unlimited Iterations<\/Text>[\s\S]*?remoteSettings\.mcpUnlimitedIterations \? \(/);
+  assert.match(settingsSource, /No iteration limit\. The agent will keep working until it finishes or you stop it\./);
+  assert.match(settingsSource, /: \([\s\S]*?<Text style=\{styles\.label\}>Max Iterations<\/Text>[\s\S]*?<TextInput/);
+  assert.doesNotMatch(settingsSource, /<Text style=\{styles\.label\}>Max Iterations<\/Text>[\s\S]*?<TextInput[\s\S]*?<Text style=\{styles\.label\}>Unlimited Iterations<\/Text>/);
+});

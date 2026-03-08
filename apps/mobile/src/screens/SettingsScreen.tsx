@@ -1900,23 +1900,6 @@ export default function SettingsScreen({ navigation }: any) {
                   Generate a summary after completing a task
                 </Text>
 
-                <Text style={styles.label}>Max Iterations</Text>
-                <TextInput
-                  style={styles.input}
-                  value={inputDrafts.mcpMaxIterations ?? '10'}
-                  onChangeText={(v) => {
-                    const num = parseInt(v, 10);
-                    if (!isNaN(num) && num >= 1 && num <= 100) {
-                      handleRemoteSettingUpdate('mcpMaxIterations', num);
-                    } else {
-                      setInputDrafts(prev => ({ ...prev, mcpMaxIterations: v }));
-                    }
-                  }}
-                  placeholder="10"
-                  placeholderTextColor={theme.colors.mutedForeground}
-                  keyboardType="number-pad"
-                />
-
                 <View style={styles.row}>
                   <Text style={styles.label}>Unlimited Iterations</Text>
                   <Switch
@@ -1926,6 +1909,30 @@ export default function SettingsScreen({ navigation }: any) {
                     thumbColor={remoteSettings.mcpUnlimitedIterations ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
+                {remoteSettings.mcpUnlimitedIterations ? (
+                  <Text style={styles.helperText}>
+                    No iteration limit. The agent will keep working until it finishes or you stop it.
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.label}>Max Iterations</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts.mcpMaxIterations ?? '10'}
+                      onChangeText={(v) => {
+                        const num = parseInt(v, 10);
+                        if (!isNaN(num) && num >= 1 && num <= 100) {
+                          handleRemoteSettingUpdate('mcpMaxIterations', num);
+                        } else {
+                          setInputDrafts(prev => ({ ...prev, mcpMaxIterations: v }));
+                        }
+                      }}
+                      placeholder="10"
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      keyboardType="number-pad"
+                    />
+                  </>
+                )}
               </CollapsibleSection>
             )}
 

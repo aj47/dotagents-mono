@@ -1293,3 +1293,48 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the missing-config selector state clearly presents `Open Agent Settings` instead of a dead-end retry.
   - Compare the selector sheet’s missing-config state against its zero-agents empty state once live validation returns so those two recovery paths stay distinct and easy to scan on mobile.
   - After that live pass, reassess whether the next highest-friction sub-agent mobile issue is back in the selector sheet or elsewhere.
+
+### 2026-03-08 — Iteration 30: hide conflicting max-iteration input when unlimited mode is on
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - desktop precedent in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - focused regression coverage in `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the mobile install / Expo + React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile `Agent Settings` always rendered `Max Iterations`, then `Unlimited Iterations` below it.
+  - That meant the max-iteration field stayed visible and editable even when unlimited mode was enabled.
+  - Desktop already handled this state more clearly by hiding the max-iteration input when unlimited mode is on.
+- Issue selected:
+  - Mobile exposed a contradictory state in a dense sub-agent settings section: users could still edit an iteration limit that would be ignored once `Unlimited Iterations` was enabled.
+- Decision:
+  - Match the existing desktop behavior instead of inventing a mobile-only rule.
+  - Keep the current settings and wording local to this section.
+  - Make the smallest clear fix: show the unlimited toggle first, hide the conflicting max-iterations field while unlimited mode is enabled, and replace it with brief status copy.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - move the `Unlimited Iterations` row ahead of the iteration-limit detail,
+    - conditionally hide `Max Iterations` when `mcpUnlimitedIterations` is enabled,
+    - show helper copy instead: `No iteration limit. The agent will keep working until it finishes or you stop it.`
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new conditional rendering contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked by missing mobile install / `expo` unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by the same missing mobile install / unresolved Expo + React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved unlimited-iterations state still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - Nearby `Agent Settings` rows such as `Message Queue`, `Verify Completion`, and `Final Summary` still use older plain native `Switch` controls, but they should be re-ranked after live validation returns.
+  - If live inspection later shows the helper copy feels too verbose in the collapsed mobile flow, it may need tighter wording — but only with visual evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that enabling `Unlimited Iterations` hides `Max Iterations` cleanly and the helper text reads as passive state, not an error.
+  - Compare the updated `Unlimited Iterations` / `Max Iterations` flow against the remaining `Agent Settings` toggles to see which mismatch is now most noticeable on mobile.
+  - Re-establish live inspection before taking on the next sub-agent mobile tweak so the next change is again grounded in current evidence.
