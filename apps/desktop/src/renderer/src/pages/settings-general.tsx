@@ -41,6 +41,7 @@ import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
 import {
+  getAgentKillSwitchShortcutDisplay,
   getMcpToolsShortcutDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
@@ -293,6 +294,20 @@ export function Component() {
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const killSwitchHotkey = configQuery.data?.agentKillSwitchHotkey || "ctrl-shift-escape"
+  const hasCustomAgentKillSwitchHotkey = Boolean(
+    configQuery.data?.customAgentKillSwitchHotkey?.trim(),
+  )
+  const killSwitchShortcutDisplay = getAgentKillSwitchShortcutDisplay(
+    killSwitchHotkey,
+    configQuery.data?.customAgentKillSwitchHotkey,
+  )
+  const killSwitchSummary =
+    killSwitchHotkey === "custom" && !hasCustomAgentKillSwitchHotkey
+      ? "Record a custom shortcut to finish setup. Until then, Ctrl+Shift+Escape remains the active emergency stop. Changes save immediately."
+      : killSwitchHotkey === "ctrl-shift-escape"
+        ? "Press Ctrl+Shift+Escape anytime to stop agent mode and kill agent-created processes. Changes save immediately."
+        : `Press ${killSwitchShortcutDisplay} to stop agent mode and kill agent-created processes. Ctrl+Shift+Escape always works as a hard emergency stop too. Changes save immediately.`
   const mcpToolsShortcut = configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"
   const customMcpToolsShortcutMode =
     configQuery.data?.customMcpToolsShortcutMode || "hold"
@@ -444,7 +459,7 @@ export function Component() {
               {configQuery.data?.agentKillSwitchEnabled !== false && (
                 <>
                   <Select
-                    value={configQuery.data?.agentKillSwitchHotkey || "ctrl-shift-escape"}
+                    value={killSwitchHotkey}
                     onValueChange={(value: "ctrl-shift-escape" | "ctrl-alt-q" | "ctrl-shift-q" | "custom") => {
                       saveConfig({ agentKillSwitchHotkey: value })
                     }}
@@ -460,12 +475,23 @@ export function Component() {
                     </SelectContent>
                   </Select>
 
-                  {configQuery.data?.agentKillSwitchHotkey === "custom" && (
-                    <KeyRecorder
-                      value={configQuery.data?.customAgentKillSwitchHotkey || ""}
-                      onChange={(keyCombo) => saveConfig({ customAgentKillSwitchHotkey: keyCombo })}
-                      placeholder="Click to record custom kill switch hotkey"
-                    />
+                  <div className="text-xs text-muted-foreground">
+                    {killSwitchSummary}
+                  </div>
+
+                  {killSwitchHotkey === "custom" && (
+                    <>
+                      <KeyRecorder
+                        value={configQuery.data?.customAgentKillSwitchHotkey || ""}
+                        onChange={(keyCombo) => saveConfig({ customAgentKillSwitchHotkey: keyCombo })}
+                        placeholder="Click to record custom kill switch hotkey"
+                      />
+                      {!hasCustomAgentKillSwitchHotkey && (
+                        <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                          Record a custom shortcut to finish setup. Ctrl+Shift+Escape still works as the fallback hard emergency stop until then.
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

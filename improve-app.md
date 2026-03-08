@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop general settings emergency kill switch custom hotkey completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime fallback behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop agent-mode shortcut / custom keybinding discoverability and save-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, panel/session/onboarding shortcut affordances checked in `apps/desktop/src/renderer/src/pages/panel.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/onboarding.tsx`, mobile shortcut parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop capabilities subtab navigation / legacy deep-link continuity in `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with existing redirect coverage reviewed in `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.test.ts`, mobile settings parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop models-route navigation clarity and provider/model wayfinding in `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx`, and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with router/nav wiring reviewed in `apps/desktop/src/renderer/src/components/app-layout.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -39,6 +40,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop emergency kill switch settings now explain the currently active kill shortcut, make the always-available `Ctrl+Shift+Escape` fallback explicit whenever another shortcut is selected, and warn when a custom kill switch is not fully recorded yet so users know whether keyboard emergency stop is actually ready.
 - 2026-03-08: Desktop Agent Mode shortcut setup now exposes the existing custom hold-vs-toggle behavior in both Settings and onboarding, shows inline setup/status guidance including an explicit incomplete-custom warning, and keeps shared shortcut hints plus the floating panel submit hint aligned with the saved Agent Mode behavior.
 - 2026-03-08: Desktop `Settings → Capabilities` now keeps the selected Skills vs MCP Servers tab in the URL, preserves that intent when legacy `/settings/skills` and `/settings/mcp-tools` links redirect into the combined page, and sends agent settings “Edit” links directly to the matching subtab so refreshes and deep links stop dumping users back onto the wrong view.
 - 2026-03-08: Desktop `Settings → Models` now leads with a model-configuration guide, current provider-role summary, and quick-jump shortcuts into provider/model sections, while the combined providers/models page now uses a single scroll container and shows the guide only on the models route so users land on model-focused context instead of a generic provider page.
@@ -69,6 +71,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-general-kill-switch-feedback.test.js tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx` and `apps/desktop/src/shared/key-utils.ts`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-general-agent-mode-shortcuts.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/shared/key-utils.ts`, `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/panel.tsx`
 - 2026-03-08: `git diff --check`
@@ -129,6 +134,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this emergency kill switch shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this agent-mode shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this capabilities-navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this models-route/navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -158,10 +164,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop general settings emergency kill switch custom hotkey completion / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
+- Desktop general settings show-main-window custom hotkey completion / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop general settings emergency kill switch custom hotkey completion / saved-state feedback next so another core desktop shortcut surface stops relying on hidden defaults and toast-only confidence
+- Inspect desktop general settings show-main-window custom hotkey completion / saved-state feedback next so another core desktop shortcut surface stops relying on hidden defaults and dropdown-only confidence
+- Once a runnable Electron target is available, live-check the desktop emergency kill switch settings to confirm the fallback guidance, custom-incomplete warning, and active-shortcut summary feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Agent Mode shortcut configuration in Settings and onboarding to confirm the new hold/toggle guidance, incomplete-custom warning, and floating-panel release hint feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop remote-server settings startup failure, `Start now` / `Retry start`, bind-address warnings, and local/tunnel sharing states to confirm the new recovery hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop `Settings → Models` route to confirm the new guide, provider-role summary, section jump targets, and single-scroll layout feel right in the real UI
@@ -1285,6 +1292,43 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once an Electron target is available, live-check custom Agent Mode hold vs toggle setup from both onboarding and settings to confirm the helper copy and warning state feel right in the actual UI
   - inspect desktop general settings emergency kill switch custom hotkey completion/save-state clarity next so the remaining high-impact shortcut surface gets the same confidence improvements
+
+### 2026-03-08 — Desktop emergency kill switch shortcut clarity and custom-setup completion feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop kill-switch settings in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - shared shortcut-display helper in `apps/desktop/src/shared/key-utils.ts`
+  - keyboard runtime fallback behavior reviewed in `apps/desktop/src/main/keyboard.ts`
+  - focused source-level regression coverage added in `tests/desktop-settings-general-kill-switch-feedback.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile does not expose equivalent global hotkey configuration, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger explicitly marked desktop emergency kill switch shortcut completion/save-state clarity as the next fresh area to inspect
+  - investigation found a concrete confidence gap: the settings UI let users choose `Custom` without clarifying whether setup was complete, and it hid a critical runtime behavior where `Ctrl+Shift+Escape` remains the hard emergency-stop fallback whenever the kill switch is enabled
+  - this was high leverage because the kill switch is a safety-critical control; users should know exactly which keyboard escape hatch is active before they need it under stress
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` to confirm the kill-switch UI only exposed the toggle, dropdown, and recorder with no inline saved-state or fallback guidance
+  - `apps/desktop/src/main/keyboard.ts` to verify the actual runtime semantics for built-in, custom, and fallback kill-switch hotkeys before changing copy
+  - `apps/desktop/src/shared/key-utils.ts` to see whether an existing shared helper could keep kill-switch display text aligned with persisted shortcuts
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to confirm there is no equivalent mobile global shortcut surface before broadening scope
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - desktop `Settings → General → Emergency Kill Switch` now shows inline saved-behavior guidance for the currently selected kill switch shortcut instead of relying on the dropdown label alone
+  - when users select `Ctrl+Alt+Q`, `Ctrl+Shift+Q`, or a completed custom shortcut, the settings UI now explicitly states that `Ctrl+Shift+Escape` still works as a hard emergency stop too, matching the real keyboard runtime behavior
+  - when `Custom` is selected but no custom keybinding has been recorded yet, the page now shows both inline summary guidance and a visible warning that setup is incomplete while `Ctrl+Shift+Escape` remains the active fallback
+  - added a shared kill-switch display helper plus focused regression coverage so future shortcut-copy changes stay aligned with the saved config and fallback semantics
+- Assumptions / tradeoffs / rationale:
+  - kept the improvement UI-only instead of changing kill-switch runtime behavior, because the core issue was hidden safety-state feedback rather than an incorrect hotkey engine
+  - chose explicit fallback copy over more elaborate validation or conflict detection because the immediate product value was giving users reliable emergency-stop confidence with minimal churn
+  - accepted source-level verification for this pass because live Electron inspection is still unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-general-kill-switch-feedback.test.js tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx` and `apps/desktop/src/shared/key-utils.ts`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check the kill-switch settings summary and incomplete-custom warning to confirm the new safety copy reads clearly in the actual UI
+  - inspect desktop general settings show-main-window custom hotkey completion/save-state clarity next so the remaining shortcut surfaces share the same level of explicit setup confidence
 
 ### Iteration Template
 - Date:

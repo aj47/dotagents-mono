@@ -297,6 +297,31 @@ export function getTextInputShortcutDisplay(
 }
 
 /**
+ * Get the display string for the emergency kill switch shortcut.
+ * This keeps settings copy aligned with the actual configured shortcut.
+ */
+export function getAgentKillSwitchShortcutDisplay(
+  shortcut: "ctrl-shift-escape" | "ctrl-alt-q" | "ctrl-shift-q" | "custom" | undefined,
+  customShortcut?: string,
+): string {
+  switch (shortcut) {
+    case "ctrl-shift-escape":
+      return "Ctrl+Shift+Escape"
+    case "ctrl-alt-q":
+      return "Ctrl+Alt+Q"
+    case "ctrl-shift-q":
+      return "Ctrl+Shift+Q"
+    case "custom":
+      if (customShortcut) {
+        return formatKeyComboForDisplay(customShortcut)
+      }
+      return "Set custom shortcut"
+    default:
+      return "Ctrl+Shift+Escape"
+  }
+}
+
+/**
  * Get the display string for the dictation (recording) shortcut.
  * This provides a centralized mapping to ensure consistency across UI components.
  */
