@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop overlay follow-up composer session-scope cleanup in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, with overlay mount reuse reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, existing follow-up guardrails checked in `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts`, stronger focused renderer regression coverage added in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx`, dependency-free source assertions added in `tests/desktop-overlay-follow-up-session-scope.test.js`, and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile composer is screen-scoped rather than reused across focused desktop sessions).
 - 2026-03-08: Desktop sessions empty-state past-sessions discoverability / recent-history loading feedback in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with conversation-history query behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, past-history dialog behavior checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile already shows the session list directly), and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop queued-send / message-queue recovery in `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, with queue pause/resume semantics reviewed in `apps/desktop/src/main/message-queue-service.ts`, interrupted-run cleanup context checked in `apps/desktop/src/main/agent-session-tracker.ts`, `apps/desktop/src/main/session-user-response-store.ts`, and `apps/desktop/src/renderer/src/stores/agent-store.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop standard agent-mode session runtime cleanup in `apps/desktop/src/main/tipc.ts`, with session-state ownership reviewed in `apps/desktop/src/main/state.ts`, tracker lifecycle checked in `apps/desktop/src/main/agent-session-tracker.ts`, queued-state context reviewed in `apps/desktop/src/main/message-queue-service.ts`, renderer progress/store consumers checked in `apps/desktop/src/renderer/src/components/agent-progress.tsx` / `apps/desktop/src/renderer/src/stores/agent-store.ts`, and existing cleanup coverage reviewed in `apps/desktop/src/main/state.test.ts`.
@@ -53,6 +54,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop overlay follow-up input now treats `conversationId` + `sessionId` as a composer scope, clears stale draft/error/image state when the focused overlay session changes, and ignores late async submit/image completions from the previous session so a failed or delayed follow-up from session A cannot leak into session B or wipe a new draft there; tradeoff: this pass intentionally stays scoped to the overlay composer because the tile composer is mounted per-session already, so it does not share the same cross-session reuse risk.
 - 2026-03-08: Desktop `No Active Sessions` now keeps a visible `Past Sessions` action alongside the existing start buttons and shows inline recent-history loading/failure guidance while conversation history is still resolving, so returning users no longer have to wait for a silently completing history query or for the `View all` link threshold before finding prior chats; tradeoff: this intentionally reuses the existing past-sessions dialog instead of adding a second inline history browser, which keeps the fix small and behavior consistent.
 - 2026-03-08: Desktop queued-send recovery now detects when a paused conversation is blocked by a failed first queued message, swaps the generic paused `Resume` affordance for a clearer `Retry & Resume` action in `message-queue-panel.tsx`, and auto-resumes paused queue processing from `tipc.ts` when the failed head item is retried or edited while the conversation is otherwise idle; tradeoff: this intentionally only auto-resumes when recovering the head item so retrying a later failed row does not unexpectedly restart a queue the user may still want paused.
 - 2026-03-08: Standard desktop agent-mode runs now always clean up per-session runtime state in `processWithAgentMode(...)` `finally`, so completed, failed, or manually stopped non-ACP sessions no longer risk retaining stale abort/process/approval bookkeeping after the run unwinds; tradeoff: this pass intentionally left immediate `stopAgentSession` cleanup alone because late in-flight updates still need to unwind through the existing run lifecycle safely.
@@ -97,6 +99,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-overlay-follow-up-session-scope.test.js`
+- 2026-03-08: attempted `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx src/renderer/src/components/follow-up-input.submit.test.ts src/renderer/src/components/overlay-follow-up-input.layout.test.ts` from `apps/desktop` (blocked: `node_modules` is missing in this worktree, so `pnpm -w run build:shared` fails first because `tsup` is unavailable and desktop package tests cannot start here).
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-sessions-empty-state-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/sessions.tsx`
 - 2026-03-08: `git diff --check` after the desktop sessions empty-state history/discoverability pass
@@ -197,6 +202,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused desktop Vitest verification for this overlay session-scope pass is blocked in this worktree because `node_modules` is missing, so `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx ...` fails during the required `build:shared` pretest step when `tsup` cannot be found.
 - 2026-03-08: Live desktop UI inspection for this sessions empty-state history/discoverability pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this queued-send recovery pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop main-process regression run for this standard session-cleanup pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts` fails with `Command "vitest" not found`.
@@ -268,7 +274,44 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop agent editor dirty-cancel, Quick Setup overwrite, advanced reset, and pending-save behavior to confirm the confirmation cadence feels right
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
-- Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+- Once a runnable Electron target is available, live-check the desktop overlay follow-up composer across session switching plus late success/failure/image-read completions to confirm stale drafts/errors no longer leak across focused sessions in the actual UI
+
+### 2026-03-08 — Desktop overlay follow-up composer session-scope cleanup
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop overlay follow-up composer in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`
+  - overlay mount/reuse path reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+  - focused renderer regression coverage added in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx`
+  - dependency-free source assertions added in `tests/desktop-overlay-follow-up-session-scope.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx`; confirmed no equivalent change is needed because the mobile composer is screen-scoped rather than reused across a changing focused-session shell
+- Why it was chosen:
+  - the ledger already pointed toward desktop session lifecycle / stale-state cleanup as the next fresh reliability area after the standard runtime cleanup pass
+  - investigation found a concrete user-facing bug: `AgentProgress` keeps the overlay composer mounted while the focused session changes, but `OverlayFollowUpInput` kept its local draft, submit error, and image attachment state with no reset tied to `sessionId` / `conversationId`
+  - tracing the async path exposed a second edge where a delayed submit or image-read completion from session A could resolve after the user switched to session B and then incorrectly clear, repopulate, or error the new session's composer
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` to compare local composer state, async submit handling, and image attachment flows
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` to confirm the overlay variant reuses the same follow-up composer while `progress.sessionId` changes, unlike the tile variant which mounts per session tile
+  - `apps/mobile/src/screens/ChatScreen.tsx` to confirm mobile does not share this reuse pattern and therefore does not need the same fix
+  - existing desktop follow-up coverage in `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` and `apps/desktop/src/renderer/src/components/overlay-follow-up-input.layout.test.ts`
+  - attempted package-level desktop test execution via `pnpm run test -- --run ...`, but this worktree is missing dependencies / `node_modules`
+- Improvement made:
+  - introduced a composer scope key derived from `conversationId` + `sessionId`, reset local overlay draft/error/attachment/busy state when that scope changes, and clear any stale file-input value during the switch
+  - moved post-submit success handling into `handleSubmit(...)` so optimistic append + query invalidation stay tied to the submitted session/conversation even if focus changes mid-flight
+  - guarded submit success, submit failure, submit-finally cleanup, and async image-selection completions so only the still-active composer scope can mutate local overlay state
+  - added a focused renderer regression test for the intended session-switch behavior plus a dependency-free source-level guardrail test that can run in this reduced worktree
+- Assumptions / tradeoffs / rationale:
+  - scoped the change to `OverlayFollowUpInput` only because investigation confirmed the tile composer is mounted per session tile and therefore does not share the same cross-session leakage risk
+  - preserved optimistic append/query invalidation for the submitted session even after focus changes because the old submission still belongs in that session's history; only the local composer state should be scope-bound
+  - accepted mixed verification (runnable `node:test` plus added-but-unrun Vitest coverage) because this worktree cannot run desktop package tests without dependencies, but the stronger renderer test is still valuable for normal environments/CI
+  - live product inspection remains desirable here because this is a UI-facing reliability fix, but the current workspace still lacks a runnable Electron/CDP target
+- Tests / verification:
+  - `node --test tests/desktop-overlay-follow-up-session-scope.test.js`
+  - attempted `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx src/renderer/src/components/follow-up-input.submit.test.ts src/renderer/src/components/overlay-follow-up-input.layout.test.ts` from `apps/desktop` (blocked: `node_modules` missing, so the required `build:shared` pretest fails because `tsup` is unavailable)
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check switching between two overlay sessions with a dirty draft, a failed send, and a pending image attach to confirm the new scope reset feels natural and does not over-clear intentional work
+  - if another session-lifecycle pass is needed after that, inspect the desktop past-sessions dialog search/delete flow next because it is the most adjacent untouched navigation/history surface in the ledger
 
 ### 2026-03-08 — Desktop local-model status query failure feedback before first load
 - Date:

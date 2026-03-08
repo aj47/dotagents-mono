@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, X, Bot } from "lucide-react"
@@ -63,6 +63,10 @@ export function OverlayFollowUpInput({
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
+  const composerScopeKey = `${conversationId ?? "new"}:${sessionId ?? "none"}`
+  const previousComposerScopeKeyRef = useRef(composerScopeKey)
+  const latestComposerScopeKeyRef = useRef(composerScopeKey)
+  latestComposerScopeKeyRef.current = composerScopeKey
   const configQuery = useConfigQuery()
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
@@ -85,6 +89,24 @@ export function OverlayFollowUpInput({
     }
   }
 
+  useEffect(() => {
+    if (previousComposerScopeKeyRef.current === composerScopeKey) {
+      return
+    }
+
+    previousComposerScopeKeyRef.current = composerScopeKey
+    submitInFlightRef.current = false
+    setIsSubmitting(false)
+    setIsStoppingSession(false)
+    setSubmissionError(null)
+    setText("")
+    setImageAttachments([])
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }, [composerScopeKey])
+
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
       if (!conversationId) {
@@ -97,29 +119,6 @@ export function OverlayFollowUpInput({
           conversationId,
         })
       }
-    },
-    onSuccess: (_data, variables) => {
-      logUI("[OverlayFollowUpInput] message sent", {
-        messageLength: variables.length,
-        attachmentCount: imageAttachments.length,
-        conversationId: conversationId ?? null,
-        sessionId: sessionId ?? null,
-      })
-
-      setText("")
-      setImageAttachments([])
-      setSubmissionError(null)
-      // Optimistically append user message to the session's conversation history
-      // so it appears immediately in the overlay without waiting for agent progress updates
-      if (sessionId) {
-        useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
-      }
-      // Also invalidate React Query caches so other views stay in sync
-      if (conversationId) {
-        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] })
-        queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
-      }
-      onMessageSent?.()
     },
   })
 
@@ -142,19 +141,56 @@ export function OverlayFollowUpInput({
     if (isSessionActive && !isQueueEnabled) return
 
     setSubmissionError(null)
+    const submittedScopeKey = composerScopeKey
+    const submittedConversationId = conversationId
+    const submittedSessionId = sessionId
+    const submittedAttachmentCount = imageAttachments.length
     submitInFlightRef.current = true
     setIsSubmitting(true)
 
     try {
       await sendMutation.mutateAsync(message)
+
+      logUI("[OverlayFollowUpInput] message sent", {
+        messageLength: message.length,
+        attachmentCount: submittedAttachmentCount,
+        conversationId: submittedConversationId ?? null,
+        sessionId: submittedSessionId ?? null,
+      })
+
+      // Optimistically append user message to the session's conversation history
+      // so it appears immediately in the overlay without waiting for agent progress updates.
+      // Keep this tied to the submitted session so switching focus mid-flight doesn't misroute it.
+      if (submittedSessionId) {
+        useAgentStore.getState().appendUserMessageToSession(submittedSessionId, message)
+      }
+
+      // Also invalidate React Query caches so other views stay in sync.
+      if (submittedConversationId) {
+        queryClient.invalidateQueries({ queryKey: ["conversation", submittedConversationId] })
+        queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
+      }
+
+      onMessageSent?.()
+
+      if (latestComposerScopeKeyRef.current === submittedScopeKey) {
+        setText("")
+        setImageAttachments([])
+        setSubmissionError(null)
+      }
     } catch (error) {
       const actionLabel = isSessionActive && isQueueEnabled ? "queue message" : "send follow-up"
       const errorMessage = getFollowUpSubmitErrorMessage(error, actionLabel)
       console.error("Failed to submit overlay follow-up message:", error)
-      setSubmissionError(errorMessage)
+
+      if (latestComposerScopeKeyRef.current === submittedScopeKey) {
+        setSubmissionError(errorMessage)
+      }
     } finally {
-      submitInFlightRef.current = false
-      setIsSubmitting(false)
+      if (latestComposerScopeKeyRef.current === submittedScopeKey) {
+        submitInFlightRef.current = false
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -165,6 +201,8 @@ export function OverlayFollowUpInput({
   }
 
   const handleImageSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectionScopeKey = composerScopeKey
+
     try {
       logUI("[OverlayFollowUpInput] image selection started", {
         existingCount: imageAttachments.length,
@@ -175,6 +213,10 @@ export function OverlayFollowUpInput({
         e.target.files,
         imageAttachments
       )
+
+      if (latestComposerScopeKeyRef.current !== selectionScopeKey) {
+        return
+      }
 
       if (attachments.length > 0) {
         setSubmissionError(null)
@@ -190,7 +232,9 @@ export function OverlayFollowUpInput({
         window.alert(errors.join("\n"))
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+      if (latestComposerScopeKeyRef.current === selectionScopeKey) {
+        window.alert(error instanceof Error ? error.message : "Failed to attach image.")
+      }
     } finally {
       e.target.value = ""
     }
