@@ -269,4 +269,78 @@ describe("desktop provider settings draft behavior", () => {
     speedInput = findNumberInput(tree, 0.5, 2)
     expect(speedInput.props.value).toBe("1.05")
   })
+
+  it("keeps OpenAI TTS speed drafts local, debounces saves, and merges with the latest config", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsProviders(runtime, {
+      ttsProviderId: "openai",
+      providerSectionCollapsedOpenai: false,
+      openaiTtsSpeed: 1,
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("1")
+
+    speedInput.props.onChange({ currentTarget: { value: "0" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("0")
+    expect(mutate).not.toHaveBeenCalled()
+
+    speedInput.props.onChange({ currentTarget: { value: "0.25" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("0.25")
+
+    setConfig({ ...getCurrentConfig(), launchAtLogin: true })
+    runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledWith({ config: { ...getCurrentConfig(), openaiTtsSpeed: 0.25 } })
+  })
+
+  it("resets invalid OpenAI TTS speed blur states and resyncs from saved config", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsProviders(runtime, {
+      ttsProviderId: "openai",
+      providerSectionCollapsedOpenai: false,
+      openaiTtsSpeed: 1.5,
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("1.5")
+
+    speedInput.props.onChange({ currentTarget: { value: "" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("")
+    expect(mutate).not.toHaveBeenCalled()
+
+    speedInput.props.onBlur({ currentTarget: { value: "" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("1.5")
+    expect(mutate).not.toHaveBeenCalled()
+
+    setConfig({ ...getCurrentConfig(), openaiTtsSpeed: 2.25 })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    tree = runtime.render(Component, {} as any)
+    speedInput = findNumberInput(tree, 0.25, 4)
+    expect(speedInput.props.value).toBe("2.25")
+  })
 })

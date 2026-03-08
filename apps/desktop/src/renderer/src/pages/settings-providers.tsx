@@ -45,8 +45,18 @@ import {
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
+const OPENAI_TTS_SPEED_DEFAULT = 1.0
 
 type ProviderDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+
+function parseOpenAiTtsSpeedDraft(value: string) {
+  const parsed = Number.parseFloat(value)
+  if (!Number.isFinite(parsed) || parsed < 0.25 || parsed > 4.0) {
+    return null
+  }
+
+  return parsed
+}
 
 function parseSupertonicSpeedDraft(value: string) {
   const parsed = Number.parseFloat(value)
@@ -73,6 +83,10 @@ function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, str
     geminiApiKey: config?.geminiApiKey || "",
     geminiBaseUrl: config?.geminiBaseUrl || "",
   }
+}
+
+function getOpenAiTtsSpeedDraft(config?: Config | null) {
+  return String(config?.openaiTtsSpeed ?? OPENAI_TTS_SPEED_DEFAULT)
 }
 
 // Badge component to show which features are using this provider
@@ -958,7 +972,9 @@ export function Component() {
   const saveConfigMutation = useSaveConfigMutation()
   const cfgRef = useRef(configQuery.data)
   const providerSaveTimeoutsRef = useRef<Partial<Record<ProviderDraftKey, ReturnType<typeof setTimeout>>>>({})
+  const openAiTtsSpeedSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [providerDrafts, setProviderDrafts] = useState(() => getProviderDrafts(configQuery.data))
+  const [openAiTtsSpeedDraft, setOpenAiTtsSpeedDraft] = useState(() => getOpenAiTtsSpeedDraft(configQuery.data))
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
@@ -989,9 +1005,17 @@ export function Component() {
   ])
 
   useEffect(() => {
+    setOpenAiTtsSpeedDraft(getOpenAiTtsSpeedDraft(configQuery.data))
+  }, [configQuery.data?.openaiTtsSpeed])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(providerSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
+      }
+
+      if (openAiTtsSpeedSaveTimeoutRef.current) {
+        clearTimeout(openAiTtsSpeedSaveTimeoutRef.current)
       }
     }
   }, [])
@@ -1025,6 +1049,42 @@ export function Component() {
     }))
     scheduleProviderSave(key, value)
   }, [scheduleProviderSave])
+
+  const clearPendingOpenAiTtsSpeedSave = useCallback(() => {
+    if (openAiTtsSpeedSaveTimeoutRef.current) {
+      clearTimeout(openAiTtsSpeedSaveTimeoutRef.current)
+      openAiTtsSpeedSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  const flushOpenAiTtsSpeedSave = useCallback((value: string) => {
+    clearPendingOpenAiTtsSpeedSave()
+    const parsed = parseOpenAiTtsSpeedDraft(value)
+    if (parsed === null) {
+      setOpenAiTtsSpeedDraft(getOpenAiTtsSpeedDraft(cfgRef.current))
+      return
+    }
+
+    saveConfig({ openaiTtsSpeed: parsed })
+  }, [clearPendingOpenAiTtsSpeedSave, saveConfig])
+
+  const scheduleOpenAiTtsSpeedSave = useCallback((value: string) => {
+    clearPendingOpenAiTtsSpeedSave()
+    const parsed = parseOpenAiTtsSpeedDraft(value)
+    if (parsed === null) {
+      return
+    }
+
+    openAiTtsSpeedSaveTimeoutRef.current = setTimeout(() => {
+      openAiTtsSpeedSaveTimeoutRef.current = null
+      saveConfig({ openaiTtsSpeed: parsed })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingOpenAiTtsSpeedSave, saveConfig])
+
+  const updateOpenAiTtsSpeedDraft = useCallback((value: string) => {
+    setOpenAiTtsSpeedDraft(value)
+    scheduleOpenAiTtsSpeedSave(value)
+  }, [scheduleOpenAiTtsSpeedSave])
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
@@ -1307,12 +1367,12 @@ export function Component() {
                     max="4.0"
                     step="0.25"
                     placeholder="1.0"
-                    defaultValue={configQuery.data.openaiTtsSpeed?.toString()}
+                    value={openAiTtsSpeedDraft}
                     onChange={(e) => {
-                      const speed = parseFloat(e.currentTarget.value)
-                      if (!isNaN(speed) && speed >= 0.25 && speed <= 4.0) {
-                        saveConfig({ openaiTtsSpeed: speed })
-                      }
+                      updateOpenAiTtsSpeedDraft(e.currentTarget.value)
+                    }}
+                    onBlur={(e) => {
+                      flushOpenAiTtsSpeedSave(e.currentTarget.value)
                     }}
                   />
                 </Control>

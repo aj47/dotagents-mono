@@ -26,13 +26,17 @@
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` has no equivalent Supertonic settings editor; mobile only shows a notice to configure Supertonic in desktop settings.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the Supertonic numeric-draft fix and regression test additions.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-providers.tsx` OpenAI `TTS Speed` input and confirmed it still used uncontrolled `defaultValue` plus direct `saveConfig({ openaiTtsSpeed: ... })` from `onChange`.
+- [x] 2026-03-08: Confirmed mobile handles `openaiTtsSpeed` with a controlled slider in `apps/mobile/src/screens/SettingsScreen.tsx`, so this edit is desktop-only while aligning with existing mobile commit-on-complete behavior.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the OpenAI TTS speed draft-save fix and regression test additions.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
 - [ ] Current desktop/mobile logs or reproducible failing tests tied to user-facing regressions once the environment blocker is cleared.
 - [ ] Other desktop settings text inputs that may still save on every keystroke.
 - [ ] Whether adjacent numeric/text settings in `settings-general.tsx` still need draft-first handling or blur-only persistence now that `mcpMaxIterations` is covered.
-- [ ] Whether other provider numeric inputs (for example OpenAI TTS speed) still need the same draft-first handling once the Supertonic flow is covered.
+- [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
 - [x] **Desktop Langfuse settings save-on-every-keystroke bug (directly confirmed in source):**
@@ -59,6 +63,11 @@
   - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` rendered the Supertonic `Speed` and `Quality Steps` inputs as controlled numeric fields bound straight to saved config props (`value={speed}` / `value={steps}`), but each `onChange` only called `onSpeedChange` / `onStepsChange` when the parsed value was already within the final valid range.
   - That meant intermediate keyboard states like `0` while typing `0.95`, or `1` while typing `10`, were rejected immediately and React snapped the field back to the old saved value.
   - As a result, valid targets such as `0.95` speed or `10` quality steps were impossible or extremely brittle to enter from the keyboard even though they are allowed final values.
+- [x] **Desktop OpenAI TTS speed editing/state-sync bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` rendered `TTS Speed` with `defaultValue={configQuery.data.openaiTtsSpeed?.toString()}` and called `saveConfig({ openaiTtsSpeed: speed })` directly from each valid `onChange` event.
+  - That meant valid intermediate prefixes like `3` while typing `3.75` triggered config mutation + invalidation round-trips while the user was still editing, while temporary invalid states like `0` or an empty field had no blur-time reset path.
+  - Because the input was uncontrolled, later saved config updates to `openaiTtsSpeed` would also not reliably resync into the visible field after mount, leaving stale values on screen.
+  - Mobile already treats the same setting as a controlled slider committed on `onSlidingComplete`, so this was another desktop-only broken editing flow rather than an intentional immediate-save UX.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` to use local Langfuse drafts with debounced saves and blur flushes for `langfusePublicKey`, `langfuseSecretKey`, and `langfuseBaseUrl`.
@@ -98,6 +107,13 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` with focused regression coverage for:
   - keeping an intermediate `1` draft locally while the user types a final valid `10` quality-steps value
   - keeping an out-of-range `0` speed prefix locally and resetting invalid blur states back to the saved value
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-providers.tsx` so the OpenAI `TTS Speed` editor uses a local string draft with debounced valid saves and blur-time reset/flush behavior instead of uncontrolled direct-save editing.
+- [x] Kept the OpenAI `TTS Speed` save path on the existing providers-page `saveConfig(...)` merge helper so delayed numeric saves still merge against the latest config snapshot.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` with focused regression coverage for:
+  - keeping an out-of-range OpenAI speed prefix local until a final valid value is entered
+  - debounced valid OpenAI speed saving with latest-config merge behavior
+  - resetting invalid blur states back to the saved speed
+  - resyncing the visible speed draft from later saved config updates
 
 ### Verified
 - [x] Manual source verification: the desktop Langfuse inputs no longer call `saveConfig(...)` directly from `onChange`; they now update local draft state and use debounce/blur persistence.
@@ -111,6 +127,8 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the `Max Iterations` / regression test updates.
 - [x] Manual source verification: the desktop Supertonic `Speed` / `Quality Steps` inputs no longer reject intermediate keyboard edits immediately; they now keep local drafts, debounce valid saves, and reset invalid blur states to the saved config.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the Supertonic numeric draft / regression test updates.
+- [x] Manual source verification: the desktop OpenAI `TTS Speed` input no longer uses uncontrolled `defaultValue` or direct `saveConfig(...)` from `onChange`; it now keeps a controlled local draft, debounces valid saves, resets invalid blur states, and resyncs from saved config updates.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the OpenAI TTS speed draft / regression test updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -118,13 +136,15 @@
 - [x] Additional desktop verification for this Groq STT prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`, and `pnpm --filter @dotagents/desktop exec prettier ...` cannot find `prettier`, which indicates `apps/desktop/node_modules` is absent in this worktree.
 - [x] Targeted automated verification for this `Max Iterations` fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this Supertonic numeric-editing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this OpenAI TTS speed fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
 - [ ] Whether the desktop post-processing prompt editor should eventually gain explicit save/cancel dialog affordances instead of autosaving a local draft.
 - [ ] Whether the Groq STT prompt should eventually move to an explicit save/cancel affordance if the field grows beyond a short guidance prompt in real usage.
-- [ ] Whether other desktop provider numeric editors should adopt the same temporary-draft pattern once the highest-friction Supertonic fields are covered.
+- [ ] Whether any other desktop provider editors still need temporary local-draft handling once the current numeric fixes are covered and the environment blocker is cleared.
+- [ ] Whether the desktop OpenAI `TTS Speed` control should eventually switch all the way to a slider like mobile, rather than keeping a keyboard-editable number field with draft-state protection.
 
 ### Diagnosis / Rationale
 - This is a clear user-facing editing bug: saving on every keystroke makes settings inputs more brittle, creates unnecessary config churn, and can invalidate/refetch state while the user is mid-edit.
@@ -140,6 +160,8 @@
 - Keeping the fix inside the existing `settings-general.tsx` draft-save pattern is the smallest safe change here too: it improves the editing flow without changing how the runtime consumes the persisted numeric limit.
 - The Supertonic fields are the stricter controlled-input version of the same editing bug: because the component rendered the saved number back into the input on every invalid intermediate keystroke, common valid end states could not be typed naturally from the keyboard.
 - Keeping the fix local to `SupertonicProviderSection` is the smallest safe change because the problem is isolated to those two numeric inputs and the parent providers page already owns the latest-config merge behavior for persisted saves.
+- The OpenAI `TTS Speed` field combines two user-facing issues at once: direct-save churn on valid intermediate edits and stale UI risk from using `defaultValue` instead of a controlled input when saved config changes later.
+- Keeping the desktop control as a number input but moving it to the existing draft-save pattern is the smallest safe fix because it preserves the current UI while aligning the save behavior more closely with the mobile slider's commit-on-complete flow.
 
 ### Assumptions
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
@@ -149,6 +171,7 @@
 - Assumption: debouncing the desktop Groq STT prompt is acceptable because it is optional long-form guidance text, downstream transcription reads the saved config only when a request is made, and there is no user value in persisting every intermediate keystroke.
 - Assumption: keeping invalid `Max Iterations` input local until blur, then snapping back to the saved config when still invalid, is acceptable because the field already has an enforced numeric range in the UI and there is no meaningful persisted empty/zero state for this setting.
 - Assumption: handling Supertonic `Speed` / `Quality Steps` with temporary local drafts and blur reset is acceptable because mobile does not expose an equivalent editor, the final persisted values/ranges are unchanged, and the fix only makes already-allowed values possible to enter reliably from the desktop keyboard.
+- Assumption: keeping the desktop OpenAI `TTS Speed` UI as a number field (instead of redesigning it into a slider this pass) is acceptable because the mobile slider already establishes the intended range/commit timing, and this draft-backed fix removes the broken persistence/state-sync behavior without a larger UI change.
 
 ### Next Leads
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.
@@ -161,4 +184,6 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` to execute the new `Max Iterations` coverage alongside the existing Langfuse/transcript/Groq-STT draft tests.
 - After that, inspect remaining immediate-save numeric inputs in desktop settings (for example other bounded number fields) to decide whether they need the same draft-first or blur-commit treatment.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` to execute the new Supertonic numeric-draft coverage alongside the existing provider credential draft tests.
-- After that, inspect other provider numeric editors (especially OpenAI TTS speed) for the same controlled-input intermediate-state bug.
+- After that, inspect whether any other provider editors still combine uncontrolled/defaultValue rendering with direct-save behavior.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` to execute the new OpenAI TTS speed coverage alongside the existing provider credential / Supertonic draft tests.
+- After that, inspect whether any remaining desktop settings editors still use uncontrolled `defaultValue` plus direct-save behavior for user-editable config fields.
