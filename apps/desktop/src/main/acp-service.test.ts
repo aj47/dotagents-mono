@@ -457,6 +457,38 @@ describe("ACP Service", () => {
 
       rmSync(workspaceDir, { recursive: true, force: true })
     })
+
+    it("cancels the active prompt when an in-flight run is aborted", async () => {
+      const { acpService } = await import("./acp-service")
+      await acpService.spawnAgent("test-agent")
+
+      vi.spyOn(acpService as any, "initializeAgent").mockResolvedValue(undefined)
+      vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-timeout")
+      vi.spyOn(acpService as any, "sendRequest").mockImplementation((_: string, method: string) => {
+        if (method === "session/prompt") {
+          return new Promise(() => {})
+        }
+        return Promise.resolve({})
+      })
+
+      const cancelPromptSpy = vi.spyOn(acpService, "cancelPrompt").mockResolvedValue()
+      const controller = new AbortController()
+
+      const resultPromise = acpService.runTask({
+        agentName: "test-agent",
+        input: "hello",
+        timeout: 120000,
+        signal: controller.signal,
+      })
+
+      controller.abort('Delegated agent "test-agent" did not complete within 120s. Try a narrower task or use waitForResult=false.')
+
+      await expect(resultPromise).resolves.toEqual(expect.objectContaining({
+        success: false,
+        error: expect.stringContaining('did not complete within 120s'),
+      }))
+      expect(cancelPromptSpy).toHaveBeenCalledWith("test-agent", "session-timeout")
+    })
   })
 
   describe("getAgentStatus", () => {

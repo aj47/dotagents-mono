@@ -22,6 +22,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772760072745_y04jxkisp | session_1772760071840_tx7z5kq1e | fix implemented (verification blocked) | User asked to tile laptop windows neatly. Langfuse showed repeated successful `execute_command` window-management passes, then a completed `delegate_to_agent` call for `Computer Use` whose output was still just a progress update (`I can see the windows are partially arranged... Let me do a more precise tiling pass now.`). The parent run treated that as successful delegated work, re-delegated again with empty content, and still ended with `output: null`. Root repo issue found: delegation plumbing accepted progress-only sub-agent output as a completed result instead of surfacing it as an incomplete/failed delegation for the parent agent to recover from. |
 | 2026-03-08 | conv_1772854646654_q7kryv45t | session_1772854646655_k5gmpg0wu | fix implemented (verification blocked) | User asked `what's next`; Langfuse showed a parallel batch where `execute_command` completed, but `Tool: github:list_issues` never recorded an end time. The run then closed with `output: null` and no answer. Root repo issue found: MCP server tool execution had connection/test timeouts, but `client.callTool(...)` itself had no timeout, so one hung tool in a parallel batch could stall the entire agent run forever. |
 | 2026-03-08 | conv_1772943712464_m4bk9psxl | session_1772943712469_klewsrmuj | fix implemented | User asked `Execute and monitor`; Langfuse showed multiple `delegate_to_agent` calls to `augustus` where outputs began with long reasoning/progress text like `**Analyzing the codebase** ... I'm considering ...` or `## Actions ... then I'll patch ...`, plus a timeout retry, even when the delegated prompt explicitly said `return only concrete results (no reasoning)`. Root repo issue found: the delegation completion heuristic only rejected short future-tense updates, so long reasoning-style progress dumps with markdown headers still counted as successful delegated results. |
+| 2026-03-08 | conv_1772917123572_de9jk57jd | session_1772917979621_p7x7puoru, session_1772922892781_i3o21grlf | fix implemented (desktop smoke blocked) | User said `continue working on this next step`; Langfuse showed one `delegate_to_agent` result that was only a `## Plan ... I'll first gather ...` handoff, then two later `delegate_to_agent` spans with `endTime: null` before the run ended as `(Agent mode was stopped by emergency kill switch)`. A later follow-up in the same conversation succeeded only after the user restated the intent more concretely. Root repo issue found: synchronous ACP delegation had no fail-fast watchdog, and local ACP `runTask()` ignored per-request abort/timeout signals, so a hung delegated prompt could block the parent run until the user killed agent mode. |
 
 ## Investigations
 
@@ -579,6 +580,48 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ✅ passed (4 tests)
   - Vite still logs the pre-existing `apps/mobile/tsconfig.json` Expo-base parse warning in this worktree, but the targeted desktop ACP test run exits successfully
 
+### 2026-03-08 — Hung synchronous ACP delegation should fail fast instead of waiting for an emergency stop
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1772917123572_de9jk57jd`
+  - first related trace: `session_1772917123573_nzyswekna`
+    - user asked for documentation of bundle swapping / alpha-beta behavior and the run produced a normal markdown write-up
+  - failing follow-up trace: `session_1772917979621_p7x7puoru`
+    - user input: `continue working on this next step`
+    - Langfuse recorded one completed `Tool: delegate_to_agent` output that started `## Plan\nI’ll first gather ...`, followed by two more `Tool: delegate_to_agent` observations whose `endTime` stayed `null`
+    - the parent trace finally ended as `(Agent mode was stopped by emergency kill switch)` instead of completing the requested follow-up in one run
+  - later recovery trace: `session_1772922892781_i3o21grlf`
+    - user had to restate the intent more concretely (`continue. how does swapping bundles work between alpha and beta`) before the conversation produced the needed answer
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` executed sync ACP delegation by awaiting `acpService.runTask({ mode: 'sync' })` directly
+  - there was no parent-side timeout around that await, so a stalled delegated prompt could block the whole agent run indefinitely
+  - `apps/desktop/src/main/acp-service.ts` already exposed `cancelPrompt(...)`, but `runTask(...)` had no `signal` / `timeout` fields on its request type and did not react to caller aborts while waiting for `session/prompt`
+- Concrete root cause:
+  - synchronous ACP delegation had no fail-fast watchdog
+  - even though the ACP service already knew how to send `session/cancel`, the local run path could not be interrupted by the delegator, so a hung sub-agent prompt forced the user to use the emergency kill switch
+- Change made:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - added a 120s watchdog around synchronous ACP delegation
+    - abort the delegated run with a concrete user-facing timeout error instead of waiting forever
+    - pass an `AbortSignal` and timeout metadata down into `acpService.runTask(...)`
+  - `apps/desktop/src/main/acp-service.ts`
+    - extended `ACPRunRequest` with `timeout` and `signal`
+    - when a run is aborted while waiting on `session/prompt`, return a terminal error and send `session/cancel` for the active ACP session as a best-effort cleanup
+  - tests added/updated:
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - added a regression proving stalled synchronous ACP delegation now fails instead of hanging indefinitely
+    - `apps/desktop/src/main/acp-service.test.ts`
+      - added a regression proving aborted runs cancel the active prompt and surface the timeout message
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts src/main/acp-service.test.ts`
+  - ✅ passed (`36 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `git diff --check -- apps/desktop/src/main/acp/acp-router-tools.ts apps/desktop/src/main/acp/acp-router-tools.test.ts apps/desktop/src/main/acp-service.ts apps/desktop/src/main/acp-service.test.ts`
+  - ✅ passed
+  - desktop smoke attempt from `apps/desktop/DEBUGGING.md`:
+    - `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dapp -dt`
+    - blocked during `apps/desktop` `predev` by a pre-existing local worktree issue: missing `tsx/dist/cli.mjs` while running `npx tsx scripts/ensure-rust-binary.ts`
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -593,6 +636,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.
+- Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

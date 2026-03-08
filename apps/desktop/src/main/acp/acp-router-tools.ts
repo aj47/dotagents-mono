@@ -345,6 +345,14 @@ const MAX_MESSAGE_CONTENT_SIZE = 10000;
 /** Maximum total conversation size to send to UI (characters) */
 const MAX_CONVERSATION_SIZE_FOR_UI = 50000;
 
+/** Maximum time to wait for a synchronous delegated ACP run before failing fast. */
+const SYNC_DELEGATION_TIMEOUT_MS = 120_000;
+
+function buildSyncDelegationTimeoutMessage(agentName: string, timeoutMs: number): string {
+  const seconds = Number.isInteger(timeoutMs / 1000) ? timeoutMs / 1000 : (timeoutMs / 1000).toFixed(1);
+  return `Delegated agent "${agentName}" did not complete within ${seconds}s. Try a narrower task or use waitForResult=false.`;
+}
+
 // Initialize background notifier with our delegated runs map
 acpBackgroundNotifier.setDelegatedRunsMap(delegatedRuns);
 
@@ -1125,16 +1133,32 @@ async function executeACPAgentSync(
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
   registerSessionMapping: () => void
 ): Promise<object> {
+  const timeoutMessage = buildSyncDelegationTimeoutMessage(args.agentName, SYNC_DELEGATION_TIMEOUT_MS);
+  const controller = new AbortController();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
   try {
     registerSessionMapping();
 
-    const result = await acpService.runTask({
-      agentName: args.agentName,
-      input: args.task,
-      context: args.context,
-      workingDirectory: args.workingDirectory,
-      mode: 'sync',
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        controller.abort(timeoutMessage);
+        reject(new Error(timeoutMessage));
+      }, SYNC_DELEGATION_TIMEOUT_MS);
     });
+
+    const result = await Promise.race([
+      acpService.runTask({
+        agentName: args.agentName,
+        input: args.task,
+        context: args.context,
+        workingDirectory: args.workingDirectory,
+        mode: 'sync',
+        timeout: SYNC_DELEGATION_TIMEOUT_MS,
+        signal: controller.signal,
+      }),
+      timeoutPromise,
+    ]);
 
     registerSessionMapping();
 
@@ -1153,10 +1177,18 @@ async function executeACPAgentSync(
       return createFailedResult(subAgentState, result.error || 'Unknown error', subAgentState.conversation);
     }
   } catch (error) {
+    if (error instanceof Error && error.message === timeoutMessage) {
+      return createFailedResult(subAgentState, timeoutMessage, subAgentState.conversation);
+    }
+
     // Note: Don't cleanup delegation mappings here - the sessionUpdate handler
     // will clean up when isComplete arrives. Early cleanup can cause late
     // session/update notifications to be dropped/misrouted.
     throw error;
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
   }
 }
 

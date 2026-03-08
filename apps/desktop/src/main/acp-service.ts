@@ -107,6 +107,10 @@ export interface ACPRunRequest {
   workingDirectory?: string
   // Force session/new even if a session already exists
   forceNewSession?: boolean
+  // Optional per-request timeout in milliseconds
+  timeout?: number
+  // Optional abort signal for cancelling in-flight runs
+  signal?: AbortSignal
   mode?: "sync" | "async" | "stream"
 }
 
@@ -125,6 +129,23 @@ export interface ACPRunResponse {
   success: boolean
   result?: string
   error?: string
+}
+
+function getAcpRunAbortMessage(request: Pick<ACPRunRequest, "agentName" | "timeout" | "signal">): string {
+  const reason = request.signal?.reason
+  if (reason instanceof Error && reason.message) {
+    return reason.message
+  }
+  if (typeof reason === "string" && reason.trim()) {
+    return reason
+  }
+  if (typeof request.timeout === "number" && Number.isFinite(request.timeout) && request.timeout > 0) {
+    const seconds = Number.isInteger(request.timeout / 1000)
+      ? request.timeout / 1000
+      : (request.timeout / 1000).toFixed(1)
+    return `Agent "${request.agentName}" did not complete within ${seconds}s`
+  }
+  return `Agent "${request.agentName}" run was cancelled`
 }
 
 // Content block from ACP session/update notifications
@@ -1845,7 +1866,14 @@ class ACPService extends EventEmitter {
    * 4. Receive session/update notifications for results
    */
   async runTask(request: ACPRunRequest): Promise<ACPRunResponse> {
-    const { agentName, input, context, workingDirectory, forceNewSession } = request
+    const { agentName, input, context, workingDirectory, forceNewSession, signal } = request
+
+    if (signal?.aborted) {
+      return {
+        success: false,
+        error: getAcpRunAbortMessage(request),
+      }
+    }
 
     // Ensure agent is running and reconcile any updated working-directory config.
     let instance = this.agents.get(agentName)
@@ -1880,6 +1908,16 @@ class ACPService extends EventEmitter {
       // Step 2: Create session if needed
       const sessionId = await this.createSession(agentName)
 
+      if (signal?.aborted) {
+        if (sessionId) {
+          void this.cancelPrompt(agentName, sessionId).catch(() => {})
+        }
+        return {
+          success: false,
+          error: getAcpRunAbortMessage(request),
+        }
+      }
+
       // Format the input text
       const inputText = typeof input === "string" ? input :
         input.messages?.map(m => m.content).join("\n") || JSON.stringify(input)
@@ -1903,12 +1941,49 @@ class ACPService extends EventEmitter {
         promptParams.sessionId = sessionId
       }
 
-      const promptResult = await this.sendRequest(agentName, "session/prompt", promptParams) as {
+      const promptResult = await new Promise<{
         stopReason?: string
         error?: { message?: string }
         content?: ACPContentBlock[]
         message?: { content?: ACPContentBlock[] }  // Some agents wrap content in message
-      }
+      }>((resolve, reject) => {
+        const abortMessage = getAcpRunAbortMessage(request)
+        const onAbort = () => {
+          if (sessionId) {
+            void this.cancelPrompt(agentName, sessionId).catch(() => {})
+          }
+          reject(new Error(abortMessage))
+        }
+
+        if (signal?.aborted) {
+          onAbort()
+          return
+        }
+
+        if (signal) {
+          signal.addEventListener("abort", onAbort, { once: true })
+        }
+
+        this.sendRequest(agentName, "session/prompt", promptParams).then(
+          (result) => {
+            if (signal) {
+              signal.removeEventListener("abort", onAbort)
+            }
+            resolve(result as {
+              stopReason?: string
+              error?: { message?: string }
+              content?: ACPContentBlock[]
+              message?: { content?: ACPContentBlock[] }
+            })
+          },
+          (error) => {
+            if (signal) {
+              signal.removeEventListener("abort", onAbort)
+            }
+            reject(error)
+          },
+        )
+      })
 
       if (promptResult?.error) {
         return {

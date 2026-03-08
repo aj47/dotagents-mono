@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { acpService } from '../acp-service'
 
 const { mockRunInternalSubSession } = vi.hoisted(() => ({
   mockRunInternalSubSession: vi.fn(),
@@ -12,9 +13,21 @@ vi.mock('./acp-background-notifier', () => ({
   acpBackgroundNotifier: { setDelegatedRunsMap: vi.fn(), startPolling: vi.fn() },
 }))
 
-vi.mock('../config', () => ({ configStore: { get: vi.fn(() => ({})) } }))
+vi.mock('../config', () => ({
+  configStore: {
+    get: vi.fn(() => ({
+      acpAgents: [
+        {
+          name: 'test-agent',
+          enabled: true,
+          connection: { type: 'stdio' },
+        },
+      ],
+    })),
+  },
+}))
 vi.mock('../acp-service', () => ({
-  acpService: { getAgentSessionId: vi.fn(), runTask: vi.fn(), on: vi.fn() },
+  acpService: { getAgentSessionId: vi.fn(), runTask: vi.fn(), spawnAgent: vi.fn(() => Promise.resolve({})), on: vi.fn() },
 }))
 vi.mock('../emit-agent-progress', () => ({ emitAgentProgress: vi.fn() }))
 vi.mock('../state', () => ({ agentSessionStateManager: { getSessionRunId: vi.fn(() => 7) } }))
@@ -179,5 +192,27 @@ describe('handleDelegateToAgent', () => {
       status: 'completed',
       output: expect.stringContaining('Updated `apps/desktop/src/main/acp/acp-router-tools.ts`'),
     })
+  })
+
+  it('fails stalled synchronous ACP delegations instead of waiting indefinitely', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(acpService.runTask).mockImplementation(() => new Promise(() => {}))
+
+      const resultPromise = handleDelegateToAgent(
+        { agentName: 'test-agent', task: 'Finish the next step' },
+        'parent-session-5',
+      )
+
+      await vi.advanceTimersByTimeAsync(120_000)
+
+      await expect(resultPromise).resolves.toMatchObject({
+        success: false,
+        status: 'failed',
+        error: expect.stringContaining('did not complete within 120s'),
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
