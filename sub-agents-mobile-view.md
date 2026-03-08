@@ -4982,3 +4982,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that tapping a response-history speak / stop control works on the first tap while the composer keyboard is open.
   - Capture screenshot-backed evidence for the expanded response-history panel both before and after dragging to dismiss the keyboard.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this keyboard-interaction tweak without fresh evidence.
+
+## Iteration 113 - Warn when the configured ACP main agent is disabled or unavailable
+
+- Date: 2026-03-08
+- Summary: Clarified blocked ACP main-agent state on mobile by surfacing disabled/unavailable status in the collapsed `Agent Settings` summary and adding an inline warning notice before the selector chips.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent queue/history work without fresh evidence.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/lib/mainAgentOptions.ts`, and the focused mobile agent-settings test file to pick one still-local state-clarity issue outside the recently touched queue/history surfaces.
+  - Confirmed from desktop selection logic (`apps/desktop/src/main/main-agent-selection.ts`) that ACP main-agent resolution only accepts enabled ACP/Stdio agents, so a disabled configured agent is effectively unavailable at runtime.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed settings-state review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `Settings > Agent Settings` already exposed ACP mode, the selected main-agent chips, and a neutral no-agent notice when no enabled command-based agents existed.
+  - The collapsed section summary still rendered `ACP • <agent name>` even when the configured main agent no longer appeared in the enabled ACP/Stdio options.
+  - If the configured ACP main agent had been disabled (or otherwise became unavailable), mobile provided no inline warning above the selector chips, so the blocked configuration could still read like a healthy one at a glance.
+- Issue identified:
+  - Mobile hid a high-consequence ACP configuration problem: a disabled or unavailable configured main agent looked too similar to a valid selection, weakening state clarity and user control in the exact place users manage main-agent routing.
+- Decision and rationale:
+  - Keep the existing `Agent Settings` layout, chip selector, helper copy, and `Settings > Agents` row badges unchanged.
+  - Do not broaden this into auto-repair or more row-level warning chrome without live validation.
+  - Make the smallest local fix instead: derive the configured main agent's availability from current mobile settings data, reflect blocked states in the collapsed summary, and add a compact inline warning notice that distinguishes `disabled` from more general `unavailable` cases.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - derive `selectedMainAgentProfile`, `selectedMainAgentLabel`, and `selectedMainAgentAvailabilityState`,
+    - build a mode-aware `agentSettingsMainAgentNotice` for disabled, unavailable, and no-enabled-agent cases,
+    - surface `disabled` / `unavailable` directly in the collapsed `Agent Settings` summary,
+    - show an inline warning-styled notice above the ACP selector chips when the configured main agent is blocked.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new availability-state summary and warning-notice behavior.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed mobile should mirror desktop/runtime semantics closely enough that a disabled configured ACP main agent should be treated as blocked, not merely hidden from the selector.
+  - Chose not to add more warning text inside `Settings > Agents` rows because the collapsed summary plus inline notice already improves state clarity with less layout risk.
+  - This strengthens source-backed transparency, but it still needs live confirmation that the warning notice feels noticeable without overpowering the selector chips on a narrow screen.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Settings > Agent Settings` and `Settings > Agents` still need screenshot-backed review overall after several recent state-clarity tweaks landed without fresh Expo confirmation in this worktree.
+  - A live conflicting-state pass is still needed where the current ACP main agent is disabled while another enabled option exists, to confirm the new warning notice plus existing row badges feel complementary instead of repetitive.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `ACP • <agent> disabled` / `unavailable` reads clearly in the collapsed `Agent Settings` header.
+  - Capture screenshot-backed evidence for both a disabled-current-main-agent case and a stale-unavailable-main-agent case to confirm the warning notice stays balanced above the selector chips on a narrow screen.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this blocked-main-agent warning without fresh evidence.

@@ -286,16 +286,68 @@ export default function SettingsScreen({ navigation }: any) {
     () => normalizeAgentLookupName(remoteSettings?.mainAgentMode === 'acp' ? remoteSettings.mainAgentName : undefined),
     [remoteSettings?.mainAgentMode, remoteSettings?.mainAgentName]
   );
+  const selectedMainAgentProfile = useMemo(
+    () => agentProfiles.find((profile) => normalizeAgentLookupName(profile.name) === selectedMainAgentLookupName) || null,
+    [agentProfiles, selectedMainAgentLookupName]
+  );
+  const selectedMainAgentLabel = useMemo(() => {
+    if (selectedAcpMainAgentOption?.displayName) return selectedAcpMainAgentOption.displayName;
+    if (selectedMainAgentProfile?.displayName) return selectedMainAgentProfile.displayName;
+    return remoteSettings?.mainAgentName?.trim() || '';
+  }, [remoteSettings?.mainAgentName, selectedAcpMainAgentOption?.displayName, selectedMainAgentProfile?.displayName]);
+  const selectedMainAgentAvailabilityState = useMemo((): 'enabled' | 'disabled' | 'unavailable' | 'none' => {
+    if (remoteSettings?.mainAgentMode !== 'acp') return 'none';
+    if (selectedAcpMainAgentOption) return 'enabled';
+    if (selectedMainAgentProfile && !selectedMainAgentProfile.enabled) return 'disabled';
+    return selectedMainAgentLabel ? 'unavailable' : 'none';
+  }, [remoteSettings?.mainAgentMode, selectedAcpMainAgentOption, selectedMainAgentProfile, selectedMainAgentLabel]);
+  const agentSettingsMainAgentNotice = useMemo(() => {
+    if (remoteSettings?.mainAgentMode !== 'acp') return null;
+
+    if (availableAcpMainAgents.length === 0) {
+      if (selectedMainAgentAvailabilityState === 'disabled' && selectedMainAgentLabel) {
+        return `Current main agent "${selectedMainAgentLabel}" is disabled, and no other enabled command-based agents are available. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.`;
+      }
+
+      if (selectedMainAgentLabel) {
+        return `Current main agent "${selectedMainAgentLabel}" is unavailable, and no enabled command-based agents are available. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.`;
+      }
+
+      return 'No enabled command-based agents are available. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.';
+    }
+
+    if (selectedMainAgentAvailabilityState === 'disabled' && selectedMainAgentLabel) {
+      return `Current main agent "${selectedMainAgentLabel}" is disabled. Enable it in Settings → Agents or choose another enabled ACP or Stdio agent below.`;
+    }
+
+    if (selectedMainAgentAvailabilityState === 'unavailable' && selectedMainAgentLabel) {
+      return `Current main agent "${selectedMainAgentLabel}" is unavailable. Choose an enabled ACP or Stdio agent below, or switch Main Agent Mode back to API.`;
+    }
+
+    return null;
+  }, [
+    remoteSettings?.mainAgentMode,
+    availableAcpMainAgents.length,
+    selectedMainAgentAvailabilityState,
+    selectedMainAgentLabel,
+  ]);
   const agentSettingsSectionSummary = useMemo(() => {
     if (!remoteSettings) return null;
 
     if (remoteSettings.mainAgentMode === 'acp') {
-      const selectedAgentName = selectedAcpMainAgentOption?.displayName || remoteSettings.mainAgentName;
-      return selectedAgentName ? `ACP • ${selectedAgentName}` : 'ACP • No enabled agent';
+      if (selectedMainAgentAvailabilityState === 'disabled' && selectedMainAgentLabel) {
+        return `ACP • ${selectedMainAgentLabel} disabled`;
+      }
+
+      if (selectedMainAgentAvailabilityState === 'unavailable' && selectedMainAgentLabel) {
+        return `ACP • ${selectedMainAgentLabel} unavailable`;
+      }
+
+      return selectedMainAgentLabel ? `ACP • ${selectedMainAgentLabel}` : 'ACP • No enabled agent';
     }
 
     return 'API • Direct model';
-  }, [remoteSettings, selectedAcpMainAgentOption]);
+  }, [remoteSettings, selectedMainAgentAvailabilityState, selectedMainAgentLabel]);
   const agentLoopsSectionSummary = useMemo(() => {
     if (isLoadingLoops) return 'Loading loops…';
     if (loops.length === 0) return 'No loops';
@@ -1889,6 +1941,27 @@ export default function SettingsScreen({ navigation }: any) {
                 {remoteSettings.mainAgentMode === 'acp' && (
                   <>
                     <Text style={styles.label}>Main Agent</Text>
+                    {agentSettingsMainAgentNotice && (
+                      <View
+                        style={[
+                          styles.agentSettingsNoticeContainer,
+                          (selectedMainAgentAvailabilityState === 'disabled'
+                            || selectedMainAgentAvailabilityState === 'unavailable')
+                            && styles.agentSettingsWarningNoticeContainer,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.agentSettingsNoticeText,
+                            (selectedMainAgentAvailabilityState === 'disabled'
+                              || selectedMainAgentAvailabilityState === 'unavailable')
+                              && styles.agentSettingsWarningNoticeText,
+                          ]}
+                        >
+                          {agentSettingsMainAgentNotice}
+                        </Text>
+                      </View>
+                    )}
                     {availableAcpMainAgents.length > 0 ? (
                       <View style={styles.providerSelector}>
                         {availableAcpMainAgents.map((agent) => (
@@ -1917,13 +1990,7 @@ export default function SettingsScreen({ navigation }: any) {
                           </Pressable>
                         ))}
                       </View>
-                    ) : (
-                      <View style={styles.agentSettingsNoticeContainer}>
-                        <Text style={styles.agentSettingsNoticeText}>
-                          No enabled command-based agents are available. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.
-                        </Text>
-                      </View>
-                    )}
+                    ) : null}
                     {availableAcpMainAgents.length > 0 && (
                       <Text style={styles.helperText}>
                         Select which enabled ACP or Stdio agent handles requests
@@ -3243,6 +3310,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 13,
       lineHeight: 18,
       color: theme.colors.foreground,
+    },
+    agentSettingsWarningNoticeContainer: {
+      borderColor: '#f59e0b',
+      backgroundColor: '#f59e0b14',
+    },
+    agentSettingsWarningNoticeText: {
+      color: '#b45309',
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,

@@ -36,9 +36,25 @@ test('turns the ACP no-agent state into explicit, mode-aware guidance', () => {
 
 test('keeps Agent Settings mode context visible in the collapsible header on mobile', () => {
   assert.match(settingsSource, /const selectedAcpMainAgentOption = useMemo\([\s\S]*?availableAcpMainAgents\.find\(\(agent\) => agent\.name === remoteSettings\?\.mainAgentName\)/);
-  assert.match(settingsSource, /return selectedAgentName \? `ACP • \$\{selectedAgentName\}` : 'ACP • No enabled agent';/);
+  assert.match(settingsSource, /if \(selectedMainAgentAvailabilityState === 'disabled' && selectedMainAgentLabel\) \{[\s\S]*?return `ACP • \$\{selectedMainAgentLabel\} disabled`;/);
+  assert.match(settingsSource, /if \(selectedMainAgentAvailabilityState === 'unavailable' && selectedMainAgentLabel\) \{[\s\S]*?return `ACP • \$\{selectedMainAgentLabel\} unavailable`;/);
+  assert.match(settingsSource, /return selectedMainAgentLabel \? `ACP • \$\{selectedMainAgentLabel\}` : 'ACP • No enabled agent';/);
   assert.match(settingsSource, /return 'API • Direct model';/);
   assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="agentSettings"[\s\S]*?summary=\{agentSettingsSectionSummary\}/);
+});
+
+test('warns when the configured ACP main agent is disabled or unavailable on mobile', () => {
+  assert.match(settingsSource, /const selectedMainAgentProfile = useMemo\([\s\S]*?normalizeAgentLookupName\(profile\.name\) === selectedMainAgentLookupName/);
+  assert.match(settingsSource, /const selectedMainAgentAvailabilityState = useMemo\(\(\): 'enabled' \| 'disabled' \| 'unavailable' \| 'none' => \{/);
+  assert.match(settingsSource, /if \(selectedMainAgentProfile && !selectedMainAgentProfile\.enabled\) return 'disabled';/);
+  assert.match(settingsSource, /return selectedMainAgentLabel \? 'unavailable' : 'none';/);
+  assert.match(settingsSource, /Current main agent "\$\{selectedMainAgentLabel\}" is disabled\. Enable it in Settings → Agents or choose another enabled ACP or Stdio agent below\./);
+  assert.match(settingsSource, /Current main agent "\$\{selectedMainAgentLabel\}" is unavailable\. Choose an enabled ACP or Stdio agent below, or switch Main Agent Mode back to API\./);
+  assert.match(settingsSource, /Current main agent "\$\{selectedMainAgentLabel\}" is disabled, and no other enabled command-based agents are available\./);
+  assert.match(settingsSource, /styles\.agentSettingsWarningNoticeContainer/);
+  assert.match(settingsSource, /styles\.agentSettingsWarningNoticeText/);
+  assert.match(settingsSource, /agentSettingsWarningNoticeContainer:\s*\{[\s\S]*?borderColor:\s*'#f59e0b',[\s\S]*?backgroundColor:\s*'#f59e0b14'/);
+  assert.match(settingsSource, /agentSettingsWarningNoticeText:\s*\{[\s\S]*?color:\s*'#b45309'/);
 });
 
 test('renders collapsible section summaries as a truncation-safe secondary line with explicit disclosure semantics', () => {
