@@ -39,6 +39,60 @@ const defaultFormData: LoopFormData = {
   profileId: '',
 };
 
+function formatLoopIntervalLabel(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 1) return 'Every minute';
+  if (minutes === 1) return 'Every minute';
+  if (minutes === 60) return 'Hourly';
+  if (minutes === 1440) return 'Daily';
+  if (minutes === 10080) return 'Weekly';
+  if (minutes < 60) return `Every ${minutes} min`;
+
+  if (minutes < 1440 && minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `Every ${hours} hr`;
+  }
+
+  if (minutes < 10080 && minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return `Every ${days} day${days === 1 ? '' : 's'}`;
+  }
+
+  if (minutes % 10080 === 0) {
+    const weeks = minutes / 10080;
+    return `Every ${weeks} week${weeks === 1 ? '' : 's'}`;
+  }
+
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const remainingMinutes = minutes % 60;
+  const parts = [
+    days > 0 ? `${days}d` : null,
+    hours > 0 ? `${hours}h` : null,
+    remainingMinutes > 0 ? `${remainingMinutes}m` : null,
+  ].filter(Boolean);
+
+  return `Every ${parts.join(' ')}`;
+}
+
+function getLoopIntervalPreview(intervalInput: string): { text: string; isInvalid: boolean } {
+  const trimmed = intervalInput.trim();
+
+  if (!trimmed) {
+    return { text: 'Examples: 60 = Hourly • 1440 = Daily', isInvalid: false };
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    return { text: 'Use whole minutes, like 60 for Hourly or 1440 for Daily.', isInvalid: true };
+  }
+
+  const minutes = Number(trimmed);
+  if (!Number.isInteger(minutes) || minutes < 1) {
+    return { text: 'Use a positive whole number of minutes.', isInvalid: true };
+  }
+
+  return { text: `Schedule: ${formatLoopIntervalLabel(minutes)}`, isInvalid: false };
+}
+
 export default function LoopEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -222,6 +276,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
 
   const isSaveDisabled = isSaving || !settingsClient;
+  const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
 
   if (isLoading) {
     return (
@@ -271,6 +326,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
         placeholderTextColor={theme.colors.mutedForeground}
         keyboardType="numeric"
       />
+      <Text style={[styles.intervalHelperText, intervalPreview.isInvalid && styles.intervalHelperTextWarning]}>
+        {intervalPreview.text}
+      </Text>
 
       <View style={styles.switchRow}>
         <View style={styles.switchLabelGroup}>
@@ -366,6 +424,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
+    intervalHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs, lineHeight: 17 },
+    intervalHelperTextWarning: { color: theme.colors.destructive },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },

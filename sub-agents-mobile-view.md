@@ -846,3 +846,46 @@
   - Restore the mobile install in this worktree, then visually confirm the new inline `Read only` cues in `AgentEditScreen` on a narrow viewport.
   - After live validation returns, decide whether built-in read-only fields also need extra assistive-tech hints or whether the next highest-friction issue has shifted back to settings/header surfaces.
   - Avoid another edit-flow-only change until a fresh live pass re-establishes where the current mobile friction is highest.
+
+### 2026-03-08 — Iteration 20: preview loop cadence directly inside the interval field
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` interval input
+  - `SettingsScreen` loop cadence formatter for wording consistency
+  - `apps/mobile/package.json` mobile workflow and current install state
+- Live inspection / workflow status:
+  - Reconfirmed the worktree is still missing the mobile install before changing code:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo and the mobile dependencies are still unavailable in this worktree, no fresh screenshot-backed Expo Web inspection was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` still exposed only a raw `Interval (minutes)` input with a `60` placeholder.
+  - `Settings > Agent Loops` already formats the same schedules as `Hourly`, `Daily`, `Weekly`, and `Every 30 min`, so the create/edit flow was still forcing a mental minutes-to-cadence conversion on mobile.
+- Issue selected:
+  - The main loop scheduling field had weaker state clarity than the rest of the sub-agent mobile flow because users had to translate raw minute counts without any inline confirmation.
+- Decision:
+  - Keep the current form layout and the raw minute input so saving behavior stays unchanged.
+  - Do not add preset chips or redesign the edit form while live validation is blocked.
+  - Make the smallest local fix in `LoopEditScreen`: show a human-readable cadence preview below the input and surface lightweight invalid-input guidance before save.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - add a local `formatLoopIntervalLabel(minutes)` helper aligned with the existing settings wording,
+    - add `getLoopIntervalPreview(intervalInput)` for empty, invalid, and valid interval states,
+    - render inline helper text below the interval input such as `Schedule: Hourly` / `Schedule: Daily`,
+    - use a warning color for invalid interval guidance without changing save-time validation behavior.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new cadence preview wiring and warning styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by the missing mobile install / unresolved Expo + React Native dependencies / missing `expo/tsconfig.base`
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new interval preview still needs real narrow-screen confirmation once Expo Web or a simulator is available again.
+  - If live validation shows interval entry is still slow, preset cadence chips may be worth considering later, but that should wait for evidence.
+  - The broader edit-flow hierarchy should still be driven by a fresh live pass instead of continuing source-only tweaks too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then visually confirm the new interval preview and warning copy in `LoopEditScreen` on a narrow viewport.
+  - After live validation returns, decide whether the loop interval field still needs quick-pick presets or whether the next highest-friction issue has shifted elsewhere.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.

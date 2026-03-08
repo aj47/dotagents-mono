@@ -52,6 +52,20 @@ test('LoopEditScreen keeps long profile chips stable on narrow screens', () => {
   assert.match(loopEditSource, /numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{profile\.displayName\}/);
 });
 
+test('LoopEditScreen previews interval minutes with readable cadence labels', () => {
+  assert.match(loopEditSource, /function formatLoopIntervalLabel\(minutes: number\): string/);
+  assert.match(loopEditSource, /minutes === 60\) return 'Hourly'/);
+  assert.match(loopEditSource, /minutes === 1440\) return 'Daily'/);
+  assert.match(loopEditSource, /function getLoopIntervalPreview\(intervalInput: string\): \{ text: string; isInvalid: boolean \}/);
+  assert.match(loopEditSource, /return \{ text: 'Examples: 60 = Hourly • 1440 = Daily', isInvalid: false \};/);
+  assert.match(loopEditSource, /return \{ text: 'Use whole minutes, like 60 for Hourly or 1440 for Daily\.', isInvalid: true \};/);
+  assert.match(loopEditSource, /return \{ text: `Schedule: \$\{formatLoopIntervalLabel\(minutes\)\}`, isInvalid: false \};/);
+  assert.match(loopEditSource, /const intervalPreview = getLoopIntervalPreview\(formData\.intervalMinutes\);/);
+  assert.match(loopEditSource, /<Text style=\{\[styles\.intervalHelperText, intervalPreview\.isInvalid && styles\.intervalHelperTextWarning\]\}>[\s\S]*?\{intervalPreview\.text\}[\s\S]*?<\/Text>/);
+  assert.match(loopEditSource, /intervalHelperText:\s*\{[\s\S]*?lineHeight:\s*17/);
+  assert.match(loopEditSource, /intervalHelperTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
+});
+
 test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', () => {
   assert.match(agentEditSource, /const switchTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(agentEditSource, /Platform\.OS === 'web'[\s\S]*?styles\.switchTrack/);
