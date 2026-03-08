@@ -1,5 +1,51 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 73: Desktop remote-server Cloudflare prerequisite/error states read like loose footnotes and did not wrap safely under setup pressure
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` (`Settings → Remote Server` → `Cloudflare Tunnel` install/login/error states and named-tunnel helper links)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched root sessions loading/empty states, providers shell, WhatsApp connection card, General accordion chrome, sidebar sessions, and recent `agent-progress` follow-ups.
+  - Chunk 38 explicitly left the Cloudflare install/login/status cards and named-tunnel helper links as the strongest fresh follow-up inside `settings-remote-server.tsx`.
+  - I attempted live product inspection first, but the available browser-served renderer still fails before mount without the Electron preload bridge, so the right non-thrashy move was a small source-driven follow-up on an unreviewed remote-server setup state.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `visible-ui.md`, and `apps/desktop/src/renderer/src/AGENTS.md` before choosing the next area
+  - verified the live desktop target at `http://localhost:5174/` is reachable, then attempted fresh browser inspection on `/` and `/settings/capabilities`
+  - captured blocker evidence from browser automation: blank screenshots at `/tmp/root-sessions-normal.png`, `/tmp/root-sessions-narrow.png`, and `tmp/ui-audit/settings-capabilities-blank-1280x900.png`; the renderer stayed unmounted because `window.electron` / `ipcRenderer` were unavailable in that browser context
+  - pivoted to direct source inspection of `settings-remote-server.tsx`, focusing specifically on the still-unreviewed Cloudflare install/login/error states and named-tunnel helper links left by Chunk 38
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` is the client-side pairing form, not the desktop host/tunnel configuration surface, so this pass remained desktop-only
+
+#### Findings
+
+- Before the fix, the desktop Cloudflare setup states had one concrete UI issue with clear user impact:
+  - the `cloudflared is not installed`, `authenticate with Cloudflare first`, and tunnel error states were rendered as loose inline text blocks with detached buttons rather than deliberate setup-blocking status cards
+  - the login state embedded the required terminal command inside flowing sentence copy, and the error state echoed raw tunnel errors with no explicit wrap-safe container or visual emphasis beyond plain red text
+  - the named-tunnel `Available tunnels` helper links also had no explicit long-token wrap treatment
+  - practical impact: when Cloudflare setup is blocked, the most important prerequisite/error messages read like secondary footnotes instead of the main thing to resolve, and long commands, tunnel names, or error/path strings are easier to miss or push awkwardly under narrow settings widths or larger text
+
+#### Changes made
+
+- Hardened only the Cloudflare prerequisite/error treatment in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` with the smallest effective visual/state fix:
+  - converted the `cloudflared` install and Cloudflare login prerequisite notices into subtle bordered warning cards with an alert icon, stronger hierarchy, and intentionally stacked CTAs
+  - made the prerequisite action buttons full-width on the narrowest widths and return to auto width from `sm` upward so the setup cards read like deliberate action blocks instead of loose inline rows
+  - promoted the `cloudflared tunnel login` command into its own wrap-safe mono pill instead of burying it mid-sentence
+  - converted the tunnel error into a destructive alert card with `role="alert"` and wrap-safe error copy
+  - made the named-tunnel `Available tunnels` helper copy and buttons break safely for longer names/IDs
+- Extended `apps/desktop/src/renderer/src/pages/settings-remote-server.layout.test.ts` with focused source-contract coverage for the new Cloudflare prerequisite/error card treatment and wrap-safe helper-link behavior
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new Cloudflare notice/error card constants, wrap-safe login command pill, wrap-safe named-tunnel helper link treatment, `role="alert"`, and focused regression test coverage ✅
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-remote-server.tsx apps/desktop/src/renderer/src/pages/settings-remote-server.layout.test.ts` ✅
+
+#### Notes
+
+- Important blocker/rationale: practical live inspection was attempted first, but the reachable browser-served renderer still failed before mount because the Electron preload bridge was missing (`window.electron.ipcRenderer` unavailable), leaving blank screenshots instead of a reviewable settings surface. I therefore treated this chunk as source-driven with explicit blocker evidence instead of thrashing on runtime setup.
+- Mobile cross-check: no matching mobile code change was needed because the mobile app exposes connection-consumer settings, not this desktop Cloudflare host/tunnel configuration UI.
+- Tradeoff/rationale: the prerequisite/error states now spend a little more vertical space, but that is a safer tradeoff than presenting setup-blocking messages as easy-to-miss inline footnotes.
+- Best next UI audit chunk after this one: once a real Electron renderer from this checkout is available, visually re-check `Settings → Remote Server` with `cloudflared` missing, logged out, and a real tunnel error to confirm the new card treatment; otherwise move to another fresh desktop/mobile surface rather than revisiting recent remote-server fixes immediately.
+
 ### 2026-03-08 — Chunk 72: Desktop root pending continuation loading tile looked like an anonymous placeholder instead of a real status state
 
 - Area selected:

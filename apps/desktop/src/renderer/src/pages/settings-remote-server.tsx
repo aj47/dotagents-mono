@@ -16,7 +16,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
-import { EyeOff, ExternalLink } from "lucide-react"
+import { AlertTriangle, EyeOff, ExternalLink } from "lucide-react"
 
 /**
  * Mask a URL for streamer mode - masks all alphanumeric content (including the protocol)
@@ -57,6 +57,18 @@ function formatHostForHttpUrl(host: string): string {
   }
   return normalizedHost
 }
+
+const CLOUDFLARE_NOTICE_CARD_CLASS_NAME =
+  "mx-3 my-2 flex min-w-0 flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-left"
+
+const CLOUDFLARE_NOTICE_MESSAGE_CLASS_NAME =
+  "flex min-w-0 items-start gap-2 text-sm text-amber-700 dark:text-amber-300"
+
+const CLOUDFLARE_NOTICE_ACTIONS_CLASS_NAME =
+  "flex w-full flex-wrap items-center gap-2"
+
+const CLOUDFLARE_ERROR_CARD_CLASS_NAME =
+  "mx-3 my-2 flex min-w-0 flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-left"
 
 interface RemoteServerSettingsGroupsProps {
   collapsible?: boolean
@@ -462,17 +474,26 @@ export function RemoteServerSettingsGroups({
             )}
           >
             {!isCloudflaredInstalled ? (
-              <div className="px-3 py-2">
-                <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-                  cloudflared is not installed. Please install it to use Cloudflare Tunnel.
+              <div className={CLOUDFLARE_NOTICE_CARD_CLASS_NAME}>
+                <div className={CLOUDFLARE_NOTICE_MESSAGE_CLASS_NAME}>
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-medium">cloudflared is not installed.</p>
+                    <p className="break-words [overflow-wrap:anywhere]">
+                      Install it to use Cloudflare Tunnel.
+                    </p>
+                  </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open("https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/", "_blank")}
-                >
-                  Download cloudflared
-                </Button>
+                <div className={CLOUDFLARE_NOTICE_ACTIONS_CLASS_NAME}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => window.open("https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/", "_blank")}
+                  >
+                    Download cloudflared
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -510,18 +531,29 @@ export function RemoteServerSettingsGroups({
                 {tunnelMode === "named" && (
                   <>
                     {!isCloudflaredLoggedIn ? (
-                      <div className="px-3 py-2">
-                        <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-                          You need to authenticate with Cloudflare first. Run <code className="bg-muted px-1 rounded">cloudflared tunnel login</code> in your terminal.
+                      <div className={CLOUDFLARE_NOTICE_CARD_CLASS_NAME}>
+                        <div className={CLOUDFLARE_NOTICE_MESSAGE_CLASS_NAME}>
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                          <div className="min-w-0 space-y-1">
+                            <p className="break-words [overflow-wrap:anywhere]">
+                              You need to authenticate with Cloudflare first.
+                            </p>
+                            <code className="inline-block max-w-full rounded bg-muted px-1 py-0.5 font-mono text-xs text-amber-800 dark:text-amber-200 break-all [overflow-wrap:anywhere]">
+                              cloudflared tunnel login
+                            </code>
+                          </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open("https://developers.cloudflare.com/load-balancing/private-network/public-to-tunnel/#1-configure-a-cloudflare-tunnel-with-an-assigned-virtual-network", "_blank")}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                          Setup Guide
-                        </Button>
+                        <div className={CLOUDFLARE_NOTICE_ACTIONS_CLASS_NAME}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={() => window.open("https://developers.cloudflare.com/load-balancing/private-network/public-to-tunnel/#1-configure-a-cloudflare-tunnel-with-an-assigned-virtual-network", "_blank")}
+                          >
+                            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                            Setup Guide
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -535,12 +567,12 @@ export function RemoteServerSettingsGroups({
                               className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                             />
                             {tunnelList.length > 0 && (
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                                 Available tunnels: {tunnelList.map((t) => (
                                   <button
                                     key={t.id}
                                     type="button"
-                                    className="underline cursor-pointer ml-1 hover:text-foreground"
+                                    className="ml-1 cursor-pointer break-all underline [overflow-wrap:anywhere] hover:text-foreground"
                                     onClick={() => saveConfig({
                                       cloudflareTunnelId: t.id,
                                       cloudflareTunnelName: t.name,
@@ -736,9 +768,15 @@ export function RemoteServerSettingsGroups({
                 )}
 
                 {tunnelStatus?.error && (
-                  <div className="px-3 py-2">
-                    <div className="text-sm text-red-600 dark:text-red-400">
-                      Error: {tunnelStatus.error}
+                  <div className={CLOUDFLARE_ERROR_CARD_CLASS_NAME} role="alert">
+                    <div className="flex min-w-0 items-start gap-2 text-sm text-destructive">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0 space-y-1">
+                        <p className="font-medium">Tunnel error</p>
+                        <p className="break-words [overflow-wrap:anywhere]">
+                          {tunnelStatus.error}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
