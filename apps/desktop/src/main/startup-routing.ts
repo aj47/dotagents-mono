@@ -11,8 +11,15 @@ export type StartupMainWindowDecision = {
   reason: "default" | "hub-install" | "onboarding"
 }
 
-export function buildHubBundleInstallUrl(filePath: string): string {
-  return `/settings/agents?installBundle=${encodeURIComponent(filePath)}`
+export function buildHubBundleInstallUrl(
+  filePath: string,
+  sourceBundleUrl?: string | null,
+): string {
+  const params = new URLSearchParams({ installBundle: filePath })
+  if (sourceBundleUrl) {
+    params.set("installBundleSource", sourceBundleUrl)
+  }
+  return `/settings/agents?${params.toString()}`
 }
 
 export function shouldShowOnboarding(config: OnboardingConfig): boolean {
@@ -24,6 +31,7 @@ export function shouldShowOnboarding(config: OnboardingConfig): boolean {
 export function resolveStartupMainWindowDecision(
   config: OnboardingConfig,
   pendingHubBundleHandoffPath?: string | null,
+  pendingHubBundleSourceUrl?: string | null,
 ): StartupMainWindowDecision {
   if (shouldShowOnboarding(config)) {
     return {
@@ -35,7 +43,7 @@ export function resolveStartupMainWindowDecision(
 
   if (pendingHubBundleHandoffPath) {
     return {
-      url: buildHubBundleInstallUrl(pendingHubBundleHandoffPath),
+      url: buildHubBundleInstallUrl(pendingHubBundleHandoffPath, pendingHubBundleSourceUrl),
       consumedPendingHubBundle: true,
       reason: "hub-install",
     }

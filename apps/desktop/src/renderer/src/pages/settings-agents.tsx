@@ -101,6 +101,7 @@ export function SettingsAgents() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [prefilledImportFilePath, setPrefilledImportFilePath] = useState<string | null>(null)
+  const [prefilledImportSourceUrl, setPrefilledImportSourceUrl] = useState<string | null>(null)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -112,15 +113,18 @@ export function SettingsAgents() {
 
   useEffect(() => {
     const installBundlePath = searchParams.get("installBundle")
+    const installBundleSource = searchParams.get("installBundleSource")?.trim() || null
     if (!installBundlePath) return
 
     setEditing(null)
     setIsCreating(false)
     setPrefilledImportFilePath(installBundlePath)
+    setPrefilledImportSourceUrl(installBundleSource)
     setIsImportDialogOpen(true)
 
     const nextParams = new URLSearchParams(searchParams)
     nextParams.delete("installBundle")
+    nextParams.delete("installBundleSource")
     setSearchParams(nextParams, { replace: true })
   }, [searchParams, setSearchParams])
 
@@ -417,6 +421,7 @@ export function SettingsAgents() {
     setIsImportDialogOpen(open)
     if (!open) {
       setPrefilledImportFilePath(null)
+      setPrefilledImportSourceUrl(null)
     }
   }
 
@@ -449,6 +454,8 @@ export function SettingsAgents() {
         description={prefilledImportFilePath
           ? "Preview and import the downloaded Hub .dotagents bundle using the existing conflict-aware flow."
           : undefined}
+        sourceLabel={prefilledImportSourceUrl ? "Downloaded from Hub" : undefined}
+        sourceUrl={prefilledImportSourceUrl || undefined}
       />
       <BundleExportDialog
         open={isExportDialogOpen}

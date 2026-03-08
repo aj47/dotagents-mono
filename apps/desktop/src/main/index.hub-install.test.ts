@@ -143,6 +143,8 @@ afterEach(() => {
 })
 
 describe("Hub install handoff routing", () => {
+  const hubBundleUrl = "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents"
+
   it("opens settings/agents with installBundle when launched with a .dotagents argv path", async () => {
     const bundlePath = "/tmp/from-startup.dotagents"
     const { createMainWindow } = await loadIndexForHubInstall(["electron", bundlePath])
@@ -158,10 +160,10 @@ describe("Hub install handoff routing", () => {
     const { createMainWindow, downloadHubBundleToTempFile } = await loadIndexForHubInstall(["electron", deepLink])
 
     expect(downloadHubBundleToTempFile).toHaveBeenCalledWith(
-      "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
+      hubBundleUrl,
     )
     expect(createMainWindow).toHaveBeenCalledWith({
-      url: `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
+      url: `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}&installBundleSource=${encodeURIComponent(hubBundleUrl)}`,
     })
   })
 
@@ -197,10 +199,10 @@ describe("Hub install handoff routing", () => {
 
     expect(event.preventDefault).toHaveBeenCalled()
     expect(downloadHubBundleToTempFile).toHaveBeenCalledWith(
-      "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
+      hubBundleUrl,
     )
     expect(showMainWindow).toHaveBeenCalledWith(
-      `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
+      `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}&installBundleSource=${encodeURIComponent(hubBundleUrl)}`,
     )
   })
 
@@ -218,11 +220,11 @@ describe("Hub install handoff routing", () => {
     )
     expect(showErrorBox).toHaveBeenCalledWith(
       "Hub Bundle Download Failed",
-      expect.stringContaining("Bundle URL: https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents"),
+      expect.stringContaining(`Bundle URL: ${hubBundleUrl}`),
     )
     expect(createMainWindow).toHaveBeenCalledWith(undefined)
     expect(createMainWindow).not.toHaveBeenCalledWith({
-      url: `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
+      url: `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}&installBundleSource=${encodeURIComponent(hubBundleUrl)}`,
     })
   })
 

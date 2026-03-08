@@ -1166,3 +1166,39 @@
   - Continue Phase 2 only with similarly tight slices (for example, install provenance, cache freshness, or update-status affordances).
 
 - Next recommended issue work item: once the desktop test runner is available, re-run the targeted Hub-install tests and commit this reliability slice; otherwise pivot only to another issue that can be verified in the current worktree without dependency restoration.
+
+##### Issue #25 — Hub install provenance surfaced in the import dialog
+
+- Selection rationale:
+  - After the prior `#25` failure-feedback slice, the next concrete trust gap in the one-click Hub flow was provenance: once a remote bundle downloaded into a temp file, the existing import dialog no longer showed which Hub URL it came from.
+  - This was a small, auditable UX improvement that fit the current worktree constraints because it could be verified with dependency-free source regression tests.
+- Investigation:
+  - Re-read issue `#25` and its planning comment to stay aligned with the umbrella goal of making bundle install/import flows transparent and auditable by default.
+  - Inspected `apps/desktop/src/main/index.ts`, `apps/desktop/src/main/startup-routing.ts`, `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, and `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`.
+  - Confirmed the main process preserved only the downloaded temp file path in the `/settings/agents?installBundle=...` handoff, so the renderer could no longer tell whether the import came from a local file or a specific Hub artifact URL.
+- Important assumptions:
+  - Assumption: surfacing the original remote bundle URL in the existing import dialog is a worthwhile first provenance slice even without a fuller install-history model.
+  - Why acceptable: it restores the most important missing trust signal at the moment of import review, using the current flow users already see.
+  - Assumption: query-string handoff of the original Hub artifact URL is acceptable for this slice.
+  - Why acceptable: the URL is already public, it stays inside the existing main-window navigation contract, and it avoids inventing new persistence/state plumbing for a narrow UX improvement.
+- Changes implemented:
+  - Extended `apps/desktop/src/main/startup-routing.ts` so Hub install routes can carry both the downloaded bundle file path and the original `installBundleSource` URL.
+  - Updated `apps/desktop/src/main/index.ts` to track `pendingHubBundleSourceUrl` alongside the temp file path, preserve it through downloaded deep-link handoff, and clear it when the handoff is consumed.
+  - Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the Hub import handoff reads and clears `installBundleSource` from the router search params, then passes it into the existing `BundleImportDialog`.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` with an optional provenance panel that renders a visible external source link when a bundle came from the Hub.
+  - Updated the existing Vitest coverage in `apps/desktop/src/main/startup-routing.test.ts`, `apps/desktop/src/main/index.hub-install.test.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx` to reflect the new source-aware handoff.
+  - Added `apps/desktop/src/renderer/src/pages/settings-agents.hub-install-provenance.test.js`, a dependency-free regression test covering the source-aware route builder, main-process handoff state, settings-page query parsing, and dialog provenance rendering.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-agents.hub-install-provenance.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run src/main/startup-routing.test.ts src/main/index.hub-install.test.ts src/renderer/src/pages/settings-agents.install-handoff.test.tsx`
+  - Blocked: desktop test tooling is still unavailable in this worktree; PNPM failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the targeted Vitest files once the desktop test runner is available in this worktree.
+  - Consider surfacing renderer-visible post-install success/failure status after the imported Hub bundle completes, not just pre-import provenance.
+  - If Hub install provenance becomes more important later, consider carrying it into a longer-lived install history or import metadata model instead of only the transient route handoff.
+
+- Next recommended issue work item: stay on `#25` for a similarly small install-status/provenance follow-up once the desktop test runner is available, or only pivot to another issue if it offers an equally concrete, locally verifiable UX/reliability increment.

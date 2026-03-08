@@ -67,6 +67,7 @@ if (process.platform === 'linux') {
 registerServeSchema()
 
 let pendingHubBundleHandoffPath = findHubBundleHandoffFilePath(process.argv)
+let pendingHubBundleSourceUrl: string | null = null
 const startupHubBundleInstallUrl = pendingHubBundleHandoffPath
   ? null
   : findHubBundleInstallBundleUrl(process.argv)
@@ -76,26 +77,32 @@ function openPendingHubBundleInstall(): boolean {
   if (!isAccessibilityGranted()) {
     logApp("[hub-install] Accessibility not granted; deferring bundle install handoff", {
       filePath: pendingHubBundleHandoffPath,
+      sourceBundleUrl: pendingHubBundleSourceUrl ?? undefined,
     })
     return false
   }
 
-  const installUrl = buildHubBundleInstallUrl(pendingHubBundleHandoffPath)
+  const installUrl = buildHubBundleInstallUrl(pendingHubBundleHandoffPath, pendingHubBundleSourceUrl)
   pendingHubBundleHandoffPath = null
+  pendingHubBundleSourceUrl = null
   showMainWindow(installUrl)
   return true
 }
 
 function queueHubBundleInstall(
   filePath: string | null | undefined,
-  options: { openIfReady?: boolean } = {},
+  options: { openIfReady?: boolean; sourceBundleUrl?: string | null } = {},
 ): boolean {
-  const { openIfReady = true } = options
+  const { openIfReady = true, sourceBundleUrl = null } = options
   const resolvedPath = filePath ? findHubBundleHandoffFilePath([filePath]) : null
   if (!resolvedPath) return false
 
   pendingHubBundleHandoffPath = resolvedPath
-  logApp("[hub-install] Queued Hub bundle install handoff", { filePath: resolvedPath })
+  pendingHubBundleSourceUrl = sourceBundleUrl
+  logApp("[hub-install] Queued Hub bundle install handoff", {
+    filePath: resolvedPath,
+    sourceBundleUrl: sourceBundleUrl ?? undefined,
+  })
 
   if (openIfReady && app.isReady()) {
     openPendingHubBundleInstall()
@@ -111,7 +118,7 @@ async function queueHubBundleInstallFromUrl(
   try {
     logApp("[hub-install] Downloading Hub bundle", { bundleUrl })
     const downloadedPath = await downloadHubBundleToTempFile(bundleUrl)
-    return queueHubBundleInstall(downloadedPath, options)
+    return queueHubBundleInstall(downloadedPath, { ...options, sourceBundleUrl: bundleUrl })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     logApp("[hub-install] Failed to download Hub bundle", {
@@ -385,7 +392,11 @@ app.whenReady().then(async () => {
 
   if (accessibilityGranted) {
     const cfg = configStore.get()
-    const launchDecision = resolveStartupMainWindowDecision(cfg, pendingHubBundleHandoffPath)
+    const launchDecision = resolveStartupMainWindowDecision(
+      cfg,
+      pendingHubBundleHandoffPath,
+      pendingHubBundleSourceUrl,
+    )
 
     createMainWindow(launchDecision.url ? { url: launchDecision.url } : undefined)
 
@@ -394,6 +405,7 @@ app.whenReady().then(async () => {
     } else if (launchDecision.reason === "hub-install") {
       logApp("Main window created (opening Hub bundle install)", {
         filePath: pendingHubBundleHandoffPath,
+        sourceBundleUrl: pendingHubBundleSourceUrl ?? undefined,
       })
     } else {
       logApp("Main window created")
@@ -401,6 +413,7 @@ app.whenReady().then(async () => {
 
     if (launchDecision.consumedPendingHubBundle) {
       pendingHubBundleHandoffPath = null
+      pendingHubBundleSourceUrl = null
     }
   } else {
     createSetupWindow()
@@ -569,11 +582,16 @@ app.whenReady().then(async () => {
           showMainWindow()
         }
       } else {
-        const launchDecision = resolveStartupMainWindowDecision(cfg, pendingHubBundleHandoffPath)
+        const launchDecision = resolveStartupMainWindowDecision(
+          cfg,
+          pendingHubBundleHandoffPath,
+          pendingHubBundleSourceUrl,
+        )
 
         createMainWindow(launchDecision.url ? { url: launchDecision.url } : undefined)
         if (launchDecision.consumedPendingHubBundle) {
           pendingHubBundleHandoffPath = null
+          pendingHubBundleSourceUrl = null
         }
       }
     } else {

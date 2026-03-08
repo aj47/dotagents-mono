@@ -12,7 +12,7 @@ import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Badge } from "@renderer/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
-import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain } from "lucide-react"
+import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain, ExternalLink } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 
@@ -141,6 +141,8 @@ interface BundleImportDialogProps {
   description?: string
   confirmLabel?: string
   successVerb?: string
+  sourceLabel?: string
+  sourceUrl?: string
 }
 
 export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
@@ -353,6 +355,8 @@ export function BundleImportDialog({
   description = "Preview and import a .dotagents bundle file.",
   confirmLabel = "Import",
   successVerb = "imported",
+  sourceLabel = "Bundle source",
+  sourceUrl,
 }: BundleImportDialogProps) {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -536,6 +540,21 @@ export function BundleImportDialog({
             {description}
           </DialogDescription>
         </DialogHeader>
+
+        {sourceUrl && (
+          <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <div className="font-medium text-foreground">{sourceLabel}</div>
+            <a
+              href={sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-1 break-all text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              <span>{sourceUrl}</span>
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+            </a>
+          </div>
+        )}
 
         {loading && (
           <div className="flex items-center justify-center py-8">

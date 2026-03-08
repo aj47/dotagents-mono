@@ -6,6 +6,17 @@ import {
 } from "./startup-routing"
 
 describe("startup routing", () => {
+  it("preserves Hub bundle source provenance in install routes", () => {
+    expect(
+      buildHubBundleInstallUrl(
+        "/tmp/featured-agent.dotagents",
+        "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
+      ),
+    ).toBe(
+      `/settings/agents?installBundle=${encodeURIComponent("/tmp/featured-agent.dotagents")}&installBundleSource=${encodeURIComponent("https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents")}`,
+    )
+  })
+
   it("shows onboarding for fresh installs without model configuration", () => {
     expect(shouldShowOnboarding({})).toBe(true)
   })
@@ -44,9 +55,13 @@ describe("startup routing", () => {
       resolveStartupMainWindowDecision(
         { onboardingCompleted: true },
         "/tmp/featured-agent.dotagents",
+        "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
       ),
     ).toEqual({
-      url: buildHubBundleInstallUrl("/tmp/featured-agent.dotagents"),
+      url: buildHubBundleInstallUrl(
+        "/tmp/featured-agent.dotagents",
+        "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents",
+      ),
       consumedPendingHubBundle: true,
       reason: "hub-install",
     })

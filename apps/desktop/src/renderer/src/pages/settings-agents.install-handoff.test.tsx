@@ -28,11 +28,18 @@ function createHookRuntime() {
 
 async function flushPromises() { await Promise.resolve(); await Promise.resolve() }
 
-async function loadSettingsAgents(runtime: ReturnType<typeof createHookRuntime>, installBundlePath: string) {
+async function loadSettingsAgents(
+  runtime: ReturnType<typeof createHookRuntime>,
+  installBundlePath: string,
+  installBundleSource?: string,
+) {
   vi.resetModules()
   const Null = () => null
   let currentSearchParams = installBundlePath
-    ? new URLSearchParams([["installBundle", installBundlePath]])
+    ? new URLSearchParams([
+      ["installBundle", installBundlePath],
+      ...(installBundleSource ? [["installBundleSource", installBundleSource]] as const : []),
+    ])
     : new URLSearchParams()
   const setSearchParams = vi.fn((next: URLSearchParams) => { currentSearchParams = new URLSearchParams(next) })
   const dialogProps = { current: null as any }
@@ -93,7 +100,7 @@ async function loadBundleImportDialogHelper() {
   vi.doMock("../components/ui/badge", () => ({ Badge: Null }))
   vi.doMock("../components/ui/select", () => ({ Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }))
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-  vi.doMock("lucide-react", () => { const Icon = () => null; return { Loader2: Icon, AlertTriangle: Icon, Package: Icon, Bot: Icon, Server: Icon, Sparkles: Icon, Clock: Icon, Brain: Icon } })
+  vi.doMock("lucide-react", () => { const Icon = () => null; return { Loader2: Icon, AlertTriangle: Icon, Package: Icon, Bot: Icon, Server: Icon, Sparkles: Icon, Clock: Icon, Brain: Icon, ExternalLink: Icon } })
   const mod = await import("../components/bundle-import-dialog")
   return { previewProvidedBundleFile: mod.previewProvidedBundleFile, previewBundleWithConflicts }
 }
@@ -104,7 +111,8 @@ describe("settings-agents Hub install handoff", () => {
   it("opens the existing bundle import dialog from the installBundle query param", async () => {
     const runtime = createHookRuntime()
     const bundlePath = "/tmp/from-hub.dotagents"
-    const { SettingsAgents, dialogProps, setSearchParams } = await loadSettingsAgents(runtime, bundlePath)
+    const bundleSource = "https://hub.dotagentsprotocol.com/bundles/from-hub.dotagents"
+    const { SettingsAgents, dialogProps, setSearchParams } = await loadSettingsAgents(runtime, bundlePath, bundleSource)
     runtime.render(SettingsAgents, {})
     runtime.commitEffects()
     await flushPromises()
@@ -113,8 +121,11 @@ describe("settings-agents Hub install handoff", () => {
     expect(dialogProps.current.open).toBe(true)
     expect(dialogProps.current.initialFilePath).toBe(bundlePath)
     expect(dialogProps.current.title).toBe("Install Hub Bundle")
+    expect(dialogProps.current.sourceLabel).toBe("Downloaded from Hub")
+    expect(dialogProps.current.sourceUrl).toBe(bundleSource)
     expect(setSearchParams).toHaveBeenCalled()
     expect(setSearchParams.mock.calls[0][0].get("installBundle")).toBeNull()
+    expect(setSearchParams.mock.calls[0][0].get("installBundleSource")).toBeNull()
   })
 
   it("keeps Export Bundle and Export for Hub as separate configurable flows", async () => {
