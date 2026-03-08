@@ -764,3 +764,45 @@
   - Restore the mobile install in this worktree, then re-run Expo Web and confirm long selector-sheet agent names truncate cleanly beside the selected checkmark.
   - Once live validation is back, smoke-test a deliberately long configured agent name across header, composer (if shown), and selector sheet for consistency.
   - Continue only with the next highest-signal sub-agent mobile issue after fresh narrow-screen evidence re-establishes where the remaining friction actually is.
+
+### 2026-03-08 — Iteration 18: make built-in agent edit fields read as read-only on mobile
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen` built-in agent warning + read-only form logic
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile tooling state before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because the mobile install is still missing in this worktree, Expo Web and device/simulator validation remain blocked for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed built-in agent editing already disables fields such as `Display Name`, `Description`, `Connection Type`, connection details, and `System Prompt`.
+  - On mobile, those controls still rendered with the same visual treatment as editable fields, and the warning copy only said built-in agents had `limited editing options` without naming what stayed editable.
+- Issue selected:
+  - Built-in agent edit screens still looked more editable than they really were, which could lead to wasted taps and weaker state clarity on narrow screens.
+- Decision:
+  - Keep the existing built-in-agent restriction model and overall edit-screen layout.
+  - Do not redesign the form while live validation is blocked.
+  - Make the smallest local fix in `AgentEditScreen`: clarify the warning copy and visually mute read-only fields/chips while preserving readability.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - make the built-in warning explicit about what remains editable (`guidelines`, `enabled`, `auto spawn`),
+    - apply a passive read-only style to non-editable text inputs,
+    - restyle disabled connection-type chips so the current choice stays visible without looking tappable,
+    - expose a built-in-specific accessibility hint explaining that the connection type is fixed.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new read-only styling and warning copy.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native packages in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The built-in read-only treatment still needs live confirmation on Expo Web or device once dependencies are restored.
+  - Built-in read-only `TextInput` controls may still benefit from a later screen-reader-specific pass once live inspection and fuller tooling are available again.
+  - The broader edit-flow hierarchy still needs a fresh narrow-screen pass after the install is restored instead of more source-only tweaks.
+- Next checks:
+  - Restore the mobile install in this worktree, then re-run Expo Web and confirm the built-in warning/read-only treatment feels clear at a narrow viewport.
+  - Re-establish live inspection before taking on another edit-flow tweak so the next change is again driven by current evidence.
+  - After live validation returns, decide whether the next highest-friction sub-agent mobile issue is still in the edit flow or has moved back to settings/header surfaces.

@@ -20,6 +20,16 @@ test('AgentEditScreen makes connection-type chips mobile-sized buttons with sele
   assert.match(agentEditSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isBuiltInAgent \}\}/);
 });
 
+test('AgentEditScreen makes built-in read-only fields look passive instead of editable', () => {
+  assert.match(agentEditSource, /Built-in agents keep their name, connection, and prompts\. You can still update guidelines,[\s\S]*?enabled, and auto spawn\./);
+  assert.match(agentEditSource, /style=\{\[styles\.input, isBuiltInAgent && styles\.inputReadOnly\]\}/);
+  assert.match(agentEditSource, /isBuiltInAgent && styles\.connectionTypeOptionReadOnly/);
+  assert.match(agentEditSource, /isBuiltInAgent && formData\.connectionType === ct\.value && styles\.connectionTypeOptionReadOnlyActive/);
+  assert.match(agentEditSource, /Built-in agent connections are fixed and cannot be changed here\./);
+  assert.match(agentEditSource, /inputReadOnly:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.secondary[\s\S]*?borderColor:\s*theme\.colors\.input/);
+  assert.match(agentEditSource, /connectionTypeTextReadOnly:\s*\{[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
 test('LoopEditScreen makes profile chips mobile-sized buttons with selected-state semantics', () => {
   assert.match(loopEditSource, /createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(loopEditSource, /profileOption:\s*\{[\s\S]*?\.\.\.selectionChipTouchTarget/);

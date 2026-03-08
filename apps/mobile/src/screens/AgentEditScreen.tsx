@@ -218,13 +218,16 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       {isBuiltInAgent && (
         <View style={styles.warningContainer}>
-          <Text style={styles.warningText}>⚠️ Built-in agents have limited editing options</Text>
+          <Text style={styles.warningText}>
+            ⚠️ Built-in agents keep their name, connection, and prompts. You can still update guidelines,
+            enabled, and auto spawn.
+          </Text>
         </View>
       )}
 
       <Text style={styles.label}>Display Name *</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
         value={formData.displayName}
         onChangeText={v => updateField('displayName', v)}
         placeholder="My Agent"
@@ -234,7 +237,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       <Text style={styles.label}>Description</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
         value={formData.description}
         onChangeText={v => updateField('description', v)}
         placeholder="What this agent does..."
@@ -251,18 +254,26 @@ export default function AgentEditScreen({ navigation, route }: any) {
             style={[
               styles.connectionTypeOption,
               formData.connectionType === ct.value && styles.connectionTypeOptionActive,
+              isBuiltInAgent && styles.connectionTypeOptionReadOnly,
+              isBuiltInAgent && formData.connectionType === ct.value && styles.connectionTypeOptionReadOnlyActive,
             ]}
             onPress={() => updateField('connectionType', ct.value)}
             disabled={isBuiltInAgent}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${ct.label} connection type`)}
-            accessibilityHint="Updates how this agent connects."
+            accessibilityHint={
+              isBuiltInAgent
+                ? 'Built-in agent connections are fixed and cannot be changed here.'
+                : 'Updates how this agent connects.'
+            }
             accessibilityState={{ selected: formData.connectionType === ct.value, disabled: isBuiltInAgent }}
             activeOpacity={0.7}
           >
             <Text style={[
               styles.connectionTypeText,
               formData.connectionType === ct.value && styles.connectionTypeTextActive,
+              isBuiltInAgent && styles.connectionTypeTextReadOnly,
+              isBuiltInAgent && formData.connectionType === ct.value && styles.connectionTypeTextReadOnlyActive,
             ]}>
               {ct.label}
             </Text>
@@ -276,7 +287,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             <>
               <Text style={styles.label}>Command</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionCommand}
                 onChangeText={v => updateField('connectionCommand', v)}
                 placeholder="node"
@@ -286,7 +297,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               />
               <Text style={styles.label}>Arguments</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionArgs}
                 onChangeText={v => updateField('connectionArgs', v)}
                 placeholder="agent.js --port 3000"
@@ -296,7 +307,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               />
               <Text style={styles.label}>Working Directory</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionCwd}
                 onChangeText={v => updateField('connectionCwd', v)}
                 placeholder="/path/to/agent"
@@ -310,7 +321,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             <>
               <Text style={styles.label}>Base URL</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionBaseUrl}
                 onChangeText={v => updateField('connectionBaseUrl', v)}
                 placeholder="http://localhost:3000"
@@ -326,7 +337,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       <Text style={styles.label}>System Prompt</Text>
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[styles.input, styles.textArea, isBuiltInAgent && styles.inputReadOnly]}
         value={formData.systemPrompt}
         onChangeText={v => updateField('systemPrompt', v)}
         placeholder="You are a helpful assistant..."
@@ -477,6 +488,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       backgroundColor: theme.colors.background,
     },
+    inputReadOnly: {
+      backgroundColor: theme.colors.secondary,
+      borderColor: theme.colors.input,
+    },
     textArea: {
       minHeight: 100,
     },
@@ -496,6 +511,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.primary,
       borderColor: theme.colors.primary,
     },
+    connectionTypeOptionReadOnly: {
+      backgroundColor: theme.colors.secondary,
+      borderColor: theme.colors.input,
+    },
+    connectionTypeOptionReadOnlyActive: {
+      backgroundColor: theme.colors.muted,
+      borderColor: theme.colors.input,
+    },
     connectionTypeText: {
       fontSize: 13,
       color: theme.colors.foreground,
@@ -503,6 +526,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     connectionTypeTextActive: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    connectionTypeTextReadOnly: {
+      color: theme.colors.mutedForeground,
+    },
+    connectionTypeTextReadOnlyActive: {
+      color: theme.colors.foreground,
     },
     switchRow: {
       flexDirection: 'row',
