@@ -110,6 +110,9 @@
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: Attempted desktop live-debugging prerequisites for this approval-flow bug with `pnpm --filter @dotagents/desktop exec vite --version`, but the worktree still has no installed desktop bundler/test tooling (`Command "vite" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the desktop tool-approval feedback fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` again after the sidebar stop fix and confirmed the adjacent `Minimize` / `Restore` flow still logs rejected `snoozeAgentSession(...)` / `unsnoozeAgentSession(...)` calls to the console only, while the optimistic `Restore` rollback hardcoded `setFocusedSessionId(null)`.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ChatScreen.tsx` has no equivalent session minimize/restore UI, so this is a desktop-only bug rather than a cross-platform behavior change.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx`, but the worktree still has no installed dependencies; the shared-package pretest failed immediately because `tsup` was unavailable.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -227,6 +230,10 @@
   - `apps/desktop/src/renderer/src/components/agent-progress.tsx` and `apps/desktop/src/renderer/src/components/session-tile.tsx` both render visible `Approve` / `Deny` controls for `pendingToolApproval`, but their `handleApproveToolCall()` / `handleDenyToolCall()` catch blocks only logged to the console when `tipcClient.respondToToolApproval(...)` rejected.
   - Because neither surface raised a toast, banner, or inline error, a failed approval decision looked like “the spinner briefly happened and nothing changed,” even though the user had clicked a core workflow gate.
   - These are the active desktop approval surfaces, and mobile has no separate approval UI to rely on here, so this is a real desktop UX bug rather than an intentional platform difference.
+- [x] **Desktop sidebar minimize/restore failures were partly silent and could clear the wrong focused session (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` optimistically calls `setFocusedSessionId(sessionId)` before `unsnoozeAgentSession(...)`, but on rejection it previously always rolled local focus back to `null` instead of the pre-click `focusedSessionId`.
+  - Both rejected `snoozeAgentSession(...)` and `unsnoozeAgentSession(...)` branches previously only called `console.error(...)`, so failed `Minimize` / `Restore` clicks could look like “nothing happened” even when local sidebar state had briefly changed.
+  - `ActiveAgentsSidebar` is mounted in the primary desktop layout, and mobile has no equivalent minimize/restore surface, so this is a live desktop state/UI bug rather than dead code or a parity decision.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -335,6 +342,11 @@
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so rejected desktop `Approve` / `Deny` tool-approval actions now surface `toast.error(...)` feedback instead of failing silently with console-only logging.
 - [x] Updated `apps/desktop/src/renderer/src/components/session-tile.tsx` with the same visible `toast.error(...)` tool-approval failure feedback so the sessions-page tile surface matches the overlay behavior.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/tool-approval.feedback.test.ts` with source-level assertions that both active desktop approval surfaces import `sonner`, keep the shared action-error helper, and expose visible `Failed to approve/deny tool call` feedback paths.
+- [x] Updated `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` so rejected sidebar `snoozeAgentSession(...)` / `unsnoozeAgentSession(...)` calls now surface visible `toast.error(...)` feedback instead of staying console-only.
+- [x] Updated the sidebar `Restore` rollback path to restore the previous `focusedSessionId` instead of always clearing focus to `null` when `unsnoozeAgentSession(...)` rejects.
+- [x] Extended `apps/desktop/src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` with regression coverage for:
+  - visible `Failed to minimize session. ...` feedback on rejected `snoozeAgentSession(...)`
+  - restoring the previous focus plus visible `Failed to restore session. ...` feedback on rejected `unsnoozeAgentSession(...)`
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -406,6 +418,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/session-tile.tsx` now imports `toast` from `sonner` and shows the same visible `Failed to approve/deny tool call. ...` feedback on rejected approval actions.
 - [x] Low-cost automated sanity check: `node -e "..."` file-read assertions passed for `agent-progress.tsx`, `session-tile.tsx`, and `tool-approval.feedback.test.ts`, confirming the new tool-approval toasts and regression file are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the tool-approval feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` now restores the pre-click `focusedSessionId` when `unsnoozeAgentSession(...)` rejects and surfaces visible `toast.error(...)` feedback for both rejected `Minimize` and `Restore` actions.
+- [x] Low-cost automated sanity check: `node -e "..."` file-read assertions passed for `active-agents-sidebar.tsx` and `active-agents-sidebar.stop-session.test.tsx`, confirming the new minimize/restore toast strings, previous-focus rollback, and added regression-test cases are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the sidebar minimize/restore feedback + rollback fix.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -435,9 +450,10 @@
 - [x] Targeted automated verification for this summary save-to-memory feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop tool-approval feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction for this approval-flow bug remains blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vite --version` fails with `Command "vite" not found`, so the desktop debug/bundler tooling needed to run the renderer is still unavailable in this worktree.
+- [x] Targeted automated verification for this sidebar minimize/restore fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` still fails before Vitest starts because the shared pretest cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 
 ### Still Uncertain
-- [ ] Whether adjacent `ActiveAgentsSidebar` minimize/restore (`snooze` / `unsnooze`) failure paths should also surface visible feedback instead of console-only logging once this smaller stop-action fix is live-verified.
+- [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the adjacent `tipcClient.stopAllTts()` failure path in `app-layout.tsx` also needs visible feedback, or whether keeping that secondary best-effort cleanup console-only is preferable once live desktop verification is available.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
@@ -510,6 +526,8 @@
 - Reusing the existing desktop `toast.error(...)` pattern is the smallest safe fix because it preserves current save semantics and the existing `Saved` success state while finally making non-success outcomes visible to the user.
 - The tool-approval issue is another high-signal workflow bug: `Approve` / `Deny` gates can block the agent from proceeding, so a rejected approval response should not vanish into DevTools-only logging.
 - Reusing the same `toast.error(...)` pattern in the existing `catch` blocks is the smallest safe fix because it preserves the current approval flow, optimistic spinner handling, and retry behavior while finally telling the user why their approval action did not go through.
+- The sidebar minimize/restore issue is similarly high-signal because it affects active session management in the main desktop layout: a failed `Minimize` / `Restore` click should not look like a no-op, and a rejected `Restore` should not discard the previously focused session.
+- Restoring the prior `focusedSessionId` on rejected `unsnoozeAgentSession(...)` is the smallest safe state fix because it returns the sidebar to its exact pre-click selection semantics without changing the successful restore/minimize flow.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -538,6 +556,7 @@
 - Assumption: showing `Installed` together with an inline error after a partial Exa install is acceptable for this pass because the server really was added to saved config, while the new warning text makes the runtime startup failure and retry path explicit without inventing a new onboarding status model.
 - Assumption: using `toast.error(...)` for the summary `no_durable_content` path is acceptable for this pass because the user-initiated save action could not complete, there is no precomputed “saveability” signal on the card yet, and the desktop app already uses toasts for comparable action-level failures.
 - Assumption: using the existing desktop toast pattern for tool-approval failures is acceptable because `sonner` is already mounted app-wide, there is no separate inline approval-error state today, and these actions are core workflow gates where silent failure is especially misleading.
+- Assumption: using the existing desktop toast pattern for sidebar `Minimize` / `Restore` failures and restoring the previous focused session on rejected `Restore` is acceptable because the action is user-initiated, the optimistic focus change should revert to the exact pre-click state on failure, and desktop already uses `sonner` to surface comparable action-level errors.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -566,9 +585,9 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that clearing or resetting an agent system prompt leaves the textarea empty while still showing the default prompt as placeholder guidance.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.editor-tabs.test.ts src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that switching an agent from `internal` to `acp`/`stdio`/`remote` while on `Model` immediately lands on `General` instead of leaving the editor blank.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify that failing a follow-up kill-switch action surfaces the new desktop toast instead of failing silently.
-- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` and live-verify that a failed stop click from the desktop sessions sidebar surfaces the new toast instead of appearing to do nothing.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` and live-verify that failed desktop sidebar `Stop`, `Minimize`, and `Restore` actions now surface the new visible error feedback while rejected `Restore` clicks keep the previously focused session selected.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx` and live-verify that a failed desktop global emergency-stop click surfaces the new toast instead of appearing to do nothing.
-- After that, inspect whether adjacent `ActiveAgentsSidebar` snooze/restore failures also need visible feedback for consistency with the now-covered sidebar stop action.
+- After that, inspect whether the secondary post-success `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures in `ActiveAgentsSidebar` should also become user-visible for complete sidebar-action consistency.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` and live-verify the floating panel by forcing microphone denial / missing-device failure so the new visible recorder error contract is exercised end to end.
 - After that, inspect whether any other desktop voice-entry surfaces outside `panel.tsx` still swallow `startRecording()` failures with console-only logging.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-processing-view.stop-session.test.tsx` and live-verify the early-loading desktop panel/text-input stop flow to confirm it no longer no-ops before progress appears.

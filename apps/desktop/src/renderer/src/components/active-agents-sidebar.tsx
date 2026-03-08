@@ -235,6 +235,7 @@ export function ActiveAgentsSidebar({
     e: React.MouseEvent,
   ) => {
     e.stopPropagation() // Prevent session focus when clicking snooze
+    const previousFocusedSessionId = focusedSessionId
     logUI("[ActiveAgentsSidebar] Toggle snooze clicked", {
       sessionId,
       sidebarSaysIsSnoozed: isSnoozed,
@@ -262,8 +263,10 @@ export function ActiveAgentsSidebar({
       } catch (error) {
         // Rollback local state only when the API call fails to keep UI and backend in sync
         setSessionSnoozed(sessionId, true)
-        setFocusedSessionId(null)
+        setFocusedSessionId(previousFocusedSessionId ?? null)
         console.error("Failed to unsnooze session:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(details ? `Failed to restore session. ${details}` : "Failed to restore session")
         return
       }
 
@@ -288,6 +291,8 @@ export function ActiveAgentsSidebar({
         // Rollback local state only when the API call fails to keep UI and backend in sync
         setSessionSnoozed(sessionId, false)
         console.error("Failed to snooze session:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(details ? `Failed to minimize session. ${details}` : "Failed to minimize session")
         return
       }
 
