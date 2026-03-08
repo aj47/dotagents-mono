@@ -14,10 +14,24 @@ import type { SamplingRequest } from "../../../shared/types"
 export default function McpSamplingDialog() {
   const [request, setRequest] = useState<SamplingRequest | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const [responseErrorMessage, setResponseErrorMessage] = useState<string | null>(null)
+  const [pendingDecision, setPendingDecision] = useState<boolean | null>(null)
+  const [isRequestUnavailable, setIsRequestUnavailable] = useState(false)
+
+  const closeDialog = () => {
+    setIsOpen(false)
+    setRequest(null)
+    setResponseErrorMessage(null)
+    setPendingDecision(null)
+    setIsRequestUnavailable(false)
+  }
 
   useEffect(() => {
     const unlisten = rendererHandlers["mcp:sampling-request"].listen(
       (samplingRequest: SamplingRequest) => {
+        setResponseErrorMessage(null)
+        setPendingDecision(null)
+        setIsRequestUnavailable(false)
         setRequest(samplingRequest)
         setIsOpen(true)
       }
@@ -26,15 +40,31 @@ export default function McpSamplingDialog() {
   }, [])
 
   const handleResponse = async (approved: boolean) => {
-    if (!request) return
+    if (!request || pendingDecision !== null) return
 
-    await tipcClient.resolveSampling({
-      requestId: request.requestId,
-      approved,
-    })
+    const activeRequest = request
+    setResponseErrorMessage(null)
+    setPendingDecision(approved)
 
-    setIsOpen(false)
-    setRequest(null)
+    try {
+      const resolved = await tipcClient.resolveSampling({
+        requestId: activeRequest.requestId,
+        approved,
+      })
+
+      if (!resolved) {
+        setIsRequestUnavailable(true)
+        setResponseErrorMessage("This sampling request is no longer waiting for approval. Close this dialog to continue.")
+        return
+      }
+
+      closeDialog()
+    } catch (error) {
+      console.error("Failed to resolve sampling request:", error)
+      setResponseErrorMessage("Couldn't submit your decision yet. This request is still open, so you can try again.")
+    } finally {
+      setPendingDecision(null)
+    }
   }
 
   if (!request) return null
@@ -44,9 +74,20 @@ export default function McpSamplingDialog() {
   const modelHints = request.modelPreferences?.hints
     ?.map((h) => h.name)
     .filter(Boolean)
+  const isSubmitting = pendingDecision !== null
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleResponse(false)}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) return
+        if (isRequestUnavailable) {
+          closeDialog()
+          return
+        }
+        void handleResponse(false)
+      }}
+    >
       <DialogContent className="max-w-[min(32rem,calc(100vw-2rem))]">
         <DialogHeader>
           <DialogTitle>Sampling Request</DialogTitle>
@@ -57,6 +98,12 @@ export default function McpSamplingDialog() {
             is requesting to use your AI model
           </DialogDescription>
         </DialogHeader>
+
+        {responseErrorMessage && (
+          <p role="alert" aria-live="polite" className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {responseErrorMessage}
+          </p>
+        )}
 
         <div className="space-y-3 text-sm">
           <div className="rounded-md border bg-muted/50 p-3 space-y-2">
@@ -135,12 +182,18 @@ export default function McpSamplingDialog() {
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => handleResponse(false)}>
-            Decline
-          </Button>
-          <Button onClick={() => handleResponse(true)}>
-            Approve
-          </Button>
+          {isRequestUnavailable ? (
+            <Button onClick={closeDialog}>Close</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => void handleResponse(false)} disabled={isSubmitting}>
+                {pendingDecision === false ? "Declining..." : "Decline"}
+              </Button>
+              <Button onClick={() => void handleResponse(true)} disabled={isSubmitting}>
+                {pendingDecision === true ? "Approving..." : "Approve"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

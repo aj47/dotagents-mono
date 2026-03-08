@@ -33,11 +33,26 @@ function McpElicitationDialog() {
   const [request, setRequest] = useState<ElicitationRequest | null>(null)
   const [formValues, setFormValues] = useState<FormValues>({})
   const [isOpen, setIsOpen] = useState(false)
+  const [responseErrorMessage, setResponseErrorMessage] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<"accept" | "decline" | "cancel" | null>(null)
+  const [isRequestUnavailable, setIsRequestUnavailable] = useState(false)
+
+  const closeDialog = () => {
+    setIsOpen(false)
+    setRequest(null)
+    setFormValues({})
+    setResponseErrorMessage(null)
+    setPendingAction(null)
+    setIsRequestUnavailable(false)
+  }
 
   // Listen for elicitation requests
   useEffect(() => {
     const unlisten = rendererHandlers["mcp:elicitation-request"].listen(
       (req: ElicitationRequest) => {
+        setResponseErrorMessage(null)
+        setPendingAction(null)
+        setIsRequestUnavailable(false)
         setRequest(req)
         // Initialize form values with defaults
         if (req.mode === "form") {
@@ -67,8 +82,7 @@ function McpElicitationDialog() {
     const unlisten = rendererHandlers["mcp:elicitation-complete"].listen(
       (data: { elicitationId: string; requestId: string }) => {
         if (request && request.requestId === data.requestId) {
-          setIsOpen(false)
-          setRequest(null)
+          closeDialog()
         }
       }
     )
@@ -76,16 +90,41 @@ function McpElicitationDialog() {
   }, [request])
 
   const handleAction = async (action: "accept" | "decline" | "cancel") => {
-    if (!request) return
+    if (!request || pendingAction) return
 
-    const content = action === "accept" && request.mode === "form" ? formValues : undefined
-    await tipcClient.resolveElicitation({
-      requestId: request.requestId,
-      action,
-      content,
-    })
-    setIsOpen(false)
-    setRequest(null)
+    const activeRequest = request
+    const content = action === "accept" && activeRequest.mode === "form" ? formValues : undefined
+    setResponseErrorMessage(null)
+    setPendingAction(action)
+
+    try {
+      const resolved = await tipcClient.resolveElicitation({
+        requestId: activeRequest.requestId,
+        action,
+        content,
+      })
+
+      if (!resolved) {
+        setIsRequestUnavailable(true)
+        setResponseErrorMessage(
+          activeRequest.mode === "form"
+            ? "This request is no longer waiting for a response. Your draft is still visible here so you can review it before closing."
+            : "This request is no longer waiting for a response. You can close this dialog.",
+        )
+        return
+      }
+
+      closeDialog()
+    } catch (error) {
+      console.error("Failed to resolve elicitation:", error)
+      setResponseErrorMessage(
+        action === "accept"
+          ? "Couldn't submit your response yet. Your draft is still open, so you can try again."
+          : "Couldn't update this request yet. It is still open, so you can try again.",
+      )
+    } finally {
+      setPendingAction(null)
+    }
   }
 
   const handleOpenUrl = () => {
@@ -168,14 +207,31 @@ function McpElicitationDialog() {
   const isFormMode = request.mode === "form"
   const formRequest = isFormMode ? (request as ElicitationFormRequest) : null
   const urlRequest = !isFormMode ? (request as ElicitationUrlRequest) : null
+  const isSubmitting = pendingAction !== null
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleAction("cancel")}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) return
+        if (isRequestUnavailable) {
+          closeDialog()
+          return
+        }
+        void handleAction("cancel")
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Request from {request.serverName}</DialogTitle>
           <DialogDescription>{request.message}</DialogDescription>
         </DialogHeader>
+
+        {responseErrorMessage && (
+          <p role="alert" aria-live="polite" className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {responseErrorMessage}
+          </p>
+        )}
 
         {isFormMode && formRequest && (
           <div className="max-h-[60vh] overflow-y-auto">
@@ -198,13 +254,21 @@ function McpElicitationDialog() {
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="ghost" onClick={() => handleAction("cancel")}>
-            Cancel
-          </Button>
-          <Button variant="outline" onClick={() => handleAction("decline")}>
-            Decline
-          </Button>
-          <Button onClick={() => handleAction("accept")}>Accept</Button>
+          {isRequestUnavailable ? (
+            <Button onClick={closeDialog}>Close</Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => void handleAction("cancel")} disabled={isSubmitting}>
+                {pendingAction === "cancel" ? "Canceling..." : "Cancel"}
+              </Button>
+              <Button variant="outline" onClick={() => void handleAction("decline")} disabled={isSubmitting}>
+                {pendingAction === "decline" ? "Declining..." : "Decline"}
+              </Button>
+              <Button onClick={() => void handleAction("accept")} disabled={isSubmitting}>
+                {pendingAction === "accept" ? "Accepting..." : "Accept"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
