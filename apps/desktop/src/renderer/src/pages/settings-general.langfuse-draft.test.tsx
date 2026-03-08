@@ -96,9 +96,15 @@ function findInputByPlaceholder(node: any, placeholder: string) {
   return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === placeholder)
 }
 
+function findTextareaByPlaceholder(node: any, placeholder: string) {
+  return findNode(node, candidate => candidate.type === "Textarea" && candidate.props?.placeholder === placeholder)
+}
+
 function findTextarea(node: any) {
   return findNode(node, candidate => candidate.type === "Textarea" && candidate.props?.rows === 10)
 }
+
+const GROQ_STT_PROMPT_PLACEHOLDER = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
 
 async function flushPromises() {
   await Promise.resolve()
@@ -116,6 +122,8 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     langfusePublicKey: "pk-lf-old",
     langfuseSecretKey: "sk-lf-old",
     langfuseBaseUrl: "",
+    sttProviderId: "groq",
+    groqSttPrompt: "Spell DotAgents correctly",
     transcriptPostProcessingEnabled: true,
     transcriptPostProcessingPrompt: "Prompt old",
     launchAtLogin: false,
@@ -259,6 +267,84 @@ describe("desktop general settings draft behavior", () => {
 
     expect(findInputByPlaceholder(tree, "pk-lf-...").props.value).toBe("pk-lf-synced")
     expect(findInputByPlaceholder(tree, "https://cloud.langfuse.com (default)").props.value).toBe("https://langfuse.example")
+  })
+
+  it("keeps the Groq STT prompt draft local, debounces saves, and merges with the latest config", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let groqPromptTextarea = findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER)
+    expect(groqPromptTextarea.props.value).toBe("Spell DotAgents correctly")
+
+    groqPromptTextarea.props.onChange({ currentTarget: { value: "Spell DotAgents as two words" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    groqPromptTextarea = findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER)
+    expect(groqPromptTextarea.props.value).toBe("Spell DotAgents as two words")
+    expect(mutate).not.toHaveBeenCalled()
+
+    setConfig({ ...getCurrentConfig(), launchAtLogin: true })
+    runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        groqSttPrompt: "Spell DotAgents as two words",
+      },
+    })
+  })
+
+  it("flushes the latest Groq STT prompt on blur without waiting for a rerender", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const groqPromptTextarea = findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER)
+    groqPromptTextarea.props.onChange({ currentTarget: { value: "Prefer agent names verbatim" } })
+    groqPromptTextarea.props.onBlur({ currentTarget: { value: "Prefer agent names verbatim" } })
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        groqSttPrompt: "Prefer agent names verbatim",
+      },
+    })
+  })
+
+  it("resyncs the Groq STT prompt draft from saved config updates", async () => {
+    const runtime = createHookRuntime()
+    const { Component, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    setConfig({
+      ...getCurrentConfig(),
+      groqSttPrompt: "Use product names exactly as written",
+    })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    tree = runtime.render(Component, {} as any)
+
+    expect(findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER).props.value).toBe(
+      "Use product names exactly as written",
+    )
   })
 
   it("keeps the transcript post-processing prompt draft local, debounces saves, and merges with the latest config", async () => {
