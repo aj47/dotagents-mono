@@ -20,7 +20,46 @@ export interface Position {
   y: number
 }
 
+export interface PanelBounds extends PanelSize, Position {}
+
+export type PanelResizeAnchor =
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+
 const PANEL_MARGIN = 10
+
+function isLeftAnchoredPanelResize(anchor: PanelResizeAnchor | null | undefined): boolean {
+  return anchor === "left" || anchor === "top-left" || anchor === "bottom-left"
+}
+
+function isTopAnchoredPanelResize(anchor: PanelResizeAnchor | null | undefined): boolean {
+  return anchor === "top" || anchor === "top-left" || anchor === "top-right"
+}
+
+export function calculateAnchoredPanelPosition({
+  currentBounds,
+  nextSize,
+  resizeAnchor,
+}: {
+  currentBounds: PanelBounds
+  nextSize: PanelSize
+  resizeAnchor?: PanelResizeAnchor | null
+}): Position {
+  return {
+    x: isLeftAnchoredPanelResize(resizeAnchor)
+      ? currentBounds.x + currentBounds.width - nextSize.width
+      : currentBounds.x,
+    y: isTopAnchoredPanelResize(resizeAnchor)
+      ? currentBounds.y + currentBounds.height - nextSize.height
+      : currentBounds.y,
+  }
+}
 
 export function calculatePanelPosition(
   size: PanelSize,

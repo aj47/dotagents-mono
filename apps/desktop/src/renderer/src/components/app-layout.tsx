@@ -49,7 +49,14 @@ export const Component = () => {
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
-  const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
+  const {
+    isCollapsed,
+    width,
+    isResizing,
+    toggleCollapse,
+    setCollapsed,
+    handleResizeStart,
+  } =
     useSidebar()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
@@ -630,6 +637,7 @@ export const Component = () => {
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
                 sidebarWidth,
+                collapseSidebar: () => setCollapsed(true),
               }}
             />
           </div>

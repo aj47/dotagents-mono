@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Pause } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -1293,12 +1293,23 @@ const RetryStatusBanner: React.FC<{
 
 // Subagent Conversation Message - individual message in the collapsible conversation
 const DELEGATION_COMPACT_WIDTH = 360
+const TILE_COMPACT_WIDTH = 340
 
 const truncatePreview = (text: string | undefined, maxLength: number): string => {
   const normalized = (text ?? "").trim().replace(/\s+/g, " ")
   if (!normalized) return ""
   if (normalized.length <= maxLength) return normalized
   return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`
+}
+
+const formatCompactTokenCount = (tokens: number): string => {
+  if (tokens >= 1000000) {
+    return `${(tokens / 1000000).toFixed(tokens >= 10000000 ? 0 : 1)}M`
+  }
+  if (tokens >= 1000) {
+    return `${Math.round(tokens / 1000)}k`
+  }
+  return `${tokens}`
 }
 
 const formatDelegationStatus = (status: ACPDelegationProgress["status"]): string => {
@@ -2292,6 +2303,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   isExpanded,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const { ref: tileVariantRef, isCompact: isCompactTileVariant } = useCompactWidth<HTMLDivElement>(TILE_COMPACT_WIDTH)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const shouldAutoScrollRef = useRef(true)
@@ -3220,14 +3232,117 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const hasPendingApproval = !!progress.pendingToolApproval
     const isSnoozed = progress.isSnoozed
     const shouldLimitTileTranscript = !isFocused && !isExpanded
-    const shouldUseCompactTileFooter = !isFocused && !isExpanded
     const tileDisplayItems = shouldLimitTileTranscript
       ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
       : displayItems
     const hiddenTileItemCount = displayItems.length - tileDisplayItems.length
     const tileDisplayOffset = displayItems.length - tileDisplayItems.length
+    const showTileTranscriptPreviewHint =
+      shouldLimitTileTranscript && hiddenTileItemCount > 0
+    const hiddenTileTranscriptCountLabel =
+      hiddenTileItemCount === 1
+        ? "1 earlier update hidden"
+        : `${hiddenTileItemCount} earlier updates hidden`
+    const tileTranscriptPreviewHintTitle = !showTileTranscriptPreviewHint
+      ? null
+      : `Showing recent updates only. ${hiddenTileTranscriptCountLabel}. Focus this tile or open Single view for full history.`
+    const tileTranscriptPreviewActionLabel = !showTileTranscriptPreviewHint
+      ? null
+      : isCompactTileVariant
+        ? "Focus for full history"
+        : "Focus this tile or open Single view for full history."
+    const showTileHeaderPreviewBadge =
+      !isCollapsed && showTileTranscriptPreviewHint && !isCompactTileVariant
+    const tileHeaderPreviewBadgeLabel = !showTileHeaderPreviewBadge
+      ? null
+      : "Recent only"
+    const tileHeaderPreviewBadgeTitle = !showTileHeaderPreviewBadge
+      ? null
+      : `Showing recent updates only. ${hiddenTileTranscriptCountLabel}. Focus this tile or open Single view for full history.`
+    const showTileHeaderApprovalBadge =
+      hasPendingApproval && (isCollapsed || !isCompactTileVariant)
+    const hasTileHeaderMeta =
+      isCollapsed || showTileHeaderApprovalBadge || showTileHeaderPreviewBadge
+    const shouldSplitTileHeaderRows = isCompactTileVariant && hasTileHeaderMeta
+    const shouldUseCompactTileFooter = isCompactTileVariant || (!isFocused && !isExpanded)
+    const shouldUseCompactTileQueuePanel = !isFocused && !isExpanded
+    const shouldInlineCompactTileQueueSummary =
+      hasQueuedMessages &&
+      shouldUseCompactTileQueuePanel &&
+      (hasPendingApproval || showTileTranscriptPreviewHint)
+    const TileQueueStatusIcon = isQueuePaused ? Pause : Clock
+    const showTileModelInfo = !isComplete && !!modelInfo && !acpSessionInfo && !isCompactTileVariant
+    const hasTileContextInfo = !isComplete && !!contextInfo && contextInfo.maxTokens > 0
+    const tileContextUsageRatio = !hasTileContextInfo
+      ? null
+      : contextInfo.estTokens / contextInfo.maxTokens
+    const tileContextUsagePercent = tileContextUsageRatio === null
+      ? null
+      : Math.min(100, Math.round(tileContextUsageRatio * 100))
+    const shouldHighlightCompactTileContextMeter =
+      tileContextUsagePercent !== null && tileContextUsagePercent >= 70
+    const showTileContextMeter =
+      hasTileContextInfo && (!shouldUseCompactTileFooter || shouldHighlightCompactTileContextMeter)
+    const tileContextUsageTitle = !hasTileContextInfo || tileContextUsagePercent === null
+      ? null
+      : `Context: ${formatCompactTokenCount(contextInfo.estTokens)} / ${formatCompactTokenCount(contextInfo.maxTokens)} tokens (${tileContextUsagePercent}%)`
+    const showCompactTileContextUsageLabel =
+      showTileContextMeter && tileContextUsagePercent !== null && shouldUseCompactTileFooter
+    const showWideTileContextUsageLabel =
+      showTileContextMeter && tileContextUsagePercent !== null && !showCompactTileContextUsageLabel
+    const hasTileFooterMetadata = !!acpSessionInfo || showTileModelInfo || showTileContextMeter
+    const shouldStackTileFooterLayout = isCompactTileVariant && hasTileFooterMetadata
+    const shouldUseDenseTileFooterSpacing =
+      shouldUseCompactTileFooter && hasTileFooterMetadata
+    const compactTileQueueSummaryLabel = !shouldInlineCompactTileQueueSummary
+      ? null
+      : isQueuePaused
+      ? `Paused · ${queuedMessages.length} queued`
+      : `${queuedMessages.length} queued`
+    const compactTileQueueSummaryTitle = !shouldInlineCompactTileQueueSummary
+      ? null
+      : isQueuePaused
+      ? "Queued follow-ups are paused. Focus this tile to resume or manage the queue."
+      : "Queued follow-ups are waiting. Focus this tile to manage the queue."
+    const inlineCompactTileQueueStatusClassName = isQueuePaused
+      ? "border-orange-300/80 bg-orange-100/80 text-orange-800 shadow-sm shadow-orange-500/10 dark:border-orange-700/80 dark:bg-orange-950/50 dark:text-orange-200"
+      : "border-border/60 bg-background/70 text-muted-foreground"
+    const collapsedTileQueueStatusClassName = isQueuePaused
+      ? "border-orange-300/80 bg-orange-100/80 text-orange-800 shadow-sm shadow-orange-500/10 dark:border-orange-700/80 dark:bg-orange-950/50 dark:text-orange-200"
+      : "border-amber-300/70 bg-amber-100/60 text-amber-700 dark:border-amber-700/70 dark:bg-amber-950/40 dark:text-amber-300"
+    const collapsedTileQueueBadgeLabel = hasQueuedMessages
+      ? (isQueuePaused ? `Paused · ${queuedMessages.length} queued` : `${queuedMessages.length} queued`)
+      : null
+    const collapsedTileQueueBadgeTitle = hasQueuedMessages
+      ? (isQueuePaused ? "Queued follow-up paused" : "Queued follow-up waiting")
+      : null
+    const tileFooterStatusLabel = !isComplete
+      ? `Step ${currentIteration}/${isFinite(maxIterations) ? maxIterations : "∞"}`
+      : wasStopped
+      ? "Stopped"
+      : hasErrors
+      ? "Failed"
+      : "Complete"
+    const showTileQueuePanel =
+      hasQueuedMessages &&
+      !!progress.conversationId &&
+      !shouldInlineCompactTileQueueSummary
+    const collapsedTileSummary = effectiveUserResponse
+      ? buildCollapsedUserResponsePreview(effectiveUserResponse)
+      : hasQueuedMessages
+      ? (isQueuePaused ? "Queued follow-up paused" : "Queued follow-up waiting")
+      : (progress.stepSummaries?.length ?? 0) > 0
+      ? `${progress.stepSummaries?.length ?? 0} ${(progress.stepSummaries?.length ?? 0) === 1 ? "summary" : "summaries"} available`
+      : isFollowUpInputInitializing
+      ? "Starting follow-up…"
+      : progress.streamingContent?.isStreaming
+      ? "Streaming latest update…"
+      : isComplete
+      ? "Session complete"
+      : "Expand tile to continue"
     return (
       <div
+        ref={tileVariantRef}
         onClick={onFocus}
         className={cn(containerClasses, "relative min-h-0 border h-full group/tile", className)}
         dir="ltr"
@@ -3237,7 +3352,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       >
         {/* Tile Header - clickable to toggle collapse */}
         <div
-          className="flex flex-wrap items-start gap-2 px-3 py-2 border-b bg-muted/30 flex-shrink-0 cursor-pointer"
+          className={cn(
+            "flex flex-wrap items-start gap-2 px-3 py-2 bg-muted/30 flex-shrink-0 cursor-pointer",
+            !isCollapsed && "border-b",
+            isCollapsed && "bg-muted/40",
+            isCompactTileVariant && "gap-y-1.5"
+          )}
           onClick={handleToggleCollapse}
         >
           <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -3257,81 +3377,127 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               )}
             </div>
           </div>
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-            {hasPendingApproval && (
-              <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
-                Approval
-              </Badge>
+          <div
+            className={cn(
+              "ml-auto flex max-w-full flex-wrap items-center justify-end gap-1",
+              isCompactTileVariant && "ml-0 basis-full border-t border-border/40 pt-1.5",
+              shouldSplitTileHeaderRows && "gap-y-1.5"
             )}
-            {/* Collapse/Expand toggle */}
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
-              {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-            </Button>
-
-            {onExpand && !isExpanded && (
+          >
+            {hasTileHeaderMeta && (
+              <div
+                className={cn(
+                  "flex max-w-full flex-wrap items-center justify-end gap-1",
+                  shouldSplitTileHeaderRows && "order-2 basis-full justify-end"
+                )}
+              >
+                {isCollapsed && (
+                  <span
+                    className="inline-flex shrink-0 items-center rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    title="Tile content is collapsed. Click the header to expand it."
+                  >
+                    Collapsed
+                  </span>
+                )}
+                {showTileHeaderPreviewBadge && (
+                  <span
+                    className="inline-flex shrink-0 items-center rounded-full border border-blue-300/70 bg-blue-100/80 px-2 py-0.5 text-[10px] font-medium text-blue-900 dark:border-blue-700/70 dark:bg-blue-900/50 dark:text-blue-100"
+                    title={tileHeaderPreviewBadgeTitle ?? undefined}
+                  >
+                    {tileHeaderPreviewBadgeLabel}
+                  </span>
+                )}
+                {showTileHeaderApprovalBadge && (
+                  <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
+                    Approval
+                  </Badge>
+                )}
+              </div>
+            )}
+            <div
+              className={cn(
+                "ml-auto flex shrink-0 items-center gap-1",
+                shouldSplitTileHeaderRows && "order-1 ml-0 w-full justify-end"
+              )}
+            >
+              {/* Collapse/Expand toggle */}
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onExpand()
-                }}
-                title="Show only this session"
-                aria-label="Show only this session"
+                onClick={handleToggleCollapse}
+                title={isCollapsed ? "Expand tile details" : "Collapse tile details"}
+                aria-label={isCollapsed ? "Expand tile details" : "Collapse tile details"}
+                aria-expanded={!isCollapsed}
               >
-                <Maximize2 className="h-3 w-3" />
+                {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
               </Button>
-            )}
 
-            {!isComplete && !isSnoozed && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
-                <Minimize2 className="h-3 w-3" />
-              </Button>
-            )}
-            {isSnoozed && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={async (e) => {
-                e.stopPropagation()
-                if (!progress?.sessionId) return
+              {onExpand && !isExpanded && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onExpand()
+                  }}
+                  title="Show this session in Single view"
+                  aria-label="Show this session in Single view"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                </Button>
+              )}
 
-                // Update local store first so panel shows content immediately
-                setSessionSnoozed(progress.sessionId, false)
-                // Focus this session in state
-                setFocusedSessionId(progress.sessionId)
+              {!isComplete && !isSnoozed && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
+                  <Minimize2 className="h-3 w-3" />
+                </Button>
+              )}
+              {isSnoozed && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={async (e) => {
+                  e.stopPropagation()
+                  if (!progress?.sessionId) return
 
-                try {
-                  // Unsnooze the session in backend
-                  await tipcClient.unsnoozeAgentSession({ sessionId: progress.sessionId })
-                } catch (error) {
-                  // Rollback local state only when the API call fails to keep UI and backend in sync
-                  setSessionSnoozed(progress.sessionId, true)
-                  setFocusedSessionId(null)
-                  console.error("Failed to unsnooze session:", error)
-                  return
-                }
+                  // Update local store first so panel shows content immediately
+                  setSessionSnoozed(progress.sessionId, false)
+                  // Focus this session in state
+                  setFocusedSessionId(progress.sessionId)
 
-                // UI updates after successful API call - don't rollback if these fail
-                try {
-                  // Keep panel state in sync for the restored session without forcing panel open.
-                  await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
-                } catch (error) {
-                  // Log UI errors but don't rollback - the backend state is already updated
-                  console.error("Failed to update UI after unsnooze:", error)
-                }
-              }} title="Restore session">
-                <Maximize2 className="h-3 w-3" />
-              </Button>
-            )}
-            {/* Combined close button: stops agent if running, dismisses if complete */}
-            {!isComplete ? (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title="Stop agent">
-                <OctagonX className="h-3 w-3" />
-              </Button>
-            ) : onDismiss ? (
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title="Dismiss">
-                <X className="h-3 w-3" />
-              </Button>
-            ) : null}
+                  try {
+                    // Unsnooze the session in backend
+                    await tipcClient.unsnoozeAgentSession({ sessionId: progress.sessionId })
+                  } catch (error) {
+                    // Rollback local state only when the API call fails to keep UI and backend in sync
+                    setSessionSnoozed(progress.sessionId, true)
+                    setFocusedSessionId(null)
+                    console.error("Failed to unsnooze session:", error)
+                    return
+                  }
+
+                  // UI updates after successful API call - don't rollback if these fail
+                  try {
+                    // Keep panel state in sync for the restored session without forcing panel open.
+                    await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+                  } catch (error) {
+                    // Log UI errors but don't rollback - the backend state is already updated
+                    console.error("Failed to update UI after unsnooze:", error)
+                  }
+                }} title="Restore session">
+                  <Maximize2 className="h-3 w-3" />
+                </Button>
+              )}
+              {/* Combined close button: stops agent if running, dismisses if complete */}
+              {!isComplete ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title="Stop agent">
+                  <OctagonX className="h-3 w-3" />
+                </Button>
+              ) : onDismiss ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title="Dismiss">
+                  <X className="h-3 w-3" />
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -3382,9 +3548,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               >
                 {tileDisplayItems.length > 0 ? (
                   <div className="space-y-1 p-2">
-                    {hiddenTileItemCount > 0 && (
-                      <div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
-                        Showing latest {tileDisplayItems.length} of {displayItems.length} updates
+                    {showTileTranscriptPreviewHint && (
+                      <div
+                        className={cn(
+                          "rounded-md border border-dashed border-border/60 bg-muted/15 text-muted-foreground",
+                          isCompactTileVariant ? "px-2 py-1 text-[10px]" : "px-2 py-1.5 text-[11px]"
+                        )}
+                        title={tileTranscriptPreviewHintTitle ?? undefined}
+                      >
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span>{hiddenTileTranscriptCountLabel}</span>
+                          <span className="text-muted-foreground/60" aria-hidden="true">
+                            •
+                          </span>
+                          <span className="font-medium text-foreground/80">
+                            {tileTranscriptPreviewActionLabel}
+                          </span>
+                        </div>
                       </div>
                     )}
                     {shouldLimitTileTranscript
@@ -3429,78 +3609,164 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
             {/* Footer with status info */}
             <div className={cn(
-              "px-3 py-2 border-t text-xs text-muted-foreground flex-shrink-0",
-              shouldUseCompactTileFooter ? "bg-muted/10" : "bg-muted/20"
+              "border-t text-xs text-muted-foreground flex-shrink-0",
+              shouldUseCompactTileFooter ? "bg-muted/10 px-2.5 py-1.5" : "bg-muted/20 px-3 py-2"
             )}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+              <div className={cn(
+                "flex flex-wrap items-center justify-between gap-2",
+                shouldUseDenseTileFooterSpacing && "gap-1.5",
+                shouldStackTileFooterLayout && "gap-y-1.5"
+              )}>
+                <div className={cn(
+                  "flex min-w-0 flex-1 flex-wrap items-center gap-y-1",
+                  shouldUseDenseTileFooterSpacing ? "gap-x-1.5" : "gap-x-2",
+                  shouldStackTileFooterLayout && "basis-full"
+                )}>
                   {/* ACP Session info for tile variant */}
                   {acpSessionInfo && (
                     <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
                   )}
                   {/* Model info - only show for non-ACP sessions */}
-                  {!isComplete && modelInfo && !acpSessionInfo && !shouldUseCompactTileFooter && (
+                  {showTileModelInfo && (
                     <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
                       {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
                     </span>
                   )}
-                  {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
+                  {showTileContextMeter && (
                     <div
-                      className="flex shrink-0 items-center gap-1"
-                      title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
+                      className={cn(
+                        "flex shrink-0 items-center",
+                        showCompactTileContextUsageLabel
+                          ? "gap-1 rounded-full border border-border/50 bg-background/60 px-1.5 py-0.5"
+                          : "gap-1.5"
+                      )}
+                      title={tileContextUsageTitle ?? undefined}
                     >
-                      <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
+                      {showCompactTileContextUsageLabel && (
+                        <span className="shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-muted-foreground/80">
+                          Ctx
+                        </span>
+                      )}
+                      <div className={cn(
+                        "h-1 bg-muted rounded-full overflow-hidden",
+                        showCompactTileContextUsageLabel ? "w-7" : "w-8"
+                      )}>
                         <div
                           className={cn(
                             "h-full transition-all duration-300 ease-out rounded-full",
-                            contextInfo.estTokens / contextInfo.maxTokens > 0.9
+                            tileContextUsageRatio !== null && tileContextUsageRatio > 0.9
                               ? "bg-red-500"
-                              : contextInfo.estTokens / contextInfo.maxTokens > 0.7
+                              : tileContextUsageRatio !== null && tileContextUsageRatio > 0.7
                               ? "bg-amber-500"
                               : "bg-emerald-500"
                           )}
                           style={{
-                            width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
+                            width: `${tileContextUsagePercent ?? 0}%`,
                           }}
                         />
                       </div>
+                      {showCompactTileContextUsageLabel ? (
+                        <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-foreground/80 tabular-nums">
+                          {tileContextUsagePercent}%
+                        </span>
+                      ) : showWideTileContextUsageLabel && (
+                        <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground/80 tabular-nums">
+                          Context {tileContextUsagePercent}%
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
-                {!isComplete && (
-                  <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
-                )}
-                {isComplete && (
-                  <span className="shrink-0 whitespace-nowrap">{wasStopped ? "Stopped" : hasErrors ? "Failed" : "Complete"}</span>
-                )}
+                <div
+                  className={cn(
+                    "ml-auto flex shrink-0 items-center gap-2",
+                    shouldUseDenseTileFooterSpacing && "gap-1.5",
+                    shouldStackTileFooterLayout && "ml-0 basis-full justify-end border-t border-border/30 pt-1"
+                  )}
+                >
+                  {shouldInlineCompactTileQueueSummary && (
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1 rounded-full border py-0.5 text-[10px] font-medium",
+                        shouldUseCompactTileFooter ? "px-1.5" : "px-2",
+                        inlineCompactTileQueueStatusClassName,
+                        isQueuePaused && "font-semibold"
+                      )}
+                      title={compactTileQueueSummaryTitle ?? undefined}
+                    >
+                      <TileQueueStatusIcon className="h-2.5 w-2.5 shrink-0" />
+                      {compactTileQueueSummaryLabel}
+                    </span>
+                  )}
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-full border border-border/50 py-0.5 text-[10px] font-medium text-foreground/80",
+                      shouldUseCompactTileFooter ? "px-1.5" : "px-2",
+                      shouldStackTileFooterLayout ? "bg-background/70" : "whitespace-nowrap bg-background/40"
+                    )}
+                  >
+                    {tileFooterStatusLabel}
+                  </span>
+                </div>
               </div>
             </div>
           </>
         )}
 
+        {isCollapsed && (
+          <div className="flex flex-wrap items-center gap-2 border-t bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+              <span className="truncate" title={collapsedTileSummary}>
+                {collapsedTileSummary}
+              </span>
+            </div>
+            <div className="ml-auto flex max-w-full flex-wrap items-center gap-1.5">
+              {hasQueuedMessages && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                    collapsedTileQueueStatusClassName,
+                    isQueuePaused && "font-semibold"
+                  )}
+                  title={collapsedTileQueueBadgeTitle ?? undefined}
+                >
+                  <TileQueueStatusIcon className="h-2.5 w-2.5 shrink-0" />
+                  {collapsedTileQueueBadgeLabel}
+                </span>
+              )}
+              <span className="inline-flex shrink-0 items-center rounded-full border border-border/50 bg-background/60 px-2 py-0.5 text-[10px] font-medium text-foreground/80">
+                {tileFooterStatusLabel}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Message Queue Panel - shows queued messages in tile */}
-        {hasQueuedMessages && progress.conversationId && (
+        {!isCollapsed && showTileQueuePanel && (
           <div className="px-3 py-2 border-t flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <MessageQueuePanel
               conversationId={progress.conversationId}
               messages={queuedMessages}
-              compact={isCollapsed}
+              compact={shouldUseCompactTileQueuePanel}
               isPaused={isQueuePaused}
             />
           </div>
         )}
 
         {/* Follow-up input - always visible for quick continuation */}
-        <TileFollowUpInput
-          conversationId={progress.conversationId}
-          sessionId={progress.sessionId}
-          isSessionActive={!isComplete}
-          isInitializingSession={isFollowUpInputInitializing}
-          preferCompact={!isFocused && !isExpanded}
-          className="flex-shrink-0"
-          onRequestFocus={onFocus}
-          onMessageSent={onFollowUpSent}
-        />
+        {!isCollapsed && (
+          <TileFollowUpInput
+            conversationId={progress.conversationId}
+            sessionId={progress.sessionId}
+            isSessionActive={!isComplete}
+            isInitializingSession={isFollowUpInputInitializing}
+            preferCompact={!isFocused && !isExpanded}
+            className="flex-shrink-0"
+            onRequestFocus={onFocus}
+            onMessageSent={onFollowUpSent}
+          />
+        )}
 
         {/* Kill Switch Confirmation Dialog */}
         {showKillConfirmation && (

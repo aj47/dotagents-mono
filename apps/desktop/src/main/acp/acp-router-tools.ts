@@ -49,6 +49,11 @@ function generateDelegationRunId(): string {
   return `acp_delegation_${Date.now()}_${random}`;
 }
 
+function getFirstActiveRunId(runIds?: Set<string>): string | null {
+  const firstRunId = runIds?.values().next().value;
+  return typeof firstRunId === 'string' ? firstRunId : null;
+}
+
 /**
  * Cleanup per-run mapping state so stale entries don't leak or misroute future session updates.
  *
@@ -373,7 +378,7 @@ acpService.on('sessionUpdate', (event: {
   // since we can't determine which run a session belongs to without the session ID mapping.
   if (!runId) {
     const activeRunIds = agentNameToActiveRunIds.get(agentName);
-    const activeRunId = activeRunIds?.values().next().value;
+    const activeRunId = getFirstActiveRunId(activeRunIds);
     if (activeRunId) {
       // Establish the session mapping now that we have both IDs
       sessionToRunId.set(sessionId, activeRunId);
@@ -400,7 +405,7 @@ acpService.on('sessionUpdate', (event: {
 
       // Try to find another active run for this agent
       const remainingRunIds = agentNameToActiveRunIds.get(agentName);
-      const activeRunId = remainingRunIds?.values().next().value;
+      const activeRunId = getFirstActiveRunId(remainingRunIds);
       if (!activeRunId) {
         return;
       }

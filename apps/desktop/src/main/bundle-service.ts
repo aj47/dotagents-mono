@@ -152,6 +152,16 @@ export interface BundleComponentSelection {
   memories?: boolean
 }
 
+export const BUNDLE_COMPONENT_KEYS = [
+  "agentProfiles",
+  "mcpServers",
+  "skills",
+  "repeatTasks",
+  "memories",
+] as const
+
+export type BundleComponentKey = typeof BUNDLE_COMPONENT_KEYS[number]
+
 export interface BundleItemSelectionOptions {
   agentProfileIds?: string[]
   mcpServerNames?: string[]
@@ -222,17 +232,41 @@ export interface GeneratePublishPayloadOptions extends ExportBundleOptions {
 
 export type ImportConflictStrategy = "skip" | "overwrite" | "rename"
 
+export interface BundleImportBackupMetadata {
+  /** Placeholder until Phase 1 writes a real backup before import mutation. */
+  status: "not-created" | "created" | "failed"
+  filePath: string | null
+  createdAt: string | null
+}
+
+export interface BundleImportItemDecision {
+  component: BundleComponentKey
+  id: string
+  /** Reserved for Phase 3 item-level include/exclude. Defaults to true when omitted. */
+  include?: boolean
+  /** Reserved for Phase 2 per-item conflict overrides. */
+  strategy?: ImportConflictStrategy
+  /** Reserved for Phase 2 deterministic rename targets. */
+  renameTo?: string
+}
+
+export interface BundleImportPlan {
+  filePath: string
+  conflictStrategy: ImportConflictStrategy
+  components: Required<BundleComponentSelection>
+  itemDecisions: BundleImportItemDecision[]
+  backup: BundleImportBackupMetadata
+}
+
 export interface ImportOptions {
   /** How to handle conflicts when an item with the same ID already exists */
   conflictStrategy: ImportConflictStrategy
   /** Components to import (defaults to all) */
-  components?: {
-    agentProfiles?: boolean
-    mcpServers?: boolean
-    skills?: boolean
-    repeatTasks?: boolean
-    memories?: boolean
-  }
+  components?: BundleComponentSelection
+  /** Phase 0 contract foundation: carried through apply path, deeper consumption lands in later phases. */
+  itemDecisions?: BundleImportItemDecision[]
+  /** Phase 1 placeholder: backup metadata is threaded through now, populated on write later. */
+  backup?: Partial<BundleImportBackupMetadata>
 }
 
 export interface ImportItemResult {
@@ -251,6 +285,8 @@ export interface ImportBundleResult {
   repeatTasks: ImportItemResult[]
   memories: ImportItemResult[]
   errors: string[]
+  appliedPlan: BundleImportPlan
+  backup: BundleImportBackupMetadata
 }
 
 // ============================================================================
@@ -263,17 +299,15 @@ export interface PreviewConflict {
   existingName?: string
 }
 
+export type BundleConflictMap = Record<BundleComponentKey, PreviewConflict[]>
+
 export interface BundlePreviewResult {
   success: boolean
+  dryRun: true
   filePath?: string
   bundle?: DotAgentsBundle
-  conflicts?: {
-    agentProfiles: PreviewConflict[]
-    mcpServers: PreviewConflict[]
-    skills: PreviewConflict[]
-    repeatTasks: PreviewConflict[]
-    memories: PreviewConflict[]
-  }
+  conflicts?: BundleConflictMap
+  importPlan?: BundleImportPlan
   error?: string
 }
 
@@ -632,6 +666,16 @@ const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
   memories: true,
 }
 
+const DEFAULT_IMPORT_COMPONENTS: Required<BundleComponentSelection> = {
+  ...DEFAULT_EXPORT_COMPONENTS,
+}
+
+const DEFAULT_IMPORT_BACKUP_METADATA: BundleImportBackupMetadata = {
+  status: "not-created",
+  filePath: null,
+  createdAt: null,
+}
+
 const DEFAULT_PUBLISH_COMPONENTS: Required<BundleComponentSelection> = {
   agentProfiles: true,
   mcpServers: true,
@@ -653,6 +697,60 @@ function loadSkillsForBundle(layer: AgentsLayerPaths, options?: BundleItemSelect
     instructions: skill.instructions,
     source: skill.source || "local",
     }))
+}
+
+function normalizeImportComponents(
+  components?: BundleComponentSelection
+): Required<BundleComponentSelection> {
+  return {
+    ...DEFAULT_IMPORT_COMPONENTS,
+    ...components,
+  }
+}
+
+function normalizeImportBackupMetadata(
+  backup?: Partial<BundleImportBackupMetadata>
+): BundleImportBackupMetadata {
+  return {
+    ...DEFAULT_IMPORT_BACKUP_METADATA,
+    ...backup,
+  }
+}
+
+function createDefaultImportItemDecisions(
+  conflicts?: BundleConflictMap
+): BundleImportItemDecision[] {
+  if (!conflicts) {
+    return []
+  }
+
+  return BUNDLE_COMPONENT_KEYS.flatMap((component) =>
+    conflicts[component].map((conflict) => ({
+      component,
+      id: conflict.id,
+      include: true,
+      strategy: "skip" as const,
+    }))
+  )
+}
+
+export function createBundleImportPlan(options: {
+  filePath: string
+  conflictStrategy?: ImportConflictStrategy
+  components?: BundleComponentSelection
+  conflicts?: BundleConflictMap
+  itemDecisions?: BundleImportItemDecision[]
+  backup?: Partial<BundleImportBackupMetadata>
+}): BundleImportPlan {
+  return {
+    filePath: options.filePath,
+    conflictStrategy: options.conflictStrategy ?? "skip",
+    components: normalizeImportComponents(options.components),
+    itemDecisions: options.itemDecisions
+      ? options.itemDecisions.map((decision) => ({ ...decision }))
+      : createDefaultImportItemDecisions(options.conflicts),
+    backup: normalizeImportBackupMetadata(options.backup),
+  }
 }
 
 function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleRepeatTask[] {
@@ -1233,7 +1331,7 @@ export function previewBundleWithConflicts(
 ): BundlePreviewResult {
   const bundle = previewBundle(filePath)
   if (!bundle) {
-    return { success: false, error: "Failed to parse bundle file" }
+    return { success: false, dryRun: true, error: "Failed to parse bundle file" }
   }
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
@@ -1251,7 +1349,7 @@ export function previewBundleWithConflicts(
   const existingMcpServers = new Set(Object.keys(readMcpServersFromConfig(mcpConfig)))
 
   // Detect conflicts
-  const conflicts = {
+  const conflicts: BundleConflictMap = {
     agentProfiles: bundle.agentProfiles
       .filter(p => existingProfiles.originById.has(p.id))
       .map(p => {
@@ -1281,7 +1379,17 @@ export function previewBundleWithConflicts(
       }),
   }
 
-  return { success: true, filePath, bundle, conflicts }
+  return {
+    success: true,
+    dryRun: true,
+    filePath,
+    bundle,
+    conflicts,
+    importPlan: createBundleImportPlan({
+      filePath,
+      conflicts,
+    }),
+  }
 }
 
 export async function previewBundleFromDialog(): Promise<{
@@ -1338,6 +1446,13 @@ export async function importBundle(
   targetAgentsDir: string,
   options: ImportOptions
 ): Promise<ImportBundleResult> {
+  const appliedPlan = createBundleImportPlan({
+    filePath,
+    conflictStrategy: options.conflictStrategy,
+    components: options.components,
+    itemDecisions: options.itemDecisions,
+    backup: options.backup,
+  })
   const result: ImportBundleResult = {
     success: false,
     agentProfiles: [],
@@ -1346,6 +1461,8 @@ export async function importBundle(
     repeatTasks: [],
     memories: [],
     errors: [],
+    appliedPlan,
+    backup: appliedPlan.backup,
   }
 
   // Parse bundle
@@ -1356,14 +1473,7 @@ export async function importBundle(
   }
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
-  const { conflictStrategy } = options
-  const components = options.components ?? {
-    agentProfiles: true,
-    mcpServers: true,
-    skills: true,
-    repeatTasks: true,
-    memories: true,
-  }
+  const { conflictStrategy, components } = appliedPlan
 
   // Ensure directories exist
   fs.mkdirSync(targetAgentsDir, { recursive: true })

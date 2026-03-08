@@ -1,7 +1,7 @@
-import React, { useState, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, Loader2, X } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
@@ -21,13 +21,17 @@ interface TileFollowUpInputProps {
   isSessionActive?: boolean
   isInitializingSession?: boolean
   className?: string
-  /** Agent/profile name to display as indicator */
-  agentName?: string
+  /** Prefer a compact focus-first affordance instead of the full composer */
+  preferCompact?: boolean
+  /** Called when the user wants to focus this tile before replying */
+  onRequestFocus?: () => void
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
   onStopSession?: () => void | Promise<void>
 }
+
+const TILE_FOLLOW_UP_COMPACT_WIDTH = 360
 
 /**
  * Compact text input for continuing a conversation within a session tile.
@@ -38,18 +42,45 @@ export function TileFollowUpInput({
   isSessionActive = false,
   isInitializingSession = false,
   className,
-  agentName,
+  preferCompact = false,
+  onRequestFocus,
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
+  const [isCompactLayout, setIsCompactLayout] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+
+  useEffect(() => {
+    const node = containerRef.current
+    if (!node) return undefined
+
+    const updateCompactLayout = (width: number) => {
+      setIsCompactLayout(width < TILE_FOLLOW_UP_COMPACT_WIDTH)
+    }
+
+    updateCompactLayout(Math.round(node.getBoundingClientRect().width))
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      updateCompactLayout(Math.round(entry.contentRect.width))
+    })
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
@@ -243,6 +274,8 @@ export function TileFollowUpInput({
     sendMutation.isPending ||
     (isSessionActive && !isQueueEnabled)
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
+  const shouldUseCompactPrompt = preferCompact && !hasMessageContent
+  const shouldStackComposerActions = isCompactLayout && !shouldUseCompactPrompt
 
   // Show appropriate placeholder based on state
   // Use minimal placeholders - loading states indicated by spinners instead
@@ -259,23 +292,64 @@ export function TileFollowUpInput({
     return "Continue conversation..."
   }
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn(
-        "flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5",
-        className
-      )}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Agent indicator - shows which agent is handling this session */}
-      {agentName && (
-        <div className="flex items-center gap-1 text-[10px] text-primary/70">
-          <Bot className="h-2.5 w-2.5 shrink-0" />
-          <span className="truncate" title={`Agent: ${agentName}`}>{agentName}</span>
-        </div>
-      )}
+  const getCompactPromptLabel = () => {
+    if (isInitializingSession) {
+      return "Starting follow-up…"
+    }
+    if (isSessionActive && !isQueueEnabled) {
+      return "Agent is replying…"
+    }
+    return getPlaceholder() || "Continue conversation..."
+  }
 
+  const compactPromptStatus = isSessionActive && !isQueueEnabled ? "Focus to view" : "Focus to type"
+  const compactPromptCompactActionLabel = isInitializingSession
+    ? "Open"
+    : isSessionActive && !isQueueEnabled
+      ? "View"
+      : "Reply"
+
+  if (shouldUseCompactPrompt) {
+    const compactPromptAriaLabel = isSessionActive && !isQueueEnabled
+      ? "Focus this session to view session details"
+      : "Focus this session to continue the conversation"
+
+    return (
+      <div ref={containerRef} className={className}>
+        <div className="border-t bg-muted/10 px-2 py-1.5">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground"
+            onClick={(e) => {
+              if (!onRequestFocus) return
+              e.stopPropagation()
+              onRequestFocus()
+            }}
+            title={compactPromptAriaLabel}
+            aria-label={compactPromptAriaLabel}
+          >
+            <Send className="h-3 w-3 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{getCompactPromptLabel()}</span>
+            {isCompactLayout ? (
+              <span className="shrink-0 rounded-full border border-border/50 bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+                {compactPromptCompactActionLabel}
+              </span>
+            ) : (
+              <span className="shrink-0 whitespace-nowrap text-[10px]">{compactPromptStatus}</span>
+            )}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div ref={containerRef} className={className}>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5"
+        onClick={(e) => e.stopPropagation()}
+    >
       {imageAttachments.length > 0 && (
         <div className="flex w-full gap-1.5 overflow-x-auto pb-1">
           {imageAttachments.map((attachment) => (
@@ -297,21 +371,28 @@ export function TileFollowUpInput({
         </div>
       )}
 
-      <div className="flex w-full items-center gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={getPlaceholder()}
+      <div className={cn("flex w-full gap-2", shouldStackComposerActions ? "flex-col items-stretch" : "items-center")}>
+        <div
           className={cn(
-            "flex-1 text-sm bg-transparent border-0 outline-none",
-            "placeholder:text-muted-foreground/60",
-            "focus:ring-0"
+            "flex min-w-0 flex-1 items-center gap-2",
+            shouldStackComposerActions && "rounded-md border border-border/50 bg-background/70 px-2 py-1"
           )}
-          disabled={isDisabled}
-        />
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={getPlaceholder()}
+            className={cn(
+              "min-w-0 flex-1 border-0 bg-transparent text-sm outline-none",
+              "placeholder:text-muted-foreground/60",
+              "focus:ring-0"
+            )}
+            disabled={isDisabled}
+          />
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -320,78 +401,86 @@ export function TileFollowUpInput({
           className="hidden"
           onChange={handleImageSelection}
         />
-        <PredefinedPromptsMenu
-          onSelectPrompt={(content) => setText(content)}
-          disabled={isDisabled}
-          className="h-6 w-6"
-        />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
-          disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
-          onClick={() => fileInputRef.current?.click()}
-          title="Attach image"
+        <div
+          className={cn(
+            "flex max-w-full shrink-0 items-center gap-1",
+            shouldStackComposerActions && "w-full justify-end border-t border-border/40 pt-1.5"
+          )}
         >
-          <ImagePlus className="h-3 w-3" />
-        </Button>
-        <Button
-          type="submit"
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
-          disabled={!hasMessageContent || isDisabled}
-          title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-          aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-        >
-          {isInitializingSession ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Send className={cn(
+          <PredefinedPromptsMenu
+            onSelectPrompt={(content) => setText(content)}
+            disabled={isDisabled}
+            className="h-6 w-6"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 flex-shrink-0"
+            disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach image"
+          >
+            <ImagePlus className="h-3 w-3" />
+          </Button>
+          <Button
+            type="submit"
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 flex-shrink-0"
+            disabled={!hasMessageContent || isDisabled}
+            title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+            aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          >
+            {isInitializingSession ? (
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className={cn(
+                "h-3 w-3",
+                sendMutation.isPending && "animate-pulse"
+              )} aria-hidden="true" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "h-6 w-6 flex-shrink-0",
+              "hover:bg-red-100 dark:hover:bg-red-900/30",
+              "hover:text-red-600 dark:hover:text-red-400"
+            )}
+            disabled={isVoiceDisabled}
+            onClick={handleVoiceClick}
+            title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
+          >
+            <Mic className="h-3 w-3" />
+          </Button>
+          {/* Kill switch - stop agent button (only show when session is active) */}
+          {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "h-6 w-6 flex-shrink-0",
+              "text-red-500 hover:text-red-600",
+              "hover:bg-red-100 dark:hover:bg-red-950/30"
+            )}
+            disabled={isStoppingSession}
+            onClick={handleStopSession}
+            title="Stop agent execution"
+          >
+            <OctagonX className={cn(
               "h-3 w-3",
-              sendMutation.isPending && "animate-pulse"
-            )} aria-hidden="true" />
+              isStoppingSession && "animate-pulse"
+            )} />
+          </Button>
           )}
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "h-6 w-6 flex-shrink-0",
-            "hover:bg-red-100 dark:hover:bg-red-900/30",
-            "hover:text-red-600 dark:hover:text-red-400"
-          )}
-          disabled={isVoiceDisabled}
-          onClick={handleVoiceClick}
-          title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
-        >
-          <Mic className="h-3 w-3" />
-        </Button>
-        {/* Kill switch - stop agent button (only show when session is active) */}
-        {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "h-6 w-6 flex-shrink-0",
-            "text-red-500 hover:text-red-600",
-            "hover:bg-red-100 dark:hover:bg-red-950/30"
-          )}
-          disabled={isStoppingSession}
-          onClick={handleStopSession}
-          title="Stop agent execution"
-        >
-          <OctagonX className={cn(
-            "h-3 w-3",
-            isStoppingSession && "animate-pulse"
-          )} />
-        </Button>
-        )}
+        </div>
       </div>
-    </form>
+      </form>
+    </div>
   )
 }
 

@@ -2676,7 +2676,7 @@ export class MCPService {
         if (isDebugTools()) {
           logTools("Executing built-in tool", { name: toolCall.name, arguments: toolCall.arguments })
         }
-        const result = await executeBuiltinTool(toolCall.name, toolCall.arguments || {}, sessionId)
+        const result = await executeBuiltinTool(toolCall.name, toolCall.arguments || {}, sessionId, onProgress)
         if (result) {
           if (isDebugTools()) {
             logTools("Built-in tool result", { name: toolCall.name, result })
@@ -2787,7 +2787,7 @@ export class MCPService {
             })
           }
 
-          const result = await executeBuiltinTool(matchingTool.name, toolCall.arguments || {}, sessionId)
+          const result = await executeBuiltinTool(matchingTool.name, toolCall.arguments || {}, sessionId, onProgress)
           if (result) {
             return endSpanAndReturn(result)
           }

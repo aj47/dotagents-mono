@@ -60,10 +60,12 @@ import {
 } from "./llm"
 import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
 import {
+  calculateAnchoredPanelPosition,
   saveCustomPosition,
   updatePanelPosition,
   constrainPositionToScreen,
   PanelPosition,
+  type PanelResizeAnchor,
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
 
@@ -3267,8 +3269,42 @@ export const router = {
     return { width, height }
   }),
 
+  getFloatingPanelLayoutState: t.procedure.action(async () => {
+    const mode = getCurrentPanelMode()
+    const minWidth =
+      mode === "textInput"
+        ? TEXT_INPUT_MIN_WIDTH
+        : Math.max(200, MIN_WAVEFORM_WIDTH)
+    const panel = WINDOWS.get("panel")
+
+    if (!panel) {
+      return {
+        isVisible: false,
+        mode,
+        width: minWidth,
+        height:
+          mode === "agent"
+            ? PROGRESS_MIN_HEIGHT
+            : mode === "textInput"
+              ? TEXT_INPUT_MIN_HEIGHT
+              : WAVEFORM_MIN_HEIGHT,
+        minWidth,
+      }
+    }
+
+    const [width, height] = panel.getSize()
+
+    return {
+      isVisible: panel.isVisible(),
+      mode,
+      width,
+      height,
+      minWidth,
+    }
+  }),
+
   updatePanelSize: t.procedure
-    .input<{ width: number; height: number }>()
+    .input<{ width: number; height: number; resizeAnchor?: PanelResizeAnchor | null }>()
     .action(async ({ input }) => {
       const win = WINDOWS.get("panel")
       if (!win) {
@@ -3285,6 +3321,16 @@ export const router = {
             : WAVEFORM_MIN_HEIGHT
       const finalWidth = Math.max(minWidth, input.width)
       const finalHeight = Math.max(minHeight, input.height)
+      const currentBounds = win.getBounds()
+      const anchoredPosition = calculateAnchoredPanelPosition({
+        currentBounds,
+        nextSize: { width: finalWidth, height: finalHeight },
+        resizeAnchor: input.resizeAnchor,
+      })
+      const constrainedPosition = constrainPositionToScreen(
+        anchoredPosition,
+        { width: finalWidth, height: finalHeight },
+      )
 
       // Update size constraints to allow resizing
       win.setMinimumSize(minWidth, minHeight)
@@ -3293,6 +3339,7 @@ export const router = {
       // Mark manual resize to avoid immediate mode re-apply fighting user
       markManualResize()
       win.setSize(finalWidth, finalHeight, false)
+      win.setPosition(constrainedPosition.x, constrainedPosition.y)
       return { width: finalWidth, height: finalHeight }
     }),
 

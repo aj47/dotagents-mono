@@ -767,8 +767,33 @@ describe("bundle-service", () => {
 
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
       expect(result.success).toBe(true)
+      expect(result.dryRun).toBe(true)
       expect(result.conflicts?.agentProfiles.length).toBe(1)
       expect(result.conflicts?.agentProfiles[0].id).toBe("conflict-id")
+      expect(result.importPlan).toMatchObject({
+        filePath: bundlePath,
+        conflictStrategy: "skip",
+        components: {
+          agentProfiles: true,
+          mcpServers: true,
+          skills: true,
+          repeatTasks: true,
+          memories: true,
+        },
+        backup: {
+          status: "not-created",
+          filePath: null,
+          createdAt: null,
+        },
+      })
+      expect(result.importPlan?.itemDecisions).toEqual([
+        expect.objectContaining({
+          component: "agentProfiles",
+          id: "conflict-id",
+          include: true,
+          strategy: "skip",
+        }),
+      ])
     })
 
     it("includes MCP server conflicts as structured conflict entries", async () => {
@@ -1101,6 +1126,24 @@ describe("bundle-service", () => {
       const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
 
       expect(result.success).toBe(true)
+      expect(result.appliedPlan).toMatchObject({
+        filePath: bundlePath,
+        conflictStrategy: "skip",
+        components: {
+          agentProfiles: true,
+          mcpServers: true,
+          skills: true,
+          repeatTasks: true,
+          memories: true,
+        },
+        backup: {
+          status: "not-created",
+          filePath: null,
+          createdAt: null,
+        },
+      })
+      expect(result.appliedPlan.itemDecisions).toEqual([])
+      expect(result.backup).toEqual(result.appliedPlan.backup)
       expect(result.agentProfiles[0].action).toBe("imported")
       expect(result.skills[0].action).toBe("imported")
       expect(result.repeatTasks[0].action).toBe("imported")

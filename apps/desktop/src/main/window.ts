@@ -42,6 +42,15 @@ function notifyPanelSizeChanged(width: number, height: number) {
   })
 }
 
+function notifyFloatingPanelLayoutStateChanged() {
+  const win = WINDOWS.get("panel")
+  if (!win) return
+
+  whenPanelReady(() => {
+    getRendererHandlers<RendererHandlers>(win.webContents).onFloatingPanelLayoutStateChanged.send()
+  })
+}
+
 // Track panel webContents ready state to avoid sending IPC before renderer is ready
 let panelWebContentsReady = false
 
@@ -684,6 +693,7 @@ export function setPanelMode(mode: "normal" | "agent" | "textInput") {
 
   if (mode !== previousMode) {
     restorePanelSizeForMode(mode)
+    notifyFloatingPanelLayoutStateChanged()
   }
 }
 
@@ -827,6 +837,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
   win.on("hide", () => {
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
     ensureAppSwitcherPresence("panel.hide")
+    notifyFloatingPanelLayoutStateChanged()
   })
 
   // Reassert z-order on lifecycle changes and reset stale focus-hide flag
@@ -836,6 +847,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
     // Clear the flag when panel becomes visible through any means.
     // This prevents stale state if user manually shows panel while main is focused.
     clearPanelHiddenByMainFocus()
+    notifyFloatingPanelLayoutStateChanged()
   })
   win.on("blur", () => ensurePanelZOrder(win))
   win.on("focus", () => ensurePanelZOrder(win))
