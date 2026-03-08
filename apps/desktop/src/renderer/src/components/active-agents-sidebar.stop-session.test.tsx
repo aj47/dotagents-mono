@@ -310,4 +310,67 @@ describe("ActiveAgentsSidebar session-action feedback", () => {
     )
     expect(consoleError).toHaveBeenCalled()
   })
+
+  it("shows a visible error when restore succeeds but panel focus sync fails", async () => {
+    const runtime = createHookRuntime()
+    const focusAgentSession = vi.fn(async () => ({
+      success: false,
+      error: "Panel window is unavailable.",
+    }))
+    const {
+      ActiveAgentsSidebar,
+      toast,
+      unsnoozeAgentSession,
+      setFocusedSessionId,
+      setSessionSnoozed,
+    } = await loadSidebar(runtime, {
+      focusedSessionId: "session-2",
+      focusAgentSession,
+      activeSessions: [
+        {
+          id: "session-1",
+          conversationTitle: "Investigate bug",
+          status: "active",
+          startTime: 0,
+          isSnoozed: true,
+        },
+        {
+          id: "session-2",
+          conversationTitle: "Other task",
+          status: "active",
+          startTime: 1,
+        },
+      ],
+    })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    })
+
+    const tree = runtime.render(ActiveAgentsSidebar, {} as any)
+    runtime.commitEffects()
+
+    const restoreButton = findNode(
+      tree,
+      (node) => node.type === "button" && node.props?.title === "Restore",
+    )
+    restoreButton.props.onClick({ stopPropagation: vi.fn() })
+    await flushPromises()
+
+    expect(unsnoozeAgentSession).toHaveBeenCalledWith({ sessionId: "session-1" })
+    expect(focusAgentSession).toHaveBeenCalledWith({ sessionId: "session-1" })
+    expect(setSessionSnoozed).toHaveBeenCalledTimes(1)
+    expect(setSessionSnoozed).toHaveBeenCalledWith("session-1", false)
+    expect(setFocusedSessionId).toHaveBeenCalledTimes(1)
+    expect(setFocusedSessionId).toHaveBeenCalledWith("session-1")
+    expect(toast.error).toHaveBeenCalledWith(
+      "Session restored, but failed to sync panel focus. Panel window is unavailable.",
+    )
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to sync panel focus after unsnooze:",
+      "Panel window is unavailable.",
+    )
+  })
 })

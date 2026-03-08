@@ -273,11 +273,27 @@ export function ActiveAgentsSidebar({
       // UI updates after successful API call - don't rollback if these fail
       try {
         // Keep panel context synced to the restored session, but do not force-open it.
-        await tipcClient.focusAgentSession({ sessionId })
+        const focusResult = await tipcClient.focusAgentSession({ sessionId })
+        if (focusResult?.success === false) {
+          const details = typeof focusResult.error === "string" ? focusResult.error.trim() : ""
+          console.error("Failed to sync panel focus after unsnooze:", focusResult.error)
+          toast.error(
+            details
+              ? `Session restored, but failed to sync panel focus. ${details}`
+              : "Session restored, but failed to sync panel focus",
+          )
+          return
+        }
         logUI("[ActiveAgentsSidebar] Session unsnoozed and focused")
       } catch (error) {
         // Log UI errors but don't rollback - the backend state is already updated
         console.error("Failed to update UI after unsnooze:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(
+          details
+            ? `Session restored, but failed to sync panel focus. ${details}`
+            : "Session restored, but failed to sync panel focus",
+        )
       }
     } else {
       // Snoozing: move session to background

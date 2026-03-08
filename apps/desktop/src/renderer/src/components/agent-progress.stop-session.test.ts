@@ -30,6 +30,16 @@ describe("agent progress stop-session feedback", () => {
     expect(agentProgressSource).toContain(
       '`Failed to restore session. ${getActionErrorMessage(error, "Please try again.")}`',
     )
+    expect(agentProgressSource).toContain(
+      'const focusResult = await tipcClient.focusAgentSession({ sessionId: progress.sessionId })',
+    )
+    expect(agentProgressSource).toContain('if (focusResult?.success === false) {')
+    expect(agentProgressSource).toContain(
+      'console.error("Failed to sync panel focus after unsnooze:", focusResult.error)',
+    )
+    expect(agentProgressSource).toContain(
+      '`Session restored, but failed to sync panel focus. ${getActionErrorMessage(focusResult.error, "Please try again.")}`',
+    )
   })
 
   it("surfaces a visible toast when completed-session close actions fail", () => {

@@ -3405,10 +3405,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 // UI updates after successful API call - don't rollback if these fail
                 try {
                   // Keep panel state in sync for the restored session without forcing panel open.
-                  await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+                  const focusResult = await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+                  if (focusResult?.success === false) {
+                    console.error("Failed to sync panel focus after unsnooze:", focusResult.error)
+                    toast.error(
+                      `Session restored, but failed to sync panel focus. ${getActionErrorMessage(focusResult.error, "Please try again.")}`,
+                    )
+                  }
                 } catch (error) {
                   // Log UI errors but don't rollback - the backend state is already updated
                   console.error("Failed to update UI after unsnooze:", error)
+                  toast.error(
+                    `Session restored, but failed to sync panel focus. ${getActionErrorMessage(error, "Please try again.")}`,
+                  )
                 }
               }} title="Restore session">
                 <Maximize2 className="h-3 w-3" />
