@@ -36,6 +36,14 @@ export default function SessionListScreen({ navigation }: Props) {
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
+  const [isAcpMainAgentMode, setIsAcpMainAgentMode] = useState(false);
+  const currentAgentAccessibilityPrefix = isAcpMainAgentMode ? 'Current main agent' : 'Current agent';
+  const agentSelectionAccessibilityHint = isAcpMainAgentMode
+    ? 'Opens main agent selection menu'
+    : 'Opens agent selection menu';
+  const noOtherAgentsAvailableText = isAcpMainAgentMode
+    ? 'No other main agents are available to switch to right now.'
+    : 'No other agents are available to switch to right now.';
 
   const hasAlternativeAgentSelectorOption = useCallback((optionIds: string[]) => {
     if (optionIds.length === 0) return false;
@@ -45,6 +53,7 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const refreshAgentSelectorAvailability = useCallback(async () => {
     if (!config.baseUrl || !config.apiKey) {
+      setIsAcpMainAgentMode(false);
       setHasAgentSelectorOptions(false);
       return;
     }
@@ -52,6 +61,7 @@ export default function SessionListScreen({ navigation }: Props) {
     try {
       const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
       const settings = await client.getSettings();
+      setIsAcpMainAgentMode(settings.mainAgentMode === 'acp');
 
       if (settings.mainAgentMode === 'acp') {
         const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
@@ -656,8 +666,8 @@ export default function SessionListScreen({ navigation }: Props) {
             style={styles.headerAgentSelectorTrigger}
             onPress={() => setAgentSelectorVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-            accessibilityHint="Opens agent selection menu"
+            accessibilityLabel={`${currentAgentAccessibilityPrefix}: ${currentAgentLabel}. Tap to change.`}
+            accessibilityHint={agentSelectionAccessibilityHint}
             activeOpacity={0.7}
           >
             <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
@@ -674,7 +684,7 @@ export default function SessionListScreen({ navigation }: Props) {
           <View
             style={styles.headerAgentSelectorTrigger}
             accessible
-            accessibilityLabel={`Current agent: ${currentAgentLabel}. No other agents are available to switch to right now.`}
+            accessibilityLabel={`${currentAgentAccessibilityPrefix}: ${currentAgentLabel}. ${noOtherAgentsAvailableText}`}
           >
             <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
             <View style={[styles.headerAgentSelectorBadge, styles.headerAgentSelectorBadgeStatic]}>
@@ -708,7 +718,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentAgentLabel, hasAgentSelectorOptions]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentAgentLabel, hasAgentSelectorOptions, currentAgentAccessibilityPrefix, agentSelectionAccessibilityHint, noOtherAgentsAvailableText]);
   const insets = useSafeAreaInsets();
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;

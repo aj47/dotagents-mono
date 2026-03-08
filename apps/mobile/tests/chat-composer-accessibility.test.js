@@ -30,10 +30,21 @@ test('keeps the composer agent selector chip comfortably tappable on mobile', ()
 
 test('only shows the composer agent selector when the selector actually has options', () => {
   assert.match(screenSource, /const \[hasAgentSelectorOptions, setHasAgentSelectorOptions\] = useState\(false\);/);
+  assert.match(screenSource, /const \[isAcpMainAgentMode, setIsAcpMainAgentMode\] = useState\(false\);/);
+  assert.match(screenSource, /setIsAcpMainAgentMode\(settings\.mainAgentMode === 'acp'\);/);
   assert.match(screenSource, /const hasAlternativeAgentSelectorOption = useCallback\(\(optionIds: string\[\]\) => \{[\s\S]*?if \(optionIds\.length === 0\) return false;[\s\S]*?if \(!currentAgentId\) return true;[\s\S]*?optionIds\.some\(\(optionId\) => optionId !== currentAgentId\);[\s\S]*?\}, \[currentAgentId\]\);/);
   assert.match(screenSource, /hasAlternativeAgentSelectorOption\(\(profilesResponse\.profiles \|\| \[\]\)\.map\(\(profile\) => profile\.id\)\)/);
   assert.match(screenSource, /getAcpMainAgentOptions\(settings, agentProfilesResponse\.profiles \|\| \[\]\)[\s\S]*?\.map\(\(option\) => toMainAgentProfile\(option\)\.id\)[\s\S]*?hasAlternativeAgentSelectorOption\(mainAgentOptionIds\)/);
   assert.match(screenSource, /\{hasAgentSelectorOptions && \(/);
+});
+
+test('uses main-agent terminology in the composer selector when ACP mode is active', () => {
+  assert.match(screenSource, /const currentAgentAccessibilityPrefix = isAcpMainAgentMode \? 'Current main agent' : 'Current agent';/);
+  assert.match(screenSource, /const agentSelectionAccessibilityHint = isAcpMainAgentMode[\s\S]*?'Opens main agent selection menu'[\s\S]*?'Opens agent selection menu';/);
+  assert.match(screenSource, /const composerAgentChipLabel = isAcpMainAgentMode \? '🤖 Main Agent' : '🤖 Agent';/);
+  assert.match(screenSource, /accessibilityLabel=\{`\$\{currentAgentAccessibilityPrefix\}: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
+  assert.match(screenSource, /accessibilityHint=\{agentSelectionAccessibilityHint\}/);
+  assert.match(screenSource, /<Text style=\{styles\.agentSelectorChipLabel\}>\{composerAgentChipLabel\}<\/Text>/);
 });
 
 test('refreshes composer agent selector visibility when the chat screen regains focus', () => {

@@ -1,5 +1,55 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 136 - Keep ACP mobile entry points explicit about the main-agent role
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-touched response-history and selector-notice affordances without new evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Rechecked the ACP-aware selector sheet copy in `apps/mobile/src/ui/AgentSelectorSheet.tsx` before touching the mobile entry points.
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed `AgentSelectorSheet` already switched to `Main Agent` / `Current main agent` terminology in ACP-specific states.
+  - The main mobile entry points still used generic `agent` wording:
+    - `ChatScreen` header accessibility said `Current agent...`
+    - the chat composer chip still rendered `🤖 Agent`
+    - `SessionListScreen` header accessibility also stayed generic
+  - On mobile, that mixed vocabulary weakened state clarity because the same ACP routing choice read like a role-specific `main agent` in the sheet but a generic `agent` at the places users actually tap first.
+- Issue identified:
+  - ACP mode was not consistently explicit at the mobile selector entry points, making the sub-agent role feel less stable across the chat and chats surfaces.
+- Decision and rationale:
+  - Keep the existing header and composer layouts; do not reopen broader selector or chip design work while live validation is blocked.
+  - Make the smallest consistency fix instead: carry the already-established ACP `main agent` terminology into entry-point labels, hints, and the composer chip label.
+  - Limit the change to wording/state clarity so the iteration stays low-risk and shippable.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - track whether selector availability was fetched in ACP mode,
+    - use `Current main agent` / `Opens main agent selection menu` accessibility copy in ACP mode,
+    - relabel the composer chip to `🤖 Main Agent` in ACP mode while preserving the existing truncation/chevron layout.
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` to use the same ACP-aware header accessibility copy as the chat screen.
+  - Updated focused tests in:
+    - `apps/mobile/tests/chat-composer-accessibility.test.js`
+    - `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js` ✅
+  - `node --test apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because repository and mobile `node_modules` are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the selector sheet's recent ACP wording is the right source of truth for the rest of the mobile entry flow.
+  - Accepted the slightly longer visible chip label `🤖 Main Agent` in ACP mode because the chip already has truncation support on the current-agent value and the clarity gain is user-facing.
+  - Left the fallback current-agent name (`Default Agent`) unchanged to avoid broadening this pass beyond entry-point terminology.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `🤖 Main Agent` still feels balanced in the composer row on a narrow viewport.
+  - Check the ACP chat/chats headers and selector sheet together with VoiceOver / accessibility inspection if practical so the `main agent` wording sounds natural end to end.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence instead of reworking entry-point copy again without screenshots or simulator confirmation.
+
 ## Iteration 134 - Disable unusable response-history speech controls for image-only rows
 
 - Date: 2026-03-08

@@ -313,6 +313,15 @@ export default function ChatScreen({ route, navigation }: any) {
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
+  const [isAcpMainAgentMode, setIsAcpMainAgentMode] = useState(false);
+  const currentAgentAccessibilityPrefix = isAcpMainAgentMode ? 'Current main agent' : 'Current agent';
+  const agentSelectionAccessibilityHint = isAcpMainAgentMode
+    ? 'Opens main agent selection menu'
+    : 'Opens agent selection menu';
+  const noOtherAgentsAvailableText = isAcpMainAgentMode
+    ? 'No other main agents are available to switch to right now.'
+    : 'No other agents are available to switch to right now.';
+  const composerAgentChipLabel = isAcpMainAgentMode ? '🤖 Main Agent' : '🤖 Agent';
 
   const hasAlternativeAgentSelectorOption = useCallback((optionIds: string[]) => {
     if (optionIds.length === 0) return false;
@@ -322,6 +331,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const refreshAgentSelectorAvailability = useCallback(async () => {
     if (!config.baseUrl || !config.apiKey) {
+      setIsAcpMainAgentMode(false);
       setHasAgentSelectorOptions(false);
       return;
     }
@@ -329,6 +339,7 @@ export default function ChatScreen({ route, navigation }: any) {
     try {
       const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
       const settings = await client.getSettings();
+      setIsAcpMainAgentMode(settings.mainAgentMode === 'acp');
 
       if (settings.mainAgentMode === 'acp') {
         const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
@@ -503,8 +514,8 @@ export default function ChatScreen({ route, navigation }: any) {
             style={styles.headerAgentSelectorTrigger}
             onPress={() => setAgentSelectorVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-            accessibilityHint="Opens agent selection menu"
+            accessibilityLabel={`${currentAgentAccessibilityPrefix}: ${currentAgentLabel}. Tap to change.`}
+            accessibilityHint={agentSelectionAccessibilityHint}
             activeOpacity={0.7}
           >
             <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
@@ -521,7 +532,7 @@ export default function ChatScreen({ route, navigation }: any) {
           <View
             style={styles.headerAgentSelectorTrigger}
             accessible
-            accessibilityLabel={`Current agent: ${currentAgentLabel}. No other agents are available to switch to right now.`}
+            accessibilityLabel={`${currentAgentAccessibilityPrefix}: ${currentAgentLabel}. ${noOtherAgentsAvailableText}`}
           >
             <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
             <View style={[styles.headerAgentSelectorBadge, styles.headerAgentSelectorBadgeStatic]}>
@@ -629,7 +640,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles, currentAgentLabel, hasAgentSelectorOptions]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles, currentAgentLabel, hasAgentSelectorOptions, currentAgentAccessibilityPrefix, agentSelectionAccessibilityHint, noOtherAgentsAvailableText]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -3372,10 +3383,10 @@ export default function ChatScreen({ route, navigation }: any) {
 			                onPress={() => setAgentSelectorVisible(true)}
 			                activeOpacity={0.8}
 			                accessibilityRole="button"
-			                accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-			                accessibilityHint="Opens agent selection menu"
+			                accessibilityLabel={`${currentAgentAccessibilityPrefix}: ${currentAgentLabel}. Tap to change.`}
+			                accessibilityHint={agentSelectionAccessibilityHint}
 			              >
-			                <Text style={styles.agentSelectorChipLabel}>🤖 Agent</Text>
+			                <Text style={styles.agentSelectorChipLabel}>{composerAgentChipLabel}</Text>
 			                <View style={styles.agentSelectorChipValueRow}>
 			                  <Text style={styles.agentSelectorChipValue} numberOfLines={1} ellipsizeMode="tail">
 			                    {currentAgentLabel}
