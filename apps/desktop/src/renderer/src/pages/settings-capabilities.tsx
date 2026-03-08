@@ -23,6 +23,11 @@ interface RecentBackup {
   manifestDescription?: string
   createdAt: string
   modifiedAt: number
+  backup?: {
+    kind: "pre-import-snapshot"
+    targetLayer: "global" | "workspace" | "custom"
+    targetAgentsDir?: string
+  }
   components: {
     agentProfiles: number
     mcpServers: number
@@ -44,6 +49,19 @@ function formatBackupComponentSummary(components: RecentBackup["components"]): s
     .map(([label, count]) => `${count} ${label}`)
 
   return parts.length > 0 ? parts.join(" · ") : "Empty backup"
+}
+
+function formatBackupTargetLabel(backup: RecentBackup["backup"]): string {
+  switch (backup?.targetLayer) {
+    case "global":
+      return "Global layer"
+    case "workspace":
+      return "Workspace layer"
+    case "custom":
+      return "Custom layer"
+    default:
+      return "Unknown target"
+  }
 }
 
 export function Component() {
@@ -179,15 +197,21 @@ export function Component() {
               )}
 
               {recentBackups.map(backup => (
-                <div key={backup.filePath} className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2">
+                <div key={backup.filePath} className="flex items-start justify-between gap-3 rounded-md border bg-background px-3 py-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{backup.manifestName}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {new Date(backup.createdAt).toLocaleString()} · {formatBackupComponentSummary(backup.components)}
+                      {new Date(backup.createdAt).toLocaleString()} · {formatBackupTargetLabel(backup.backup)} · {formatBackupComponentSummary(backup.components)}
                     </p>
                     {backup.manifestDescription && (
                       <p className="truncate text-xs text-muted-foreground/80">{backup.manifestDescription}</p>
                     )}
+                    <p
+                      className="truncate font-mono text-[11px] text-muted-foreground/70"
+                      title={backup.filePath}
+                    >
+                      {backup.filePath}
+                    </p>
                   </div>
                   <Button type="button" variant="outline" size="sm" onClick={() => openRestoreDialogForFile(backup.filePath)}>
                     Restore

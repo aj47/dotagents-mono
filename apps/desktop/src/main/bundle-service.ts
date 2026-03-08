@@ -50,6 +50,14 @@ export interface BundlePublicMetadata {
   compatibility?: BundlePublicMetadataCompatibility
 }
 
+export type BundleBackupTargetLayer = "global" | "workspace" | "custom"
+
+export interface BundleBackupMetadata {
+  kind: "pre-import-snapshot"
+  targetLayer: BundleBackupTargetLayer
+  targetAgentsDir?: string
+}
+
 export interface BundleManifest {
   version: 1
   name: string
@@ -57,6 +65,7 @@ export interface BundleManifest {
   createdAt: string
   exportedFrom: string
   publicMetadata?: BundlePublicMetadata
+  backup?: BundleBackupMetadata
   components: {
     agentProfiles: number
     mcpServers: number
@@ -208,6 +217,7 @@ export interface ExportBundleOptions extends BundleItemSelectionOptions {
   name?: string
   description?: string
   publicMetadata?: BundlePublicMetadata
+  backupMetadata?: BundleBackupMetadata
   components?: BundleComponentSelection
 }
 
@@ -291,6 +301,7 @@ export interface ImportBackupSummary {
   manifestDescription?: string
   createdAt: string
   modifiedAt: number
+  backup?: BundleBackupMetadata
   components: BundleManifest["components"]
 }
 
@@ -811,6 +822,7 @@ function buildBundle(
       createdAt: new Date().toISOString(),
       exportedFrom: "dotagents-desktop",
       ...(publicMetadata ? { publicMetadata } : {}),
+      ...(options?.backupMetadata ? { backup: options.backupMetadata } : {}),
       components: {
         agentProfiles: data.agentProfiles.length,
         mcpServers: data.mcpServers.length,
@@ -982,6 +994,29 @@ function formatImportBackupTimestamp(value: Date): string {
   return value.toISOString().replace(/[:.]/g, "-")
 }
 
+function getImportBackupTargetLayer(targetAgentsDir: string): BundleBackupTargetLayer {
+  const resolvedTargetAgentsDir = path.resolve(targetAgentsDir)
+  const resolvedGlobalAgentsDir = path.resolve(path.join(os.homedir(), AGENTS_DIR_NAME))
+
+  if (resolvedTargetAgentsDir === resolvedGlobalAgentsDir) {
+    return "global"
+  }
+
+  if (path.basename(resolvedTargetAgentsDir) === AGENTS_DIR_NAME) {
+    return "workspace"
+  }
+
+  return "custom"
+}
+
+function createImportBackupMetadata(targetAgentsDir: string): BundleBackupMetadata {
+  return {
+    kind: "pre-import-snapshot",
+    targetLayer: getImportBackupTargetLayer(targetAgentsDir),
+    targetAgentsDir: path.resolve(targetAgentsDir),
+  }
+}
+
 export function getDefaultImportBackupDirectory(): string {
   return path.join(os.homedir(), AGENTS_DIR_NAME, IMPORT_BACKUP_DIRECTORY_NAME)
 }
@@ -1042,6 +1077,7 @@ async function createPreImportBackup(
   const bundle = await exportBundle(targetAgentsDir, {
     name: `Backup ${timestamp}`,
     description: "Automatic pre-import backup created by DotAgents before bundle import.",
+    backupMetadata: createImportBackupMetadata(targetAgentsDir),
     components: {
       agentProfiles: true,
       mcpServers: true,
@@ -1177,6 +1213,17 @@ function isBundlePublicMetadata(value: unknown): value is BundlePublicMetadata {
   return value.compatibility === undefined || isBundlePublicMetadataCompatibility(value.compatibility)
 }
 
+function isBundleBackupTargetLayer(value: unknown): value is BundleBackupTargetLayer {
+  return value === "global" || value === "workspace" || value === "custom"
+}
+
+function isBundleBackupMetadata(value: unknown): value is BundleBackupMetadata {
+  if (!isRecordObject(value)) return false
+  if (value.kind !== "pre-import-snapshot") return false
+  if (!isBundleBackupTargetLayer(value.targetLayer)) return false
+  return isOptionalString(value.targetAgentsDir)
+}
+
 function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionType {
   return typeof value === "string" && (AGENT_PROFILE_CONNECTION_TYPES as readonly string[]).includes(value)
 }
@@ -1264,6 +1311,7 @@ function validateBundle(bundle: unknown): bundle is LegacyDotAgentsBundle {
   if (typeof m.createdAt !== "string" || Number.isNaN(Date.parse(m.createdAt))) return false
   if (!isNonEmptyString(m.exportedFrom)) return false
   if (m.publicMetadata !== undefined && !isBundlePublicMetadata(m.publicMetadata)) return false
+  if (m.backup !== undefined && !isBundleBackupMetadata(m.backup)) return false
   if (!hasValidManifestComponents(m.components)) return false
   if (!Array.isArray(b.agentProfiles) || !b.agentProfiles.every(isBundleAgentProfile)) return false
   if (!Array.isArray(b.mcpServers) || !b.mcpServers.every(isBundleMcpServer)) return false
@@ -1467,6 +1515,7 @@ export function listImportBackups(options?: { limit?: number }): ImportBackupSum
         manifestDescription: bundle.manifest.description,
         createdAt: bundle.manifest.createdAt,
         modifiedAt: stats.mtimeMs,
+        backup: bundle.manifest.backup,
         components: bundle.manifest.components,
       } satisfies ImportBackupSummary
     })

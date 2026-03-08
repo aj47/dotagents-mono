@@ -593,3 +593,33 @@
   - Re-run desktop web typecheck once the missing `@electron-toolkit/tsconfig` dependency/config issue in this worktree is resolved.
 
 - Next recommended issue work item: either wrap up `#58` with any final polish only if a concrete UX gap remains after manual desktop review, or pivot to a fresh issue with a clearer new repro path.
+
+##### Issue #57 — Bundle backups: show target provenance in Settings → Capabilities
+
+- Selection rationale:
+  - After the earlier restore-entrypoint / recent-backups slices, the smallest remaining trust-focused improvement on `#57` was making each automatic backup more self-describing inside Settings so users can tell what it would restore without opening it first.
+- Investigation:
+  - Re-read issue `#57` plus its trust-track comments and focused on the requirements that backup paths stay visible to users and restore remains clearly understandable from Settings → Capabilities.
+  - Confirmed `apps/desktop/src/main/bundle-service.ts` only surfaced manifest name/description/date/components for recent backups, so the renderer could not distinguish whether a backup came from the global layer or a workspace layer.
+  - Confirmed `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` already had the right local UI surface but only showed bundle name, timestamp, and component counts.
+  - Reviewed `apps/desktop/src/renderer/src/AGENTS.md` and confirmed no mobile follow-up is needed for this slice because the backup-folder/restore flow is Electron-specific and mobile has no equivalent Settings → Capabilities surface.
+- Important assumptions:
+  - Assumption: storing lightweight provenance on automatically-created backup bundles is acceptable even though the broader per-import plan/result metadata contract from the issue comments is still incomplete.
+  - Why acceptable: it keeps backup snapshots self-describing, does not fork the import pipeline, and directly improves the existing restore UX with a very small change.
+- Changes implemented:
+  - Added optional `manifest.backup` metadata for auto-created pre-import backup bundles in `apps/desktop/src/main/bundle-service.ts`, recording that the bundle is a `pre-import-snapshot`, which target layer it protects (`global`, `workspace`, or `custom`), and the resolved target agents directory.
+  - Extended `listImportBackups(...)` to return that backup provenance alongside the existing bundle summary fields.
+  - Updated `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` so each `Recent backups` row now shows the target layer in the summary line and the stored backup file path in a monospace detail line.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with source-level assertions covering the new backup-manifest metadata contract and the Settings UI provenance rendering.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Carry richer import-result provenance into the restore/import UI (for example, imported/skipped counts or conflict summaries from the originating import).
+  - Consider adding copy-path or reveal-file affordances if users frequently need to manage individual backup bundles outside the app.
+  - Reuse the same backup provenance contract in Hub install flows so local bundle imports and Hub installs surface consistent trust metadata.
+
+- Next recommended issue work item: stay on `#57` for import-result/conflict provenance only if a similarly small slice is obvious, otherwise pivot to a fresh bug/enhancement with a clearer new local repro path.
