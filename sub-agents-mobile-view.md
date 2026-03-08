@@ -723,3 +723,44 @@
   - Restore the mobile install in this worktree, then re-run Expo Web and confirm long saved profile names truncate cleanly in `LoopEditScreen`.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is driven by real narrow-screen evidence again.
   - After live validation is back, inspect whether any remaining edit-flow controls still create avoidable horizontal churn on narrow screens.
+
+### 2026-03-08 — Iteration 17: keep long selector-sheet agent names from crowding mobile rows
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentSelectorSheet`
+  - existing selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Reconfirmed the current worktree is still missing the mobile install before changing code:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because of that missing install, Expo Web and device/simulator validation remain blocked for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `AgentSelectorSheet` list rows already clamp the secondary guidelines line, but the primary agent/profile name still rendered raw.
+  - The selector row also lacked the usual `minWidth: 0` / `flexShrink` guardrails that other recently improved mobile sub-agent surfaces now use.
+- Issue selected:
+  - A long agent/profile name in the selector sheet could dominate a narrow mobile row, crowd the selected checkmark, and make the main switching list feel unstable.
+- Decision:
+  - Keep the existing selector-sheet layout, empty state, and interaction flow.
+  - Do not redesign the row or add a new shared abstraction while live validation is blocked.
+  - Make the smallest local fix in `AgentSelectorSheet`: clamp the primary label, keep row content shrinkable, and preserve the checkmark space.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - clamp the main `profileName` to one line with tail truncation,
+    - add explicit tail truncation to the guidelines line,
+    - add `minWidth: 0` and `flexShrink` guardrails to the text column,
+    - keep the selected checkmark from shrinking out of view.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new long-name row-stability guardrails.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native packages in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing local install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The selector-sheet long-name treatment still needs live confirmation once Expo Web or a simulator is available again.
+  - The header and composer selector surfaces still need the previously planned long-real-agent-name smoke test once switchable options exist again.
+  - A broader selector-sheet polish pass should wait for fresh live evidence instead of guessing from source alone.
+- Next checks:
+  - Restore the mobile install in this worktree, then re-run Expo Web and confirm long selector-sheet agent names truncate cleanly beside the selected checkmark.
+  - Once live validation is back, smoke-test a deliberately long configured agent name across header, composer (if shown), and selector sheet for consistency.
+  - Continue only with the next highest-signal sub-agent mobile issue after fresh narrow-screen evidence re-establishes where the remaining friction actually is.

@@ -149,11 +149,15 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         accessibilityState={{ selected: isSelected }}
       >
         <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, isSelected && styles.profileNameSelected]}>
+          <Text
+            style={[styles.profileName, isSelected && styles.profileNameSelected]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {item.name}
           </Text>
           {item.guidelines && (
-            <Text style={styles.profileDescription} numberOfLines={1}>
+            <Text style={styles.profileDescription} numberOfLines={1} ellipsizeMode="tail">
               {item.guidelines}
             </Text>
           )}
@@ -284,12 +288,14 @@ function createStyles(theme: Theme) {
     },
     profileInfo: {
       flex: 1,
+      minWidth: 0,
       marginRight: spacing.sm,
     },
     profileName: {
       fontSize: 16,
       fontWeight: '500',
       color: theme.colors.foreground,
+      flexShrink: 1,
     },
     profileNameSelected: {
       color: theme.colors.primary,
@@ -299,11 +305,13 @@ function createStyles(theme: Theme) {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: 2,
+      flexShrink: 1,
     },
     checkmark: {
       fontSize: 18,
       color: theme.colors.primary,
       fontWeight: '600',
+      flexShrink: 0,
     },
     loadingContainer: {
       alignItems: 'center',

@@ -23,3 +23,11 @@ test('offers a mobile-friendly path back to agent settings from the empty state'
   assert.match(sheetSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Open agent settings'\)\}/);
   assert.match(sheetSource, /manageAgentsButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*180,/);
 });
+
+test('keeps long agent names and descriptions stable inside selector rows on narrow screens', () => {
+  assert.match(sheetSource, /<Text[\s\S]*?style=\{\[styles\.profileName, isSelected && styles\.profileNameSelected\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{item\.name\}/);
+  assert.match(sheetSource, /profileInfo:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:/);
+  assert.match(sheetSource, /profileName:\s*\{[\s\S]*?flexShrink:\s*1/);
+  assert.match(sheetSource, /profileDescription:\s*\{[\s\S]*?flexShrink:\s*1/);
+  assert.match(sheetSource, /checkmark:\s*\{[\s\S]*?flexShrink:\s*0/);
+});
