@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop general settings `mcpMaxIterations` draft-save resilience in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with the current General-settings wiring reviewed there, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (mobile already keeps this field local before saving), focused source-level guardrails added in new `tests/desktop-settings-general-max-iterations-feedback.test.js`, targeted verification run locally via `node --test tests/desktop-settings-general-max-iterations-feedback.test.js` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target / `--inspect` renderer in this environment).
 - 2026-03-08: Mobile `LoopEditScreen` draft-loss guardrails in `apps/mobile/src/screens/LoopEditScreen.tsx`, with the proven mobile discard-confirmation pattern reviewed in `apps/mobile/src/screens/AgentEditScreen.tsx`, loop edit entry wiring cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, loop create/update shapes rechecked in `apps/mobile/src/lib/settingsApi.ts`, focused source-level coverage added in new `apps/mobile/tests/loop-edit-discard-guardrails.test.js`, targeted verification run locally via `node --test apps/mobile/tests/loop-edit-discard-guardrails.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Mobile `AgentEditScreen` draft-loss guardrails in `apps/mobile/src/screens/AgentEditScreen.tsx`, with settings-to-editor navigation reviewed in `apps/mobile/src/screens/SettingsScreen.tsx`, adjacent mobile edit-screen patterns rechecked in `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`, agent-profile request/update shapes cross-checked in `apps/mobile/src/lib/settingsApi.ts`, focused source-level coverage added in new `apps/mobile/tests/agent-edit-discard-guardrails.test.js`, targeted verification run locally via `node --test apps/mobile/tests/agent-edit-discard-guardrails.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Shared/mobile abort-classification reliability in `packages/shared/src/connection-recovery.ts` and `apps/mobile/src/lib/openaiClient.ts`, with mobile teardown/cancellation flows reviewed in `apps/mobile/src/lib/sessionConnectionManager.ts` and nearby connection guardrails rechecked in `apps/mobile/tests/connection-settings-validation.test.js`, focused source-level coverage added in new `apps/mobile/tests/openai-client-cancel-guardrails.test.js`, shared retry-classifier coverage extended in `apps/desktop/src/shared/connection-recovery.test.ts`, and targeted verification run locally via `node --experimental-strip-types --input-type=module -e ...`, `node --test apps/mobile/tests/openai-client-cancel-guardrails.test.js apps/mobile/tests/connection-settings-validation.test.js`, plus `git diff --check`.
@@ -3253,6 +3254,29 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - live-validate iOS swipe-back, Android hardware back, and header-back discard behavior once Expo/native tooling is available
   - carry the same discard-safety pattern into `MemoryEditScreen` in a later pass after confirming this narrower loop-edit improvement feels right
+
+### 2026-03-08 — Desktop General max-iterations draft-save resilience
+- Area / screen / subsystem:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+- Why it was chosen:
+  - `improve-app.md` still listed settings validation UX as an open seam, and `Max Iterations` was a clear outlier: it persisted on every keystroke, so clearing the field to type a new multi-digit value could immediately save an unintended intermediate number.
+- What was inspected:
+  - ledger history in `improve-app.md` to avoid repeating a just-investigated settings seam
+  - current desktop General-settings wiring in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx` to confirm the same setting already uses a local-draft pattern there
+  - attempted live desktop inspection via `electron_execute` *(blocked: Electron is not exposing a CDP target / `--inspect` renderer in this environment)*
+- Improvement made:
+  - added a local `mcpMaxIterationsDraft` so users can finish editing a full numeric value before persistence happens
+  - debounced saves for valid in-range drafts instead of firing a config mutation on every numeric keystroke
+  - normalized invalid/blank/out-of-range values on blur so the field snaps back to the current saved value or a safe in-range value instead of persisting accidental partial input
+  - added lightweight helper copy clarifying the valid range and short-pause autosave behavior
+  - assumptions / tradeoffs: this pass assumes `1–50` remains the correct product constraint, intentionally keeps the fix local to this one outlier field instead of broadening into a larger settings-form abstraction, and accepts source-level verification here because live Electron inspection is blocked in this worktree
+- Tests / verification:
+  - `node --test tests/desktop-settings-general-max-iterations-feedback.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - when Electron can be run with an inspectable renderer, live-validate the edit flow for clearing, typing multi-digit values, and blur-time normalization in `Settings → General`
+  - continue the backlog sweep for any remaining desktop settings inputs that still persist on every keystroke without a local draft or explicit validation feedback
 
 ### Iteration Template
 - Date:

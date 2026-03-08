@@ -50,7 +50,10 @@ import {
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
-const GENERAL_TEXT_INPUT_SAVE_DEBOUNCE_MS = 400
+const GENERAL_INPUT_SAVE_DEBOUNCE_MS = 400
+const DEFAULT_MCP_MAX_ITERATIONS = 10
+const MIN_MCP_MAX_ITERATIONS = 1
+const MAX_MCP_MAX_ITERATIONS = 50
 
 type GeneralTextDraftKey =
   | "langfusePublicKey"
@@ -78,6 +81,32 @@ function getOptionalStringConfigUpdate<Key extends GeneralTextDraftKey>(
   } as Pick<Config, Key>
 }
 
+function getMcpMaxIterationsDraft(config?: Partial<Config>) {
+  return String(config?.mcpMaxIterations ?? DEFAULT_MCP_MAX_ITERATIONS)
+}
+
+function getValidMcpMaxIterations(value: string): number | null {
+  const trimmedValue = value.trim()
+  if (!trimmedValue || !/^[0-9]+$/.test(trimmedValue)) return null
+
+  const parsedValue = Number.parseInt(trimmedValue, 10)
+  if (parsedValue < MIN_MCP_MAX_ITERATIONS || parsedValue > MAX_MCP_MAX_ITERATIONS) {
+    return null
+  }
+
+  return parsedValue
+}
+
+function normalizeMcpMaxIterationsDraft(value: string, fallbackValue = DEFAULT_MCP_MAX_ITERATIONS) {
+  const trimmedValue = value.trim()
+  if (!trimmedValue || !/^[0-9]+$/.test(trimmedValue)) {
+    return String(fallbackValue)
+  }
+
+  const parsedValue = Number.parseInt(trimmedValue, 10)
+  return String(Math.min(MAX_MCP_MAX_ITERATIONS, Math.max(MIN_MCP_MAX_ITERATIONS, parsedValue)))
+}
+
 function getWorkspaceAgentsSourceLabel(source: "env" | "upward" | null | undefined): string | null {
   if (source === "env") return "via DOTAGENTS_WORKSPACE_DIR"
   if (source === "upward") return "found upward from the current workspace"
@@ -93,6 +122,9 @@ export function Component() {
   const [generalTextDrafts, setGeneralTextDrafts] = useState(() =>
     getGeneralTextDrafts(configQuery.data as Config | undefined),
   )
+  const [mcpMaxIterationsDraft, setMcpMaxIterationsDraft] = useState(() =>
+    getMcpMaxIterationsDraft(configQuery.data as Config | undefined),
+  )
   const generalTextSaveTimeoutsRef = useRef<Record<GeneralTextDraftKey, ReturnType<typeof setTimeout> | null>>({
     langfusePublicKey: null,
     langfuseSecretKey: null,
@@ -100,6 +132,7 @@ export function Component() {
     groqSttPrompt: null,
     transcriptPostProcessingPrompt: null,
   })
+  const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -256,7 +289,47 @@ export function Component() {
       generalTextSaveTimeoutsRef.current[key] = setTimeout(() => {
         generalTextSaveTimeoutsRef.current[key] = null
         saveConfig(getOptionalStringConfigUpdate(key, value))
-      }, GENERAL_TEXT_INPUT_SAVE_DEBOUNCE_MS)
+      }, GENERAL_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const scheduleMcpMaxIterationsSave = useCallback(
+    (value: string) => {
+      const timeout = mcpMaxIterationsSaveTimeoutRef.current
+      if (timeout) clearTimeout(timeout)
+
+      const nextValue = getValidMcpMaxIterations(value)
+      const currentValue = configRef.current?.mcpMaxIterations ?? DEFAULT_MCP_MAX_ITERATIONS
+      if (nextValue === null || nextValue === currentValue) {
+        mcpMaxIterationsSaveTimeoutRef.current = null
+        return
+      }
+
+      mcpMaxIterationsSaveTimeoutRef.current = setTimeout(() => {
+        mcpMaxIterationsSaveTimeoutRef.current = null
+        saveConfig({ mcpMaxIterations: nextValue })
+      }, GENERAL_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const flushMcpMaxIterationsDraft = useCallback(
+    (value: string) => {
+      const timeout = mcpMaxIterationsSaveTimeoutRef.current
+      if (timeout) {
+        clearTimeout(timeout)
+        mcpMaxIterationsSaveTimeoutRef.current = null
+      }
+
+      const currentValue = configRef.current?.mcpMaxIterations ?? DEFAULT_MCP_MAX_ITERATIONS
+      const normalizedValue = normalizeMcpMaxIterationsDraft(value, currentValue)
+      setMcpMaxIterationsDraft(normalizedValue)
+
+      const nextValue = getValidMcpMaxIterations(normalizedValue)
+      if (nextValue !== null && nextValue !== currentValue) {
+        saveConfig({ mcpMaxIterations: nextValue })
+      }
     },
     [saveConfig],
   )
@@ -288,9 +361,17 @@ export function Component() {
   ])
 
   useEffect(() => {
+    setMcpMaxIterationsDraft(getMcpMaxIterationsDraft(configQuery.data as Config | undefined))
+  }, [configQuery.data?.mcpMaxIterations])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(generalTextSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
+      }
+
+      if (mcpMaxIterationsSaveTimeoutRef.current) {
+        clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
       }
     }
   }, [])
@@ -602,15 +683,25 @@ export function Component() {
 
           {!(configQuery.data?.mcpUnlimitedIterations) && (
             <Control label={<ControlLabel label="Max Iterations" tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer." />} className="px-3">
-              <Input
-                type="number"
-                min="1"
-                max="50"
-                step="1"
-                value={configQuery.data?.mcpMaxIterations ?? 10}
-                onChange={(e) => saveConfig({ mcpMaxIterations: parseInt(e.target.value) || 1 })}
-                className="w-32"
-              />
+              <div className="space-y-2">
+                <Input
+                  type="number"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={mcpMaxIterationsDraft}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value
+                    setMcpMaxIterationsDraft(value)
+                    scheduleMcpMaxIterationsSave(value)
+                  }}
+                  onBlur={(e) => flushMcpMaxIterationsDraft(e.currentTarget.value)}
+                  className="w-32"
+                />
+                <div className="text-xs text-muted-foreground">
+                  Use 1–50. Saves after a short pause so you can finish typing a full value.
+                </div>
+              </div>
             </Control>
           )}
 
