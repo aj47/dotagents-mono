@@ -3873,3 +3873,74 @@ Three distinct issues in frequently-used surfaces: skills settings toolbar overf
 ### Next opportunities
 - Re-run this exact compare-view composer check once the Electron debug target is confirmed to be serving the current worktree build, then capture a true after screenshot.
 - If that verification passes, return to the ledger’s next fresh high-value surface: markdown-heavy session content / summaries under zoom and constrained widths.
+
+---
+
+## 2026-03-08 — chunk 12: expanded sessions sidebar header under zoom pressure
+
+### Sources consulted
+- `ui-audit.md` (avoided the just-touched compare-view composer follow-up and picked a fresh Sessions-shell sub-surface)
+- `apps/desktop/DEBUGGING.md`
+- `apps/mobile/README.md`
+- `visible-ui.md`
+- live desktop renderer inspection via the running Electron debug target on `127.0.0.1:9333`
+- `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx`
+- `apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts`
+
+### Area selected
+- Desktop Sessions shell, specifically the **expanded `ActiveAgentsSidebar` section header row**.
+- Chosen because the ledger still had open Sessions-shell sidebar opportunities, and live inspection of the root route exposed a fresh zoom/scaling issue without reworking the recently audited compare-view composer.
+
+### Live inspection setup
+- Reused the running Electron debug target already attached to `http://localhost:5174/`.
+- Set the renderer viewport to `680×900` and raised root font size to `24px` to simulate a realistic high-zoom / accessibility stress case.
+- Inspected the mounted DOM and captured a screenshot before editing: `tmp/ui-audit/root-680x900-root24-current.png`.
+
+### Issue found
+
+**expanded sessions sidebar header — label becomes cramped too early and the visible row underuses the available sidebar width**
+- In the live root Sessions shell, the expanded sidebar header row for `Sessions` measured narrower than its wrapper under zoom pressure:
+  - wrapper width: `151px`
+  - visible header row width: `127px`
+  - `Sessions` button width: `49px`
+- The row still spent space on a decorative grid icon plus roomy inter-control gaps/padding, so the actual label area got squeezed even in the zero-active-session state.
+- Practical impact:
+  - the section label starts truncating earlier than necessary under larger text settings,
+  - the row looks like a broader header affordance than the actual label button footprint,
+  - the first-level Sessions navigation/control chrome feels less polished exactly when users need zoom resilience.
+
+### Changes made
+
+**apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx**
+- Added explicit sidebar-header layout constants so the cramped-header contract is visible and reusable in source.
+- Tightened the expanded header row spacing/padding and made the row explicitly `w-full`.
+- Removed the decorative grid icon from the `Sessions` header button to reclaim width for the actual label.
+- Gave the label its own `min-w-0 flex-1 truncate text-left` class so the title owns the remaining space more intentionally.
+- Reduced the `Past Sessions` icon-button padding slightly to preserve space without changing the control model.
+
+**apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts**
+- Added a focused source-contract test that asserts the cramped-header layout helpers are present and the redundant grid icon is gone.
+
+### Before / after observation
+- **Before (live):** under `680×900` with `24px` root text, the expanded sidebar header row used only `127px` of a `151px` wrapper and the `Sessions` button itself was just `49px` wide.
+- **After source change:** the component now uses a tighter, full-width header-row contract with the decorative icon removed so the label gets priority when space is scarce.
+- **Important verification note:** a trustworthy post-fix live recheck was blocked because the currently running Vite server behind the Electron target is serving a different worktree (`/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop`), so hard reloads continued to show the pre-change DOM.
+
+### Verification
+- Official targeted desktop verification was **blocked in this worktree**:
+  - `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/active-agents-sidebar.layout.test.ts` failed before Vitest could run because local dependencies are missing here (`tsup: command not found`, `node_modules` absent).
+  - Post-edit live verification against the existing Electron target was not trustworthy because `lsof -p 93721 -a -d cwd` showed the active `5174` dev server is running from another worktree.
+- Performed targeted fallback verification instead:
+  - Node source-assertion script confirmed the new sidebar-header layout constants and label contract are present in `active-agents-sidebar.tsx`,
+  - the same script confirmed the redundant grid icon markup is gone,
+  - the same script confirmed the new cramped-header layout test exists,
+  - `git diff --check -- apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts` passed cleanly.
+- Command result: `active-agents-sidebar header layout assertions: ok`.
+
+### Mobile cross-check
+- `apps/mobile` does not use this Electron sidebar component or this desktop navigation pattern.
+- No mobile change was applied because this iteration’s evidence and fix were desktop-specific.
+
+### Next opportunities
+- Point the Electron debug target at the **current** worktree build, then re-run this exact `680×900` / `24px root` Sessions-shell check and capture a true after screenshot.
+- Continue the Sessions-shell zoom audit with the next fresh sidebar surface: either the collapsed quick-nav stack or the Agents sidebar header/counter treatment under the same accessibility stress case.

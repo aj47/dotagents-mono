@@ -50,6 +50,13 @@ interface SidebarSession {
 
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
+const SIDEBAR_HEADER_ROW_CLASS_NAME =
+  "hover:bg-accent/50 hover:text-foreground flex w-full items-center gap-1 rounded-md px-0.5 py-1 transition-all duration-200"
+const SIDEBAR_HEADER_BUTTON_CLASS_NAME =
+  "focus:ring-ring flex min-w-0 flex-1 items-center rounded focus:outline-none focus:ring-1"
+const SIDEBAR_HEADER_LABEL_CLASS_NAME = "min-w-0 flex-1 truncate text-left"
+const SIDEBAR_HEADER_AUX_BUTTON_CLASS_NAME =
+  "hover:bg-accent/50 text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5"
 const SIDEBAR_SESSION_TITLE_CLASS_NAME =
   "min-w-0 flex-1 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
 
@@ -354,11 +361,11 @@ export function ActiveAgentsSidebar({
     <div className="px-2">
       <div
         className={cn(
-          "w-full rounded-md px-2 py-1.5 text-sm font-medium",
+          "w-full rounded-md px-1.5 py-1.5 text-sm font-medium",
           "text-muted-foreground",
         )}
       >
-        <div className="hover:bg-accent/50 hover:text-foreground flex items-center gap-2 rounded-md px-0 py-1 transition-all duration-200">
+        <div className={SIDEBAR_HEADER_ROW_CLASS_NAME}>
           {hasAnySessions ? (
             <button
               onClick={handleToggleExpand}
@@ -377,10 +384,9 @@ export function ActiveAgentsSidebar({
           )}
           <button
             onClick={handleHeaderClick}
-            className="focus:ring-ring flex min-w-0 flex-1 items-center gap-2 rounded focus:outline-none focus:ring-1"
+            className={SIDEBAR_HEADER_BUTTON_CLASS_NAME}
           >
-            <span className="i-mingcute-grid-line h-3.5 w-3.5"></span>
-            <span className="truncate">Sessions</span>
+            <span className={SIDEBAR_HEADER_LABEL_CLASS_NAME}>Sessions</span>
             {activeSessions.length > 0 && (
               <span className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[10px] font-semibold text-white">
                 {activeSessions.length}
@@ -393,7 +399,7 @@ export function ActiveAgentsSidebar({
                 e.stopPropagation()
                 onOpenPastSessionsDialog()
               }}
-              className="hover:bg-accent/50 text-muted-foreground hover:text-foreground shrink-0 rounded p-1"
+              className={SIDEBAR_HEADER_AUX_BUTTON_CLASS_NAME}
               title="Past Sessions"
               aria-label="Past Sessions"
             >
