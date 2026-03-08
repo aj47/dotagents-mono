@@ -21,6 +21,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772929409915_6nhw5bvkd | session_1772929409919_659x5kkj1 | fix implemented (verification blocked) | User asked `Can you run it in a new terminal window so it works in dotagents-mono`; Langfuse showed `iterm:create_window` succeeded but there was no terminal write/run step, and the final reply only handed back manual shell commands (`Run it with ...`). Root repo issue found: completion logic could treat manual terminal instructions as done even when the requested terminal execution never happened. |
 | 2026-03-08 | conv_1772760072745_y04jxkisp | session_1772760071840_tx7z5kq1e | fix implemented (verification blocked) | User asked to tile laptop windows neatly. Langfuse showed repeated successful `execute_command` window-management passes, then a completed `delegate_to_agent` call for `Computer Use` whose output was still just a progress update (`I can see the windows are partially arranged... Let me do a more precise tiling pass now.`). The parent run treated that as successful delegated work, re-delegated again with empty content, and still ended with `output: null`. Root repo issue found: delegation plumbing accepted progress-only sub-agent output as a completed result instead of surfacing it as an incomplete/failed delegation for the parent agent to recover from. |
 | 2026-03-08 | conv_1772854646654_q7kryv45t | session_1772854646655_k5gmpg0wu | fix implemented (verification blocked) | User asked `what's next`; Langfuse showed a parallel batch where `execute_command` completed, but `Tool: github:list_issues` never recorded an end time. The run then closed with `output: null` and no answer. Root repo issue found: MCP server tool execution had connection/test timeouts, but `client.callTool(...)` itself had no timeout, so one hung tool in a parallel batch could stall the entire agent run forever. |
+| 2026-03-08 | conv_1772943712464_m4bk9psxl | session_1772943712469_klewsrmuj | fix implemented | User asked `Execute and monitor`; Langfuse showed multiple `delegate_to_agent` calls to `augustus` where outputs began with long reasoning/progress text like `**Analyzing the codebase** ... I'm considering ...` or `## Actions ... then I'll patch ...`, plus a timeout retry, even when the delegated prompt explicitly said `return only concrete results (no reasoning)`. Root repo issue found: the delegation completion heuristic only rejected short future-tense updates, so long reasoning-style progress dumps with markdown headers still counted as successful delegated results. |
 
 ## Investigations
 
@@ -551,6 +552,33 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - live desktop smoke verification following `apps/desktop/DEBUGGING.md` was also blocked by unrelated worktree setup problems: unresolved `expo/tsconfig.base` from `apps/mobile/tsconfig.json`, unresolved `uuid` during Electron build, and missing `apps/desktop/out/main/index.js` startup entry
   - despite those unrelated blockers, the changed streaming path is covered by the targeted passing regression test and no longer permits an indefinitely pending `fullStream` in unit coverage
 
+### 2026-03-08 — Long reasoning-style delegated output should not count as a completed result
+
+- Langfuse evidence reviewed:
+  - `conv_1772943712464_m4bk9psxl` / `session_1772943712469_klewsrmuj`
+  - user inputs in the same trace included `Do all open ones in worktrees` and then `Execute and monitor`
+  - multiple `Tool: delegate_to_agent` spans for `augustus` returned `success: true` payloads whose `output` began with reasoning/progress text instead of concrete deliverables, for example:
+    - `**Analyzing the codebase** ... I'm considering using the current HEAD commit ...`
+    - `## Actions\nFetching exact issue bodies one at a time, then I’ll patch ...`
+    - `**Evaluating issues and tests** ... I need to look into issues 53, 54, and 5...`
+  - another retry in the same trace timed out after `Request timeout for method session/prompt`, which is consistent with the parent run having to recover from non-deliverable delegated output instead of receiving a clean result on the first attempt
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` already rejected short future-tense progress updates in `isProgressOnlyDelegationOutput(...)`
+  - however, the heuristic returned `false` for anything over 40 words and for any output with simple markdown structure, even if the text was still obviously a reasoning/progress preamble (`Analyzing...`, `I need to...`, `Next I'll...`)
+  - that let verbose chain-of-thought / status-dump outputs from delegated agents count as `status: completed`, which misled the parent run into accepting non-results
+- Concrete root cause:
+  - delegation completion filtering was too narrow: it only caught short `Let me ...`-style updates and missed longer reasoning-first outputs with markdown headers or structured sections
+- Change made:
+  - tightened `isProgressOnlyDelegationOutput(...)` in `apps/desktop/src/main/acp/acp-router-tools.ts` to treat reasoning/progress intros as non-deliverable even when they are longer or wrapped in headings/sections, unless they lead with an immediate completed-work marker (`Done`, `Implemented`, `Summary`, etc.)
+  - added targeted regressions in `apps/desktop/src/main/acp/acp-router-tools.test.ts` for:
+    - long reasoning-style delegated output beginning with `**Analyzing ...**`
+    - a concrete completed summary that still starts with `Done.` and bulletized file changes
+  - while running the targeted test slice, also fixed existing Vitest mock setup in that test file (`vi.hoisted(...)`, mocked `acpService.on`, and `vi.waitFor(...)`) so the regression suite executes reliably in isolation
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts`
+  - ✅ passed (4 tests)
+  - Vite still logs the pre-existing `apps/mobile/tsconfig.json` Expo-base parse warning in this worktree, but the targeted desktop ACP test run exits successfully
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -564,6 +592,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
+- Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockRunInternalSubSession = vi.fn()
+const { mockRunInternalSubSession } = vi.hoisted(() => ({
+  mockRunInternalSubSession: vi.fn(),
+}))
 
 vi.mock('./acp-client-service', () => ({
   acpClientService: { getRunStatus: vi.fn(), runAgentAsync: vi.fn() },
@@ -11,7 +13,9 @@ vi.mock('./acp-background-notifier', () => ({
 }))
 
 vi.mock('../config', () => ({ configStore: { get: vi.fn(() => ({})) } }))
-vi.mock('../acp-service', () => ({ acpService: { getAgentSessionId: vi.fn(), runTask: vi.fn() } }))
+vi.mock('../acp-service', () => ({
+  acpService: { getAgentSessionId: vi.fn(), runTask: vi.fn(), on: vi.fn() },
+}))
 vi.mock('../emit-agent-progress', () => ({ emitAgentProgress: vi.fn() }))
 vi.mock('../state', () => ({ agentSessionStateManager: { getSessionRunId: vi.fn(() => 7) } }))
 vi.mock('../agent-profile-service', () => ({ agentProfileService: { getByName: vi.fn(() => undefined) } }))
@@ -85,12 +89,12 @@ describe('handleDelegateToAgent', () => {
         { role: 'assistant', content: 'Final delegated answer', timestamp: 2 },
       ],
     })
-    await Promise.resolve()
-
-    await expect(handleCheckAgentStatus({ runId: initial.runId })).resolves.toMatchObject({
-      success: true,
-      status: 'completed',
-      output: 'Final delegated answer',
+    await vi.waitFor(async () => {
+      await expect(handleCheckAgentStatus({ runId: initial.runId })).resolves.toMatchObject({
+        success: true,
+        status: 'completed',
+        output: 'Final delegated answer',
+      })
     })
   })
 
@@ -115,6 +119,65 @@ describe('handleDelegateToAgent', () => {
       success: false,
       status: 'failed',
       error: expect.stringContaining('without a final deliverable'),
+    })
+  })
+
+  it('fails long reasoning-style delegated output that never reaches concrete results', async () => {
+    mockRunInternalSubSession.mockResolvedValue({
+      success: true,
+      result: 'Fallback output',
+      conversationHistory: [
+        { role: 'user', content: 'Execute and return only concrete results', timestamp: 1 },
+        {
+          role: 'assistant',
+          content: [
+            '**Analyzing the codebase**',
+            '',
+            "I'm considering the current worktree state and I need to inspect the issue details before I patch anything.",
+            '',
+            "Next I'll verify the current tests and then I’ll decide which files to edit.",
+          ].join('\n'),
+          timestamp: 2,
+        },
+      ],
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: 'internal', task: 'Return only concrete results' },
+      'parent-session-3',
+    )).resolves.toMatchObject({
+      success: false,
+      status: 'failed',
+      error: expect.stringContaining('without a final deliverable'),
+    })
+  })
+
+  it('still accepts structured delegated summaries that lead with completed work', async () => {
+    mockRunInternalSubSession.mockResolvedValue({
+      success: true,
+      result: 'Fallback output',
+      conversationHistory: [
+        { role: 'user', content: 'Summarize the concrete changes', timestamp: 1 },
+        {
+          role: 'assistant',
+          content: [
+            'Done.',
+            '',
+            '- Updated `apps/desktop/src/main/acp/acp-router-tools.ts`',
+            '- Added a regression test for reasoning-only delegation output',
+          ].join('\n'),
+          timestamp: 2,
+        },
+      ],
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: 'internal', task: 'Summarize the concrete changes' },
+      'parent-session-4',
+    )).resolves.toMatchObject({
+      success: true,
+      status: 'completed',
+      output: expect.stringContaining('Updated `apps/desktop/src/main/acp/acp-router-tools.ts`'),
     })
   })
 })

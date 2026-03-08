@@ -137,6 +137,22 @@ function isProgressOnlyDelegationOutput(output: string): boolean {
   if (!trimmed) return true;
 
   const lowerRaw = trimmed.toLowerCase();
+  const intro = trimmed
+    .split(/\n\s*\n/)
+    .slice(0, 2)
+    .join("\n\n")
+    .replace(/^[#>*\-\s`]+/gm, "")
+    .trim();
+  const lowerIntro = intro.toLowerCase();
+  const startsWithReasoningHeader = /^(?:\*\*)?(?:analyzing|evaluating|checking|considering|investigating|planning|deciding|narrowing|looking|preparing|inspecting|reviewing|crafting|writing|thinking|debugging|exploring|examining)\b/.test(lowerIntro);
+  const startsWithProgressSection = /^(?:plan|next step|placement check|pre-write check|writing artifacts|posting|preparing|final placement confirmation|narrowing to|execution update|status update)\b/.test(lowerIntro);
+  const hasProgressLeadIn = /\b(?:let me|i'?ll|i will|i'm going to|i need to|i still need to|i should|i want to|i'm considering|i am considering|it seems like|next i'?ll)\b/.test(lowerIntro);
+  const hasImmediateDeliverableLeadIn = /^(?:done|completed|fixed|implemented|updated|created|verified|summary|results?|files changed|tests?|passed|here(?:'s| is)|i (?:implemented|updated|fixed|added|created|found|verified))\b/.test(lowerIntro);
+
+  if ((startsWithReasoningHeader || startsWithProgressSection) && hasProgressLeadIn && !hasImmediateDeliverableLeadIn) {
+    return true;
+  }
+
   const hasStructuredDeliverable =
     /\n[-*]\s|\n\d+\.\s/.test(trimmed)
     || /\bhere(?:'s| is)\b/.test(lowerRaw);
