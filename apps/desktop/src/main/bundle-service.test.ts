@@ -769,6 +769,10 @@ describe("bundle-service", () => {
       expect(result.success).toBe(true)
       expect(result.conflicts?.agentProfiles.length).toBe(1)
       expect(result.conflicts?.agentProfiles[0].id).toBe("conflict-id")
+      expect(result.conflicts?.agentProfiles[0]).toMatchObject({
+        defaultStrategy: "skip",
+        renameTargetId: "conflict-id_imported",
+      })
     })
 
     it("includes MCP server conflicts as structured conflict entries", async () => {
@@ -818,9 +822,9 @@ describe("bundle-service", () => {
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
 
       expect(result.success).toBe(true)
-      expect(result.conflicts).toEqual({
+      expect(result.conflicts).toMatchObject({
         agentProfiles: [],
-        mcpServers: [{ id: "github", name: "github" }],
+        mcpServers: [{ id: "github", name: "github", defaultStrategy: "skip", renameTargetId: "github_imported" }],
         skills: [],
         repeatTasks: [],
         memories: [],
@@ -872,7 +876,9 @@ describe("bundle-service", () => {
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
 
       expect(result.success).toBe(true)
-      expect(result.conflicts?.mcpServers).toEqual([{ id: "exa", name: "exa" }])
+      expect(result.conflicts?.mcpServers).toMatchObject([
+        { id: "exa", name: "exa", defaultStrategy: "skip", renameTargetId: "exa_imported" },
+      ])
     })
 
     it("detects conflicts from legacy top-level MCP servers even when mcp* config keys are present", async () => {
@@ -913,7 +919,9 @@ describe("bundle-service", () => {
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
 
       expect(result.success).toBe(true)
-      expect(result.conflicts?.mcpServers).toEqual([{ id: "github", name: "github" }])
+      expect(result.conflicts?.mcpServers).toMatchObject([
+        { id: "github", name: "github", defaultStrategy: "skip", renameTargetId: "github_imported" },
+      ])
     })
 
     it("detects conflicts from legacy top-level MCP servers with unknown object shapes", async () => {
@@ -954,7 +962,9 @@ describe("bundle-service", () => {
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
 
       expect(result.success).toBe(true)
-      expect(result.conflicts?.mcpServers).toEqual([{ id: "github", name: "github" }])
+      expect(result.conflicts?.mcpServers).toMatchObject([
+        { id: "github", name: "github", defaultStrategy: "skip", renameTargetId: "github_imported" },
+      ])
     })
 
     it("detects unknown-shape legacy MCP conflicts even when known-shape legacy servers are present", async () => {
@@ -998,7 +1008,9 @@ describe("bundle-service", () => {
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
 
       expect(result.success).toBe(true)
-      expect(result.conflicts?.mcpServers).toEqual([{ id: "exa", name: "exa" }])
+      expect(result.conflicts?.mcpServers).toMatchObject([
+        { id: "exa", name: "exa", defaultStrategy: "skip", renameTargetId: "exa_imported" },
+      ])
     })
 
     it("detects conflicts from legacy top-level MCP servers whose names start with mcp", async () => {
@@ -1039,7 +1051,9 @@ describe("bundle-service", () => {
       const result = previewBundleWithConflicts(bundlePath, agentsDir)
 
       expect(result.success).toBe(true)
-      expect(result.conflicts?.mcpServers).toEqual([{ id: "mcpGithub", name: "mcpGithub" }])
+      expect(result.conflicts?.mcpServers).toMatchObject([
+        { id: "mcpGithub", name: "mcpGithub", defaultStrategy: "skip", renameTargetId: "mcpGithub_imported" },
+      ])
     })
   })
 

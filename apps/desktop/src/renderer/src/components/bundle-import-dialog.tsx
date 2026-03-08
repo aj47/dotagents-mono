@@ -20,6 +20,14 @@ type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 
+const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
+  agentProfiles: "Agent Profiles",
+  mcpServers: "MCP Servers",
+  skills: "Skills",
+  repeatTasks: "Repeat Tasks",
+  memories: "Memories",
+}
+
 const DEFAULT_COMPONENTS: BundleComponentsState = {
   agentProfiles: true,
   mcpServers: true,
@@ -53,6 +61,8 @@ interface PreviewConflict {
   id: string
   name: string
   existingName?: string
+  defaultStrategy: ConflictStrategy
+  renameTargetId?: string
 }
 
 interface BundlePreview {
@@ -134,6 +144,28 @@ function formatExpectedConflictOutcome(conflictCount: number, strategy: Conflict
   }
 
   return `${formatCount("existing item", conflictCount)} will be imported with renamed IDs.`
+}
+
+function getConflictStrategyBadgeLabel(strategy: ConflictStrategy): string {
+  if (strategy === "skip") return "Skip"
+  if (strategy === "overwrite") return "Overwrite"
+  return "Rename"
+}
+
+function formatConflictOutcome(conflict: PreviewConflict, strategy: ConflictStrategy): string {
+  if (strategy === "skip") {
+    return "Will keep the existing item and skip this bundle copy."
+  }
+
+  if (strategy === "overwrite") {
+    return "Will replace the existing item with the version from this bundle."
+  }
+
+  if (conflict.renameTargetId) {
+    return `Will import alongside the existing item as ${conflict.renameTargetId}.`
+  }
+
+  return "Will import alongside the existing item with a renamed ID."
 }
 
 function summarizeImportResult(result: BundleImportResult): {
@@ -426,10 +458,15 @@ export function BundleImportDialog({
 
             {/* Conflict strategy */}
             {hasConflicts && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <Label>Handle conflicts</Label>
+              <div className="space-y-3 rounded-lg border p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
+                  <div className="space-y-1">
+                    <Label>Conflict preview</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Review the exact items that already exist before importing anything.
+                    </p>
+                  </div>
                 </div>
                 <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as ConflictStrategy)}>
                   <SelectTrigger>
@@ -442,13 +479,30 @@ export function BundleImportDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Some items already exist in your configuration.
+                  Default conflict policy is <span className="font-medium">skip</span>; you can change it for this import before any writes occur.
                 </p>
                 {expectedConflictOutcome && (
                   <p className="text-xs text-muted-foreground">
                     Current selection: {expectedConflictOutcome}
                   </p>
                 )}
+
+                <div className="space-y-3">
+                  {COMPONENT_KEYS.map((key) => {
+                    if (!normalizedComponents[key] || !conflicts?.[key]?.length) {
+                      return null
+                    }
+
+                    return (
+                      <ConflictPreviewSection
+                        key={key}
+                        label={COMPONENT_LABELS[key]}
+                        conflicts={conflicts[key]}
+                        strategy={conflictStrategy}
+                      />
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -491,6 +545,58 @@ function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }
             {conflicts} conflict{conflicts > 1 ? "s" : ""}
           </Badge>
         )}
+      </div>
+    </div>
+  )
+}
+
+interface ConflictPreviewSectionProps {
+  label: string
+  conflicts: PreviewConflict[]
+  strategy: ConflictStrategy
+}
+
+function ConflictPreviewSection({ label, conflicts, strategy }: ConflictPreviewSectionProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-medium">{label}</p>
+        <Badge variant="secondary" className="text-xs">{conflicts.length}</Badge>
+      </div>
+
+      <div className="space-y-2">
+        {conflicts.map((conflict) => {
+          const showExistingName = conflict.existingName && conflict.existingName !== conflict.name
+
+          return (
+            <div key={`${label}:${conflict.id}`} className="rounded-md border bg-muted/20 p-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate text-sm font-medium">{conflict.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">ID: {conflict.id}</p>
+                  {showExistingName && (
+                    <p className="truncate text-xs text-muted-foreground">
+                      Existing name: {conflict.existingName}
+                    </p>
+                  )}
+                </div>
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  {getConflictStrategyBadgeLabel(strategy)}
+                </Badge>
+              </div>
+
+              <p className="mt-2 text-xs text-muted-foreground">
+                {formatConflictOutcome(conflict, strategy)}
+              </p>
+
+              {strategy === "rename" && conflict.renameTargetId && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Renamed ID preview: <span className="font-mono">{conflict.renameTargetId}</span>
+                </p>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

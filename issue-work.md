@@ -933,3 +933,39 @@
   - If the hub catalog expands beyond curated featured bundles in this repo surface, reuse the same inspector behavior across the full bundle list instead of maintaining separate preview patterns.
 
 - Next recommended issue work item: refresh the remaining open issues and prefer either a tightly-scoped reliability slice from `#57` / `#58` or a similarly concrete trust/preview enhancement from `#25` if it can be landed without widening scope.
+
+##### Issue #57 — Conflict preview follow-up: show concrete conflicting items and predicted rename outcomes
+
+- Selection rationale:
+  - `#57` was still open, and the current bundle import dialog only exposed per-component conflict counts plus a global resolution selector. That left a trust gap against the issue’s “see exactly what a bundle will change before committing” goal even after earlier backup/cherry-pick work landed.
+- Investigation:
+  - Re-read issue `#57` and its follow-up comments, especially the request for a diff-style conflict preview with skip/overwrite/rename behavior visible before any writes occur.
+  - Inspected `apps/desktop/src/main/bundle-service.ts`, `apps/desktop/src/main/tipc.ts`, and `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`.
+  - Confirmed `previewBundleWithConflicts(...)` already returned concrete conflict items (`id`, `name`, optional `existingName`) but did not include any predicted rename target or explicit default action metadata.
+  - Confirmed the renderer dialog showed only aggregate conflict counts and a strategy selector, so users still could not review the exact conflicting items or the rename outcome they were about to apply.
+- Important assumptions:
+  - Assumption: a grouped itemized conflict preview with deterministic rename-target hints is a worthwhile shippable slice even without fully per-item inline controls yet.
+  - Why acceptable: it materially improves trust and inspectability right now, while preserving the existing global conflict policy contract and avoiding a much broader import-plan refactor in one pass.
+  - Assumption: reusing the existing `generateUniqueId(...)` rename logic for preview metadata is sufficiently accurate for this slice.
+  - Why acceptable: the import path already uses the same deterministic rename helper, so surfacing that predicted ID in preview keeps the UI aligned with the current write behavior.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the bundle import dialog is a desktop renderer flow; there is no equivalent mobile import surface to keep in sync here.
+- Changes implemented:
+  - Extended `PreviewConflict` in `apps/desktop/src/main/bundle-service.ts` to carry `defaultStrategy: "skip"` and `renameTargetId`, and populated those fields for every detected conflict using the existing rename helper.
+  - Updated the local TIPC conflict item type in `apps/desktop/src/main/tipc.ts` so the richer preview payload survives the main-to-renderer contract.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to render a new grouped `Conflict preview` section that lists the exact conflicting items by component type, shows the currently selected strategy badge, and surfaces the predicted renamed ID when `Rename imported items` is selected.
+  - Extended `apps/desktop/src/main/bundle-service.test.ts` expectations to lock in the new preview metadata for conflict results.
+  - Added a dependency-free source regression test at `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` covering the preview metadata contract and the dialog wiring for concrete conflict rendering.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop test -- --run src/main/bundle-service.test.ts` ⚠️ failed because this worktree currently has no installed workspace dependencies / `node_modules`, so `pnpm` could not run the shared `tsup` pretest step (`sh: tsup: command not found`).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider promoting the current global conflict strategy into true per-item controls inline in the preview list if users still need more granular conflict decisions.
+  - If the dependency baseline is restored, re-run the targeted desktop Vitest coverage for `bundle-service.test.ts` so the richer preview payload is exercised by the real test harness rather than only the no-install source-level guard.
+  - Consider adding non-conflicting “Add new” rows to the preview if the product wants the dialog to become a fuller diff-style import plan rather than a conflict-focused review.
+
+- Next recommended issue work item: either continue `#57` with inline per-item conflict actions or switch to a fresh `#58` / `#25` trust slice, but avoid broad refactors unless a specific acceptance gap is confirmed first.

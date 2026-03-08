@@ -278,6 +278,8 @@ export interface PreviewConflict {
   id: string
   name: string
   existingName?: string
+  defaultStrategy: ImportConflictStrategy
+  renameTargetId?: string
 }
 
 export interface BundlePreviewResult {
@@ -303,6 +305,21 @@ export interface ImportBackupSummary {
   modifiedAt: number
   backup?: BundleBackupMetadata
   components: BundleManifest["components"]
+}
+
+function createPreviewConflict(
+  id: string,
+  name: string,
+  existingIds: Set<string>,
+  existingName?: string,
+): PreviewConflict {
+  return {
+    id,
+    name,
+    existingName,
+    defaultStrategy: "skip",
+    renameTargetId: generateUniqueId(id, existingIds),
+  }
 }
 
 // ============================================================================
@@ -1396,6 +1413,10 @@ export function previewBundleWithConflicts(
   const existingSkills = loadAgentsSkillsLayer(layer)
   const existingTasks = loadTasksLayer(layer)
   const existingMemories = loadAgentsMemoriesLayer(layer)
+  const existingProfileIds = new Set(existingProfiles.profiles.map((profile) => profile.id))
+  const existingSkillIds = new Set(existingSkills.skills.map((skill) => skill.id))
+  const existingTaskIds = new Set(existingTasks.tasks.map((task) => task.id))
+  const existingMemoryIds = new Set(existingMemories.memories.map((memory) => memory.id))
 
   // Load existing MCP servers
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
@@ -1409,28 +1430,28 @@ export function previewBundleWithConflicts(
       .filter(p => existingProfiles.originById.has(p.id))
       .map(p => {
         const existing = existingProfiles.profiles.find(ep => ep.id === p.id)
-        return { id: p.id, name: p.name, existingName: existing?.name }
+        return createPreviewConflict(p.id, p.name, existingProfileIds, existing?.name)
       }),
     mcpServers: bundle.mcpServers
       .filter(s => existingMcpServers.has(s.name))
-      .map(s => ({ id: s.name, name: s.name })),
+      .map(s => createPreviewConflict(s.name, s.name, existingMcpServers)),
     skills: bundle.skills
       .filter(s => existingSkills.originById.has(s.id))
       .map(s => {
         const existing = existingSkills.skills.find(es => es.id === s.id)
-        return { id: s.id, name: s.name, existingName: existing?.name }
+        return createPreviewConflict(s.id, s.name, existingSkillIds, existing?.name)
       }),
     repeatTasks: bundle.repeatTasks
       .filter(t => existingTasks.originById.has(t.id))
       .map(t => {
         const existing = existingTasks.tasks.find(et => et.id === t.id)
-        return { id: t.id, name: t.name, existingName: existing?.name }
+        return createPreviewConflict(t.id, t.name, existingTaskIds, existing?.name)
       }),
     memories: bundle.memories
       .filter(m => existingMemories.originById.has(m.id))
       .map(m => {
         const existing = existingMemories.memories.find(em => em.id === m.id)
-        return { id: m.id, name: m.title, existingName: existing?.title }
+        return createPreviewConflict(m.id, m.title, existingMemoryIds, existing?.title)
       }),
   }
 

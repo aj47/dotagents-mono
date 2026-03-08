@@ -659,6 +659,8 @@ type BundleConflictItem = {
   id: string
   name: string
   existingName?: string
+  defaultStrategy: "skip"
+  renameTargetId?: string
 }
 
 type BundleConflictMap = {
