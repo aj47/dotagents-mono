@@ -1338,3 +1338,46 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that enabling `Unlimited Iterations` hides `Max Iterations` cleanly and the helper text reads as passive state, not an error.
   - Compare the updated `Unlimited Iterations` / `Max Iterations` flow against the remaining `Agent Settings` toggles to see which mismatch is now most noticeable on mobile.
   - Re-establish live inspection before taking on the next sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 31: give Unlimited Iterations the same mobile switch treatment
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 30 improved the `Unlimited Iterations` / `Max Iterations` logic, but the `Unlimited Iterations` row itself still used a plain native `Switch`.
+  - That left the row visually and semantically weaker than nearby improved controls like `Inject Builtin Tools` and `Require Tool Approval`, even though `Unlimited Iterations` now drives one of the most important sub-agent state branches in the section.
+- Issue selected:
+  - The `Unlimited Iterations` toggle still felt like an older, smaller control inside a recently clarified mobile settings flow, weakening touch confidence and state clarity for a high-impact option.
+- Decision:
+  - Keep the Iteration 30 layout and helper copy exactly as-is.
+  - Do not sweep the other remaining plain `Agent Settings` switches in this iteration.
+  - Make the smallest local fix in `SettingsScreen`: wrap only `Unlimited Iterations` in the same named, tappable mobile switch pattern already used by the surrounding improved sub-agent controls.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the plain `Unlimited Iterations` `Switch` with a `TouchableOpacity` switch wrapper,
+    - reuse `agentSettingsSwitchButton` for the `44px` mobile touch-target baseline,
+    - add explicit switch label/hint/state metadata,
+    - reuse `renderActionRailSwitchVisual(...)` so the inner visual control stays out of the web accessibility tree.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the wrapped `Unlimited Iterations` switch contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved `Unlimited Iterations` toggle still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - Nearby `Agent Settings` rows such as `Message Queue`, `Verify Completion`, and `Final Summary` still use older plain native `Switch` controls, but they should be re-ranked only after live validation returns.
+  - The broader `Agent Settings` section should continue to favor source-backed, single-row tweaks until the missing mobile install is restored and live evidence is available again.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the wrapped `Unlimited Iterations` control reads and taps consistently with the surrounding improved `Agent Settings` switches.
+  - After live validation returns, compare `Message Queue`, `Verify Completion`, and `Final Summary` against the now-improved `Unlimited Iterations`, builtin-tools, and tool-approval rows to see which remaining mismatch is most noticeable on mobile.
+  - Re-establish live inspection before taking on the next sub-agent mobile tweak so the next change is again grounded in current evidence.

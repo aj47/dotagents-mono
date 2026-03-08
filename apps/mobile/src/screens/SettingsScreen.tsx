@@ -1902,12 +1902,23 @@ export default function SettingsScreen({ navigation }: any) {
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Unlimited Iterations</Text>
-                  <Switch
-                    value={remoteSettings.mcpUnlimitedIterations ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpUnlimitedIterations', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpUnlimitedIterations ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpUnlimitedIterations', !(remoteSettings.mcpUnlimitedIterations ?? false))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Unlimited Iterations')}
+                    accessibilityHint="Removes the max-iteration limit so the agent can keep working until it finishes or you stop it."
+                    accessibilityState={{ checked: remoteSettings.mcpUnlimitedIterations ?? false }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpUnlimitedIterations ?? false)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
                 {remoteSettings.mcpUnlimitedIterations ? (
                   <Text style={styles.helperText}>
