@@ -31,6 +31,7 @@ test('conversation service preserves raw messages during compaction and marks le
 test('conversation indexing and append flow follow represented full-history counts', () => {
   assert.match(serviceSource, /const storedMessages = this\.getStoredRawMessages\(conversation\)/)
   assert.match(serviceSource, /messageCount: this\.getRepresentedMessageCount\(conversation\)/)
+  assert.match(serviceSource, /activeMessageCount: conversation\.messages\.length/)
   assert.match(serviceSource, /compaction: conversation\.compaction/)
   assert.match(serviceSource, /if \(Array\.isArray\(conversation\.rawMessages\) && conversation\.rawMessages\.length > 0\) \{/)
   assert.match(serviceSource, /conversation\.rawMessages\.push\(message\)/)
@@ -39,8 +40,10 @@ test('conversation indexing and append flow follow represented full-history coun
 
 test('conversation history index can backfill compaction metadata for past-session provenance', () => {
   assert.match(typesSource, /export interface ConversationHistoryItem \{[\s\S]*compaction\?: ConversationCompactionMetadata/)
+  assert.match(typesSource, /export interface ConversationHistoryItem \{[\s\S]*activeMessageCount\?: number/)
   assert.match(serviceSource, /private async backfillHistoryIndexCompactionMetadata\(/)
-  assert.match(serviceSource, /item\.compaction === undefined && item\.messageCount > COMPACTION_MESSAGE_THRESHOLD/)
+  assert.match(serviceSource, /item\.activeMessageCount === undefined && item\.compaction !== undefined/)
+  assert.match(serviceSource, /private async readConversationHistoryIndexMetadata\(/)
   assert.match(serviceSource, /const hydratedIndex = await this\.backfillHistoryIndexCompactionMetadata\(index\)/)
 })
 

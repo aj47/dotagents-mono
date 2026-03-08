@@ -3240,3 +3240,36 @@
   - Re-run real mobile TypeScript / Expo verification once the missing Expo/mobile baseline is restored in this worktree.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice outside `#58`; if no sharper candidate emerges, the next honest `#58` follow-up is richer stub-session count metadata rather than more filter polish.
+
+##### Issue #58 — Mobile stub sessions now preserve compacted-history badges and active-vs-total counts
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` first and refreshed the remaining open issues again before choosing another slice.
+  - `#54` still looks externally blocked, while `#25` / `#57` have seen several recent trust/UX passes in this branch already.
+  - The prior ledger entry explicitly called out richer stub-session count metadata as the next honest `#58` follow-up, and source inspection confirmed that unopened desktop sessions on mobile still dropped the metadata needed to show trustworthy compacted-history row details.
+- Investigation:
+  - Re-inspected `apps/mobile/src/lib/syncService.ts`, `packages/shared/src/session.ts`, `apps/desktop/src/main/conversation-service.ts`, and `packages/shared/src/api-types.ts`.
+  - Confirmed the desktop remote `GET /v1/conversations` list is backed by `conversationService.getConversationHistory()`, whose `ConversationHistoryItem` already carries `compaction` metadata but only persisted a single represented-history `messageCount`.
+  - Confirmed mobile stub-session creation was dropping `compaction` entirely and caching only that single `messageCount`, so unopened compacted chats could not show history badges/filters or honest `active · total` counts until after a full conversation fetch.
+- Important assumptions:
+  - Assumption: adding an optional `activeMessageCount` to the conversation-list contract is acceptable without changing the full conversation payload shape.
+  - Why acceptable: this is a backward-compatible enrichment for list/stub metadata only, and the existing full-history fetch contract remains unchanged.
+  - Assumption: refreshing stub-session metadata from the server list even when timestamps are equal is safe.
+  - Why acceptable: stub sessions have no loaded local message body to preserve, so the server list remains the correct source of lightweight title/count/compaction metadata.
+- Changes implemented:
+  - Added optional `activeMessageCount` and `compaction` support to the shared `ServerConversation` contract and optional `activeMessageCount` support to stub `serverMetadata` in `packages/shared/src/session.ts`.
+  - Updated `sessionToListItem(...)` so lazy stub rows prefer `serverMetadata.activeMessageCount` when available, while still using `compaction.representedMessageCount` for total-history context.
+  - Updated `apps/desktop/src/shared/types.ts` and `apps/desktop/src/main/conversation-service.ts` so the desktop conversation index persists `activeMessageCount` alongside represented `messageCount`, and backfills that metadata for older compacted index entries by re-reading conversation files when needed.
+  - Updated `apps/mobile/src/lib/syncService.ts` so stub sessions preserve `compaction`, cache `activeMessageCount`, and refresh that metadata from the server list on later syncs even when a full fetch is not required.
+  - Extended source-level regression coverage in `packages/shared/src/api-types.conversation-history.test.js` and `apps/desktop/src/main/conversation-storage-integrity.test.js`, and added a new `apps/mobile/tests/session-stub-history-metadata.test.js` regression.
+- Verification run:
+  - Completed: `node --test packages/shared/src/api-types.conversation-history.test.js apps/desktop/src/main/conversation-storage-integrity.test.js apps/mobile/tests/session-list-history-badges.test.js apps/mobile/tests/session-stub-history-metadata.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Re-run real mobile TypeScript / Expo verification once the missing Expo/mobile baseline (`expo/tsconfig.base`, Expo typings) is restored in this worktree.
+  - If mobile users still need more trust detail for unopened desktop chats, consider whether the row/badge copy should explicitly call out represented totals even before opening the session.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice outside `#58`; if no sharper candidate emerges, a reasonable next follow-up is `#57` post-restore/default-slot activation polish rather than more mobile history plumbing.

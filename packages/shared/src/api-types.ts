@@ -215,8 +215,10 @@ export interface ServerConversation {
   createdAt: number;
   updatedAt: number;
   messageCount: number;
+  activeMessageCount?: number;
   lastMessage?: string;
   preview?: string;
+  compaction?: ConversationCompactionMetadata;
 }
 
 export interface ConversationCompactionMetadata {

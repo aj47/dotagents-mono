@@ -150,6 +150,7 @@ export class ConversationService {
           createdAt: conversation.createdAt,
           updatedAt: conversation.updatedAt,
           messageCount: this.getRepresentedMessageCount(conversation),
+          activeMessageCount: conversation.messages.length,
           lastMessage: lastMessage?.content || "",
           preview: this.generatePreview(storedMessages),
           compaction: conversation.compaction,
@@ -473,24 +474,27 @@ export class ConversationService {
     return this.getStoredRawMessages(conversation).length
   }
 
-  private async readConversationCompactionMetadata(
+  private async readConversationHistoryIndexMetadata(
     conversationId: string,
-  ): Promise<ConversationCompactionMetadata | undefined> {
+  ): Promise<Pick<ConversationHistoryItem, "activeMessageCount" | "compaction"> | null> {
     try {
       const conversationPath = this.getConversationPath(conversationId)
       const conversationData = await fsPromises.readFile(conversationPath, "utf8")
       const conversation = JSON.parse(conversationData) as unknown
 
       if (!this.isValidConversationShape(conversation)) {
-        return undefined
+        return null
       }
 
       const normalizedConversation = conversation as Conversation
       this.syncConversationStorageMetadata(normalizedConversation)
 
-      return normalizedConversation.compaction
+      return {
+        activeMessageCount: normalizedConversation.messages.length,
+        compaction: normalizedConversation.compaction,
+      }
     } catch {
-      return undefined
+      return null
     }
   }
 
@@ -498,7 +502,11 @@ export class ConversationService {
     index: ConversationHistoryItem[],
   ): Promise<ConversationHistoryItem[]> {
     const needsBackfill = index.some(
-      (item) => item.compaction === undefined && item.messageCount > COMPACTION_MESSAGE_THRESHOLD,
+      (item) => (
+        item.activeMessageCount === undefined && item.compaction !== undefined
+      ) || (
+        item.compaction === undefined && item.messageCount > COMPACTION_MESSAGE_THRESHOLD
+      ),
     )
 
     if (!needsBackfill) {
@@ -507,19 +515,23 @@ export class ConversationService {
 
     let changed = false
     const backfilledIndex = await Promise.all(index.map(async (item) => {
-      if (item.compaction !== undefined || item.messageCount <= COMPACTION_MESSAGE_THRESHOLD) {
+      const needsCompactionBackfill = item.compaction === undefined && item.messageCount > COMPACTION_MESSAGE_THRESHOLD
+      const needsActiveCountBackfill = item.activeMessageCount === undefined && item.compaction !== undefined
+
+      if (!needsCompactionBackfill && !needsActiveCountBackfill) {
         return item
       }
 
-      const compaction = await this.readConversationCompactionMetadata(item.id)
-      if (typeof compaction === "undefined") {
+      const metadata = await this.readConversationHistoryIndexMetadata(item.id)
+      if (!metadata) {
         return item
       }
 
       changed = true
       return {
         ...item,
-        compaction,
+        activeMessageCount: metadata.activeMessageCount,
+        compaction: metadata.compaction,
       }
     }))
 

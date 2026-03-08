@@ -89,9 +89,27 @@ function serverConversationToStubSession(item: ServerConversation): Session {
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     messages: [],
+    compaction: item.compaction,
     serverConversationId: item.id,
     serverMetadata: {
       messageCount: item.messageCount,
+      activeMessageCount: item.activeMessageCount,
+      lastMessage: (item.lastMessage || '').substring(0, 100),
+      preview: (item.preview || '').substring(0, 200),
+    },
+  };
+}
+
+function refreshStubSessionFromServerListItem(session: Session, item: ServerConversation): Session {
+  return {
+    ...session,
+    title: item.title,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    compaction: item.compaction,
+    serverMetadata: {
+      messageCount: item.messageCount,
+      activeMessageCount: item.activeMessageCount,
       lastMessage: (item.lastMessage || '').substring(0, 100),
       preview: (item.preview || '').substring(0, 200),
     },
@@ -163,6 +181,8 @@ export async function syncConversations(
             } catch (err: any) {
               result.errors.push(`Failed to pull ${session.serverConversationId}: ${err.message}`);
             }
+          } else if (session.messages.length === 0) {
+            updatedSessions[i] = refreshStubSessionFromServerListItem(session, serverItem);
           } else if (session.updatedAt > serverItem.updatedAt && session.messages.length > 0) {
             // Local is newer - push to server
             try {

@@ -43,6 +43,7 @@ export interface Session {
   /** Cached server metadata for lazy-loaded sessions (messages not yet fetched) */
   serverMetadata?: {
     messageCount: number;
+    activeMessageCount?: number;
     lastMessage: string;
     preview: string;
   };
@@ -124,7 +125,7 @@ export function sessionToListItem(session: Session): SessionListItem {
       title: session.title,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
-      messageCount: session.serverMetadata.messageCount,
+      messageCount: session.serverMetadata.activeMessageCount ?? session.serverMetadata.messageCount,
       lastMessage: session.serverMetadata.lastMessage,
       preview: session.serverMetadata.preview,
       compaction: session.compaction,
