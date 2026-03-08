@@ -28,3 +28,21 @@ test('failed head message recovery resumes paused queues in the main process bef
   assert.match(tipcSource, /Retrying the failed head item is an explicit recovery action\./);
   assert.match(tipcSource, /if \(wasPaused && isHeadMessage\) \{\s*messageQueueService\.resumeQueue\(input\.conversationId\)/);
 });
+
+test('desktop queue panel preserves edit drafts and shows retryable inline action errors', () => {
+  assert.match(queuePanelSource, /type QueuedMessageActionError = \{/);
+  assert.match(queuePanelSource, /role="alert"/);
+  assert.match(queuePanelSource, /Your draft is still here, so you can review it and try again\./);
+  assert.match(queuePanelSource, /retryLabel="Retry save"/);
+  assert.match(queuePanelSource, /setActionError\(\{\s*kind: "update"/);
+  assert.doesNotMatch(queuePanelSource, /onError: \(\) => \{\s*\/\/ Restore original text on failure\s*setEditText\(message\.text\)/);
+});
+
+test('desktop queue panel treats false queue action results as failures instead of silent success', () => {
+  assert.match(queuePanelSource, /const success = await tipcClient\.removeFromMessageQueue\(\{ conversationId, messageId: message\.id \}\)/);
+  assert.match(queuePanelSource, /if \(!success\) \{\s*throw new Error\("Couldn't remove this queued message right now"\)/);
+  assert.match(queuePanelSource, /const success = await tipcClient\.retryQueuedMessage\(\{/);
+  assert.match(queuePanelSource, /if \(!success\) \{\s*throw new Error\("Couldn't retry this queued message right now"\)/);
+  assert.match(queuePanelSource, /const success = await tipcClient\.clearMessageQueue\(\{ conversationId \}\)/);
+  assert.match(queuePanelSource, /if \(!success\) \{\s*throw new Error\("Couldn't clear queued messages right now"\)/);
+});

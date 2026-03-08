@@ -14,6 +14,64 @@ interface MessageQueuePanelProps {
   isPaused?: boolean
 }
 
+type QueuedMessageActionError = {
+  kind: "update" | "remove" | "retry"
+  message: string
+}
+
+type QueuePanelActionError = {
+  kind: "clear" | "pause" | "resume" | "retry-and-resume"
+  message: string
+}
+
+function getQueueActionErrorMessage(error: unknown, fallbackMessage: string) {
+  const message = error instanceof Error
+    ? error.message.trim()
+    : typeof error === "string"
+      ? error.trim()
+      : ""
+
+  const nextMessage = message || fallbackMessage
+  return /[.!?]$/.test(nextMessage) ? nextMessage : `${nextMessage}.`
+}
+
+function QueueActionError({
+  message,
+  recoveryHint,
+  onRetry,
+  retryLabel,
+}: {
+  message?: string | null
+  recoveryHint: string
+  onRetry?: () => void
+  retryLabel?: string
+}) {
+  if (!message) return null
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className="mt-2 flex flex-col gap-1 text-xs text-destructive sm:flex-row sm:items-center sm:gap-2"
+    >
+      <span className="break-words">
+        {message} {recoveryHint}
+      </span>
+      {onRetry && retryLabel && (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto px-0 py-0 text-xs text-destructive"
+          onClick={onRetry}
+        >
+          {retryLabel}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 /**
  * Individual message item with expand/edit capabilities
  */
@@ -27,6 +85,7 @@ function QueuedMessageItem({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editText, setEditText] = useState(message.text)
+  const [actionError, setActionError] = useState<QueuedMessageActionError | null>(null)
 
   // Sync editText with message.text when it changes via IPC (only when not editing)
   useEffect(() => {
@@ -40,12 +99,27 @@ function QueuedMessageItem({
     if (message.status === 'processing') {
       setIsEditing(false)
       setEditText(message.text)
+      setActionError(null)
     }
   }, [message.status, message.text])
 
   const removeMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.removeFromMessageQueue({ conversationId, messageId: message.id })
+      const success = await tipcClient.removeFromMessageQueue({ conversationId, messageId: message.id })
+      if (!success) {
+        throw new Error("Couldn't remove this queued message right now")
+      }
+      return success
+    },
+    onMutate: () => {
+      setActionError(null)
+    },
+    onError: (error) => {
+      console.error("Failed to remove queued message:", error)
+      setActionError({
+        kind: "remove",
+        message: getQueueActionErrorMessage(error, "Couldn't remove this queued message right now"),
+      })
     },
   })
 
@@ -58,16 +132,23 @@ function QueuedMessageItem({
       })
       // Throw if backend rejected the update (e.g., message is processing or already added to history)
       if (!success) {
-        throw new Error("Failed to update message")
+        throw new Error("Couldn't save changes to this queued message yet")
       }
       return success
     },
+    onMutate: () => {
+      setActionError(null)
+    },
     onSuccess: () => {
+      setActionError(null)
       setIsEditing(false)
     },
-    onError: () => {
-      // Restore original text on failure
-      setEditText(message.text)
+    onError: (error) => {
+      console.error("Failed to update queued message:", error)
+      setActionError({
+        kind: "update",
+        message: getQueueActionErrorMessage(error, "Couldn't save changes to this queued message yet"),
+      })
     },
   })
 
@@ -87,6 +168,7 @@ function QueuedMessageItem({
   }
 
   const handleCancelEdit = () => {
+    setActionError(null)
     setIsEditing(false)
     setEditText(message.text)
   }
@@ -100,9 +182,26 @@ function QueuedMessageItem({
   const retryMutation = useMutation({
     mutationFn: async () => {
       // Retry the failed message - resets status to pending and triggers queue processing if idle
-      await tipcClient.retryQueuedMessage({
+      const success = await tipcClient.retryQueuedMessage({
         conversationId,
         messageId: message.id,
+      })
+      if (!success) {
+        throw new Error("Couldn't retry this queued message right now")
+      }
+      return success
+    },
+    onMutate: () => {
+      setActionError(null)
+    },
+    onSuccess: () => {
+      setActionError(null)
+    },
+    onError: (error) => {
+      console.error("Failed to retry queued message:", error)
+      setActionError({
+        kind: "retry",
+        message: getQueueActionErrorMessage(error, "Couldn't retry this queued message right now"),
       })
     },
   })
@@ -131,6 +230,12 @@ function QueuedMessageItem({
                 handleSaveEdit()
               }
             }}
+          />
+          <QueueActionError
+            message={actionError?.kind === "update" ? actionError.message : null}
+            recoveryHint="Your draft is still here, so you can review it and try again."
+            onRetry={() => handleSaveEdit()}
+            retryLabel="Retry save"
           />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
@@ -207,6 +312,19 @@ function QueuedMessageItem({
                 </Button>
               )}
             </div>
+            <QueueActionError
+              message={actionError?.kind === "remove" || actionError?.kind === "retry" ? actionError.message : null}
+              recoveryHint={actionError?.kind === "remove"
+                ? "The queued message is still here, so you can try again."
+                : "The failed message is still blocking this queue, so you can try again."
+              }
+              onRetry={actionError?.kind === "remove"
+                ? () => removeMutation.mutate()
+                : actionError?.kind === "retry"
+                  ? () => retryMutation.mutate()
+                  : undefined}
+              retryLabel={actionError?.kind === "remove" ? "Retry remove" : actionError?.kind === "retry" ? "Retry message" : undefined}
+            />
           </div>
           {/* Hide action buttons when processing */}
           {!isProcessing && (
@@ -231,7 +349,10 @@ function QueuedMessageItem({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  setActionError(null)
+                  setIsEditing(true)
+                }}
                 disabled={isAddedToHistory}
                 title={isAddedToHistory ? "Cannot edit - already added to conversation" : "Edit message"}
               >
@@ -268,28 +389,73 @@ export function MessageQueuePanel({
   isPaused = false,
 }: MessageQueuePanelProps) {
   const [isListCollapsed, setIsListCollapsed] = useState(false)
+  const [panelActionError, setPanelActionError] = useState<QueuePanelActionError | null>(null)
   const messageListId = `message-queue-list-${conversationId}`
 
   // Reset collapse state when switching to a different conversation.
   useEffect(() => {
     setIsListCollapsed(false)
+    setPanelActionError(null)
   }, [conversationId])
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.clearMessageQueue({ conversationId })
+      const success = await tipcClient.clearMessageQueue({ conversationId })
+      if (!success) {
+        throw new Error("Couldn't clear queued messages right now")
+      }
+      return success
+    },
+    onMutate: () => {
+      setPanelActionError(null)
+    },
+    onSuccess: () => {
+      setPanelActionError(null)
+    },
+    onError: (error) => {
+      console.error("Failed to clear queued messages:", error)
+      setPanelActionError({
+        kind: "clear",
+        message: getQueueActionErrorMessage(error, "Couldn't clear queued messages right now"),
+      })
     },
   })
 
   const resumeMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.resumeMessageQueue({ conversationId })
+      return tipcClient.resumeMessageQueue({ conversationId })
+    },
+    onMutate: () => {
+      setPanelActionError(null)
+    },
+    onSuccess: () => {
+      setPanelActionError(null)
+    },
+    onError: (error) => {
+      console.error("Failed to resume queued messages:", error)
+      setPanelActionError({
+        kind: "resume",
+        message: getQueueActionErrorMessage(error, "Couldn't resume queued messages right now"),
+      })
     },
   })
 
   const pauseMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.pauseMessageQueue({ conversationId })
+      return tipcClient.pauseMessageQueue({ conversationId })
+    },
+    onMutate: () => {
+      setPanelActionError(null)
+    },
+    onSuccess: () => {
+      setPanelActionError(null)
+    },
+    onError: (error) => {
+      console.error("Failed to pause queued messages:", error)
+      setPanelActionError({
+        kind: "pause",
+        message: getQueueActionErrorMessage(error, "Couldn't pause queued messages right now"),
+      })
     },
   })
 
@@ -311,12 +477,44 @@ export function MessageQueuePanel({
       })
 
       if (!success) {
-        throw new Error("Failed to retry the blocked queued message")
+        throw new Error("Couldn't retry the blocked queued message right now")
       }
 
       return success
     },
+    onMutate: () => {
+      setPanelActionError(null)
+    },
+    onSuccess: () => {
+      setPanelActionError(null)
+    },
+    onError: (error) => {
+      console.error("Failed to retry and resume queued messages:", error)
+      setPanelActionError({
+        kind: "retry-and-resume",
+        message: getQueueActionErrorMessage(error, "Couldn't retry the blocked queued message right now"),
+      })
+    },
   })
+
+  const retryPanelAction = () => {
+    if (!panelActionError) return
+
+    switch (panelActionError.kind) {
+      case "clear":
+        clearMutation.mutate()
+        break
+      case "pause":
+        pauseMutation.mutate()
+        break
+      case "resume":
+        resumeMutation.mutate()
+        break
+      case "retry-and-resume":
+        retryAndResumeMutation.mutate()
+        break
+    }
+  }
 
   if (messages.length === 0) {
     return null
@@ -392,6 +590,28 @@ export function MessageQueuePanel({
           >
             <Trash2 className="h-3 w-3" />
           </Button>
+        </div>
+        <div className="basis-full">
+          <QueueActionError
+            message={panelActionError?.message}
+            recoveryHint={panelActionError?.kind === "clear"
+              ? "The queued list is unchanged, so you can review it and try again."
+              : panelActionError?.kind === "pause"
+                ? "The queue is still running, so you can try again."
+                : panelActionError?.kind === "resume"
+                  ? "The queue is still paused, so you can try again."
+                  : "The blocked message is still at the front of this queue, so you can try again."
+            }
+            onRetry={() => retryPanelAction()}
+            retryLabel={panelActionError?.kind === "clear"
+              ? "Retry clear"
+              : panelActionError?.kind === "pause"
+                ? "Retry pause"
+                : panelActionError?.kind === "resume"
+                  ? "Retry resume"
+                  : "Retry & Resume"
+            }
+          />
         </div>
       </div>
     )
@@ -513,6 +733,31 @@ export function MessageQueuePanel({
           {headFailedMessage
             ? "Queue was stopped while the first queued message failed. Retry it to resume processing the rest of the queue."
             : "Queue was stopped. Click Resume to continue processing queued messages."}
+        </div>
+      )}
+
+      {panelActionError && !isListCollapsed && (
+        <div className="border-b px-3 py-2">
+          <QueueActionError
+            message={panelActionError.message}
+            recoveryHint={panelActionError.kind === "clear"
+              ? "The queued list is unchanged, so you can review it and try again."
+              : panelActionError.kind === "pause"
+                ? "The queue is still running, so you can try again."
+                : panelActionError.kind === "resume"
+                  ? "The queue is still paused, so you can try again."
+                  : "The blocked message is still at the front of this queue, so you can try again."
+            }
+            onRetry={() => retryPanelAction()}
+            retryLabel={panelActionError.kind === "clear"
+              ? "Retry clear"
+              : panelActionError.kind === "pause"
+                ? "Retry pause"
+                : panelActionError.kind === "resume"
+                  ? "Retry resume"
+                  : "Retry & Resume"
+            }
+          />
         </div>
       )}
 
