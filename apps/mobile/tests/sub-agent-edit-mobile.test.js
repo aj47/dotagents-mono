@@ -304,3 +304,8 @@ test('LoopEditScreen adds a direct connection-settings recovery action when savi
   assert.match(loopEditSource, /blockingNoticeActionButton:\s*\{[\s\S]*?\.\.\.noticeActionTouchTarget,[\s\S]*?alignSelf:\s*'stretch',[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '26',[\s\S]*?justifyContent:\s*'center'/);
   assert.match(loopEditSource, /blockingNoticeActionButtonText:\s*\{[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?fontWeight:\s*'600',[\s\S]*?textAlign:\s*'center'/);
 });
+
+test('Sub-agent edit screens let long mobile forms dismiss the keyboard on drag', () => {
+  assert.match(agentEditSource, /<ScrollView[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"/);
+  assert.match(loopEditSource, /<ScrollView[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"/);
+});

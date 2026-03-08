@@ -386,6 +386,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       style={{ backgroundColor: theme.colors.background }}
       contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {error && (
         <View style={styles.errorContainer}>

@@ -4617,3 +4617,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or simulator that a failed return refresh leaves the previous selected chip visible-but-disabled, keeps `No profile` usable, and reads clearly on a narrow screen.
   - Live-test a return flow where a saved profile is added, renamed, or deleted elsewhere and the refresh fails, confirming the UI now blocks stale chip selection instead of inviting it.
   - After that live pass, look for the next highest-signal local issue in `LoopEditScreen` or adjacent sub-agent mobile edit flows rather than revisiting this state-clarity fix without fresh evidence.
+
+## Iteration 105 - Let sub-agent edit forms dismiss the keyboard with a drag
+
+- Date: 2026-03-08
+- Summary: Added drag-to-dismiss keyboard behavior to the mobile `AgentEdit` and `LoopEdit` forms so long sub-agent edit flows can reclaim vertical space without leaving the keyboard pinned over lower controls.
+- Review-before-change notes:
+  - Re-read the latest `sub-agents-mobile-view.md` entries first to avoid revisiting the recent blocked-save and loop-profile state work without fresh evidence.
+  - Checked `apps/mobile/src/screens/AgentEditScreen.tsx` and `apps/mobile/src/screens/LoopEditScreen.tsx` first because the latest ledger entries still called out unresolved keyboard-overlap risk in those long mobile forms.
+  - Compared those forms against the already-shipped queue pattern in `apps/mobile/src/ui/MessageQueuePanel.tsx`, which already uses both `keyboardShouldPersistTaps="handled"` and `keyboardDismissMode="on-drag"`.
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection still was not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with a focused command:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING && pnpm --filter @dotagents/mobile exec expo --version` → `APPS_MOBILE_NODE_MODULES_MISSING`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed mobile-form review plus focused Node-based regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - Source review showed both `AgentEditScreen` and `LoopEditScreen` already set `keyboardShouldPersistTaps="handled"`, so taps on inline actions can still land while the keyboard is open.
+  - Unlike the queue editor, neither form set `keyboardDismissMode`, so dragging a long edit form did not explicitly dismiss the keyboard.
+  - On narrow mobile screens that weakens control when the keyboard covers lower notices, profile chips, switches, or the primary save action.
+- Issue identified:
+  - The long sub-agent edit forms kept the keyboard open more stubbornly than the queue editor, making it harder to recover vertical space while reviewing lower content or finishing a save path.
+- Decision and rationale:
+  - Reuse the queue panel's already-shipped keyboard interaction pattern instead of inventing a new form-specific behavior.
+  - Keep the layout, copy, validation logic, and save flow unchanged; the highest-signal improvement here is to make the existing forms easier to navigate one-handed when the keyboard is up.
+  - Apply the same fix to both `AgentEdit` and `LoopEdit` so adjacent sub-agent edit flows behave consistently on mobile.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to add `keyboardDismissMode="on-drag"` to the form `ScrollView`.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to add that same `keyboardDismissMode="on-drag"` behavior to its form `ScrollView`.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage confirming both edit screens now pair `keyboardShouldPersistTaps="handled"` with `keyboardDismissMode="on-drag"`.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and `pnpm --filter @dotagents/mobile exec expo --version` fails with `Command "expo" not found`
+- Assumptions and tradeoffs:
+  - Assumed matching the queue editor's drag-to-dismiss behavior will feel more predictable than leaving these longer forms on the default keyboard-dismiss behavior.
+  - Chose not to add any keyboard-avoidance layout changes or CTA repositioning without live validation; this iteration stays intentionally local and low-risk.
+  - This improves keyboard recovery but does not replace the need for a real narrow-screen pass to confirm spacing and content balance above the keyboard.
+- Remaining nearby issues noted, not addressed this iteration:
+  - These edit forms still need a live Expo Web or simulator pass to confirm dragging dismisses the keyboard smoothly without making the form feel jumpy.
+  - The blocked-save notices, profile chips, and primary save CTA still need screenshot-backed confirmation for safe-area spacing and balance on smaller devices.
+  - Returning from nested routes like `ConnectionSettings` or `AgentEdit` still deserves live validation to confirm scroll position and context feel stable after the keyboard has been used.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that both `AgentEdit` and `LoopEdit` now dismiss the keyboard when users drag the form.
+  - Live-test while editing long text fields and then dragging toward the save CTA, profile section, and blocking notices to confirm those lower controls are easier to reach without awkward extra taps.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this keyboard-recovery fix without fresh evidence.
