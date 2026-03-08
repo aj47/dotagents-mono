@@ -4919,6 +4919,7 @@ export const router = {
   startLoop: t.procedure
     .input<{ loopId: string }>()
     .action(async ({ input }) => {
+      loopService.resumeScheduling()
       return { success: loopService.startLoop(input.loopId) }
     }),
 
@@ -4935,6 +4936,7 @@ export const router = {
     }),
 
   startAllLoops: t.procedure.action(async () => {
+    loopService.resumeScheduling()
     loopService.startAllLoops()
     return { success: true }
   }),

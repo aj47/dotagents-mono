@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task explicit-restart scheduling reliability in `apps/desktop/src/main/tipc.ts`, with `loopService` stop/start semantics rechecked in `apps/desktop/src/main/loop-service.ts`, per-loop enable/save actions cross-checked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source guardrails extended in new `tests/desktop-loop-restart-guardrails.test.js` alongside existing `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop/headless quit-path agent-runtime cleanup in `apps/desktop/src/main/index.ts`, with quit and `--headless` shutdown sequencing reviewed in that file, agent-runtime/process/approval cleanup APIs cross-checked in `apps/desktop/src/main/state.ts` and `apps/desktop/src/main/emergency-stop.ts`, focused dependency-free source guardrails extended in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
 - 2026-03-08: Desktop queued-message action-failure feedback in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, with queue action return semantics rechecked in `apps/desktop/src/main/tipc.ts`, nearby inline retry/error patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` and `apps/desktop/src/renderer/src/components/audio-player.tsx`, mobile parity reviewed in `apps/mobile/src/ui/MessageQueuePanel.tsx` / `apps/mobile/src/store/message-queue.ts` (same general silent-failure risk exists there, but this pass stayed desktop-scoped because the IPC-backed desktop queue is the sharper user-trust risk and offered the smallest local fix), focused source-level coverage extended in `tests/desktop-message-queue-recovery.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and desktop renderer typecheck attempted via `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this dependency-light worktree is missing installed desktop dependencies / `node_modules`).
 - 2026-03-08: Desktop Memories edit-save resilience in `apps/desktop/src/renderer/src/pages/memories.tsx`, with edit-dialog state and `updateMemory(...)` return semantics reviewed in that file plus `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/memory-service.ts`, adjacent unsaved-draft dialog patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, mobile parity reviewed in `apps/mobile/src/screens/MemoryEditScreen.tsx` (no equivalent change needed because mobile memory editing lives on a dedicated screen rather than a backdrop-dismissible desktop dialog), focused source-level coverage added in `tests/desktop-memories-edit-guardrails.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
@@ -489,7 +490,6 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile queued-message action-failure parity (`apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/src/store/message-queue.ts`)
 - Desktop Memories edit dialog live validation / save-failure cadence check (`apps/desktop/src/renderer/src/pages/memories.tsx`)
 - Desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
-- Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop `Settings → General` ACP main-agent warning density / recovery flow live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
@@ -3000,6 +3000,37 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once dependencies are available, run deeper desktop main-process verification around quit during an active agent run to confirm there is no late-update noise beyond the source-level guardrails in this worktree
   - next highest-value nearby target: inspect repeat-task `runOnStartup` disable/restart/shutdown execution paths in `apps/desktop/src/main/loop-service.ts`
+
+### 2026-03-08 — Repeat-task explicit restart resumes scheduling again
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task restart flow in `apps/desktop/src/main/tipc.ts`
+  - related scheduler semantics in `apps/desktop/src/main/loop-service.ts`
+  - per-loop enable/save actions in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+- Why it was chosen:
+  - the ledger still called out repeat-task startup/restart/shutdown execution validation as not checked recently
+  - explicit restart reliability matters because task toggles in Settings should not say “enabled” while the scheduler remains globally paused underneath
+  - the code offered a very local fix path with strong source-level verification already nearby
+- What was inspected:
+  - `apps/desktop/src/main/loop-service.ts`
+  - `apps/desktop/src/main/tipc.ts`
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `tests/desktop-loop-service-startup-guardrails.test.js`
+- Improvement made:
+  - updated the explicit IPC restart routes so `startLoop` and `startAllLoops` call `loopService.resumeScheduling()` before rearming timers
+  - added `tests/desktop-loop-restart-guardrails.test.js` to lock in that ordering
+  - kept the fix at the IPC boundary rather than changing all loop-service semantics, because current user-driven restarts already flow through TIPC and that was the smallest effective repair
+- Assumptions / tradeoffs / rationale:
+  - chose the restart API boundary instead of changing `loopService.startLoop()` directly to avoid broad side effects on internal shutdown/bundle-refresh paths
+  - accepted that this is primarily a guardrail for explicit restarts and future callers of the same IPC routes; deeper loop-runtime integration testing can come later when a fuller desktop runtime is available
+  - left existing bundle-import refresh behavior unchanged because it already performs `stopAllLoops() → reload() → resumeScheduling() → startAllLoops()` in the correct order
+- Tests / verification:
+  - `node --test tests/desktop-loop-service-startup-guardrails.test.js tests/desktop-loop-restart-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once a fuller desktop runtime is available, live-check that disabling then re-enabling a repeat task after any global loop pause yields the expected next-run status and actual execution
+  - next highest-value nearby target: inspect desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
 
 ### Iteration Template
 - Date:
