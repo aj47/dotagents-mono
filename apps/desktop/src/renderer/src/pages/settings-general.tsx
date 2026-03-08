@@ -67,6 +67,8 @@ export function Component() {
   const cfgRef = useRef<Config | undefined>(cfg)
   const [langfuseDrafts, setLangfuseDrafts] = useState(() => getLangfuseDrafts(cfg))
   const langfuseSaveTimeoutsRef = useRef<Partial<Record<LangfuseDraftKey, ReturnType<typeof setTimeout>>>>({})
+  const [groqSttPromptDraft, setGroqSttPromptDraft] = useState(() => cfg?.groqSttPrompt ?? "")
+  const groqSttPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [transcriptPostProcessingPromptDraft, setTranscriptPostProcessingPromptDraft] = useState(
     () => cfg?.transcriptPostProcessingPrompt ?? "",
   )
@@ -200,6 +202,10 @@ export function Component() {
   }, [cfg?.langfusePublicKey, cfg?.langfuseSecretKey, cfg?.langfuseBaseUrl])
 
   useEffect(() => {
+    setGroqSttPromptDraft(cfg?.groqSttPrompt ?? "")
+  }, [cfg?.groqSttPrompt])
+
+  useEffect(() => {
     setTranscriptPostProcessingPromptDraft(cfg?.transcriptPostProcessingPrompt ?? "")
   }, [cfg?.transcriptPostProcessingPrompt])
 
@@ -207,6 +213,10 @@ export function Component() {
     return () => {
       for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
+      }
+
+      if (groqSttPromptSaveTimeoutRef.current) {
+        clearTimeout(groqSttPromptSaveTimeoutRef.current)
       }
 
       if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
@@ -244,6 +254,31 @@ export function Component() {
     }))
     scheduleLangfuseSave(key, value)
   }, [scheduleLangfuseSave])
+
+  const flushGroqSttPromptSave = useCallback((value: string) => {
+    if (groqSttPromptSaveTimeoutRef.current) {
+      clearTimeout(groqSttPromptSaveTimeoutRef.current)
+      groqSttPromptSaveTimeoutRef.current = null
+    }
+
+    saveConfig({ groqSttPrompt: value || undefined })
+  }, [saveConfig])
+
+  const scheduleGroqSttPromptSave = useCallback((value: string) => {
+    if (groqSttPromptSaveTimeoutRef.current) {
+      clearTimeout(groqSttPromptSaveTimeoutRef.current)
+    }
+
+    groqSttPromptSaveTimeoutRef.current = setTimeout(() => {
+      groqSttPromptSaveTimeoutRef.current = null
+      saveConfig({ groqSttPrompt: value || undefined })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateGroqSttPromptDraft = useCallback((value: string) => {
+    setGroqSttPromptDraft(value)
+    scheduleGroqSttPromptSave(value)
+  }, [scheduleGroqSttPromptSave])
 
   const flushTranscriptPostProcessingPromptSave = useCallback((value: string) => {
     if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
@@ -961,11 +996,12 @@ export function Component() {
             <Control label={<ControlLabel label="Prompt" tooltip="Optional prompt to guide the model's style or specify how to spell unfamiliar words. Limited to 224 tokens." />} className="px-3">
               <Textarea
                 placeholder="Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
-                defaultValue={configQuery.data.groqSttPrompt || ""}
+                value={groqSttPromptDraft}
                 onChange={(e) => {
-                  saveConfig({
-                    groqSttPrompt: e.currentTarget.value,
-                  })
+                  updateGroqSttPromptDraft(e.currentTarget.value)
+                }}
+                onBlur={(e) => {
+                  flushGroqSttPromptSave(e.currentTarget.value)
                 }}
                 className="min-h-[80px]"
               />
