@@ -42,6 +42,8 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
+  getSummaryCountLabel,
+  getSummaryMetadata,
   getToolResultsSummary,
   extractRespondToUserContentFromArgs,
   RESPOND_TO_USER_TOOL,
@@ -871,6 +873,7 @@ export default function ChatScreen({ route, navigation }: any) {
           timestamp: m.timestamp,
           toolCalls: m.toolCalls,
           toolResults: m.toolResults,
+          ...getSummaryMetadata(m),
         }));
         setMessages(chatMessages);
 
@@ -905,6 +908,7 @@ export default function ChatScreen({ route, navigation }: any) {
               timestamp: m.timestamp,
               toolCalls: m.toolCalls,
               toolResults: m.toolResults,
+              ...getSummaryMetadata(m),
             }));
             setMessages(loadedMessages);
 
@@ -944,6 +948,7 @@ export default function ChatScreen({ route, navigation }: any) {
         timestamp: m.timestamp,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
+        ...getSummaryMetadata(m),
       }));
       setMessages(chatMessages);
 
@@ -1342,6 +1347,7 @@ export default function ChatScreen({ route, navigation }: any) {
             content: historyMsg.content || '',
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
+            ...getSummaryMetadata(historyMsg),
           });
         }
       }
@@ -1742,6 +1748,7 @@ export default function ChatScreen({ route, navigation }: any) {
             content: historyMsg.content || '',
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
+            ...getSummaryMetadata(historyMsg),
           });
         }
 	        const finalTurnMessages = applyUserResponseToMessages(newMessages, lastUserResponse);
@@ -2111,6 +2118,7 @@ export default function ChatScreen({ route, navigation }: any) {
             content: historyMsg.content || '',
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
+            ...getSummaryMetadata(historyMsg),
           });
         }
         const finalTurnMessages = applyUserResponseToMessages(newMessages, lastUserResponse);
@@ -2838,6 +2846,10 @@ export default function ChatScreen({ route, navigation }: any) {
             // expandedMessages is auto-updated via useEffect to expand the last assistant message
             // and persist the expansion state so it doesn't collapse when new messages arrive
             const isExpanded = expandedMessages[i] ?? false;
+            const isSummaryMessage = m.isSummary === true;
+            const summaryCountLabel = isSummaryMessage
+              ? getSummaryCountLabel(m.summarizedMessageCount)
+              : null;
 
             const toolCallCount = m.toolCalls?.length ?? 0;
             const toolResultCount = m.toolResults?.length ?? 0;
@@ -2853,8 +2865,23 @@ export default function ChatScreen({ route, navigation }: any) {
                 style={[
                   styles.msg,
                   m.role === 'user' ? styles.user : styles.assistant,
+                  isSummaryMessage && styles.summaryMessage,
                 ]}
               >
+                {isSummaryMessage && summaryCountLabel && (
+                  <View
+                    accessible
+                    accessibilityRole="text"
+                    accessibilityLabel={`Context summary. ${summaryCountLabel}`}
+                    style={styles.summaryBadgeRow}
+                  >
+                    <View style={styles.summaryBadge}>
+                      <Text style={styles.summaryBadgeText}>Context summary</Text>
+                    </View>
+                    <Text style={styles.summaryBadgeHint}>{summaryCountLabel}</Text>
+                  </View>
+                )}
+
                 {/* Compact message header - no role labels, just tap to expand */}
                 {shouldCollapse && (
                   <Pressable
@@ -3249,6 +3276,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                 content: msg.content,
                                 toolCalls: msg.toolCalls,
                                 toolResults: msg.toolResults,
+                                ...getSummaryMetadata(msg),
                               });
                             } else if (msg.role === 'tool' && recoveredMessages.length > 0) {
                               // Merge tool message toolResults into the preceding assistant message
@@ -3579,6 +3607,38 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderLeftWidth: 2,
       borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.3),
       paddingLeft: spacing.xs,
+    },
+    summaryMessage: {
+      borderLeftColor: hexToRgba(theme.colors.primary, 0.45),
+      backgroundColor: hexToRgba(theme.colors.primary, 0.05),
+      borderRadius: radius.sm,
+      paddingRight: spacing.xs,
+    },
+    summaryBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginBottom: 4,
+    },
+    summaryBadge: {
+      borderRadius: radius.full,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+      borderWidth: theme.hairline,
+      borderColor: hexToRgba(theme.colors.primary, 0.28),
+    },
+    summaryBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    summaryBadgeHint: {
+      flexShrink: 1,
+      fontSize: 11,
+      color: hexToRgba(theme.colors.primary, 0.82),
+      fontWeight: '500',
     },
     messageHeader: {
       flexDirection: 'row',

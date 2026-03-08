@@ -34,6 +34,8 @@ export type ChatMessage = {
   timestamp?: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
+  isSummary?: boolean;
+  summarizedMessageCount?: number;
 };
 
 export type ChatResponse = ChatApiResponse;

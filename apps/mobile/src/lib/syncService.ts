@@ -4,6 +4,7 @@
  */
 
 import { Session, ChatMessage } from '../types/session';
+import { getSummaryMetadata } from '@dotagents/shared';
 import {
   SettingsApiClient,
   ServerConversation,
@@ -27,7 +28,7 @@ const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
 /**
  * Convert a mobile ChatMessage to server message format
  */
-function toServerMessage(msg: ChatMessage): ServerConversationMessage {
+export function toServerMessage(msg: ChatMessage): ServerConversationMessage {
   // Normalize role to valid values - default to 'user' for legacy/invalid data
   const role: 'user' | 'assistant' | 'tool' = VALID_ROLES.includes(msg.role as any)
     ? (msg.role as 'user' | 'assistant' | 'tool')
@@ -39,13 +40,14 @@ function toServerMessage(msg: ChatMessage): ServerConversationMessage {
     timestamp: msg.timestamp,
     toolCalls: msg.toolCalls,
     toolResults: msg.toolResults,
+    ...getSummaryMetadata(msg),
   };
 }
 
 /**
  * Convert a server message to mobile ChatMessage format
  */
-function fromServerMessage(msg: ServerConversationMessage, index: number): ChatMessage {
+export function fromServerMessage(msg: ServerConversationMessage, index: number): ChatMessage {
   // Use nullish coalescing (??) so that timestamp=0 is not treated as "missing"
   const ts = msg.timestamp ?? Date.now();
   return {
@@ -55,6 +57,7 @@ function fromServerMessage(msg: ServerConversationMessage, index: number): ChatM
     timestamp: ts,
     toolCalls: msg.toolCalls as any,
     toolResults: msg.toolResults as any,
+    ...getSummaryMetadata(msg),
   };
 }
 

@@ -20,6 +20,8 @@ export interface SessionChatMessage {
   timestamp: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
+  isSummary?: boolean;
+  summarizedMessageCount?: number;
 }
 
 export interface Session {

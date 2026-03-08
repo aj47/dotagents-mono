@@ -205,6 +205,8 @@ export interface ServerConversationMessage {
   timestamp?: number;
   toolCalls?: unknown[];
   toolResults?: unknown[];
+  isSummary?: boolean;
+  summarizedMessageCount?: number;
 }
 
 export interface ServerConversation {

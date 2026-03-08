@@ -54,6 +54,46 @@ export function getRoleLabel(role: MessageRole): string {
   }
 }
 
+export type SummaryMetadata = Pick<BaseChatMessage, 'isSummary' | 'summarizedMessageCount'>;
+
+/**
+ * Copy normalized summary metadata from a message-like object.
+ * Invalid or empty counts are omitted so UI/storage only keeps meaningful values.
+ */
+export function getSummaryMetadata(message: SummaryMetadata): SummaryMetadata {
+  const metadata: SummaryMetadata = {};
+
+  if (message.isSummary === true) {
+    metadata.isSummary = true;
+  }
+
+  if (
+    typeof message.summarizedMessageCount === 'number' &&
+    Number.isFinite(message.summarizedMessageCount) &&
+    message.summarizedMessageCount > 0
+  ) {
+    metadata.summarizedMessageCount = Math.floor(message.summarizedMessageCount);
+  }
+
+  return metadata;
+}
+
+/**
+ * Create user-facing copy for a context summary badge.
+ */
+export function getSummaryCountLabel(summarizedMessageCount?: number): string {
+  const normalizedCount =
+    typeof summarizedMessageCount === 'number' &&
+    Number.isFinite(summarizedMessageCount) &&
+    summarizedMessageCount > 0
+      ? Math.floor(summarizedMessageCount)
+      : null;
+
+  return normalizedCount
+    ? `Represents ${normalizedCount.toLocaleString()} earlier ${normalizedCount === 1 ? 'message' : 'messages'}`
+    : 'Represents earlier messages outside the active window';
+}
+
 /**
  * Determine if a message should be collapsible based on its content
  * @param content The message content

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { getSummaryMetadata } from '@dotagents/shared';
 import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem } from '../types/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
@@ -331,6 +332,7 @@ export function useSessions(): SessionStore {
         : now + idx,
       toolCalls: m.toolCalls,
       toolResults: m.toolResults,
+      ...getSummaryMetadata(m),
     }));
 
     const firstUserMsg = messages.find(m => m.role === 'user');
@@ -383,6 +385,7 @@ export function useSessions(): SessionStore {
         : now + idx,
       toolCalls: m.toolCalls,
       toolResults: m.toolResults,
+      ...getSummaryMetadata(m),
     }));
 
     const firstUserMsg = messages.find(m => m.role === 'user');

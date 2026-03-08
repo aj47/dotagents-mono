@@ -1292,3 +1292,41 @@
   - If more provenance is still needed, consider a complementary “active window” badge for non-summary messages near the full-history boundary.
 
 - Next recommended issue work item: treat `#58` as meaningfully advanced again; next iteration should either take another concrete/mobile follow-up on `#58` or move to a different locally verifiable issue once one is available.
+
+##### Issue #58 — Mobile now preserves and labels context summary messages
+
+- Selection rationale:
+  - The previous `#58` ledger entry explicitly called out the next missing slice: mobile was still stripping `isSummary` / `summarizedMessageCount`, so summarized transcript blocks could not be distinguished there.
+  - This was a small, user-visible trust improvement with a clear local implementation path across shared types, mobile sync/persistence, and the mobile transcript UI.
+- Investigation:
+  - Re-read issue `#58` and the existing ledger history for the desktop/full-history work already landed.
+  - Inspected `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/lib/openaiClient.ts`, `apps/mobile/src/lib/syncService.ts`, `apps/mobile/src/store/sessions.ts`, `packages/shared/src/types.ts`, `packages/shared/src/session.ts`, and `packages/shared/src/api-types.ts`.
+  - Confirmed mobile `ChatMessage` and shared server/session message contracts did not expose summary metadata consistently.
+  - Confirmed the mobile chat screen recreated message objects in several places (saved session load, lazy server fetch, progress/final history hydration, recovery) and dropped summary metadata in each of those mappings.
+  - Confirmed the mobile transcript had no summary-specific inline affordance, so even preserved summary messages would still look like ordinary assistant messages.
+- Important assumptions:
+  - Assumption: the smallest acceptable mobile `#58` follow-up is metadata preservation plus a subtle inline `Context summary` badge, not the full preserved-history viewer contract.
+  - Why acceptable: it directly advances the issue’s trust/auditability goals and matches the already-landed desktop distinction pattern without trying to solve the larger mobile history-browser surface in one pass.
+  - Assumption: a shared helper for summary metadata normalization/label text is acceptable even though only mobile consumes the new helper today.
+  - Why acceptable: the helper keeps the contract consistent across sync, persistence, and rendering while staying tiny and dependency-free inside `packages/shared`.
+- Changes implemented:
+  - Extended the shared conversation/session/server message contracts in `packages/shared/src/types.ts`, `packages/shared/src/session.ts`, and `packages/shared/src/api-types.ts` so `isSummary` / `summarizedMessageCount` are first-class optional fields across storage and sync boundaries.
+  - Added small shared helpers in `packages/shared/src/chat-utils.ts` to normalize summary metadata and produce consistent user-facing summary count copy.
+  - Updated `apps/mobile/src/lib/openaiClient.ts`, `apps/mobile/src/lib/syncService.ts`, `apps/mobile/src/store/sessions.ts`, and all relevant message-mapping paths in `apps/mobile/src/screens/ChatScreen.tsx` so mobile preserves summary metadata from server fetches, session persistence, recovery, and conversation-history hydration.
+  - Added a subtle mobile transcript treatment in `apps/mobile/src/screens/ChatScreen.tsx`: summary messages now get a `Context summary` badge, count copy, and a distinct accent/background.
+  - Added focused regression coverage in `apps/mobile/src/lib/syncService.summary-metadata.test.ts` for summary metadata normalization, summary label copy, and sync conversion preservation.
+- Verification run:
+  - Completed: `git diff --check` ✅
+  - Completed: `tsc -p packages/shared/tsconfig.json --noEmit` ✅
+  - Attempted but blocked: `pnpm build:shared` ❌ (`tsup` missing because this worktree has no installed workspace dependencies / `node_modules`)
+  - Attempted but environment-blocked: `tsc -p apps/mobile/tsconfig.json --noEmit` ❌ (Expo/mobile dependencies and `expo/tsconfig.base` unavailable in this worktree; failures were environment-level, not specific to this slice)
+  - Not runnable in this worktree: the new mobile Vitest regression file also depends on missing workspace/mobile dependencies.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Re-run `pnpm build:shared` plus the targeted mobile Vitest file once workspace dependencies are installed in this worktree.
+  - Consider mirroring the desktop preserved-history/full-history browsing affordance into mobile after the metadata plumbing is now in place.
+  - If summary messages prove noisy on mobile, consider whether TTS/other per-message controls should be suppressed or restyled for summary blocks.
+
+- Next recommended issue work item: treat `#58` as advanced again; if the next worktree has dependencies installed, a mobile full-history browsing slice is now more feasible, otherwise pivot to another narrow issue with dependency-light verification.

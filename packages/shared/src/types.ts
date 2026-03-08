@@ -30,6 +30,10 @@ export interface BaseChatMessage {
   content: string;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
+  /** True when this assistant message summarizes earlier context outside the active window. */
+  isSummary?: boolean;
+  /** Number of earlier messages represented by the summary, when available. */
+  summarizedMessageCount?: number;
 }
 
 /**
