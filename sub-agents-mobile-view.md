@@ -206,3 +206,47 @@
   - Reduce `Agent Loops` text density with a local hierarchy/readability improvement.
   - Revisit the chat/session header trigger sizing and state clarity on narrow screens.
   - Check whether long agent descriptions need better truncation or metadata grouping on mobile.
+
+### 2026-03-08 — Iteration 5: make loop schedule metadata human-readable
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Loops`
+  - existing loop row rendering in `SettingsScreen`
+  - desktop loop formatting patterns for a conservative wording baseline
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Confirmed loop rows still showed machine-style cadence labels such as:
+    - `Every 1440min • Last: 15:27:31`
+    - `Every 30min • Last: 14:40:16`
+    - `Every 10080min • Last: 10:20:25`
+- Issue selected:
+  - Raw minute counts made loop cadence harder to understand at a glance on mobile, especially for daily and weekly loops that required mental conversion.
+- Decision:
+  - Keep the loop row layout unchanged.
+  - Only improve the metadata text itself: human-readable cadence labels plus less dense last-run time formatting.
+  - Reuse a small local formatter instead of importing a broader date/duration dependency.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `formatLoopIntervalLabel(minutes)` for compact labels like `Daily`, `Weekly`, `Hourly`, and `Every 30 min`,
+    - add `formatLoopLastRunLabel(timestamp)` to show hour/minute precision instead of a full seconds-heavy time,
+    - render those formatted labels in `Settings > Agent Loops` row metadata.
+  - Added `apps/mobile/tests/settings-loop-metadata-mobile.test.js` covering the readable cadence formatting and compact last-run display wiring.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - `Discord Recap Tweeter` → `Daily • Last 15:27`
+    - `Memory Hygiene` → `Weekly • Last 10:20`
+    - `Email Triage` → `Every 30 min • Last 14:40`
+    - `X Feed Tweet Optimizer` → `Hourly • Last 18:20`
+    - no raw `1440min` / `10080min` strings observed in the rendered loop cards
+- Remaining nearby issues noted, not addressed this iteration:
+  - Loop cards still show prompt text plus metadata in a dense stack; hierarchy can improve further without changing functionality.
+  - The chat/session header sub-agent trigger still needs a fresh mobile pass after the settings improvements.
+  - Long agent descriptions in `Settings > Agents` may still want cleaner truncation/grouping.
+- Next checks:
+  - Reduce `Agent Loops` card density further with a small hierarchy tweak (for example, separating prompt preview from schedule/status metadata more clearly).
+  - Revisit the chat/session header trigger sizing and state clarity on narrow screens.
+  - Inspect whether long agent descriptions need better truncation or metadata grouping on mobile.

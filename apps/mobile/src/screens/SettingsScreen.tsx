@@ -146,6 +146,48 @@ const getTtsModelsForProvider = (providerId: string): readonly { label: string; 
   }
 };
 
+function formatLoopIntervalLabel(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 1) return 'Every minute';
+  if (minutes === 1) return 'Every minute';
+  if (minutes === 60) return 'Hourly';
+  if (minutes === 1440) return 'Daily';
+  if (minutes === 10080) return 'Weekly';
+  if (minutes < 60) return `Every ${minutes} min`;
+
+  if (minutes < 1440 && minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `Every ${hours} hr`;
+  }
+
+  if (minutes < 10080 && minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return `Every ${days} day${days === 1 ? '' : 's'}`;
+  }
+
+  if (minutes % 10080 === 0) {
+    const weeks = minutes / 10080;
+    return `Every ${weeks} week${weeks === 1 ? '' : 's'}`;
+  }
+
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const remainingMinutes = minutes % 60;
+  const parts = [
+    days > 0 ? `${days}d` : null,
+    hours > 0 ? `${hours}h` : null,
+    remainingMinutes > 0 ? `${remainingMinutes}m` : null,
+  ].filter(Boolean);
+
+  return `Every ${parts.join(' ')}`;
+}
+
+function formatLoopLastRunLabel(timestamp: number): string {
+  return `Last ${new Date(timestamp).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
+
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -2266,9 +2308,9 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                           <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
                           <Text style={styles.serverMeta} numberOfLines={2}>
-                            Every {loop.intervalMinutes}min
+                            {formatLoopIntervalLabel(loop.intervalMinutes)}
                             {loop.profileName && ` • ${loop.profileName}`}
-                            {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
+                            {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
                           </Text>
                         </View>
                       </TouchableOpacity>
