@@ -1,5 +1,47 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 138 - Keep loop schedule state readable when assigned profile names get long
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-touched agent-description hierarchy and ACP entry-point wording without new evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-loop-metadata-mobile.test.js` because an older next-check from Iteration 43 still called out truncation pressure when loop rows show both `profileName` and `lastRunAt`.
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed `Settings > Agent Loops` still put the optional assigned profile name directly inside the main metadata line with cadence, `Run on startup`, and `Last HH:MM` state.
+  - That meant one long assigned profile name could still consume the same two-line budget needed for the more operational schedule state.
+  - The row already had a single secondary preview slot below the metadata, but that slot was always used for prompt text even when the assigned agent was the more useful at-a-glance mobile context.
+- Issue identified:
+  - Loop rows still let assigned profile names compete with the primary schedule/status metadata, which weakens scanability and can hide the most important timing state on narrow screens.
+- Decision and rationale:
+  - Keep the existing row structure, action rail, and one-line secondary preview budget; do not redesign the loop card while live validation is blocked.
+  - Protect the primary metadata line for cadence/startup/last-run state only.
+  - Reuse the existing secondary preview slot to show `Runs with …` when a loop is assigned to a saved profile; otherwise keep showing the prompt preview.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `formatLoopRowSecondaryText(loop)` for assignment-aware secondary text,
+    - remove `profileName` from the primary loop metadata line,
+    - render a one-line `loopSecondaryPreview` that prefers `Runs with {profileName}` and falls back to the prompt for unassigned loops.
+  - Updated `apps/mobile/tests/settings-loop-metadata-mobile.test.js` with focused regression coverage for the new assignment-aware preview and the removal of `profileName` from the metadata line.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the assigned agent is more important list-level context than the prompt preview once a loop is explicitly tied to a saved profile.
+  - Accepted that profile-assigned loops now use their single preview line for assignment context instead of prompt text so the row height stays stable and the schedule line stays clearer.
+  - This remains a source-backed improvement and still needs live confirmation that `Runs with …` feels sufficiently informative and does not make prompt context feel too hidden for assigned loops.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that loops with long assigned profile names still keep cadence, startup state, and `Last …` metadata readable on a narrow viewport.
+  - Compare an assigned loop versus an unassigned loop to confirm the new secondary preview fallback (`Runs with …` vs prompt preview) feels intuitive in a mixed list.
+  - If live validation shows the assignment preview is too subtle, consider only a small styling adjustment next rather than re-expanding the metadata line.
+
 ## Iteration 137 - Demote optional agent descriptions so mobile agent rows scan faster
 
 - Date: 2026-03-08

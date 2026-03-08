@@ -189,6 +189,11 @@ function formatLoopLastRunLabel(timestamp: number): string {
   })}`;
 }
 
+function formatLoopRowSecondaryText(loop: Loop): string {
+  if (loop.profileName) return `Runs with ${loop.profileName}`;
+  return loop.prompt;
+}
+
 function formatAgentConnectionTypeLabel(connectionType: AgentProfile['connectionType']): 'Internal' | 'ACP' | 'Stdio' | 'Remote' {
   switch (connectionType) {
     case 'acp':
@@ -2702,7 +2707,6 @@ export default function SettingsScreen({ navigation }: any) {
                           </View>
                           <Text style={styles.serverMeta} numberOfLines={2}>
                             {formatLoopIntervalLabel(loop.intervalMinutes)}
-                            {loop.profileName && ` • ${loop.profileName}`}
                             {loop.runOnStartup ? (
                               <>
                                 {' • '}
@@ -2711,7 +2715,9 @@ export default function SettingsScreen({ navigation }: any) {
                             ) : null}
                             {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
                           </Text>
-                          <Text style={styles.loopPromptPreview} numberOfLines={1}>{loop.prompt}</Text>
+                          <Text style={styles.loopSecondaryPreview} numberOfLines={1} ellipsizeMode="tail">
+                            {formatLoopRowSecondaryText(loop)}
+                          </Text>
                           {renderInlineEditAffordance()}
                         </View>
                       </TouchableOpacity>
@@ -3641,7 +3647,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primary,
       fontWeight: '600',
     },
-    loopPromptPreview: {
+    loopSecondaryPreview: {
       fontSize: 11,
       color: theme.colors.mutedForeground,
       marginTop: spacing.xs,

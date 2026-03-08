@@ -22,12 +22,16 @@ test('shortens last-run metadata to hour and minute precision', () => {
   assert.match(settingsSource, /formatLoopLastRunLabel\(loop\.lastRunAt\)/);
 });
 
-test('prioritizes compact loop schedule metadata over prompt preview on mobile', () => {
+test('prioritizes compact loop schedule metadata and demotes profile assignment into the secondary preview on mobile', () => {
+  assert.match(settingsSource, /function formatLoopRowSecondaryText\(loop: Loop\): string/);
+  assert.match(settingsSource, /if \(loop\.profileName\) return `Runs with \$\{loop\.profileName\}`;/);
+  assert.match(settingsSource, /return loop\.prompt;/);
+  assert.doesNotMatch(settingsSource, /loop\.profileName && ` • \$\{loop\.profileName\}`/);
   assert.match(
     settingsSource,
-    /<Text style=\{styles\.serverMeta\} numberOfLines=\{2\}>[\s\S]*?formatLoopIntervalLabel\(loop\.intervalMinutes\)[\s\S]*?<\/Text>[\s\S]*?<Text style=\{styles\.loopPromptPreview\} numberOfLines=\{1\}>\{loop\.prompt\}<\/Text>/
+    /<Text style=\{styles\.serverMeta\} numberOfLines=\{2\}>[\s\S]*?formatLoopIntervalLabel\(loop\.intervalMinutes\)[\s\S]*?<\/Text>[\s\S]*?<Text style=\{styles\.loopSecondaryPreview\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?\{formatLoopRowSecondaryText\(loop\)\}[\s\S]*?<\/Text>/
   );
-  assert.match(settingsSource, /loopPromptPreview:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 15,/);
+  assert.match(settingsSource, /loopSecondaryPreview:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 15,/);
 });
 
 test('surfaces run-on-startup state directly in compact loop metadata', () => {
