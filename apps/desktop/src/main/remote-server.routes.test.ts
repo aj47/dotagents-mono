@@ -84,4 +84,21 @@ describe("remote-server route registration", () => {
     expect(streamableMcpSection).toContain("reply.hijack()")
     expect(streamableMcpSection).toContain("transport.handleRequest(req.raw, reply.raw, req.body)")
   })
+
+  it("does not report repeat task toggles as successful when loop persistence fails", () => {
+    const source = getRemoteServerSource()
+    const toggleLoopSection = getSection(source, 'fastify.post("/v1/loops/:id/toggle"', '// POST /v1/loops/:id/run - Run a repeat task immediately')
+
+    expect(toggleLoopSection).toContain("const saved = loopService.saveLoop(updated)")
+    expect(toggleLoopSection).toContain('if (!saved) {')
+    expect(toggleLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task toggle" })')
+
+    const saveIndex = toggleLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
+    const failureIndex = toggleLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task toggle" })')
+    const successIndex = toggleLoopSection.indexOf("return reply.send({")
+
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(failureIndex).toBeGreaterThan(saveIndex)
+    expect(successIndex).toBeGreaterThan(failureIndex)
+  })
 })
