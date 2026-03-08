@@ -1627,7 +1627,7 @@
                     <article class="bundle-entry">
                         <h4>🤖 ${escapeHtml(profile.displayName || profile.name)}</h4>
                         ${profile.description ? `<p class="bundle-entry-subtitle">${escapeHtml(profile.description)}</p>` : ''}
-                        ${profile.systemPrompt ? `<div class="bundle-command">${escapeHtml(profile.systemPrompt)}</div>` : ''}
+                        ${profile.systemPrompt ? renderMarkdown(`## System Prompt\n${profile.systemPrompt}`) : ''}
                         ${profile.guidelines ? renderMarkdown(`## Guidelines\n${profile.guidelines}`) : ''}
                     </article>
                 `).join('')

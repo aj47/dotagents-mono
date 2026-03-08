@@ -41,4 +41,5 @@ test('markdown content is formatted before rendering', () => {
     assert.match(source, /bundle-markdown-heading/)
     assert.match(source, /bundle-code-block/)
     assert.match(source, /renderInlineMarkdown\(headingMatch\[2\]\.trim\(\)\)/)
+    assert.match(source, /renderMarkdown\(`## System Prompt\\n\$\{profile\.systemPrompt\}`\)/)
 })

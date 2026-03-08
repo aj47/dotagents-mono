@@ -906,3 +906,30 @@
   - If users still report awkward gaps, evaluate a fuller masonry/grid-row-aware layout rather than additional ad hoc ordering rules.
 
 - Next recommended issue work item: refresh the current open issues again and pick the next smallest direct-value slice outside `#55`, unless collapsed-tile drag-reorder becomes the next clearly reported UX gap.
+
+##### Issue #56 — Bundle inspector follow-up: render agent system prompts as markdown
+
+- Selection rationale:
+  - `#56` already had a shipped landing-page inspector slice, but one explicit acceptance criterion remained only partially met: agent system prompts were still rendered as plain escaped text instead of going through the readable markdown path used for skills and repeat-task prompts.
+  - This was a small, high-value trust improvement with a direct local verification path in the static website test suite.
+- Investigation:
+  - Re-read issue `#56`, including the owner follow-up comment emphasizing agent-profile prompt preview as part of the inspect-before-install trust surface.
+  - Re-checked `website/index.html` and confirmed `profile.systemPrompt` was still rendered inside a raw `.bundle-command` block, while `skill.instructions` and `repeatTasks[].prompt` already used `renderMarkdown(...)`.
+  - Re-checked `website/website-hub-inspector.test.js` and confirmed the existing coverage asserted generic markdown helper presence but did not specifically lock in markdown rendering for agent system prompts.
+- Important assumptions:
+  - Assumption: promoting system prompts into the existing markdown renderer is preferable to preserving the old monospace command-block treatment.
+  - Why acceptable: the issue body explicitly calls for readable markdown for system prompts, and MCP server commands still retain the dedicated `.bundle-command` treatment where monospace command formatting is actually the right UI.
+- Changes implemented:
+  - Updated `website/index.html` so `profile.systemPrompt` renders through `renderMarkdown` with an explicit `## System Prompt` heading, matching the readability treatment already used for other long-form bundle content.
+  - Updated `website/website-hub-inspector.test.js` to assert that system prompts now flow through the markdown renderer, preventing regression back to plain escaped text.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - Consider richer summarization for especially long system prompts (for example, collapsible previews or first-lines summaries) if the modal becomes too dense on mobile.
+  - If the hub catalog expands beyond curated featured bundles in this repo surface, reuse the same inspector behavior across the full bundle list instead of maintaining separate preview patterns.
+
+- Next recommended issue work item: refresh the remaining open issues and prefer either a tightly-scoped reliability slice from `#57` / `#58` or a similarly concrete trust/preview enhancement from `#25` if it can be landed without widening scope.
