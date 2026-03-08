@@ -91,7 +91,18 @@ function findNumberInput(node: any, min: string | number, max: string | number) 
 
 async function flushPromises() { await Promise.resolve(); await Promise.resolve() }
 
-async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntime>, overrides: Record<string, any> = {}) {
+function findButtonByText(node: any, text: string) {
+  return findNode(
+    node,
+    (candidate) => candidate.type === "Button" && getText(candidate) === text,
+  )
+}
+
+async function loadSettingsProviders(
+  runtime: ReturnType<typeof createHookRuntime>,
+  overrides: Record<string, any> = {},
+  queryDataByKey: Record<string, any> = {},
+) {
   vi.resetModules()
   const Null = () => null
   const mutate = vi.fn()
@@ -121,8 +132,16 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
   vi.doMock("@tanstack/react-query", () => ({
     useQuery: (options: { queryKey?: string[] }) => {
       const key = options?.queryKey?.[0]
+      if (key && key in queryDataByKey) {
+        return { data: queryDataByKey[key], isLoading: false }
+      }
+
       if (key === "supertonicModelStatus" || key === "kittenModelStatus") {
         return { data: { downloaded: true }, isLoading: false }
+      }
+
+      if (key === "parakeetModelStatus") {
+        return { data: { downloaded: false, downloading: false, progress: 0 }, isLoading: false }
       }
 
       return { data: undefined, isLoading: false }
@@ -374,10 +393,7 @@ describe("desktop provider settings draft behavior", () => {
     runtime.commitEffects()
     await flushPromises()
 
-    const testVoiceButton = findNode(
-      tree,
-      (candidate) => candidate.type === "Button" && getText(candidate) === "Test Voice",
-    )
+    const testVoiceButton = findButtonByText(tree, "Test Voice")
 
     await testVoiceButton.props.onClick()
 
@@ -408,10 +424,7 @@ describe("desktop provider settings draft behavior", () => {
     runtime.commitEffects()
     await flushPromises()
 
-    const testVoiceButton = findNode(
-      tree,
-      (candidate) => candidate.type === "Button" && getText(candidate) === "Test Voice",
-    )
+    const testVoiceButton = findButtonByText(tree, "Test Voice")
 
     await testVoiceButton.props.onClick()
 
@@ -424,5 +437,91 @@ describe("desktop provider settings draft behavior", () => {
     })
     expect(consoleError).toHaveBeenCalledWith("Failed to test Supertonic voice:", error)
     expect(toast.error).toHaveBeenCalledWith("Failed to test Supertonic voice: decoder unavailable")
+  })
+
+  it("surfaces a toast when Parakeet model download fails", async () => {
+    const runtime = createHookRuntime()
+    const { Component, invoke, toast } = await loadSettingsProviders(
+      runtime,
+      {
+        sttProviderId: "parakeet",
+        providerSectionCollapsedParakeet: false,
+      },
+      {
+        parakeetModelStatus: { downloaded: false, downloading: false, progress: 0 },
+      },
+    )
+    const error = new Error("disk full")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    invoke.mockRejectedValueOnce(error)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const downloadButton = findButtonByText(tree, "Download Model (~200MB)")
+    await downloadButton.props.onClick()
+
+    expect(invoke).toHaveBeenCalledWith("downloadParakeetModel")
+    expect(consoleError).toHaveBeenCalledWith("Failed to download Parakeet model:", error)
+    expect(toast.error).toHaveBeenCalledWith("Failed to download Parakeet model: disk full")
+  })
+
+  it("surfaces a toast when Kitten model download fails", async () => {
+    const runtime = createHookRuntime()
+    const { Component, invoke, toast } = await loadSettingsProviders(
+      runtime,
+      {
+        ttsProviderId: "kitten",
+        providerSectionCollapsedKitten: false,
+        providerSectionCollapsedSupertonic: true,
+      },
+      {
+        kittenModelStatus: { downloaded: false, downloading: false, progress: 0 },
+      },
+    )
+    const error = new Error("permission denied")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    invoke.mockRejectedValueOnce(error)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const downloadButton = findButtonByText(tree, "Download Model (~24MB)")
+    await downloadButton.props.onClick()
+
+    expect(invoke).toHaveBeenCalledWith("downloadKittenModel")
+    expect(consoleError).toHaveBeenCalledWith("Failed to download Kitten model:", error)
+    expect(toast.error).toHaveBeenCalledWith("Failed to download Kitten model: permission denied")
+  })
+
+  it("surfaces a toast when Supertonic model download fails", async () => {
+    const runtime = createHookRuntime()
+    const { Component, invoke, toast } = await loadSettingsProviders(
+      runtime,
+      {
+        ttsProviderId: "supertonic",
+        providerSectionCollapsedKitten: true,
+        providerSectionCollapsedSupertonic: false,
+      },
+      {
+        supertonicModelStatus: { downloaded: false, downloading: false, progress: 0 },
+      },
+    )
+    const error = new Error("network offline")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    invoke.mockRejectedValueOnce(error)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const downloadButton = findButtonByText(tree, "Download Model (~263MB)")
+    await downloadButton.props.onClick()
+
+    expect(invoke).toHaveBeenCalledWith("downloadSupertonicModel")
+    expect(consoleError).toHaveBeenCalledWith("Failed to download Supertonic model:", error)
+    expect(toast.error).toHaveBeenCalledWith("Failed to download Supertonic model: network offline")
   })
 })

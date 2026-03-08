@@ -149,6 +149,11 @@
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.launch-actions.test.ts src/renderer/src/pages/sessions.focus-session.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `sessions.tsx` and `sessions.launch-actions.test.ts`; the assertions passed for the new sessions launch-action toast wiring and regression test coverage.
 - [x] 2026-03-08: `git diff --check` completed cleanly after the sessions launch-action feedback fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-providers.tsx` and confirmed the visible local-model download buttons for Parakeet, Kitten, and Supertonic still caught rejected `download*Model` IPC calls with `console.error(...)` only.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` only shows a desktop-only notice for Kitten / Supertonic local TTS and has no equivalent local-model download action, so this is a desktop-only provider setup bug rather than a cross-platform parity change.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `settings-providers.tsx` and `settings-providers.draft.test.tsx`; the assertions passed for the new model-download toast wiring and regression test coverage.
+- [x] 2026-03-08: `git diff --check` completed cleanly after the local-model download feedback fix and regression test additions.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -310,6 +315,10 @@
   - `apps/desktop/src/renderer/src/pages/sessions.tsx` awaited `tipcClient.showPanelWindowWithTextInput({})`, `tipcClient.showPanelWindow()`, `tipcClient.triggerMcpRecording({})`, and `tipcClient.showPanelWindowWithTextInput({ initialText: content })` from `handleTextClick`, `handleVoiceStart`, and `handleSelectPrompt` without any local `try/catch` or visible feedback.
   - Those handlers drive both the sessions header CTA buttons and the empty-state primary actions, so a rejected panel-open or voice-start IPC could make a core “start a new session” click look like nothing happened.
   - `applySelectedAgentToNextSession(...)` already handles its own failure feedback in `apps/desktop/src/renderer/src/lib/apply-selected-agent.ts`, which isolates the bug to the sessions-page launch IPC step rather than the agent-selection handoff.
+- [x] **Desktop local-model download failures on the providers page were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` exposed explicit `Download Model` / `Retry Download` buttons for Parakeet, Kitten, and Supertonic, but each `handleDownload(...)` catch block only called `console.error(...)` when the underlying `download*Model` IPC rejected.
+  - Because those actions start desktop-only model setup for local STT/TTS providers, a failed click looked like a dead/no-op button even though the requested model download had failed.
+  - Mobile only shows desktop-configuration notices for these local providers and does not expose an equivalent download flow, so this is a concrete desktop setup bug rather than a shared product decision.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -447,6 +456,8 @@
 - [x] Added `apps/desktop/src/renderer/src/pages/sessions.focus-session.test.ts` with focused source-level assertions that lock in the new focus-result contract, previous-focus rollback, and visible sessions-page error feedback.
 - [x] Updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so the visible `Start with Text`, `Start with Voice`, and predefined-prompt launch actions now catch rejected panel/recording IPC calls and surface visible `toast.error(...)` feedback instead of failing silently.
 - [x] Added `apps/desktop/src/renderer/src/pages/sessions.launch-actions.test.ts` with focused source-level assertions that lock in the new sessions launch-action error-feedback contract.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-providers.tsx` so failed Parakeet, Kitten, and Supertonic local-model downloads now preserve console logging but also surface `toast.error(...)` feedback via the existing `getProviderActionErrorMessage(...)` helper.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` with focused regression coverage for rejected Parakeet / Kitten / Supertonic model downloads, while also reusing a small `findButtonByText(...)` helper and query-status override hook for the existing lightweight runtime.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -554,6 +565,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/sessions.tsx` now catches rejected `showPanelWindowWithTextInput(...)`, `showPanelWindow()`, and `triggerMcpRecording(...)` calls from the visible new-session launch actions and surfaces `Failed to start text/voice/prompt session...` toasts instead of leaving those clicks silent.
 - [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `sessions.tsx` and `sessions.launch-actions.test.ts`, confirming the new launch-action toast strings and regression test file are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the sessions launch-action feedback fix and regression test addition.
+- [x] Manual source verification: the three desktop local-model download handlers in `settings-providers.tsx` now call `toast.error(getProviderActionErrorMessage(...))` in their `catch` paths, so rejected Parakeet / Kitten / Supertonic downloads no longer fail silently.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `settings-providers.tsx` and `settings-providers.draft.test.tsx`, confirming the new model-download toast strings and regression test cases are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the local-model download feedback fix and regression test additions.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -573,6 +587,7 @@
 - [x] Targeted automated verification for this repeat-task interval fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop agent system-prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop agent-editor tab-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.editor-tabs.test.ts src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this local-model download feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this primary-composer error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/text-input-panel.submit.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this follow-up kill-switch error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this active-sessions sidebar stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -618,15 +633,15 @@
 - [ ] Whether summary cards that currently yield `reason: "no_durable_content"` should eventually disable or explain the `Save` button up front, rather than waiting to tell the user after they click it.
 - [ ] Whether the adjacent desktop tool-approval flows should eventually share a tiny renderer helper for `respondToToolApproval(...)` error copy/state reset once live verification is available, or whether keeping the duplicated local handlers is preferable to avoid a new abstraction.
 - [ ] Whether any other approval-adjacent desktop actions in session cards (for example speech generation or clipboard copy fallbacks) still rely on console-only logging and need the same visible-feedback treatment once the environment blocker is cleared.
-- [ ] Whether the adjacent local-provider model download actions in `settings-providers.tsx` should also surface visible failure feedback, or whether their existing inline `status.error` rendering is already sufficient once live desktop validation is available.
 - [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
-- [ ] Whether the other Sessions page panel-launch actions (`showPanelWindowWithTextInput`, voice start, predefined prompt launch) should also adopt explicit visible failure feedback once the desktop environment blocker is cleared.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
 - Adding `toast.error(...)` in the existing `catch` blocks is the smallest safe fix because it preserves the current async send flow, draft retention, and duplicate-submit guardrails while finally exposing failure state to the user.
 - This is also consistent with current repo patterns: desktop already has a global `sonner` toaster, and mobile already surfaces comparable send/connectivity failures to the user instead of swallowing them.
+- Local-model setup is another explicit user action where silence is misleading: if a Parakeet / Kitten / Supertonic download rejects, the button appears broken even though the app knows the action failed.
+- Reusing the existing `getProviderActionErrorMessage(...)` helper is the smallest safe fix because it keeps provider-page error copy consistent with the already-fixed local voice-test actions and does not change download lifecycle or polling behavior.
 - This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
 - Converting these switches/selects to controlled bindings is the smallest safe fix because it preserves the existing layout and save behavior while making the rendered UI follow the same authoritative config state that the rest of the page already uses.
 - This is a clear user-facing editing bug: saving on every keystroke makes settings inputs more brittle, creates unnecessary config churn, and can invalidate/refetch state while the user is mid-edit.
@@ -693,6 +708,7 @@
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
+- Assumption: surfacing provider model-download failures with `toast.error(...)` is acceptable because `settings-providers.tsx` already uses the same helper/toast pattern for failed Kitten / Supertonic voice-test actions, and mobile has no equivalent local download UI that would need synchronized copy changes.
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
 - Assumption: keeping the secret key on debounce + blur is acceptable for this pass because it removes the repeated-save bug with the smallest code change while preserving current desktop behavior of showing the in-progress value only in a password field.
 - Assumption: debouncing the desktop transcript post-processing prompt is acceptable because the mobile settings screen already treats the same field as a local draft and prompt editing does not require per-keystroke persistence.
@@ -733,6 +749,7 @@
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` and click the Parakeet / Kitten / Supertonic `Download Model` actions in desktop settings with one forced failure path to confirm the new toast appears alongside any inline status error.
 - After that, inspect other desktop settings pages for remaining config-backed uncontrolled inputs outside `settings-general.tsx`.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts` and live-test a pending tool approval in both the floating panel/session overlay and sessions-page tile to confirm the new failure toast appears and the retry path stays usable.
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.

@@ -179,6 +179,7 @@ function ParakeetModelDownload() {
       await window.electron.ipcRenderer.invoke("downloadParakeetModel")
     } catch (error) {
       console.error("Failed to download Parakeet model:", error)
+      toast.error(getProviderActionErrorMessage("Failed to download Parakeet model", error))
     } finally {
       setIsDownloading(false)
       // Always invalidate to show final state (success or error)
@@ -363,6 +364,7 @@ function KittenModelDownload() {
       await window.electron.ipcRenderer.invoke("downloadKittenModel")
     } catch (error) {
       console.error("Failed to download Kitten model:", error)
+      toast.error(getProviderActionErrorMessage("Failed to download Kitten model", error))
     } finally {
       setIsDownloading(false)
       // Always invalidate to show final state (success or error)
@@ -593,6 +595,7 @@ function SupertonicModelDownload() {
       await window.electron.ipcRenderer.invoke("downloadSupertonicModel")
     } catch (error) {
       console.error("Failed to download Supertonic model:", error)
+      toast.error(getProviderActionErrorMessage("Failed to download Supertonic model", error))
     } finally {
       setIsDownloading(false)
       queryClient.invalidateQueries({ queryKey: ["supertonicModelStatus"] })
