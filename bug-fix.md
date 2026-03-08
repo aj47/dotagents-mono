@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` after the earlier send/stop fixes and confirmed both visible mic buttons still awaited `tipcClient.triggerMcpRecording(...)` with no local `try/catch` or user-visible failure feedback.
+- [x] 2026-03-08: Confirmed those handlers back the active desktop “continue by voice” surfaces in both the floating overlay and the sessions-page tile composer, so a rejected recording start could make a core follow-up action look like a dead button rather than an edge-case flow.
+- [x] 2026-03-08: Compared the desktop follow-up voice-start path against mobile `apps/mobile/src/screens/ChatScreen.tsx`; mobile voice flows already use visible recovery for notable recorder/startup failures, so silent desktop follow-up failures are not an intentional cross-platform behavior.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-processing-view.tsx` and confirmed its visible loading-state `Stop agent execution` dialog is only rendered when `agentProgress` is `null`, but `handleKillSwitch()` previously only called `tipcClient.stopAgentSession(...)` when a `sessionId` existed.
 - [x] 2026-03-08: Confirmed `AgentProcessingView` is used by both `apps/desktop/src/renderer/src/components/text-input-panel.tsx` and `apps/desktop/src/renderer/src/pages/panel.tsx`, so this broken loading-state stop action affects the primary desktop panel / text-input processing flow rather than dead UI.
 - [x] 2026-03-08: Confirmed there is no narrower desktop TIPC cancel API for a pre-session pending run; existing desktop `AgentProgress` and follow-up kill-switch flows already fall back to `tipcClient.emergencyStopAgent()` when no stable session id exists.
@@ -178,6 +181,10 @@
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
+- [x] **Desktop follow-up voice-start failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` both exposed visible mic buttons that awaited `tipcClient.triggerMcpRecording(...)` directly from `handleVoiceClick(...)`.
+  - Neither handler had a local `try/catch`, toast, inline error, or stale-result branch, so any rejected IPC call could throw out of the click handler and leave the user with a no-op-looking “continue by voice” action.
+  - The bug affects active desktop conversation continuation rather than setup-only or hidden UI, because these follow-up composers are the live overlay/tile controls used after a session already exists.
 - [x] **Desktop follow-up send failures were silent (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` both wrapped `await sendMutation.mutateAsync(message)` in `try/catch`, but their `catch` blocks only called `console.error(...)`.
   - Because neither component raised a toast, banner, or inline error, a failed follow-up send in the overlay or session tile looked like “nothing happened” from the user’s point of view even though the core action had failed.
@@ -353,6 +360,8 @@
    - The control is mounted directly in the live desktop `AgentProgress` overlay header and there is no matching mobile overlay close flow, so this is a concrete desktop renderer bug rather than a shared-product parity question.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so rejected `triggerMcpRecording(...)` follow-up voice starts now preserve console logging but also surface a visible `toast.error(...)` message instead of failing silently.
+- [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that lock in the new overlay/tile voice-start error logs plus the shared `Failed to start voice follow-up` user-facing copy.
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
 - [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers import `sonner` and expose a visible `Failed to send follow-up message` error path.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the remaining persisted general-settings switches/selects now use controlled `checked` / `value` bindings instead of uncontrolled `defaultChecked` / `defaultValue` props.
@@ -503,6 +512,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/agent-progress.stop-session.test.ts` with focused source-level assertions that lock in the new close-target tracking and visible `Failed to close ${closeTarget}. ...` feedback contract.
 
 ### Verified
+- [x] Manual source verification: both desktop follow-up voice handlers now wrap `tipcClient.triggerMcpRecording(...)` in `try/catch`, log `Failed to start overlay/tile follow-up voice recording:`, and surface `Failed to start voice follow-up...` toasts instead of leaving the mic action silent.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `overlay-follow-up-input.tsx`, `tile-follow-up-input.tsx`, and `follow-up-input.submit.test.ts`, confirming the new voice-start feedback strings and regression assertions are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the follow-up voice-start feedback fix and regression test update.
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the follow-up error-feedback update and regression test changes.
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-general.tsx` no longer contains config-backed `defaultChecked` / `defaultValue` bindings; the affected switches/selects now read from live `configQuery.data` via controlled `checked` / `value` props.
@@ -626,6 +638,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this follow-up voice-start feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` fails before Vitest starts because the shared `pretest` cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this desktop follow-up error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this controlled-settings fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction and automated tests are blocked because this worktree does not have installed dependencies (`tsup` missing in predev, `vitest` missing for targeted tests). Per instructions, I did not install dependencies without separate permission.
@@ -701,6 +714,8 @@
 - [ ] Whether the completed-session `AgentProgress` close button should also gain a tiny in-flight disabled/busy guard to prevent double-click close races once the desktop app can be exercised live.
 
 ### Diagnosis / Rationale
+- The desktop follow-up mic buttons are another core conversation action where silent failure is especially misleading: when “continue by voice” fails to start recording, the user gets no transcript, no state change, and previously no visible explanation.
+- Reusing the existing local `toast.error(...)` pattern in those two click handlers is the smallest safe fix because the components already use `sonner` for adjacent send/stop failures, the successful recording flow is unchanged, and no new shared abstraction is needed.
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
 - Adding `toast.error(...)` in the existing `catch` blocks is the smallest safe fix because it preserves the current async send flow, draft retention, and duplicate-submit guardrails while finally exposing failure state to the user.
 - This is also consistent with current repo patterns: desktop already has a global `sonner` toaster, and mobile already surfaces comparable send/connectivity failures to the user instead of swallowing them.
@@ -778,6 +793,7 @@
 - Treating `retryQueuedMessage(...) === false` as a visible action failure is the smallest safe fix because the main-process contract already distinguishes that state, the desktop app already mounts a global `sonner` toaster, and no queue-processing behavior needs to change.
 
 ### Assumptions
+- Assumption: using the existing desktop toast pattern for rejected follow-up `triggerMcpRecording(...)` calls is acceptable because `sonner` is already mounted app-wide, adjacent follow-up send/stop actions already surface visible errors the same way, and mobile already treats notable voice-start failures as user-visible.
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
 - Assumption: surfacing provider model-download failures with `toast.error(...)` is acceptable because `settings-providers.tsx` already uses the same helper/toast pattern for failed Kitten / Supertonic voice-test actions, and mobile has no equivalent local download UI that would need synchronized copy changes.
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
@@ -824,6 +840,7 @@
 - Assumption: keeping this pass desktop-only is acceptable because the confirmed bug and fixed contracts depend on the desktop `MessageQueuePanel`'s TIPC/main-process failure semantics, while mobile uses a separate local-store queue flow that should be validated as its own follow-up rather than widened speculatively.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify the overlay/tile mic buttons with one forced `triggerMcpRecording(...)` failure to confirm the new voice-start toast appears without breaking the happy path.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` and click the Parakeet / Kitten / Supertonic `Download Model` actions in desktop settings with one forced failure path to confirm the new toast appears alongside any inline status error.
 - After that, inspect other desktop settings pages for remaining config-backed uncontrolled inputs outside `settings-general.tsx`.

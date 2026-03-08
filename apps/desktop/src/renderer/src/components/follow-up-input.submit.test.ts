@@ -27,6 +27,8 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(overlaySource).toContain("console.error(\"Failed to emergency stop agent:\", error)")
     expect(overlaySource).toContain("console.error(\"Failed to stop agent session:\", error)")
     expect(overlaySource).toContain("Failed to stop agent")
+    expect(overlaySource).toContain("console.error(\"Failed to start overlay follow-up voice recording:\", error)")
+    expect(overlaySource).toContain("Failed to start voice follow-up")
     expect(overlaySource).toContain(
       "const isDisabled = isSubmitting || sendMutation.isPending || (isSessionActive && !isQueueEnabled)",
     )
@@ -47,6 +49,8 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(tileSource).toContain("console.error(\"Failed to emergency stop agent:\", error)")
     expect(tileSource).toContain("console.error(\"Failed to stop agent session:\", error)")
     expect(tileSource).toContain("Failed to stop agent")
+    expect(tileSource).toContain("console.error(\"Failed to start tile follow-up voice recording:\", error)")
+    expect(tileSource).toContain("Failed to start voice follow-up")
     expect(tileSource).toMatch(/isInitializingSession \|\|\s+isSubmitting \|\|\s+sendMutation\.isPending/)
   })
 })

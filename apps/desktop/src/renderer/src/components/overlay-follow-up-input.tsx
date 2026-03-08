@@ -206,7 +206,16 @@ export function OverlayFollowUpInput({
     // This is more reliable than using Zustand store which has timing issues
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
-    await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+    try {
+      await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+    } catch (error) {
+      console.error("Failed to start overlay follow-up voice recording:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to start voice follow-up: ${error.message}`
+          : "Failed to start voice follow-up",
+      )
+    }
   }
 
   // Handle stop session - kill switch functionality
