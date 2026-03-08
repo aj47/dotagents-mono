@@ -297,7 +297,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   }
 
   return (
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogContent className="max-w-[min(64rem,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{server ? "Edit Server" : "Add Server"}</DialogTitle>
         <DialogDescription>
@@ -305,12 +305,12 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         </DialogDescription>
       </DialogHeader>
 
-      <div className="w-full">
-        <div className="flex space-x-1 mb-4">
+      <div className="w-full min-w-0">
+        <div className="mb-4 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
           <Button
             variant={activeTab === 'manual' ? 'default' : 'outline'}
             onClick={() => setActiveTab('manual')}
-            className="flex-1"
+            className="w-full justify-center gap-1"
             size="sm"
           >
             Manual
@@ -320,7 +320,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             <Button
               variant={activeTab === 'file' ? 'default' : 'outline'}
               onClick={() => setActiveTab('file')}
-              className="flex-1 gap-1"
+              className="w-full justify-center gap-1"
               size="sm"
             >
               <Upload className="h-3 w-3" />
@@ -331,7 +331,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             <Button
               variant={activeTab === 'paste' ? 'default' : 'outline'}
               onClick={() => setActiveTab('paste')}
-              className="flex-1 gap-1"
+              className="w-full justify-center gap-1"
               size="sm"
             >
               <FileText className="h-3 w-3" />
@@ -341,7 +341,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
           <Button
             variant={activeTab === 'examples' ? 'default' : 'outline'}
             onClick={() => setActiveTab('examples')}
-            className="flex-1"
+            className="w-full justify-center gap-1"
             size="sm"
           >
             Examples
@@ -446,7 +446,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="timeout">Timeout (ms)</Label>
                 <Input
@@ -458,7 +458,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 />
               </div>
 
-              <div className="flex items-center space-x-2 pt-6">
+              <div className="flex min-h-10 items-center space-x-2 pt-0 sm:pt-6">
                 <Switch
                   id="disabled"
                   checked={disabled}
@@ -664,22 +664,22 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 <h4 className="font-medium text-sm">Standard MCP Servers</h4>
                 {Object.entries(MCP_EXAMPLES).map(([key, example]) => (
                   <Card key={key} className="p-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h5 className="font-medium text-sm">{example.name}</h5>
-                        <p className="text-xs text-muted-foreground mt-1">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h5 className="text-sm font-medium break-words [overflow-wrap:anywhere]">{example.name}</h5>
+                        <p className="mt-1 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                           {example.config.transport === "stdio"
                             ? `Command: ${example.config.command} ${example.config.args?.join(" ") || ""}`
                             : `URL: ${example.config.url}`
                           }
                         </p>
                         {example.config.env && Object.keys(example.config.env).length > 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="mt-1 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                             Environment: {Object.keys(example.config.env).join(", ")}
                           </p>
                         )}
                         {example.note && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
                             ⚠️ {example.note}
                           </p>
                         )}
@@ -687,6 +687,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       <Button
                         size="sm"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           setName(example.name)
                           setTransport(example.config.transport)
@@ -730,17 +731,17 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   <h4 className="font-medium text-sm">OAuth-Enabled MCP Servers</h4>
                   {Object.entries(OAUTH_MCP_EXAMPLES).map(([key, example]) => (
                     <Card key={key} className="p-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h5 className="font-medium text-sm">{example.name}</h5>
-                          <p className="text-xs text-muted-foreground mt-1">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h5 className="text-sm font-medium break-words [overflow-wrap:anywhere]">{example.name}</h5>
+                          <p className="mt-1 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                             {example.description}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="mt-1 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                             URL: {example.config.url}
                           </p>
                           {example.requiredScopes && (
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="mt-1 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                               Scopes: {example.requiredScopes.join(", ")}
                             </p>
                           )}
@@ -748,6 +749,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                         <Button
                           size="sm"
                           variant="outline"
+                          className="w-full sm:w-auto"
                           onClick={() => {
                             setName(example.name)
                             setTransport(example.config.transport)

@@ -1,5 +1,44 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 35: Desktop MCP server dialog tabs and example cards under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (`ServerDialog` for Add/Edit Server)
+- Why this chunk: chunk 34 explicitly called out `mcp-config-manager.tsx` as a strong fresh follow-up. The server dialog is a dense, high-traffic settings surface, and its tab strip plus example-card CTA layout still depended on roomy single-row assumptions that become fragile in a narrower settings window or with increased font zoom.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid re-auditing the just-logged repeat-task/settings surfaces
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - checked live-inspection readiness again before choosing the area: root, desktop, and mobile `node_modules` are still absent, `expo` is unavailable, and Electron live inspection is not practical in this worktree right now
+  - inspected the dialog source directly with narrow settings-column constraints and zoom pressure in mind, focusing on the top mode tabs, the timeout/disabled form row, and the standard/OAuth example cards
+
+#### Findings
+
+- Before the fix, the MCP Add/Edit Server dialog still had one concrete desktop layout issue with clear user impact:
+  - the top `Manual` / `From File` / `Paste JSON` / `Examples` tabs assumed a single horizontal lane with equally stretched buttons, so tighter widths or larger text could make the mode switcher feel cramped or unstable
+  - the timeout + disabled row used a hard two-column grid, which is unnecessarily brittle when the dialog narrows
+  - both example lists used one-line `justify-between` card headers, so long server names / URLs / notes and the trailing `Use` button had to compete for the same row instead of reflowing deliberately
+
+#### Changes made
+
+- Hardened the `ServerDialog` in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` with a small, local responsiveness fix:
+  - constrained the dialog width with a viewport-aware max-width instead of a plain `max-w-4xl`
+  - converted the mode tabs into a responsive grid (`1 → 2 → 4` columns) with full-width centered buttons so the chooser reflows cleanly under zoom instead of relying on one compressed row
+  - changed the timeout/disabled row from a rigid `grid-cols-2` layout to a stacked-first `sm:grid-cols-2` layout
+  - made both standard and OAuth example cards wrap-safe by giving the text column `min-w-0 flex-1`, allowing headings/body copy to break anywhere when needed, and letting the `Use` CTA expand to full width on smaller widths before snapping back to auto width
+- Added `apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts` so this dialog responsiveness contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node -e "..."` against `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` to confirm the new responsive dialog/tab/example-card class contracts are present
+- Patch hygiene still recommended once dependencies return: re-run the targeted Vitest file and inspect the dialog live at narrower settings widths with larger font zoom
+
+#### Notes
+
+- This chunk is desktop-only: there is no mobile surface using this same MCP server dialog structure, so no matching React Native change was needed.
+- Tradeoff/rationale: kept the dialog’s information architecture intact instead of redesigning the MCP flow; the change only adds reliable wrap paths and safer width behavior where the UI was previously assuming more horizontal room than it always gets.
+- Best next UI audit chunk after this one: stay in `mcp-config-manager.tsx` for the dense server/tool header rows themselves, or move to another fresh desktop settings surface once runtime dependencies are restored enough for screenshot-backed live confirmation.
+
 ### 2026-03-08 — Chunk 34: Desktop repeat-task rows action rail under narrow settings widths and zoom
 
 - Area selected:
