@@ -695,6 +695,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
+  const hasPendingSessionDeletion = sessionStore.deletingSessionIds.size > 0;
 
   if (!sessionStore.ready) {
     return (
@@ -712,6 +713,35 @@ export default function SessionListScreen({ navigation }: Props) {
   const handleCreateSession = () => {
     sessionStore.createNewSession();
     navigation.navigate('Chat');
+  };
+
+  const confirmDestructiveAction = (
+    title: string,
+    message: string,
+    confirmLabel: string,
+    onConfirm: () => Promise<void> | void,
+  ) => {
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (!confirmFn) {
+        return;
+      }
+      if (confirmFn(`${title}\n\n${message}`)) {
+        void onConfirm();
+      }
+      return;
+    }
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: confirmLabel,
+        style: 'destructive',
+        onPress: () => {
+          void onConfirm();
+        },
+      },
+    ]);
   };
 
   const handleSelectSession = async (sessionId: string) => {
@@ -743,49 +773,53 @@ export default function SessionListScreen({ navigation }: Props) {
   };
 
   const handleDeleteSession = (session: SessionListItem) => {
-    const doDelete = () => {
-      // Clean up connection for this session (fixes #608)
-      connectionManager.removeConnection(session.id);
-      sessionStore.deleteSession(session.id);
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Delete "${session.title}"?`)) {
-        doDelete();
-      }
-    } else {
-      Alert.alert(
-        'Delete Session',
-        `Are you sure you want to delete "${session.title}"?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
-        ]
-      );
+    if (hasPendingSessionDeletion) {
+      return;
     }
+
+    confirmDestructiveAction(
+      'Delete Session',
+      `Are you sure you want to delete "${session.title}"?`,
+      'Delete',
+      async () => {
+        try {
+          // Clean up connection for this session (fixes #608)
+          connectionManager.removeConnection(session.id);
+          await sessionStore.deleteSession(session.id);
+        } catch (error: any) {
+          console.error('[SessionListScreen] Failed to delete session:', error);
+          Alert.alert(
+            'Delete Failed',
+            error?.message || `Failed to delete "${session.title}". It may reappear after restart.`
+          );
+        }
+      }
+    );
   };
 
   const handleClearAll = () => {
-    const doClear = () => {
-      // Clean up all connections (fixes #608)
-      connectionManager.manager.cleanupAll();
-      sessionStore.clearAllSessions();
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete all sessions? This cannot be undone.')) {
-        doClear();
-      }
-    } else {
-      Alert.alert(
-        'Clear All Sessions',
-        'Are you sure you want to delete all sessions? This cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete All', style: 'destructive', onPress: doClear },
-        ]
-      );
+    if (hasPendingSessionDeletion) {
+      return;
     }
+
+    confirmDestructiveAction(
+      'Clear All Sessions',
+      'Are you sure you want to delete all sessions? This cannot be undone.',
+      'Delete All',
+      async () => {
+        try {
+          // Clean up all connections (fixes #608)
+          connectionManager.manager.cleanupAll();
+          await sessionStore.clearAllSessions();
+        } catch (error: any) {
+          console.error('[SessionListScreen] Failed to clear all sessions:', error);
+          Alert.alert(
+            'Clear All Failed',
+            error?.message || 'Failed to delete all sessions. Some chats may return after restart.'
+          );
+        }
+      }
+    );
   };
 
   const formatDate = (timestamp: number) => {
@@ -815,14 +849,27 @@ export default function SessionListScreen({ navigation }: Props) {
   const renderSession = ({ item }: { item: SessionListItem }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
+    const isDeletingSession = sessionStore.deletingSessionIds.has(item.id);
+    const sessionAccessibilityHint = isDeletingSession
+      ? 'This chat is being deleted.'
+      : hasPendingSessionDeletion
+        ? 'Opens this chat. Wait for the current delete to finish before deleting another chat.'
+        : 'Opens this chat. Long press to delete it.';
 
     return (
       <TouchableOpacity
-        style={[styles.sessionItem, isActive && styles.sessionItemActive]}
+        style={[
+          styles.sessionItem,
+          isActive && styles.sessionItemActive,
+          isDeletingSession && styles.sessionItemDeleting,
+        ]}
         onPress={() => handleSelectSession(item.id)}
-        onLongPress={() => handleDeleteSession(item)}
+        onLongPress={!hasPendingSessionDeletion ? () => handleDeleteSession(item) : undefined}
+        disabled={isDeletingSession}
         accessibilityRole="button"
         accessibilityLabel={`${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
+        accessibilityHint={sessionAccessibilityHint}
+        accessibilityState={{ selected: isActive, disabled: isDeletingSession, busy: isDeletingSession }}
       >
         <View style={styles.sessionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
@@ -839,8 +886,9 @@ export default function SessionListScreen({ navigation }: Props) {
           {item.preview || 'No messages yet'}
         </Text>
         <Text style={styles.sessionMeta}>
-          {item.messageCount} message{item.messageCount !== 1 ? 's' : ''}
-          {isStub ? ' · from desktop' : ''}
+          {isDeletingSession
+            ? 'Deleting chat...'
+            : `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}${isStub ? ' · from desktop' : ''}`}
         </Text>
       </TouchableOpacity>
     );
@@ -893,11 +941,21 @@ export default function SessionListScreen({ navigation }: Props) {
           )}
           {sessions.length > 0 && (
             <TouchableOpacity
-              style={[styles.clearButton, styles.sessionActionTouchTarget]}
+              style={[
+                styles.clearButton,
+                styles.sessionActionTouchTarget,
+                hasPendingSessionDeletion && styles.sessionActionDisabled,
+              ]}
               onPress={handleClearAll}
+              disabled={hasPendingSessionDeletion}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Clear all chats')}
-              accessibilityHint="Deletes all chat sessions."
+              accessibilityHint={
+                hasPendingSessionDeletion
+                  ? 'Wait for the current delete to finish before clearing all chats.'
+                  : 'Deletes all chat sessions.'
+              }
+              accessibilityState={{ disabled: hasPendingSessionDeletion, busy: hasPendingSessionDeletion }}
             >
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
@@ -1023,6 +1081,9 @@ function createStyles(theme: Theme, screenHeight: number) {
     clearButton: {
       borderRadius: radius.lg,
     },
+    sessionActionDisabled: {
+      opacity: 0.45,
+    },
     clearButtonText: {
       color: theme.colors.destructive,
       fontSize: 14,
@@ -1079,6 +1140,9 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionItemActive: {
       borderColor: theme.colors.primary,
       borderWidth: 2,
+    },
+    sessionItemDeleting: {
+      opacity: 0.55,
     },
     sessionHeader: {
       flexDirection: 'row',

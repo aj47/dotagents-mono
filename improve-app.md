@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile session-list delete guardrails in `apps/mobile/src/screens/SessionListScreen.tsx`, with async delete / clear persistence semantics reviewed in `apps/mobile/src/store/sessions.ts`, destructive confirmation patterns cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/session-list-delete-guardrails.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop repeat-task `runOnStartup` scheduling guardrails in `apps/desktop/src/main/loop-service.ts`, with startup/stop/reload/shutdown call sites reviewed in `apps/desktop/src/main/index.ts` and `apps/desktop/src/main/tipc.ts`, existing repeat-task renderer feedback context rechecked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source-level coverage added in `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree still does not have desktop Vitest dependencies installed.
 - 2026-03-08: Desktop repeat-task `Run` / enable-toggle local action feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `triggerLoop` / `startLoop` / `stopLoop` semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/loop-service.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (similar mutation-only feedback still lives in a separate remote/native flow there, so it remains a dedicated mobile follow-up rather than part of this desktop pass), focused source-level coverage extended in `tests/desktop-settings-loops-feedback.test.js` and `tests/desktop-settings-loops-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target with `--inspect` in this environment).
 - 2026-03-08: Desktop emergency-stop ACP-wide cancellation / shutdown best-effort isolation in `apps/desktop/src/main/emergency-stop.ts`, with ACP run-tracking behavior reviewed in `apps/desktop/src/main/acp/acp-client-service.ts`, ACP shutdown semantics cross-checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/acp/acp-process-manager.ts`, kill-switch callers reviewed in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`, focused source-level coverage extended in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree does not have `node_modules` / `vitest` available.
@@ -79,6 +80,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Mobile session-list delete / clear-all pending-state and failure-alert UX still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm long-press discoverability, `Deleting chat...` density, and the new failure copy feel clear on both native and web.
 - 2026-03-08: Desktop repeat-task `runOnStartup` disable/reload/shutdown behavior still needs behavioral validation once desktop Vitest or a runnable Electron target is available, especially for enable-then-immediate-disable, repeated `startLoop(...)` calls, bundle-reload pauses, and quit-right-after-launch timing.
 - 2026-03-08: Desktop repeat-task `Run` / enable-toggle inline pending/error/retry UI still needs live Electron validation once a runnable target is available, especially to confirm the new row-level status panel, `Running...` / `Enabling...` labels, and retry affordances feel clear without overcrowding already compact task rows.
 - 2026-03-08: Desktop `Settings → Skills` single/bulk delete dialogs still need live Electron validation once a runnable target is available, especially to confirm the destructive-modal cadence, partial-failure retry copy, and selection-preservation behavior feel clear in select mode without making bulk cleanup cumbersome.
@@ -97,6 +99,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile `Chats` session history now routes delete / clear-all through one confirmation helper in `apps/mobile/src/screens/SessionListScreen.tsx`, awaits async `sessionStore.deleteSession(...)` / `clearAllSessions()` persistence before treating destructive actions as done, surfaces explicit delete-failure alerts instead of fire-and-forget async rejection noise, and temporarily disables overlapping destructive actions while a delete is in progress, so chat cleanup no longer depends on raw web-only `window.confirm(...)` calls or silent persistence failures; tradeoff: this pass intentionally keeps the existing long-press-to-delete gesture and alert-based recovery instead of broadening into explicit row delete controls or a custom modal.
 - 2026-03-08: Desktop repeat-task startup scheduling now tracks pending `runOnStartup` immediates in `apps/desktop/src/main/loop-service.ts`, cancels or replaces them when a loop is stopped/restarted, and skips non-manual executions after a loop has been disabled or global scheduling has entered shutdown, so enabled-on-start tasks no longer risk one stray extra run during rapid toggle, reload, or quit edges; tradeoff: this pass stays narrowly focused on the existing main-process scheduler and uses source-level guardrails in this dependency-light worktree instead of a broader runtime refactor.
 - 2026-03-08: Desktop `Repeat Tasks` now gives `Run` and enabled/disabled actions row-local pending/error feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, disabling conflicting controls while a request is in flight, replacing the old fire-and-forget action feel with inline `Running...` / `Enabling...` / `Disabling...` status copy, refreshing loop metadata after manual runs, and surfacing retryable inline warnings when an enable save succeeds but the schedule cannot start, so loop actions no longer feel inert or ambiguously successful; tradeoff: this pass intentionally stays scoped to desktop renderer feedback and stops short of reworking the separate mobile/native loops action flow.
 - 2026-03-08: Desktop emergency stop now treats ACP-wide `acpClientService.cancelAllRuns()` as best-effort in `apps/desktop/src/main/emergency-stop.ts`, so a thrown ACP cancellation edge case can no longer prevent the later spawned-agent and stdio-agent shutdown attempts from running; rationale: the kill switch should keep making forward cleanup progress even if one ACP subsystem misbehaves, and the smallest safe fix is to align ACP run cancellation with the surrounding guarded cleanup steps rather than broaden ACP client internals in the same pass.
@@ -167,6 +170,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/session-list-delete-guardrails.test.js` after the mobile session-list delete-guardrails pass
+- 2026-03-08: `pnpm --filter @dotagents/mobile exec expo --version` after the mobile session-list delete-guardrails pass (blocked: `Command "expo" not found`)
+- 2026-03-08: `git diff --check` after the mobile session-list delete-guardrails pass
 - 2026-03-08: `node --test tests/desktop-loop-service-startup-guardrails.test.js tests/desktop-settings-loops-feedback.test.js` after the desktop repeat-task startup-scheduling guardrails pass
 - 2026-03-08: `git diff --check` after the desktop repeat-task startup-scheduling guardrails pass
 - 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js tests/desktop-settings-loops-delete-guardrails.test.js` after the desktop repeat-task run/toggle action-feedback pass
@@ -341,6 +347,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this session-list delete-guardrails pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this repeat-task run/toggle action-feedback pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this modular-config path/source clarity pass is still effectively blocked because the available `electron_execute` target only exposed a blank `#root` shell at `http://localhost:5174/` instead of a mounted app view, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this ACP main-agent guidance pass is still effectively blocked because the available `electron_execute` target only exposed a blank `#root` shell at `http://localhost:5174/` instead of a mounted app view, so this iteration relied on source inspection plus targeted source-level verification.
@@ -413,8 +420,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop `Settings → General` ACP main-agent warning density / recovery flow live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
 - Mobile `Settings → Agent Loops` mutation feedback (`run`, `toggle`, `delete`) in `apps/mobile/src/screens/SettingsScreen.tsx`
+- Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Mobile session-list long-press delete discoverability / web-native live validation is now the freshest adjacent mobile history follow-up, because deletion is safer at the source level but the long-press affordance, `Deleting chat...` density, and failure-alert clarity still need real product evidence once Expo is available.
 - Desktop repeat-task startup scheduling now has source-level guardrails, but behavior-level validation with mocked timers or a runnable Electron lifecycle is the freshest adjacent reliability follow-up because the key user value is preventing a stray extra run during disable/reload/quit races.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest desktop UX follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
 - Mobile loop action mutation failure feedback (`run`, `toggle`, `delete`) is now the freshest adjacent loops follow-up, because desktop repeat-task actions now have row-local recovery but mobile still relies on separate remote/native mutation handling.
@@ -2516,6 +2525,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once desktop Vitest or a runnable Electron target is available, behavior-test enable-then-immediate-disable, repeated `startLoop(...)`, reload, and quit races to confirm no stray automatic run slips through
   - if another loops pass is needed after that, inspect mobile loop mutation feedback next so repeat-task recovery quality stays aligned across desktop and mobile
+
+### 2026-03-08 — Mobile session-list delete guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile chat history list in `apps/mobile/src/screens/SessionListScreen.tsx`
+  - async delete / clear persistence semantics in `apps/mobile/src/store/sessions.ts`
+  - nearby destructive-confirmation pattern review in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused source-level regression coverage added in `apps/mobile/tests/session-list-delete-guardrails.test.js`
+- Why it was chosen:
+  - this was a fresh mobile UX/reliability seam that had not been investigated recently and sits on a core workflow users touch every time they revisit past chats
+  - source review found two concrete product gaps: the web path still used raw `window.confirm(...)`, and both delete handlers treated async session-store persistence like fire-and-forget work even though the store can reject while saving
+  - the fix had clear local user value because destructive cleanup should feel intentional and should not fail silently or throw unhandled async errors behind the scenes
+- What was inspected:
+  - `apps/mobile/src/screens/SessionListScreen.tsx` delete, clear-all, long-press, and accessibility wiring
+  - `apps/mobile/src/store/sessions.ts` `deleteSession(...)`, `clearAllSessions()`, and `deletingSessionIds` behavior to confirm the screen can observe in-flight deletion state and that persistence failures can surface as rejected promises
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to reuse the existing mobile destructive-confirmation pattern rather than inventing a broader new abstraction in this pass
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version`, but Expo is unavailable in this dependency-less worktree
+- Improvement made:
+  - replaced direct web-only `window.confirm(...)` calls with a local cross-platform confirmation helper so single delete and clear-all now share consistent destructive copy
+  - awaited `sessionStore.deleteSession(...)` and `clearAllSessions()` inside the confirmation flow, adding explicit failure alerts and console logging so persistence errors no longer disappear as fire-and-forget rejections
+  - used `sessionStore.deletingSessionIds` to guard against overlapping destructive actions, disabling `Clear All` while a deletion is running and marking the active row as busy with `Deleting chat...`
+  - kept ordinary tap-to-open behavior for non-deleting rows, so safety improved without blocking the rest of the session list during a single in-flight delete
+- Assumptions / tradeoffs / rationale:
+  - kept the existing long-press delete gesture instead of adding explicit row delete buttons, because the smallest high-value fix here was safer destructive handling rather than a broader layout change
+  - intentionally kept the confirmation helper local to `SessionListScreen` rather than extracting a new shared mobile utility, following the repo guidance to prefer existing patterns over fresh abstractions unless a broader refactor is clearly warranted
+  - accepted source-level verification in `node:test` because Expo / live mobile execution is blocked in this worktree
+- Tests / verification:
+  - `node --test apps/mobile/tests/session-list-delete-guardrails.test.js`
+  - `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `Command "expo" not found`)*
+  - `git diff --check`
+- Follow-up checks:
+  - once Expo or a runnable mobile target is available, live-check long-press discoverability, single delete, clear-all, and delete-failure copy on both native and web surfaces
+  - if long-press discoverability still feels weak in live use, consider a later pass that adds an explicit row action without regressing the compact session-list layout
 
 ### Iteration Template
 - Date:
