@@ -39,6 +39,11 @@ export default function SessionListScreen({ navigation }: Props) {
   const currentProfileRepresentsAcpMainAgent = currentProfile?.guidelines === 'ACP main agent';
   const currentAgentLabel = currentProfile?.name || (isAcpMainAgentMode ? 'Main Agent' : 'Default Profile');
   const currentAgentAccessibilityPrefix = isAcpMainAgentMode ? 'Current main agent' : 'Current profile';
+  const newChatTargetDescription = isAcpMainAgentMode
+    ? `the current main agent "${currentAgentLabel}"`
+    : `the current profile "${currentAgentLabel}"`;
+  const newChatAccessibilityHint = `Creates and opens a new chat using ${newChatTargetDescription}.`;
+  const emptyStateSubtitle = `Start a new chat using ${newChatTargetDescription}.`;
   const agentSelectionAccessibilityHint = isAcpMainAgentMode
     ? 'Opens main agent selection menu'
     : 'Opens profile selection menu';
@@ -879,9 +884,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const EmptyState = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyTitle}>No Sessions Yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Start a new chat to begin a conversation
-      </Text>
+      <Text style={styles.emptySubtitle}>{emptyStateSubtitle}</Text>
     </View>
   );
 
@@ -909,7 +912,7 @@ export default function SessionListScreen({ navigation }: Props) {
           onPress={handleCreateSession}
           accessibilityRole="button"
           accessibilityLabel={createButtonAccessibilityLabel('New chat')}
-          accessibilityHint="Creates and opens a new chat."
+          accessibilityHint={newChatAccessibilityHint}
         >
           <Text style={styles.newButtonText}>+ New Chat</Text>
         </TouchableOpacity>

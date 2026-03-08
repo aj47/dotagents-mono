@@ -1,5 +1,44 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 157 - Clarify which routing context mobile new chats will use
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not immediately revisit the just-shipped stale-label fallback, tool-execution density, or recent selector wording passes without new evidence.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/SessionListScreen.tsx` plus the nearby header-selector tests because the mobile Chats screen still owned the first-action `+ New Chat` path for sub-agent routing.
+  - Tried again to recover live validation in this worktree before editing.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the Chats screen already surfaced the current `Main Agent` / `Profile` badge in the header.
+  - But the primary `+ New Chat` action still exposed the generic accessibility hint `Creates and opens a new chat.`, and the empty-state subtitle still said only `Start a new chat to begin a conversation`.
+  - On mobile, that left the first session-creation path less explicit than the surrounding sub-agent chrome about which current routing context would actually handle the new chat.
+- Issue identified:
+  - The mobile session-list entry path for new chats did not explicitly say which current profile or main agent would be used, weakening state clarity right where users start delegated work.
+- Decision and rationale:
+  - Keep the existing Chats header layout, selector trigger, and `+ New Chat` button text unchanged.
+  - Avoid a broader header/button redesign while live validation remains blocked.
+  - Make the smallest useful fix instead: derive a mode-aware `new chat` routing description from the current selection and reuse it in both the visible empty-state subtitle and the button accessibility hint.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` to derive `newChatTargetDescription`, `newChatAccessibilityHint`, and `emptyStateSubtitle` from the current mobile routing mode (`main agent` vs `profile`) and selection label.
+  - Wired the new subtitle into the `No Sessions Yet` empty state and the new accessibility hint into the `+ New Chat` button without changing the existing layout or visible button label.
+  - Added focused regression coverage in `apps/mobile/tests/session-list-new-chat-mobile.test.js`.
+- Validation evidence:
+  - `node --test apps/mobile/tests/session-list-new-chat-mobile.test.js apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that reusing the current selection label is the clearest low-risk way to explain new-chat routing without adding another visible badge or widening the header row.
+  - Kept the visible button text compact to avoid width pressure in the Chats header; the extra routing context now lives in the empty state and spoken button semantics.
+  - This remains a source-backed improvement and still needs live confirmation that the longer empty-state sentence feels helpful without reading as too heavy on a narrow screen.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the empty `Chats` state now makes it obvious which current profile/main agent will receive a new chat.
+  - Capture screenshot-backed evidence for both saved-profile mode and ACP mode so the new empty-state wording can be judged in context.
+  - If live validation shows the subtitle is too verbose, prefer a wording trim before adding any new visible chrome to the header.
+
 ## Iteration 156 - Keep mobile sub-agent mode labels from going stale after refresh failures
 
 - Date: 2026-03-08
