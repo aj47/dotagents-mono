@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop general settings text-input shortcut completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime text-input trigger behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, sessions shortcut pill usage checked in `apps/desktop/src/renderer/src/pages/sessions.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings show-main-window custom hotkey completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime trigger gating reviewed in `apps/desktop/src/main/keyboard.ts`, main-window behavior checked in `apps/desktop/src/main/window.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings emergency kill switch custom hotkey completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime fallback behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop agent-mode shortcut / custom keybinding discoverability and save-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, panel/session/onboarding shortcut affordances checked in `apps/desktop/src/renderer/src/pages/panel.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/onboarding.tsx`, mobile shortcut parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -41,6 +42,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop Text Input shortcut settings now explain whether the shortcut is enabled, show the active shortcut in plain language, spell out when Shift can continue the most recent conversation, warn when a custom shortcut has not been fully recorded yet, and stop other surfaces from implying `Ctrl+T` is active when custom text-input setup is still incomplete.
 - 2026-03-08: Desktop Show Main Window shortcut settings now explain whether the shortcut is enabled, show the active shortcut in plain language, warn when a custom shortcut has not been fully recorded yet, clarify that the shortcut pauses during recording so it will not interrupt capture, and label the custom recorder more explicitly.
 - 2026-03-08: Desktop emergency kill switch settings now explain the currently active kill shortcut, make the always-available `Ctrl+Shift+Escape` fallback explicit whenever another shortcut is selected, and warn when a custom kill switch is not fully recorded yet so users know whether keyboard emergency stop is actually ready.
 - 2026-03-08: Desktop Agent Mode shortcut setup now exposes the existing custom hold-vs-toggle behavior in both Settings and onboarding, shows inline setup/status guidance including an explicit incomplete-custom warning, and keeps shared shortcut hints plus the floating panel submit hint aligned with the saved Agent Mode behavior.
@@ -73,6 +75,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-general-text-input-feedback.test.js tests/desktop-settings-general-show-main-window-feedback.test.js tests/desktop-settings-general-kill-switch-feedback.test.js tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx` and `apps/desktop/src/shared/key-utils.ts`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-general-show-main-window-feedback.test.js tests/desktop-settings-general-agent-mode-shortcuts.test.js tests/desktop-settings-general-kill-switch-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx` and `apps/desktop/src/shared/key-utils.ts`
 - 2026-03-08: `git diff --check`
@@ -139,6 +144,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this text-input shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this show-main-window shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this emergency kill switch shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this agent-mode shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -170,10 +176,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop general settings text-input shortcut completion / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
+- Desktop general settings toggle-voice-dictation shortcut completion / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop general settings text-input shortcut completion / saved-state feedback next so another core desktop shortcut surface stops relying on hidden defaults and dropdown-only confidence
+- Inspect desktop general settings toggle-voice-dictation shortcut completion / saved-state feedback next so the remaining nearby shortcut surface stops relying on toggle state plus dropdown memory instead of explicit inline confidence
+- Once a runnable Electron target is available, live-check the desktop text-input shortcut settings to confirm the enabled/disabled summary, continue-conversation guidance, and incomplete-custom warning feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop show-main-window shortcut settings to confirm the enabled/disabled summary, recording-pause guidance, and incomplete-custom warning feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop emergency kill switch settings to confirm the fallback guidance, custom-incomplete warning, and active-shortcut summary feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Agent Mode shortcut configuration in Settings and onboarding to confirm the new hold/toggle guidance, incomplete-custom warning, and floating-panel release hint feel right in the actual UI
@@ -189,6 +196,44 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop text-input shortcut completion and saved-state clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop shortcut settings in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - main-process text-input shortcut behavior in `apps/desktop/src/main/keyboard.ts`
+  - shared text-input shortcut display helper in `apps/desktop/src/shared/key-utils.ts`
+  - sessions shortcut-pill usage checked in `apps/desktop/src/renderer/src/pages/sessions.tsx`
+  - focused source-level regression coverage added in `tests/desktop-settings-general-text-input-feedback.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile does not expose an equivalent global text-input shortcut settings surface, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger explicitly marked desktop text-input shortcut completion / saved-state clarity as the next fresh target
+  - investigation found a concrete usability gap: unlike the adjacent show-main-window, kill-switch, and Agent Mode controls, the text-input shortcut UI only exposed a switch plus dropdown/recorder, leaving users to guess whether the shortcut was active, whether custom setup was incomplete, and which shortcut variants can continue the last conversation
+  - this was high leverage because text input is a core entry path and incomplete custom setup could silently disable the shortcut while other UI surfaces still fell back to displaying `Ctrl+T`, creating false confidence
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` to confirm the text-input control lacked inline status, active-shortcut guidance, and incomplete-custom feedback
+  - `apps/desktop/src/main/keyboard.ts` to confirm the exact runtime behavior: `Ctrl+T` and `Alt+T` support `Shift+...` continue-last-conversation variants, `Ctrl+Shift+T` intentionally opens a fresh text draft, and custom shortcuts open text input only when a full custom combo has been saved
+  - `apps/desktop/src/shared/key-utils.ts` and `apps/desktop/src/renderer/src/pages/sessions.tsx` to confirm helper reuse and spot the misleading fallback where an unset custom text-input shortcut still displayed `Ctrl+T`
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to check for an equivalent mobile surface before broadening scope
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - the desktop `Text Input` shortcut settings now show inline status copy for disabled, active, incomplete-custom, and no-continue-variant states so users can tell what will actually happen before leaving Settings
+  - built-in text-input shortcuts that support conversation continuation now say so explicitly, while `Ctrl+Shift+T` and custom shortcuts now explain that they open a fresh text-input draft instead of implying hidden continuation behavior
+  - custom text-input setup now shows an amber incomplete-setup warning, mirroring the nearby shortcut surfaces and making it clear that keyboard text input stays unavailable until a shortcut is fully recorded
+  - `getTextInputShortcutDisplay` now returns `Set custom shortcut` when custom text-input setup is incomplete, so dependent surfaces like the sessions shortcut pill stop implying that the default `Ctrl+T` shortcut is still active
+- Assumptions / tradeoffs / rationale:
+  - kept the runtime behavior unchanged and improved only the guidance layer, because the highest-value issue was silent/inaccurate user feedback rather than a broken keyboard handler
+  - chose explicit copy over additional affordances or new shortcut variants so the change stayed small, local, and low-risk while still materially improving confidence
+  - accepted source-level verification for this pass because live Electron inspection remains unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-general-text-input-feedback.test.js tests/desktop-settings-general-show-main-window-feedback.test.js tests/desktop-settings-general-kill-switch-feedback.test.js tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx` and `apps/desktop/src/shared/key-utils.ts`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check the text-input shortcut copy hierarchy, especially the disabled/incomplete-custom states and the `Ctrl+Shift+T` wording, to confirm the guidance feels natural in the real UI
+  - inspect desktop general settings toggle-voice-dictation shortcut completion / saved-state clarity next so the last nearby shortcut surface gets the same level of confidence cues
 
 ### 2026-03-08 — Desktop capabilities subtab persistence and legacy deep-link continuity
 - Date:

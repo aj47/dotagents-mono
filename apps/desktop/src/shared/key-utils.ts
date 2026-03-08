@@ -290,7 +290,7 @@ export function getTextInputShortcutDisplay(
       if (customShortcut) {
         return formatKeyComboForDisplay(customShortcut)
       }
-      return "Ctrl+T"
+      return "Set custom shortcut"
     default:
       return "Ctrl+T"
   }

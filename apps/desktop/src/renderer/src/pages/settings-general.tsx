@@ -44,6 +44,7 @@ import {
   getAgentKillSwitchShortcutDisplay,
   getMcpToolsShortcutDisplay,
   getSettingsHotkeyDisplay,
+  getTextInputShortcutDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
@@ -295,6 +296,22 @@ export function Component() {
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const textInputEnabled = configQuery.data?.textInputEnabled ?? true
+  const hasCustomTextInputShortcut = Boolean(configQuery.data?.customTextInputShortcut?.trim())
+  const textInputShortcutDisplay = getTextInputShortcutDisplay(
+    textInputShortcut,
+    configQuery.data?.customTextInputShortcut,
+  )
+  const textInputShortcutSummary =
+    !textInputEnabled
+      ? "Keyboard shortcut is off. Turn it on to open the panel directly in text input mode from anywhere. Changes save immediately."
+      : textInputShortcut === "custom" && !hasCustomTextInputShortcut
+        ? "Record a custom shortcut to finish setup. Until then, the keyboard shortcut to open text input will stay off. Changes save immediately."
+        : textInputShortcut === "ctrl-t" || textInputShortcut === "alt-t"
+          ? `Press ${textInputShortcutDisplay} to open the panel directly in text input mode. Add Shift to continue your most recent conversation instead. Changes save immediately.`
+          : textInputShortcut === "ctrl-shift-t"
+            ? `Press ${textInputShortcutDisplay} to open the panel directly in text input mode. This shortcut opens a fresh text draft because Shift is already part of it. Changes save immediately.`
+            : `Press ${textInputShortcutDisplay} to open the panel directly in text input mode. Custom text input shortcuts do not currently have a separate continue-last-conversation variant. Changes save immediately.`
   const settingsHotkeyEnabled = configQuery.data?.settingsHotkeyEnabled ?? true
   const settingsHotkey = configQuery.data?.settingsHotkey || "ctrl-shift-s"
   const hasCustomSettingsHotkey = Boolean(configQuery.data?.customSettingsHotkey?.trim())
@@ -804,13 +821,14 @@ export function Component() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Switch
-                  checked={configQuery.data?.textInputEnabled ?? true}
+                  checked={textInputEnabled}
                   onCheckedChange={(checked) => {
                     saveConfig({
                       textInputEnabled: checked,
                     })
                   }}
                 />
+                <span className="text-sm text-muted-foreground">Enable shortcut</span>
                 <Select
                   value={textInputShortcut}
                   onValueChange={(value) => {
@@ -819,7 +837,7 @@ export function Component() {
                         value as typeof configQuery.data.textInputShortcut,
                     })
                   }}
-                  disabled={!configQuery.data?.textInputEnabled}
+                  disabled={!textInputEnabled}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue />
@@ -833,8 +851,12 @@ export function Component() {
                 </Select>
               </div>
 
-              {textInputShortcut === "custom" &&
-                configQuery.data?.textInputEnabled && (
+              <div className="text-xs text-muted-foreground">
+                {textInputShortcutSummary}
+              </div>
+
+              {textInputShortcut === "custom" && textInputEnabled && (
+                <>
                   <KeyRecorder
                     value={configQuery.data?.customTextInputShortcut || ""}
                     onChange={(keyCombo) => {
@@ -844,7 +866,13 @@ export function Component() {
                     }}
                     placeholder="Click to record custom text input shortcut"
                   />
-                )}
+                  {!hasCustomTextInputShortcut && (
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      Record a custom shortcut to finish setup. Text input won't open from the keyboard until one is saved.
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </Control>
 
