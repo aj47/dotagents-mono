@@ -1575,3 +1575,36 @@
   - If bundle install/import trust UX grows further, consider preserving a lightweight history of recent import warnings so post-import remediation is not toast-only.
 
 - Next recommended issue work item: either return to `#58` for another small history provenance/reliability slice or confirm a fresh direct repro for `#55`; keep avoiding `#54` until there is stronger concrete evidence for a safe local implementation path.
+
+##### Issue #25 — Bundle import preflight warning now deep-links to MCP server settings
+
+- Selection rationale:
+  - `issue-work.md` already documented a precise, still-open `#25` follow-up: the bundle import dialog warned about MCP placeholder reconfiguration before import, but only the post-import toast exposed a one-click remediation path.
+  - This was a small, high-trust UX slice with immediate user value and a fully local implementation path in the desktop renderer.
+- Investigation:
+  - Re-read open issue `#25` plus its planning comment to confirm bundle trust/transparency work is still in scope under the umbrella issue.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the post-import `toast.warning(...)` already offered `Open MCP Servers`, while the pre-import `Credential reconfiguration required` warning card only showed explanatory text.
+  - Re-checked `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` and confirmed the `?tab=mcp-servers` deep-link contract already exists, so the dialog could reuse that route instead of inventing new navigation state.
+- Important assumptions:
+  - Assumption: reusing the same `Settings → Capabilities?tab=mcp-servers` deep link in the pre-import warning is preferable to a new inline credential editor inside the import dialog.
+  - Why acceptable: it keeps the change narrow, matches the already-shipped post-import flow, and gives users a consistent recovery destination without duplicating MCP editing UI.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the `.dotagents` bundle import dialog and MCP server settings route are desktop renderer workflows, with no equivalent mobile import/settings surface in this repo today.
+- Changes implemented:
+  - Added a shared `MCP_SERVERS_SETTINGS_ROUTE` constant in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and reused it for the existing post-import warning toast.
+  - Added an `openMcpServersSettings` handler so both pre-import and post-import MCP placeholder warnings use the same deep-link behavior.
+  - Added an `Open MCP Servers` button with the existing external-link icon to the pre-import `Credential reconfiguration required` warning card.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to assert the shared route constant, the shared handler, and the new warning-card action wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Consider whether bundles with MCP placeholders should keep a post-import remediation reminder somewhere more persistent than toast history alone.
+  - If the import dialog later grows richer trust UX, consider exposing field-level placeholder details or direct targeting of specific MCP server rows after navigation.
+  - Re-run the fuller desktop Vitest coverage for bundle import flows if/when this worktree regains that test entrypoint.
+
+- Next recommended issue work item: pivot back to `#58` for another small history provenance/reliability slice, or revisit `#55` only after a fresh direct repro confirms the remaining tile-layout bug surface.

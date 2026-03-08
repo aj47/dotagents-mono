@@ -33,6 +33,8 @@ const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
   memories: "Memories",
 }
 
+const MCP_SERVERS_SETTINGS_ROUTE = "/settings/capabilities?tab=mcp-servers"
+
 const DEFAULT_COMPONENTS: BundleComponentsState = {
   agentProfiles: true,
   mcpServers: true,
@@ -485,6 +487,7 @@ export function BundleImportDialog({
   isOpenRef.current = open
 
   const isComponentAvailable = (key: BundleComponentKey) => availableComponents?.[key] ?? true
+  const openMcpServersSettings = () => navigate(MCP_SERVERS_SETTINGS_ROUTE)
 
   const normalizedComponents = COMPONENT_KEYS.reduce((acc, key) => {
     acc[key] = isComponentAvailable(key) ? components[key] : false
@@ -592,7 +595,7 @@ export function BundleImportDialog({
             {
               action: {
                 label: "Open MCP Servers",
-                onClick: () => navigate("/settings/capabilities?tab=mcp-servers"),
+                onClick: openMcpServersSettings,
               },
             }
           )
@@ -844,6 +847,16 @@ export function BundleImportDialog({
                         </Badge>
                       ))}
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-fit gap-1 text-xs"
+                      onClick={openMcpServersSettings}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Open MCP Servers
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -67,13 +67,16 @@ test('bundle import preserves MCP placeholder metadata and warns about post-impo
   assert.match(bundleServiceSource, /function getRedactedSecretFieldNames\(config: Record<string, unknown>\): string\[]/);
   assert.match(bundleServiceSource, /function buildImportedMcpServerConfig\(bundleServer: BundleMCPServer\): Record<string, unknown>/);
   assert.match(dialogSource, /import \{ useNavigate \} from "react-router-dom"/);
+  assert.match(dialogSource, /const MCP_SERVERS_SETTINGS_ROUTE = "\/settings\/capabilities\?tab=mcp-servers"/);
   assert.match(dialogSource, /function getSelectedMcpServersRequiringConfiguration\(/);
   assert.match(dialogSource, /Credential reconfiguration required/);
   assert.match(dialogSource, /<CONFIGURE_YOUR_KEY>/);
   assert.match(dialogSource, /Settings → Capabilities/);
+  assert.match(dialogSource, /const openMcpServersSettings = \(\) => navigate\(MCP_SERVERS_SETTINGS_ROUTE\)/);
+  assert.match(dialogSource, /onClick=\{openMcpServersSettings\}/);
   assert.match(dialogSource, /toast\.warning\(/);
   assert.match(dialogSource, /label: "Open MCP Servers"/);
-  assert.match(dialogSource, /navigate\("\/settings\/capabilities\?tab=mcp-servers"\)/);
+  assert.match(dialogSource, /<ExternalLink className="h-3\.5 w-3\.5" \/>/);
 });
 
 test('bundle import dialog supports per-item conflict overrides alongside the global default strategy', () => {
