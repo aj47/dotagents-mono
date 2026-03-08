@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 165 - Keep long current agent names visible in selector recovery states
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not redo the just-shipped tool-row or settings-preview work without a new issue.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js`, staying on the mobile sub-agent selector because it still owns the clearest recovery UI when the current main agent/profile is loading, unavailable, or cannot be switched.
+  - Re-tested whether live Expo validation was practical in this worktree before closing the change.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `undefined` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the selector’s `currentAgentBadgeText` was still hard-clamped to `numberOfLines={2}` in all recovery-oriented states: loading, error, empty, and “current selection missing from list”.
+  - Those states deliberately surface the current main agent/profile as the key reassurance that the user’s current routing context is still known.
+  - On narrow screens, a long agent/profile name could lose its distinguishing suffix right in that badge, making recovery states less explicit than the selector rows below them.
+- Issue identified:
+  - Mobile selector recovery cards could truncate the active main agent/profile name too aggressively, weakening state clarity exactly when users need reassurance about what is still active.
+- Decision and rationale:
+  - Keep the selector layout, recovery copy, and badge styling model unchanged.
+  - Avoid making the current-state badge fully unbounded, which could make status cards unexpectedly tall without live UI confirmation.
+  - Make the smallest useful fix instead: give the current-state badge a bounded three-line budget and a matching line-height so longer names remain recognizable across recovery states.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to centralize the badge clamp as `currentAgentBadgeMaxLines = 3`.
+  - Applied that three-line budget to the current-agent badge in loading, error, empty-state, and missing-selection notice cards.
+  - Added `lineHeight: 18` to `currentAgentBadgeText` so the extra line budget remains readable and visually stable on narrow screens.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new current-state badge contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that preserving more of the active agent/profile name is more valuable in recovery states than preserving the previous tighter card height.
+  - Capped the badge at three lines instead of removing the clamp entirely so the selector remains predictable without screenshot-backed confirmation.
+  - This remains a source-backed improvement and still needs live confirmation that the taller badge feels balanced beside the recovery copy and action buttons around ~320px width.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long current agent/profile names remain recognizable in loading, error, empty, and missing-selection selector states.
+  - Capture screenshot-backed evidence for at least one long ACP main-agent name and one long saved-profile name inside the selector badge.
+  - If live validation shows the three-line badge feels too tall, prefer tightening badge padding or shortening recovery copy before shrinking the visible current-state name again.
+
 ## Iteration 164 - Make collapsed mobile tool rows state-explicit at a glance
 
 - Date: 2026-03-08

@@ -229,6 +229,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const currentSelectionNoticeActionHint = selectorMode === 'acp'
     ? 'Opens Settings so you can review why this main agent is unavailable and manage enabled agents.'
     : 'Opens Settings so you can review why this profile is unavailable and manage saved profiles.';
+  const currentAgentBadgeMaxLines = 3;
   const selectorSubtitle = selectorMode === 'acp'
     ? 'Pick which enabled command-based agent handles new chats.'
     : 'Switch between saved chat profiles. Delegation agents stay in Settings → Agents.';
@@ -341,7 +342,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
               <Text
                 style={styles.currentAgentBadgeText}
-                numberOfLines={2}
+                numberOfLines={currentAgentBadgeMaxLines}
                 ellipsizeMode="tail"
               >
                 {currentAgentName}
@@ -359,7 +360,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
               <Text
                 style={styles.currentAgentBadgeText}
-                numberOfLines={2}
+                numberOfLines={currentAgentBadgeMaxLines}
                 ellipsizeMode="tail"
               >
                 {currentAgentName}
@@ -397,7 +398,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
               <Text
                 style={styles.currentAgentBadgeText}
-                numberOfLines={2}
+                numberOfLines={currentAgentBadgeMaxLines}
                 ellipsizeMode="tail"
               >
                 {currentAgentName}
@@ -427,7 +428,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                   <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
                   <Text
                     style={styles.currentAgentBadgeText}
-                    numberOfLines={2}
+                    numberOfLines={currentAgentBadgeMaxLines}
                     ellipsizeMode="tail"
                   >
                     {currentAgentName}
@@ -749,6 +750,7 @@ function createStyles(theme: Theme) {
       color: theme.colors.primary,
       fontSize: 13,
       fontWeight: '600',
+      lineHeight: 18,
       textAlign: 'center',
       maxWidth: '100%',
       flexShrink: 1,

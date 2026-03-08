@@ -15,12 +15,13 @@ test('refreshes the current profile context when the selector sheet opens', () =
 test('keeps the empty state anchored to the current selection and explains where to manage it', () => {
   assert.match(sheetSource, /const currentAgentName = currentProfile\?\.name \|\| \(selectorMode === 'acp' \? 'Main Agent' : 'Default Profile'\);/);
   assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current profile';/);
+  assert.match(sheetSource, /const currentAgentBadgeMaxLines = 3;/);
   assert.match(sheetSource, /<Text style=\{styles\.currentAgentBadgeLabel\}>\{currentAgentBadgeLabel\}<\/Text>/);
-  assert.match(sheetSource, /<Text[\s\S]*?style=\{styles\.currentAgentBadgeText\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{currentAgentName\}/);
+  assert.match(sheetSource, /<Text[\s\S]*?style=\{styles\.currentAgentBadgeText\}[\s\S]*?numberOfLines=\{currentAgentBadgeMaxLines\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{currentAgentName\}/);
   assert.match(sheetSource, /const emptyStateTitle = selectorMode === 'acp' \? 'No main agents ready yet' : 'No saved profiles yet';/);
   assert.match(sheetSource, /No switchable chat profiles are available right now\. Review Settings → Profile & Model to switch or import saved profiles\. Delegation agents stay in Settings → Agents\./);
   assert.match(sheetSource, /currentAgentBadge:\s*\{[\s\S]*?maxWidth:\s*'100%'[\s\S]*?alignItems:\s*'center'/);
-  assert.match(sheetSource, /currentAgentBadgeText:\s*\{[\s\S]*?textAlign:\s*'center'[\s\S]*?maxWidth:\s*'100%'[\s\S]*?flexShrink:\s*1/);
+  assert.match(sheetSource, /currentAgentBadgeText:\s*\{[\s\S]*?fontSize:\s*13,[\s\S]*?fontWeight:\s*'600',[\s\S]*?lineHeight:\s*18,[\s\S]*?textAlign:\s*'center'[\s\S]*?maxWidth:\s*'100%'[\s\S]*?flexShrink:\s*1/);
 });
 
 test('offers a mobile-friendly path back to agent settings from the empty state', () => {
