@@ -7,6 +7,13 @@ import { useTheme } from "@renderer/contexts/theme-context"
 import { Button } from "@renderer/components/ui/button"
 import { X, AlertTriangle } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 interface AgentProcessingViewProps {
   agentProgress: AgentProgressUpdate | null
@@ -35,13 +42,22 @@ export function AgentProcessingView({
     if (isKilling) return
 
     setIsKilling(true)
+    const sessionId = agentProgress?.sessionId
     try {
-      if (agentProgress?.sessionId) {
-        await tipcClient.stopAgentSession({ sessionId: agentProgress.sessionId })
+      if (sessionId) {
+        await tipcClient.stopAgentSession({ sessionId })
+      } else {
+        // When the pending run has not emitted progress yet, we still need the kill switch
+        // to do something meaningful instead of silently closing the dialog.
+        await tipcClient.emergencyStopAgent()
       }
       setShowKillConfirmation(false)
     } catch (error) {
-      console.error("Failed to stop agent:", error)
+      const stopPath = sessionId ? "stopAgentSession" : "emergencyStopAgent"
+      console.error(`Failed to stop agent (via ${stopPath}):`, error)
+      toast.error(
+        `Failed to stop agent. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     } finally {
       setIsKilling(false)
     }
@@ -111,7 +127,8 @@ export function AgentProcessingView({
               <h3 className="text-sm font-medium">Stop Agent Execution</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-4">
-              Are you sure you want to stop this session? Other sessions will continue running.
+              Are you sure you want to stop this session? If it hasn&apos;t fully started yet,
+              this may stop all running agent sessions.
             </p>
             <div className="flex gap-2 justify-end">
               <Button
