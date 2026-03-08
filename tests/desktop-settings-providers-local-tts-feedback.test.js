@@ -31,7 +31,24 @@ test('desktop local TTS settings explain runtime readiness and disable unusable 
   assert.match(providersSource, /Downloading the model alone will not make \$\{providerName\} usable until the local speech runtime can load on this device\./);
   assert.match(providersSource, /Fix the local runtime issue shown above before testing Kitten audio\./);
   assert.match(providersSource, /Fix the local runtime issue shown above before testing Supertonic audio\./);
-  assert.ok((providersSource.match(/disabled=\{runtimeUnavailable\}/g) || []).length >= 2);
+  const disabledVoiceTests = [
+    ...(providersSource.match(/disabled=\{runtimeUnavailable\}/g) || []),
+    ...(providersSource.match(/disabled=\{runtimeUnavailable \|\| isTestingVoice\}/g) || []),
+  ];
+  assert.ok(disabledVoiceTests.length >= 2);
+});
+
+test('desktop local TTS settings keep download and test failures recoverable inline', () => {
+  assert.match(providersSource, /function getActionErrorMessage\(error: unknown, fallbackMessage: string\)/);
+  assert.match(providersSource, /function LocalTtsActionError\(/);
+  assert.match(providersSource, /async function playBase64WavAudio\(audioBase64: string\)/);
+  assert.match(providersSource, /Retry download/);
+  assert.match(providersSource, /Retry test/);
+  assert.match(providersSource, /The model is still unavailable, so you can retry here after fixing the issue\./);
+  assert.match(providersSource, /Your selected voice settings are unchanged, so you can retry here after fixing the issue\./);
+  assert.match(providersSource, /Testing\.\.\./);
+  assert.ok((providersSource.match(/disabled=\{runtimeUnavailable \|\| isTestingVoice\}/g) || []).length >= 2);
+  assert.ok((providersSource.match(/await playBase64WavAudio\(result\.audio\)/g) || []).length >= 2);
 });
 
 test('main-process local TTS status now reports runtime availability to settings', () => {

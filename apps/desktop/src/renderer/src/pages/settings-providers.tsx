@@ -171,6 +171,78 @@ function ProviderTextSaveStatus({
   )
 }
 
+function getActionErrorMessage(error: unknown, fallbackMessage: string) {
+  const message = error instanceof Error
+    ? error.message.trim()
+    : typeof error === "string"
+      ? error.trim()
+      : ""
+
+  const nextMessage = message || fallbackMessage
+  return /[.!?]$/.test(nextMessage) ? nextMessage : `${nextMessage}.`
+}
+
+function LocalTtsActionError({
+  message,
+  recoveryHint,
+  onRetry,
+  retryLabel,
+}: {
+  message?: string | null
+  recoveryHint: string
+  onRetry?: () => void
+  retryLabel: string
+}) {
+  if (!message) return null
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className="mt-2 flex flex-col gap-1 text-xs text-destructive sm:flex-row sm:items-center sm:gap-2"
+    >
+      <span className="break-words">
+        {message} {recoveryHint}
+      </span>
+      {onRetry && (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto px-0 py-0 text-xs text-destructive"
+          onClick={onRetry}
+        >
+          {retryLabel}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+async function playBase64WavAudio(audioBase64: string) {
+  const audioData = Uint8Array.from(atob(audioBase64), (char) => char.charCodeAt(0))
+  const blob = new Blob([audioData], { type: "audio/wav" })
+  const url = URL.createObjectURL(blob)
+  const audio = new Audio(url)
+  let revoked = false
+
+  const revokeUrl = () => {
+    if (revoked) return
+    revoked = true
+    URL.revokeObjectURL(url)
+  }
+
+  audio.onended = revokeUrl
+  audio.onerror = revokeUrl
+
+  try {
+    await audio.play()
+  } catch (error) {
+    revokeUrl()
+    throw error
+  }
+}
+
 // Badge component to show which features are using this provider
 function ActiveProviderBadge({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
   return (
@@ -600,6 +672,7 @@ function KittenModelDownload() {
   const queryClient = useQueryClient()
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const modelStatusQuery = useQuery({
     queryKey: ["kittenModelStatus"],
@@ -614,9 +687,11 @@ function KittenModelDownload() {
   const handleDownload = async () => {
     setIsDownloading(true)
     setDownloadProgress(0)
+    setDownloadError(null)
     try {
       await window.electron.ipcRenderer.invoke("downloadKittenModel")
     } catch (error) {
+      setDownloadError(getActionErrorMessage(error, "Kitten model download failed"))
       console.error("Failed to download Kitten model:", error)
     } finally {
       setIsDownloading(false)
@@ -628,6 +703,9 @@ function KittenModelDownload() {
   const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
   const runtimeUnavailable = status?.runtimeAvailable === false
   const runtimeWarning = <LocalTtsRuntimeWarning providerName="Kitten" status={status} />
+  const downloadFailureMessage = status?.error
+    ? getActionErrorMessage(status.error, "Kitten model download failed")
+    : downloadError
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
@@ -679,14 +757,15 @@ function KittenModelDownload() {
     )
   }
 
-  if (status?.error) {
+  if (downloadFailureMessage) {
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-destructive">{status.error}</span>
-        <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
-        </Button>
+        <LocalTtsActionError
+          message={downloadFailureMessage}
+          recoveryHint="The model is still unavailable, so you can retry here after fixing the issue."
+          onRetry={handleDownload}
+          retryLabel="Retry download"
+        />
         {runtimeWarning}
       </div>
     )
@@ -719,6 +798,7 @@ function KittenProviderSection({
   voiceId: number
   onVoiceIdChange: (value: number) => void
 }) {
+  const queryClient = useQueryClient()
   // Query model status to determine if voice controls should be shown
   const modelStatusQuery = useQuery({
     queryKey: ["kittenModelStatus"],
@@ -727,22 +807,28 @@ function KittenProviderSection({
   const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
   const modelDownloaded = status?.downloaded ?? false
   const runtimeUnavailable = status?.runtimeAvailable === false
+  const [isTestingVoice, setIsTestingVoice] = useState(false)
+  const [testVoiceError, setTestVoiceError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setTestVoiceError(null)
+  }, [voiceId])
+
   const handleTestVoice = async () => {
+    setIsTestingVoice(true)
+    setTestVoiceError(null)
     try {
       const result = await window.electron.ipcRenderer.invoke("synthesizeWithKitten", {
         text: "Hello! This is a test of the Kitten text to speech voice.",
         voiceId,
       }) as { audio: string; sampleRate: number }
-      // Decode base64 WAV audio and play it
-      const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
-      const blob = new Blob([audioData], { type: "audio/wav" })
-      const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audio.onended = () => URL.revokeObjectURL(url)
-      audio.onerror = () => URL.revokeObjectURL(url)
-      await audio.play()
+      await playBase64WavAudio(result.audio)
     } catch (error) {
+      setTestVoiceError(getActionErrorMessage(error, "Kitten test audio could not play"))
       console.error("Failed to test Kitten voice:", error)
+    } finally {
+      setIsTestingVoice(false)
+      void queryClient.invalidateQueries({ queryKey: ["kittenModelStatus"] })
     }
   }
 
@@ -837,14 +923,26 @@ function KittenProviderSection({
                 }
                 className="px-3"
               >
-                <Button size="sm" variant="outline" onClick={handleTestVoice} disabled={runtimeUnavailable}>
-                  <Volume2 className="h-3.5 w-3.5 mr-1.5" />
-                  Test Voice
+                <Button size="sm" variant="outline" onClick={handleTestVoice} disabled={runtimeUnavailable || isTestingVoice}>
+                  {isTestingVoice ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {isTestingVoice ? "Testing..." : "Test Voice"}
                 </Button>
                 {runtimeUnavailable && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Fix the local runtime issue shown above before testing Kitten audio.
                   </p>
+                )}
+                {!runtimeUnavailable && (
+                  <LocalTtsActionError
+                    message={testVoiceError}
+                    recoveryHint="Your selected voice settings are unchanged, so you can retry here after fixing the issue."
+                    onRetry={handleTestVoice}
+                    retryLabel="Retry test"
+                  />
                 )}
               </Control>
             </>
@@ -860,6 +958,7 @@ function SupertonicModelDownload() {
   const queryClient = useQueryClient()
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
@@ -873,9 +972,11 @@ function SupertonicModelDownload() {
   const handleDownload = async () => {
     setIsDownloading(true)
     setDownloadProgress(0)
+    setDownloadError(null)
     try {
       await window.electron.ipcRenderer.invoke("downloadSupertonicModel")
     } catch (error) {
+      setDownloadError(getActionErrorMessage(error, "Supertonic model download failed"))
       console.error("Failed to download Supertonic model:", error)
     } finally {
       setIsDownloading(false)
@@ -886,6 +987,9 @@ function SupertonicModelDownload() {
   const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
   const runtimeUnavailable = status?.runtimeAvailable === false
   const runtimeWarning = <LocalTtsRuntimeWarning providerName="Supertonic" status={status} />
+  const downloadFailureMessage = status?.error
+    ? getActionErrorMessage(status.error, "Supertonic model download failed")
+    : downloadError
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
@@ -937,14 +1041,15 @@ function SupertonicModelDownload() {
     )
   }
 
-  if (status?.error) {
+  if (downloadFailureMessage) {
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-destructive">{status.error}</span>
-        <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
-        </Button>
+        <LocalTtsActionError
+          message={downloadFailureMessage}
+          recoveryHint="The model is still unavailable, so you can retry here after fixing the issue."
+          onRetry={handleDownload}
+          retryLabel="Retry download"
+        />
         {runtimeWarning}
       </div>
     )
@@ -997,6 +1102,7 @@ function SupertonicProviderSection({
   onStepsInputChange: (value: string) => void
   onStepsInputBlur: (value: string) => void
 }) {
+  const queryClient = useQueryClient()
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
     queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
@@ -1004,8 +1110,16 @@ function SupertonicProviderSection({
   const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
   const modelDownloaded = status?.downloaded ?? false
   const runtimeUnavailable = status?.runtimeAvailable === false
+  const [isTestingVoice, setIsTestingVoice] = useState(false)
+  const [testVoiceError, setTestVoiceError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setTestVoiceError(null)
+  }, [voice, language, speed, steps])
 
   const handleTestVoice = async () => {
+    setIsTestingVoice(true)
+    setTestVoiceError(null)
     try {
       const result = await window.electron.ipcRenderer.invoke("synthesizeWithSupertonic", {
         text: "Hello! This is a test of the Supertonic text to speech voice.",
@@ -1014,15 +1128,13 @@ function SupertonicProviderSection({
         speed,
         steps,
       }) as { audio: string; sampleRate: number }
-      const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
-      const blob = new Blob([audioData], { type: "audio/wav" })
-      const url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audio.onended = () => URL.revokeObjectURL(url)
-      audio.onerror = () => URL.revokeObjectURL(url)
-      await audio.play()
+      await playBase64WavAudio(result.audio)
     } catch (error) {
+      setTestVoiceError(getActionErrorMessage(error, "Supertonic test audio could not play"))
       console.error("Failed to test Supertonic voice:", error)
+    } finally {
+      setIsTestingVoice(false)
+      void queryClient.invalidateQueries({ queryKey: ["supertonicModelStatus"] })
     }
   }
 
@@ -1185,14 +1297,26 @@ function SupertonicProviderSection({
                 }
                 className="px-3"
               >
-                <Button size="sm" variant="outline" onClick={handleTestVoice} disabled={runtimeUnavailable}>
-                  <Volume2 className="h-3.5 w-3.5 mr-1.5" />
-                  Test Voice
+                <Button size="sm" variant="outline" onClick={handleTestVoice} disabled={runtimeUnavailable || isTestingVoice}>
+                  {isTestingVoice ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {isTestingVoice ? "Testing..." : "Test Voice"}
                 </Button>
                 {runtimeUnavailable && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Fix the local runtime issue shown above before testing Supertonic audio.
                   </p>
+                )}
+                {!runtimeUnavailable && (
+                  <LocalTtsActionError
+                    message={testVoiceError}
+                    recoveryHint="Your selected voice settings are unchanged, so you can retry here after fixing the issue."
+                    onRetry={handleTestVoice}
+                    retryLabel="Retry test"
+                  />
                 )}
               </Control>
             </>
