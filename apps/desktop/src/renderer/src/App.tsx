@@ -13,7 +13,7 @@ function StoreInitializer({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function App(): JSX.Element {
+function App() {
   return (
     <ThemeProvider>
       <StoreInitializer>

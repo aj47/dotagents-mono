@@ -34,9 +34,16 @@ interface SessionGridProps {
   resetKey?: number
   layoutMode?: TileLayoutMode
   layoutChangeKey?: number
+  onMeasurementsChange?: (measurements: SessionGridMeasurements) => void
 }
 
-export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey }: SessionGridProps) {
+export interface SessionGridMeasurements {
+  containerWidth: number
+  containerHeight: number
+  gap: number
+}
+
+export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey, onMeasurementsChange }: SessionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [containerHeight, setContainerHeight] = useState(0)
@@ -116,6 +123,10 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       window.clearTimeout(timeoutId)
     }
   }, [layoutChangeKey, updateMeasurements])
+
+  useEffect(() => {
+    onMeasurementsChange?.({ containerWidth, containerHeight, gap })
+  }, [containerWidth, containerHeight, gap, onMeasurementsChange])
 
   return (
     <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey, layoutMode }}>
@@ -355,4 +366,17 @@ export function SessionTileWrapper({
       )}
     </div>
   )
+}
+
+export function isResponsiveStackedTileLayout(
+  containerWidth: number,
+  gap: number,
+  layoutMode: TileLayoutMode,
+  sessionCount: number,
+): boolean {
+  if (layoutMode === "1x1" || sessionCount < 2 || containerWidth <= 0) {
+    return false
+  }
+
+  return containerWidth < (TILE_DIMENSIONS.width.min * 2) + gap
 }

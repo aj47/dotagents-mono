@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
@@ -22,6 +22,10 @@ interface TileFollowUpInputProps {
   isSessionActive?: boolean
   isInitializingSession?: boolean
   className?: string
+  /** Prefer a compact focus-first affordance instead of the full composer */
+  preferCompact?: boolean
+  /** Called when the user wants to focus this tile before replying */
+  onRequestFocus?: () => void
   /** Agent/profile name to display as indicator */
   agentName?: string
   /** Called when a message is successfully sent */
@@ -29,6 +33,8 @@ interface TileFollowUpInputProps {
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
   onStopSession?: () => void | Promise<void>
 }
+
+const TILE_FOLLOW_UP_COMPACT_WIDTH = 360
 
 /**
  * Compact text input for continuing a conversation within a session tile.
@@ -39,18 +45,46 @@ export function TileFollowUpInput({
   isSessionActive = false,
   isInitializingSession = false,
   className,
+  preferCompact = false,
+  onRequestFocus,
   agentName,
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
+  const [isCompactLayout, setIsCompactLayout] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const configQuery = useConfigQuery()
+
+  useEffect(() => {
+    const node = containerRef.current
+    if (!node) return undefined
+
+    const updateCompactLayout = (width: number) => {
+      setIsCompactLayout(width < TILE_FOLLOW_UP_COMPACT_WIDTH)
+    }
+
+    updateCompactLayout(Math.round(node.getBoundingClientRect().width))
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      updateCompactLayout(Math.round(entry.contentRect.width))
+    })
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
@@ -280,6 +314,8 @@ export function TileFollowUpInput({
     sendMutation.isPending ||
     (isSessionActive && !isQueueEnabled)
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
+  const shouldUseCompactPrompt = preferCompact && !hasMessageContent
+  const shouldStackComposerActions = isCompactLayout && !shouldUseCompactPrompt
 
   // Show appropriate placeholder based on state
   // Use minimal placeholders - loading states indicated by spinners instead
@@ -296,15 +332,64 @@ export function TileFollowUpInput({
     return "Continue conversation..."
   }
 
+  const getCompactPromptLabel = () => {
+    if (isInitializingSession) {
+      return "Starting follow-up…"
+    }
+    if (isSessionActive && !isQueueEnabled) {
+      return "Agent is replying…"
+    }
+    return getPlaceholder() || "Continue conversation..."
+  }
+
+  const compactPromptStatus = isSessionActive && !isQueueEnabled ? "Focus to view" : "Focus to type"
+  const compactPromptCompactActionLabel = isInitializingSession
+    ? "Open"
+    : isSessionActive && !isQueueEnabled
+      ? "View"
+      : "Reply"
+
+  if (shouldUseCompactPrompt) {
+    const compactPromptAriaLabel = isSessionActive && !isQueueEnabled
+      ? "Focus this session to view session details"
+      : "Focus this session to continue the conversation"
+
+    return (
+      <div ref={containerRef} className={className}>
+        <div className="border-t bg-muted/10 px-2 py-1.5">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground"
+            onClick={(e) => {
+              if (!onRequestFocus) return
+              e.stopPropagation()
+              onRequestFocus()
+            }}
+            title={compactPromptAriaLabel}
+            aria-label={compactPromptAriaLabel}
+          >
+            <Send className="h-3 w-3 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{getCompactPromptLabel()}</span>
+            {isCompactLayout ? (
+              <span className="shrink-0 rounded-full border border-border/50 bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80">
+                {compactPromptCompactActionLabel}
+              </span>
+            ) : (
+              <span className="shrink-0 whitespace-nowrap text-[10px]">{compactPromptStatus}</span>
+            )}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn(
-        "flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5",
-        className
-      )}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div ref={containerRef} className={className}>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5"
+        onClick={(e) => e.stopPropagation()}
+      >
       {/* Agent indicator - shows which agent is handling this session */}
       {agentName && (
         <div className="flex items-center gap-1 text-[10px] text-primary/70">
@@ -334,7 +419,7 @@ export function TileFollowUpInput({
         </div>
       )}
 
-      <div className="flex w-full items-center gap-2">
+      <div className={cn("flex w-full gap-2", shouldStackComposerActions ? "flex-col items-stretch" : "items-center")}>
         <input
           ref={inputRef}
           type="text"
@@ -428,7 +513,8 @@ export function TileFollowUpInput({
         </Button>
         )}
       </div>
-    </form>
+      </form>
+    </div>
   )
 }
 

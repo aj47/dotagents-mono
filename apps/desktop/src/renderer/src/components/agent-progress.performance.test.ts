@@ -19,8 +19,9 @@ describe("agent progress streaming performance guardrails", () => {
   it("memoizes session tiles so unrelated streamed chunks do not re-render the full grid", () => {
     expect(sessionsPageSource).toContain("const SessionProgressTile = React.memo(function SessionProgressTile")
     expect(sessionsPageSource).toContain("<SessionProgressTile")
-    expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(async (sessionId: string) =>")
-    expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(async (sessionId: string) =>")
+    expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(")
+    expect(sessionsPageSource).toContain("async (sessionId: string) => {")
+    expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(")
   })
 
   it("keeps the historical transcript memoized while streamed chunks update only current-state items", () => {

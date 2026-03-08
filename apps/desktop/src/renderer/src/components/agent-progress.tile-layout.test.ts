@@ -19,7 +19,7 @@ describe("agent progress tile layout", () => {
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex flex-wrap items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"')
-    expect(agentProgressSource).toContain('<ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />')
+    expect(agentProgressSource).toContain('<ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
@@ -42,8 +42,9 @@ describe("agent progress tile layout", () => {
 
   it("caps ACP session badges to the available tile width and truncates long labels", () => {
     expect(acpSessionBadgeSource).toContain(
-      '"inline-flex max-w-full min-w-0 flex-wrap items-center gap-1.5 cursor-help"'
+      '"inline-flex max-w-full min-w-0 flex-wrap items-center cursor-help"'
     )
+    expect(acpSessionBadgeSource).toContain('compact ? "gap-1" : "gap-1.5"')
     expect(acpSessionBadgeSource).toContain("function getConfigOptionLabel")
     expect(acpSessionBadgeSource).toContain("Array.isArray(option.options)")
     expect(acpSessionBadgeSource).toContain(

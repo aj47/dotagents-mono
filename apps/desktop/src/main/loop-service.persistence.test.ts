@@ -5,7 +5,7 @@ const mockLoadTasksLayer = vi.fn()
 const mockWriteTaskFile = vi.fn()
 const mockDeleteTaskFiles = vi.fn()
 const mockConfigSave = vi.fn()
-const mockResolveWorkspaceAgentsFolder = vi.fn(() => null)
+const mockResolveWorkspaceAgentsFolder = vi.fn<[], string | null>(() => null)
 
 vi.mock("./config", () => ({
   configStore: {
