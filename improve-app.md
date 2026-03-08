@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop standard agent-mode session runtime cleanup in `apps/desktop/src/main/tipc.ts`, with session-state ownership reviewed in `apps/desktop/src/main/state.ts`, tracker lifecycle checked in `apps/desktop/src/main/agent-session-tracker.ts`, queued-state context reviewed in `apps/desktop/src/main/message-queue-service.ts`, renderer progress/store consumers checked in `apps/desktop/src/renderer/src/components/agent-progress.tsx` / `apps/desktop/src/renderer/src/stores/agent-store.ts`, and existing cleanup coverage reviewed in `apps/desktop/src/main/state.test.ts`.
 - 2026-03-08: Desktop local-model status query failure feedback before any model data loads in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with local-model status/error branches reviewed in that file, main-process status return paths checked in `apps/desktop/src/main/parakeet-stt.ts`, `apps/desktop/src/main/kitten-tts.ts`, and `apps/desktop/src/main/supertonic-tts.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop Parakeet model download failure feedback in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with adjacent local-model error/retry patterns reviewed in that page, main-process download/status behavior checked in `apps/desktop/src/main/parakeet-stt.ts` / `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop local TTS download/test failure feedback in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with Kitten/Supertonic action handlers inspected in that page, main-process local-model behavior reviewed in `apps/desktop/src/main/kitten-tts.ts`, `apps/desktop/src/main/supertonic-tts.ts`, and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/ui/TTSSettings.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -50,6 +51,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Standard desktop agent-mode runs now always clean up per-session runtime state in `processWithAgentMode(...)` `finally`, so completed, failed, or manually stopped non-ACP sessions no longer risk retaining stale abort/process/approval bookkeeping after the run unwinds; tradeoff: this pass intentionally left immediate `stopAgentSession` cleanup alone because late in-flight updates still need to unwind through the existing run lifecycle safely.
 - 2026-03-08: Desktop Parakeet/Kitten/Supertonic model-status rows now surface an inline `Retry status` failure state when the first local-model status IPC query fails before any data loads, so Settings no longer falls back to generic checking/download states that can mislead users about whether the model is actually missing versus temporarily unreadable; tradeoff: the normal download CTA stays hidden until status loads successfully, which is safer than presenting setup controls against an unknown local state.
 - 2026-03-08: Desktop Parakeet model downloads now keep failures inline with the same normalized error + recovery-hint pattern used by the other local model sections, including a local `Retry download` affordance, so on-device STT setup no longer falls back to raw error text or console-only recovery clues when a download request fails; tradeoff: this intentionally reuses the existing shared local-model error component instead of introducing Parakeet-specific UI copy, which keeps the fix small and behavior consistent.
 - 2026-03-08: Desktop Kitten and Supertonic settings now keep local model download failures inline with explicit retry guidance, surface `Test Voice` failures in-context with `Retry test`, show a pending `Testing...` state to block duplicate clicks, and share safer WAV playback cleanup so local TTS setup no longer depends on console-only errors when a download or sample playback fails.
@@ -91,6 +93,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: dependency-free `node` source assertion verifying `processWithAgentMode(...)` retains `agentSessionStateManager.cleanupSession(sessionId)` in its `finally` block and that `apps/desktop/src/main/tipc.session-lifecycle.test.ts` guards that contract
+- 2026-03-08: `git diff --check` after the desktop standard session-cleanup pass
 - 2026-03-08: `node --test tests/desktop-settings-providers-parakeet-feedback.test.js tests/desktop-settings-providers-local-tts-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
 - 2026-03-08: `git diff --check`
@@ -183,6 +187,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused desktop main-process regression run for this standard session-cleanup pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts` fails with `Command "vitest" not found`.
+- 2026-03-08: Focused desktop node typecheck for this standard session-cleanup pass is blocked in this worktree because dependency-provided node typings/tsconfig files are unavailable locally, so `pnpm --filter @dotagents/desktop typecheck:node` cannot resolve `@electron-toolkit/tsconfig/tsconfig.node.json`, `electron-vite/node`, or `vitest/globals`.
 - 2026-03-08: Live desktop UI inspection for this local-model status query failure-feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this Parakeet download-failure feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this local TTS download/test failure-feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -226,7 +232,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop session lifecycle and error-state cleanup consistency (`apps/desktop/src/main/state.ts`, `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop session lifecycle and error-state cleanup next, especially queue/user-response cleanup consistency, so failed or canceled runs do not leave stale progress UI or orphaned follow-up affordances
+- Inspect desktop queued-send / message-queue recovery next, especially pause/resume, failed-item retry, and user-response cleanup consistency after interrupted runs, so stalled work does not look permanently pending
 - Once a runnable Electron target is available, live-check the desktop Kitten and Supertonic provider sections across download failure, downloaded, runtime-unavailable, runtime-ready, and voice-test failure states to confirm the new retry/error hierarchy reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Parakeet provider section across not-downloaded, downloaded, runtime-unavailable, and preview-enabled states to confirm the new warning hierarchy reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop transcription preview switch across off, Groq, and Parakeet states to confirm the new cost/availability guidance reads clearly in the actual UI
@@ -1690,6 +1696,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once an Electron target is available, live-check the show-main-window shortcut row to confirm the enabled/disabled summary, incomplete-custom warning, and recording-pause guidance feel right in the real UI
   - inspect desktop general settings text-input shortcut completion/save-state clarity next so the remaining high-traffic shortcut surfaces share the same level of explicit setup confidence
+
+### 2026-03-08 — Desktop standard agent-mode session runtime cleanup
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process standard agent-mode lifecycle in `apps/desktop/src/main/tipc.ts`
+  - per-session runtime state ownership in `apps/desktop/src/main/state.ts`
+  - tracker lifecycle in `apps/desktop/src/main/agent-session-tracker.ts`
+  - queued-state context in `apps/desktop/src/main/message-queue-service.ts`
+  - renderer progress/state consumers reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and `apps/desktop/src/renderer/src/stores/agent-store.ts`
+- Why it was chosen:
+  - the ledger explicitly called out desktop session lifecycle and error-state cleanup as the top fresh target
+  - investigation found a concrete reliability gap: the ACP run path already called `agentSessionStateManager.cleanupSession(sessionId)` in `finally`, but the standard `processWithAgentMode(...)` path left its `finally` block empty even though it owns the same per-session abort/process/approval runtime state
+  - this was high leverage because the standard path backs core desktop agent sessions, including normal completion, error, and manual-stop unwinding
+- What was inspected:
+  - `apps/desktop/src/main/tipc.ts` to compare standard vs ACP session completion/error/finally paths
+  - `apps/desktop/src/main/state.ts` to confirm exactly what `cleanupSession(...)` clears and which stale-update protections it preserves
+  - `apps/desktop/src/main/agent-session-tracker.ts` to verify tracker completion/error/stop semantics are separate from runtime-state cleanup
+  - `apps/desktop/src/main/message-queue-service.ts` for queue-status context around interrupted work
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` and `apps/desktop/src/renderer/src/stores/agent-store.ts` to confirm the user-facing risk is stale active/progress state rather than missing queue data only
+  - `apps/desktop/src/main/state.test.ts` and existing source-guardrail test patterns in `apps/desktop/src/main/remote-server.routes.test.ts`
+- Improvement made:
+  - added the missing `agentSessionStateManager.cleanupSession(sessionId)` call to the standard `processWithAgentMode(...)` `finally` block so runtime session state is released after successful completion, failure, or stop-driven unwinding
+  - added focused regression coverage in `apps/desktop/src/main/tipc.session-lifecycle.test.ts` to guard that the standard path keeps the cleanup call in place
+- Assumptions / tradeoffs / rationale:
+  - kept the fix intentionally narrow instead of changing `stopAgentSession(...)` to force immediate cleanup, because late in-flight updates still need to unwind through the existing run lifecycle and the safest minimal repair was restoring the missing `finally` cleanup symmetry with the ACP path
+  - accepted a source-level guardrail test here because the current workspace cannot run Vitest/typecheck without dependencies, and this repo already uses focused source-assertion tests to prevent structural regressions in critical routing/lifecycle seams
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts` (blocked: `node_modules` missing; `vitest` unavailable)
+  - attempted `pnpm --filter @dotagents/desktop typecheck:node` (blocked: dependency-provided node tsconfig/types unavailable in this worktree)
+  - dependency-free `node` source assertion verifying `processWithAgentMode(...)` retains `agentSessionStateManager.cleanupSession(sessionId)` in `finally` and that the new regression test checks that contract
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts`
+  - once dependencies are available, run `pnpm --filter @dotagents/desktop typecheck:node`
+  - inspect remaining queue/user-response cleanup consistency on interrupted queued runs, since this pass fixed the core runtime-session leak but did not broaden queue/follow-up behavior changes
 
 ### Iteration Template
 - Date:

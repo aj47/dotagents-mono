@@ -519,7 +519,7 @@ async function processWithAgentMode(
 
     throw error
   } finally {
-
+    agentSessionStateManager.cleanupSession(sessionId)
   }
 }
 
