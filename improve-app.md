@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile memory deletion success-handling / pending-state guardrails in `apps/mobile/src/screens/SettingsScreen.tsx`, with the memory action rail and delete handler reviewed there, `deleteMemory()` response semantics rechecked in `apps/mobile/src/lib/settingsApi.ts` to confirm the backend can return `{ success: false }`, focused source-level coverage extended in `apps/mobile/tests/settings-memory-actions-mobile.test.js`, targeted verification run locally via `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/memory-edit-discard-guardrails.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked because `expo` is unavailable in this dependency-less worktree)*.
 - 2026-03-08: Desktop repeat-task editor draft-loss guardrails in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with the current repeat-task editor and action wiring reviewed there, the proven dirty-draft desktop pattern cross-checked in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, focused source-level coverage added in new `tests/desktop-settings-loops-draft-guardrails.test.js`, adjacent delete guardrails tightened in `tests/desktop-settings-loops-delete-guardrails.test.js`, and targeted verification run locally via `node --test tests/desktop-settings-loops-draft-guardrails.test.js tests/desktop-settings-loops-delete-guardrails.test.js` plus `git diff --check`.
 - 2026-03-08: Desktop ACP session revival stale `respond_to_user` cleanup in `apps/desktop/src/main/acp-main-agent.ts` and new `apps/desktop/src/main/acp-user-response.ts`, with ACP conversation-history loading/progress emission reviewed in `apps/desktop/src/main/acp-main-agent.ts`, renderer reused-session handling cross-checked in `apps/desktop/src/renderer/src/stores/agent-store.ts` to confirm the sharper leak lived in ACP main-process state derivation, package-native unit coverage added in new `apps/desktop/src/main/acp-user-response.test.ts`, dependency-light source guardrails added in new `tests/desktop-acp-user-response-scope.test.js`, targeted verification run locally via `node --test tests/desktop-acp-user-response-scope.test.js` plus `git diff --check`, and package-native Vitest verification attempted via `pnpm --filter @dotagents/desktop exec vitest run src/main/acp-user-response.test.ts` *(blocked because this dependency-light worktree does not have `vitest` / desktop `node_modules` installed)*.
 - 2026-03-08: Desktop follow-up composer voice-start / stop-action failure feedback in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with the current follow-up submit/stop/voice flows reviewed in those components, desktop recording-start guidance cross-checked in `apps/desktop/src/renderer/src/pages/panel.tsx` / `tests/desktop-panel-recording-start-feedback.test.js`, mobile inline parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` / `apps/mobile/tests/chat-voice-start-feedback.test.js` / `apps/mobile/tests/chat-kill-switch-feedback.test.js`, focused source-level guardrails added in new `tests/desktop-follow-up-action-feedback.test.js`, adjacent follow-up guardrails re-run in `tests/desktop-composer-image-attachment-feedback.test.js` and `tests/desktop-overlay-follow-up-session-scope.test.js`, targeted verification run locally via `node --test tests/desktop-follow-up-action-feedback.test.js tests/desktop-composer-image-attachment-feedback.test.js tests/desktop-overlay-follow-up-session-scope.test.js` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target / `--inspect` renderer in this environment).
@@ -3360,6 +3361,33 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - live-validate the repeat-task draft confirmation flow once an inspectable desktop runtime is available, especially the header `Add Task` action while a dirty draft is open
   - continue the agent/task-management sweep for any remaining desktop settings editors that still replace local drafts without a confirmation step
+
+### 2026-03-08 — Mobile Settings memory deletion success/pending guardrails
+- Area / screen / subsystem:
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/src/lib/settingsApi.ts`
+  - `apps/mobile/tests/settings-memory-actions-mobile.test.js`
+- Why it was chosen:
+  - after reviewing `improve-app.md`, this was a fresh mobile reliability seam that had not been explicitly tightened yet even though `Settings → Memories` is a core trust surface
+  - source review found a sharper bug than expected: `handleMemoryDelete(...)` removed memories locally without checking the API’s `{ success: boolean }` result, so a backend-reported delete failure could still make the memory disappear from the UI
+- What was inspected:
+  - ledger history in `improve-app.md` to avoid revisiting a just-touched settings seam without a concrete new gap
+  - mobile memory fetch/edit/delete wiring and row accessibility in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `deleteMemory(...)` response semantics in `apps/mobile/src/lib/settingsApi.ts`
+  - existing mobile source-level coverage in `apps/mobile/tests/settings-memory-actions-mobile.test.js` and `apps/mobile/tests/memory-edit-discard-guardrails.test.js`
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `expo` command not found in this dependency-less worktree)*
+- Improvement made:
+  - changed mobile memory deletion to check `deleteMemory(...)` success explicitly before removing the row locally, so backend failures no longer create false-success UI state
+  - added a single in-flight memory delete state so the deleting row shows busy feedback, disables edit, and prevents overlapping delete taps while the request is running
+  - replaced the generic delete error alert with a specific `Delete Failed` message that preserves the memory title and backend message when available
+  - assumptions / tradeoffs: this pass intentionally stays local to the memory delete flow rather than broadening into a shared mutation helper, allows only one memory delete at a time for simpler state integrity, and reuses the existing inline status / alert patterns already present in nearby mobile settings actions
+- Tests / verification:
+  - `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/memory-edit-discard-guardrails.test.js`
+  - `git diff --check`
+  - attempted `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `expo` command not found in this worktree)*
+- Follow-up checks:
+  - live-validate the delete spinner, disabled edit affordance, and failure alert copy once Expo/native tooling is available again
+  - continue the mobile settings reliability sweep for any remaining destructive actions that still rely on optimistic local removal without explicit `success` checks
 
 ### Iteration Template
 - Date:

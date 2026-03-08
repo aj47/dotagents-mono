@@ -280,6 +280,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const [loopsError, setLoopsError] = useState<string | null>(null);
+  const [pendingMemoryDeleteId, setPendingMemoryDeleteId] = useState<string | null>(null);
   const [pendingLoopActionById, setPendingLoopActionById] = useState<Record<string, LoopPendingAction>>({});
   const [loopActionErrorById, setLoopActionErrorById] = useState<Record<string, LoopActionError>>({});
   const availableAcpMainAgents = useMemo(
@@ -720,18 +721,24 @@ export default function SettingsScreen({ navigation }: any) {
   );
 
   // Handle memory delete
-  const handleMemoryDelete = async (memory: Memory) => {
-    if (!settingsClient) return;
+  const handleMemoryDelete = useCallback(async (memory: Memory) => {
+    if (!settingsClient || pendingMemoryDeleteId) return;
     confirmDestructiveAction('Delete Memory', `Are you sure you want to delete "${memory.title}"?`, async () => {
+      setPendingMemoryDeleteId(memory.id);
       try {
-        await settingsClient.deleteMemory(memory.id);
+        const res = await settingsClient.deleteMemory(memory.id);
+        if (!res?.success) {
+          throw new Error(`Failed to delete "${memory.title}".`);
+        }
         setMemories(prev => prev.filter(m => m.id !== memory.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete memory:', error);
-        Alert.alert('Error', 'Failed to delete memory');
+        Alert.alert('Delete Failed', error.message || `Failed to delete "${memory.title}".`);
+      } finally {
+        setPendingMemoryDeleteId(current => current === memory.id ? null : current);
       }
     });
-  };
+  }, [confirmDestructiveAction, pendingMemoryDeleteId, settingsClient]);
 
   // Navigate to memory edit screen
   const handleMemoryEdit = useCallback((memory?: Memory) => {
@@ -2386,17 +2393,25 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : memories.length === 0 ? (
                   <Text style={styles.helperText}>No memories saved</Text>
                 ) : (
-                  memories.map((memory) => (
-                    <View key={memory.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                  memories.map((memory) => {
+                    const isDeletingMemory = pendingMemoryDeleteId === memory.id;
+                    const hasPendingMemoryDelete = Boolean(pendingMemoryDeleteId);
+
+                    return (
+                      <View key={memory.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
                       <TouchableOpacity
-                        style={styles.agentInfoPressable}
+                        style={[styles.agentInfoPressable, isDeletingMemory && styles.agentInfoPressableDisabled]}
                         onPress={() => handleMemoryEdit(memory)}
+                        disabled={isDeletingMemory}
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(`Edit ${memory.title} memory`)}
-                        accessibilityHint="Opens this memory so you can review and change what the agent remembers."
+                        accessibilityHint={isDeletingMemory
+                          ? 'Wait for this memory to finish deleting before editing it.'
+                          : 'Opens this memory so you can review and change what the agent remembers.'}
+                        accessibilityState={{ disabled: isDeletingMemory, busy: isDeletingMemory }}
                         activeOpacity={0.7}
                       >
-                        <View style={[styles.serverInfo, { flex: 1 }]}> 
+                        <View style={[styles.serverInfo, { flex: 1 }]}>
                           <Text style={styles.serverName}>{memory.title}</Text>
                           <Text style={styles.serverMeta} numberOfLines={2}>{memory.content}</Text>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
@@ -2415,20 +2430,34 @@ export default function SettingsScreen({ navigation }: any) {
                             </View>
                           </View>
                           {renderInlineEditAffordance()}
+                          {isDeletingMemory ? (
+                            <Text style={styles.loopActionStatusText}>Deleting memory...</Text>
+                          ) : null}
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={styles.agentDeleteButton}
+                        style={[styles.agentDeleteButton, hasPendingMemoryDelete && styles.loopActionButtonDisabled]}
                         onPress={() => handleMemoryDelete(memory)}
+                        disabled={hasPendingMemoryDelete}
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(`Delete ${memory.title} memory`)}
-                        accessibilityHint="Removes this memory after confirmation."
+                        accessibilityHint={isDeletingMemory
+                          ? 'This memory is being deleted.'
+                          : hasPendingMemoryDelete
+                            ? 'Wait for the current memory delete to finish before deleting another memory.'
+                            : 'Removes this memory after confirmation.'}
+                        accessibilityState={{ disabled: hasPendingMemoryDelete, busy: isDeletingMemory }}
                         activeOpacity={0.7}
                       >
-                        <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                        {isDeletingMemory ? (
+                          <ActivityIndicator size="small" color={theme.colors.destructive} />
+                        ) : (
+                          <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                        )}
                       </TouchableOpacity>
-                    </View>
-                  ))
+                      </View>
+                    );
+                  })
                 )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
