@@ -3249,6 +3249,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const hasErrors = hasToolResults && m.toolResults!.some(r => !r.success);
             // isPending is true when there are more tool calls than results (including partial completion)
             const isPending = toolCallCount > 0 && toolCallCount > toolResultCount;
+            const hasToolExecutionSummary = toolCallCount > 0 || toolResultCount > 0;
 
             return (
               <View
@@ -3259,12 +3260,12 @@ export default function ChatScreen({ route, navigation }: any) {
                 ]}
               >
                 {/* Compact message header - no role labels, just tap to expand */}
-                {shouldCollapse && (
+                {shouldCollapse && (!hasToolExecutionSummary || isExpanded) && (
                   <Pressable
                     onPress={() => toggleMessageExpansion(i)}
                     accessibilityRole="button"
-                    accessibilityLabel={createExpandCollapseAccessibilityLabel('message', isExpanded)}
-                    accessibilityHint={isExpanded ? 'Collapse message' : 'Expand message'}
+                    accessibilityLabel={createExpandCollapseAccessibilityLabel(hasToolExecutionSummary ? 'tool execution details' : 'message', isExpanded)}
+                    accessibilityHint={hasToolExecutionSummary ? 'Collapse tool details' : isExpanded ? 'Collapse message' : 'Expand message'}
                     accessibilityState={{ expanded: isExpanded }}
                     aria-expanded={isExpanded}
                     style={({ pressed }) => [
@@ -3273,6 +3274,15 @@ export default function ChatScreen({ route, navigation }: any) {
                       pressed && styles.messageHeaderPressed,
                     ]}
                   >
+                    {!isExpanded && !hasToolExecutionSummary && m.content ? (
+                      <Text style={styles.collapsedMessagePreview} numberOfLines={1}>
+                        {getCollapsedMessagePreview(m.content)}
+                      </Text>
+                    ) : (
+                      <Text style={styles.messageHeaderLabel} numberOfLines={1}>
+                        {hasToolExecutionSummary ? 'Collapse tool details' : isExpanded ? 'Collapse message' : 'Expand message'}
+                      </Text>
+                    )}
                     <View style={styles.expandButton}>
                       <Text style={styles.expandButtonText}>
                         {isExpanded ? '▲' : '▼'}
@@ -3300,22 +3310,11 @@ export default function ChatScreen({ route, navigation }: any) {
                     {m.content ? (
                       isExpanded || !shouldCollapse ? (
                         <MarkdownRenderer content={m.content} />
-                      ) : (
-                        // Only show collapsed content preview if there are NO tool calls
-                        // Tool calls have their own compact summary row, so don't duplicate
-                        !((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0) && (
-                          <Text
-                            style={{ color: theme.colors.foreground, fontSize: 13, lineHeight: 18 }}
-                            numberOfLines={1}
-                          >
-	                            {getCollapsedMessagePreview(m.content)}
-                          </Text>
-                        )
-                      )
+                      ) : null
                     ) : null}
 
                     {/* Unified Tool Execution Display - show when there are toolCalls OR toolResults */}
-                    {((m.toolCalls?.length ?? 0) > 0 || (m.toolResults?.length ?? 0) > 0) && (
+                    {hasToolExecutionSummary && (
                       <>
                         {/* Collapsed view - single line summary for all tools */}
                         {!isExpanded && (
@@ -4082,6 +4081,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     verticalPadding: 6,
     horizontalMargin: 0,
   });
+  const messageActionTouchTarget = createMinimumTouchTargetStyle({
+    horizontalPadding: spacing.xs,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     headerActionsRow: {
       flexDirection: 'row',
@@ -4149,14 +4153,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingLeft: spacing.xs,
     },
     messageHeader: {
+      ...messageActionTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
+      justifyContent: 'flex-start',
+      minWidth: 0,
+      maxWidth: '100%',
       gap: 2,
       marginBottom: 1,
-      paddingVertical: 1,
       marginHorizontal: -1,
-      paddingHorizontal: 1,
       borderRadius: radius.sm,
     },
     messageHeaderClickable: {
@@ -4164,6 +4170,20 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     messageHeaderPressed: {
       backgroundColor: theme.colors.muted,
+    },
+    messageHeaderLabel: {
+      flexShrink: 1,
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+      fontWeight: '500',
+    },
+    collapsedMessagePreview: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
+      marginRight: spacing.xs,
     },
     expandButton: {
       marginLeft: 'auto',
@@ -4503,10 +4523,12 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
     },
     toolCallCompactRow: {
+      ...messageActionTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 2,
-      paddingHorizontal: 3,
+      justifyContent: 'flex-start',
+      minWidth: 0,
+      maxWidth: '100%',
       borderRadius: radius.sm,
       gap: 3,
     },
@@ -4606,11 +4628,15 @@ function createStyles(theme: Theme, screenHeight: number) {
       flex: 1,
     },
     toolCallHeader: {
+      ...messageActionTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.xs,
+      minWidth: 0,
+      maxWidth: '100%',
+      paddingHorizontal: spacing.xs,
       marginBottom: spacing.xs,
+      borderRadius: radius.sm,
     },
     toolCallHeaderPressed: {
       opacity: 0.7,
@@ -4740,11 +4766,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     // Per-message TTS button styles (#1078)
     speakButton: {
+      ...messageActionTouchTarget,
       alignSelf: 'flex-start',
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 2,
+      paddingHorizontal: spacing.sm,
       marginTop: 4,
-      borderRadius: radius.sm,
+      borderRadius: 999,
       backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.1),
     } as const,
     speakButtonActive: {
