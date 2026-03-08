@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop predefined prompts add/edit dialog draft-loss / destructive-delete guardrails in `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`, with composer usage reviewed in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` / `apps/desktop/src/renderer/src/pages/sessions.tsx`, save-mutation behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked across `apps/mobile/src/`.
 - 2026-03-08: Desktop bundle import conflict-resolution / overwrite clarity in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, with preview-conflict source review in `apps/desktop/src/main/bundle-service.ts`, Hub install handoff coverage review in `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx`, and mobile parity check confirming no equivalent bundle-import surface under `apps/mobile/src/`.
 - 2026-03-08: Desktop bundle export / Hub publish dialog discard-safety and pending-close guardrails in `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx` and `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx`, with shared selection-state helper review in `apps/desktop/src/renderer/src/components/bundle-selection.tsx`, settings-page launch wiring checked in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop agent editor draft-loss guardrails in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with related discard-safety pattern review in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, mobile parity check in `apps/mobile/src/screens/AgentEditScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
@@ -27,6 +28,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop predefined prompts now track dirty draft baselines, warn before dialog dismissal would discard unsaved prompt edits, keep the dialog open with inline failure guidance if config save fails, and confirm before deleting a saved prompt from quick access.
 - 2026-03-08: Desktop bundle import dialog now explains the exact consequence of skip / overwrite / rename conflict strategies in-context and previews the affected conflicting items by component, including existing names when they differ, so destructive bundle imports are easier to understand before committing.
 - 2026-03-08: Desktop bundle export and Hub publish dialogs now track dirty drafts, warn before backdrop / Escape / close-button dismissal can discard selected items or metadata, and ignore close attempts while generate/save work is in flight so multi-step export/publish prep is harder to lose accidentally.
 - 2026-03-08: Desktop agent editor now tracks dirty create/edit baselines, warns before canceling a dirty draft, confirms before overwriting an in-progress create draft with Quick Setup or clearing a custom advanced system prompt, and preserves the draft with explicit failure feedback if save fails.
@@ -45,6 +47,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-predefined-prompts-guardrails.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-bundle-dialog-guardrails.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-bundle-dialog-guardrails.test.js`
@@ -74,6 +78,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this predefined-prompts draft-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this bundle import conflict-clarity pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this bundle export / publish pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this agent-editor pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
@@ -88,16 +93,53 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop predefined prompts add/edit dialog unsaved-change / destructive-edit clarity (`apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`)
+- Desktop model preset create/edit dialogs unsaved-change / failed-save guardrails (`apps/desktop/src/renderer/src/components/model-preset-manager.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect the desktop predefined prompts add/edit dialog for unsaved-change, cancel, and destructive-delete clarity so long-form prompts are harder to lose accidentally
+- Inspect the desktop model preset manager create/edit dialogs for draft-loss, failed-save, and destructive-delete guardrails so long multi-field provider presets are harder to lose accidentally
 - Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
 - Once a runnable Electron target is available, live-check the desktop bundle export/publish dialogs to confirm the new discard warning and pending-action guardrails feel right during backdrop click, Escape, titlebar close, preview back, and file-save flows
 - Once a runnable Electron target is available, live-check the desktop agent editor dirty-cancel, Quick Setup overwrite, advanced reset, and pending-save behavior to confirm the confirmation cadence feels right
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop predefined prompts draft safety and delete clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop predefined prompts management in `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`
+  - reviewed composer entry points in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` and `apps/desktop/src/renderer/src/pages/sessions.tsx`
+  - reviewed config save mutation behavior in `apps/desktop/src/renderer/src/lib/queries.ts`
+  - reviewed shared dialog close semantics in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`
+  - checked `apps/mobile/src/`; confirmed mobile does not currently expose an equivalent predefined-prompts authoring surface to update in this pass
+- Why it was chosen:
+  - the ledger explicitly marked the desktop predefined-prompts dialog as the next fresh area that had not been investigated recently
+  - this menu sits directly on core composer flows, so losing a long saved prompt draft or deleting a prompt by accident has immediate user cost
+  - source inspection showed a concrete reliability bug: the dialog closed immediately after kicking off async config save work, so a failed save could toast an error after the draft was already gone
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx` add/edit/delete flows, dialog open/close wiring, and prompt save behavior
+  - `apps/desktop/src/renderer/src/components/ui/dialog.tsx` to confirm backdrop click, Escape, and the titlebar close button all funnel through `onOpenChange`
+  - `apps/desktop/src/renderer/src/lib/queries.ts` to confirm `useSaveConfigMutation()` exposes pending / async state and centralized save-error reporting
+  - `apps/desktop/src/renderer/src/components/text-input-panel.tsx` and `apps/desktop/src/renderer/src/pages/sessions.tsx` to confirm this component is reused in multiple desktop composer entry points and therefore worth tightening carefully
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - added a prompt-draft baseline so the add/edit dialog can detect unsaved changes consistently for both new prompts and existing prompt edits
+  - backdrop click, Escape, close-button dismissal, and the explicit Cancel button now all funnel through a guarded close handler that confirms before discarding a dirty prompt draft
+  - saving now awaits the async config mutation and only closes the dialog on success, preventing save-failure draft loss
+  - failed saves now keep the dialog open and show inline guidance that the draft is still available to retry
+  - deleting a saved prompt now asks for confirmation before removing it from quick access
+  - added focused regression coverage in `tests/desktop-predefined-prompts-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the fix local to this component instead of introducing a new shared draft-dialog abstraction, because the immediate product problem was isolated and the repo guidance favors small, pattern-matching changes over broader refactors
+  - reused the same lightweight confirmation and unsaved-change callout pattern already established in nearby desktop editors so the new safety behavior stays familiar
+  - kept save-failure detail lightweight in the dialog because the existing shared config-save mutation already shows a toast with the fuller error text; the inline message focuses on the key reassurance that the draft was preserved
+- Tests / verification:
+  - `node --test tests/desktop-predefined-prompts-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check dirty prompt dismissal via backdrop click, Escape, the titlebar close button, and save-failure retry behavior
+  - inspect the desktop model preset manager next for similar draft-loss and failed-save risks in its create/edit dialogs
 
 ### 2026-03-08 — Desktop bundle import conflict strategy clarity
 - Date:

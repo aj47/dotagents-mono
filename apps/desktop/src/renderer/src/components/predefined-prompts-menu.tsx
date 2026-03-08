@@ -26,6 +26,29 @@ import { PredefinedPrompt } from "../../../shared/types"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 
+interface PromptDraft {
+  name: string
+  content: string
+}
+
+const EMPTY_PROMPT_DRAFT: PromptDraft = {
+  name: "",
+  content: "",
+}
+
+function toPromptDraft(prompt: Pick<PredefinedPrompt, "name" | "content">): PromptDraft {
+  return {
+    name: prompt.name,
+    content: prompt.content,
+  }
+}
+
+function hasPromptDraftChanges(draft: PromptDraft, baseline: PromptDraft | null): boolean {
+  if (!baseline) return false
+
+  return draft.name !== baseline.name || draft.content !== baseline.content
+}
+
 interface PredefinedPromptsMenuProps {
   onSelectPrompt: (content: string) => void
   className?: string
@@ -47,6 +70,8 @@ export function PredefinedPromptsMenu({
   const [editingPrompt, setEditingPrompt] = useState<PredefinedPrompt | null>(null)
   const [promptName, setPromptName] = useState("")
   const [promptContent, setPromptContent] = useState("")
+  const [promptBaseline, setPromptBaseline] = useState<PromptDraft | null>(null)
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null)
 
   const prompts = configQuery.data?.predefinedPrompts || []
 
@@ -66,31 +91,80 @@ export function PredefinedPromptsMenu({
   const entryClassName = "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer"
   const entryTextClassName = "min-w-0 flex-1 space-y-0.5"
   const secondaryTextClassName = "line-clamp-2 text-xs leading-4 text-muted-foreground [overflow-wrap:anywhere]"
+  const activeDraft = {
+    name: promptName,
+    content: promptContent,
+  }
+  const isPromptDirty = hasPromptDraftChanges(activeDraft, promptBaseline)
+  const promptLabel = editingPrompt?.name || promptName.trim() || "this prompt"
 
   const handleSelectPrompt = (prompt: PredefinedPrompt) => {
     onSelectPrompt(prompt.content)
   }
 
-  const handleAddNew = () => {
+  const resetPromptForm = () => {
     setEditingPrompt(null)
     setPromptName("")
     setPromptContent("")
+    setPromptBaseline(null)
+    setSaveErrorMessage(null)
+  }
+
+  const closeDialog = () => {
+    setIsDialogOpen(false)
+    resetPromptForm()
+  }
+
+  const handleAddNew = () => {
+    if (saveConfig.isPending) return
+    setEditingPrompt(null)
+    setPromptName("")
+    setPromptContent("")
+    setPromptBaseline(EMPTY_PROMPT_DRAFT)
+    setSaveErrorMessage(null)
     setIsDialogOpen(true)
   }
 
   const handleEdit = (e: React.MouseEvent | Event, prompt: PredefinedPrompt) => {
     e.preventDefault()
     e.stopPropagation()
+    if (saveConfig.isPending) return
     setEditingPrompt(prompt)
     setPromptName(prompt.name)
     setPromptContent(prompt.content)
+    setPromptBaseline(toPromptDraft(prompt))
+    setSaveErrorMessage(null)
     setIsDialogOpen(true)
+  }
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setIsDialogOpen(true)
+      return
+    }
+
+    if (saveConfig.isPending) return
+    if (
+      isPromptDirty
+      && !confirm(
+        editingPrompt
+          ? `Discard your changes to "${promptLabel}"? Your unsaved edits will be lost.`
+          : "Discard this new predefined prompt? Your unsaved changes will be lost.",
+      )
+    ) {
+      return
+    }
+
+    closeDialog()
   }
 
   const handleDelete = (e: React.MouseEvent | Event, prompt: PredefinedPrompt) => {
     e.preventDefault()
     e.stopPropagation()
+    if (saveConfig.isPending) return
     if (!configQuery.data) return
+    if (!confirm(`Delete "${prompt.name}"? This saved prompt will be removed from quick access.`)) return
+
     const updatedPrompts = prompts.filter((p) => p.id !== prompt.id)
     saveConfig.mutate({
       config: {
@@ -100,7 +174,7 @@ export function PredefinedPromptsMenu({
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!promptName.trim() || !promptContent.trim()) return
     if (!configQuery.data) return
 
@@ -124,13 +198,23 @@ export function PredefinedPromptsMenu({
       updatedPrompts = [...prompts, newPrompt]
     }
 
-    saveConfig.mutate({
-      config: {
-        ...configQuery.data,
-        predefinedPrompts: updatedPrompts,
-      },
-    })
-    setIsDialogOpen(false)
+    setSaveErrorMessage(null)
+
+    try {
+      await saveConfig.mutateAsync({
+        config: {
+          ...configQuery.data,
+          predefinedPrompts: updatedPrompts,
+        },
+      })
+      closeDialog()
+    } catch {
+      setSaveErrorMessage(
+        editingPrompt
+          ? "Couldn't save your prompt changes yet. Your draft is still open, so you can try again."
+          : "Couldn't save this new prompt yet. Your draft is still open, so you can try again.",
+      )
+    }
   }
 
   return (
@@ -178,6 +262,7 @@ export function PredefinedPromptsMenu({
                     size="icon"
                     className="h-7 w-7"
                     onClick={(e) => handleEdit(e, prompt)}
+                    disabled={saveConfig.isPending}
                     title="Edit"
                     aria-label={`Edit predefined prompt ${prompt.name}`}
                   >
@@ -189,6 +274,7 @@ export function PredefinedPromptsMenu({
                     size="icon"
                     className="h-7 w-7 text-destructive hover:text-destructive"
                     onClick={(e) => handleDelete(e, prompt)}
+                    disabled={saveConfig.isPending}
                     title="Delete"
                     aria-label={`Delete predefined prompt ${prompt.name}`}
                   >
@@ -199,7 +285,7 @@ export function PredefinedPromptsMenu({
             ))
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={handleAddNew} className="cursor-pointer">
+          <DropdownMenuItem onSelect={handleAddNew} className="cursor-pointer" disabled={saveConfig.isPending}>
             <Plus className="mr-2 h-4 w-4 shrink-0" />
             Add new prompt
           </DropdownMenuItem>
@@ -229,7 +315,7 @@ export function PredefinedPromptsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingPrompt ? "Edit Prompt" : "Add New Prompt"}</DialogTitle>
@@ -237,14 +323,31 @@ export function PredefinedPromptsMenu({
               Save a frequently used prompt for quick access.
             </DialogDescription>
           </DialogHeader>
+          {isPromptDirty && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              You have unsaved changes. Save before closing to keep this draft.
+            </div>
+          )}
+          {saveErrorMessage && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+            >
+              {saveErrorMessage}
+            </div>
+          )}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="prompt-name">Name</Label>
               <Input
                 id="prompt-name"
                 value={promptName}
-                onChange={(e) => setPromptName(e.target.value)}
+                onChange={(e) => {
+                  setPromptName(e.target.value)
+                  setSaveErrorMessage(null)
+                }}
                 placeholder="e.g., Code Review Request"
+                disabled={saveConfig.isPending}
               />
             </div>
             <div className="space-y-2">
@@ -252,18 +355,22 @@ export function PredefinedPromptsMenu({
               <Textarea
                 id="prompt-content"
                 value={promptContent}
-                onChange={(e) => setPromptContent(e.target.value)}
+                onChange={(e) => {
+                  setPromptContent(e.target.value)
+                  setSaveErrorMessage(null)
+                }}
                 placeholder="Enter your prompt text..."
                 className="min-h-[120px] resize-y"
+                disabled={saveConfig.isPending}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleDialogOpenChange(false)} disabled={saveConfig.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!promptName.trim() || !promptContent.trim()}>
-              {editingPrompt ? "Save Changes" : "Add Prompt"}
+            <Button onClick={handleSave} disabled={saveConfig.isPending || !promptName.trim() || !promptContent.trim()}>
+              {saveConfig.isPending ? (editingPrompt ? "Saving..." : "Adding...") : editingPrompt ? "Save Changes" : "Add Prompt"}
             </Button>
           </DialogFooter>
         </DialogContent>
