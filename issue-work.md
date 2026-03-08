@@ -2044,3 +2044,48 @@
   - After that precedence decision, extend the same shared helper to include the active slot and add the smallest read-only UI/status surface first.
 
 - Next recommended issue work item: if dependencies become available, re-run the new `#57` Vitest coverage first; otherwise refresh the backlog again and pick a fresh concrete bug or small trust/UX slice rather than speculative slot UI work.
+
+##### Issue #54 — Feature: ChatGPT subscription (sub OAuth) as a model provider option
+
+- Selection rationale:
+  - Re-read the open issue because it was the only still-open item in the current repo that had not already been worked recently in this ledger.
+- Investigation:
+  - Reviewed issue `#54`, its acceptance criteria, the current provider/OAuth codepaths (`apps/desktop/src/renderer/src/pages/settings-profiles.tsx`, `apps/desktop/src/main/oauth-client.ts`, `apps/desktop/src/main/mcp-oauth-service.ts`), and searched the repo for any existing ChatGPT subscription/session integration.
+  - Confirmed the desktop app already has generic OAuth plumbing, but there is no existing ChatGPT subscription provider implementation, no documented stable endpoint/session contract in the repo, and no local code surface that safely proves an official or supportable ChatGPT subscription OAuth flow exists.
+- Important assumptions:
+  - Assumption: this issue should not get a speculative partial implementation until the auth/session feasibility is explicit.
+  - Why acceptable: the issue itself calls out endpoint/session investigation as the key unknown, and shipping a fake or unsupported provider option would create more user confusion than value.
+- Outcome:
+  - No code change landed for `#54` in this iteration.
+  - Captured the blocker here so the next pass does not thrash: before implementation, gather concrete evidence for a supportable ChatGPT subscription auth/session flow (official OAuth or a deliberately accepted unofficial/session-based approach).
+
+##### Issue #55 — Session tile header UI bugs: duplicate maximize button, repeated agent name, and collapsed tile spacing
+
+- Selection rationale:
+  - After `#54` proved blocked on auth feasibility, `#55` was the best remaining concrete bug with direct user-visible value and a narrow local implementation path.
+- Investigation:
+  - Re-read issue `#55`, then inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `session-grid.tsx`, and existing tile layout regression tests.
+  - Tried to confirm the bug through the running Electron renderer, but the currently attached renderer window was effectively blank (`SpeakMCP` title with no useful body text), so live DOM validation was not reliable in this worktree.
+  - Confirmed the collapsed-tile spacing bug directly from source instead: `SessionTileWrapper` explicitly widened collapsed tiles to the full measured container width, and `session-grid.collapsed-layout.test.js` locked that behavior in as the expected contract.
+  - Also confirmed the other two issue symptoms already have dedicated source guards in `agent-progress.tile-layout.test.ts` (`showTileExpandAction` avoids duplicate maximize-style affordances for snoozed tiles, and `showTileProfileName` hides the extra header agent label when the ACP footer badge already names the agent).
+- Important assumptions:
+  - Assumption: collapsed tiles should temporarily snap to the base grid column width for the current layout mode while preserving any user-resized width for when the tile is expanded again.
+  - Why acceptable: that matches the issue's expected reflow behavior, fixes the confirmed full-row gap source, and keeps the expanded resize state intact because only the collapsed render width changes.
+  - Assumption: no mobile change is needed for this slice.
+  - Why acceptable: the bug and implementation both live in the desktop session tile grid.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/session-grid.tsx` so collapsed tiles use `calculateTileWidth(containerWidth, gap, layoutMode)` instead of stretching to the full container width.
+  - Updated `apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` to assert the new reflow-friendly contract instead of the old full-width collapsed behavior.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop run test:run src/renderer/src/components/agent-progress.tile-layout.test.ts` ⚠️ blocked locally because this worktree still lacks installed package dependencies (`packages/shared` build failed with `tsup: command not found`, and pnpm warned that local `node_modules` are missing).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #55:
+  - Once the desktop test environment is bootstrapped, re-run `agent-progress.tile-layout.test.ts` through the package test script so the duplicate-maximize and duplicate-agent-name guards execute again instead of remaining source-only checks in this worktree.
+  - Revisit live Electron repro when the attached renderer can surface the real sessions UI; if the duplicate maximize or agent-name symptoms are still observable beyond the current source guards, take the smallest isolated follow-up for those paths.
+
+- Next recommended issue work item: if dependencies become available, verify the existing `#55` source guards through the real desktop test runner; otherwise continue with another concrete trust/reliability slice from `#56`/`#57`, and keep `#54` blocked until auth feasibility evidence exists.

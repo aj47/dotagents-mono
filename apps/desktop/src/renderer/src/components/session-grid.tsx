@@ -214,7 +214,10 @@ export function SessionTileWrapper({
     initialHeight: calculateTileHeight(containerHeight, gap, layoutMode),
     storageKey: "session-tile",
   })
-  const effectiveWidth = isCollapsed && containerWidth > 0 ? containerWidth : width
+  const collapsedWidth = containerWidth > 0
+    ? calculateTileWidth(containerWidth, gap, layoutMode)
+    : width
+  const effectiveWidth = isCollapsed ? collapsedWidth : width
 
   // Reset tile size when resetKey changes (user clicked layout cycle button)
   useEffect(() => {
