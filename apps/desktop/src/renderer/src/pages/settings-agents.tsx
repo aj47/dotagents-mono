@@ -37,6 +37,16 @@ import {
 } from "../../../shared/types"
 
 type ConnectionType = AgentProfileConnectionType
+type AgentEditorTab = "general" | "model" | "capabilities" | "properties"
+
+function normalizeAgentEditorTab(
+  tab: AgentEditorTab,
+  connectionType: ConnectionType | null | undefined,
+): AgentEditorTab {
+  return tab === "model" && connectionType !== "internal"
+    ? "general"
+    : tab
+}
 
 interface EditingAgent {
   id?: string
@@ -102,6 +112,7 @@ export function SettingsAgents() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [prefilledImportFilePath, setPrefilledImportFilePath] = useState<string | null>(null)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
+  const [activeEditorTab, setActiveEditorTab] = useState<AgentEditorTab>("general")
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -145,6 +156,16 @@ export function SettingsAgents() {
       }
     }
   }, [searchParams, agents])
+
+  useEffect(() => {
+    setActiveEditorTab("general")
+  }, [editing?.id, isCreating])
+
+  useEffect(() => {
+    setActiveEditorTab(currentTab =>
+      normalizeAgentEditorTab(currentTab, editing?.connectionType),
+    )
+  }, [editing?.connectionType])
 
   const loadAgents = async () => {
     const all = await tipcClient.getAgentProfiles()
@@ -537,7 +558,11 @@ export function SettingsAgents() {
           <CardDescription>Configure agent identity, behavior, model, and capabilities.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="general" className="w-full">
+          <Tabs
+            value={activeEditorTab}
+            onValueChange={(value) => setActiveEditorTab(value as AgentEditorTab)}
+            className="w-full"
+          >
             <TabsList className="mb-4 flex-wrap h-auto gap-1">
               <TabsTrigger value="general" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />General</TabsTrigger>
               {isInternal && <TabsTrigger value="model" className="gap-1.5"><Brain className="h-3.5 w-3.5" />Model</TabsTrigger>}

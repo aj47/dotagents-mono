@@ -74,6 +74,10 @@
 - [x] 2026-03-08: Compared desktop follow-up kill-switch failure handling against mobile `apps/mobile/src/screens/ChatScreen.tsx`; mobile emergency stop already confirms success/failure with `Alert.alert(...)` / `window.alert(...)`, so a visible desktop failure toast is consistent with existing product behavior.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the follow-up kill-switch error-feedback update and regression test change.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and confirmed the agent editor still rendered tabs with `defaultValue="general"` while the `Model` tab and its `TabsContent` were conditional on `editing.connectionType === "internal"`.
+- [x] 2026-03-08: Compared the desktop agent editor against `apps/mobile/src/screens/AgentEditScreen.tsx`; mobile uses a single scrolling form with no tab state, so the disappearing-model-tab bug is desktop-only rather than a shared agent-edit flow issue.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.editor-tabs.test.ts src/renderer/src/pages/settings-agents.system-prompt.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop agent-editor controlled-tab fix and regression test addition.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -113,6 +117,11 @@
   - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` rendered the advanced `Base System Prompt` textarea with `value={editing.systemPrompt || defaultSystemPrompt}` while the same editor also uses `editing.systemPrompt === ""` to mean “use the default prompt”.
   - As soon as the draft became an empty string—either by clearing the field or pressing `Reset to Default`—the controlled textarea value snapped back to the full default prompt text, so the editor could not stay truly empty while the user prepared a replacement prompt or intentionally reverted to default behavior.
   - The mobile agent editor keeps `systemPrompt` as a plain draft string, so this desktop behavior is a real UI regression rather than an intentional cross-platform product difference.
+- [x] **Desktop agent editor could get stuck on an invalid hidden tab (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` rendered the editor with uncontrolled `Tabs defaultValue="general"`, so the active tab lived only inside the tab component after first render.
+  - The same file rendered both the `Model` tab trigger and its `TabsContent` only when `editing.connectionType === "internal"`.
+  - That means a user could open the `Model` tab for an internal agent, then switch the draft (or selected agent) to `acp`, `stdio`, or `remote`; the active tab would remain `model` even though that tab content was no longer rendered, leaving the editor on a blank/mismatched state until the user manually switched tabs.
+  - Mobile does not have this tabbed editor shape, so this is a desktop-only agent-editing bug rather than an intentional shared behavior.
 - [x] **Desktop `Max Iterations` numeric editing bug (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` bound the `Max Iterations` number input straight to `configQuery.data?.mcpMaxIterations ?? 10` and called `saveConfig({ mcpMaxIterations: parseInt(e.target.value) || 1 })` from each `onChange`.
   - That meant every keystroke triggered a config mutation + invalidation round-trip, and temporary input states like an empty field were immediately coerced to `1` while the user was still editing.
@@ -180,6 +189,9 @@
   - blur flushing plus config-resync behavior for the inactive Gemini base-URL editor
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the advanced `Base System Prompt` textarea now keeps the live draft in `value={editing.systemPrompt}` and shows the default prompt via `placeholder={defaultSystemPrompt}` instead of reinserting it into the controlled value when the draft is empty.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` to lock in the empty-draft + default-placeholder rendering contract.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the agent editor tabs are controlled via local `activeEditorTab` state instead of uncontrolled `defaultValue` state.
+- [x] Added a tab-normalization fallback in `settings-agents.tsx` so the editor automatically returns to `General` when the current tab is `model` but the draft is no longer an internal agent.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-agents.editor-tabs.test.ts` to lock in the controlled-tab contract, the invalid-`model` fallback, and the removal of `defaultValue="general"`.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the Groq STT `Prompt` textarea uses a local draft with debounced saves and blur flushes instead of saving on every keystroke.
 - [x] Kept the Groq STT prompt save path on the existing latest-config merge helper so delayed prompt saves cannot overwrite newer unrelated settings.
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` with focused regression coverage for:
@@ -255,6 +267,9 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the Groq STT prompt / regression test updates.
 - [x] Manual source verification: the desktop agent editor no longer uses `value={editing.systemPrompt || defaultSystemPrompt}`; the textarea now keeps an actually empty draft and exposes the default prompt through `placeholder={defaultSystemPrompt}` instead.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop agent system-prompt editor update.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-agents.tsx` no longer uses uncontrolled `Tabs defaultValue="general"`; the editor now binds `Tabs` to local `activeEditorTab` state and normalizes invalid `model` tabs back to `general` when the draft connection type is no longer `internal`.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-agents.editor-tabs.test.ts` now asserts the controlled-tab state, the invalid-`model` fallback, and the removal of the old uncontrolled `defaultValue` contract.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop agent-editor tab-state update.
 - [x] Manual source verification: the desktop `Max Iterations` input no longer calls `saveConfig(...)` directly from `onChange`; it now keeps a local draft, only schedules saves for valid values, and resets invalid blur states to the saved config.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the `Max Iterations` / regression test updates.
 - [x] Manual source verification: the desktop Supertonic `Speed` / `Quality Steps` inputs no longer reject intermediate keyboard edits immediately; they now keep local drafts, debounce valid saves, and reset invalid blur states to the saved config.
@@ -298,6 +313,7 @@
 - [x] Targeted automated verification for this remote-server named-tunnel draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this repeat-task interval fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop agent system-prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this desktop agent-editor tab-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.editor-tabs.test.ts src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this primary-composer error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/text-input-panel.submit.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this follow-up kill-switch error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
@@ -315,6 +331,7 @@
 - [ ] Whether the named-tunnel `Tunnel ID` / `Hostname` fields should eventually trim whitespace or add stricter UUID/hostname validation once the environment blocker is cleared and the live setup flow can be exercised.
 - [ ] Whether the desktop repeat-task editor should eventually reset invalid interval drafts on blur, or whether save-time validation alone is the better UX once live desktop testing is possible.
 - [ ] Whether any other desktop agent-edit fields still mix fallback display text into controlled `value` props once the environment blocker is cleared and the full editor can be exercised live.
+- [ ] Whether any other desktop tabbed editors or dialogs still rely on uncontrolled `defaultValue` tab state even when some tabs are conditional on current draft/runtime state.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -351,6 +368,8 @@
 - Moving the default prompt into `placeholder` is the smallest safe fix because it preserves the helpful visibility of the default text without forcing that text back into the live editable draft.
 - Silent failure on a core “stop agent” action is similarly high-signal user pain: when the user explicitly asks the session to stop and the request fails, the UI should not appear to ignore that control.
 - Adding `toast.error(...)` in the existing follow-up kill-switch `catch` blocks is the smallest safe fix because it preserves the current stop behavior, loading state, and callback/direct-stop branching while finally exposing the failure to the user.
+- The agent-editor bug is a tab-state correctness issue: when tab availability depends on connection type, uncontrolled `defaultValue` tabs can keep pointing at content that no longer exists.
+- Moving the editor to controlled tab state with a tiny `model -> general` normalization is the smallest safe fix because it preserves the existing UI and tab labels while preventing blank editor states when the draft stops being an internal agent.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -370,6 +389,7 @@
 - Assumption: leaving temporary invalid repeat-task interval drafts local until save is acceptable because the mobile `LoopEditScreen` already validates this field on save, and desktop `loop-service` still defensively clamps any persisted invalid interval at runtime.
 - Assumption: showing the default system prompt as a textarea placeholder is acceptable because the existing note already tells users to leave the field empty to use the default, and placeholder text preserves that visibility without corrupting the editable draft state.
 - Assumption: using the existing desktop toast pattern for follow-up kill-switch failures is acceptable because `sonner` is already mounted app-wide, the same components already use it for follow-up send failures, and mobile already exposes stop failures visibly.
+- Assumption: resetting an invalid `model` tab back to `general` is acceptable because `General` is the safest always-available editor section, while mobile has no competing tab-state behavior that needs to stay aligned here.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -395,4 +415,5 @@
 - After that, live-verify the desktop named-tunnel setup flow (`Tunnel ID`, `Hostname`, `Credentials Path`, and `Start Tunnel`) to confirm the fields no longer fight typing and the action enables immediately from the current drafts.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` and live-verify that editing a repeat-task interval by backspacing/retyping no longer snaps the field back to `15` mid-edit.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that clearing or resetting an agent system prompt leaves the textarea empty while still showing the default prompt as placeholder guidance.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.editor-tabs.test.ts src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that switching an agent from `internal` to `acp`/`stdio`/`remote` while on `Model` immediately lands on `General` instead of leaving the editor blank.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify that failing a follow-up kill-switch action surfaces the new desktop toast instead of failing silently.
