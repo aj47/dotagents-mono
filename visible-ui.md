@@ -385,3 +385,45 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
 - Remaining opportunities:
   - once this worktree can launch directly, capture a true after-state screenshot of the tile footer and confirm the wrapped controls still feel calm when queued-image thumbnails are present
   - if the compare tile still feels busy after this, the next likely footer candidate is simplifying the resting-state action prominence rather than adding more metadata or buttons
+
+### Iteration 2026-03-08 / 11
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and current-worktree launch blocker documented
+- Screen / area reviewed: desktop `Settings > General` left settings sub-navigation, specifically the active child route treatment for `General`
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/#/settings/general` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - confirmed the running Electron/Vite instance belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace, so true after-state HMR validation of this worktree was not available
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-2026-03-08-settings-general-expanded.png`
+  - `tmp/visible-ui-2026-03-08-settings-general-reopened.png`
+  - live `900x670` inspection showed the `Settings` parent row at about `159x32px` already reading like a pill while the selected `General` child row sat at about `159x28px` with muted text, a transparent background, and the same left edge as `Models`, `Memories`, and its siblings
+  - because the child routes were flush with the parent section label, the active page blended into the group instead of answering “you are here” at a glance
+- Issues found:
+  - the selected child route in the settings rail was too easy to miss under realistic desktop widths because it looked like an ordinary muted sibling row
+  - the left rail hierarchy was weak: the `Settings` section label and its children read too much like peers instead of parent plus nested destinations
+- Assumptions:
+  - this is desktop-only; `apps/mobile/App.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx` use stack/navigation-screen patterns rather than a persistent left settings rail with nested child links
+  - the active child destination should be more visually explicit than the parent `Settings` section label, but still restrained enough to fit the existing sidebar language
+- Design rationale:
+  - improve location clarity first: the sidebar should answer the current destination without users having to compare labels or hover states
+  - strengthen nesting with subtle structure rather than a broad sidebar redesign: a small indent, faint guide line, and clearer selected pill are enough to improve the hierarchy
+  - keep the change local to the settings rail so nearby desktop patterns remain coherent
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/app-layout.tsx` to give expanded settings child links dedicated active/inactive class constants with a restrained border + background selected state
+  - indented the expanded settings child list and added a faint left guide line so child destinations read as nested under the `Settings` section label
+  - added `apps/desktop/src/renderer/src/components/app-layout.settings-nav.layout.test.ts` to lock in the clearer selected-state styling and nested child-list structure
+- Verification:
+  - live before-state screenshot-backed inspection via CDP against the main `#/settings/general` renderer target
+  - targeted source-level test passed against this worktree using the sibling worktree's installed tooling without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/app-layout.settings-nav.layout.test.ts`
+  - live after-state approximation by applying an in-memory DOM patch that mirrors the implemented hierarchy treatment, then capturing:
+    - `/tmp/augment-electron-shots/settings-general-after-full-v2-2026-03-08T06-52-44-757Z.png`
+    - `/tmp/augment-electron-shots/settings-general-after-rail-v2-2026-03-08T06-52-44-757Z.png`
+  - attempted current-worktree Electron launch: `REMOTE_DEBUGGING_PORT=9444 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9449' pnpm dev -- -d` → failed before Electron launched because this worktree still lacks runnable local shared-tooling binaries (`packages/shared` failed with `sh: tsup: command not found` and `node_modules missing` warnings)
+  - `git diff --check`
+- After-state observation:
+  - the DOM-simulated nested rail reads more clearly as parent + children: the child links shifted from about `x=8px` to `x=22px`, which made `General`, `Models`, and `Memories` read like destinations within the `Settings` section instead of peers of the section header
+  - the selected `General` route now reads as an intentional resting-state selection rather than a hover-like accident, using a subtle background, a 1px border, and stronger foreground while staying calm inside the narrow rail
+  - the faint vertical guide line added just enough structure to improve scanability without turning the sidebar into heavy chrome
+- Remaining opportunities:
+  - once this worktree can launch directly, capture a true after-state screenshot of the settings rail and confirm the selected child treatment still feels balanced in both light and dark themes
+  - avoid more settings-rail churn unless live screenshots still show navigation clarity issues there; the next more likely settings candidate is a content-pane density or hierarchy issue in `Settings > General`, not more sidebar chrome

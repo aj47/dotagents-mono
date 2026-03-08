@@ -32,6 +32,13 @@ type NavLinkItem = {
   icon: string
 }
 
+const SETTINGS_CHILD_NAV_LINK_CLASS_NAME =
+  "flex h-8 w-full items-center rounded-md border px-2 text-sm font-medium transition-all duration-200"
+const SETTINGS_CHILD_NAV_LINK_ACTIVE_CLASS_NAME =
+  "border-border/70 bg-accent/80 text-foreground shadow-sm"
+const SETTINGS_CHILD_NAV_LINK_INACTIVE_CLASS_NAME =
+  "border-transparent text-muted-foreground hover:border-border/50 hover:bg-accent/40 hover:text-foreground"
+
 interface AgentSession {
   id: string
   conversationTitle?: string
@@ -235,11 +242,11 @@ export const Component = () => {
         aria-current={isActive ? "page" : undefined}
         className={() => {
           return cn(
-            "flex h-7 items-center rounded-md px-2 font-medium transition-all duration-200",
-            isCollapsed ? "justify-center" : "gap-2",
+            SETTINGS_CHILD_NAV_LINK_CLASS_NAME,
+            isCollapsed ? "justify-center px-1" : "gap-2",
             isActive
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              ? SETTINGS_CHILD_NAV_LINK_ACTIVE_CLASS_NAME
+              : SETTINGS_CHILD_NAV_LINK_INACTIVE_CLASS_NAME,
           )
         }}
       >
@@ -576,8 +583,8 @@ export const Component = () => {
                 </button>
 
                 {settingsExpanded && (
-                  <div className="mt-1 grid gap-0.5 text-sm">
-                    {settingsNavLinks.map(renderNavLink)}
+                  <div className="mt-1 ml-2 border-l border-border/50 pl-3 text-sm">
+                    <div className="grid gap-1">{settingsNavLinks.map(renderNavLink)}</div>
                   </div>
                 )}
               </div>
