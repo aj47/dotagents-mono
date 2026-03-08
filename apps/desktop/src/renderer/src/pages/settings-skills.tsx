@@ -644,70 +644,84 @@ Write your skill instructions here.
               <p>No skills yet. Create your first skill or import one.</p>
             </div>
           ) : (
-            skills.map((skill) => (
-              <div
-                key={skill.id}
-                className={`flex flex-wrap items-start gap-2 rounded-lg border bg-card px-3 py-2 ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
-                onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
-              >
-                <div className="flex min-w-0 flex-[1_1_16rem] items-start gap-3">
-                  {isSelectMode && (
-                    <button
-                      type="button"
-                      className="shrink-0 flex items-center justify-center"
-                      onClick={(e) => { e.stopPropagation(); toggleSkillSelection(skill.id) }}
-                    >
-                      {selectedSkillIds.has(skill.id) ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  )}
-                  <span className="min-w-0 flex-1 break-words font-medium leading-tight [overflow-wrap:anywhere]">
-                    {skill.name}
-                  </span>
-                </div>
-                {!isSelectMode && (
-                  <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => handleEditSkill(skill)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => openSkillFileMutation.mutate(skill.id)}
-                      title="Reveal skill file in Finder/Explorer"
-                      aria-label="Reveal skill file"
-                    >
-                      <FileText className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => exportSkillMutation.mutate(skill.id)}
-                    >
-                      <Download className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => handleDeleteSkill(skill)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+            skills.map((skill) => {
+              const isSkillSelected = selectedSkillIds.has(skill.id)
+              const skillLabel = skill.name || "skill"
+
+              return (
+                <div
+                  key={skill.id}
+                  className={`flex flex-wrap items-start gap-2 rounded-lg border bg-card px-3 py-2 ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && isSkillSelected ? "border-primary bg-primary/5" : ""}`}
+                  onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
+                >
+                  <div className="flex min-w-0 flex-[1_1_16rem] items-start gap-3">
+                    {isSelectMode && (
+                      <button
+                        type="button"
+                        className="shrink-0 flex items-center justify-center"
+                        onClick={(e) => { e.stopPropagation(); toggleSkillSelection(skill.id) }}
+                        aria-label={`${isSkillSelected ? "Deselect" : "Select"} ${skillLabel}`}
+                        aria-pressed={isSkillSelected}
+                        title={`${isSkillSelected ? "Deselect" : "Select"} ${skillLabel}`}
+                      >
+                        {isSkillSelected ? (
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Square className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    )}
+                    <span className="min-w-0 flex-1 break-words font-medium leading-tight [overflow-wrap:anywhere]">
+                      {skill.name}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))
+                  {!isSelectMode && (
+                    <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => handleEditSkill(skill)}
+                        title={`Edit ${skillLabel}`}
+                        aria-label={`Edit ${skillLabel}`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => openSkillFileMutation.mutate(skill.id)}
+                        title={`Reveal ${skillLabel} skill file in Finder/Explorer`}
+                        aria-label={`Reveal ${skillLabel} skill file`}
+                      >
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => exportSkillMutation.mutate(skill.id)}
+                        title={`Export ${skillLabel}`}
+                        aria-label={`Export ${skillLabel}`}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => handleDeleteSkill(skill)}
+                        title={`Delete ${skillLabel}`}
+                        aria-label={`Delete ${skillLabel}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
 

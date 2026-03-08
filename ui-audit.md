@@ -1,5 +1,57 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 83: Desktop capabilities skills list exposed anonymous icon-only row actions in live product inspection
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-skills.tsx` (`Settings → Capabilities → Skills` row actions and select-mode toggle semantics)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the most recently touched desktop settings/general/repeat-tasks/sidebar/memories surfaces and the latest mobile follow-ups.
+  - `Settings → Capabilities` was still live-inspectable through the reusable Electron renderer, and this Skills sub-surface was not one of the most recently revisited areas.
+  - Earlier ledger work on the Skills list focused on width/truncation pressure, but a fresh live accessibility snapshot exposed a different untreated issue: most row actions were still anonymous icon-only buttons.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` before choosing the next area
+  - reused `agent-browser --cdp 9333` against the live Electron renderer on `http://localhost:5174/settings/capabilities`
+  - kept the live page at `760×960` with `document.documentElement.style.fontSize = '24px'` so the audit stayed aligned with the repo’s stressed desktop inspection workflow
+  - captured live accessibility evidence in `tmp/ui-audit/settings-skills-action-a11y-before.json` and `tmp/ui-audit/settings-skills-action-a11y-before-snapshot.txt`, then cross-checked current source in `settings-skills.tsx` to confirm only the reveal action was labeled in this checkout
+  - prototyped the exact labeling treatment directly in the mounted DOM and captured the resulting accessibility snapshot in `tmp/ui-audit/settings-skills-action-a11y-after-snapshot.txt`
+  - cross-checked mobile scope and kept this desktop-only: `apps/mobile/src/` exposes skill toggles in settings flows, but not this multi-action desktop skill-management list
+
+#### Findings
+
+- Before the fix, the desktop `Settings → Capabilities → Skills` list had one concrete discoverability/accessibility issue with clear user impact:
+  - each skill row exposed four icon-only actions (`edit`, `reveal`, `export`, `delete`), but in live inspection only `Reveal skill file` had any explicit name or tooltip
+  - the accessibility snapshot showed repeated blank buttons (`button [ref=e25]`, `button [ref=e27]`, `button [ref=e28]`, etc.) instead of meaningful action names
+  - the structured evidence in `tmp/ui-audit/settings-skills-action-a11y-before.json` confirmed that for representative rows like `x-feed-summarizer`, `x-post-tweet`, `electron-automation`, and `chrome-browser`, three of the four row actions had empty `aria-label` and `title` values
+  - practical impact: the management list looked polished visually, but keyboard users, assistive tech users, and even mouse users relying on hover tooltips had to infer what most row actions did from icon shape alone
+
+#### Changes made
+
+- Hardened only the desktop Skills row action semantics in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`:
+  - introduced a local `skillLabel` fallback per row so action copy can stay meaningful even if a skill name is missing
+  - added explicit `title` and `aria-label` text for the icon-only `Edit`, `Reveal`, `Export`, and `Delete` buttons using the skill name for context
+  - upgraded the select-mode icon toggle with explicit `aria-label`, `title`, and `aria-pressed` state so the row stays semantically clear in that adjacent state too
+  - kept the layout and action ordering unchanged to avoid unnecessary redesign churn on a previously hardened row
+- Extended `apps/desktop/src/renderer/src/pages/settings-skills.layout.test.ts` with focused source-contract coverage for the new icon-action labeling contract
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.layout.test.ts` *(blocked: `vitest` was not found because this worktree still has no local desktop dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `skillLabel` fallback plus the select/edit/reveal/export/delete labeling contract in both `settings-skills.tsx` and `settings-skills.layout.test.ts` ✅
+- Live accessibility evidence before the fix at `http://localhost:5174/settings/capabilities`:
+  - `tmp/ui-audit/settings-skills-action-a11y-before-snapshot.txt` showed repeated unnamed row-action buttons after `New Skill`
+  - `tmp/ui-audit/settings-skills-action-a11y-before.json` showed representative rows where only `Reveal skill file` had a populated name/tooltip while the neighboring icon buttons remained blank
+- Live DOM prototype verification of the intended fix:
+  - `tmp/ui-audit/settings-skills-action-a11y-after-snapshot.txt` showed those same rows exposing meaningful names such as `Edit x-feed-summarizer`, `Reveal x-feed-summarizer skill file`, `Export x-feed-summarizer`, and `Delete x-feed-summarizer`
+  - the prototype confirmed the exact semantics fix improves discoverability without requiring any visual layout change
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-skills.tsx apps/desktop/src/renderer/src/pages/settings-skills.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is still not guaranteed to be serving this checkout’s rebuilt bundle, so I treated the live app as pre-fix evidence plus DOM-prototype validation and used direct source verification for the shipped code.
+- This chunk is desktop-only: the mobile app does not expose the same multi-action skills-management row pattern, so no parallel mobile patch was needed.
+- Tradeoff/rationale: the row actions now expose longer tooltip/accessibility copy tied to each skill name, but that is a safer tradeoff than leaving three quarters of the row’s action rail anonymous.
+- Best next UI audit chunk after this one: move away from the Skills list again unless a rebuilt renderer for this checkout becomes available; the next strongest target is another fresh desktop or mobile empty/loading/error/dense-controls surface with live runtime evidence.
+
 ### 2026-03-08 — Chunk 82: Mobile loop editor kept its enabled toggle in an older rigid row that would crowd sooner than adjacent mobile editors under narrow width + larger text
 
 - Area selected:
