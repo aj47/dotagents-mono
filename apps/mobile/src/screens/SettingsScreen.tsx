@@ -221,6 +221,15 @@ function formatAgentRoleLabel(role?: AgentProfile['role']): 'Profile' | 'Delegat
   }
 }
 
+function formatAgentRowSecondaryText(profile: AgentProfile): string | null {
+  if (profile.autoSpawn && (profile.connectionType === 'acp' || profile.connectionType === 'stdio')) {
+    return 'Starts automatically with DotAgents';
+  }
+
+  const description = profile.description?.trim();
+  return description ? description : null;
+}
+
 function normalizeAgentLookupName(name?: string): string {
   return name?.trim().toLowerCase() || '';
 }
@@ -2519,6 +2528,7 @@ export default function SettingsScreen({ navigation }: any) {
                   agentProfiles.map((profile) => {
                     const isSelectedMainAgentProfile = selectedMainAgentLookupName.length > 0
                       && normalizeAgentLookupName(profile.name) === selectedMainAgentLookupName;
+                    const agentSecondaryPreview = formatAgentRowSecondaryText(profile);
                     const agentEditHint = isSelectedMainAgentProfile
                       ? 'Opens this agent so you can review and change its settings. This is the current main agent for new chats in ACP mode.'
                       : 'Opens this agent so you can review and change its settings.';
@@ -2574,9 +2584,9 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.serverMeta}>
                             {formatAgentConnectionTypeLabel(profile.connectionType)} • {formatAgentRoleLabel(profile.role)}
                           </Text>
-                          {profile.description && (
-                            <Text style={styles.agentDescriptionPreview} numberOfLines={1} ellipsizeMode="tail">
-                              {profile.description}
+                          {agentSecondaryPreview && (
+                            <Text style={styles.agentSecondaryPreview} numberOfLines={1} ellipsizeMode="tail">
+                              {agentSecondaryPreview}
                             </Text>
                           )}
                           {renderInlineEditAffordance()}
@@ -3637,7 +3647,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginTop: 2,
       lineHeight: 16,
     },
-    agentDescriptionPreview: {
+    agentSecondaryPreview: {
       fontSize: 11,
       color: theme.colors.mutedForeground,
       marginTop: spacing.xs,

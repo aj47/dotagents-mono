@@ -1,5 +1,48 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 143 - Surface auto-start behavior in the mobile Agents list
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-touched loop edit notice ordering or selector-sheet height work without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/screens/AgentEditScreen.tsx`, and `apps/mobile/tests/settings-agent-actions-mobile.test.js` because the mobile agents list still had a source-backed state-clarity gap available.
+  - Tried to restore live-validation confidence first, but fresh Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi` → `root node_modules: missing`
+    - `printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi` → `apps/mobile node_modules: missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `Settings > Agents` already surfaced connection type, role, main-agent status, built-in state, disabled state, and an optional one-line description preview.
+  - `AgentEditScreen` also exposes an `Auto Spawn` toggle for ACP and Stdio agents, and the shared `ApiAgentProfile` type includes `autoSpawn`.
+  - The mobile agents list did not surface that auto-start behavior anywhere, so a command-based agent could start automatically with DotAgents while the list still spent its only preview line on optional UI-only description copy.
+- Issue identified:
+  - The mobile agents list hid auto-start behavior behind the edit flow, weakening transparency around agent activity and user control for command-based sub-agents.
+- Decision and rationale:
+  - Keep the existing row layout, badges, metadata line, and action rail intact.
+  - Avoid adding another badge to the already busy name row or expanding row height with an extra status line.
+  - Reuse the existing single preview slot instead: prefer operational auto-start state when `autoSpawn` is enabled for ACP/Stdio agents, otherwise fall back to the existing description preview.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to add `formatAgentRowSecondaryText(profile)`, which:
+    - returns `Starts automatically with DotAgents` for `autoSpawn` ACP/Stdio agents,
+    - otherwise falls back to the trimmed optional description,
+    - keeps the list on a single preview line via a renamed `agentSecondaryPreview` style.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new secondary-preview contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed operational startup behavior is more important mobile list context than optional descriptive copy when both compete for the same preview slot.
+  - Chose a concise sentence instead of another badge so the row stays readable on narrow screens.
+  - Auto-start agents with descriptions now prioritize startup-state visibility over that description in the list, while full details remain available in the edit flow.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that auto-start agents now read clearly at a glance without making the agents list feel noisier.
+  - Compare an auto-start ACP/Stdio agent against a non-auto-start agent with a description so the preview-slot priority feels intuitive in mixed lists.
+  - If live validation shows the new copy is too long for narrow rows, prefer a small wording trim before adding more badges or row chrome.
+
 ## Iteration 142 - Put saved-profile loading and retry guidance before disabled mobile chips
 
 - Date: 2026-03-08
