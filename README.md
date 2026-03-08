@@ -51,6 +51,7 @@ DotAgents is three things:
 | **Skills** | Portable agent capabilities defined in `.agents/skills/`. Works across tools. |
 | **Memory** | Persistent agent context stored in `.agents/memory/`. Agents remember across sessions. |
 | **Agent Profiles** | Specialized AI personas with distinct skills and tools. Delegate tasks to the right agent. |
+| **`.dotagents` Bundles** | Portable configuration artifacts for sharing agents, skills, MCP setup, tasks, and optional memories with preview/restore safety flows. |
 | **Voice Interface** | Hold-to-record, 30+ languages, auto-insert results into any app. Voice is the primary interface. |
 | **MCP Tools** | Model Context Protocol integration for tool execution, OAuth 2.1 auth, and real-time progress. |
 | **ACP Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents. |
@@ -68,6 +69,16 @@ The `.agents/` directory is an open standard for agent configuration that works 
 ```
 
 Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool adopting the protocol. Protocol first, product second.
+
+## Portable `.dotagents` Bundles
+
+DotAgents also supports portable `.dotagents` bundle files for sharing and restoring working agent setups.
+
+- import is preview-first, conflict-aware, and backed by automatic pre-import snapshots
+- restore is available from `Settings -> Capabilities`
+- public Hub-style sharing uses inspect-before-install and sanitized export defaults
+
+See **[DOTAGENTS_BUNDLES.md](DOTAGENTS_BUNDLES.md)** for the current workflow and trust defaults.
 
 ## Quick Start
 

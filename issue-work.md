@@ -1105,3 +1105,33 @@
   - Revisit the restore-from-backup surface if it is not already complete enough to satisfy the remaining acceptance criteria under Settings → Capabilities.
 
 - Next recommended issue work item: either keep pushing `#57` by validating the new cherry-pick backend path under restored desktop dependencies, or pivot back to a fresh issue such as `#25` / another local desktop reliability slice if a cleaner verification path is preferred.
+
+##### Issue #25 — `.dotagents` docs/spec alignment after import-safety + inspector work
+
+- Selection rationale:
+  - Issue `#25` had not been directly advanced in the ledger yet, and its only issue comment explicitly called out a docs/spec follow-up after `#56` (inspect-before-install) and `#57` (import safety) landed.
+  - This was a fresh, narrow, high-value slice: make the now-real bundle trust model discoverable without reopening backend import complexity.
+- Investigation:
+  - Re-read issue `#25` plus its planning comment and confirmed the requested next deliverable was to extend the `.dotagents` docs/spec with finalized UX and security defaults from `#56` and `#57`.
+  - Inspected `README.md`, `apps/desktop/src/main/bundle-service.ts`, `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx`, and `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx` to align the documentation with the current implementation rather than the earlier aspirational ZIP-based issue prose.
+  - Confirmed the repo did not yet have a focused `.dotagents` workflow/spec document; the closest public-facing surface was a brief mention in `README.md` plus code comments in `bundle-service.ts`.
+- Important assumptions:
+  - Assumption: a repo-local current-state spec note plus README discoverability is the right first docs slice for `#25`, rather than trying to fully rewrite the umbrella issue body or build a larger docs site.
+  - Why acceptable: the issue comment asked for docs/spec alignment after recent trust work, and this lands an immediately useful, reviewable artifact in the repo with the least scope.
+  - Assumption: documenting the current JSON-based `.dotagents` artifact shape is preferable to restating the older ZIP-oriented proposal from the original issue text.
+  - Why acceptable: the implementation in `bundle-service.ts` is the source of truth users and contributors need today, and the doc explicitly frames itself as a current-state workflow/spec note instead of a frozen final format promise.
+- Changes implemented:
+  - Added `DOTAGENTS_BUNDLES.md`, a focused current-state bundle workflow/spec note covering artifact shape, automatic pre-import backups, restore entry points, preview/conflict defaults, per-item cherry-pick import, Hub-oriented export defaults, and inspect-before-install trust posture.
+  - Updated `README.md` with a new `.dotagents Bundles` key-concept row and a short `Portable .dotagents Bundles` section linking readers to the new doc.
+- Verification run:
+  - Completed: `git diff --check` ✅
+  - Completed: dependency-free Node assertion script validating the README link plus 6 required workflow/spec headings/phrases across `README.md` and `DOTAGENTS_BUNDLES.md` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Keep the new doc in sync if the bundle format changes again (for example, artifact structure, restore metadata, or Hub install flow).
+  - Decide whether the website, README, and issue body should later converge on a single canonical bundle-spec surface once the Hub workflow stabilizes further.
+  - Continue Phase 2 work only when there is a similarly concrete local slice (for example, registry caching, install/update status, or Hub install provenance) rather than reopening the entire umbrella issue at once.
+
+- Next recommended issue work item: either return to `#25` for a narrow Phase 2 Hub install/status slice, or pivot to another fresh issue only if it offers a tighter user-visible reliability/UX increment than the remaining bundle follow-ups.
