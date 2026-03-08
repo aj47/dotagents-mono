@@ -31,4 +31,14 @@ describe("settings agents system prompt editor", () => {
     expect(compactSource).toContain(compact('allToolsLoadError&&allTools.length===0'))
     expect(compactSource).not.toContain(compact('catch{}'))
   })
+
+  it("surfaces partial MCP tool-list failures instead of showing false zero-tool states in capabilities", () => {
+    expect(compactSource).toContain(compact('allToolsLoadError&&serverNames.length>0&&renderToolListWarning('))
+    expect(settingsAgentsSource).toContain('Tool counts may be incomplete because the MCP tool list could not be refreshed.')
+    expect(compactSource).toContain(compact('constshowMissingToolListWarning=Boolean(allToolsLoadError)&&serverToolList.length===0'))
+    expect(compactSource).toContain(compact('showMissingToolListWarning?"Tools unavailable":`${serverToolList.length}tools`'))
+    expect(settingsAgentsSource).toContain("This server's tool list is unavailable right now.")
+    expect(compactSource).toContain(compact('allToolsLoadError&&allTools.length>0&&renderToolListWarning('))
+    expect(settingsAgentsSource).toContain('Built-in tool toggles may be incomplete because the tool list could not be refreshed.')
+  })
 })

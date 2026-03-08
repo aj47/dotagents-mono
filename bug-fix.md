@@ -1,6 +1,7 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-agents.tsx` again for the ledger's adjacent capabilities follow-up and confirmed a fresh partial-load bug: `allToolsLoadError` only guarded the fully empty built-in-tools state, so when `getMcpDetailedToolList()` failed after server status loaded the Capabilities tab still rendered MCP server cards with `0 tools` and no warning, and could keep showing built-in toggles without telling the user that tool availability data was stale/incomplete.
 - [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and confirmed the visible `Start Tunnel` / `Stop Tunnel` actions still used React Query mutations with `onSuccess(...)` only, so renderer-side mutation/IPC failures had no toast/banner/inline feedback path.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` and confirmed the desktop WhatsApp `Connect` / `Disconnect` / `Logout` actions still mixed action failures and background status-refresh failures into the same `statusError` state.
 - [x] 2026-03-08: Ran dependency-free sanity verification after the WhatsApp fix: `git diff --check` passed, and a Node file-read assertion script passed for `settings-whatsapp.tsx`, `settings-whatsapp.allowlist.test.tsx`, and the new ledger entry.
@@ -218,6 +219,10 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
 
 ### Reproduced
+- [x] **Desktop Settings → Agents still misreported partial MCP tool-list failures as real empty tool counts (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` already tracked `allToolsLoadError`, but only used it for the fully empty built-in-tools fallback (`allToolsLoadError && allTools.length === 0`).
+  - The separate MCP Servers section mapped server names from `serverStatus`, then always rendered each card's summary from `toolsByServer(name)`, so a rejected `getMcpDetailedToolList()` refresh degraded to `0 tools` with no warning even though the page still knew the servers existed.
+  - When the tool list failed after a prior successful load, the Built-in Tools section could also continue showing stale toggles without any partial warning, so users had no indication that the capabilities view was incomplete.
 - [x] **Desktop Remote Server tunnel actions could fail like dead buttons (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` wired the visible `Start Tunnel` and `Stop Tunnel` buttons through React Query mutations that only handled `onSuccess(...)`, so rejected IPC calls had no visible user feedback.
   - `apps/desktop/src/main/cloudflare-tunnel.ts` returns `{ success: false, error }` for several real start failures (for example missing `cloudflared`, missing named-tunnel credentials, or DNS-route setup failure), and the renderer previously invalidated status polling without surfacing that non-throwing failure at click time.
@@ -446,6 +451,7 @@
    - That meant a stale desktop `Delete task` click could claim success even though no repeat task was actually removed, which is misleading on an active settings-management surface.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the Capabilities tab now surfaces partial `getMcpDetailedToolList()` failures with an inline `Tool list unavailable` warning + retry CTA in the MCP Servers and Built-in Tools sections, changes affected server cards from misleading `0 tools` to `Tools unavailable`, and shows explicit expanded copy when a server's tool list could not be loaded.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so quick/named `Start Tunnel` mutations now surface a visible `toast.error(...)` for both rejected IPC calls and `{ success: false, error }` results, while `Stop Tunnel` now surfaces a visible toast if its mutation rejects.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` so WhatsApp action failures now use a dedicated `actionError` state instead of sharing the poll-refresh `statusError`, which preserves the specific `Connect` / `Disconnect` / `Logout` failure message even after the automatic status refresh runs.
 - [x] Added a targeted regression test in `apps/desktop/src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` that mocks a failed `whatsappConnect()` result and asserts the failure message still appears after the component performs its automatic `whatsappGetStatus()` refresh.
@@ -624,6 +630,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` with focused regression coverage for the stale delete-result path, locking in the new false-result guard and query refresh behavior.
 
 ### Verified
+- [x] Manual source verification: `settings-agents.tsx` now renders `renderToolListWarning(...)` whenever `allToolsLoadError` coexists with loaded server rows or existing tool rows, and per-server summaries now switch from ```${serverToolList.length} tools``` to `Tools unavailable` when the tool list failed and no server tools could be loaded.
+- [x] Targeted source-level verification command passed without dependencies: a plain `node` assertion script checked the new server-warning guard, warning copy, per-server `Tools unavailable` label, expanded warning text, built-in partial-warning guard/copy, and the new regression-test assertions.
+- [x] Regression coverage updated in `apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` so future source changes must keep the partial MCP tool-list warning paths instead of falling back to false zero-tool states.
 - [x] Manual source verification: `settings-remote-server.tsx` now calls `toast.error(getTunnelActionErrorMessage(...))` when a tunnel start resolves with `success: false`, and also from the quick/named start + stop mutation `onError(...)` paths, so both non-throwing and rejected tunnel failures are visible immediately.
 - [x] Manual source verification: `settings-whatsapp.tsx` now renders `(actionError || statusError)` in the error banner, while `handleConnect()` / `handleDisconnect()` / `handleLogout()` write failures into `actionError` instead of the poll-cleared `statusError`, so the automatic refresh no longer erases explicit WhatsApp action failures.
 - [x] Manual test-shape verification: `settings-whatsapp.allowlist.test.tsx` now includes a failed-connect regression case that clicks `Connect with QR Code`, confirms the automatic status refresh still runs, and asserts the structured backend error text remains visible in the rendered tree.
@@ -788,6 +797,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Full automated regression execution for this partial capabilities warning fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, and the repo root still reports `root-node_modules-missing`.
 - [x] Targeted automated verification for this remote-server tunnel feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this WhatsApp action-error regression is blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop test -- settings-whatsapp.allowlist.test.tsx` fails in `pretest` because `pnpm -w run build:shared` cannot find `tsup`, and PNPM warns that local `node_modules` are missing.
 - [x] Targeted automated verification for this desktop agent-capabilities load-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -846,6 +856,7 @@
 - [x] Targeted automated verification for this desktop repeat-task delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether the MCP Servers section should eventually preserve last-known nonzero tool counts with an explicit stale badge instead of collapsing to the safer `Tools unavailable` label whenever a later tool-list refresh fails and returns no rows, once live desktop validation is available.
 - [ ] Whether the remote-server tunnel status panel should eventually suppress or deduplicate its inline `Error: ...` copy when the same failure is already shown via the new click-time toast, once live desktop validation is available.
 - [ ] Whether the WhatsApp settings `Refresh` button and/or later healthy polling should explicitly clear a previously shown `actionError` after the user has seen it long enough, or whether keeping that message sticky until the next user action is the better desktop UX.
 - [ ] Whether the desktop agent-editor MCP Servers section should eventually show a non-blocking inline warning when server status loads successfully but the shared tool list fails, since the section can still render server rows while tool counts/expansions are incomplete until live validation is possible.
@@ -886,6 +897,7 @@
 - [ ] Whether adjacent desktop repeat-task actions that also depend on boolean TIPC results (`triggerLoop`, `startLoop`, `stopLoop`) should gain the same explicit false-result feedback once loop management can be exercised in a runnable environment.
 
 ### Diagnosis / Rationale
+- The new Settings → Agents bug is a partial-load honesty bug, not another full-page loading-state bug: the page already differentiated total tool-list failure from empty data, but it still treated the MCP server cards and partially loaded built-in tool sections as if `getMcpDetailedToolList()` had succeeded, which could falsely communicate `0 tools` or silently stale capability toggles.
 - The agent-capabilities issue is a page-scoped load-state correctness bug: rejected capabilities fetches were indistinguishable from a genuine empty configuration, so the editor could falsely tell users they had no skills, no MCP servers, or no built-in tools when the page had actually failed to load.
 - The WhatsApp issue is an action-feedback correctness bug: the main process intentionally distinguishes action failures (`{ success: false, error }`) from background status polling, but the renderer previously collapsed both into one `statusError` field and then cleared that field as a side effect of the follow-up refresh.
 - Splitting action failures from poll failures is the smallest safe fix because it preserves the existing layout and polling behavior while making the user-visible error contract match the backend contract instead of accidentally overwriting it.
@@ -980,6 +992,7 @@
 - Checking the returned success flag and refreshing the loop queries is the smallest safe fix because it corrects the false-success toast without changing loop-service semantics or widening into unrelated run/toggle behavior.
 
 ### Assumptions
+- Assumption: showing `Tool list unavailable` plus a retry affordance is an acceptable conservative fallback for partially loaded capabilities because honest degraded-state messaging is more valuable than continuing to imply that a server truly has zero tools when the tool-list request just failed.
 - Assumption: using inline loading/error/retry states in the desktop agent editor is acceptable because this is a page-scoped initial-load failure, the repo already uses the same pattern in `mcp-tool-manager.tsx`, and a toast-only approach would be easier to miss once the editor is already open.
 - Assumption: keeping WhatsApp `actionError` visible across background status polls is acceptable for this pass because the concrete bug is the action error disappearing before the user can react, and preserving that message is safer than letting a generic status refresh immediately overwrite it.
 - Assumption: preserving previously loaded capability data on later fetch failures is acceptable for this pass because the confirmed bug was the initial false-empty state; keeping stale-but-usable data visible is less disruptive than blanking the editor until a later live-validation pass decides whether partial-warning UX is needed.
@@ -1038,6 +1051,7 @@
 - Assumption: refreshing `loops` / `loop-statuses` and showing an error toast when `deleteLoop(...)` resolves to `{ success: false }` is acceptable because the current false-return path means the task id is stale or already missing, so syncing the visible list is more honest than pretending the delete succeeded.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify desktop Settings → Agents → Capabilities by forcing `getMcpDetailedToolList()` to fail while `getMcpServerStatus()` still succeeds, confirming the page now shows `Tool list unavailable` / `Tools unavailable` instead of implying a real zero-tool server.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test -- settings-whatsapp.allowlist.test.tsx` and live-verify desktop Settings → WhatsApp by forcing one `{ success: false, error }` response for `Connect`, `Disconnect`, and `Logout` to confirm each action now keeps its specific failure message visible after the automatic status refresh.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify the desktop Settings → Agents Capabilities tab by forcing one rejected `getSkills()`, `getMcpServerStatus()`, and `getMcpDetailedToolList()` call to confirm the page now shows inline retry states instead of false-empty capability messages.
 - After that, inspect whether the MCP Servers section should also surface a partial-warning state when server status succeeds but the tool list alone fails, since that follow-up is lower-signal than the now-fixed initial false-empty bug.
