@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop shared provider model selector fallback-vs-live discovery clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, `apps/desktop/src/renderer/src/lib/queries.ts`, `apps/desktop/src/main/models-service.ts`, and `apps/desktop/src/main/remote-server.ts` reviewed, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop preset-model selector loading / error / empty-state clarity plus repeated-fetch performance in `apps/desktop/src/renderer/src/components/preset-model-selector.tsx`, with shared query-hook reuse reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, adjacent model-loading UX pattern checked in `apps/desktop/src/renderer/src/components/model-selector.tsx`, usage sites reviewed in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop model preset manager create/edit dialog draft-loss / failed-save guardrails in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx`, with shared dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`.
 - 2026-03-08: Desktop predefined prompts add/edit dialog draft-loss / destructive-delete guardrails in `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`, with composer usage reviewed in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` / `apps/desktop/src/renderer/src/pages/sessions.tsx`, save-mutation behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked across `apps/mobile/src/`.
@@ -30,6 +31,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop shared provider model discovery now reports whether the selector is showing verified provider results or fallback suggestions, and the shared selector surfaces that with clearer missing-key / fallback / empty-state / manual-entry guidance plus explicit custom-model and refresh button labels.
 - 2026-03-08: Desktop preset-model selectors now share cached preset-model and model-info queries across matching selectors, so the create/edit preset dialogs stop refetching the same model list three times, and the control now shows clearer inline guidance for missing credentials, loading, refresh failures, empty results, and available-model counts.
 - 2026-03-08: Desktop model preset create/edit dialogs now track dirty draft baselines, warn before backdrop / Escape / close-button / cancel dismissal would discard unsaved preset edits, and keep the dialog open with inline retry guidance if async config save fails instead of closing immediately.
 - 2026-03-08: Desktop predefined prompts now track dirty draft baselines, warn before dialog dismissal would discard unsaved prompt edits, keep the dialog open with inline failure guidance if config save fails, and confirm before deleting a saved prompt from quick access.
@@ -51,6 +53,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-model-selector-feedback.test.js tests/desktop-preset-model-selector-feedback.test.js`
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop typecheck:web` (blocked: this worktree is missing `node_modules`, so `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved and `tsc` could not complete the desktop web typecheck).
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-model-preset-guardrails.test.js tests/desktop-preset-model-selector-feedback.test.js`
 - 2026-03-08: `node --test tests/desktop-preset-model-selector-feedback.test.js`
 - 2026-03-08: `git diff --check`
@@ -87,6 +92,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this shared model-selector pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
+- 2026-03-08: Focused desktop web typecheck for this shared model-selector pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`.
 - 2026-03-08: Live desktop UI inspection for this preset-model-selector pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this model-preset dialog pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this predefined-prompts draft-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
@@ -104,10 +111,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop shared provider model selector fallback / empty-state / custom-model handoff clarity (`apps/desktop/src/renderer/src/components/model-selector.tsx`)
+- Mobile provider model picker fallback / empty-state / custom-model handoff clarity (`apps/mobile/src/screens/SettingsScreen.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect the desktop shared `model-selector.tsx` fallback / empty-state / custom-model handoff so provider model settings stay understandable when discovery fails, returns nothing useful, or falls back to manual entry
+- Inspect the mobile provider model picker / settings flow next so fallback-model suggestions, empty states, and manual-entry guidance stay consistent with the improved desktop selector
+- Once a runnable Electron target is available, live-check the desktop shared `model-selector.tsx` states for missing API key, fallback suggestions, empty responses, refresh behavior, and custom-model entry to confirm the new helper text hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
 - Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
 - Once a runnable Electron target is available, live-check the desktop bundle export/publish dialogs to confirm the new discard warning and pending-action guardrails feel right during backdrop click, Escape, titlebar close, preview back, and file-save flows
@@ -115,6 +123,46 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop shared provider model-selector fallback clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop shared provider model selector in `apps/desktop/src/renderer/src/components/model-selector.tsx`
+  - desktop model-discovery query typing in `apps/desktop/src/renderer/src/lib/queries.ts`
+  - desktop provider model-discovery backend in `apps/desktop/src/main/models-service.ts`
+  - desktop remote settings API response in `apps/desktop/src/main/remote-server.ts`
+  - usage context reviewed in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - checked `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile has an equivalent provider-model settings surface, but kept this pass scoped to the desktop shared selector while shipping compatible response metadata
+- Why it was chosen:
+  - the ledger explicitly marked the desktop shared provider model selector as the next fresh area that had not been investigated recently
+  - this selector sits directly on provider model configuration, so misleading discovery feedback can cause users to trust guessed fallback models as if they were verified live provider results
+  - source inspection found a concrete high-leverage issue: `fetchAvailableModels()` already falls back to generic model lists when discovery fails or credentials are missing, but the selector usually presented those lists without clearly telling the user they were fallback suggestions
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/model-selector.tsx` for loading/error/empty/custom-input behavior, helper copy, refresh affordances, and fallback handling
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to confirm how the shared selector is used in provider settings and which credential fields sit nearby
+  - `apps/desktop/src/renderer/src/lib/queries.ts` to confirm the existing React Query pattern and the smallest place to carry discovery metadata into the selector
+  - `apps/desktop/src/main/models-service.ts` to confirm real discovery can silently fall back to generic model lists on missing API keys or provider fetch failures
+  - `apps/desktop/src/main/remote-server.ts` and `apps/mobile/src/screens/SettingsScreen.tsx` to check compatibility and mobile parity implications
+  - attempted live desktop inspection via Electron/CDP first, but `electron_execute` reported `No Electron targets found`
+- Improvement made:
+  - model discovery now returns whether the list came from the live provider or a fallback path, along with a lightweight fallback reason for missing API keys vs provider fetch failures
+  - the desktop remote settings API now includes the same provenance metadata so downstream settings surfaces can consume it without another backend pass
+  - the shared desktop selector now labels fallback results as `Fallback suggestions`, explains when an API key is missing, clarifies when the app could not verify provider models, and keeps manual custom-model entry framed as the explicit recovery path
+  - the selector now uses clearer placeholders and empty-state copy for loading, fallback, and zero-result cases, and both the custom-model toggle and refresh action now expose explicit labels/titles for affordance and accessibility
+  - added focused source-level regression coverage in `tests/desktop-model-selector-feedback.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept fallback model suggestions available instead of disabling the selector outright, because a guessed list is still better than a dead-end so long as the UI clearly labels it as fallback and points users to custom entry when accuracy matters
+  - kept this pass scoped to the shared desktop selector instead of also refactoring the mobile settings UI, to ship a small local improvement first while leaving compatible API metadata available for a mobile follow-up
+  - used lightweight provenance fields rather than a broader model-discovery refactor because the main user problem was clarity, not the underlying fetch mechanism
+  - accepted source-level verification for this iteration because live Electron inspection and full desktop typecheck support are both unavailable in the current worktree
+- Tests / verification:
+  - `node --test tests/desktop-model-selector-feedback.test.js tests/desktop-preset-model-selector-feedback.test.js`
+  - `git diff --check`
+  - attempted `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this worktree is missing `node_modules`, so `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved)
+- Follow-up checks:
+  - once an Electron target is available, live-check missing-key, fallback-suggestion, empty-result, refresh, and custom-model flows to confirm the helper text hierarchy feels right in the actual provider settings UI
+  - inspect the mobile provider model picker next so the equivalent settings flow also distinguishes fallback suggestions from verified live results
 
 ### 2026-03-08 — Desktop preset-model selector query dedupe and state clarity
 - Date:

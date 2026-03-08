@@ -24,6 +24,12 @@ interface ModelSelectorProps {
   disabled?: boolean
 }
 
+const PROVIDER_NAMES: Record<string, string> = {
+  openai: "OpenAI",
+  groq: "Groq",
+  gemini: "Gemini",
+}
+
 export function ModelSelector({
   providerId,
   value,
@@ -41,11 +47,18 @@ export function ModelSelector({
   const customInputRef = useRef<HTMLInputElement>(null)
 
   const configQuery = useConfigQuery()
+  const providerName = PROVIDER_NAMES[providerId] || providerId
   const currentPresetId = providerId === "openai"
     ? configQuery.data?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
     : undefined
 
   const modelsQuery = useAvailableModelsQuery(providerId, !!providerId, currentPresetId)
+  const modelsResult = modelsQuery.data
+  const isLoading = modelsQuery.isLoading || isRefreshing
+  const hasError = modelsQuery.isError && !modelsResult
+  const usingFallbackModels = modelsResult?.source === "fallback"
+  const fallbackReason = modelsResult?.fallbackReason
+  const allModels = modelsResult?.models || []
 
   useEffect(() => {
     logRender('ModelSelector', 'mount/update', {
@@ -53,7 +66,7 @@ export function ModelSelector({
       value,
       isOpen,
       searchQuery,
-      modelsCount: modelsQuery.data?.length
+      modelsCount: allModels.length
     })
   })
 
@@ -68,21 +81,21 @@ export function ModelSelector({
 
   // Auto-detect if current value is a custom model (not in list)
   useEffect(() => {
-    if (value && modelsQuery.data && modelsQuery.data.length > 0 && !useCustomInput) {
-      const isInList = modelsQuery.data.some(model => model.id === value)
+    if (value && allModels.length > 0 && !useCustomInput) {
+      const isInList = allModels.some(model => model.id === value)
       if (!isInList) {
         setUseCustomInput(true)
         logUI('[ModelSelector] Detected custom model:', value)
       }
     }
-  }, [value, modelsQuery.data])
+  }, [value, allModels, useCustomInput])
 
   useEffect(() => {
-    if (!value && modelsQuery.data && modelsQuery.data.length > 0 && !useCustomInput) {
-      logUI('[ModelSelector] Auto-selecting first model:', modelsQuery.data[0].id)
-      onValueChange(modelsQuery.data[0].id)
+    if (!value && allModels.length > 0 && !useCustomInput) {
+      logUI('[ModelSelector] Auto-selecting first model:', allModels[0].id)
+      onValueChange(allModels[0].id)
     }
-  }, [value, modelsQuery.data, useCustomInput])
+  }, [value, allModels, onValueChange, useCustomInput])
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,10 +129,6 @@ export function ModelSelector({
     }
   }, [searchQuery, isOpen])
 
-  const isLoading = modelsQuery.isLoading || isRefreshing
-  const hasError = modelsQuery.isError && !modelsQuery.data
-  const allModels = modelsQuery.data || []
-
   // Filter models based on search query
   const filteredModels = allModels.filter((model) => {
     if (!searchQuery.trim()) return true
@@ -145,11 +154,70 @@ export function ModelSelector({
     }
   }
 
+  const helperText = (() => {
+    if (useCustomInput) {
+      if (usingFallbackModels) {
+        return `Enter the exact ${providerName} model ID from your provider. The discovered list is currently using fallback suggestions.`
+      }
+
+      return `Enter any model name supported by ${providerName}.`
+    }
+
+    if (isLoading) {
+      return `Loading ${providerName} model suggestions...`
+    }
+
+    if (hasError) {
+      return `Couldn't load ${providerName} model suggestions. Retry or switch to a custom model name.`
+    }
+
+    if (usingFallbackModels) {
+      if (fallbackReason === "missing_api_key") {
+        return `${providerName} API key is missing, so this list is showing fallback suggestions. Add the key above or switch to a custom model name.`
+      }
+
+      return `Couldn't verify ${providerName} models from the configured endpoint. Showing fallback suggestions instead; refresh after fixing credentials, or switch to a custom model name.`
+    }
+
+    if (allModels.length === 0) {
+      return `No ${providerName} models were returned. Switch to a custom model name if your provider supports manual model IDs.`
+    }
+
+    if (searchQuery.trim()) {
+      return `${filteredModels.length} of ${allModels.length} ${providerName} models match "${searchQuery}"`
+    }
+
+    return `${allModels.length} verified ${providerName} model${allModels.length !== 1 ? "s" : ""} available`
+  })()
+
+  const helperTextToneClass = hasError
+    ? "text-destructive"
+    : usingFallbackModels
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-muted-foreground"
+
+  const selectPlaceholder = isLoading
+    ? `Loading ${providerName} models...`
+    : hasError
+      ? "Couldn't load models"
+      : usingFallbackModels
+        ? "Select a fallback model"
+        : allModels.length === 0
+          ? `No ${providerName} models returned`
+          : placeholder || "Select a model"
+
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">{label}</Label>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">{label}</Label>
+            {!useCustomInput && usingFallbackModels && (
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                Fallback suggestions
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -157,6 +225,7 @@ export function ModelSelector({
               onClick={handleToggleCustom}
               disabled={disabled}
               className="h-6 px-2 text-xs flex-shrink-0"
+              aria-label={useCustomInput ? "Switch to model list" : "Use custom model name"}
               title={useCustomInput ? "Switch to model list" : "Use custom model name"}
             >
               <Edit3 className="h-3 w-3" />
@@ -168,6 +237,8 @@ export function ModelSelector({
                 onClick={handleRefresh}
                 disabled={isLoading || disabled}
                 className="h-6 px-2 text-xs flex-shrink-0"
+                aria-label="Refresh available models"
+                title={isLoading ? "Refreshing available models" : "Refresh available models"}
               >
                 <RefreshCw
                   className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`}
@@ -203,15 +274,7 @@ export function ModelSelector({
         }}
       >
         <SelectTrigger className="w-full">
-          <SelectValue
-            placeholder={
-              isLoading
-                ? "Loading models..."
-                : hasError
-                  ? "Failed to load models"
-                  : placeholder || "Select a model"
-            }
-          />
+          <SelectValue placeholder={selectPlaceholder} />
         </SelectTrigger>
         <SelectContent
           className="w-[300px]"
@@ -270,23 +333,32 @@ export function ModelSelector({
             {isLoading && (
               <div className="flex items-center justify-center py-8">
                 <span className="text-sm text-muted-foreground">
-                  Loading models...
+                  Loading {providerName} models...
                 </span>
               </div>
             )}
 
             {hasError && (
-              <div className="flex items-center justify-center gap-2 py-8 text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm">Failed to load models</span>
+              <div className="flex flex-col items-center justify-center gap-1 px-4 py-8 text-center text-destructive">
+                <div className="flex items-center justify-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">Couldn't load model suggestions.</span>
+                </div>
+                <p className="text-xs text-destructive/80">
+                  Retry or switch to a custom model name.
+                </p>
               </div>
             )}
 
             {!isLoading && !hasError && allModels.length === 0 && (
-              <div className="flex items-center justify-center py-8">
-                <span className="text-sm text-muted-foreground">
-                  No models available
-                </span>
+              <div className="flex flex-col items-center justify-center gap-1 px-4 py-8 text-center text-sm">
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>No models available</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Switch to a custom model name if your provider supports manual model IDs.
+                </p>
               </div>
             )}
 
@@ -317,25 +389,9 @@ export function ModelSelector({
       </Select>
       )}
 
-      {useCustomInput && (
-        <p className="text-xs text-muted-foreground">
-          Enter any model name supported by your provider
-        </p>
-      )}
-
-      {!useCustomInput && hasError && (
-        <p className="text-xs text-destructive">
-          Failed to load models. Using fallback options.
-        </p>
-      )}
-
-      {!useCustomInput && !hasError && allModels.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {searchQuery.trim()
-            ? `${filteredModels.length} of ${allModels.length} models match "${searchQuery}"`
-            : `${allModels.length} model${allModels.length !== 1 ? "s" : ""} available`}
-        </p>
-      )}
+      <p className={`text-xs ${helperTextToneClass}`}>
+        {helperText}
+      </p>
     </div>
   )
 }
@@ -361,13 +417,7 @@ export function ProviderModelSelector({
   showTranscriptModel = true,
   disabled = false,
 }: ProviderModelSelectorProps) {
-  const providerNames: Record<string, string> = {
-    openai: "OpenAI",
-    groq: "Groq",
-    gemini: "Gemini",
-  }
-
-  const providerName = providerNames[providerId] || providerId
+  const providerName = PROVIDER_NAMES[providerId] || providerId
 
   return (
     <div className="space-y-4">

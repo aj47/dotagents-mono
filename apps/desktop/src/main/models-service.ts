@@ -7,6 +7,16 @@ import type { ModelInfo, EnhancedModelInfo } from "../shared/types"
 // Re-export ModelInfo for backward compatibility
 export type { ModelInfo, EnhancedModelInfo } from "../shared/types"
 
+export type AvailableModelsSource = "provider" | "fallback"
+export type AvailableModelsFallbackReason = "missing_api_key" | "provider_error"
+
+export interface AvailableModelsResult {
+  models: ModelInfo[]
+  source: AvailableModelsSource
+  fallbackReason?: AvailableModelsFallbackReason
+  fallbackMessage?: string
+}
+
 interface ModelsResponse {
   data: ModelInfo[]
   object: string
@@ -490,7 +500,7 @@ function formatModelName(modelId: string): string {
  */
 export async function fetchAvailableModels(
   providerId: string,
-): Promise<ModelInfo[]> {
+): Promise<AvailableModelsResult> {
   const config = configStore.get()
 
   // Include base URL and API key hash in cache key so changing credentials invalidates cache
@@ -549,7 +559,10 @@ export async function fetchAvailableModels(
       `Returning cached models for ${providerId}`,
       { count: cached?.models.length || 0 },
     )
-    return cached!.models
+    return {
+      models: cached!.models,
+      source: "provider",
+    }
   }
 
   try {
@@ -629,7 +642,10 @@ export async function fetchAvailableModels(
       )
     }
 
-    return enhancedModels
+    return {
+      models: enhancedModels,
+      source: "provider",
+    }
   } catch (error) {
     diagnosticsService.logError(
       "models-service",
@@ -643,6 +659,13 @@ export async function fetchAvailableModels(
 
     // Return fallback models if API call fails
     // Try async fallback first, then sync fallback
+    const fallbackReason =
+      error instanceof Error && error.message.includes("API key is required")
+        ? "missing_api_key"
+        : "provider_error"
+    const fallbackMessage =
+      error instanceof Error ? error.message : String(error)
+
     try {
       const fallbackModels = await getFallbackModelsAsync(providerId)
       diagnosticsService.logInfo(
@@ -654,7 +677,12 @@ export async function fetchAvailableModels(
           fallbackIds: fallbackModels.map(m => m.id),
         },
       )
-      return fallbackModels
+      return {
+        models: fallbackModels,
+        source: "fallback",
+        fallbackReason,
+        fallbackMessage,
+      }
     } catch {
       const fallbackModels = getFallbackModels(providerId)
       diagnosticsService.logInfo(
@@ -666,7 +694,12 @@ export async function fetchAvailableModels(
           fallbackIds: fallbackModels.map(m => m.id),
         },
       )
-      return fallbackModels
+      return {
+        models: fallbackModels,
+        source: "fallback",
+        fallbackReason,
+        fallbackMessage,
+      }
     }
   }
 }

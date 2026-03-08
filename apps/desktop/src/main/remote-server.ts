@@ -1041,11 +1041,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       const { fetchAvailableModels } = await import("./models-service")
-      const models = await fetchAvailableModels(providerId)
+      const modelsResult = await fetchAvailableModels(providerId)
 
       return reply.send({
         providerId,
-        models: models.map(m => ({
+        source: modelsResult.source,
+        fallbackReason: modelsResult.fallbackReason,
+        fallbackMessage: modelsResult.fallbackMessage,
+        models: modelsResult.models.map(m => ({
           id: m.id,
           name: m.name,
           description: m.description,

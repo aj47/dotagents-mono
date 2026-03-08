@@ -4,6 +4,7 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query"
+import type { ModelInfo } from "@shared/types"
 import { reportConfigSaveError } from "./config-save-error"
 import { tipcClient } from "./tipc-client"
 
@@ -80,12 +81,19 @@ export const useMcpInitializationStatus = () =>
     },
   })
 
+export type AvailableModelsQueryResult = {
+  models: ModelInfo[]
+  source: "provider" | "fallback"
+  fallbackReason?: "missing_api_key" | "provider_error"
+  fallbackMessage?: string
+}
+
 export const useAvailableModelsQuery = (
   providerId: string,
   enabled: boolean = true,
   presetId?: string,
 ) =>
-  useQuery({
+  useQuery<AvailableModelsQueryResult>({
     queryKey:
       providerId === "openai" && presetId
         ? ["available-models", providerId, presetId]
