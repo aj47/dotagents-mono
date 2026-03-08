@@ -1608,3 +1608,35 @@
   - Re-run the fuller desktop Vitest coverage for bundle import flows if/when this worktree regains that test entrypoint.
 
 - Next recommended issue work item: pivot back to `#58` for another small history provenance/reliability slice, or revisit `#55` only after a fresh direct repro confirms the remaining tile-layout bug surface.
+
+##### Issue #55 — Collapsed session tiles no longer keep their old grid-column width
+
+- Selection rationale:
+  - `#55` remains the clearest open bug in the current repo issue set, and the ledger explicitly said to revisit it only with a fresh direct repro.
+  - A new source-level repro was available in the desktop tile wrapper itself: collapsed tiles still kept their previous measured width, so they could continue occupying a half-width grid column even after the earlier ordering fixes.
+- Investigation:
+  - Re-read issue `#55` and the prior ledger entries to avoid redoing the already-landed maximize/name fixes and the earlier collapsed-ordering slices.
+  - Inspected `apps/desktop/src/renderer/src/components/session-grid.tsx` and confirmed `SessionTileWrapper` only changed `height` when `isCollapsed`, while leaving `style={{ width, ... }}` untouched.
+  - Re-checked the nearby layout behavior in `apps/desktop/src/renderer/src/pages/sessions.tsx` and confirmed collapsed tiles are already packed later in DOM order, so width retention was the next obvious reason a collapsed tile could still keep too much grid real estate.
+- Important assumptions:
+  - Assumption: treating collapsed tiles as full-width compact rows is an acceptable first fix for the remaining spacing bug, even if it is not a full masonry/grid-row-aware layout.
+  - Why acceptable: it removes the leftover half-column footprint with a much smaller, safer change than replacing the sessions layout system, and it keeps the expanded tile size state intact for when the tile is reopened.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the affected `SessionGrid` / `SessionTileWrapper` code is desktop-renderer-specific; mobile does not use this tile grid surface.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/session-grid.tsx` so collapsed tiles use the full measured grid width (`containerWidth`) instead of retaining their old resizable column width.
+  - Preserved the stored expanded width state so reopening a tile restores its prior width rather than overwriting the user’s resize preference.
+  - Added `apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js`, a dependency-light regression test locking in the collapsed-width override.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js apps/desktop/src/renderer/src/pages/sessions.pending-tile-layout.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.layout-controls.test.ts src/renderer/src/components/agent-progress.tile-layout.test.ts`
+  - Result: still blocked in this worktree because PNPM cannot find the `vitest` executable from the desktop package (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL: Command "vitest" not found`).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #55:
+  - If users still report awkward gaps, evaluate a fuller masonry/grid-row-aware layout rather than more ad hoc ordering/footprint rules.
+  - If collapsed tiles should remain drag-reorderable, revisit how reorder affordances interact with the derived collapsed-tile presentation.
+
+- Next recommended issue work item: pivot back to `#58` for another small history provenance/reliability slice, or continue `#25`/`#57` only if another equally narrow trust-focused follow-up is directly observable.

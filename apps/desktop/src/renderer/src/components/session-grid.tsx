@@ -214,6 +214,7 @@ export function SessionTileWrapper({
     initialHeight: calculateTileHeight(containerHeight, gap, layoutMode),
     storageKey: "session-tile",
   })
+  const effectiveWidth = isCollapsed && containerWidth > 0 ? containerWidth : width
 
   // Reset tile size when resetKey changes (user clicked layout cycle button)
   useEffect(() => {
@@ -306,7 +307,7 @@ export function SessionTileWrapper({
         isDragging && "opacity-50",
         className
       )}
-      style={{ width, height: isCollapsed ? "auto" : height }}
+      style={{ width: effectiveWidth, height: isCollapsed ? "auto" : height }}
       draggable={isDraggable && !isResizing}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
