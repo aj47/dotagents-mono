@@ -101,12 +101,23 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   const currentAgentName = currentProfile?.name || (selectorMode === 'acp' ? 'Main Agent' : 'Default Agent');
   const isMissingConfigError = error === missingConfigError;
+  const currentAgentBadgeLabel = selectorMode === 'acp' ? 'Current main agent' : 'Current agent';
+  const selectorChoiceRoleLabel = selectorMode === 'acp' ? 'main agent' : 'agent';
+  const loadingAccessibilityLabel = selectorMode === 'acp' ? 'Loading available main agents' : 'Loading available agents';
+  const loadingStatusText = selectorMode === 'acp' ? 'Loading available main agents…' : 'Loading available agents…';
+  const loadingSupportText = selectorMode === 'acp'
+    ? 'Your current main agent stays active while options load.'
+    : 'Your current agent stays active while options load.';
   const emptyStateMessage = selectorMode === 'acp'
     ? 'No enabled command-based agents are available yet. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent.'
     : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
   const errorSupportText = isMissingConfigError
-    ? 'Your current agent stays active. Open Settings to finish connecting this server and review agent mode.'
-    : 'Your current agent stays active while you retry loading the available options.';
+    ? selectorMode === 'acp'
+      ? 'Your current main agent stays active. Open Settings to finish connecting this server and review main-agent mode.'
+      : 'Your current agent stays active. Open Settings to finish connecting this server and review agent mode.'
+    : selectorMode === 'acp'
+      ? 'Your current main agent stays active while you retry loading the available options.'
+      : 'Your current agent stays active while you retry loading the available options.';
 
   const handleOpenAgentSettings = () => {
     onClose();
@@ -179,7 +190,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     ? 'Current main agent unavailable in this list'
     : 'Current agent unavailable in this list';
   const currentSelectionNoticeText = selectorMode === 'acp'
-    ? 'This agent stays active until you switch. Choose one of the enabled agents below, then review Settings → Agents if this main agent should be available again.'
+    ? 'This main agent stays active until you switch. Choose one of the enabled agents below, then review Settings → Agents if this main agent should be available again.'
     : 'This agent stays active until you switch. Choose one of the available options below, then review Settings → Agents if this profile should still be switchable.';
   const availableOptionsHeading = selectorMode === 'acp'
     ? 'Available main agents'
@@ -199,10 +210,10 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       ? item.guidelines
       : null;
     const selectionAccessibilityLabel = isPending
-      ? `Switching to ${item.name} agent`
+      ? `Switching to ${item.name} ${selectorChoiceRoleLabel}`
       : isSelected
-        ? `Current ${item.name} agent`
-        : `Select ${item.name} agent`;
+        ? `Current ${item.name} ${selectorChoiceRoleLabel}`
+        : `Select ${item.name} ${selectorChoiceRoleLabel}`;
     const selectionAccessibilityHint = isPending
       ? 'Agent switch in progress. Wait for the current request to finish.'
       : isSwitching
@@ -285,12 +296,12 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             style={styles.loadingStateCard}
             accessible
             accessibilityRole="progressbar"
-            accessibilityLabel="Loading available agents"
-            accessibilityHint="Your current agent stays active while the available agent options load."
+            accessibilityLabel={loadingAccessibilityLabel}
+            accessibilityHint={loadingSupportText}
             accessibilityState={{ busy: true }}
           >
             <View style={styles.currentAgentBadge}>
-              <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+              <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
               <Text
                 style={styles.currentAgentBadgeText}
                 numberOfLines={2}
@@ -301,14 +312,14 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </View>
             <View style={styles.loadingStatusRow}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
-              <Text style={styles.loadingStatusText}>Loading available agents…</Text>
+              <Text style={styles.loadingStatusText}>{loadingStatusText}</Text>
             </View>
-            <Text style={styles.loadingText}>Your current agent stays active while options load.</Text>
+            <Text style={styles.loadingText}>{loadingSupportText}</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <View style={styles.currentAgentBadge}>
-              <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+              <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
               <Text
                 style={styles.currentAgentBadgeText}
                 numberOfLines={2}
@@ -346,7 +357,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ) : profiles.length === 0 ? (
           <View style={styles.emptyStateCard}>
             <View style={styles.currentAgentBadge}>
-              <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+              <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
               <Text
                 style={styles.currentAgentBadgeText}
                 numberOfLines={2}
@@ -376,7 +387,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               <View style={styles.currentSelectionNoticeCard}>
                 <Text style={styles.currentSelectionNoticeTitle}>{currentSelectionNoticeTitle}</Text>
                 <View style={styles.currentAgentBadge}>
-                  <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+                  <Text style={styles.currentAgentBadgeLabel}>{currentAgentBadgeLabel}</Text>
                   <Text
                     style={styles.currentAgentBadgeText}
                     numberOfLines={2}

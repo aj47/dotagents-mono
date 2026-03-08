@@ -4185,3 +4185,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Available agents` handoff and outlined notice action improve scanability on narrow screens.
   - Compare the updated missing-selection notice against the selector empty and error states to make sure the recovery hierarchy now feels consistent: direct help remains available, but actual switchable choices read as primary.
   - After live validation is restored, continue with the next highest-signal local mobile sub-agent issue instead of revisiting this selector notice without fresh evidence.
+
+### 2026-03-08 — Iteration 96: make ACP selector status copy say “main agent” consistently
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iterations 67, 81, 84, 94, and 95 for recent selector-state work
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow / install state before attempting any live inspection
+- Live inspection / workflow status:
+  - Reconfirmed the local runtime blocker without retrying the same failing Expo commands unnecessarily:
+    - repository `node_modules/` is missing in this worktree
+    - `apps/mobile/node_modules/` is also missing in this worktree
+    - `pnpm-lock.yaml` is present, so `pnpm` remains the expected workflow once dependencies are restored
+  - Because the mobile install is still absent, this iteration relied on source-backed hierarchy / terminology review plus focused regression coverage rather than screenshot-backed Expo Web or simulator evidence.
+- Current behavior observed before the fix:
+  - Source review showed the selector title, subtitle, empty-state title, and available-options heading already switched to `Main Agent` terminology in ACP mode.
+  - The same sheet still labeled the active state generically as `Current agent` in the loading, error, empty, and missing-selection contexts.
+  - ACP selector row accessibility copy also still said `agent` instead of `main agent`, which weakened state clarity for screen-reader users in the role-specific ACP flow.
+- Issue selected:
+  - ACP-mode selector states were still mixing generic `agent` copy into a `main agent` flow, making the current role feel less explicit exactly where users review loading, failure, or missing-selection states on mobile.
+- Decision:
+  - Keep the existing selector layout, badges, and interaction flow unchanged.
+  - Do not reopen broader selector hierarchy work without fresh live evidence.
+  - Make the smallest consistency fix: centralize mode-aware status labels so ACP mode consistently says `Current main agent`, `Loading available main agents`, and `main agent` in row accessibility copy while profile mode remains unchanged.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive mode-aware status strings for the current-selection badge, loading label, loading helper text, and error helper text,
+    - change the ACP missing-selection notice copy from `This agent stays active...` to `This main agent stays active...`,
+    - use mode-aware `main agent` wording for selector row accessibility labels in ACP mode.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new mode-aware badge, loading, error, notice, and row-label copy.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo / simulator validation ⚠️ blocked because this worktree is still missing both repository and `apps/mobile` `node_modules`
+- Remaining nearby issues noted, not addressed this iteration:
+  - This copy-only improvement still needs a real narrow-screen pass to confirm the longer `Current main agent` label stays visually balanced inside the shared status badge.
+  - The selector sheet still lacks fresh screenshot-backed validation across ACP-specific loading, error, and missing-selection states.
+  - The missing mobile install continues to block live prioritization for subsequent sub-agent mobile iterations.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Current main agent` remains readable in ACP-mode loading, error, empty, and missing-selection cards on narrow screens.
+  - Check the ACP selector with VoiceOver / accessibility inspection if practical to confirm the new row labels (`Select … main agent`, `Current … main agent`) sound natural.
+  - After live validation is restored, continue with the next highest-signal local mobile sub-agent issue instead of revisiting ACP copy consistency again without fresh evidence.
