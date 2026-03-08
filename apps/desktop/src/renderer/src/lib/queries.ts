@@ -161,7 +161,8 @@ export const useDeleteConversationMutation = () =>
     mutationFn: async (conversationId: string) => {
       return tipcClient.deleteConversation({ conversationId })
     },
-    onSuccess: () => {
+    onSuccess: (_, conversationId) => {
+      queryClient.setQueryData(["conversation", conversationId], null)
       queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
     },
   })
