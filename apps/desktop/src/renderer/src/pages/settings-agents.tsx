@@ -612,11 +612,11 @@ export function SettingsAgents() {
                     </div>
                     {showSystemPrompt && (
                       <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground text-amber-600 dark:text-amber-500">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="min-w-0 flex-1 text-xs leading-relaxed text-amber-600 dark:text-amber-500">
                             Not recommended to change. This replaces the core tool-calling instructions. Leave empty to use the default.
                           </p>
-                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setEditing({ ...editing, systemPrompt: "" })} disabled={!editing.systemPrompt}>
+                          <Button variant="ghost" size="sm" className="h-6 shrink-0 self-start px-2 text-xs" onClick={() => setEditing({ ...editing, systemPrompt: "" })} disabled={!editing.systemPrompt}>
                             Reset to Default
                           </Button>
                         </div>
