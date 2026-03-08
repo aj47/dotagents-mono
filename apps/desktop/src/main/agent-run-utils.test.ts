@@ -129,6 +129,15 @@ describe("agent-run-utils", () => {
       expect(preferStoredUserResponse("   ", "Delivered to user")).toBe("Delivered to user")
     })
 
+    it("prefers a stored respond_to_user message over stale progress-only final content", () => {
+      expect(
+        preferStoredUserResponse(
+          "Let me pull up all saved memories.",
+          "Done. Deleted the broken skill folders and cleaned up the backups.",
+        ),
+      ).toBe("Done. Deleted the broken skill folders and cleaned up the backups.")
+    })
+
     it("returns the original blank content when no stored user response exists", () => {
       expect(preferStoredUserResponse("", undefined)).toBe("")
     })

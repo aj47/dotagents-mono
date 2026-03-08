@@ -12,12 +12,25 @@ const mockEndAgentTrace = vi.fn()
 
 vi.mock("./config", () => ({
   configStore: { get: mockConfigGet },
+  configPath: "/tmp/config.json",
+  conversationsFolder: "/tmp/conversations",
+  globalAgentsFolder: "/tmp/.agents",
+  resolveWorkspaceAgentsFolder: vi.fn(() => null),
 }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
 vi.mock("./llm-fetch", () => ({ makeLLMCallWithFetch: vi.fn(), makeTextCompletionWithFetch: vi.fn(), verifyCompletionWithFetch: mockVerifyCompletion, makeLLMCallWithStreamingAndTools: mockStreamingCall }))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "prompt") }))
 vi.mock("./state", () => ({ state: { shouldStopAgent: false, agentIterationCount: 0 }, agentSessionStateManager: { shouldStopSession: vi.fn(() => false), getSessionProfileSnapshot: vi.fn(() => undefined), createSession: vi.fn(), startSessionRun: vi.fn(() => 1), updateIterationCount: vi.fn(), cleanupSession: vi.fn() } }))
-vi.mock("./debug", () => ({ isDebugLLM: vi.fn(() => false), isDebugTools: vi.fn(() => false), logLLM: vi.fn(), logTools: vi.fn() }))
+vi.mock("electron", () => {
+  const electronMock = {
+    app: { getPath: vi.fn(() => "/tmp"), getVersion: vi.fn(() => "0.0.0"), isPackaged: false },
+    ipcMain: { handle: vi.fn(), on: vi.fn(), removeHandler: vi.fn() },
+    shell: { openPath: vi.fn(), openExternal: vi.fn() },
+    dialog: { showOpenDialog: vi.fn(), showMessageBox: vi.fn() },
+  }
+  return { ...electronMock, default: electronMock }
+})
+vi.mock("./debug", () => ({ isDebugLLM: vi.fn(() => false), isDebugTools: vi.fn(() => false), logLLM: vi.fn(), logTools: vi.fn(), logApp: vi.fn() }))
 vi.mock("./context-budget", () => ({ shrinkMessagesForLLM: vi.fn(async ({ messages }: any) => ({ messages, estTokensAfter: 0, maxTokens: 8192 })), estimateTokensFromMessages: vi.fn(() => 0) }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: vi.fn(async () => {}) }))
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: { isSessionSnoozed: vi.fn(() => false), getSession: vi.fn(() => ({ conversationTitle: "Test session", profileSnapshot: { profileName: "Main Agent" } })) } }))
@@ -69,6 +82,53 @@ describe("processTranscriptWithAgentMode", () => {
     expect(mockEndAgentTrace).toHaveBeenCalledWith(
       "session-respond-fallback",
       expect.objectContaining({ output: "Done! Two iTerm windows are ready." }),
+    )
+  })
+
+  it("prefers a stored respond_to_user message over stale progress text when a later iteration errors", async () => {
+    const { setSessionUserResponse, clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-progress-overridden-by-respond")
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "Let me pull up all saved memories.",
+        toolCalls: [
+          { name: "list_memories", arguments: {} },
+          { name: "respond_to_user", arguments: { text: "Done. Deleted the broken skill folders and cleaned up the backups." } },
+        ],
+      })
+      .mockRejectedValueOnce(new Error("stream error: stream ID 3; INTERNAL_ERROR; received from peer"))
+
+    const executeToolCall = vi.fn(async (toolCall: any) => {
+      if (toolCall.name === "respond_to_user") {
+        setSessionUserResponse("session-progress-overridden-by-respond", toolCall.arguments.text)
+      }
+
+      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+    })
+
+    await expect(processTranscriptWithAgentMode(
+      "now audit memories",
+      [
+        { name: "list_memories", description: "List memories", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } },
+      ] as any,
+      executeToolCall,
+      3,
+      [],
+      "conv-progress-overridden-by-respond",
+      "session-progress-overridden-by-respond",
+      undefined,
+      undefined,
+      1,
+    )).rejects.toThrow("stream error: stream ID 3; INTERNAL_ERROR; received from peer")
+
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-progress-overridden-by-respond",
+      expect.objectContaining({
+        output: "Done. Deleted the broken skill folders and cleaned up the backups.",
+      }),
     )
   })
 

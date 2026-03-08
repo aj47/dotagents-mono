@@ -18,6 +18,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
 | 2026-03-08 | conv_1772944149514_dhmqtdvqt | session_1772944149515_tgt7e6ykh | fix implemented (verification blocked) | Simple user input `Hi` produced trace `output: null`; the only observation was `LLM Call` with error `API key expired. Please renew the API key.` Root repo issue found: provider/API errors could escape before `finalContent` was populated, leaving the run trace blank instead of preserving a terminal error message. |
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
+| 2026-03-08 | conv_1772484275492_wez5c1j6n | session_1772485375334_cool2efi9 | fix implemented (targeted helper test passed; broader llm test blocked by pre-existing harness issues) | User asked `now audit memories`. Langfuse showed many successful memory-cleanup tools plus repeated `respond_to_user` / `mark_work_complete`, then a later `Streaming LLM Call` errored (`stream error: stream ID 3; INTERNAL_ERROR; received from peer`). Final trace `output` still preserved only the stale opener `Let me pull up all saved memories.` Root repo issue found: stored `respond_to_user` fallback only overrode blank `finalContent`, not non-empty progress-only text. |
 | 2026-03-08 | conv_1772929409915_6nhw5bvkd | session_1772929409919_659x5kkj1 | fix implemented (verification blocked) | User asked `Can you run it in a new terminal window so it works in dotagents-mono`; Langfuse showed `iterm:create_window` succeeded but there was no terminal write/run step, and the final reply only handed back manual shell commands (`Run it with ...`). Root repo issue found: completion logic could treat manual terminal instructions as done even when the requested terminal execution never happened. |
 | 2026-03-08 | conv_1772760072745_y04jxkisp | session_1772760071840_tx7z5kq1e | fix implemented (verification blocked) | User asked to tile laptop windows neatly. Langfuse showed repeated successful `execute_command` window-management passes, then a completed `delegate_to_agent` call for `Computer Use` whose output was still just a progress update (`I can see the windows are partially arranged... Let me do a more precise tiling pass now.`). The parent run treated that as successful delegated work, re-delegated again with empty content, and still ended with `output: null`. Root repo issue found: delegation plumbing accepted progress-only sub-agent output as a completed result instead of surfacing it as an incomplete/failed delegation for the parent agent to recover from. |
 | 2026-03-08 | conv_1772854646654_q7kryv45t | session_1772854646655_k5gmpg0wu | fix implemented (verification blocked) | User asked `what's next`; Langfuse showed a parallel batch where `execute_command` completed, but `Tool: github:list_issues` never recorded an end time. The run then closed with `output: null` and no answer. Root repo issue found: MCP server tool execution had connection/test timeouts, but `client.callTool(...)` itself had no timeout, so one hung tool in a parallel batch could stall the entire agent run forever. |
@@ -622,6 +623,43 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
     - `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dapp -dt`
     - blocked during `apps/desktop` `predev` by a pre-existing local worktree issue: missing `tsx/dist/cli.mjs` while running `npx tsx scripts/ensure-rust-binary.ts`
 
+### 2026-03-08 — Stored `respond_to_user` output should override stale progress text after a later stream error
+
+- Langfuse evidence reviewed:
+  - `conv_1772484275492_wez5c1j6n` / `session_1772485375334_cool2efi9`
+  - user input: `now audit memories`
+  - trace outcome: final `output` was only `Let me pull up all saved memories.`
+  - observations showed substantial successful work before failure:
+    - repeated memory-management tool spans succeeded (`list_memories`, `delete_memory`, `remove_saved_memory`, `filesystem:*`)
+    - `respond_to_user` and `mark_work_complete` both succeeded multiple times
+    - a later `Streaming LLM Call` then errored with `stream error: stream ID 3; INTERNAL_ERROR; received from peer`
+  - that means the run had already produced a real user-facing deliverable, but Langfuse still preserved only the earlier progress opener after the late stream failure
+- Repo reconstruction:
+  - `apps/desktop/src/main/agent-run-utils.ts` already had `preferStoredUserResponse(...)`, but it only fell back to the stored `respond_to_user` content when `finalContent` was blank
+  - in this trace shape, `finalContent` was non-empty because the first assistant turn said `Let me pull up all saved memories.` before tool work started
+  - when the later stream error hit, `apps/desktop/src/main/llm.ts` kept that stale progress text because it was non-empty, so neither the loop error path nor Langfuse trace finalization promoted the stored deliverable response
+- Concrete root cause:
+  - stored `respond_to_user` fallback logic treated any non-empty `finalContent` as authoritative, even when it was only a short progress-only status update
+  - that let a late provider/stream error regress the final run output from a completed user-facing answer back to an earlier `Let me ...` placeholder
+- Change made:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - taught `preferStoredUserResponse(...)` to recognize short progress-only status updates (for example `Let me ...`, `I'll ...`, `I need to ...`) and prefer a stored `respond_to_user` deliverable over those stale placeholders
+  - `apps/desktop/src/main/llm.ts`
+    - reapply `preferStoredUserResponse(...)` in the non-abort loop error path before falling back to a terminal error string, so late stream failures preserve an already-delivered user response instead of keeping stale progress text
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+      - added a regression proving a stored `respond_to_user` message overrides stale progress-only final text
+    - `apps/desktop/src/main/llm.test.ts`
+      - added a regression for a later stream error after progress text + tool work + `respond_to_user`; this file still cannot complete in the current worktree because of pre-existing desktop test-harness issues unrelated to this fix
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts`
+    - ✅ passed (`16 passed`)
+    - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted helper test exits successfully
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts src/main/llm.test.ts`
+    - ❌ blocked by pre-existing `llm.test.ts` harness/environment issues in this worktree (module/mocking issues around desktop Electron/config imports after the test loads wider main-process services), before the new regression could complete
+  - `git diff --check -- apps/desktop/src/main/agent-run-utils.ts apps/desktop/src/main/agent-run-utils.test.ts apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts`
+    - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -633,6 +671,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
+- Recheck a fresh post-`respond_to_user` trace where the first assistant turn is only a progress opener (`Let me ...`, `I'll ...`) and a later provider/stream error occurs, to confirm the stored user-facing answer now overrides the stale opener in Langfuse/UI.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.

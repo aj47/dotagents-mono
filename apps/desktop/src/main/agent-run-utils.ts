@@ -180,6 +180,26 @@ function normalizeUserFacingContent(content: string | undefined | null): string 
     ?? (typeof content === "string" ? content : "")
 }
 
+function isLikelyProgressOnlyResponse(content: string): boolean {
+  const trimmed = content.trim()
+  if (!trimmed) return false
+
+  const lowerRaw = trimmed.toLowerCase()
+  const hasStructuredDeliverable =
+    /\n[-*]\s|\n\d+\.\s/.test(trimmed) || /\bhere(?:'s| is)\b/.test(lowerRaw)
+  if (hasStructuredDeliverable) {
+    return false
+  }
+
+  const normalized = lowerRaw.replace(/\s+/g, " ")
+  const wordCount = normalized.split(" ").filter(Boolean).length
+  if (wordCount > 40) {
+    return false
+  }
+
+  return /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized)
+}
+
 export function buildProfileContext(
   profile: ProfileContextSource | SessionProfileSnapshot | undefined,
   existingContext?: string,
@@ -221,13 +241,17 @@ export function preferStoredUserResponse(
   storedUserResponse?: string | null,
 ): string {
   const normalizedCurrentFinalContent = normalizeUserFacingContent(currentFinalContent)
+  const normalizedStoredUserResponse = normalizeUserFacingContent(storedUserResponse)
 
-  if (normalizedCurrentFinalContent.trim().length > 0) {
+  if (
+    normalizedCurrentFinalContent.trim().length > 0
+    && !isLikelyProgressOnlyResponse(normalizedCurrentFinalContent)
+  ) {
     return normalizedCurrentFinalContent
   }
 
-  if (typeof storedUserResponse === "string" && storedUserResponse.trim().length > 0) {
-    return storedUserResponse
+  if (normalizedStoredUserResponse.trim().length > 0) {
+    return normalizedStoredUserResponse
   }
 
   return normalizedCurrentFinalContent

@@ -1874,6 +1874,11 @@ Return ONLY JSON per schema.`,
       thinkingStep.title = "Error"
       thinkingStep.description = cleanErrorMessage(error?.message || String(error))
 
+      finalContent = preferStoredUserResponse(
+        finalContent,
+        getSessionUserResponse(currentSessionId),
+      )
+
       if (!finalContent.trim()) {
         finalContent = formatTerminalErrorMessage(error, "Unknown agent error")
       }
