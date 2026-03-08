@@ -255,8 +255,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
       />
 
       <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Enabled</Text>
+        <View style={styles.switchTextGroup}>
+          <Text style={styles.switchLabel}>Enabled</Text>
+        </View>
         <Switch
+          style={styles.switchControl}
           value={formData.enabled}
           onValueChange={value => updateField('enabled', value)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
@@ -329,8 +332,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     inlineHelperText: { fontSize: 12, lineHeight: 18, color: theme.colors.mutedForeground, marginTop: spacing.xs },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
-    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.md,
+      minWidth: 0,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    switchTextGroup: {
+      minWidth: 0,
+      flex: 1,
+      flexShrink: 1,
+    },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
+    switchControl: { flexShrink: 0, alignSelf: 'flex-start', marginTop: 2 },
     profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     profileOption: { ...profileOptionTouchTarget, maxWidth: '100%', alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md },
     profileOptionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },

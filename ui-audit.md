@@ -1,5 +1,45 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 82: Mobile loop editor kept its enabled toggle in an older rigid row that would crowd sooner than adjacent mobile editors under narrow width + larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/LoopEditScreen.tsx` (`Loops` → create/edit flow → `Enabled` switch row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided recently touched desktop surfaces unless there was a clear follow-up reason.
+  - Chunk 81 explicitly called out the mobile `LoopEditScreen` switch-row/narrow-width follow-up as the strongest fresh next target.
+  - Practical live mobile inspection was still blocked in this checkout, so I chose the smallest remaining source-visible follow-up on an already partially hardened screen instead of thrashing on unrelated areas.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo’s mobile workflow notes before choosing the next area
+  - confirmed live mobile runtime is still blocked here: root and `apps/mobile` `node_modules` are absent, `pnpm --filter @dotagents/mobile exec expo --version` fails because `expo` is unavailable, and there is no active mobile web listener on `:8081` or `:19007`
+  - inspected `apps/mobile/src/screens/LoopEditScreen.tsx` directly and compared its remaining switch-row contract with the already-hardened mobile `apps/mobile/src/screens/AgentEditScreen.tsx` pattern so the change would stay consistent with nearby product behavior
+
+#### Findings
+
+- Before the fix, the mobile loop editor still had one small but concrete layout-fragility seam:
+  - its `Enabled` control used an older rigid row contract (`justifyContent: 'space-between'` with a bare label) instead of the newer flexible mobile editor pattern already used nearby in `AgentEditScreen`
+  - because the row had no dedicated shrink-safe text lane and no explicit switch-control alignment contract, the label and toggle would start crowding each other sooner under narrow widths, larger text, or future copy growth than adjacent mobile editors
+  - practical impact: the loop editor’s primary on/off control was more brittle than the rest of the current mobile editor set, which makes the form feel less polished and less resilient under accessibility sizing pressure
+
+#### Changes made
+
+- Hardened only the `Enabled` row in `apps/mobile/src/screens/LoopEditScreen.tsx`:
+  - wrapped the label in a dedicated `switchTextGroup` so the text lane can shrink safely before crowding the toggle
+  - changed the row to the same wrap-safe mobile editor contract used in `AgentEditScreen` (`alignItems: 'flex-start'`, `gap: spacing.md`, `minWidth: 0`)
+  - added `switchControl` styling so the native `Switch` stays top-aligned and shrink-safe instead of depending on the old `space-between` row behavior
+- Extended `apps/mobile/tests/loop-edit-screen-layout.test.js` with focused source-contract coverage for the new switch-row structure
+
+#### Verification
+
+- Targeted mobile source-contract test: `node --test apps/mobile/tests/loop-edit-screen-layout.test.js` ✅
+- Targeted mobile typecheck attempt: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked: this checkout still lacks the local Expo / React Native dependency graph; `expo/tsconfig.base`, `react-native`, and related modules cannot be resolved)*
+- Patch hygiene: `git diff --check -- apps/mobile/src/screens/LoopEditScreen.tsx apps/mobile/tests/loop-edit-screen-layout.test.js ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: I could not do a screenshot-backed Expo Web pass for this chunk because the local mobile runtime/tooling is still unavailable in this checkout.
+- Tradeoff/rationale: this does not redesign the row or add new copy; it simply aligns the loop editor’s toggle behavior with the safer adjacent mobile editor pattern already used elsewhere in the app.
+- Best next UI audit chunk after this one: once Expo Web or a device build is runnable again, do a literal live pass on the mobile loop editor at `~320–390px` widths and larger text to verify the switch row, profile chips, loading state, and save affordance together; otherwise move to another fresh live-inspectable desktop/mobile surface.
+
 ### 2026-03-08 — Chunk 81: Desktop repeat-task editor forced its two toggle controls into a clipped single row under stressed width + larger text
 
 - Area selected:

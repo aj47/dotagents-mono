@@ -25,3 +25,11 @@ test('surfaces disconnected and error states as bordered cards instead of bare i
   assert.match(loopEditSource, /errorContainer:\s*\{[\s\S]*?borderWidth: 1,[\s\S]*?borderColor: theme\.colors\.destructive \+ '33',[\s\S]*?marginBottom: spacing\.md,/);
   assert.match(loopEditSource, /helperContainer:\s*\{[\s\S]*?backgroundColor: theme\.colors\.card,[\s\S]*?borderWidth: 1,[\s\S]*?borderColor: theme\.colors\.border,[\s\S]*?marginBottom: spacing\.md,/);
 });
+
+test('keeps the enabled switch row flexible before crowding the toggle control', () => {
+  assert.match(loopEditSource, /<View style=\{styles\.switchTextGroup\}>[\s\S]*?<Text style=\{styles\.switchLabel\}>Enabled<\/Text>/);
+  assert.match(loopEditSource, /switchRow:\s*\{[\s\S]*?alignItems: 'flex-start',[\s\S]*?gap: spacing\.md,[\s\S]*?minWidth: 0,/);
+  assert.match(loopEditSource, /switchTextGroup:\s*\{[\s\S]*?minWidth: 0,[\s\S]*?flex: 1,[\s\S]*?flexShrink: 1,/);
+  assert.match(loopEditSource, /<Switch[\s\S]*?style=\{styles\.switchControl\}/);
+  assert.match(loopEditSource, /switchControl:\s*\{[\s\S]*?flexShrink: 0,[\s\S]*?alignSelf: 'flex-start'/);
+});
