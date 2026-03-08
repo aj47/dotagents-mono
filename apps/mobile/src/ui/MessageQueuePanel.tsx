@@ -615,7 +615,10 @@ export function MessageQueuePanel({
         </View>
       )}
       {!isListCollapsed && (
-        <ScrollView style={styles.list}>
+        <ScrollView
+          style={styles.list}
+          keyboardShouldPersistTaps="handled"
+        >
           {messages.map((msg, index) => (
             <React.Fragment key={msg.id}>
               {index > 0 && <View style={styles.separator} />}

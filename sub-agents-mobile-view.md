@@ -3182,3 +3182,43 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queued-message edit mode now keeps status/failure context visible on a narrow screen.
   - Compare queued vs failed edit rows to confirm the `Last error` line helps without crowding the input on mobile.
   - If the new context text feels too tall in live use, tighten the edit-stack spacing before attempting any broader queue-panel changes.
+
+### 2026-03-08 — Iteration 74: keep queue edit actions responsive with the keyboard open
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `MessageQueuePanel` renders queued-message rows inside a `ScrollView`.
+  - Queue edit mode uses an auto-focused multiline `TextInput` plus inline `Cancel` / `Save` actions inside that same scroll container.
+  - The list did not set `keyboardShouldPersistTaps`, so on mobile the first tap on those edit actions could be consumed by keyboard dismissal instead of triggering the intended action.
+- Issue selected:
+  - Queue edit mode could require an extra tap to save or cancel while the keyboard was open, weakening user control in a high-attention correction flow.
+- Decision:
+  - Keep the queue layout, copy, and edit controls unchanged.
+  - Do not redesign the queue panel while live validation is blocked.
+  - Make the smallest local fix: let handled taps inside the queue list reach `Save` / `Cancel` even when the keyboard is up.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to set `keyboardShouldPersistTaps="handled"` on the queue list `ScrollView`.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with a focused regression check for that keyboard-tap behavior contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm `Cancel` / `Save` now fire on the first tap while the edit keyboard is open.
+  - The queue edit stack still deserves live validation to confirm the field, helper, context text, and actions remain balanced above the keyboard.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queue edit `Cancel` / `Save` respond on the first tap with the keyboard open.
+  - Compare empty, unchanged, and changed drafts while the keyboard is visible to confirm the inline helper and disabled/enabled `Save` states still feel clear.
+  - If keyboard handling still feels awkward in live use, evaluate a small `keyboardDismissMode` pass before attempting broader queue-panel changes.

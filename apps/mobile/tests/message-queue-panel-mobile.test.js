@@ -81,3 +81,7 @@ test('keeps queue edit mode anchored to the current queued or failed message con
   assert.match(queuePanelSource, /<Text[\s\S]*?styles\.editContextText,[\s\S]*?isFailed && styles\.editContextTextWarning,[\s\S]*?>[\s\S]*?\{editContextLabel\}[\s\S]*?<\/Text>/);
   assert.match(queuePanelSource, /\{isFailed && message\.errorMessage \? \([\s\S]*?<Text style=\{styles\.editFailureText\} numberOfLines=\{2\} ellipsizeMode="tail">[\s\S]*?Last error: \{message\.errorMessage\}[\s\S]*?<\/Text>[\s\S]*?\) : null\}/);
 });
+
+test('keeps queue actions tappable while editing with the keyboard open', () => {
+  assert.match(queuePanelSource, /<ScrollView[\s\S]*?style=\{styles\.list\}[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?>/);
+});
