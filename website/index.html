@@ -1601,6 +1601,23 @@
             return `every ${intervalMinutes} minutes`
         }
 
+        function getRepeatTaskScheduleSummary(task) {
+            const scheduleLabel = formatIntervalLabel(task.intervalMinutes)
+            const startupLabel = task.runOnStartup ? 'startup trigger on' : 'startup trigger off'
+            const enabledLabel = task.enabled ? 'enabled in bundle' : 'disabled by default'
+            return `${scheduleLabel} · ${startupLabel} · ${enabledLabel}`
+        }
+
+        function getRepeatTaskBehaviorNote(task) {
+            if (task.runOnStartup) {
+                return task.enabled
+                    ? 'This task can run immediately on app launch before its first scheduled interval.'
+                    : 'This task is disabled by default, but once enabled it is configured to run on app launch before its first scheduled interval.'
+            }
+
+            return 'No startup trigger — the first run waits for the normal interval schedule after install.'
+        }
+
         function isRecord(value) {
             return !!value && typeof value === 'object' && !Array.isArray(value)
         }
@@ -1723,7 +1740,8 @@
                 const taskHtml = bundle.repeatTasks.map((task) => `
                     <article class="bundle-entry">
                         <h4>⏰ ${escapeHtml(task.name)}</h4>
-                        <p class="bundle-entry-subtitle">${escapeHtml(formatIntervalLabel(task.intervalMinutes))} · ${task.enabled ? 'enabled' : 'disabled by default'}</p>
+                        <p class="bundle-entry-subtitle">${escapeHtml(getRepeatTaskScheduleSummary(task))}</p>
+                        <p class="bundle-entry-note">${escapeHtml(getRepeatTaskBehaviorNote(task))}</p>
                         ${renderMarkdown(task.prompt)}
                     </article>
                 `).join('')

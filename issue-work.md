@@ -1978,3 +1978,34 @@
   - Once slot state exists, extend the same shared helper to include the active slot and then add a minimal Settings/UI surface for active-slot visibility and switching.
 
 - Next recommended issue work item: stay on `#57` for slot metadata/preference groundwork only if slot-vs-workspace precedence can be made explicit in code/comments first; otherwise refresh the backlog again and choose a fresh bug or similarly concrete trust/UX slice.
+
+##### Issue #56 — Hub bundle inspector: repeat-task startup/schedule disclosure
+
+- Selection rationale:
+  - The latest ledger guidance suggested a fresh bug or another equally concrete trust/UX slice rather than forcing speculative slot work.
+  - `#56` still had a very small, high-signal follow-up already called out in the previous entry: repeat-task previews only exposed a generic interval label, which is weak disclosure for automation users may install from the public hub.
+- Investigation:
+  - Re-read issue `#56` and its comments, then re-inspected `website/index.html` and `website/website-hub-inspector.test.js`.
+  - Confirmed the repeat-task section still rendered only `${formatIntervalLabel(task.intervalMinutes)} · enabled/disabled by default`, with no disclosure of whether a task also fires on app launch.
+  - Checked real public bundle artifacts from `aj47/dotagents-hub` and the existing desktop/shared bundle schema, confirming repeat tasks support `intervalMinutes`, `enabled`, and optional `runOnStartup` metadata that the website modal was currently hiding.
+- Important assumptions:
+  - Assumption: exposing startup-trigger behavior and bundle-default enablement in the website inspector is a valid `#56` follow-up even though the core modal already shipped.
+  - Why acceptable: this remains squarely within the issue’s inspect-before-install trust goal, and automation timing is one of the most important things users need to understand before installing a bundle.
+  - Assumption: a website-only source test is sufficient verification for this static landing-page slice.
+  - Why acceptable: the change is isolated to `website/index.html`, existing dependency-free tests already cover this surface, and the targeted Node test now passes locally.
+- Changes implemented:
+  - Added `getRepeatTaskScheduleSummary(task)` in `website/index.html` so repeat-task previews now disclose cadence, startup-trigger state, and whether the task is enabled in the bundle versus disabled by default.
+  - Added `getRepeatTaskBehaviorNote(task)` so each repeat task includes a short trust-focused note clarifying whether it can run immediately on app launch or will wait for the normal interval schedule.
+  - Updated the repeat-task inspector rendering to use the richer schedule summary and behavior note instead of only the prior interval/default subtitle.
+  - Extended `website/website-hub-inspector.test.js` with targeted assertions locking the new repeat-task helper functions and trust copy in place.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If repeat-task trust questions continue, consider showing slightly more structured schedule metadata later (for example, separate cadence/trigger/default pills or explicit task IDs) without turning the landing page into a full bundle manager.
+  - Keep broader hub catalog/search work out of scope here unless the repo intentionally adopts the full hub app surface.
+
+- Next recommended issue work item: refresh open issues again and prefer either a concrete bug or another small trust/reliability slice; if `#57` slots is revisited, only do so after slot-vs-workspace precedence is explicitly documented in code or issue comments.

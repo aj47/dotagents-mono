@@ -27,6 +27,19 @@ test('bundle inspector modal includes required sections and warnings', () => {
     assert.match(source, /Memories \(\$\{bundle\.memories\.length\}\)/)
 })
 
+test('repeat task preview discloses startup behavior and bundle defaults', () => {
+    assert.match(source, /function getRepeatTaskScheduleSummary\(task\)/)
+    assert.match(source, /function getRepeatTaskBehaviorNote\(task\)/)
+    assert.match(source, /startup trigger on/)
+    assert.match(source, /startup trigger off/)
+    assert.match(source, /enabled in bundle/)
+    assert.match(source, /disabled by default/)
+    assert.match(source, /run immediately on app launch before its first scheduled interval/)
+    assert.match(source, /first run waits for the normal interval schedule after install/)
+    assert.match(source, /getRepeatTaskScheduleSummary\(task\)/)
+    assert.match(source, /getRepeatTaskBehaviorNote\(task\)/)
+})
+
 test('MCP preview discloses transport-aware connection details and setup requirements', () => {
     assert.match(source, /function formatTransportLabel\(transport\)/)
     assert.match(source, /function getMcpConnectionPreview\(server\)/)
