@@ -221,6 +221,11 @@ export function OverlayFollowUpInput({
         await onStopSession()
       } catch (error) {
         console.error("Failed to stop agent session via callback:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? `Failed to stop agent: ${error.message}`
+            : "Failed to stop agent",
+        )
       } finally {
         setIsStoppingSession(false)
       }
@@ -235,6 +240,11 @@ export function OverlayFollowUpInput({
         await tipcClient.emergencyStopAgent()
       } catch (error) {
         console.error("Failed to emergency stop agent:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? `Failed to stop agent: ${error.message}`
+            : "Failed to stop agent",
+        )
       } finally {
         setIsStoppingSession(false)
       }
@@ -246,6 +256,11 @@ export function OverlayFollowUpInput({
       await tipcClient.stopAgentSession({ sessionId })
     } catch (error) {
       console.error("Failed to stop agent session:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to stop agent: ${error.message}`
+          : "Failed to stop agent",
+      )
     } finally {
       setIsStoppingSession(false)
     }

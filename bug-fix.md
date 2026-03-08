@@ -70,6 +70,10 @@
 - [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/pages/panel.tsx` uses `TextInputPanel` for the main panel text-input flow, so this silent-failure path affects the primary desktop message composer rather than dead or edge-case UI.
 - [x] 2026-03-08: Compared the desktop primary composer against `apps/mobile/src/screens/ChatScreen.tsx`; mobile already leaves visible failed-send state plus retry UI, so assuming toast-based feedback is acceptable on desktop is a low-risk alignment with existing product behavior.
 - [x] 2026-03-08: Assumption accepted: using `toast.error(...)` is the smallest safe desktop fix for rejected `TextInputPanel` submits because `apps/desktop/src/renderer/src/App.tsx` already mounts a global `sonner` `Toaster`, and desktop follow-up composers already use the same pattern for send failures.
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`; their stop-session / emergency-stop handlers still caught failures with `console.error(...)` only even after the earlier follow-up send toast fix.
+- [x] 2026-03-08: Compared desktop follow-up kill-switch failure handling against mobile `apps/mobile/src/screens/ChatScreen.tsx`; mobile emergency stop already confirms success/failure with `Alert.alert(...)` / `window.alert(...)`, so a visible desktop failure toast is consistent with existing product behavior.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the follow-up kill-switch error-feedback update and regression test change.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -146,6 +150,10 @@
   - `apps/desktop/src/renderer/src/components/text-input-panel.tsx` wrapped `await onSubmit(message)` in `try/catch`, but its `catch` block only called `console.error(...)`.
   - `apps/desktop/src/renderer/src/pages/panel.tsx` uses `TextInputPanel` as the main desktop text-input surface, so a rejected submit in that path looked like “nothing happened” from the user’s point of view even though the send flow had failed.
   - Mobile already leaves visible failed-send state and retry affordances in `apps/mobile/src/screens/ChatScreen.tsx`, so the silent desktop behavior was a concrete UX bug rather than an intentional platform difference.
+- [x] **Desktop follow-up kill-switch failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` still wrapped `onStopSession()`, `tipcClient.emergencyStopAgent()`, and `tipcClient.stopAgentSession(...)` in `try/catch`, but every failure path only called `console.error(...)`.
+  - That meant a failed stop attempt from the follow-up composer kill-switch looked like “Stop Agent did nothing” from the user’s point of view even though a core session-control action had failed.
+  - Mobile already surfaces kill-switch success/failure through `Alert.alert(...)` / `window.alert(...)` in `apps/mobile/src/screens/ChatScreen.tsx`, so the silent desktop follow-up stop path was a real UX gap rather than an intentional platform difference.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -230,6 +238,8 @@
   - parsing a valid interval draft to a numeric `intervalMinutes` value before save
 - [x] Updated `apps/desktop/src/renderer/src/components/text-input-panel.tsx` so rejected primary-composer submits now surface `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
 - [x] Extended `apps/desktop/src/renderer/src/components/text-input-panel.submit.test.tsx` to mock `sonner` and assert that a rejected submit keeps the draft, clears the busy state, and surfaces a visible `Failed to send message` toast.
+- [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up kill-switch actions now surface `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
+- [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers expose a visible `Failed to stop agent` toast path for callback, direct stop-session, and emergency-stop failures.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -268,6 +278,10 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/text-input-panel.tsx` now imports `toast` from `sonner` and calls `toast.error(...)` when `onSubmit(...)` rejects, so the primary desktop composer no longer fails silently on rejected sends.
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/text-input-panel.submit.test.tsx` now mocks `sonner` and asserts the rejected-submit path keeps the draft while surfacing the toast message.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the primary-composer error-feedback update and regression test change.
+- [x] Manual source verification: both desktop follow-up composers now call `toast.error(...)` in all three stop-failure paths (`onStopSession` callback, `emergencyStopAgent`, and `stopAgentSession`), so failed follow-up kill-switch actions no longer stay completely silent.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` now asserts the visible `Failed to stop agent` toast contract for both overlay and tile follow-up composers.
+- [x] Low-cost automated sanity check: a `node` file-read assertion confirmed both follow-up composer source files now contain the `toast.error(...)` stop-failure path and `Failed to stop agent` message.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the follow-up kill-switch error-feedback update and regression test change.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -285,9 +299,10 @@
 - [x] Targeted automated verification for this repeat-task interval fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop agent system-prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this primary-composer error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/text-input-panel.submit.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this follow-up kill-switch error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
-- [ ] Whether desktop follow-up stop-session failures (`stopAgentSession` / `emergencyStopAgent`) should also surface a toast instead of remaining console-only once the follow-up send path lands.
+- [ ] Whether other desktop stop-session surfaces outside the follow-up composers (for example `AgentProgress`, `AgentProcessingView`, or `ActiveAgentsSidebar`) should also surface a toast instead of remaining console-only once live verification is available.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
@@ -334,6 +349,8 @@
 - Matching the existing mobile `LoopEditScreen` pattern is the smallest safe fix here because it preserves the saved `LoopConfig.intervalMinutes` type and all existing scheduling/runtime behavior while removing the broken desktop editing interaction.
 - The agent editor issue is a controlled-textarea value bug rather than a persistence bug: using `|| defaultSystemPrompt` makes the empty-string draft state unrepresentable even though the editor relies on that exact empty state to mean “use the default”.
 - Moving the default prompt into `placeholder` is the smallest safe fix because it preserves the helpful visibility of the default text without forcing that text back into the live editable draft.
+- Silent failure on a core “stop agent” action is similarly high-signal user pain: when the user explicitly asks the session to stop and the request fails, the UI should not appear to ignore that control.
+- Adding `toast.error(...)` in the existing follow-up kill-switch `catch` blocks is the smallest safe fix because it preserves the current stop behavior, loading state, and callback/direct-stop branching while finally exposing the failure to the user.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -352,6 +369,7 @@
 - Assumption: letting `Start Tunnel` use the current drafts immediately is acceptable because the same click now flushes those drafts back into saved config, and the main-process starter already expects plain string values for these fields.
 - Assumption: leaving temporary invalid repeat-task interval drafts local until save is acceptable because the mobile `LoopEditScreen` already validates this field on save, and desktop `loop-service` still defensively clamps any persisted invalid interval at runtime.
 - Assumption: showing the default system prompt as a textarea placeholder is acceptable because the existing note already tells users to leave the field empty to use the default, and placeholder text preserves that visibility without corrupting the editable draft state.
+- Assumption: using the existing desktop toast pattern for follow-up kill-switch failures is acceptable because `sonner` is already mounted app-wide, the same components already use it for follow-up send failures, and mobile already exposes stop failures visibly.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -377,3 +395,4 @@
 - After that, live-verify the desktop named-tunnel setup flow (`Tunnel ID`, `Hostname`, `Credentials Path`, and `Start Tunnel`) to confirm the fields no longer fight typing and the action enables immediately from the current drafts.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` and live-verify that editing a repeat-task interval by backspacing/retyping no longer snaps the field back to `15` mid-edit.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that clearing or resetting an agent system prompt leaves the textarea empty while still showing the default prompt as placeholder guidance.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify that failing a follow-up kill-switch action surfaces the new desktop toast instead of failing silently.

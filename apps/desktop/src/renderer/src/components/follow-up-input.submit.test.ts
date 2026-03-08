@@ -23,6 +23,10 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(overlaySource).toContain("console.error(\"Failed to submit overlay follow-up message:\", error)")
     expect(overlaySource).toContain("Failed to send follow-up message")
     expect(overlaySource).toContain("toast.error(")
+    expect(overlaySource).toContain("console.error(\"Failed to stop agent session via callback:\", error)")
+    expect(overlaySource).toContain("console.error(\"Failed to emergency stop agent:\", error)")
+    expect(overlaySource).toContain("console.error(\"Failed to stop agent session:\", error)")
+    expect(overlaySource).toContain("Failed to stop agent")
     expect(overlaySource).toContain(
       "const isDisabled = isSubmitting || sendMutation.isPending || (isSessionActive && !isQueueEnabled)",
     )
@@ -39,6 +43,10 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(tileSource).toContain("console.error(\"Failed to submit tile follow-up message:\", error)")
     expect(tileSource).toContain("Failed to send follow-up message")
     expect(tileSource).toContain("toast.error(")
+    expect(tileSource).toContain("console.error(\"Failed to stop agent session via callback:\", error)")
+    expect(tileSource).toContain("console.error(\"Failed to emergency stop agent:\", error)")
+    expect(tileSource).toContain("console.error(\"Failed to stop agent session:\", error)")
+    expect(tileSource).toContain("Failed to stop agent")
     expect(tileSource).toMatch(/isInitializingSession \|\|\s+isSubmitting \|\|\s+sendMutation\.isPending/)
   })
 })
