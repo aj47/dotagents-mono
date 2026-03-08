@@ -78,6 +78,24 @@ test('lets response row metadata wrap before the speak control gets squeezed on 
   assert.match(responseHistorySource, /responseMeta:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?flexDirection:\s*'row',[\s\S]*?flexWrap:\s*'wrap',[\s\S]*?minWidth:\s*0,[\s\S]*?flexShrink:\s*1/);
 });
 
+test('collapses older long response rows to previews while leaving the latest response expanded by default', () => {
+  assert.match(responseHistorySource, /const COLLAPSED_RESPONSE_PREVIEW_LIMIT = 160;/);
+  assert.match(responseHistorySource, /const COLLAPSED_RESPONSE_PREVIEW_LINE_THRESHOLD = 2;/);
+  assert.match(responseHistorySource, /function buildCollapsedResponsePreview\(responseText: string\): string \{[\s\S]*?replace\(\/\[\\t\\r\\n\]\+\/g, ' '\)[\s\S]*?return `\$\{preview\.slice\(0, COLLAPSED_RESPONSE_PREVIEW_LIMIT - 1\)\.trimEnd\(\)\}…`;/);
+  assert.match(responseHistorySource, /function shouldCollapseResponseByDefault\(responseText: string\): boolean \{[\s\S]*?normalizedResponse\.length > COLLAPSED_RESPONSE_PREVIEW_LIMIT[\s\S]*?nonEmptyLines\.length > COLLAPSED_RESPONSE_PREVIEW_LINE_THRESHOLD;/);
+  assert.match(responseHistorySource, /const responsePreview = buildCollapsedResponsePreview\(response\.text\);/);
+  assert.match(responseHistorySource, /const shouldCollapseResponse = shouldCollapseResponseByDefault\(response\.text\);/);
+  assert.match(responseHistorySource, /const isResponseExpanded = shouldCollapseResponse[\s\S]*?\(expandedResponses\[responseKey\] \?\? isLatest\)[\s\S]*?: true;/);
+  assert.match(responseHistorySource, /\{isResponseExpanded \? \([\s\S]*?<MarkdownRenderer content=\{response\.text\} \/>[\s\S]*?\) : \([\s\S]*?<Text style=\{styles\.responsePreview\} numberOfLines=\{3\} ellipsizeMode="tail">[\s\S]*?\{responsePreview\}[\s\S]*?<\/Text>/);
+});
+
+test('gives long response rows a mobile-sized More/Less disclosure with explicit expanded semantics', () => {
+  assert.match(responseHistorySource, /const responseExpandTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalPadding:\s*4,[\s\S]*?verticalPadding:\s*4,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(responseHistorySource, /responseExpandButton:\s*\{[\s\S]*?\.\.\.responseExpandTouchTarget,[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignSelf:\s*'flex-start',[\s\S]*?borderRadius:\s*999/);
+  assert.match(responseHistorySource, /responseExpandButtonText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?fontWeight:\s*'500'/);
+  assert.match(responseHistorySource, /\{shouldCollapseResponse \? \([\s\S]*?<TouchableOpacity[\s\S]*?accessibilityRole="button"[\s\S]*?createExpandCollapseAccessibilityLabel\([\s\S]*?`response details \$\{responseAccessibilityContext\}`,[\s\S]*?isResponseExpanded[\s\S]*?\)[\s\S]*?accessibilityHint=\{isResponseExpanded[\s\S]*?Shows a shorter preview for this agent response\.[\s\S]*?Shows the full agent response with formatting\.[\s\S]*?\}[\s\S]*?accessibilityState=\{\{ expanded: isResponseExpanded \}\}[\s\S]*?\{isResponseExpanded \? 'Less' : 'More'\}/);
+});
+
 test('keeps response-history controls usable while the chat keyboard is open', () => {
   assert.match(responseHistorySource, /<ScrollView[\s\S]*?style=\{styles\.list\}[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"/);
 });

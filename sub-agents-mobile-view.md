@@ -1,5 +1,54 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 133 - Collapse older long response-history rows to previews by default
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-updated `ResponseHistoryPanel` header summary, newest-row badge, speaking badge, and row-wrap fixes without new evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree, ending with `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules because the mobile install is missing
+- Current behavior observed before the fix:
+  - Source review of `apps/mobile/src/ui/ResponseHistoryPanel.tsx` showed every expanded response-history row still rendered full markdown content, regardless of whether the row was the newest response or an older, already-read response.
+  - Recent iterations had already improved timestamps, badges, header status, and row metadata wrapping, but older long responses could still dominate the panel once it was expanded.
+  - On a narrow mobile viewport, that meant the history view could remain text-heavy even when the user mainly needed to scan older responses by recency before deciding which one to reopen.
+- Issue identified:
+  - Expanded mobile response history still treated older long responses as fully open content, weakening scanability and information hierarchy after the panel was expanded.
+- Decision and rationale:
+  - Keep the newest response expanded by default so the latest delegated output remains immediately readable.
+  - Do not redesign the panel or replace markdown rendering entirely while live validation is blocked.
+  - Make the smallest hierarchy fix instead: collapse only older long/multiline response rows to a compact preview by default, with an explicit mobile-sized `More` / `Less` disclosure for full content when needed.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - add a bounded collapsed-preview helper for long/multiline/image-heavy response rows,
+    - keep the latest response expanded by default while older long rows start in preview mode,
+    - add per-row expansion state reset on conversation change,
+    - add a mobile-sized `More` / `Less` disclosure with explicit expanded-state accessibility semantics.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the preview-default behavior and the new row-level disclosure contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `node --test apps/mobile/tests/chat-response-history-mobile.test.js apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+  - Mobile typecheck re-validation ⚠️ still blocked by the same missing install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+- Assumptions and tradeoffs:
+  - Assumed the latest response should stay fully readable by default, while older long rows benefit more from scan-first previews on mobile.
+  - Chose a plain-text collapsed preview instead of a bigger markdown-aware row redesign so the change stays local and shippable.
+  - This remains a source-backed improvement and still needs live confirmation that the preview/default-expanded mix feels balanced when several older responses contain markdown structure.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `ResponseHistoryPanel` still lacks fresh screenshot-backed validation after the recent header-summary, badge, wrap, and now preview-collapse improvements.
+  - A live pass is still needed to confirm the new `More` / `Less` row disclosure feels obvious enough beside the existing speak control on very narrow screens.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that older long response rows now scan more quickly while the latest response remains easy to read in full.
+  - Capture screenshot-backed evidence for mixed response-history states (latest expanded, older row previewed, older row manually expanded) so the new hierarchy can be judged on a narrow viewport.
+  - After that live pass, continue with the next highest-signal local sub-agent mobile issue instead of revisiting this preview-collapse change without fresh evidence.
+
 ## Iteration 132 - Response history row metadata wraps before speak controls get squeezed
 
 - Date: 2026-03-08

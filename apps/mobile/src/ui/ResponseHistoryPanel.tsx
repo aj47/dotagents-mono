@@ -30,6 +30,14 @@ export interface ResponseHistoryEntry {
   timestamp: number;
 }
 
+const COLLAPSED_RESPONSE_PREVIEW_SCAN_LIMIT = 2048;
+const COLLAPSED_RESPONSE_PREVIEW_LIMIT = 160;
+const COLLAPSED_RESPONSE_PREVIEW_LINE_THRESHOLD = 2;
+
+const hasMarkdownImagePreview = (text: string) => /!\[[^\]]*\]\((?:data:image[^)]*|[^)]*)\)/i.test(text);
+
+const hasEmbeddedImagePreview = (text: string) => /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/i.test(text);
+
 function formatResponseAccessibilityContext(text: string, timestampLabel: string): string {
   const normalizedText = text.replace(/\s+/g, ' ').trim();
   if (!normalizedText) return `from ${timestampLabel}`;
@@ -39,6 +47,39 @@ function formatResponseAccessibilityContext(text: string, timestampLabel: string
     : normalizedText;
 
   return `"${preview}" from ${timestampLabel}`;
+}
+
+function buildCollapsedResponsePreview(responseText: string): string {
+  const boundedResponse = responseText.slice(0, COLLAPSED_RESPONSE_PREVIEW_SCAN_LIMIT);
+  const preview = boundedResponse
+    .replace(/!\[[^\]]*\]\((?:data:image[^)]*|[^)]*)\)/gi, '[image]')
+    .replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[embedded image]')
+    .replace(/[\t\r\n]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!preview) return 'Image response';
+
+  if (preview.length > COLLAPSED_RESPONSE_PREVIEW_LIMIT) {
+    return `${preview.slice(0, COLLAPSED_RESPONSE_PREVIEW_LIMIT - 1).trimEnd()}…`;
+  }
+
+  if (responseText.length > COLLAPSED_RESPONSE_PREVIEW_SCAN_LIMIT) {
+    return `${preview}…`;
+  }
+
+  return preview;
+}
+
+function shouldCollapseResponseByDefault(responseText: string): boolean {
+  const normalizedResponse = responseText.replace(/\s+/g, ' ').trim();
+  const nonEmptyLines = responseText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+
+  return hasMarkdownImagePreview(responseText)
+    || hasEmbeddedImagePreview(responseText)
+    || normalizedResponse.length > COLLAPSED_RESPONSE_PREVIEW_LIMIT
+    || responseText.length > COLLAPSED_RESPONSE_PREVIEW_SCAN_LIMIT
+    || nonEmptyLines.length > COLLAPSED_RESPONSE_PREVIEW_LINE_THRESHOLD;
 }
 
 interface ResponseHistoryPanelProps {
@@ -89,6 +130,7 @@ export function ResponseHistoryPanel({
   const { height: windowHeight } = useWindowDimensions();
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [expandedResponses, setExpandedResponses] = useState<Record<string, boolean>>({});
   const isMountedRef = useRef(true);
   const previousConversationIdRef = useRef(conversationId);
   const speechRequestIdRef = useRef(0);
@@ -100,6 +142,12 @@ export function ResponseHistoryPanel({
   });
   const responseSpeakTouchTarget = createMinimumTouchTargetStyle({
     minSize: 44,
+    horizontalMargin: 0,
+  });
+  const responseExpandTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 4,
+    verticalPadding: 4,
     horizontalMargin: 0,
   });
   const responseHistoryDisclosureHint = 'Shows or hides recent respond-to-user outputs from the current agent session.';
@@ -139,6 +187,7 @@ export function ResponseHistoryPanel({
 
     previousConversationIdRef.current = conversationId;
     setIsCollapsed(true);
+    setExpandedResponses({});
     nextSpeechRequestId();
     Speech.stop();
     safeSetSpeakingIndex(null);
@@ -215,6 +264,13 @@ export function ResponseHistoryPanel({
   useEffect(() => {
     prevCountRef.current = responses.length;
   }, [responses.length]);
+
+  const toggleResponseExpansion = useCallback((responseKey: string) => {
+    setExpandedResponses((prev) => ({
+      ...prev,
+      [responseKey]: !prev[responseKey],
+    }));
+  }, []);
 
   const styles = StyleSheet.create({
     container: {
@@ -356,6 +412,25 @@ export function ResponseHistoryPanel({
       height: 1,
       backgroundColor: theme.colors.border,
     },
+    responsePreview: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.foreground,
+    },
+    responseExpandButton: {
+      ...responseExpandTouchTarget,
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      marginTop: 4,
+    },
+    responseExpandButtonText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginLeft: 2,
+      fontWeight: '500',
+    },
   });
 
   return (
@@ -405,8 +480,14 @@ export function ResponseHistoryPanel({
             const isSpeaking = speakingIndex === originalIndex;
             const isLatest = originalIndex === newestOriginalIndex;
             const shouldShowLatestBadge = isLatest && !isSpeaking;
+            const responseKey = `${response.timestamp}-${originalIndex}`;
             const responseTimestampLabel = formatTime(response.timestamp, false);
             const responseAccessibilityContext = formatResponseAccessibilityContext(response.text, responseTimestampLabel);
+            const responsePreview = buildCollapsedResponsePreview(response.text);
+            const shouldCollapseResponse = shouldCollapseResponseByDefault(response.text);
+            const isResponseExpanded = shouldCollapseResponse
+              ? (expandedResponses[responseKey] ?? isLatest)
+              : true;
             // Animate newest entry (shown at top after reverse)
             const isNewestEntry =
               shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
@@ -455,7 +536,38 @@ export function ResponseHistoryPanel({
                         />
                       </TouchableOpacity>
                     </View>
-                    <MarkdownRenderer content={response.text} />
+                    {isResponseExpanded ? (
+                      <MarkdownRenderer content={response.text} />
+                    ) : (
+                      <Text style={styles.responsePreview} numberOfLines={3} ellipsizeMode="tail">
+                        {responsePreview}
+                      </Text>
+                    )}
+                    {shouldCollapseResponse ? (
+                      <TouchableOpacity
+                        style={styles.responseExpandButton}
+                        onPress={() => toggleResponseExpansion(responseKey)}
+                        accessibilityRole="button"
+                        accessibilityLabel={createExpandCollapseAccessibilityLabel(
+                          `response details ${responseAccessibilityContext}`,
+                          isResponseExpanded
+                        )}
+                        accessibilityHint={isResponseExpanded
+                          ? 'Shows a shorter preview for this agent response.'
+                          : 'Shows the full agent response with formatting.'}
+                        accessibilityState={{ expanded: isResponseExpanded }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={isResponseExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={12}
+                          color={theme.colors.mutedForeground}
+                        />
+                        <Text style={styles.responseExpandButtonText}>
+                          {isResponseExpanded ? 'Less' : 'More'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 </AnimatedResponseItem>
               </React.Fragment>
