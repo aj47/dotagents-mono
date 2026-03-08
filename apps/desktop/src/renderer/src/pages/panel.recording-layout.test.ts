@@ -6,6 +6,10 @@ const mainWindowSource = readFileSync(new URL("../../../main/window.ts", import.
 const tipcSource = readFileSync(new URL("../../../main/tipc.ts", import.meta.url), "utf8")
 const configSource = readFileSync(new URL("../../../main/config.ts", import.meta.url), "utf8")
 
+function compact(source: string) {
+  return source.replace(/\s+/g, "")
+}
+
 describe("panel recording layout", () => {
   it("wraps the recording footer controls for narrow widths and zoomed text", () => {
     expect(panelSource).toContain(
@@ -68,5 +72,26 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain("const hasPreviewVisible = recording && isPreviewEnabled && (previewText.length > 0 || previewError !== null)")
     expect(panelSource).toContain("{isPreviewEnabled && (previewText || previewError) && (")
     expect(panelSource).toContain("text-destructive line-clamp-2")
+  })
+
+  it("lets MCP submit routes own conversation history so panel input does not duplicate user messages", () => {
+    const compactPanelSource = compact(panelSource)
+    const compactTipcSource = compact(tipcSource)
+    const compactTextSubmitSection = compactPanelSource
+      .split(compact("const handleTextSubmit = async (text: string) => {"))[1]
+      ?.split(compact("// MCP handlers"))[0] ?? ""
+    const compactMcpTranscribeSection = compactPanelSource
+      .split(compact("const mcpTranscribeMutation = useMutation({"))[1]
+      ?.split(compact("onError(error) {"))[0] ?? ""
+
+    expect(compactTipcSource).toContain(compact("const conversation = await conversationService.createConversation(input.text, \"user\")"))
+    expect(compactTipcSource).toContain(compact("await conversationService.addMessageToConversation(conversationId, input.text, \"user\")"))
+    expect(compactTipcSource).toContain(compact("conversation = await conversationService.createConversation(transcript, \"user\")"))
+    expect(compactTipcSource).toContain(compact("await conversationService.addMessageToConversation(conversationId, transcript, \"user\")"))
+    expect(compactTextSubmitSection).toContain(compact("mcpTextInputMutation.mutate({ text,"))
+    expect(compactTextSubmitSection).not.toContain(compact("await startNewConversation(text, \"user\")"))
+    expect(compactTextSubmitSection).not.toContain(compact("await addMessage(text, \"user\")"))
+    expect(compactMcpTranscribeSection).toContain(compact("const result = await tipcClient.createMcpRecording({"))
+    expect(compactMcpTranscribeSection).not.toContain(compact("await startNewConversation(transcript, \"user\")"))
   })
 })

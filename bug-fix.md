@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/panel.tsx` for a fresh floating-panel MCP regression and confirmed both the typed `handleTextSubmit(...)` path and the `mcpTranscribeMutation` voice path still wrote user content into conversation history in the renderer before handing off to `tipcClient.createMcpTextInput(...)` / `createMcpRecording(...)`.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` that both `createMcpTextInput` and `createMcpRecording` already own conversation history creation for new and continued MCP submissions, so the panel-side prewrite could duplicate the same user prompt/transcript in saved conversation history.
+- [x] 2026-03-08: Assumption accepted: the smallest safe fix is to keep regular non-MCP dictation unchanged and make the panel MCP flows treat the main-process `createMcp*` routes as the single source of truth for history writes, because those routes already branch correctly for fresh conversations, continued conversations, and queued active sessions.
 - [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/settings-skills.tsx` for a fresh desktop user-facing bug not already covered by the earlier delete/refresh fixes and found the visible `Import from GitHub` dialog still cleared its input and closed itself from `importSkillFromGitHubMutation.onSuccess(...)` for every handled result.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/skills-service.ts` that `importSkillFromGitHub(...)` intentionally returns handled non-throwing outcomes such as `{ imported: [], errors: [...] }` for invalid repo identifiers, invalid refs/paths, and clone failures, plus `{ imported: [], errors: [] }` when no `SKILL.md` files are found.
 - [x] 2026-03-08: Searched `apps/mobile/src` for an equivalent GitHub skill-import dialog and found no matching flow, so this retry/data-loss bug is desktop-only.
@@ -320,6 +323,10 @@
 - [x] 2026-03-08: Compared the remaining `showPanelWindow(...)` callers in `apps/desktop/src/renderer/src/pages/panel.tsx`; those invocations only run from the panel renderer after the panel already exists, so leaving them unchanged in this pass is an acceptable minimal-scope assumption rather than another visible false-success bug.
 
 ### Reproduced
+- [x] **Desktop floating-panel MCP submit duplicated the user's prompt/transcript in conversation history (directly confirmed in source):**
+  - In `apps/desktop/src/renderer/src/pages/panel.tsx`, `handleTextSubmit(...)` previously ran `startNewConversation(text, "user")` or `addMessage(text, "user")` before firing `mcpTextInputMutation.mutate(...)`.
+  - The same file's `mcpTranscribeMutation` previously ran `startNewConversation(transcript, "user")` before `tipcClient.createMcpRecording(...)` for fresh MCP recordings.
+  - In `apps/desktop/src/main/tipc.ts`, `createMcpTextInput` already creates/adds the user message for both new and existing conversations, and `createMcpRecording` does the same after transcription, so the panel path could persist the same user content twice.
 - [x] **Desktop Skills GitHub import dialog closed on handled zero-import/error results (directly confirmed in source):**
   - In `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, `importSkillFromGitHubMutation.onSuccess(...)` previously always ran `setIsGitHubDialogOpen(false)` and `setGitHubRepoInput("")` after showing either success, error, or `No skills found in repository` feedback.
   - In `apps/desktop/src/main/skills-service.ts`, the GitHub import flow returns structured `imported` / `errors` results for validation failures, clone failures, and empty repositories instead of throwing on every non-successful outcome.
@@ -696,6 +703,8 @@
   - The model picker modal and footer only rendered generic availability copy (`No models available`, `N models available`), so a real fetch failure could masquerade as an honest empty state instead of telling the user that models failed to load.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/pages/panel.tsx` so the floating panel's MCP text submit and MCP recording submit paths no longer pre-create/add the user message in renderer state; they now hand off directly to `createMcpTextInput` / `createMcpRecording`, leaving those main-process routes as the only history writers for MCP submissions.
+- [x] Extended `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` with focused source-level regression coverage that scopes the assertions to `handleTextSubmit(...)` and `mcpTranscribeMutation`, locking in that the panel no longer writes history before the MCP handoff while the main-process routes still do.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-skills.tsx` so the GitHub skill-import dialog now returns early on missing results, only invalidates/reloads/clears/closes on real imports (`result.imported.length > 0`), and keeps the dialog/input intact when the backend returns handled errors or zero imported skills.
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-skills.feedback.test.ts` with focused source-level regression coverage for the new GitHub import guard so the desktop Skills page keeps the dialog open when no skills were imported.
 - [x] Updated `apps/desktop/src/main/remote-server.ts` so the mobile `/v1/loops/:id/toggle` route now stores the `loopService.saveLoop(updated)` result and returns HTTP 500 with `Failed to persist repeat task toggle` when the repeat-task write fails instead of falsely reporting success.
@@ -963,6 +972,8 @@
 - [x] Added `apps/mobile/tests/settings-model-loading.test.js` with focused dependency-free regression coverage that locks in the new mobile contract: provider/preset changes must clear stale model options, and model-load failures must surface explicit UI error-state wiring.
 
 ### Verified
+- [x] Manual source verification: `panel.tsx` no longer calls `startNewConversation(text, "user")` / `addMessage(text, "user")` inside `handleTextSubmit(...)`, and the `mcpTranscribeMutation` block now hands recordings straight to `tipcClient.createMcpRecording(...)` without a renderer-side conversation prewrite.
+- [x] Dependency-free verification passed: a plain `node` file-read assertion script checked the narrowed `handleTextSubmit(...)` and `mcpTranscribeMutation` source slices plus the new regression test case in `panel.recording-layout.test.ts`, and `git diff --check` completed cleanly.
 - [x] Manual source verification: `settings-skills.tsx` now short-circuits `importSkillFromGitHubMutation.onSuccess(...)` when `!result`, only closes/resets the GitHub dialog inside the `result.imported.length > 0` branch, returns early after handled `result.errors`, and leaves the zero-import info path open for retry/correction.
 - [x] Dependency-free verification passed: a plain `node` file-read assertion script confirmed the new GitHub import branch structure in `settings-skills.tsx` and the added regression coverage in `settings-skills.feedback.test.ts`.
 - [x] Repository diff sanity check: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-skills.tsx apps/desktop/src/renderer/src/pages/settings-skills.feedback.test.ts bug-fix.md` completed cleanly after the desktop GitHub skill-import dialog fix.
@@ -1230,6 +1241,7 @@
 - [x] Repository diff sanity check: `git diff --check -- apps/mobile/src/screens/SettingsScreen.tsx apps/mobile/tests/settings-model-loading.test.js bug-fix.md` completed cleanly after the mobile model-loading feedback fix.
 
 ### Blocked
+- [x] Targeted automated verification for this floating-panel MCP duplicate-history fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` in this worktree.
 - [x] Targeted automated verification for this desktop Skills GitHub-import dialog fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` in this worktree.
 - [x] Targeted automated verification for this mobile repeat-task toggle truthfulness fix is blocked by the same missing dependency state in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/main/remote-server.routes.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
 - [x] Targeted automated verification for this mobile repeat-task create/update truthfulness fix is blocked by the same missing dependency state in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/main/remote-server.routes.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
@@ -1336,6 +1348,7 @@
 - [x] Live mobile repro/validation for this Settings model-loading feedback fix is blocked by the same missing dependency state in this worktree: `pnpm --filter @dotagents/mobile exec expo --version` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so I could not launch Expo web/device debugging to force a real `getModels(...)` failure under the documented mobile workflow in this iteration.
 
 ### Still Uncertain
+- [ ] Whether the floating panel's typed MCP submit path should also stop hiding/clearing the composer until `createMcpTextInput(...)` actually resolves, so late IPC failures preserve the user's draft instead of only avoiding duplicate history; that adjacent data-loss concern was intentionally left out of this single-bug fix.
 - [ ] Whether the mobile repeat-task create/update routes should also surface partial scheduler-sync failure explicitly (for example a durable save followed by `startLoop(...)` / `stopLoop(...)` returning `false`) once the worktree dependencies are restored for live validation, or whether keeping this pass scoped to persistence truthfulness is the better contract.
 - [ ] Whether other shared custom-text selectors besides `ModelSelector` still bypass higher-level settings drafts anywhere in the desktop renderer, or whether this shared provider-model editor was the last materially user-facing instance once dependencies are available for broader live validation.
 - [ ] Whether Expo Web camera scanning should eventually be made reliable again (for example by revisiting `expo-camera`/modal behavior once dependencies are available), or whether the new deep-link paste flow should remain the primary web pairing UX even after live tooling is restored.
