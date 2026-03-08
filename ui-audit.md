@@ -1,5 +1,44 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 30: Mobile Chats list header/actions and session-card headers under narrow widths and larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/SessionListScreen.tsx`
+- Why this chunk: after the recent mobile editor passes, the top-level Chats list was still unlogged in `ui-audit.md`. It is one of the first mobile surfaces users see, and its header/actions plus per-session card headers still had clear one-line layout assumptions that would feel brittle under narrow widths and larger text.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting the recently logged mobile editor/settings work
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the existing mobile source-contract test patterns in `apps/mobile/tests/`
+  - attempted the normal mobile verification path again, but live Expo inspection remains blocked in this worktree because local mobile dependencies are unavailable (`expo` / `expo/tsconfig.base` / other `node_modules` dependencies missing)
+  - inspected `SessionListScreen.tsx` directly, especially the top action bar and the session card title/date row, and cross-checked the existing mobile header-trigger tests to keep the change local instead of broadening into unrelated header-agent work
+
+#### Findings
+
+- Before the fix, `SessionListScreen` still had one concrete mobile responsiveness issue with clear user impact:
+  - the top action bar used a rigid `justifyContent: 'space-between'` row, so `+ New Chat`, the sync spinner, and `Clear All` all competed for one line with no intentional wrap behavior
+  - each session card header also used a single-line title/date row, so longer chat names, the desktop-stub indicator, and the timestamp had to fight for the same horizontal space
+  - the stub-session affordance relied on ad hoc inline margin spacing instead of a dedicated style contract, which made the compact row feel more fragile than the surrounding screen chrome
+
+#### Changes made
+
+- Hardened `apps/mobile/src/screens/SessionListScreen.tsx` with a small, local layout fix:
+  - made the top action bar wrap-safe and top-aligned so `New Chat`, syncing state, and `Clear All` can reflow more gracefully on narrow mobile widths and larger text sizes
+  - moved the header action cluster and sync spinner to dedicated styles instead of inline layout assumptions
+  - made the session-card header wrap-safe with a dedicated `sessionTitleRow`, letting the title column stay `minWidth: 0` before crowding the timestamp
+  - replaced the stub-session inline margin hack with a dedicated `sessionStubIndicator` style and gave the metadata row an explicit line height for calmer multiline behavior
+- Added `apps/mobile/tests/session-list-screen-layout.test.js` so this mobile Chats-list layout contract now has focused regression coverage.
+
+#### Verification
+
+- Targeted regression tests: `node --test apps/mobile/tests/session-list-screen-layout.test.js apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Attempted targeted mobile typecheck: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked because this worktree is still missing Expo/mobile dependencies and `expo/tsconfig.base`)*
+- Patch hygiene: `git diff --check -- apps/mobile/src/screens/SessionListScreen.tsx apps/mobile/tests/session-list-screen-layout.test.js`
+
+#### Notes
+
+- Live mobile verification remains blocked until dependencies are restored, so this chunk is source-inspection-driven with source-contract tests rather than screenshot-backed runtime evidence.
+- This chunk stays mobile-scoped: there is no direct desktop session-list screen using the same React Native layout system that needed a matching change.
+- Best next UI audit chunk after this one: either return to `SessionListScreen` for screenshot-backed confirmation of the header/actions and Rapid Fire footer once mobile dependencies are restored, or move to a fresh unlogged desktop top-level page such as `memories.tsx`.
+
 ### 2026-03-08 — Chunk 29: Desktop session-tile follow-up composer action rail under narrow tile widths and zoom
 
 - Area selected:

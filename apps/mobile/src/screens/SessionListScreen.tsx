@@ -672,7 +672,7 @@ export default function SessionListScreen({ navigation }: Props) {
         )
       ),
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerRightActions}>
           <ConnectionStatusIndicator
             state={connectionInfo.state}
             retryCount={connectionInfo.retryCount}
@@ -825,9 +825,9 @@ export default function SessionListScreen({ navigation }: Props) {
         accessibilityLabel={`${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
       >
         <View style={styles.sessionHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+          <View style={styles.sessionTitleRow}>
             {isStub && (
-              <Text style={{ fontSize: 12, marginRight: 4 }}>💻</Text>
+              <Text style={styles.sessionStubIndicator}>💻</Text>
             )}
             <Text style={styles.sessionTitle} numberOfLines={1}>
               {item.title}
@@ -883,11 +883,11 @@ export default function SessionListScreen({ navigation }: Props) {
         >
           <Text style={styles.newButtonText}>+ New Chat</Text>
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerActions}>
           {sessionStore.isSyncing && (
             <Image
               source={isDark ? darkSpinner : lightSpinner}
-              style={{ width: 16, height: 16, marginRight: 8 }}
+              style={styles.syncSpinner}
               resizeMode="contain"
             />
           )}
@@ -999,8 +999,9 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     header: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexWrap: 'wrap',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
       padding: spacing.md,
       borderBottomWidth: theme.hairline,
       borderBottomColor: theme.colors.border,
@@ -1035,6 +1036,11 @@ function createStyles(theme: Theme, screenHeight: number) {
       }),
       marginLeft: spacing.xs,
     },
+    headerRightActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 0,
+    },
     headerAgentSelectorTrigger: {
       ...headerAgentSelectorTouchTarget,
       flexDirection: 'column',
@@ -1060,6 +1066,20 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primary,
       fontWeight: '600',
     },
+    headerActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: spacing.xs,
+      marginLeft: 'auto',
+      maxWidth: '100%',
+      flexShrink: 1,
+    },
+    syncSpinner: {
+      width: 16,
+      height: 16,
+    },
     list: {
       padding: spacing.md,
     },
@@ -1082,18 +1102,34 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     sessionHeader: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 4,
+      flexWrap: 'wrap',
+      alignItems: 'flex-start',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+      minWidth: 0,
+    },
+    sessionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs,
+    },
+    sessionStubIndicator: {
+      fontSize: 12,
+      marginTop: 2,
     },
     sessionTitle: {
       ...theme.typography.body,
       fontWeight: '600',
       flex: 1,
-      marginRight: 8,
+      minWidth: 0,
     },
     sessionDate: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
+      alignSelf: 'flex-start',
+      flexShrink: 0,
     },
     sessionPreview: {
       ...theme.typography.body,
@@ -1103,6 +1139,7 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionMeta: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
+      lineHeight: 18,
     },
     emptyState: {
       alignItems: 'center',
