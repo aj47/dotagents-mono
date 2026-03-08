@@ -411,3 +411,31 @@
   - Consider richer visual treatment for summarized sections (for example, a dedicated summary block or compaction metadata badge) if users need more provenance context.
 
 - Next recommended issue work item: stay on `#58` for the resume-path/context-selection split, or add a small follow-up that exposes the same full-history affordance in additional session surfaces if user demand is stronger on live sessions.
+
+##### Issue #58 — Conversation History: resume-path uses compacted context window
+
+- Selection rationale:
+  - This was the next explicitly documented `#58` follow-up in the ledger: now that raw history is preserved on disk and the desktop viewer can show it, the LLM resume path needed to stop reading the full stored transcript by default.
+- Investigation:
+  - Re-read issue `#58` plus the scope-locking comment and confirmed the remaining acceptance gap was the context/storage split itself: resumed agent runs should receive summary + active window, not every preserved raw message.
+  - Re-inspected `apps/desktop/src/main/tipc.ts` and confirmed `processWithAgentMode(...)` still called `conversationService.loadConversation(conversationId)` when building `previousConversationHistory`, so large continued conversations would pass the un-compacted `conversation.messages` array into the agent loop.
+  - Confirmed `apps/desktop/src/main/conversation-service.ts` already had the right narrow backend primitive for this job: `loadConversationWithCompaction(conversationId, sessionId)` compacts the active window when needed while preserving `rawMessages` on disk.
+- Important assumptions:
+  - Assumption: switching the desktop resume path to the existing compaction-aware loader is the correct smallest slice even though compaction can still be a best-effort lazy step on first resume of a long conversation.
+  - Why acceptable: it directly closes the trust-critical acceptance gap (`LLM receives summary + active window only`) with a minimal change, while deeper performance/streaming refinements can remain a separate follow-up if needed.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/tipc.ts` so resumed desktop agent runs load conversation history via `conversationService.loadConversationWithCompaction(conversationId, sessionId)` instead of the raw `loadConversation(...)` path.
+  - Updated resume-path logging to describe the loaded agent context window in terms of active messages vs represented stored history, making the storage/context split more explicit in diagnostics.
+  - Extended `apps/desktop/src/main/conversation-storage-integrity.test.js` with a targeted regression assertion covering the new compaction-aware resume-path wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether ACP-backed resume/history bootstrap should also adopt an explicit compaction-aware context contract, or remain UI-history-only because ACP session state is managed separately.
+  - Consider a performance-oriented follow-up if first-resume compaction latency becomes noticeable on very long histories.
+  - Continue exposing the preserved-history vs active-window distinction in more live-session surfaces if users need the same clarity outside pending past-session tiles.
+
+- Next recommended issue work item: stay on `#58` for ACP/history-path alignment or live-session history provenance polish, unless a newly-opened bug with clearer repro and smaller scope appears first.

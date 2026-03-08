@@ -413,7 +413,8 @@ async function processWithAgentMode(
 
     // Load previous conversation history if continuing a conversation.
     // IMPORTANT: Load this BEFORE emitting initial progress to ensure consistency.
-    // Do not block follow-up startup on lazy conversation compaction.
+    // For agent resumes, load the compacted active context window rather than the
+    // full preserved raw transcript so storage policy stays separate from LLM context.
     let previousConversationHistory:
       | Array<{
           role: "user" | "assistant" | "tool"
@@ -425,11 +426,12 @@ async function processWithAgentMode(
       | undefined
 
     if (conversationId) {
-      logLLM(`[tipc.ts processWithAgentMode] Loading conversation history for conversationId: ${conversationId}`)
-      const conversation = await conversationService.loadConversation(conversationId)
+      logLLM(`[tipc.ts processWithAgentMode] Loading agent context window for conversationId: ${conversationId}`)
+      const conversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
 
       if (conversation && conversation.messages.length > 0) {
-        logLLM(`[tipc.ts processWithAgentMode] Loaded conversation with ${conversation.messages.length} messages`)
+        const representedMessageCount = conversation.compaction?.representedMessageCount ?? conversation.messages.length
+        logLLM(`[tipc.ts processWithAgentMode] Loaded agent context window with ${conversation.messages.length} active messages representing ${representedMessageCount} stored messages`)
 
         // Convert conversation messages to the format expected by agent mode
         // Exclude the last message since it's the current user input that will be added
