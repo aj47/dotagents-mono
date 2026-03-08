@@ -242,8 +242,10 @@ class AgentProfileService {
   }
 
   private syncPromptsFromLayer(data: AgentProfilesData) {
-    const { writableLayer } = getRuntimeAgentsLayers()
-    const agentsLayerPaths = writableLayer.paths
+    const { orderedLayers } = getRuntimeAgentsLayers()
+    const agentsLayerPaths = orderedLayers[orderedLayers.length - 1]?.paths
+
+    if (!agentsLayerPaths) return
 
     const { systemPrompt, agentsGuidelines } = loadAgentsPrompts(agentsLayerPaths)
 
@@ -282,17 +284,18 @@ class AgentProfileService {
    * Load profiles from storage, migrating from legacy formats if needed.
    *
    * Priority:
-   * 1. `.agents/agents/` modular files (global + workspace overlay)
+   * 1. `.agents/agents/` modular files (global + optional active slot + optional workspace overlay)
    * 2. `agent-profiles.json` (legacy monolithic file — triggers migration to modular)
    * 3. Legacy `profiles.json` / `personas.json` (very old formats)
    * 4. Built-in defaults
    */
   private loadProfiles(): AgentProfilesData {
     // 1. Try loading from modular .agents/agents/ directory
-    const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
+    const { globalLayer, orderedLayers } = getRuntimeAgentsLayers()
     const mergedProfiles = loadMergedAgentProfiles({
       globalAgentsDir: globalLayer.paths.agentsDir,
-      workspaceAgentsDir: workspaceLayer?.paths.agentsDir ?? null,
+      workspaceAgentsDir: null,
+      orderedAgentsDirs: orderedLayers.map((layer) => layer.paths.agentsDir),
     })
 
     if (mergedProfiles.profiles.length > 0) {

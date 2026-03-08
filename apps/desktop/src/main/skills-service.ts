@@ -10,7 +10,7 @@ import { promisify } from "util"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
-import { getRuntimeAgentsLayers } from "./config"
+import { getRuntimeAgentsLayers, type RuntimeAgentsLayerName, type RuntimeAgentsLayers } from "./config"
 import type { AgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getAgentsSkillsBackupDir,
@@ -22,7 +22,7 @@ import {
 import { readTextFileIfExistsSync, safeWriteFileSync } from "./agents-files/safe-file"
 
 type SkillOrigin = {
-  layer: "global" | "workspace"
+  layer: RuntimeAgentsLayerName
   filePath: string
 }
 
@@ -525,12 +525,15 @@ class SkillsService {
     this.loadFromDisk({ migrateLegacy: true })
   }
 
-  private getLayers(): { globalLayer: AgentsLayerPaths; workspaceLayer: AgentsLayerPaths | null } {
-    const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
-    return {
-      globalLayer: globalLayer.paths,
-      workspaceLayer: workspaceLayer?.paths ?? null,
-    }
+  private getLayers(): RuntimeAgentsLayers {
+    return getRuntimeAgentsLayers()
+  }
+
+  private resolveLayerPaths(layerName: RuntimeAgentsLayerName): AgentsLayerPaths {
+    const { globalLayer, activeSlotLayer, workspaceLayer } = this.getLayers()
+    if (layerName === "workspace" && workspaceLayer) return workspaceLayer.paths
+    if (layerName === "slot" && activeSlotLayer) return activeSlotLayer.paths
+    return globalLayer.paths
   }
 
   private sortSkillsStable(skillsArr: AgentSkill[]): AgentSkill[] {
@@ -613,36 +616,33 @@ class SkillsService {
   }
 
   private loadFromDisk(options: { migrateLegacy?: boolean } = {}): void {
-    const { globalLayer, workspaceLayer } = this.getLayers()
+    const { globalLayer, orderedLayers } = this.getLayers()
 
     try {
-      const globalBefore = loadAgentsSkillsLayer(globalLayer)
+      const globalBefore = loadAgentsSkillsLayer(globalLayer.paths)
       const existingSkillIds = new Set(globalBefore.skills.map((s) => s.id))
 
       if (options.migrateLegacy !== false) {
-        const migratedCount = this.migrateLegacySkillsJsonToAgents(globalLayer, existingSkillIds)
+        const migratedCount = this.migrateLegacySkillsJsonToAgents(globalLayer.paths, existingSkillIds)
         if (migratedCount > 0) {
           logApp(`[SkillsService] Migrated ${migratedCount} legacy skills into .agents`)
         }
       }
 
-      const globalAfter = loadAgentsSkillsLayer(globalLayer)
-      const workspaceLoaded = workspaceLayer ? loadAgentsSkillsLayer(workspaceLayer) : null
+      const globalAfter = loadAgentsSkillsLayer(globalLayer.paths)
 
       const mergedById = new Map<string, AgentSkill>()
       const mergedOriginById = new Map<string, SkillOrigin>()
 
-      for (const skill of globalAfter.skills) {
-        mergedById.set(skill.id, skill)
-        const origin = globalAfter.originById.get(skill.id)
-        if (origin) mergedOriginById.set(skill.id, { layer: "global", filePath: origin.filePath })
-      }
+      for (const layer of orderedLayers) {
+        const loaded = layer.name === "global"
+          ? globalAfter
+          : loadAgentsSkillsLayer(layer.paths)
 
-      if (workspaceLoaded) {
-        for (const skill of workspaceLoaded.skills) {
+        for (const skill of loaded.skills) {
           mergedById.set(skill.id, skill)
-          const origin = workspaceLoaded.originById.get(skill.id)
-          if (origin) mergedOriginById.set(skill.id, { layer: "workspace", filePath: origin.filePath })
+          const origin = loaded.originById.get(skill.id)
+          if (origin) mergedOriginById.set(skill.id, { layer: layer.name, filePath: origin.filePath })
         }
       }
 
@@ -692,7 +692,7 @@ class SkillsService {
     if (!skill) return null
 
     const { globalLayer } = this.getLayers()
-    return skillIdToFilePath(globalLayer, skill.id)
+    return skillIdToFilePath(globalLayer.paths, skill.id)
   }
 
   getSkillByFilePath(filePath: string): AgentSkill | undefined {
@@ -710,7 +710,7 @@ class SkillsService {
     const { globalLayer } = this.getLayers()
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64)
     const id = slugify(name) || randomUUID()
-    const originFilePath = skillIdToFilePath(globalLayer, id)
+    const originFilePath = skillIdToFilePath(globalLayer.paths, id)
     const now = Date.now()
 
     const newSkill: AgentSkill = {
@@ -725,7 +725,7 @@ class SkillsService {
       filePath: options?.filePath ?? originFilePath,
     }
 
-    writeAgentsSkillFile(globalLayer, newSkill, { filePathOverride: originFilePath })
+    writeAgentsSkillFile(globalLayer.paths, newSkill, { filePathOverride: originFilePath })
 
     // Update in-memory view.
     this.skills = this.sortSkillsStable([...this.skills, newSkill])
@@ -751,9 +751,8 @@ class SkillsService {
       updatedAt: now,
     }
 
-    const { globalLayer, workspaceLayer } = this.getLayers()
-    const targetLayerName = previousOrigin?.layer === "workspace" && workspaceLayer ? "workspace" : "global"
-    const targetLayer = targetLayerName === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+    const targetLayerName = previousOrigin?.layer ?? "global"
+    const targetLayer = this.resolveLayerPaths(targetLayerName)
     const originFilePath = previousOrigin?.filePath ?? skillIdToFilePath(targetLayer, id)
 
     try {
@@ -783,9 +782,8 @@ class SkillsService {
     const deletedSkill = this.skills[index]
     const origin = this.originById.get(id)
 
-    const { globalLayer, workspaceLayer } = this.getLayers()
-    const layerName = origin?.layer === "workspace" && workspaceLayer ? "workspace" : "global"
-    const layer = layerName === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+    const layerName = origin?.layer ?? "global"
+    const layer = this.resolveLayerPaths(layerName)
     const wrapperFilePath = origin?.filePath ?? skillIdToFilePath(layer, id)
     const backupDir = getAgentsSkillsBackupDir(layer)
 
@@ -966,9 +964,12 @@ class SkillsService {
       return `- **${skill.name}** (ID: \`${skill.id}\`): ${skill.description || 'No description'}`
     }).join("\n")
 
-    const { globalLayer, workspaceLayer } = this.getLayers()
-    const globalSkillsDir = path.join(globalLayer.agentsDir, "skills")
-    const workspaceSkillsDir = workspaceLayer ? path.join(workspaceLayer.agentsDir, "skills") : null
+    const { orderedLayers } = this.getLayers()
+    const skillsLayerLines = orderedLayers
+      .slice()
+      .reverse()
+      .map((layer, index) => `- ${index === 0 ? "Active layer" : `Fallback (${layer.name})`}: \`${path.join(layer.paths.agentsDir, "skills")}\``)
+      .join("\n")
 
 
     return `
@@ -981,7 +982,7 @@ To use a skill:
 ${skillsContent}
 
 ## Skills Folders
-- Active layer: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsDir ? `\n- Global fallback: \`${globalSkillsDir}\`` : ""}
+${skillsLayerLines}
 
 Tip: Use \`execute_command\` with \`skillId\` to run commands in that skill's directory.
 `

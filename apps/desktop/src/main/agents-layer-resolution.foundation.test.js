@@ -15,11 +15,12 @@ const memoryServiceSource = fs.readFileSync(path.join(__dirname, 'memory-service
 const loopServiceSource = fs.readFileSync(path.join(__dirname, 'loop-service.ts'), 'utf8')
 
 test('config centralizes runtime .agents layer resolution for future slot-aware callers', () => {
-  assert.match(configSource, /export type RuntimeAgentsLayerName = "global" \| "workspace"/)
+  assert.match(configSource, /export type RuntimeAgentsLayerName = "global" \| "slot" \| "workspace"/)
   assert.match(configSource, /export function getRuntimeAgentsLayers\(\): RuntimeAgentsLayers/)
   assert.match(configSource, /global -> active slot -> workspace/)
   assert.match(configSource, /workspace wins on conflicts/)
-  assert.match(configSource, /orderedLayers: workspaceLayer \? \[globalLayer, workspaceLayer\] : \[globalLayer\]/)
+  assert.match(configSource, /activeSlotLayer: RuntimeAgentsLayer \| null/)
+  assert.match(configSource, /orderedLayers: \[globalLayer, \.{3}\(activeSlotLayer \? \[activeSlotLayer\] : \[\]\), \.{3}\(workspaceLayer \? \[workspaceLayer\] : \[\]\)\]/)
   assert.match(configSource, /writableLayer: workspaceLayer \?\? globalLayer/)
   assert.match(configSource, /workspaceSource: "env" \| "upward" \| null/)
 })

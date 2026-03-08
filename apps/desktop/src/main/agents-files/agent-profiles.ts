@@ -410,31 +410,27 @@ export function deleteAgentProfileFiles(layer: AgentsLayerPaths, profileId: stri
 export function loadMergedAgentProfiles(options: {
   globalAgentsDir: string
   workspaceAgentsDir: string | null
+  orderedAgentsDirs?: string[]
 }): { profiles: AgentProfile[]; originById: Map<string, AgentProfileOrigin> } {
-  const globalLayer = getAgentsLayerPaths(options.globalAgentsDir)
-  const globalResult = loadAgentProfilesLayer(globalLayer)
+  const orderedAgentsDirs = (options.orderedAgentsDirs && options.orderedAgentsDirs.length > 0)
+    ? options.orderedAgentsDirs
+    : [options.globalAgentsDir, ...(options.workspaceAgentsDir ? [options.workspaceAgentsDir] : [])]
 
-  if (!options.workspaceAgentsDir) {
-    return globalResult
-  }
+  const uniqueAgentsDirs = orderedAgentsDirs.filter((agentsDir, index, allDirs) => {
+    const resolved = path.resolve(agentsDir)
+    return allDirs.findIndex((candidate) => path.resolve(candidate) === resolved) === index
+  })
 
-  const workspaceLayer = getAgentsLayerPaths(options.workspaceAgentsDir)
-  const workspaceResult = loadAgentProfilesLayer(workspaceLayer)
-
-  // Merge: workspace overrides global by ID
   const mergedById = new Map<string, AgentProfile>()
   const mergedOriginById = new Map<string, AgentProfileOrigin>()
 
-  for (const profile of globalResult.profiles) {
-    mergedById.set(profile.id, profile)
-    const origin = globalResult.originById.get(profile.id)
-    if (origin) mergedOriginById.set(profile.id, origin)
-  }
-
-  for (const profile of workspaceResult.profiles) {
-    mergedById.set(profile.id, profile) // workspace wins
-    const origin = workspaceResult.originById.get(profile.id)
-    if (origin) mergedOriginById.set(profile.id, origin)
+  for (const agentsDir of uniqueAgentsDirs) {
+    const layerResult = loadAgentProfilesLayer(getAgentsLayerPaths(agentsDir))
+    for (const profile of layerResult.profiles) {
+      mergedById.set(profile.id, profile)
+      const origin = layerResult.originById.get(profile.id)
+      if (origin) mergedOriginById.set(profile.id, origin)
+    }
   }
 
   return {

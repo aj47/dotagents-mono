@@ -165,45 +165,57 @@ export function listBundleSlotDirectories(): Array<{ id: string; slotDir: string
   }
 }
 
-/**
- * Read-only slot metadata/status for issue #57.
- *
- * This intentionally does not activate slot layering yet; it only exposes the
- * discovered slot folders plus the current `active-slot.json` pointer so the UI
- * can show status without implying full preset-switch support already exists.
- */
-export function getActiveBundleSlotState(): BundleSlotState {
+function readResolvedBundleSlotSelection(): {
+  slots: Array<{ id: string; slotDir: string }>
+  activeSlot: { id: string; slotDir: string } | null
+  lastSwitchedAt: string | null
+} {
   const slots = listBundleSlotDirectories()
   const persisted = readPersistedActiveBundleSlotState()
   const requestedActiveSlotId = normalizeBundleSlotId(persisted?.slotId)
-  const activeSlotId = requestedActiveSlotId && slots.some((slot) => slot.id === requestedActiveSlotId)
-    ? requestedActiveSlotId
+  const activeSlot = requestedActiveSlotId
+    ? (slots.find((slot) => slot.id === requestedActiveSlotId) ?? null)
     : null
 
   return {
-    slotsFolder: bundleSlotsFolder,
-    activeSlotId,
+    slots,
+    activeSlot,
     lastSwitchedAt: normalizeIsoTimestamp(persisted?.lastSwitchedAt),
-    slots: slots.map((slot) => ({
-      ...slot,
-      isActive: slot.id === activeSlotId,
-    })),
-    precedence: "global -> active slot -> workspace",
-    runtimeActivationEnabled: false,
   }
 }
 
 /**
- * Current runtime layers are the global base plus an optional workspace overlay.
+ * Slot metadata plus whether the current build/runtime will actually mount the
+ * active slot as a middle overlay layer.
+ */
+export function getActiveBundleSlotState(): BundleSlotState {
+  const { slots, activeSlot, lastSwitchedAt } = readResolvedBundleSlotSelection()
+
+  return {
+    slotsFolder: bundleSlotsFolder,
+    activeSlotId: activeSlot?.id ?? null,
+    lastSwitchedAt,
+    slots: slots.map((slot) => ({
+      ...slot,
+      isActive: slot.id === activeSlot?.id,
+    })),
+    precedence: "global -> active slot -> workspace",
+    runtimeActivationEnabled: true,
+  }
+}
+
+/**
+ * Current runtime layers are the global base plus an optional active slot and
+ * an optional workspace overlay.
  *
- * Future bundle-slot work must keep workspace as the highest-priority override:
+ * Bundle-slot runtime activation must keep workspace as the highest-priority override:
  * `global -> active slot -> workspace`.
  *
  * That preserves the repo-wide "workspace wins on conflicts" rule while still
  * letting an active slot override the global baseline without destructively
  * rewriting it.
  */
-export type RuntimeAgentsLayerName = "global" | "workspace"
+export type RuntimeAgentsLayerName = "global" | "slot" | "workspace"
 
 export type RuntimeAgentsLayer = {
   name: RuntimeAgentsLayerName
@@ -212,6 +224,7 @@ export type RuntimeAgentsLayer = {
 
 export type RuntimeAgentsLayers = {
   globalLayer: RuntimeAgentsLayer
+  activeSlotLayer: RuntimeAgentsLayer | null
   workspaceLayer: RuntimeAgentsLayer | null
   orderedLayers: RuntimeAgentsLayer[]
   writableLayer: RuntimeAgentsLayer
@@ -221,17 +234,23 @@ export type RuntimeAgentsLayers = {
 /**
  * Resolves the current ordered `.agents` layers for the desktop runtime.
  *
- * Today this is the existing global base layer plus an optional workspace overlay.
- * Centralizing the contract here keeps current behavior explicit and gives future
- * bundle-slot work one place to extend layer resolution safely. When slot support
- * is introduced, extend the ordered contract to `global -> active slot -> workspace`
- * so workspace remains the top override layer.
+ * Active bundle slots participate as a middle overlay layer when the pointer in
+ * `bundle-slots/active-slot.json` resolves to a discovered slot directory.
+ * Workspace remains the top override layer.
  */
 export function getRuntimeAgentsLayers(): RuntimeAgentsLayers {
   const globalLayer: RuntimeAgentsLayer = {
     name: "global",
     paths: getAgentsLayerPaths(globalAgentsFolder),
   }
+
+  const { activeSlot } = readResolvedBundleSlotSelection()
+  const activeSlotLayer: RuntimeAgentsLayer | null = activeSlot
+    ? {
+        name: "slot",
+        paths: getAgentsLayerPaths(activeSlot.slotDir),
+      }
+    : null
 
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
   const workspaceLayer: RuntimeAgentsLayer | null = workspaceAgentsFolder
@@ -247,8 +266,9 @@ export function getRuntimeAgentsLayers(): RuntimeAgentsLayers {
 
   return {
     globalLayer,
+    activeSlotLayer,
     workspaceLayer,
-    orderedLayers: workspaceLayer ? [globalLayer, workspaceLayer] : [globalLayer],
+    orderedLayers: [globalLayer, ...(activeSlotLayer ? [activeSlotLayer] : []), ...(workspaceLayer ? [workspaceLayer] : [])],
     writableLayer: workspaceLayer ?? globalLayer,
     workspaceSource,
   }
@@ -472,12 +492,12 @@ const getConfig = (): LoadedConfig => {
 
   }
 
-  // 1) Preferred: modular `.agents` format (global + optional workspace overlay)
-  const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
+  // 1) Preferred: modular `.agents` format (global + optional active slot + optional workspace overlay)
+  const { globalLayer, orderedLayers } = getRuntimeAgentsLayers()
   const { merged: mergedAgents, hasAnyAgentsFiles } = loadMergedAgentsConfig(
     {
       globalAgentsDir: globalLayer.paths.agentsDir,
-      workspaceAgentsDir: workspaceLayer?.paths.agentsDir ?? null,
+      orderedAgentsDirs: orderedLayers.map((layer) => layer.paths.agentsDir),
     }
   )
 

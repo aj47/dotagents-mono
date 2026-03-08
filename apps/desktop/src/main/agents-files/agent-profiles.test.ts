@@ -8,6 +8,7 @@ import {
   AGENTS_PROFILE_CANONICAL_FILENAME,
   getAgentProfilesDir,
   loadAgentProfilesLayer,
+  loadMergedAgentProfiles,
 } from "./agent-profiles"
 
 function mkTempLayer(prefix: string): AgentsLayerPaths {
@@ -76,6 +77,39 @@ describe("agent-profiles role inference", () => {
     expect(profiles).toHaveLength(1)
     expect(profiles[0].role).toBe("external-agent")
     expect(profiles[0].isAgentTarget).toBe(true)
+  })
+
+  it("merges ordered layers so active-slot profiles override global until workspace wins", () => {
+    const globalLayer = mkTempLayer("dotagents-agent-profiles-global-")
+    const slotLayer = mkTempLayer("dotagents-agent-profiles-slot-")
+    const workspaceLayer = mkTempLayer("dotagents-agent-profiles-workspace-")
+
+    writeAgentProfileMarkdown(globalLayer, {
+      id: "shared-agent",
+      connectionType: "internal",
+    })
+
+    writeAgentProfileMarkdown(slotLayer, {
+      id: "shared-agent",
+      connectionType: "stdio",
+    })
+
+    writeAgentProfileMarkdown(workspaceLayer, {
+      id: "shared-agent",
+      connectionType: "remote",
+    })
+
+    const merged = loadMergedAgentProfiles({
+      globalAgentsDir: globalLayer.agentsDir,
+      workspaceAgentsDir: workspaceLayer.agentsDir,
+      orderedAgentsDirs: [globalLayer.agentsDir, slotLayer.agentsDir, workspaceLayer.agentsDir],
+    })
+
+    expect(merged.profiles).toHaveLength(1)
+    expect(merged.profiles[0].connection.type).toBe("remote")
+    expect(merged.originById.get("shared-agent")?.filePath).toBe(
+      path.join(getAgentProfilesDir(workspaceLayer), "shared-agent", AGENTS_PROFILE_CANONICAL_FILENAME)
+    )
   })
 })
 

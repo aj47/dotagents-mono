@@ -64,6 +64,31 @@ describe("modular-config", () => {
     expect(merged.textInputEnabled).toBe(true)
   })
 
+  it("merges ordered layers so an active slot can sit between global and workspace", () => {
+    const dir = mkTempDir("dotagents-modular-slot-merge-")
+    const globalAgentsDir = path.join(dir, "global", ".agents")
+    const slotAgentsDir = path.join(dir, "bundle-slots", "focus-mode")
+    const workspaceAgentsDir = path.join(dir, "workspace", ".agents")
+
+    const globalLayer = getAgentsLayerPaths(globalAgentsDir)
+    const slotLayer = getAgentsLayerPaths(slotAgentsDir)
+    const workspaceLayer = getAgentsLayerPaths(workspaceAgentsDir)
+
+    writeJson(globalLayer.settingsJsonPath, { textInputEnabled: false, themePreference: "light" })
+    writeJson(slotLayer.settingsJsonPath, { textInputEnabled: true })
+    writeJson(workspaceLayer.settingsJsonPath, { themePreference: "dark" })
+
+    const { merged, hasAnyAgentsFiles } = loadMergedAgentsConfig({
+      globalAgentsDir,
+      workspaceAgentsDir,
+      orderedAgentsDirs: [globalAgentsDir, slotAgentsDir, workspaceAgentsDir],
+    })
+
+    expect(hasAnyAgentsFiles).toBe(true)
+    expect(merged.textInputEnabled).toBe(true)
+    expect(merged.themePreference).toBe("dark")
+  })
+
   it("writes expected files and splits config into buckets", () => {
     const dir = mkTempDir("dotagents-modular-write-")
     const agentsDir = path.join(dir, ".agents")

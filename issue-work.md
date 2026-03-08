@@ -2441,3 +2441,48 @@
   - Continue keeping the inspector trust-focused rather than turning it into an in-browser bundle editor.
 
 - Next recommended issue work item: refresh the open issues again and prefer a concrete desktop bug/reliability slice next; if `#57` is revisited, the highest-value honest follow-up is runtime consumption of the active slot layer rather than more status-only slot UI.
+
+##### Issue #57 — Runtime now mounts the active slot layer between global and workspace
+
+- Selection rationale:
+  - Re-read the updated ledger first and avoided speculative OAuth-heavy issue `#54` plus more status-only slot chrome.
+  - `#57` still had the clearest high-leverage technical gap: the repo already surfaced slot folders and an active pointer, but the runtime layer contract still ignored that pointer entirely.
+  - This slice was self-contained enough to ship without pretending full slot switching/edit management is done.
+- Investigation:
+  - Re-inspected `apps/desktop/src/main/config.ts` and confirmed `getRuntimeAgentsLayers()` still returned only `global -> workspace`, while `getActiveBundleSlotState()` explicitly reported `runtimeActivationEnabled: false`.
+  - Re-checked `agent-profile-service.ts`, `skills-service.ts`, `memory-service.ts`, and `modular-config.ts`; they all depended on the centralized runtime layer contract, so updating that contract plus a small number of loaders could unlock real read-side slot activation without a broad refactor.
+  - Confirmed the renderer capabilities page still described slots as status-only, so UI copy also needed to be aligned with the new runtime behavior.
+- Important assumptions:
+  - Assumption: it is acceptable for this iteration to focus on read-side runtime layering, not full slot-aware authoring/switch/import UX.
+  - Why acceptable: issue `#57` is broader than one landing, and the owner-guided next honest slice was activating the runtime layer contract rather than shipping more placeholder UI.
+  - Assumption: leaving `writableLayer` as `workspace ?? global` is correct for now.
+  - Why acceptable: workspace must remain the highest-priority override, and routing all generic writes into slot directories before a dedicated slot-management UX exists would risk surprising persistence semantics.
+  - Assumption: source-level node tests plus TypeScript validation are acceptable verification here even though the desktop Vitest run is currently blocked by missing local package binaries/deps in this workspace.
+  - Why acceptable: the changed logic type-checks, the dependency-free regression tests pass, and the Vitest failure is environmental (`vitest` / `tsup` unavailable locally), not caused by the patch itself.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/config.ts` so `getRuntimeAgentsLayers()` now resolves `global -> active slot -> workspace`, exposes `activeSlotLayer`, and marks `runtimeActivationEnabled: true` when surfacing slot state.
+  - Added a shared slot-resolution helper so both slot status and runtime layer loading use the same validated `active-slot.json` pointer resolution.
+  - Updated config loading in `config.ts` + `agents-files/modular-config.ts` so ordered `.agents` directories can be merged sequentially, allowing an active slot layer to override global settings while still staying below workspace overrides.
+  - Updated `agents-files/agent-profiles.ts` + `agent-profile-service.ts` so ordered profile layers merge through the same contract and prompt file reads come from the topmost active read layer.
+  - Updated `skills-service.ts` and `memory-service.ts` to merge all ordered runtime layers, preserve slot origins in-memory, and resolve active/fallback layer paths from the centralized runtime layer contract.
+  - Updated desktop capabilities copy/tests so the settings page now truthfully explains that slot overlays participate in runtime loading instead of calling them status-only.
+  - Added focused regression coverage in:
+    - `apps/desktop/src/main/config.runtime-layers.test.ts`
+    - `apps/desktop/src/main/agents-files/modular-config.test.ts`
+    - `apps/desktop/src/main/agents-files/agent-profiles.test.ts`
+    - updated source-level assertions in `agents-layer-resolution.foundation.test.js` and `settings-capabilities.restore-backup.test.js`
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc -p tsconfig.json --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Blocked by local environment: `pnpm run test:run -- src/main/config.runtime-layers.test.ts src/main/agents-files/modular-config.test.ts src/main/agents-files/agent-profiles.test.ts` ❌ because the workspace is missing package binaries/deps (`vitest`/`tsup` not found; pnpm warns `node_modules` is missing).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Make profile/config editing semantics slot-aware where appropriate; today this slice activates slot reads, but some write paths still target the writable global/workspace layer rather than writing back into a slot.
+  - Add explicit switch/promote/import actions so users do not have to hand-edit `bundle-slots/active-slot.json`.
+  - Surface active slot paths more explicitly in settings/help text if users need to inspect the effective layer stack.
+  - Re-run the new Vitest coverage once package dependencies are available in the workspace.
+
+- Next recommended issue work item: if staying on `#57`, tackle the first honest write-path follow-up (especially agent-profile/config persistence semantics under an active slot); otherwise refresh open issues and pick the next concrete desktop bug/reliability slice.

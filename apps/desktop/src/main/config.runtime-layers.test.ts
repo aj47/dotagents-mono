@@ -2,10 +2,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import os from "os"
 import path from "path"
 
+const mockFsExistsSync = vi.fn(() => false)
+const mockFsReadFileSync = vi.fn(() => "{}")
+const mockFsReaddirSync = vi.fn(() => [])
+const mockFsStatSync = vi.fn(() => ({ isDirectory: () => true }))
 const mockFindAgentsDirUpward = vi.fn(() => null)
 const mockGetAgentsLayerPaths = vi.fn((agentsDir: string) => ({ agentsDir }))
 const mockLoadMergedAgentsConfig = vi.fn(() => ({ merged: {}, hasAnyAgentsFiles: false }))
 const mockWriteAgentsLayerFromConfig = vi.fn()
+
+vi.mock("fs", () => ({
+  default: {
+    existsSync: mockFsExistsSync,
+    readFileSync: mockFsReadFileSync,
+    readdirSync: mockFsReaddirSync,
+    statSync: mockFsStatSync,
+  },
+  existsSync: mockFsExistsSync,
+  readFileSync: mockFsReadFileSync,
+  readdirSync: mockFsReaddirSync,
+  statSync: mockFsStatSync,
+}))
 
 vi.mock("electron", () => ({
   app: {
@@ -36,6 +53,14 @@ describe("getRuntimeAgentsLayers", () => {
     delete process.env.DOTAGENTS_WORKSPACE_DIR
     vi.resetModules()
     vi.clearAllMocks()
+    mockFsExistsSync.mockReset()
+    mockFsExistsSync.mockReturnValue(false)
+    mockFsReadFileSync.mockReset()
+    mockFsReadFileSync.mockReturnValue("{}")
+    mockFsReaddirSync.mockReset()
+    mockFsReaddirSync.mockReturnValue([])
+    mockFsStatSync.mockReset()
+    mockFsStatSync.mockReturnValue({ isDirectory: () => true })
     mockFindAgentsDirUpward.mockReset()
     mockFindAgentsDirUpward.mockReturnValue(null)
     mockGetAgentsLayerPaths.mockReset()
@@ -66,6 +91,7 @@ describe("getRuntimeAgentsLayers", () => {
     const { getRuntimeAgentsLayers } = await import("./config")
 
     expect(getRuntimeAgentsLayers()).toMatchObject({
+      activeSlotLayer: null,
       workspaceLayer: {
         name: "workspace",
         paths: { agentsDir: "/tmp/workspace-root/.agents" },
@@ -85,6 +111,7 @@ describe("getRuntimeAgentsLayers", () => {
     const { getRuntimeAgentsLayers } = await import("./config")
 
     expect(getRuntimeAgentsLayers()).toMatchObject({
+      activeSlotLayer: null,
       workspaceLayer: {
         name: "workspace",
         paths: { agentsDir: "/tmp/project/.agents" },
@@ -108,6 +135,51 @@ describe("getRuntimeAgentsLayers", () => {
       orderedLayers: [{ name: "global" }],
       writableLayer: { name: "global" },
       workspaceSource: null,
+    })
+  })
+
+  it("mounts the active bundle slot between global and workspace layers", async () => {
+    process.env.DOTAGENTS_WORKSPACE_DIR = "/tmp/workspace-root"
+
+    const slotsFolder = path.join(os.homedir(), ".agents", "bundle-slots")
+    const activeStatePath = path.join(slotsFolder, "active-slot.json")
+    const activeSlotDir = path.join(slotsFolder, "focus-mode")
+
+    mockFsExistsSync.mockImplementation((candidate: unknown) => {
+      const filePath = String(candidate)
+      return filePath === slotsFolder || filePath === activeStatePath
+    })
+    mockFsReadFileSync.mockImplementation((candidate: unknown) => {
+      const filePath = String(candidate)
+      if (filePath === activeStatePath) {
+        return JSON.stringify({ slotId: "focus-mode", lastSwitchedAt: "2026-03-08T12:00:00.000Z" })
+      }
+      return "{}"
+    })
+    mockFsReaddirSync.mockReturnValue([
+      { name: "focus-mode", isDirectory: () => true },
+      { name: "ignored.txt", isDirectory: () => false },
+    ])
+
+    const { getActiveBundleSlotState, getRuntimeAgentsLayers } = await import("./config")
+
+    expect(getActiveBundleSlotState()).toMatchObject({
+      activeSlotId: "focus-mode",
+      lastSwitchedAt: "2026-03-08T12:00:00.000Z",
+      precedence: "global -> active slot -> workspace",
+      runtimeActivationEnabled: true,
+    })
+
+    expect(getRuntimeAgentsLayers()).toMatchObject({
+      activeSlotLayer: {
+        name: "slot",
+        paths: { agentsDir: activeSlotDir },
+      },
+      orderedLayers: [{ name: "global" }, { name: "slot" }, { name: "workspace" }],
+      writableLayer: {
+        name: "workspace",
+        paths: { agentsDir: "/tmp/workspace-root/.agents" },
+      },
     })
   })
 })

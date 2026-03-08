@@ -344,7 +344,7 @@ export function Component() {
               <div>
                 <h2 className="text-sm font-medium">Bundle slots</h2>
                 <p className="text-xs text-muted-foreground">
-                  Read-only status for the `#57` preset/slot groundwork. Planned merge order stays {bundleSlotState?.precedence ?? "global -> active slot -> workspace"} so workspace overrides remain intact.
+                  Active slots participate in runtime layer loading now. Merge order stays {bundleSlotState?.precedence ?? "global -> active slot -> workspace"} so workspace overrides remain intact.
                 </p>
               </div>
               <Button
@@ -393,7 +393,7 @@ export function Component() {
 
                   {bundleSlots.length === 0 && (
                     <div className="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
-                      No bundle slot directories found yet. Status only for now — switching and runtime activation land in a follow-up slice.
+                      No bundle slot directories found yet. Create or import a slot under this folder, then point `active-slot.json` at it to activate the middle overlay layer.
                     </div>
                   )}
 
@@ -411,9 +411,9 @@ export function Component() {
                     </div>
                   ))}
 
-                  {!bundleSlotState?.runtimeActivationEnabled && bundleSlots.length > 0 && (
+                  {bundleSlotState?.runtimeActivationEnabled && bundleSlotState?.activeSlotId && (
                     <div className="rounded-md border border-dashed bg-background px-3 py-2 text-xs text-muted-foreground">
-                      Status only for now — this slice surfaces slot metadata and the active pointer without yet changing runtime layer loading.
+                      Runtime overlay is active. The selected slot now sits between the global layer and any workspace `.agents` overrides.
                     </div>
                   )}
                 </>

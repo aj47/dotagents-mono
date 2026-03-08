@@ -119,26 +119,32 @@ export function loadMergedAgentsConfig(
   options: {
     globalAgentsDir: string
     workspaceAgentsDir?: string | null
+    orderedAgentsDirs?: string[]
   }
 ): { merged: Partial<Config>; hasAnyAgentsFiles: boolean } {
-  const globalLayer = getAgentsLayerPaths(options.globalAgentsDir)
-  const workspaceLayer = options.workspaceAgentsDir
-    ? getAgentsLayerPaths(options.workspaceAgentsDir)
-    : null
+  const orderedAgentsDirs = (options.orderedAgentsDirs && options.orderedAgentsDirs.length > 0)
+    ? options.orderedAgentsDirs
+    : [options.globalAgentsDir, ...(options.workspaceAgentsDir ? [options.workspaceAgentsDir] : [])]
 
-  const globalHas = layerHasAnyAgentsConfig(globalLayer)
-  const workspaceHas = workspaceLayer ? layerHasAnyAgentsConfig(workspaceLayer) : false
+  const uniqueAgentsDirs = orderedAgentsDirs.filter((agentsDir, index, allDirs) => {
+    const resolved = path.resolve(agentsDir)
+    return allDirs.findIndex((candidate) => path.resolve(candidate) === resolved) === index
+  })
 
-  const globalConfig = globalHas
-    ? loadAgentsLayerConfig(globalLayer)
-    : ({} as Partial<Config>)
-  const workspaceConfig = workspaceHas && workspaceLayer
-    ? loadAgentsLayerConfig(workspaceLayer)
-    : ({} as Partial<Config>)
+  let merged = {} as Partial<Config>
+  let hasAnyAgentsFiles = false
+
+  for (const agentsDir of uniqueAgentsDirs) {
+    const layer = getAgentsLayerPaths(agentsDir)
+    if (!layerHasAnyAgentsConfig(layer)) continue
+
+    merged = { ...merged, ...loadAgentsLayerConfig(layer) }
+    hasAnyAgentsFiles = true
+  }
 
   return {
-    merged: { ...globalConfig, ...workspaceConfig },
-    hasAnyAgentsFiles: globalHas || workspaceHas,
+    merged,
+    hasAnyAgentsFiles,
   }
 }
 

@@ -10,7 +10,7 @@ import * as fs from "fs"
 import * as path from "path"
 import type { AgentMemory, AgentStepSummary } from "@shared/types"
 import { logLLM, isDebugLLM } from "./debug"
-import { getRuntimeAgentsLayers } from "./config"
+import { getRuntimeAgentsLayers, type RuntimeAgentsLayerName, type RuntimeAgentsLayers } from "./config"
 import type { AgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getAgentsMemoriesBackupDir,
@@ -77,7 +77,7 @@ function normalizeMemoryForRuntime(memory: AgentMemory): AgentMemory {
 }
 
 type MemoryOrigin = {
-  layer: "global" | "workspace"
+  layer: RuntimeAgentsLayerName
   filePath: string
 }
 
@@ -86,12 +86,15 @@ class MemoryService {
   private originById: Map<string, MemoryOrigin> = new Map()
   private initialized = false
 
-  private getLayers(): { globalLayer: AgentsLayerPaths; workspaceLayer: AgentsLayerPaths | null } {
-    const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
-    return {
-      globalLayer: globalLayer.paths,
-      workspaceLayer: workspaceLayer?.paths ?? null,
-    }
+  private getLayers(): RuntimeAgentsLayers {
+    return getRuntimeAgentsLayers()
+  }
+
+  private resolveLayerPaths(layerName: RuntimeAgentsLayerName): AgentsLayerPaths {
+    const { globalLayer, activeSlotLayer, workspaceLayer } = this.getLayers()
+    if (layerName === "workspace" && workspaceLayer) return workspaceLayer.paths
+    if (layerName === "slot" && activeSlotLayer) return activeSlotLayer.paths
+    return globalLayer.paths
   }
 
   private coerceLegacyMemory(item: unknown): AgentMemory | null {
@@ -191,32 +194,29 @@ class MemoryService {
 
   private async loadFromDisk(): Promise<void> {
     try {
-      const { globalLayer, workspaceLayer } = this.getLayers()
+      const { globalLayer, orderedLayers } = this.getLayers()
 
       // Load global first so we can avoid duplicating IDs during legacy migration.
-      const globalLoaded = loadAgentsMemoriesLayer(globalLayer)
+      const globalLoaded = loadAgentsMemoriesLayer(globalLayer.paths)
       const existingIds = new Set(globalLoaded.memories.map((m) => m.id))
 
       // Best-effort migration from legacy JSON (only imports missing IDs).
-      this.migrateLegacyMemoriesJson(globalLayer, existingIds)
+      this.migrateLegacyMemoriesJson(globalLayer.paths, existingIds)
 
-      const globalAfter = loadAgentsMemoriesLayer(globalLayer)
-      const workspaceLoaded = workspaceLayer ? loadAgentsMemoriesLayer(workspaceLayer) : null
+      const globalAfter = loadAgentsMemoriesLayer(globalLayer.paths)
 
       const mergedById = new Map<string, AgentMemory>()
       const originById = new Map<string, MemoryOrigin>()
 
-      for (const mem of globalAfter.memories) {
-        const origin = globalAfter.originById.get(mem.id)
-        mergedById.set(mem.id, normalizeMemoryForRuntime(mem))
-        if (origin) originById.set(mem.id, { layer: "global", filePath: origin.filePath })
-      }
+      for (const layer of orderedLayers) {
+        const loaded = layer.name === "global"
+          ? globalAfter
+          : loadAgentsMemoriesLayer(layer.paths)
 
-      if (workspaceLoaded) {
-        for (const mem of workspaceLoaded.memories) {
-          const origin = workspaceLoaded.originById.get(mem.id)
+        for (const mem of loaded.memories) {
+          const origin = loaded.originById.get(mem.id)
           mergedById.set(mem.id, normalizeMemoryForRuntime(mem))
-          if (origin) originById.set(mem.id, { layer: "workspace", filePath: origin.filePath })
+          if (origin) originById.set(mem.id, { layer: layer.name, filePath: origin.filePath })
         }
       }
 
@@ -256,10 +256,8 @@ class MemoryService {
     const previousMemory = existingIndex >= 0 ? this.memories[existingIndex] : null
     const previousOrigin = this.originById.get(normalized.id)
 
-    const { globalLayer, workspaceLayer } = this.getLayers()
-
     const targetLayerName = previousOrigin?.layer ?? "global"
-    const targetLayer = targetLayerName === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+    const targetLayer = this.resolveLayerPaths(targetLayerName)
 
     try {
       const { filePath } = writeAgentsMemoryFile(targetLayer, normalized, {
@@ -440,8 +438,7 @@ class MemoryService {
     const deletedMemory = this.memories[index]
     const origin = this.originById.get(id)
 
-    const { globalLayer, workspaceLayer } = this.getLayers()
-    const layer = origin?.layer === "workspace" && workspaceLayer ? workspaceLayer : globalLayer
+    const layer = this.resolveLayerPaths(origin?.layer ?? "global")
     const filePath = origin?.filePath ?? memoryIdToFilePath(layer, id)
     const backupDir = getAgentsMemoriesBackupDir(layer)
 
