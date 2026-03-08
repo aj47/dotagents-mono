@@ -19,8 +19,7 @@ import { BUILTIN_SERVER_NAME, MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } fr
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
-
-type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
+import { deriveAcpUserResponseState, type ConversationHistoryMessage } from "./acp-user-response"
 
 const ACP_INJECTED_BUILTIN_SERVER_NAME = "dotagents-builtin"
 const ACP_BUILTIN_TOOL_PROMPT_CONTEXT = [
@@ -184,33 +183,6 @@ function formatAcpBlockAsAssistantMessage(block: ACPContentBlock): string | unde
   return undefined
 }
 
-function extractRespondToUserContentFromArgs(args: unknown): string | undefined {
-  if (!args || typeof args !== "object") return undefined
-
-  const parsedArgs = args as Record<string, unknown>
-  const text = typeof parsedArgs.text === "string" ? parsedArgs.text.trim() : ""
-  const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : []
-
-  const imageMarkdown = images
-    .map((image, index) => {
-      if (!image || typeof image !== "object") return ""
-      const parsedImage = image as Record<string, unknown>
-      const alt = typeof parsedImage.alt === "string" && parsedImage.alt.trim().length > 0
-        ? parsedImage.alt.trim()
-        : `Image ${index + 1}`
-      const path = typeof parsedImage.path === "string" ? parsedImage.path.trim() : ""
-      const dataUrl = typeof parsedImage.dataUrl === "string" ? parsedImage.dataUrl.trim() : ""
-      const uri = dataUrl || path
-      if (!uri) return ""
-      return `![${alt}](${uri})`
-    })
-    .filter(Boolean)
-    .join("\n\n")
-
-  const combined = [text, imageMarkdown].filter(Boolean).join("\n\n").trim()
-  return combined.length > 0 ? combined : undefined
-}
-
 function normalizeAcpToolName(name: string | undefined): string | undefined {
   if (!name) return undefined
 
@@ -231,31 +203,6 @@ function normalizeAcpToolName(name: string | undefined): string | undefined {
   if (normalized.endsWith(MARK_WORK_COMPLETE_TOOL)) return MARK_WORK_COMPLETE_TOOL
 
   return withoutToolPrefix
-}
-
-function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMessage[]): {
-  userResponse?: string
-  userResponseHistory?: string[]
-} {
-  const responses: string[] = []
-
-  for (const message of conversationHistory) {
-    if (message.role !== "assistant" || !message.toolCalls?.length) continue
-
-    for (const toolCall of message.toolCalls) {
-      if (normalizeAcpToolName(toolCall.name) !== RESPOND_TO_USER_TOOL) continue
-      const content = extractRespondToUserContentFromArgs(toolCall.arguments)
-      if (!content) continue
-      if (responses[responses.length - 1] === content) continue
-      responses.push(content)
-    }
-  }
-
-  const userResponse = responses[responses.length - 1]
-  return {
-    userResponse,
-    userResponseHistory: responses.length > 1 ? responses.slice(0, -1) : undefined,
-  }
 }
 
 function normalizeToolArguments(input: unknown): ToolCall["arguments"] {
@@ -356,6 +303,8 @@ export async function processTranscriptWithACPAgent(
   } catch (err) {
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)
   }
+
+  const currentRunHistoryStartIndex = conversationHistory.length
 
   const appendAssistantText = (text: string, timestamp: number) => {
     if (!text) return
@@ -492,7 +441,10 @@ export async function processTranscriptWithACPAgent(
     finalContent?: string,
     streamingContent?: { text: string; isStreaming: boolean }
   ) => {
-    const { userResponse, userResponseHistory } = deriveAcpUserResponseState(conversationHistory)
+    const { userResponse, userResponseHistory } = deriveAcpUserResponseState(
+      conversationHistory,
+      currentRunHistoryStartIndex
+    )
     const update: AgentProgressUpdate = {
       sessionId,
       runId,
@@ -726,7 +678,7 @@ export async function processTranscriptWithACPAgent(
       const promptContext = buildProfileContext(profileSnapshot, ACP_BUILTIN_TOOL_PROMPT_CONTEXT)
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
-      const { userResponse } = deriveAcpUserResponseState(conversationHistory)
+      const { userResponse } = deriveAcpUserResponseState(conversationHistory, currentRunHistoryStartIndex)
       // Use accumulated text if result.response is empty but we received streaming content
       const finalResponse = userResponse || result.response || accumulatedText || undefined
 

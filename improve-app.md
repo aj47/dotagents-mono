@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop ACP session revival stale `respond_to_user` cleanup in `apps/desktop/src/main/acp-main-agent.ts` and new `apps/desktop/src/main/acp-user-response.ts`, with ACP conversation-history loading/progress emission reviewed in `apps/desktop/src/main/acp-main-agent.ts`, renderer reused-session handling cross-checked in `apps/desktop/src/renderer/src/stores/agent-store.ts` to confirm the sharper leak lived in ACP main-process state derivation, package-native unit coverage added in new `apps/desktop/src/main/acp-user-response.test.ts`, dependency-light source guardrails added in new `tests/desktop-acp-user-response-scope.test.js`, targeted verification run locally via `node --test tests/desktop-acp-user-response-scope.test.js` plus `git diff --check`, and package-native Vitest verification attempted via `pnpm --filter @dotagents/desktop exec vitest run src/main/acp-user-response.test.ts` *(blocked because this dependency-light worktree does not have `vitest` / desktop `node_modules` installed)*.
 - 2026-03-08: Desktop follow-up composer voice-start / stop-action failure feedback in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with the current follow-up submit/stop/voice flows reviewed in those components, desktop recording-start guidance cross-checked in `apps/desktop/src/renderer/src/pages/panel.tsx` / `tests/desktop-panel-recording-start-feedback.test.js`, mobile inline parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` / `apps/mobile/tests/chat-voice-start-feedback.test.js` / `apps/mobile/tests/chat-kill-switch-feedback.test.js`, focused source-level guardrails added in new `tests/desktop-follow-up-action-feedback.test.js`, adjacent follow-up guardrails re-run in `tests/desktop-composer-image-attachment-feedback.test.js` and `tests/desktop-overlay-follow-up-session-scope.test.js`, targeted verification run locally via `node --test tests/desktop-follow-up-action-feedback.test.js tests/desktop-composer-image-attachment-feedback.test.js tests/desktop-overlay-follow-up-session-scope.test.js` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target / `--inspect` renderer in this environment).
 - 2026-03-08: Mobile `MemoryEditScreen` draft-loss guardrails in `apps/mobile/src/screens/MemoryEditScreen.tsx`, with the proven mobile discard-confirmation patterns reviewed in `apps/mobile/src/screens/AgentEditScreen.tsx` and `apps/mobile/src/screens/LoopEditScreen.tsx`, memory edit entry wiring cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, memory create/update shapes rechecked in `apps/mobile/src/lib/settingsApi.ts`, focused source-level coverage added in new `apps/mobile/tests/memory-edit-discard-guardrails.test.js`, targeted verification run locally via `node --test apps/mobile/tests/memory-edit-discard-guardrails.test.js apps/mobile/tests/settings-memory-actions-mobile.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop general settings `mcpMaxIterations` draft-save resilience in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with the current General-settings wiring reviewed there, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (mobile already keeps this field local before saving), focused source-level guardrails added in new `tests/desktop-settings-general-max-iterations-feedback.test.js`, targeted verification run locally via `node --test tests/desktop-settings-general-max-iterations-feedback.test.js` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target / `--inspect` renderer in this environment).
@@ -3313,6 +3314,30 @@ Track small, shippable product improvements. Review this file before each iterat
   - confirm the inline unsaved-changes note still feels calm and non-crowded on smaller devices when the tags field is populated
   - inspect mobile chat teardown / navigate-away cancellation-vs-timeout copy next for the next non-overlapping mobile reliability/clarity pass once another mobile iteration is started
 
+### 2026-03-08 — Desktop ACP reused-session user-response scoping
+- Area / screen / subsystem:
+  - `apps/desktop/src/main/acp-main-agent.ts`
+  - `apps/desktop/src/main/acp-user-response.ts`
+- Why it was chosen:
+  - `improve-app.md` still listed desktop session-lifecycle cleanup after interrupted sends as an open area, and ACP reused-session progress was a sharp trust risk: a fresh follow-up could inherit the previous run’s `respond_to_user` bubble/TTS before the new run had produced anything.
+- What was inspected:
+  - ledger history in `improve-app.md` to avoid revisiting the renderer feedback areas that were already investigated today
+  - ACP conversation-history loading, progress emission, and completion handling in `apps/desktop/src/main/acp-main-agent.ts`
+  - desktop reused-session renderer merge/reset behavior in `apps/desktop/src/renderer/src/stores/agent-store.ts` to confirm the remaining stale-state leak was upstream in ACP main-process derivation rather than only UI merge logic
+  - attempted package-native verification via `pnpm --filter @dotagents/desktop exec vitest run src/main/acp-user-response.test.ts` *(blocked: this dependency-light worktree does not have `vitest` / desktop `node_modules` installed)*
+- Improvement made:
+  - extracted ACP `respond_to_user` parsing into a small pure helper in `apps/desktop/src/main/acp-user-response.ts` so the behavior is easier to reason about and test in isolation
+  - captured `currentRunHistoryStartIndex` immediately after loading the pre-run conversation so ACP progress/completion only derive `userResponse` and `userResponseHistory` from assistant messages appended during the current run
+  - kept the fix intentionally local to ACP user-response derivation instead of broadening into a larger conversation-history refactor because the user-visible bug was specifically stale revived-session response reuse
+  - assumptions / tradeoffs: this pass assumes the current user prompt has already been persisted before ACP processing starts (matching the existing `acp-main-agent.ts` contract), preserves prior conversation history for transcript display, and narrows only the derived user-facing response state so older `respond_to_user` tool calls no longer re-surface as fresh output
+- Tests / verification:
+  - `node --test tests/desktop-acp-user-response-scope.test.js`
+  - `git diff --check`
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/main/acp-user-response.test.ts` *(blocked: `vitest` command not found in this worktree)*
+- Follow-up checks:
+  - when desktop dependencies are available again, run the new `apps/desktop/src/main/acp-user-response.test.ts` package-native unit test under Vitest for stronger behavioral coverage
+  - live-reproduce an interrupted ACP follow-up / queued-send recovery flow in an inspectable desktop runtime to confirm stale `respond_to_user` bubbles no longer reappear after session reuse
+
 ### Iteration Template
 - Date:
 - Area / screen / subsystem:
@@ -3324,7 +3349,7 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Backlog of Areas to Inspect
 - Desktop follow-up composers and queued-send edge states
-- Desktop session lifecycle follow-up: queue/user-response cleanup consistency after interrupted sends
+- Desktop session lifecycle follow-up: live-verify ACP/non-ACP interrupted-send recovery parity once an inspectable desktop runtime with dependencies is available
 - Settings screens and validation UX (remaining text inputs that still save on every keystroke)
 - Agent/task management flows
 - Mobile parity gaps with desktop
