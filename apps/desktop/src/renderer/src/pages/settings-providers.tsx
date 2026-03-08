@@ -1022,7 +1022,7 @@ function SupertonicProviderSection({
   )
 }
 
-export function Component() {
+export function SettingsProvidersContent() {
   const configQuery = useConfigQuery()
 
   const saveConfigMutation = useSaveConfigMutation()
@@ -1342,10 +1342,9 @@ export function Component() {
   const weakPreset = getPresetById(weakPresetId)
 
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
-
-      <div className="grid gap-4">
-        {/* Provider Selection with clear visual hierarchy */}
+    <div className="grid gap-4">
+      {/* Provider Selection with clear visual hierarchy */}
+      <section id="provider-selection">
         <ControlGroup title="Provider Selection">
           <div className="px-3 py-2 bg-muted/30 border-b">
             <p className="text-xs text-muted-foreground">
@@ -1406,9 +1405,10 @@ export function Component() {
             icon={Volume2}
           />
         </ControlGroup>
+      </section>
 
-        {/* OpenAI Compatible Provider Section */}
-        <div className={`rounded-lg border ${activeProviders.openai.length > 0 ? 'border-primary/30 bg-primary/5' : ''}`}>
+      {/* OpenAI Compatible Provider Section */}
+      <div id="openai-provider-section" className={`rounded-lg border ${activeProviders.openai.length > 0 ? 'border-primary/30 bg-primary/5' : ''}`}>
           <button
             type="button"
             className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
@@ -1516,11 +1516,11 @@ export function Component() {
               </div>
             </div>
           )}
-        </div>
+      </div>
 
-        {/* Groq Provider Section - rendered in order based on active status */}
-        {isGroqActive && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5">
+      {/* Groq Provider Section - rendered in order based on active status */}
+      {isGroqActive && (
+        <div id="groq-provider-section" className="rounded-lg border border-primary/30 bg-primary/5">
             <button
               type="button"
               className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
@@ -1621,12 +1621,12 @@ export function Component() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Gemini Provider Section - rendered in order based on active status */}
-        {isGeminiActive && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5">
+      {/* Gemini Provider Section - rendered in order based on active status */}
+      {isGeminiActive && (
+        <div id="gemini-provider-section" className="rounded-lg border border-primary/30 bg-primary/5">
             <button
               type="button"
               className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
@@ -1720,64 +1720,64 @@ export function Component() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Parakeet (Local) Provider Section */}
-        {isParakeetActive && (
-          <ParakeetProviderSection
-            isActive={true}
-            isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
-            usageBadges={activeProviders.parakeet}
-            numThreads={configQuery.data.parakeetNumThreads || 2}
-            onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
-          />
-        )}
+      {/* Parakeet (Local) Provider Section */}
+      {isParakeetActive && (
+        <ParakeetProviderSection
+          isActive={true}
+          isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
+          onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
+          usageBadges={activeProviders.parakeet}
+          numThreads={configQuery.data.parakeetNumThreads || 2}
+          onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
+        />
+      )}
 
-        {/* Kitten (Local) TTS Provider Section */}
-        {isKittenActive && (
-          <KittenProviderSection
-            isActive={true}
-            isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedKitten: !(configQuery.data.providerSectionCollapsedKitten ?? true) })}
-            usageBadges={activeProviders.kitten}
-            voiceId={configQuery.data.kittenVoiceId ?? 0}
-            onVoiceIdChange={(value) => saveConfig({ kittenVoiceId: value })}
-          />
-        )}
+      {/* Kitten (Local) TTS Provider Section */}
+      {isKittenActive && (
+        <KittenProviderSection
+          isActive={true}
+          isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
+          onToggleCollapse={() => saveConfig({ providerSectionCollapsedKitten: !(configQuery.data.providerSectionCollapsedKitten ?? true) })}
+          usageBadges={activeProviders.kitten}
+          voiceId={configQuery.data.kittenVoiceId ?? 0}
+          onVoiceIdChange={(value) => saveConfig({ kittenVoiceId: value })}
+        />
+      )}
 
-        {/* Supertonic (Local) TTS Provider Section */}
-        {isSupertonicActive && (
-          <SupertonicProviderSection
-            isActive={true}
-            isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
-            usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            onVoiceChange={(value) => saveConfig({ supertonicVoice: value })}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            onLanguageChange={(value) => saveConfig({ supertonicLanguage: value })}
-            speed={getProviderNumericConfigValue("supertonicSpeed", providerNumericDrafts.supertonicSpeed) ?? (configQuery.data.supertonicSpeed ?? 1.05)}
-            speedInputValue={providerNumericDrafts.supertonicSpeed}
-            onSpeedInputChange={(value) => {
-              setProviderNumericDrafts((current) => ({ ...current, supertonicSpeed: value }))
-              scheduleProviderNumericSave("supertonicSpeed", value)
-            }}
-            onSpeedInputBlur={(value) => flushProviderNumericDraft("supertonicSpeed", value)}
-            steps={getProviderNumericConfigValue("supertonicSteps", providerNumericDrafts.supertonicSteps) ?? (configQuery.data.supertonicSteps ?? 5)}
-            stepsInputValue={providerNumericDrafts.supertonicSteps}
-            onStepsInputChange={(value) => {
-              setProviderNumericDrafts((current) => ({ ...current, supertonicSteps: value }))
-              scheduleProviderNumericSave("supertonicSteps", value)
-            }}
-            onStepsInputBlur={(value) => flushProviderNumericDraft("supertonicSteps", value)}
-          />
-        )}
+      {/* Supertonic (Local) TTS Provider Section */}
+      {isSupertonicActive && (
+        <SupertonicProviderSection
+          isActive={true}
+          isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
+          onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
+          usageBadges={activeProviders.supertonic}
+          voice={configQuery.data.supertonicVoice ?? "M1"}
+          onVoiceChange={(value) => saveConfig({ supertonicVoice: value })}
+          language={configQuery.data.supertonicLanguage ?? "en"}
+          onLanguageChange={(value) => saveConfig({ supertonicLanguage: value })}
+          speed={getProviderNumericConfigValue("supertonicSpeed", providerNumericDrafts.supertonicSpeed) ?? (configQuery.data.supertonicSpeed ?? 1.05)}
+          speedInputValue={providerNumericDrafts.supertonicSpeed}
+          onSpeedInputChange={(value) => {
+            setProviderNumericDrafts((current) => ({ ...current, supertonicSpeed: value }))
+            scheduleProviderNumericSave("supertonicSpeed", value)
+          }}
+          onSpeedInputBlur={(value) => flushProviderNumericDraft("supertonicSpeed", value)}
+          steps={getProviderNumericConfigValue("supertonicSteps", providerNumericDrafts.supertonicSteps) ?? (configQuery.data.supertonicSteps ?? 5)}
+          stepsInputValue={providerNumericDrafts.supertonicSteps}
+          onStepsInputChange={(value) => {
+            setProviderNumericDrafts((current) => ({ ...current, supertonicSteps: value }))
+            scheduleProviderNumericSave("supertonicSteps", value)
+          }}
+          onStepsInputBlur={(value) => flushProviderNumericDraft("supertonicSteps", value)}
+        />
+      )}
 
-        {/* Inactive Groq Provider Section - shown at bottom when not selected */}
-        {!isGroqActive && (
-          <div className="rounded-lg border">
+      {/* Inactive Groq Provider Section - shown at bottom when not selected */}
+      {!isGroqActive && (
+        <div id="groq-provider-section" className="rounded-lg border">
             <button
               type="button"
               className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
@@ -1878,12 +1878,12 @@ export function Component() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Inactive Gemini Provider Section - shown at bottom when not selected */}
-        {!isGeminiActive && (
-          <div className="rounded-lg border">
+      {/* Inactive Gemini Provider Section - shown at bottom when not selected */}
+      {!isGeminiActive && (
+        <div id="gemini-provider-section" className="rounded-lg border">
             <button
               type="button"
               className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
@@ -1977,63 +1977,63 @@ export function Component() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Inactive Parakeet Provider Section - shown at bottom when not selected */}
-        {!isParakeetActive && (
-          <ParakeetProviderSection
-            isActive={false}
-            isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
-            usageBadges={activeProviders.parakeet}
-            numThreads={configQuery.data.parakeetNumThreads || 2}
-            onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
-          />
-        )}
+      {/* Inactive Parakeet Provider Section - shown at bottom when not selected */}
+      {!isParakeetActive && (
+        <ParakeetProviderSection
+          isActive={false}
+          isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
+          onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
+          usageBadges={activeProviders.parakeet}
+          numThreads={configQuery.data.parakeetNumThreads || 2}
+          onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
+        />
+      )}
 
-        {/* Inactive Kitten Provider Section - shown at bottom when not selected */}
-        {!isKittenActive && (
-          <KittenProviderSection
-            isActive={false}
-            isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedKitten: !(configQuery.data.providerSectionCollapsedKitten ?? true) })}
-            usageBadges={activeProviders.kitten}
-            voiceId={configQuery.data.kittenVoiceId ?? 0}
-            onVoiceIdChange={(value) => saveConfig({ kittenVoiceId: value })}
-          />
-        )}
+      {/* Inactive Kitten Provider Section - shown at bottom when not selected */}
+      {!isKittenActive && (
+        <KittenProviderSection
+          isActive={false}
+          isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
+          onToggleCollapse={() => saveConfig({ providerSectionCollapsedKitten: !(configQuery.data.providerSectionCollapsedKitten ?? true) })}
+          usageBadges={activeProviders.kitten}
+          voiceId={configQuery.data.kittenVoiceId ?? 0}
+          onVoiceIdChange={(value) => saveConfig({ kittenVoiceId: value })}
+        />
+      )}
 
-        {/* Inactive Supertonic Provider Section - shown at bottom when not selected */}
-        {!isSupertonicActive && (
-          <SupertonicProviderSection
-            isActive={false}
-            isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
-            onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
-            usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            onVoiceChange={(value) => saveConfig({ supertonicVoice: value })}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            onLanguageChange={(value) => saveConfig({ supertonicLanguage: value })}
-            speed={getProviderNumericConfigValue("supertonicSpeed", providerNumericDrafts.supertonicSpeed) ?? (configQuery.data.supertonicSpeed ?? 1.05)}
-            speedInputValue={providerNumericDrafts.supertonicSpeed}
-            onSpeedInputChange={(value) => {
-              setProviderNumericDrafts((current) => ({ ...current, supertonicSpeed: value }))
-              scheduleProviderNumericSave("supertonicSpeed", value)
-            }}
-            onSpeedInputBlur={(value) => flushProviderNumericDraft("supertonicSpeed", value)}
-            steps={getProviderNumericConfigValue("supertonicSteps", providerNumericDrafts.supertonicSteps) ?? (configQuery.data.supertonicSteps ?? 5)}
-            stepsInputValue={providerNumericDrafts.supertonicSteps}
-            onStepsInputChange={(value) => {
-              setProviderNumericDrafts((current) => ({ ...current, supertonicSteps: value }))
-              scheduleProviderNumericSave("supertonicSteps", value)
-            }}
-            onStepsInputBlur={(value) => flushProviderNumericDraft("supertonicSteps", value)}
-          />
-        )}
+      {/* Inactive Supertonic Provider Section - shown at bottom when not selected */}
+      {!isSupertonicActive && (
+        <SupertonicProviderSection
+          isActive={false}
+          isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
+          onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
+          usageBadges={activeProviders.supertonic}
+          voice={configQuery.data.supertonicVoice ?? "M1"}
+          onVoiceChange={(value) => saveConfig({ supertonicVoice: value })}
+          language={configQuery.data.supertonicLanguage ?? "en"}
+          onLanguageChange={(value) => saveConfig({ supertonicLanguage: value })}
+          speed={getProviderNumericConfigValue("supertonicSpeed", providerNumericDrafts.supertonicSpeed) ?? (configQuery.data.supertonicSpeed ?? 1.05)}
+          speedInputValue={providerNumericDrafts.supertonicSpeed}
+          onSpeedInputChange={(value) => {
+            setProviderNumericDrafts((current) => ({ ...current, supertonicSpeed: value }))
+            scheduleProviderNumericSave("supertonicSpeed", value)
+          }}
+          onSpeedInputBlur={(value) => flushProviderNumericDraft("supertonicSpeed", value)}
+          steps={getProviderNumericConfigValue("supertonicSteps", providerNumericDrafts.supertonicSteps) ?? (configQuery.data.supertonicSteps ?? 5)}
+          stepsInputValue={providerNumericDrafts.supertonicSteps}
+          onStepsInputChange={(value) => {
+            setProviderNumericDrafts((current) => ({ ...current, supertonicSteps: value }))
+            scheduleProviderNumericSave("supertonicSteps", value)
+          }}
+          onStepsInputBlur={(value) => flushProviderNumericDraft("supertonicSteps", value)}
+        />
+      )}
 
-        {/* Dual-Model Agent Mode Section */}
-        <div className={`rounded-lg border ${dualModelEnabled ? 'border-primary/30 bg-primary/5' : ''}`}>
+      {/* Dual-Model Agent Mode Section */}
+      <div id="dual-model-section" className={`rounded-lg border ${dualModelEnabled ? 'border-primary/30 bg-primary/5' : ''}`}>
           <button
             type="button"
             className="px-3 py-2 flex items-center justify-between w-full hover:bg-muted/30 transition-colors cursor-pointer"
@@ -2222,8 +2222,15 @@ export function Component() {
               )}
             </div>
           )}
-        </div>
       </div>
+    </div>
+  )
+}
+
+export function Component() {
+  return (
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
+      <SettingsProvidersContent />
     </div>
   )
 }

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop models-route navigation clarity and provider/model wayfinding in `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx`, and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with router/nav wiring reviewed in `apps/desktop/src/renderer/src/components/app-layout.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop MCP tools settings add/edit save recovery and validation clarity in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`, with config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, shared save-error copy checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, adjacent dialog behavior cross-checked against `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop remote-server settings startup failure recovery / share-status clarity in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server lifecycle/status reviewed in `apps/desktop/src/main/remote-server.ts` and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop provider model refresh recovery / stale-results clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with provider-settings credential autosave integration reviewed in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, targeted query invalidation inspected in `apps/desktop/src/renderer/src/lib/queries.ts`, backend credential-sensitive cache behavior checked in `apps/desktop/src/main/models-service.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`.
@@ -36,6 +37,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop `Settings → Models` now leads with a model-configuration guide, current provider-role summary, and quick-jump shortcuts into provider/model sections, while the combined providers/models page now uses a single scroll container and shows the guide only on the models route so users land on model-focused context instead of a generic provider page.
 - 2026-03-08: Desktop MCP server add/edit dialogs now keep drafts open when config persistence fails, show inline validation/save guidance with a local `Retry save` action, block accidental duplicate server names during manual add/rename, and only auto-start newly added servers after the config save actually succeeds.
 - 2026-03-08: Desktop remote-server settings now show inline startup failure details, provide a local `Start now` / `Retry start` recovery action, and only show the local share URL when the remote server is actually running so failed startup states are clearer and less misleading.
 - 2026-03-08: Desktop shared provider model selectors now invalidate and refetch when provider discovery credentials/base URLs change, keep the last loaded model list usable while a refresh is running, and show explicit inline stale-results guidance when a refresh fails so settings no longer quietly imply that an old list is still current.
@@ -63,6 +65,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-models-navigation.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `settings-providers.tsx`, and `settings-providers-and-models.tsx`
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` (blocked: this worktree is missing the dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json`, so focused desktop renderer typecheck could not run here).
 - 2026-03-08: `node --test tests/desktop-mcp-server-save-guardrails.test.js`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop typecheck:web` (blocked: this worktree is missing `node_modules`, so `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved and the desktop web typecheck could not run here).
 - 2026-03-08: `git diff --check`
@@ -114,6 +119,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this models-route/navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
+- 2026-03-08: Focused desktop renderer typecheck for this models-route/navigation pass is blocked in this worktree because the dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json` cannot be resolved locally, so `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` cannot complete here.
 - 2026-03-08: Live desktop UI inspection for this MCP save-recovery/validation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop web typecheck for this MCP save-recovery/validation pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`.
 - 2026-03-08: Live desktop UI inspection for this remote-server status/retry pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -139,11 +146,12 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop model settings save/error handling and validation clarity (`apps/desktop/src/renderer/src/pages/settings-models.tsx`)
+- Desktop capabilities/settings discoverability and save-state clarity (`apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop model settings save/error handling next so another core settings surface gives clearer validation and persistence feedback without relying on toast-only failure states
+- Inspect desktop capabilities settings discoverability/save-state feedback next so another core desktop settings surface gives clearer local guidance without relying on trial-and-error
 - Once a runnable Electron target is available, live-check the desktop remote-server settings startup failure, `Start now` / `Retry start`, bind-address warnings, and local/tunnel sharing states to confirm the new recovery hierarchy feels right in the actual UI
+- Once a runnable Electron target is available, live-check the desktop `Settings → Models` route to confirm the new guide, provider-role summary, section jump targets, and single-scroll layout feel right in the real UI
 - Once a runnable Electron target is available, live-check the desktop MCP server add/edit dialog for duplicate-name validation, failed-save retry, pending-save lockout, and post-save auto-start timing to confirm the recovery hierarchy feels right in the real UI
 - Once the mobile workspace can typecheck or run Expo again, live-check the mobile provider picker states for missing credentials, fallback suggestions, empty results, refresh behavior, and custom-model entry to confirm the new guidance feels right on-device
 - Once a runnable Electron target is available, live-check the desktop shared `model-selector.tsx` states for missing API key, fallback suggestions, empty responses, refresh behavior, and custom-model entry to confirm the new helper text hierarchy feels right in the actual UI
@@ -154,6 +162,45 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop models-route navigation clarity and provider/model wayfinding
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop models route guide in `apps/desktop/src/renderer/src/pages/settings-models.tsx`
+  - combined settings composition in `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx`
+  - provider/model section anchors in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - router/nav wiring reviewed in `apps/desktop/src/renderer/src/components/app-layout.tsx`
+  - focused source-level regression coverage added in `tests/desktop-settings-models-navigation.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile already presents provider/model settings inside one explicit screen and does not expose the same desktop route split, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger marked desktop model settings as the next fresh area to inspect
+  - investigation found a stronger concrete usability gap than save errors alone: the desktop `Settings → Models` route was effectively a generic providers page, while the dedicated `settings-models.tsx` file was still a null stub
+  - this was high leverage because users clicking a model-focused nav item landed without model-focused orientation and had to hunt through long provider cards to find presets, model selectors, or dual-model controls
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-models.tsx` and confirmed it rendered nothing
+  - `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx` to understand how the providers/models screen was composed and why the models route still showed provider-first content
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to find the real model-related controls and identify stable local jump targets
+  - `apps/desktop/src/renderer/src/components/app-layout.tsx` plus router wiring to confirm `/settings/providers` and `/settings/models` both point at the combined page
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to check whether the same navigation mismatch existed on mobile before broadening scope
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - `Settings → Models` now starts with a dedicated model-configuration guide instead of a blank stub, including a short explanation of where model controls live, a current provider-role summary, and explicit quick-jump buttons for provider roles, OpenAI presets, Groq models, Gemini models, and dual-model summarization
+  - the combined providers/models page now renders the guide only on the `/settings/models` route, so provider-focused routes do not get extra model-specific chrome
+  - the combined page now uses a single outer scroll container with embedded provider content, removing the previous provider-page-inside-provider-page composition
+  - added stable section IDs to the provider settings page so the models guide can jump users directly to the relevant controls without a broader refactor
+- Assumptions / tradeoffs / rationale:
+  - kept the actual provider/model controls in their existing provider cards instead of splitting the whole settings surface into new tabs, because the immediate user-value gap was discoverability and route clarity rather than the underlying config structure
+  - accepted a source-inspection-driven UX pass because live Electron inspection remains unavailable in this worktree; the guide and jump targets were chosen to improve orientation without changing save semantics or backend behavior
+  - kept this pass desktop-only because mobile already uses a single settings screen without a misleading separate models route
+- Tests / verification:
+  - `node --test tests/desktop-settings-models-navigation.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `settings-providers.tsx`, and `settings-providers-and-models.tsx`
+  - attempted `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` (blocked: this worktree cannot resolve the dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json`)
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check the models route guide, button jump behavior, and single-scroll composition to confirm the new orientation actually reduces hunting in the real UI
+  - inspect desktop capabilities settings discoverability/save-state feedback next so another core settings surface gets similarly explicit local guidance
 
 ### 2026-03-08 — Desktop remote-server settings startup recovery and share-status clarity
 - Date:

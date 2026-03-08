@@ -1,21 +1,16 @@
-import React from "react"
-
-// Compose the existing Providers and Models settings into a single view
-import { Component as ProvidersSettings } from "./settings-providers"
+import { useLocation } from "react-router-dom"
 import { Component as ModelsSettings } from "./settings-models"
+import { SettingsProvidersContent } from "./settings-providers"
 
 export function Component() {
+  const location = useLocation()
+  const isModelsRoute = location.pathname === "/settings/models"
+
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
-      <div className="space-y-8">
-        {/* Providers section */}
-        <div>
-          <ProvidersSettings />
-        </div>
-        {/* Models section */}
-        <div>
-          <ModelsSettings />
-        </div>
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
+      <div className="grid gap-4">
+        {isModelsRoute && <ModelsSettings />}
+        <SettingsProvidersContent />
       </div>
     </div>
   )
