@@ -60,6 +60,13 @@ test('LoopEditScreen explains when no saved profiles are available to assign', (
   assert.match(loopEditSource, /showNoSavedProfilesHelper && \([\s\S]*?No saved profiles yet\. Create one in Settings → Agents to assign it here\.[\s\S]*?\)/);
 });
 
+test('LoopEditScreen keeps profile load failures local to the Agent Profile section', () => {
+  assert.match(loopEditSource, /const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;/);
+  assert.match(loopEditSource, /showProfileLoadErrorHelper && \([\s\S]*?Saved profiles couldn't load right now\. You can still save this loop with No profile\.[\s\S]*?\)/);
+  assert.match(loopEditSource, /helperTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive[\s\S]*?lineHeight:\s*17/);
+  assert.doesNotMatch(loopEditSource, /setError\(err\.message \|\| 'Failed to load agent profiles'\);/);
+});
+
 test('LoopEditScreen previews interval minutes with readable cadence labels', () => {
   assert.match(loopEditSource, /function formatLoopIntervalLabel\(minutes: number\): string/);
   assert.match(loopEditSource, /minutes === 60\) return 'Hourly'/);

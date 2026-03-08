@@ -155,7 +155,6 @@ export default function LoopEditScreen({ navigation, route }: any) {
       .catch((err: Error) => {
         if (!cancelled) {
           setProfileLoadError(err.message || 'Failed to load agent profiles');
-          setError(err.message || 'Failed to load agent profiles');
         }
       })
       .finally(() => {
@@ -282,6 +281,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const trimmedPrompt = formData.prompt.trim();
   const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
+  const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
   const showNoSavedProfilesHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
   const saveValidationMessage = !trimmedName && !trimmedPrompt
     ? 'Add a name and prompt to enable saving.'
@@ -420,6 +420,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
         ))}
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
+      {showProfileLoadErrorHelper && (
+        <Text style={[styles.helperText, styles.helperTextWarning]}>
+          Saved profiles couldn't load right now. You can still save this loop with No profile.
+        </Text>
+      )}
       {showNoSavedProfilesHelper && (
         <Text style={styles.helperText}>No saved profiles yet. Create one in Settings → Agents to assign it here.</Text>
       )}
@@ -465,6 +470,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
+    helperTextWarning: { color: theme.colors.destructive, lineHeight: 17 },
     saveHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.md },
     intervalHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs, lineHeight: 17 },
     intervalHelperTextWarning: { color: theme.colors.destructive },

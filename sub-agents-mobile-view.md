@@ -1425,3 +1425,46 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Message Queue`, `Verify Completion`, and `Final Summary` now read and tap consistently with the surrounding wrapped `Agent Settings` toggles.
   - Once live validation returns, reassess whether any `Agent Settings` row still stands out as the highest-friction mismatch or whether the next issue has moved back to another sub-agent surface.
   - Keep future iterations grounded in fresh live evidence again as soon as Expo Web or a simulator becomes available in this worktree.
+
+### 2026-03-08 — Iteration 33: keep loop profile load failures local to the profile picker
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` `Agent Profile` status handling
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` already tracked `profileLoadError`, but the `getAgentProfiles()` failure path still also called `setError(...)`.
+  - That meant an optional `Agent Profile` loading problem surfaced as the main top-of-form error banner instead of reading as a local field-state issue.
+  - On mobile, that made the profile failure feel heavier and less contextual than the nearby loading and empty states in the same section.
+- Issue selected:
+  - The loop profile-load error still read like a whole-form failure instead of a localized `Agent Profile` state, weakening state clarity in a dense mobile edit flow.
+- Decision:
+  - Keep the existing `No profile` default, loading copy, and empty-state helper.
+  - Do not add a retry CTA or broader error redesign while live validation is blocked.
+  - Make the smallest local fix in `LoopEditScreen`: keep profile-load failures inside the `Agent Profile` section and explicitly reassure users they can still save the loop without a saved profile.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - stop routing `getAgentProfiles()` failures into the broader screen `error` banner,
+    - derive `showProfileLoadErrorHelper` beside the existing loading/empty helpers,
+    - render inline warning copy under the profile chips: `Saved profiles couldn't load right now. You can still save this loop with No profile.`
+    - add `helperTextWarning` styling so the localized profile warning stays visually distinct from passive helper copy.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the localized profile-error treatment.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new inline profile-load warning still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - If live inspection later shows the profile failure state still feels like a dead end, the section may need a lightweight retry or settings CTA — but only with evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the localized profile warning is visually distinct from both `Loading profiles...` and `No saved profiles yet...`.
+  - After live validation returns, confirm the inline warning still leaves the `No profile` option feeling safe and available on narrow screens.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
