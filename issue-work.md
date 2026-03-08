@@ -3843,3 +3843,44 @@
   - Once the mobile dependency baseline is restored, add a real component/runtime assertion for the idle slash hint rather than relying only on source checks.
 
 - Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` is still not directly reproducible here, prefer a fresh, equally narrow issue slice outside the now-heavily-worked `#53` track.
+
+##### Issue #25 — Bundle export keeps memories opt-in by default
+
+- Selection rationale:
+  - Re-read `issue-work.md` first, refreshed the current open issues, and deliberately moved to a fresh slice outside the now-heavier `#53` thread.
+  - Stayed aligned with the repo’s trust/safety priorities by checking `#25` for a concrete remaining Phase 1 acceptance gap rather than forcing speculative work on blocked `#54` or weakly-verified `#55`.
+  - Found a clear mismatch with the issue’s explicit acceptance criteria: memories are supposed to be opt-in and unchecked by default during bundle export, but the current export defaults still enabled them.
+- Investigation:
+  - Re-read issue `#25` and confirmed the export requirements still explicitly say: `Memory export: opt-in checkbox, select specific memories, unchecked by default`.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-selection.tsx` and confirmed `DEFAULT_EXPORT_COMPONENTS.memories` was still `true`, which meant the export dialog opened with the memories section enabled.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx` and confirmed initial dialog selection used `createDetailedBundleSelection(...)`, so all memory IDs were also preselected immediately.
+  - Inspected `apps/desktop/src/main/bundle-service.ts` and confirmed the service-layer `DEFAULT_EXPORT_COMPONENTS` also still defaulted `memories` to `true`, so non-UI callers would inherit the same unsafe default.
+  - Reviewed nearby tests in `bundle-selection.test.ts`, `bundle-export-dialog.warning.test.js`, and `bundle-service.test.ts` to keep the fix local and regression-backed.
+- Important assumptions:
+  - Assumption: for privacy, memories should be excluded by default at both the dialog layer and the service fallback layer, not just visually toggled off in the renderer.
+  - Why acceptable: the issue’s acceptance criteria frames memory export as an opt-in privacy-sensitive action, so safe defaults should hold even if another caller omits component flags.
+  - Assumption: other exportable component types should keep their existing default-on behavior.
+  - Why acceptable: the acceptance criteria only singles out memories as sensitive/personal content that must be explicitly opted into.
+- Changes implemented:
+  - Updated renderer export defaults in `apps/desktop/src/renderer/src/components/bundle-selection.tsx` so `memories` is now `false` by default.
+  - Extended `createDetailedBundleSelection(...)` to honor the provided component defaults, then updated `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx` to initialize selection with `DEFAULT_EXPORT_COMPONENTS`, which keeps memory IDs unselected until the user opts in.
+  - Added a small privacy cue in the export UI description: `Memory content and notes. Off by default for privacy.`
+  - Updated main-process export defaults in `apps/desktop/src/main/bundle-service.ts` so service-level exports also keep memories off unless explicitly requested.
+  - Updated test coverage:
+    - `apps/desktop/src/renderer/src/components/bundle-selection.test.ts` now checks that export defaults keep memories off and leave `memoryIds` empty until opted in.
+    - `apps/desktop/src/main/bundle-service.test.ts` now distinguishes between default exports (no memories) and explicit opt-in exports (memories included).
+    - `apps/desktop/src/renderer/src/components/bundle-export-dialog.warning.test.js` now source-checks the opt-in default across both the renderer and main-service defaults.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-export-dialog.warning.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted but blocked: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/bundle-selection.test.ts src/main/bundle-service.test.ts`
+    - Blocker: this worktree has no installed `node_modules`; the run failed in `pretest` with missing tooling (`tsup: command not found`, plus pnpm warning that local `node_modules` are missing).
+    - Response: kept the code/tests in place for when dependencies exist again and strengthened the dependency-free source test so the changed defaults still have executable coverage in the current environment.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Once this worktree has dependencies installed again, re-run the targeted desktop package tests so the new renderer/service opt-in behavior is covered by real runtime/unit execution rather than source checks.
+  - If the export dialog evolves further, consider whether enabling the Memories switch should also surface an explicit `Select memories` affordance or summary badge before export.
+
+- Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` still cannot be directly validated in this dependency-light worktree, prefer another fresh, source-confirmed desktop or website UX/reliability slice outside the now-heavier `#25` / `#53` tracks.

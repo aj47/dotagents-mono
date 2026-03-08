@@ -239,7 +239,7 @@ describe("bundle-service", () => {
       expect(bundle.skills[0].instructions).toContain("Test instructions")
     })
 
-    it("exports memories", async () => {
+    it("does not export memories by default", async () => {
       const layer = getAgentsLayerPaths(agentsDir)
       const memory = createTestMemory("test-memory", "Test Memory")
       const memoriesDir = path.join(agentsDir, "memories")
@@ -247,7 +247,23 @@ describe("bundle-service", () => {
       writeAgentsMemoryFile(layer, memory)
 
       const bundle = await exportBundle(agentsDir)
-      
+
+      expect(bundle.memories).toEqual([])
+    })
+
+    it("exports memories when explicitly opted in", async () => {
+      const layer = getAgentsLayerPaths(agentsDir)
+      const memory = createTestMemory("test-memory", "Test Memory")
+      const memoriesDir = path.join(agentsDir, "memories")
+      fs.mkdirSync(memoriesDir, { recursive: true })
+      writeAgentsMemoryFile(layer, memory)
+
+      const bundle = await exportBundle(agentsDir, {
+        components: {
+          memories: true,
+        },
+      })
+
       expect(bundle.memories.length).toBe(1)
       expect(bundle.memories[0].id).toBe("test-memory")
       expect(bundle.memories[0].title).toBe("Test Memory")

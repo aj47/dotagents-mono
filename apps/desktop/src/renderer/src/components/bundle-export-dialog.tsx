@@ -47,7 +47,7 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
 
   useEffect(() => {
     if (!open || !exportableItemsQuery.data || selectionInitialized) return
-    setSelection(createDetailedBundleSelection(exportableItemsQuery.data))
+    setSelection(createDetailedBundleSelection(exportableItemsQuery.data, DEFAULT_EXPORT_COMPONENTS))
     setSelectionInitialized(true)
   }, [open, exportableItemsQuery.data, selectionInitialized])
 

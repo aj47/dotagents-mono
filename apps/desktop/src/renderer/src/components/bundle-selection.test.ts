@@ -45,6 +45,19 @@ describe("bundle-selection helpers", () => {
     })
   })
 
+  it("keeps memories opt-in by default for export dialogs", () => {
+    const items = createItems()
+
+    expect(DEFAULT_EXPORT_COMPONENTS.memories).toBe(false)
+    expect(createDetailedBundleSelection(items, DEFAULT_EXPORT_COMPONENTS)).toEqual({
+      agentProfileIds: ["agent-1"],
+      mcpServerNames: ["github"],
+      skillIds: ["skill-1"],
+      repeatTaskIds: ["task-1"],
+      memoryIds: [],
+    })
+  })
+
   it("warns when a selected agent references unselected skills or MCP servers", () => {
     const items = createItems()
 
@@ -70,7 +83,10 @@ describe("bundle-selection helpers", () => {
       secretWarningFields: ["content", "userNotes"],
     }
 
-    expect(getBundleMemorySecretWarnings(items, DEFAULT_EXPORT_COMPONENTS, {
+    expect(getBundleMemorySecretWarnings(items, {
+      ...DEFAULT_EXPORT_COMPONENTS,
+      memories: true,
+    }, {
       agentProfileIds: ["agent-1"],
       mcpServerNames: ["github"],
       skillIds: ["skill-1"],

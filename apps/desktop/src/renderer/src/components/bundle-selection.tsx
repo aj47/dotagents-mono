@@ -76,7 +76,7 @@ export const DEFAULT_EXPORT_COMPONENTS: BundleComponentSelectionState = {
   mcpServers: true,
   skills: true,
   repeatTasks: true,
-  memories: true,
+  memories: false,
 }
 
 export const EMPTY_BUNDLE_SELECTION: BundleDetailedSelectionState = {
@@ -87,13 +87,22 @@ export const EMPTY_BUNDLE_SELECTION: BundleDetailedSelectionState = {
   memoryIds: [],
 }
 
-export function createDetailedBundleSelection(items: BundleExportableItems): BundleDetailedSelectionState {
+export function createDetailedBundleSelection(
+  items: BundleExportableItems,
+  components: BundleComponentSelectionState = {
+    agentProfiles: true,
+    mcpServers: true,
+    skills: true,
+    repeatTasks: true,
+    memories: true,
+  }
+): BundleDetailedSelectionState {
   return {
-    agentProfileIds: items.agentProfiles.map((item) => item.id),
-    mcpServerNames: items.mcpServers.map((item) => item.name),
-    skillIds: items.skills.map((item) => item.id),
-    repeatTaskIds: items.repeatTasks.map((item) => item.id),
-    memoryIds: items.memories.map((item) => item.id),
+    agentProfileIds: components.agentProfiles ? items.agentProfiles.map((item) => item.id) : [],
+    mcpServerNames: components.mcpServers ? items.mcpServers.map((item) => item.name) : [],
+    skillIds: components.skills ? items.skills.map((item) => item.id) : [],
+    repeatTaskIds: components.repeatTasks ? items.repeatTasks.map((item) => item.id) : [],
+    memoryIds: components.memories ? items.memories.map((item) => item.id) : [],
   }
 }
 
@@ -358,7 +367,7 @@ export function BundleDetailedSelectionCard({
             componentKey: "memories",
             selectionKey: "memoryIds",
             label: "Memories",
-            description: "Memory content and notes.",
+            description: "Memory content and notes. Off by default for privacy.",
             items: items.memories,
             getId: (item) => item.id,
             getPrimary: (item) => item.title,

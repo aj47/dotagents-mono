@@ -853,7 +853,7 @@ const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
   mcpServers: true,
   skills: true,
   repeatTasks: true,
-  memories: true,
+  memories: false,
 }
 
 const DEFAULT_PUBLISH_COMPONENTS: Required<BundleComponentSelection> = {
