@@ -64,7 +64,8 @@ test('keeps selector-sheet retry and cancel actions mobile-sized with explicit b
   assert.match(sheetSource, /const actionButtonTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(sheetSource, /\) : \([\s\S]*?style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Retry loading agents'\)/);
   assert.match(sheetSource, /accessibilityHint="Attempts to load the available agents again\."/);
-  assert.match(sheetSource, /retryButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget/);
+  assert.match(sheetSource, /retryButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget,[\s\S]*?alignSelf:\s*'stretch',[\s\S]*?borderRadius:\s*radius\.lg,[\s\S]*?borderWidth:\s*1,[\s\S]*?backgroundColor:\s*theme\.colors\.primary \+ '10',[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center'/);
+  assert.match(sheetSource, /retryButtonText:\s*\{[\s\S]*?fontSize:\s*15,[\s\S]*?fontWeight:\s*'600',[\s\S]*?textAlign:\s*'center'/);
   assert.match(sheetSource, /style=\{\[styles\.closeButton, isSwitching && styles\.closeButtonDisabled\]\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Close agent selector'\)/);
   assert.match(sheetSource, /accessibilityHint=\{isSwitching[\s\S]*?Wait for the current agent switch to finish before dismissing this sheet\.[\s\S]*?: 'Dismisses this sheet and returns to the current screen\.'/);
   assert.match(sheetSource, /closeButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget[\s\S]*?width:\s*'100%'/);

@@ -5644,3 +5644,53 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that failed queued rows now keep the queued message, failure reason, and retry/remove controls in a better visual balance on a narrow screen.
   - Capture screenshot-backed evidence of a short failed queued message with a long backend error so the new two-line clamp and expanded full-detail state can be judged in context.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this failed-row hierarchy tweak without fresh evidence.
+
+## Iteration 127 - Promote the selector-sheet retry action into a clearer mobile recovery CTA
+
+- Date: 2026-03-08
+- Summary: Improved `AgentSelectorSheet` recovery clarity on mobile by turning the recoverable error-state `Retry` action into a full-width, centered CTA with clearer visual weight.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recently touched queue/history surfaces without a fresh local issue.
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector sheet remained a still-local mobile sub-agent surface with older source-backed improvements but no fresh live validation.
+  - Confirmed the sheet already promoted `Open Agent Settings` into a full-width recovery action in empty and missing-config states, while recoverable load failures still rendered `Retry` as a smaller content-width button.
+- Live inspection / workflow status:
+  - Reconfirmed the existing mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed selector-state review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Source review showed the selector sheet's recoverable error state already kept the current agent visible and explained that retrying would keep the current agent active.
+  - The only visible next step in that state still used a compact `Retry` button styled with only the shared minimum touch target.
+  - On mobile, that made the main recovery path feel easier to miss and visually weaker than the adjacent full-width `Open Agent Settings` actions already used elsewhere in the same sheet.
+- Issue identified:
+  - The selector-sheet recoverable error state explained the problem, but its primary recovery action still looked too secondary and content-width on narrow screens.
+- Decision and rationale:
+  - Keep the existing selector-sheet layout, error copy, current-agent context, and retry behavior unchanged.
+  - Do not redesign the whole error card or add extra actions while live validation is blocked.
+  - Make the smallest local fix instead: promote `Retry` into a full-width, centered CTA with a subtle primary tint and border so the recovery path feels consistent with the rest of the mobile selector states.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - stretch the recoverable error-state `Retry` button across the available card width,
+    - add a rounded bordered/tinted treatment so it reads as an intentional recovery CTA,
+    - center and strengthen the retry label typography while preserving the existing behavior and accessibility copy.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new full-width retry-button styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed the recoverable error state's only CTA should read more like a primary next step than a lightweight inline chip, especially on narrow screens.
+  - Kept the treatment subtler than a fully filled destructive/primary button so the selector sheet still feels lightweight and consistent with its other secondary recovery actions.
+  - This remains a source-backed improvement and still needs live confirmation that the wider retry CTA feels balanced beside the existing current-agent badge and support copy.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The selector sheet still lacks fresh screenshot-backed validation after several targeted state and recovery improvements.
+  - A live pass is still needed to compare the recoverable error state against the empty and missing-config states so the three recovery paths feel consistently weighted on a narrow screen.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the full-width `Retry` CTA is easy to notice and tap without overpowering the surrounding selector error copy.
+  - Capture screenshot-backed evidence for the recoverable selector error state so the promoted retry action can be judged against the existing `Open Agent Settings` empty/missing-config actions.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this retry-CTA tweak without fresh evidence.

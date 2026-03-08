@@ -632,10 +632,19 @@ function createStyles(theme: Theme) {
     },
     retryButton: {
       ...actionButtonTouchTarget,
+      alignSelf: 'stretch',
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '26',
+      backgroundColor: theme.colors.primary + '10',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     retryButtonText: {
       color: theme.colors.primary,
-      fontWeight: '500',
+      fontSize: 15,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     emptyText: {
       textAlign: 'center',
