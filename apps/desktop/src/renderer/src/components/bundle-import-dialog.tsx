@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@renderer/components/ui/dialog"
 import { Button } from "@renderer/components/ui/button"
+import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Badge } from "@renderer/components/ui/badge"
@@ -21,7 +22,7 @@ type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type ConflictStrategyOverrideKey = Exclude<BundleComponentKey, "memories">
 type BundleImportTargetLayer = "global" | "workspace" | "slot" | "custom"
-type BundleImportTargetMode = "default" | "active-slot"
+type BundleImportTargetMode = "default" | "active-slot" | "new-slot"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 type BundleItemSelectionKey = "agentProfileIds" | "mcpServerNames" | "skillIds" | "repeatTaskIds" | "memoryIds"
 type BundleItemSelectionState = Record<BundleItemSelectionKey, string[]>
@@ -178,11 +179,48 @@ interface BundleImportDialogProps {
 
 export async function previewProvidedBundleFile(
   filePath: string,
-  targetMode: BundleImportTargetMode = "default"
+  targetMode: BundleImportTargetMode = "default",
+  newSlotId?: string,
 ): Promise<BundlePreview> {
-  return (await tipcClient.previewBundleWithConflicts(
-    targetMode === "active-slot" ? { filePath, targetMode } : { filePath }
-  )) as BundlePreview
+  return (await tipcClient.previewBundleWithConflicts({
+    filePath,
+    ...(targetMode === "default" ? {} : { targetMode }),
+    ...(targetMode === "new-slot" && newSlotId ? { newSlotId } : {}),
+  })) as BundlePreview
+}
+
+function normalizeBundleSlotSuggestion(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^[^a-z0-9]+/, "")
+    .replace(/-+/g, "-")
+    .replace(/[._-]+$/g, "")
+    .slice(0, 64)
+}
+
+function getSuggestedNewSlotId(
+  bundleName: string | undefined,
+  existingSlots: Array<{ id: string }>
+): string {
+  const existingIds = new Set(existingSlots.map((slot) => slot.id))
+  const baseId = normalizeBundleSlotSuggestion(bundleName || "imported-bundle") || "imported-bundle"
+
+  if (!existingIds.has(baseId)) {
+    return baseId
+  }
+
+  let suffix = 2
+  while (suffix < 1000) {
+    const candidate = normalizeBundleSlotSuggestion(`${baseId}-${suffix}`)
+    if (candidate && !existingIds.has(candidate)) {
+      return candidate
+    }
+    suffix += 1
+  }
+
+  return `${baseId}-next`.slice(0, 64)
 }
 
 function getSelectedConflictCount(
@@ -658,10 +696,10 @@ export function BundleImportDialog({
   const loadPreviewForFile = async (
     filePath: string,
     requestId: number,
-    options: { resetSelections?: boolean; targetMode?: BundleImportTargetMode } = {}
+    options: { resetSelections?: boolean; targetMode?: BundleImportTargetMode; newSlotId?: string } = {}
   ) => {
-    const { resetSelections = true, targetMode = importTargetMode } = options
-    const fullResult = await previewProvidedBundleFile(filePath, targetMode)
+    const { resetSelections = true, targetMode = importTargetMode, newSlotId } = options
+    const fullResult = await previewProvidedBundleFile(filePath, targetMode, newSlotId)
     if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
     setPreview(fullResult as BundlePreview)
     if (resetSelections) {
@@ -725,6 +763,7 @@ export function BundleImportDialog({
       await loadPreviewForFile(preview.filePath, requestId, {
         resetSelections: false,
         targetMode: nextTargetMode,
+        newSlotId: nextTargetMode === "new-slot" ? suggestedNewSlotId : undefined,
       })
     } catch (error) {
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
@@ -744,7 +783,8 @@ export function BundleImportDialog({
     try {
       const result = await tipcClient.importBundle({
         filePath: preview.filePath,
-        ...(importTargetMode === "active-slot" ? { targetMode: importTargetMode } : {}),
+        ...(importTargetMode === "default" ? {} : { targetMode: importTargetMode }),
+        ...(importTargetMode === "new-slot" ? { newSlotId: suggestedNewSlotId } : {}),
         conflictStrategy,
         components: normalizedComponents,
         selectedItems,
@@ -813,10 +853,14 @@ export function BundleImportDialog({
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
   const importTarget = preview?.importTarget
+  const suggestedNewSlotId = getSuggestedNewSlotId(
+    preview?.bundle?.manifest?.name,
+    bundleSlotState?.slots ?? [],
+  )
   const activeBundleSlot = bundleSlotState?.activeSlotId
     ? (bundleSlotState.slots.find((slot) => slot.id === bundleSlotState.activeSlotId) ?? null)
     : null
-  const showImportTargetSelector = allowImportTargetSelection && Boolean(activeBundleSlot)
+  const showImportTargetSelector = allowImportTargetSelection && Boolean(bundleSlotState)
   const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
   const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
@@ -994,7 +1038,7 @@ export function BundleImportDialog({
             <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-3">
               <div className="space-y-2">
                 <Label>Automatic safety backup</Label>
-                {showImportTargetSelector && activeBundleSlot && (
+                {showImportTargetSelector && (
                   <div className="rounded-md border border-emerald-200 bg-background/70 p-2">
                     <div className="space-y-2">
                       <Label>Import target</Label>
@@ -1004,11 +1048,30 @@ export function BundleImportDialog({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="default">Default writable layer</SelectItem>
-                          <SelectItem value="active-slot">Active bundle slot ({activeBundleSlot.id})</SelectItem>
+                          {activeBundleSlot && (
+                            <SelectItem value="active-slot">Active bundle slot ({activeBundleSlot.id})</SelectItem>
+                          )}
+                          <SelectItem value="new-slot">New bundle slot ({suggestedNewSlotId})</SelectItem>
                         </SelectContent>
                       </Select>
+                      {importTargetMode === "new-slot" && (
+                        <div className="space-y-1">
+                          <Label>New slot id</Label>
+                          <Input value={suggestedNewSlotId} readOnly className="h-8 font-mono text-xs" />
+                        </div>
+                      )}
                       <p className="text-[11px] text-muted-foreground">
-                        Default writes into the current workspace/global layer. Active slot keeps this import inside <span className="font-mono text-foreground">{activeBundleSlot.slotDir}</span> so slot content stays isolated beneath any workspace overrides.
+                        {importTargetMode === "active-slot" && activeBundleSlot
+                          ? <>
+                              Active slot keeps this import inside <span className="font-mono text-foreground">{activeBundleSlot.slotDir}</span> so slot content stays isolated beneath any workspace overrides.
+                            </>
+                          : importTargetMode === "new-slot"
+                          ? <>
+                              New slot creates a fresh isolated layer at <span className="font-mono text-foreground">{importTarget?.agentsDir ?? `~/.agents/bundle-slots/${suggestedNewSlotId}`}</span>. It will not become active automatically.
+                            </>
+                          : <>
+                              Default writes into the current workspace/global layer.
+                            </>}
                       </p>
                     </div>
                   </div>

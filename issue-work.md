@@ -2607,3 +2607,46 @@
   - Add deeper runtime/integration coverage once the full desktop test runner environment is reliably available.
 
 - Next recommended issue work item: either stay on `#57` for one last narrow slot-authoring/import slice (`import into new slot` or config-save semantics), or refresh open issues and switch to the next concrete desktop reliability bug if another `#57` slice would stop being obviously reviewable.
+
+##### Issue #57 — Bundle import: create a fresh slot directly from the import dialog
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the immediately recommended next step from the prior `#57` entry instead of reopening a broader or already-blocked issue.
+  - Refreshed the still-open issues and briefly re-checked `#54`; it remains blocked on auth/model-transport feasibility, so the best actionable slice was the next trust/slot UX step on `#57`.
+  - This is a small, reviewable extension of the already-landed active-slot target work: users can isolate a bundle import into a brand-new slot without hand-creating slot folders first.
+- Investigation:
+  - Re-read issue `#57` and its slot-oriented follow-ups, then re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, `apps/desktop/src/main/tipc.ts`, and `apps/desktop/src/main/config.ts`.
+  - Confirmed the dialog currently supported `default` and `active-slot` targets only, while the prior ledger entry explicitly called out `import into new slot` as the cleanest next gap.
+  - Confirmed slot discovery/switch state already exists in config/settings, but there was no helper to validate/create a new slot directory for import-time targeting.
+  - Re-checked the provider/OAuth surfaces for open issue `#54` plus recent external references and still did not find a supportable repo-local implementation path that would be safer than this `#57` slice.
+- Important assumptions:
+  - Assumption: importing into a new slot should create the slot but should **not** auto-activate it.
+  - Why acceptable: switching the active slot is already an explicit user action in Settings → Capabilities, and silently changing the effective runtime layer during import would be a riskier surprise.
+  - Assumption: a first slice can auto-suggest the new slot id from the bundle name instead of adding a fully editable slot-naming form.
+  - Why acceptable: it keeps the UX small and predictable while still creating a visible isolated destination; a richer naming flow can follow later if needed.
+  - Assumption: previewing a new-slot import should compare against `global` + `workspace` layers, not the currently active slot.
+  - Why acceptable: the new slot is staged as an alternative layer rather than merged with the current active slot, so comparing against the eventual surrounding stack is less misleading than flagging the current active slot as a direct conflict target.
+- Changes implemented:
+  - Added `getBundleSlotDirectory(...)` and `createBundleSlot(...)` in `apps/desktop/src/main/config.ts` so slot-targeted imports can validate ids and create fresh slot directories through shared config helpers.
+  - Extended `apps/desktop/src/main/tipc.ts` with a new bundle import target mode, `new-slot`, and passed optional `newSlotId` through preview/import/restore entrypoints.
+  - Updated target resolution so preview/import into a new slot writes to a fresh slot directory, refuses collisions with existing slot ids, and only creates the slot on the mutating import path.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to expose `New bundle slot (...)` alongside the existing target choices, show the derived slot id, and route preview/import requests with the new target metadata.
+  - Extended `apps/desktop/src/main/config.runtime-layers.test.ts`, `apps/desktop/src/main/agents-layer-resolution.foundation.test.js`, and `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to cover the new config helper and slot-targeted dialog/TIPC wiring.
+- Verification run:
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run src/main/config.runtime-layers.test.ts src/main/agents-layer-resolution.foundation.test.js src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js`
+  - Result: blocked because this worktree does not have installed package dependencies / `node_modules`; PNPM failed before running tests (`vitest` unavailable locally).
+  - Attempted: `pnpm --filter @dotagents/desktop typecheck`
+  - Result: blocked for the same environment reason (desktop toolchain dependencies are not installed in this worktree).
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Confidence: moderate-to-high for this narrow config/TIPC/renderer slice; the dependency-free regression tests pass, while full desktop Vitest/typecheck verification remains blocked on missing local dependencies.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Decide whether users should eventually be able to edit the suggested new-slot id inline before preview/import instead of always using the derived bundle-name slug.
+  - Consider preserving per-item conflict overrides (not just item selections) when re-previewing across import targets.
+  - Extend the same slot-target clarity to any remaining settings/config write paths that may still implicitly save into the writable layer while an active slot is mounted.
+  - Re-run the blocked desktop Vitest/typecheck verification once package dependencies are available in this worktree.
+
+- Next recommended issue work item: if staying on `#57`, take one more honest slot workflow slice only if it directly improves write semantics or slot naming/editability; otherwise refresh the open issues again and keep `#54` blocked until there is concrete auth/model-transport feasibility evidence.

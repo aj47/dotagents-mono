@@ -51,19 +51,23 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
 });
 
 test('bundle import can explicitly target the active bundle slot through the existing preview and import pipeline', () => {
-  assert.match(tipcSource, /type BundleImportTargetMode = "default" \| "active-slot"/);
+  assert.match(tipcSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "new-slot"/);
   assert.match(tipcSource, /async function resolveBundleImportTarget\([\s\S]*activeSlotLayer[\s\S]*targetLayer: "slot"/);
   assert.match(tipcSource, /previewBundleWithConflicts: t\.procedure[\s\S]*targetMode\?: BundleImportTargetMode/);
   assert.match(tipcSource, /importBundle: t\.procedure[\s\S]*targetMode\?: BundleImportTargetMode/);
   assert.match(bundleServiceSource, /targetLayer\?: BundleBackupTargetLayer/);
   assert.match(dialogSource, /allowImportTargetSelection\?: boolean/);
-  assert.match(dialogSource, /type BundleImportTargetMode = "default" \| "active-slot"/);
-  assert.match(dialogSource, /targetMode === "active-slot" \? \{ filePath, targetMode \} : \{ filePath \}/);
+  assert.match(dialogSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "new-slot"/);
+  assert.match(dialogSource, /filePath,[\s\S]*\.\.\.\(targetMode === "default" \? \{\} : \{ targetMode \}\),[\s\S]*\.\.\.\(targetMode === "new-slot" && newSlotId \? \{ newSlotId \} : \{\}\)/);
   assert.match(dialogSource, /const \[importTargetMode, setImportTargetMode\] = useState<BundleImportTargetMode>\("default"\)/);
   assert.match(dialogSource, /const handleImportTargetModeChange = async \(value: string\) => \{/);
   assert.match(dialogSource, /<Label>Import target<\/Label>/);
   assert.match(dialogSource, /<SelectItem value="active-slot">Active bundle slot \(\{activeBundleSlot\.id\}\)<\/SelectItem>/);
-  assert.match(dialogSource, /importTargetMode === "active-slot" \? \{ targetMode: importTargetMode \} : \{\}/);
+  assert.match(dialogSource, /<SelectItem value="new-slot">New bundle slot \(\{suggestedNewSlotId\}\)<\/SelectItem>/);
+  assert.match(dialogSource, /function getSuggestedNewSlotId\(/);
+  assert.match(dialogSource, /<Label>New slot id<\/Label>/);
+  assert.match(dialogSource, /importTargetMode === "default" \? \{\} : \{ targetMode: importTargetMode \}/);
+  assert.match(dialogSource, /importTargetMode === "new-slot" \? \{ newSlotId: suggestedNewSlotId \} : \{\}/);
 });
 
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {

@@ -6,6 +6,7 @@ const mockFsExistsSync = vi.fn(() => false)
 const mockFsReadFileSync = vi.fn(() => "{}")
 const mockFsReaddirSync = vi.fn(() => [])
 const mockFsStatSync = vi.fn(() => ({ isDirectory: () => true }))
+const mockFsMkdirSync = vi.fn()
 const mockFindAgentsDirUpward = vi.fn(() => null)
 const mockGetAgentsLayerPaths = vi.fn((agentsDir: string) => ({ agentsDir }))
 const mockLoadMergedAgentsConfig = vi.fn(() => ({ merged: {}, hasAnyAgentsFiles: false }))
@@ -19,11 +20,13 @@ vi.mock("fs", () => ({
     readFileSync: mockFsReadFileSync,
     readdirSync: mockFsReaddirSync,
     statSync: mockFsStatSync,
+    mkdirSync: mockFsMkdirSync,
   },
   existsSync: mockFsExistsSync,
   readFileSync: mockFsReadFileSync,
   readdirSync: mockFsReaddirSync,
   statSync: mockFsStatSync,
+  mkdirSync: mockFsMkdirSync,
 }))
 
 vi.mock("electron", () => ({
@@ -63,6 +66,7 @@ describe("getRuntimeAgentsLayers", () => {
     mockFsReaddirSync.mockReturnValue([])
     mockFsStatSync.mockReset()
     mockFsStatSync.mockReturnValue({ isDirectory: () => true })
+    mockFsMkdirSync.mockReset()
     mockFindAgentsDirUpward.mockReset()
     mockFindAgentsDirUpward.mockReturnValue(null)
     mockGetAgentsLayerPaths.mockReset()
@@ -214,5 +218,23 @@ describe("getRuntimeAgentsLayers", () => {
       slots: [{ id: "focus-mode", isActive: true }],
     })
     expect(state.lastSwitchedAt).toEqual(expect.any(String))
+  })
+
+  it("creates a new bundle slot directory without activating it", async () => {
+    const slotsFolder = path.join(os.homedir(), ".agents", "bundle-slots")
+    const newSlotDir = path.join(slotsFolder, "dev-powerpack")
+
+    mockFsExistsSync.mockImplementation((candidate: unknown) => String(candidate) === slotsFolder)
+    mockFsReaddirSync.mockReturnValue([])
+
+    const { createBundleSlot } = await import("./config")
+    const slot = createBundleSlot("dev-powerpack")
+
+    expect(mockFsMkdirSync).toHaveBeenCalledWith(newSlotDir, { recursive: true })
+    expect(slot).toEqual({
+      id: "dev-powerpack",
+      slotDir: newSlotDir,
+      isActive: false,
+    })
   })
 })

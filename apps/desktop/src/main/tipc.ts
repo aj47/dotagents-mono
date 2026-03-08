@@ -687,7 +687,7 @@ type BundleConflictPreview = {
   conflicts?: BundleConflictMap
 }
 
-type BundleImportTargetMode = "default" | "active-slot"
+type BundleImportTargetMode = "default" | "active-slot" | "new-slot"
 
 type ResolvedBundleImportTarget = {
   targetDir: string
@@ -743,10 +743,40 @@ function mergeConflictMaps(
 }
 
 async function resolveBundleImportTarget(
-  targetMode: BundleImportTargetMode | undefined
+  targetMode: BundleImportTargetMode | undefined,
+  options: { newSlotId?: string; createSlot?: boolean } = {}
 ): Promise<ResolvedBundleImportTarget> {
-  const { getRuntimeAgentsLayers } = await import("./config")
+  const {
+    getRuntimeAgentsLayers,
+    getBundleSlotDirectory,
+    listBundleSlotDirectories,
+    createBundleSlot,
+  } = await import("./config")
   const { globalLayer, activeSlotLayer, workspaceLayer, writableLayer } = getRuntimeAgentsLayers()
+
+  if (targetMode === "new-slot") {
+    if (!options.newSlotId) {
+      throw new Error("A new bundle slot id is required")
+    }
+
+    const slot = getBundleSlotDirectory(options.newSlotId)
+    if (listBundleSlotDirectories().some((existingSlot) => existingSlot.id === slot.id)) {
+      throw new Error(`Bundle slot "${slot.id}" already exists`)
+    }
+
+    if (options.createSlot) {
+      createBundleSlot(slot.id)
+    }
+
+    return {
+      targetDir: slot.slotDir,
+      targetLayer: "slot",
+      comparisonLayerDirs: [
+        globalLayer.paths.agentsDir,
+        ...(workspaceLayer ? [workspaceLayer.paths.agentsDir] : []),
+      ],
+    }
+  }
 
   if (targetMode === "active-slot") {
     if (!activeSlotLayer) {
@@ -4750,10 +4780,12 @@ export const router = {
     }),
 
   previewBundleWithConflicts: t.procedure
-    .input<{ filePath: string; targetMode?: BundleImportTargetMode }>()
+    .input<{ filePath: string; targetMode?: BundleImportTargetMode; newSlotId?: string }>()
     .action(async ({ input }) => {
       const { previewBundleWithConflicts } = await import("./bundle-service")
-      const { comparisonLayerDirs, targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode)
+      const { comparisonLayerDirs, targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode, {
+        newSlotId: input.newSlotId,
+      })
       const targetPreview = previewBundleWithConflicts(input.filePath, targetDir, { targetLayer })
 
       if (!targetPreview.success) return targetPreview
@@ -4778,6 +4810,7 @@ export const router = {
     .input<{
       filePath: string
       targetMode?: BundleImportTargetMode
+      newSlotId?: string
       conflictStrategy: "skip" | "overwrite" | "rename"
       components?: {
         agentProfiles?: boolean
@@ -4802,7 +4835,10 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const { importBundle } = await import("./bundle-service")
-      const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode)
+      const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode, {
+        newSlotId: input.newSlotId,
+        createSlot: input.targetMode === "new-slot",
+      })
       const result = await importBundle(input.filePath, targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
@@ -4817,6 +4853,7 @@ export const router = {
   importBundleFromDialog: t.procedure
     .input<{
       targetMode?: BundleImportTargetMode
+      newSlotId?: string
       conflictStrategy: "skip" | "overwrite" | "rename"
       components?: {
         agentProfiles?: boolean
@@ -4841,7 +4878,10 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const { importBundleFromDialog } = await import("./bundle-service")
-      const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode)
+      const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode, {
+        newSlotId: input.newSlotId,
+        createSlot: input.targetMode === "new-slot",
+      })
       const result = await importBundleFromDialog(targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,

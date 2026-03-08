@@ -254,6 +254,32 @@ export function setActiveBundleSlot(slotId: string | null): BundleSlotState {
   })
 }
 
+export function getBundleSlotDirectory(slotId: string): { id: string; slotDir: string } {
+  const normalizedSlotId = normalizeBundleSlotId(slotId)
+  if (!normalizedSlotId) {
+    throw new Error("Invalid bundle slot id")
+  }
+
+  return {
+    id: normalizedSlotId,
+    slotDir: path.join(bundleSlotsFolder, normalizedSlotId),
+  }
+}
+
+export function createBundleSlot(slotId: string): BundleSlotSummary {
+  const slot = getBundleSlotDirectory(slotId)
+  if (listBundleSlotDirectories().some((existing) => existing.id === slot.id)) {
+    throw new Error(`Bundle slot "${slot.id}" already exists`)
+  }
+
+  fs.mkdirSync(slot.slotDir, { recursive: true })
+
+  return {
+    ...slot,
+    isActive: false,
+  }
+}
+
 /**
  * Current runtime layers are the global base plus an optional active slot and
  * an optional workspace overlay.
