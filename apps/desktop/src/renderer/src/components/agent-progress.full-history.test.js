@@ -34,15 +34,16 @@ test('tile transcript exposes a full-history toggle and legacy partial warning',
 
 test('live tiles lazily hydrate preserved history from disk when only summaries are in memory', () => {
   assert.match(agentProgressSource, /useConversationQuery/)
-  assert.match(agentProgressSource, /variant === "tile" \|\| variant === "overlay"/)
+  assert.match(agentProgressSource, /variant === "tile" \|\| variant === "overlay" \|\| variant === "default"/)
   assert.match(agentProgressSource, /storedConversationQuery\.data\?\.rawMessages\?\.map\(mapConversationMessageForProgress\)/)
   assert.match(agentProgressSource, /Checking for preserved full history on disk/)
   assert.match(agentProgressSource, /Couldn&apos;t load preserved full history from disk\./)
   assert.match(agentProgressSource, /storedConversationQuery\.refetch\(\)/)
 })
 
-test('overlay view can switch between active context and stored full history', () => {
-  assert.match(agentProgressSource, /const overlayTranscriptHasContent = isShowingStoredFullHistory/)
-  assert.match(agentProgressSource, /variant === "overlay" && shouldShowStoredHistoryBanner/)
+test('default and overlay views can switch between active context and stored full history', () => {
+  assert.match(agentProgressSource, /const standardTranscriptHasContent = isShowingStoredFullHistory/)
+  assert.doesNotMatch(agentProgressSource, /variant === "overlay" && shouldShowStoredHistoryBanner/)
+  assert.match(agentProgressSource, /\{shouldShowStoredHistoryBanner && \(/)
   assert.match(agentProgressSource, /\{renderDisplayItem\(item, index, variant\)\}/)
 })

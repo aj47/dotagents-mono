@@ -654,3 +654,36 @@
   - Reuse the same clearer provenance language in Hub install flows if bundle installs continue to share this dialog.
 
 - Next recommended issue work item: treat `#57` as largely wrapped unless a very small backup-management affordance is obviously missing, and otherwise pivot to a fresh bug/enhancement with a clearer new repro path than `#54`.
+
+##### Issue #58 — Conversation History: default desktop processing view can inspect preserved full history
+
+- Selection rationale:
+  - The latest `#58` ledger entries had already covered tile and overlay history provenance, and the next smallest remaining UX gap was the inline desktop processing surface used by the main composer.
+  - This was a concrete, reachable renderer-only slice because `TextInputPanel` still renders `AgentProcessingView` with `variant="default"`, but the shared `AgentProgress` history affordance was gated to `tile` and `overlay` only.
+- Investigation:
+  - Re-read issue `#58` and the recent ledger tail to avoid repeating earlier work while staying aligned with the remaining acceptance criteria around browsing complete history and separating active context from stored history.
+  - Confirmed in `apps/desktop/src/renderer/src/components/agent-progress.tsx` that preserved-history hydration/toggle/provenance logic existed already, but `supportsStoredHistoryViewer` excluded `default` and the standard transcript banner rendered only when `variant === "overlay"`.
+  - Confirmed in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` that the desktop composer still uses `AgentProcessingView` with `variant="default"`, making the gap real for inline processing sessions.
+  - Checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/ui/ResponseHistoryPanel.tsx`; mobile currently exposes respond-to-user history but has no matching preserved full-history viewer surface, so there was no equivalent mobile affordance to update in this slice.
+- Important assumptions:
+  - Assumption: the default desktop processing transcript should match overlay/tile preserved-history behavior rather than remaining a reduced view.
+  - Why acceptable: it is the same `AgentProgress` conversation surface shown during inline desktop processing, so hiding stored-history provenance there would make `#58` feel inconsistently implemented across desktop surfaces.
+  - Assumption: no mobile change is required for this slice.
+  - Why acceptable: mobile does not currently have the same preserved-history UI contract; adding it there would be a larger product/design decision rather than parity work for this narrow desktop renderer follow-up.
+- Changes implemented:
+  - Extended `supportsStoredHistoryViewer` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` so `default` sessions can lazily hydrate preserved disk-backed history just like tile and overlay views.
+  - Updated the shared default/overlay transcript branch so the history banner, loading/error states, and `Show Full History` / `Show Active Window` toggle render for the standard desktop processing view as well, not only the overlay.
+  - Renamed the shared transcript-content helper from overlay-specific wording to `standardTranscriptHasContent` to reflect that the branch now serves both default and overlay variants.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with assertions covering the default-variant support and the non-overlay-specific banner gating.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Manually desktop-smoke the inline composer flow once a full app/dev environment is available, to confirm the new default-view banner and toggle feel visually balanced under real streaming updates.
+  - Decide whether any other non-tile desktop transcript surfaces still need explicit preserved-history affordances, or whether tile + overlay + default now sufficiently cover the current UX.
+  - Re-run broader desktop typecheck/Vitest once the worktree has the missing desktop dependency/tooling baseline restored.
+
+- Next recommended issue work item: either manually review `#58` in a full desktop run and close out any remaining UI polish, or pivot to a fresh issue with a tighter local repro path than the still-speculative `#54`.

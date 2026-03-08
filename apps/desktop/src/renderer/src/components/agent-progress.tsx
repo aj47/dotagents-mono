@@ -2729,7 +2729,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [visibleConversationHistory],
   )
 
-  const supportsStoredHistoryViewer = variant === "tile" || variant === "overlay"
+  const supportsStoredHistoryViewer =
+    variant === "tile" || variant === "overlay" || variant === "default"
 
   const shouldHydrateStoredHistory =
     supportsStoredHistoryViewer &&
@@ -3740,7 +3741,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }
 
   // Default/Overlay variant rendering
-  const overlayTranscriptHasContent = isShowingStoredFullHistory
+  const standardTranscriptHasContent = isShowingStoredFullHistory
     ? fullHistoryDisplayItems.length > 0
     : displayItems.length > 0
 
@@ -3890,7 +3891,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       {/* Message Stream - Left-aligned content (Chat Tab) */}
       <div className={cn("relative flex-1 min-h-0", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
-        {variant === "overlay" && shouldShowStoredHistoryBanner && (
+        {shouldShowStoredHistoryBanner && (
           <div className="border-b border-border/40 bg-muted/20 px-3 py-2">
             {hasStoredEarlierHistory ? (
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -3952,7 +3953,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           onScroll={handleScroll}
           className="h-full overflow-y-auto"
         >
-          {overlayTranscriptHasContent ? (
+          {standardTranscriptHasContent ? (
             <div className="space-y-1 p-2">
               {isShowingStoredFullHistory ? (
                 <>
