@@ -8,7 +8,7 @@ import { buildUniqueLoopId } from "./settings-loops.ids"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
-import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
+import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText, AlertTriangle, Loader2 } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -72,6 +72,20 @@ function formatInterval(minutes: number): string {
   return `${days}d ${hours}h ${mins}m`
 }
 
+function getLoopQueryErrorMessage(error: unknown): string {
+  const message = error instanceof Error
+    ? error.message.trim()
+    : typeof error === "string"
+      ? error.trim()
+      : ""
+
+  if (!message) {
+    return "Repeat tasks could not be loaded right now."
+  }
+
+  return /[.!?]$/.test(message) ? message : `${message}.`
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
@@ -92,6 +106,8 @@ export function SettingsLoops() {
   const statusByLoopId = new Map(
     (loopStatusesQuery.data || []).map((s) => [s.id, s] as const)
   )
+  const isLoadingLoops = loopsQuery.isLoading && !loopsQuery.data
+  const hasLoopLoadError = loopsQuery.isError && !loopsQuery.data
 
   const handleCreate = () => {
     setIsCreating(true)
@@ -206,104 +222,152 @@ export function SettingsLoops() {
     }
   }
 
-  const renderLoopList = () => (
-    <div className="space-y-1">
-      {loops.map((loop) => {
-        const runtime = statusByLoopId.get(loop.id)
-        const isRunning = runtime?.isRunning ?? false
-        const nextRunAt = runtime?.nextRunAt
-        const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
-        return (
-          <div
-            key={loop.id}
-            className={cn(
-              "rounded-lg border bg-card px-3 py-2",
-              !loop.enabled && "opacity-60",
-            )}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{loop.name}</span>
-                  {isRunning ? (
-                    <Badge variant="secondary">Running</Badge>
-                  ) : loop.enabled ? (
-                    <Badge variant="default">Active</Badge>
-                  ) : (
-                    <Badge variant="outline">Disabled</Badge>
-                  )}
-                </div>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                  {loop.prompt}
+  const renderLoopList = () => {
+    if (isLoadingLoops) {
+      return (
+        <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 px-4 py-8 text-center">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Loading repeat tasks...</p>
+            <p className="text-xs text-muted-foreground">
+              Checking your saved schedules and their latest run details.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (hasLoopLoadError) {
+      return (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Couldn&apos;t load repeat tasks</p>
+                <p className="text-xs text-muted-foreground">
+                  This page is still waiting for your saved schedules, so it is not showing the empty-state placeholder yet.
+                </p>
+                <p className="break-words text-xs text-destructive">
+                  {getLoopQueryErrorMessage(loopsQuery.error)}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 px-2"
-                  onClick={() => handleRunNow(loop)}
-                >
-                  <Play className="h-3.5 w-3.5" />Run
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 px-2"
-                  onClick={() => handleOpenTaskFile(loop)}
-                >
-                  <FileText className="h-3.5 w-3.5" />File
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Edit task"
-                  onClick={() => handleEdit(loop)}
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Delete task"
-                  onClick={() => handleDelete(loop.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                Every {formatInterval(loop.intervalMinutes)}
-              </div>
-              {loop.runOnStartup && <Badge variant="secondary">Run on startup</Badge>}
-              {typeof nextRunAt === "number" && (
-                <div>Next run: {formatLastRun(nextRunAt)}</div>
-              )}
-              <div>Last run: {formatLastRun(lastRunAt)}</div>
-            </div>
-
-            <div className="mt-2 flex items-center gap-2">
-              <Switch
-                checked={loop.enabled}
-                onCheckedChange={() => handleToggleEnabled(loop)}
-              />
-              <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  void loopsQuery.refetch()
+                }}
+              >
+                Retry loading
+              </Button>
             </div>
           </div>
-        )
-      })}
-      {loops.length === 0 && (
-        <div className="py-8 text-center text-muted-foreground">
-          No repeat tasks configured. Click &quot;Add Task&quot; to create one.
         </div>
-      )}
-    </div>
-  )
+      )
+    }
+
+    return (
+      <div className="space-y-1">
+        {loops.map((loop) => {
+          const runtime = statusByLoopId.get(loop.id)
+          const isRunning = runtime?.isRunning ?? false
+          const nextRunAt = runtime?.nextRunAt
+          const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
+          return (
+            <div
+              key={loop.id}
+              className={cn(
+                "rounded-lg border bg-card px-3 py-2",
+                !loop.enabled && "opacity-60",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium">{loop.name}</span>
+                    {isRunning ? (
+                      <Badge variant="secondary">Running</Badge>
+                    ) : loop.enabled ? (
+                      <Badge variant="default">Active</Badge>
+                    ) : (
+                      <Badge variant="outline">Disabled</Badge>
+                    )}
+                  </div>
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                    {loop.prompt}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2"
+                    onClick={() => handleRunNow(loop)}
+                  >
+                    <Play className="h-3.5 w-3.5" />Run
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2"
+                    onClick={() => handleOpenTaskFile(loop)}
+                  >
+                    <FileText className="h-3.5 w-3.5" />File
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="Edit task"
+                    onClick={() => handleEdit(loop)}
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="Delete task"
+                    onClick={() => handleDelete(loop.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  Every {formatInterval(loop.intervalMinutes)}
+                </div>
+                {loop.runOnStartup && <Badge variant="secondary">Run on startup</Badge>}
+                {typeof nextRunAt === "number" && (
+                  <div>Next run: {formatLastRun(nextRunAt)}</div>
+                )}
+                <div>Last run: {formatLastRun(lastRunAt)}</div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-2">
+                <Switch
+                  checked={loop.enabled}
+                  onCheckedChange={() => handleToggleEnabled(loop)}
+                />
+                <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
+              </div>
+            </div>
+          )
+        })}
+        {loops.length === 0 && (
+          <div className="py-8 text-center text-muted-foreground">
+            No repeat tasks configured. Click &quot;Add Task&quot; to create one.
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const renderEditForm = () => {
     if (!editing) return null

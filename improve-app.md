@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task settings load/fetch-failure feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with adjacent inline loading/retry patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, focused source-level coverage added in `tests/desktop-settings-loops-feedback.test.js`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop overlay follow-up composer session-scope cleanup in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, with overlay mount reuse reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, existing follow-up guardrails checked in `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts`, stronger focused renderer regression coverage added in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx`, dependency-free source assertions added in `tests/desktop-overlay-follow-up-session-scope.test.js`, and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile composer is screen-scoped rather than reused across focused desktop sessions).
 - 2026-03-08: Desktop sessions empty-state past-sessions discoverability / recent-history loading feedback in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with conversation-history query behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, past-history dialog behavior checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile already shows the session list directly), and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop queued-send / message-queue recovery in `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, with queue pause/resume semantics reviewed in `apps/desktop/src/main/message-queue-service.ts`, interrupted-run cleanup context checked in `apps/desktop/src/main/agent-session-tracker.ts`, `apps/desktop/src/main/session-user-response-store.ts`, and `apps/desktop/src/renderer/src/stores/agent-store.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -54,6 +55,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop repeat-task settings now keep the `Repeat Tasks` page in a distinct loading state while saved schedules are still resolving and show an inline fetch-failure banner with `Retry loading` instead of falling straight to the empty-state copy, so transient query failures no longer look like all loops disappeared; tradeoff: this pass intentionally leaves `getLoopStatuses()` failure messaging for a follow-up because the highest-risk confusion was the main loop list query being mistaken for “no tasks”.
 - 2026-03-08: Desktop overlay follow-up input now treats `conversationId` + `sessionId` as a composer scope, clears stale draft/error/image state when the focused overlay session changes, and ignores late async submit/image completions from the previous session so a failed or delayed follow-up from session A cannot leak into session B or wipe a new draft there; tradeoff: this pass intentionally stays scoped to the overlay composer because the tile composer is mounted per-session already, so it does not share the same cross-session reuse risk.
 - 2026-03-08: Desktop `No Active Sessions` now keeps a visible `Past Sessions` action alongside the existing start buttons and shows inline recent-history loading/failure guidance while conversation history is still resolving, so returning users no longer have to wait for a silently completing history query or for the `View all` link threshold before finding prior chats; tradeoff: this intentionally reuses the existing past-sessions dialog instead of adding a second inline history browser, which keeps the fix small and behavior consistent.
 - 2026-03-08: Desktop queued-send recovery now detects when a paused conversation is blocked by a failed first queued message, swaps the generic paused `Resume` affordance for a clearer `Retry & Resume` action in `message-queue-panel.tsx`, and auto-resumes paused queue processing from `tipc.ts` when the failed head item is retried or edited while the conversation is otherwise idle; tradeoff: this intentionally only auto-resumes when recovering the head item so retrying a later failed row does not unexpectedly restart a queue the user may still want paused.
@@ -99,6 +101,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+- 2026-03-08: `git diff --check` after the desktop repeat-task fetch-state feedback pass
 - 2026-03-08: `node --test tests/desktop-overlay-follow-up-session-scope.test.js`
 - 2026-03-08: attempted `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx src/renderer/src/components/follow-up-input.submit.test.ts src/renderer/src/components/overlay-follow-up-input.layout.test.ts` from `apps/desktop` (blocked: `node_modules` is missing in this worktree, so `pnpm -w run build:shared` fails first because `tsup` is unavailable and desktop package tests cannot start here).
 - 2026-03-08: `git diff --check`
@@ -202,6 +207,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this repeat-task fetch-state feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this overlay session-scope pass is blocked in this worktree because `node_modules` is missing, so `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx ...` fails during the required `build:shared` pretest step when `tsup` cannot be found.
 - 2026-03-08: Live desktop UI inspection for this sessions empty-state history/discoverability pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this queued-send recovery pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -251,6 +257,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop past-sessions dialog search / delete / failure-state clarity (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
 
 ### Next Highest-Value Targets
+- Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, fetch failure, empty, and populated states to confirm the new non-empty-state feedback reads clearly in the real UI
+- Desktop repeat-task runtime-status fetch feedback is the most adjacent follow-up if another loops pass is needed, especially when `getLoopStatuses()` fails and the list still needs to explain stale `Running` / `Next run` details
+- Mobile `Agent Loops` fetch-failure feedback in `apps/mobile/src/screens/SettingsScreen.tsx` is the closest cross-platform parity follow-up now that desktop no longer conflates a failed loop query with an empty list
 - Once a runnable Electron target is available, live-check the desktop sessions empty state with no history, loading history, a few recent sessions, and more than eight sessions to confirm the new `Past Sessions` action and loading hint feel obvious without overcrowding the primary start actions
 - Desktop past-sessions dialog search/delete behavior is the most adjacent follow-up if another history/navigation pass is needed, especially around keyboard focus, error recovery, and destructive-action confidence
 - Once a runnable Electron target is available, live-check the desktop queued-send flow across paused, failed-head, `Retry & Resume`, and edited-head recovery states to confirm the new recovery path feels obvious in the actual UI
@@ -1790,6 +1799,40 @@ Track small, shippable product improvements. Review this file before each iterat
   - once dependencies are available, run `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts`
   - once dependencies are available, run `pnpm --filter @dotagents/desktop typecheck:node`
   - inspect remaining queue/user-response cleanup consistency on interrupted queued runs, since this pass fixed the core runtime-session leak but did not broaden queue/follow-up behavior changes
+
+### 2026-03-08 — Desktop repeat-task fetch-state feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task management in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - specifically the list-level fetch/loading/error states for saved loops
+- Why it was chosen:
+  - the ledger had already covered repeat-task ID collision safety, but the list screen itself had not been revisited for query-state clarity
+  - `loopsQuery` defaulted to `[]`, so a loading or failed fetch could fall through to “No repeat tasks configured,” which is high-risk, user-visible confusion on a core automation surface
+  - the fix had clear user value, stayed localized to one screen, and aligned with existing inline retry patterns already used elsewhere in settings
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` for a nearby inline retry/error pattern
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` for local loading/error helper-copy patterns
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed the mobile Agent Loops list already distinguishes loading from empty, but fetch failures there still fall back to console-only handling and remain a separate follow-up
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - added an explicit loading state for the desktop Repeat Tasks list while saved schedules are still resolving
+  - added an inline destructive-styled fetch-failure banner with normalized error text and a local `Retry loading` action
+  - kept the existing empty-state copy only for the genuine no-loop case, so users no longer see an empty-state placeholder when data has not actually loaded
+  - added focused dependency-free regression coverage in `tests/desktop-settings-loops-feedback.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the change scoped to the primary `loopsQuery` because that was the path most likely to make users think their tasks disappeared; `loopStatusesQuery` fallback/staleness messaging can be handled separately if another loops pass is warranted
+  - reused the app’s existing small inline retry pattern instead of introducing a new shared component so the fix stays easy to reason about and low-churn
+  - did not broaden this pass into mobile because the mobile Agent Loops surface uses different local state/API plumbing and already distinguishes loading from empty, even though fetch-error guidance there is still worth improving later
+- Tests / verification:
+  - `node --test tests/desktop-settings-loops-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check the desktop Repeat Tasks list across loading, error, empty, and populated states
+  - inspect whether `loopStatusesQuery` also needs stale-status or retry guidance for `Running` / `Next run` metadata
+  - consider the analogous mobile Agent Loops fetch-failure feedback path if the next iteration needs a cross-platform loops follow-up
 
 ### Iteration Template
 - Date:
