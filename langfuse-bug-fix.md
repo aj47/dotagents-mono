@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1771647720494_fik57yjzt | session_1771647729519_v5pbnrz7d | fix implemented | User asked `do I have anything about my future family goals or kids in my notes`; Langfuse showed the first `LLM Call` fail with `Invalid prompt: The messages do not match the ModelMessage[] schema.` because a prior assistant history item carried mixed array content (plain text plus a tool-call object). The fallback streaming call then answered the earlier `are you there` greeting instead of the current notes question. Root repo issue found: final AI-SDK message conversion in `llm-fetch.ts` trusted runtime `content` shapes and could forward malformed arrays/objects directly into provider calls. |
 | 2026-03-08 | conv_1772240416384_vv22n56ok | session_1772240416385_czog6zy7k | fix implemented | User input `do you know about` ended with `output: null` and `wasAborted: true`, but the failing `Streaming LLM Call` observation already contained a substantial partial answer. Root repo issue found: the emergency-stop abort catch path finalized without passing through the latest streamed assistant text, so mid-stream aborts could discard partial deliverable content even when Langfuse had already recorded it inside the generation observation. |
 | 2026-03-08 | conv_1771713524892_s4fckyh7n | session_1771713524893_ttnm6sh50, session_1771713542868_kydy6y6qo | fix implemented | User asked how to restart the SpeakMCP macOS app. The first run emitted raw tool-call artifacts (`<function_calls>...`, `[Calling tools: ...]`, even a lone `[`), attempted bogus proxy-prefixed tool names like `proxy_speakmcp-settings:execute_command`, and ended with `output: null`; only a later retry fell back to manual instructions. Root repo issue found: the native-tool-call reminder guard only caught full `[Calling tools: ...]` placeholders / SDK marker tokens, not truncated placeholder fragments or raw XML function-call scaffolding, so malformed tool-call text could slip through as if it were normal assistant content. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh follow-up evidence) | session_1772916139885_8wx8su8xa | fix implemented | User asked `we have enough starters, what else would be highest impact. gather lots of context about overall goals etc`; the run still replied with another starter-pack recommendation and verification marked the answer complete even though the user explicitly asked for broader context-grounded analysis and had already ruled out `more starters` as the immediate next move. Root repo issue found: the completion-verifier prompt did not explicitly reject answers that skipped a requested research/context-gathering step or ignored an explicit user constraint/premise. |
@@ -47,6 +48,44 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | delegated specialist sub-session chain (no parent session id on trace rows) | subsession_1772927398142_3a13b1c5, subsession_1772927403156_46973064, subsession_1772927413450_6da59930 | fix implemented | Fresh delegated `Find blog post referred to as permanent underclass` evidence showed a `Web Browser` specialist sub-run re-delegating to `internal`, then another delegated run re-delegating to `main-agent`, even though the deepest run already had the correct Exa result. The chain still ended with emergency-stop text instead of a single-run answer. Root repo issue found: ACP/stdio/remote delegated specialist profiles did not carry the same no-redelegation execution guidance already applied to internal named sub-sessions. |
 
 ## Investigations
+
+### 2026-03-08 — Malformed assistant history content should be coerced before the AI SDK call
+
+- Langfuse evidence reviewed:
+  - `conv_1771647720494_fik57yjzt` / `session_1771647729519_v5pbnrz7d`
+  - adjacent traces reviewed for context:
+    - `session_1771647615708_6a7uec6z3` (`are you there` → `Yes, I'm here! What can I help you with?`)
+    - `session_1771647684560_kdkrwbryy` (`did I talk about wanting kids is that in my notes` → `output: null`)
+  - failing user input: `do I have anything about my future family goals or kids in my notes`
+  - trace outcome: final `output` was the stale greeting `Yes, I'm here! What can I help you with?`, not an answer about the user's notes
+  - observation timeline showed:
+    - first `LLM Call` errored with `Invalid prompt: The messages do not match the ModelMessage[] schema.`
+    - the failing prompt payload included an assistant history entry whose `content` was a mixed array containing both plain text and a tool-call object
+    - the fallback `Streaming LLM Call` then answered the earlier greeting turn instead of the latest notes question
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm-fetch.ts` converts agent/history messages into AI SDK messages right before every fetch/stream/verification call.
+  - that conversion path normalized roles, but it trusted `msg.content` at runtime and forwarded it as-is.
+  - if malformed historical content leaked through as an array/object instead of a plain string, AI SDK/provider validation could reject the whole prompt before the current user turn was processed.
+- Concrete root cause:
+  - the final AI-SDK message conversion layer lacked a defensive content coercion step.
+  - malformed assistant history entries (like the mixed text + tool-call array seen in Langfuse) could therefore trigger provider-side schema rejection and send the run down a bad retry/fallback path that no longer answered the current user intent.
+- Fix implemented:
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - added `coerceMessageContentToText(...)` to flatten runtime message content into plain text before it reaches AI SDK
+    - preserve string/text parts from arrays/objects while ignoring non-text tool-call metadata
+    - skip empty system-message fragments after coercion
+  - this keeps malformed stored/history content from producing invalid `ModelMessage[]` payloads at the last provider boundary
+- Tests added/updated:
+  - `apps/desktop/src/main/llm-fetch.test.ts`
+    - added a regression modeled on the trace shape: a malformed assistant content array with a stale greeting string plus a tool-call object, followed by the real notes question
+    - verifies `makeLLMCallWithFetch(...)` now calls AI SDK with plain-text messages and preserves the latest user question in the prompt
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-fetch.test.ts`
+  - ✅ passed (`35 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+- Remaining promising leads:
+  - watch the next fresh Langfuse trace with `Invalid prompt` / `ModelMessage[] schema` wording to confirm the failure class disappears rather than falling back to a stale earlier turn
+  - if similar traces persist, inspect other history-loading boundaries (`tipc.ts`, `remote-server.ts`, ACP stateful histories) for places that may still preserve malformed runtime message shapes too early in the pipeline
 
 ### 2026-03-08 — Pre-aborted streaming calls should surface an explicit abort, not an empty/blank run
 

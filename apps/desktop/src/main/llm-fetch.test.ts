@@ -127,6 +127,42 @@ describe('LLM Fetch with AI SDK', () => {
     }))
   })
 
+  it('coerces malformed assistant content arrays into plain text before the AI SDK call', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    generateTextMock.mockResolvedValue({
+      text: 'I found the notes mention wanting kids someday.',
+      finishReason: 'stop',
+      usage: { promptTokens: 10, completionTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [
+        { role: 'user', content: 'are you there' },
+        {
+          role: 'assistant',
+          content: [
+            'Yes, I\'m here! What can I help you with?',
+            { type: 'tool-call', toolName: 'speakmcp-settings:respond_to_user' },
+          ],
+        },
+        { role: 'user', content: 'do I have anything about my future family goals or kids in my notes' },
+      ] as any,
+      'openai'
+    )
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [
+        { role: 'user', content: 'are you there' },
+        { role: 'assistant', content: 'Yes, I\'m here! What can I help you with?' },
+        { role: 'user', content: 'do I have anything about my future family goals or kids in my notes' },
+      ],
+    }))
+  })
+
   it('records a readable Langfuse error status when generateText throws binary-like noise', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)

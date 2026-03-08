@@ -605,6 +605,37 @@ async function withRetry<T>(
   }
 }
 
+function coerceMessageContentToText(content: unknown): string {
+  if (typeof content === "string") {
+    return content
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => coerceMessageContentToText(part))
+      .filter(Boolean)
+      .join("\n")
+  }
+
+  if (content && typeof content === "object") {
+    const record = content as Record<string, unknown>
+
+    if (typeof record.text === "string") {
+      return record.text
+    }
+
+    if (typeof record.content === "string") {
+      return record.content
+    }
+
+    if (Array.isArray(record.content)) {
+      return coerceMessageContentToText(record.content)
+    }
+  }
+
+  return ""
+}
+
 /**
  * Convert messages to AI SDK format, extracting system messages separately
  * This is needed for compatibility with Anthropic/Claude APIs which expect
@@ -615,7 +646,7 @@ async function withRetry<T>(
  * message prefill" and require the conversation to end with a user message.
  * See: https://github.com/aj47/SpeakMCP/issues/1035
  */
-function convertMessages(messages: Array<{ role: string; content: string }>): {
+function convertMessages(messages: Array<{ role: string; content: unknown }>): {
   system: string | undefined
   messages: Array<{ role: "user" | "assistant"; content: string }>
 } {
@@ -624,13 +655,17 @@ function convertMessages(messages: Array<{ role: string; content: string }>): {
     []
 
   for (const msg of messages) {
+    const content = coerceMessageContentToText(msg.content)
+
     if (msg.role === "system") {
-      systemMessages.push(msg.content)
+      if (content) {
+        systemMessages.push(content)
+      }
     } else {
       const normalizedRole = msg.role === "assistant" ? "assistant" : "user"
       otherMessages.push({
         role: normalizedRole,
-        content: msg.content,
+        content,
       })
     }
   }
