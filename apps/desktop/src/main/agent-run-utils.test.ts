@@ -248,6 +248,13 @@ describe("agent-run-utils", () => {
       expect(needsNativeToolCallingReminder("[Calling tools:")).toBe(true)
     })
 
+    it("flags pseudo respond_to_user wrappers for correction", () => {
+      const pseudoWrapper = `[respond_to_user] {\n  "text": "Do this now"\n}`
+
+      expect(isToolCallPlaceholderResponse(pseudoWrapper)).toBe(true)
+      expect(needsNativeToolCallingReminder(pseudoWrapper)).toBe(true)
+    })
+
     it("flags raw XML function-call scaffolding for correction", () => {
       expect(
         needsNativeToolCallingReminder(

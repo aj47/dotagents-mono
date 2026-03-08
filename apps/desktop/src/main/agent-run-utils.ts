@@ -226,6 +226,7 @@ export function normalizeProgressHeuristicText(content: string): string {
 export function isToolCallPlaceholderResponse(content: string): boolean {
   const trimmed = content.trim()
   return trimmed === "["
+    || /^\[respond_to_user\]\s*(?:\{|$)/i.test(trimmed)
     || /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
     || /^\[(?:Calling tools?|Tool|Tools?)(?::[^\]]*)?$/i.test(trimmed)
 }

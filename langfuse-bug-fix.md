@@ -1738,6 +1738,40 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - note: `pnpm --filter @dotagents/desktop test:run -- src/main/llm.test.ts` still ignores the file filter and runs a wider desktop suite; that wider run exposed unrelated pre-existing renderer failures in `src/renderer/src/components/agent-progress.tile-layout.test.ts` and `src/renderer/src/components/agent-progress.performance.test.ts`
   - debugging-guided live verification from `apps/desktop/DEBUGGING.md` was not required here because the failing flow was fully reconstructable from Langfuse observations plus focused loop tests
 
+## Investigation 2026-03-08 (pseudo `respond_to_user` wrappers should trigger a native-tool retry)
+
+- Reviewed `langfuse-bug-fix.md` first and avoided already-logged traces except for fresh evidence on the existing pseudo-`respond_to_user` lead.
+- Langfuse evidence:
+  - conversation: `conv_1772942234347_xyec3dx8u`
+  - failing trace: `session_1772942234349_piwpgovtd`
+    - user input: `What should I do`
+    - trace outcome: final trace `output` was the raw pseudo-tool wrapper:
+      - `[respond_to_user] { "text": "Do this now (safe, minimal path): ..." }`
+    - observations showed the run ended on a `Streaming LLM Call` that emitted plain-text pseudo `respond_to_user` JSON instead of a native tool call
+    - this was fresh evidence for the remaining lead at line 1757 (`Recheck a fresh pseudo-respond_to_user trace ...`)
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` only enters the native-tool correction path when `needsNativeToolCallingReminder(...)` detects malformed tool-calling text.
+  - `apps/desktop/src/main/agent-run-utils.ts` already flagged SDK markers, XML scaffolding, and `[Calling tools: ...]` placeholders, but it did **not** classify a plain-text pseudo `[respond_to_user] { ... }` wrapper as malformed tool-calling.
+  - as a result, a run could accept the wrapper as ordinary assistant content and finalize it directly instead of retrying with the existing native-tool reminder.
+- Concrete root cause:
+  - pseudo `respond_to_user` wrapper text was missing from the malformed-tool placeholder detector.
+  - that left a gap where the loop corrected other pseudo tool-call formats, but not the exact wrapper that the model emitted in this trace.
+- Minimal fix applied:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - treat plain-text `[respond_to_user] { ... }` wrapper text as a tool-call placeholder so it triggers the native-tool reminder path and is not re-added as normal assistant content
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+      - regression that pseudo `respond_to_user` wrappers are flagged for correction
+    - `apps/desktop/src/main/llm.test.ts`
+      - loop-level regression proving a pseudo `respond_to_user` wrapper causes a retry with the native-tool reminder instead of being accepted as the final answer
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts -t "pseudo respond_to_user wrappers"`
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts -t "pseudo respond_to_user wrapper text"`
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts src/main/llm.test.ts`
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ all passed
+  - note: the Vitest commands still print the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop runs exit successfully
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.

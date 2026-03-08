@@ -923,6 +923,61 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("nudges pseudo respond_to_user wrapper text instead of accepting it as the final answer", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-pseudo-respond-wrapper")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: false,
+    })
+
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: `[respond_to_user] {\n  "text": "Do this now (safe, minimal path):\\n\\n1. In that interactive tab.\\n2. Stop any old loop processes still using shared checkout."\n}`,
+        toolCalls: [],
+      })
+      .mockImplementationOnce(async (messages: Array<{ role: string; content: string }>) => {
+        expect(messages.some((message) =>
+          message.role === "user"
+          && message.content.includes("Please use the native tool-calling interface"),
+        )).toBe(true)
+
+        return {
+          content: "Do this now (safe, minimal path):\n\n1. In that interactive tab.\n2. Stop any old loop processes still using shared checkout.",
+          toolCalls: [],
+        }
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "What should I do",
+      [{
+        name: "respond_to_user",
+        description: "Send a response",
+        inputSchema: { type: "object", properties: {}, required: [] },
+      } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      3,
+      [],
+      "conv-pseudo-respond-wrapper",
+      "session-pseudo-respond-wrapper",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("Do this now (safe, minimal path):")
+    expect(result.content).not.toContain("[respond_to_user]")
+    expect(mockStreamingCall).toHaveBeenCalledTimes(2)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-pseudo-respond-wrapper",
+      expect.objectContaining({
+        output: expect.not.stringContaining("[respond_to_user]"),
+      }),
+    )
+  })
+
   it("nudges repeated tool-only exploration to synthesize or ask focused follow-up questions", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")
