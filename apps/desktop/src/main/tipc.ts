@@ -15,6 +15,7 @@ import {
   hideFloatingPanelWindow,
   markManualResize,
   resetFloatingPanelPositionAndSize,
+  resetPanelSizeForCurrentMode,
   setPanelFocusable,
   emergencyStopAgentMode,
   showPanelWindowAndShowTextInput,
@@ -3267,6 +3268,11 @@ export const router = {
     return { width, height }
   }),
 
+  getPanelVisibility: t.procedure.action(async () => {
+    const panel = WINDOWS.get("panel")
+    return panel?.isVisible() ?? false
+  }),
+
   updatePanelSize: t.procedure
     .input<{ width: number; height: number }>()
     .action(async ({ input }) => {
@@ -3340,6 +3346,10 @@ export const router = {
       configStore.save(updatedConfig)
       return { mode: input.mode, size: { width, height } }
     }),
+
+  resetPanelSizeForCurrentMode: t.procedure.action(async () => {
+    return resetPanelSizeForCurrentMode()
+  }),
 
   // Get current panel mode (from centralized window state)
   getPanelMode: t.procedure.action(async () => {

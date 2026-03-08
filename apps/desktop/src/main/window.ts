@@ -34,11 +34,46 @@ export function setAppQuitting() {
 
 // Notify renderer of panel size changes from main process
 function notifyPanelSizeChanged(width: number, height: number) {
-  const win = WINDOWS.get("panel")
-  if (!win) return
+  const main = WINDOWS.get("main")
+  if (main) {
+    try {
+      getRendererHandlers<RendererHandlers>(main.webContents).onPanelSizeChanged.send({ width, height })
+    } catch (error) {
+      logApp("[notifyPanelSizeChanged] Failed to notify main renderer:", error)
+    }
+  }
+
+  const panel = WINDOWS.get("panel")
+  if (!panel) return
 
   whenPanelReady(() => {
-    getRendererHandlers<RendererHandlers>(win.webContents).onPanelSizeChanged.send({ width, height })
+    try {
+      getRendererHandlers<RendererHandlers>(panel.webContents).onPanelSizeChanged.send({ width, height })
+    } catch (error) {
+      logApp("[notifyPanelSizeChanged] Failed to notify panel renderer:", error)
+    }
+  })
+}
+
+function notifyPanelVisibilityChanged(visible: boolean) {
+  const main = WINDOWS.get("main")
+  if (main) {
+    try {
+      getRendererHandlers<RendererHandlers>(main.webContents).onPanelVisibilityChanged.send({ visible })
+    } catch (error) {
+      logApp("[notifyPanelVisibilityChanged] Failed to notify main renderer:", error)
+    }
+  }
+
+  const panel = WINDOWS.get("panel")
+  if (!panel) return
+
+  whenPanelReady(() => {
+    try {
+      getRendererHandlers<RendererHandlers>(panel.webContents).onPanelVisibilityChanged.send({ visible })
+    } catch (error) {
+      logApp("[notifyPanelVisibilityChanged] Failed to notify panel renderer:", error)
+    }
   })
 }
 
@@ -446,6 +481,16 @@ const textInputPanelWindowSize = {
 
 export const TEXT_INPUT_MIN_WIDTH = textInputPanelWindowSize.width
 
+function getDefaultPanelSizeForMode(mode: "normal" | "agent" | "textInput") {
+  if (mode === "agent") {
+    return agentPanelWindowSize
+  }
+  if (mode === "textInput") {
+    return textInputPanelWindowSize
+  }
+  return panelWindowSize
+}
+
 type SavedPanelSizeMode = "waveform" | "progress" | "textInput"
 
 const getPanelMinWidth = (mode: SavedPanelSizeMode | "normal" | "agent" | "textInput") => {
@@ -759,6 +804,26 @@ export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
   }
 }
 
+export function resetPanelSizeForCurrentMode() {
+  const mode = getCurrentPanelMode()
+  const defaultSize = getDefaultPanelSizeForMode(mode)
+  const config = configStore.get()
+  const updatedConfig = { ...config }
+
+  if (mode === "agent") {
+    updatedConfig.panelProgressSize = defaultSize
+  } else if (mode === "textInput") {
+    updatedConfig.panelTextInputSize = defaultSize
+  } else {
+    updatedConfig.panelCustomSize = defaultSize
+  }
+
+  configStore.save(updatedConfig)
+  restorePanelSizeForMode(mode, "resetPanelSizeForCurrentMode")
+
+  return defaultSize
+}
+
 
 export function createPanelWindow(): BrowserWindow | undefined {
   // In headless mode, skip all window operations
@@ -827,6 +892,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
   win.on("hide", () => {
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
     ensureAppSwitcherPresence("panel.hide")
+    notifyPanelVisibilityChanged(false)
   })
 
   // Reassert z-order on lifecycle changes and reset stale focus-hide flag
@@ -836,6 +902,7 @@ export function createPanelWindow(): BrowserWindow | undefined {
     // Clear the flag when panel becomes visible through any means.
     // This prevents stale state if user manually shows panel while main is focused.
     clearPanelHiddenByMainFocus()
+    notifyPanelVisibilityChanged(true)
   })
   win.on("blur", () => ensurePanelZOrder(win))
   win.on("focus", () => ensurePanelZOrder(win))

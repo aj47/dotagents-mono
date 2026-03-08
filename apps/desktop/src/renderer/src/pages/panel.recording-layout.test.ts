@@ -30,6 +30,13 @@ describe("panel recording layout", () => {
     )
   })
 
+  it("lets the drag bar own the panel top edge so moving the floating panel is not competing with a full-width top resize rail", () => {
+    expect(panelSource).toContain("const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? true")
+    expect(panelSource).toContain("disableTopEdgeResize={isDragEnabled}")
+    expect(panelSource).toContain('{isDragEnabled && (')
+    expect(panelSource).toContain('<PanelDragBar className="shrink-0" disabled={!isDragEnabled} />')
+  })
+
   it("gives text input its own safer min width, height, and persisted size bucket", () => {
     expect(panelSource).toContain("const TEXT_INPUT_MIN_WIDTH_PX = 380")
     expect(panelSource).toContain("const TEXT_INPUT_MIN_HEIGHT = 180")

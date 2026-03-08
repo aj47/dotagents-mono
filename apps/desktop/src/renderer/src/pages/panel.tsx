@@ -1121,6 +1121,7 @@ export function Component() {
   return (
     <PanelResizeWrapper
       enableResize={true}
+      disableTopEdgeResize={isDragEnabled}
       minWidth={minWidth}
       minHeight={minHeight}
       className={cn(

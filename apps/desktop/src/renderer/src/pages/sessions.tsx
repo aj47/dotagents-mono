@@ -4,13 +4,16 @@ import { useParams, useOutletContext } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useAgentStore } from "@renderer/stores"
 import {
+  getResponsiveStackedTileLayoutMinimumWidth,
   SessionGrid,
   SessionTileWrapper,
   isResponsiveStackedTileLayout,
+  shouldPreserveTileWidthAcrossLayoutChange,
   type SessionGridMeasurements,
   type TileLayoutMode,
 } from "@renderer/components/session-grid"
 import { clearPersistedSize } from "@renderer/hooks/use-resizable"
+import { SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import {
   MessageCircle,
@@ -18,8 +21,10 @@ import {
   Plus,
   AlertTriangle,
   CheckCircle2,
+  ChevronsRight,
   LayoutGrid,
   Maximize2,
+  Minimize2,
   Grid2x2,
   Keyboard,
   Clock,
@@ -27,6 +32,7 @@ import {
   GripVertical,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
@@ -52,6 +58,37 @@ import dayjs from "dayjs"
 interface LayoutContext {
   onOpenPastSessionsDialog: () => void
   sidebarWidth: number
+  resetSidebar: () => void
+  panelVisible: boolean
+  panelWidth: number | null
+}
+
+interface SessionReorderFeedback {
+  id: number
+  sessionLabel: string
+  position: number
+  total: number
+}
+
+interface RecentNewSessionFeedback {
+  id: number
+  sessionIds: string[]
+  latestSessionLabel: string
+  count: number
+}
+
+interface RecentSingleViewRestoreFeedback {
+  id: number
+  sessionId: string
+  announcement: string
+}
+
+type TilePressureRecoverySource = "sidebar" | "panel" | "both" | "panel-hidden"
+
+interface RecentTilePressureRecoveryFeedback {
+  id: number
+  source: TilePressureRecoverySource
+  announcement: string
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -68,6 +105,210 @@ function formatTimestamp(timestamp: number): string {
   }
   if (diffHours < 168) return date.format("ddd h:mm A")
   return date.format("MMM D")
+}
+
+function moveSessionOrderEntry(
+  sessionIds: string[],
+  fromIndex: number,
+  toIndex: number,
+): string[] {
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= sessionIds.length ||
+    toIndex >= sessionIds.length ||
+    fromIndex === toIndex
+  ) {
+    return sessionIds
+  }
+
+  const nextSessionIds = [...sessionIds]
+  const [movedSessionId] = nextSessionIds.splice(fromIndex, 1)
+
+  if (!movedSessionId) {
+    return sessionIds
+  }
+
+  nextSessionIds.splice(toIndex, 0, movedSessionId)
+  return nextSessionIds
+}
+
+function getSessionReorderAnnouncementLabel({
+  sessionLabel,
+  position,
+  total,
+}: Pick<SessionReorderFeedback, "sessionLabel" | "position" | "total">): string {
+  return `Moved ${sessionLabel} to position ${position} of ${total}`
+}
+
+function getSessionReorderChipLabel(
+  position: number,
+  total: number,
+  options?: { compact?: boolean; veryCompact?: boolean },
+): string {
+  if (options?.veryCompact) {
+    return `${position}/${total}`
+  }
+
+  if (options?.compact) {
+    return `Moved ${position}/${total}`
+  }
+
+  return `Moved to ${position} of ${total}`
+}
+
+function getNewSessionFeedbackAnnouncementLabel({
+  latestSessionLabel,
+  count,
+  hiddenInSingleView,
+}: Pick<RecentNewSessionFeedback, "latestSessionLabel" | "count"> & {
+  hiddenInSingleView?: boolean
+}): string {
+  const baseAnnouncement =
+    count === 1
+      ? `Added ${latestSessionLabel} at the end of the current tile order`
+      : `Added ${count} new sessions at the end of the current tile order`
+
+  if (!hiddenInSingleView) {
+    return baseAnnouncement
+  }
+
+  return `${baseAnnouncement}. Hidden while Single view is active`
+}
+
+function getNewSessionFeedbackChipLabel(
+  count: number,
+  options?: { compact?: boolean; veryCompact?: boolean },
+): string {
+  if (count <= 1) {
+    if (options?.veryCompact) return "New"
+    if (options?.compact) return "1 new"
+    return "New at end"
+  }
+
+  if (options?.veryCompact || options?.compact) {
+    return `${count} new`
+  }
+
+  return `${count} new at end`
+}
+
+function getSingleViewRestoreAnnouncementLabel({
+  sessionLabel,
+  layoutLabel,
+}: {
+  sessionLabel?: string | null
+  layoutLabel: string
+}): string {
+  if (!sessionLabel) {
+    return `Returned to ${layoutLabel}`
+  }
+
+  return `Returned ${sessionLabel} to ${layoutLabel}`
+}
+
+function getTilePressureRecoveryAnnouncementLabel({
+  source,
+  sidebarStillWide,
+}: {
+  source: TilePressureRecoverySource
+  sidebarStillWide?: boolean
+}): string {
+  if (source === "both") {
+    return "Reset the sidebar width and floating panel size to recover room for tiled sessions"
+  }
+
+  if (source === "sidebar") {
+    return "Reset the sidebar width to recover room for tiled sessions"
+  }
+
+  if (source === "panel-hidden") {
+    if (sidebarStillWide) {
+      return "Hid the floating panel. The sidebar is still wide, so tiled sessions may remain tight"
+    }
+
+    return "Hid the floating panel to recover room for tiled sessions"
+  }
+
+  if (sidebarStillWide) {
+    return "Reset the floating panel size. The sidebar is still wide, so tiled sessions may remain tight"
+  }
+
+  return "Reset the floating panel size to recover room for tiled sessions"
+}
+
+function getTilePressureRecoveryChipLabel(
+  source: TilePressureRecoverySource,
+  options?: { compact?: boolean; veryCompact?: boolean },
+): string {
+  if (source === "both") {
+    if (options?.veryCompact) return "Both"
+    if (options?.compact) return "Reset both"
+    return "Sidebar + panel reset"
+  }
+
+  if (source === "panel-hidden") {
+    if (options?.veryCompact) {
+      return "Hidden"
+    }
+
+    return "Panel hidden"
+  }
+
+  const label = source === "sidebar" ? "Sidebar" : "Panel"
+
+  if (options?.veryCompact) {
+    return label
+  }
+
+  return `${label} reset`
+}
+
+function getSingleViewNewSessionBadgeLabel(
+  count: number,
+  options?: { compact?: boolean; veryCompact?: boolean },
+): string | null {
+  if (count <= 0) return null
+
+  if (options?.veryCompact) {
+    return "New"
+  }
+
+  if (options?.compact) {
+    return count === 1 ? "1 new" : `${count} new`
+  }
+
+  return count === 1 ? "1 new hidden" : `${count} new hidden`
+}
+
+function getJumpToNewestHiddenSessionActionLabel({
+  targetSessionLabel,
+  hiddenNewSessionCount,
+}: {
+  targetSessionLabel?: string | null
+  hiddenNewSessionCount: number
+}): string {
+  const baseActionLabel =
+    hiddenNewSessionCount <= 1
+      ? "Show newest hidden session in Single view"
+      : `Show newest of ${hiddenNewSessionCount} newly added hidden sessions in Single view`
+
+  if (!targetSessionLabel) {
+    return baseActionLabel
+  }
+
+  return `${baseActionLabel}: ${targetSessionLabel}`
+}
+
+function getSessionDragTargetPosition(
+  fromIndex: number,
+  targetIndex: number,
+): "before" | "after" | null {
+  if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) {
+    return null
+  }
+
+  return fromIndex < targetIndex ? "after" : "before"
 }
 
 const RECENT_SESSIONS_LIMIT = 8
@@ -118,7 +359,11 @@ const TEMPORARY_SINGLE_VISIBLE_LAYOUT_DESCRIPTION =
 const TEMPORARY_SINGLE_VISIBLE_LAYOUT_SHORT_LABEL = "One visible"
 const COMPACT_SESSION_HEADER_WIDTH = 760
 const TIGHT_SESSION_HEADER_WIDTH = 620
+const AGENT_PANEL_DEFAULT_WIDTH = 600
+const SIDEBAR_TILE_PRESSURE_WIDTH = SIDEBAR_DIMENSIONS.width.default + 64
+const PANEL_TILE_PRESSURE_WIDTH = AGENT_PANEL_DEFAULT_WIDTH + 64
 const NEAR_RESPONSIVE_STACKED_LAYOUT_WARNING_BUFFER = 96
+const EARLY_TILE_PRESSURE_RECOVERY_WIDTH = 96
 const TILE_LAYOUT_MODE_STORAGE_KEY = "dotagents-sessions-tile-layout-mode"
 const PREVIOUS_TILE_LAYOUT_MODE_STORAGE_KEY =
   "dotagents-sessions-previous-layout-mode"
@@ -149,6 +394,72 @@ const STACKED_LAYOUT_RECOVERY_HINTS: Record<
   },
 }
 
+const SIDEBAR_STACKED_LAYOUT_RECOVERY_HINTS: Record<
+  RestorableTileLayoutMode,
+  {
+    fullLabel: string
+    compactLabel: string
+    title: string
+  }
+> = {
+  "1x2": {
+    fullLabel: "Narrow sidebar to compare",
+    compactLabel: "Narrow sidebar",
+    title:
+      "Compare view stacked to fit while the sidebar is wide. Narrow or collapse the sidebar first, or shrink the floating panel, to compare side by side again.",
+  },
+  "2x2": {
+    fullLabel: "Narrow sidebar for grid",
+    compactLabel: "Narrow sidebar",
+    title:
+      "Grid view stacked to fit while the sidebar is wide. Narrow or collapse the sidebar first, or shrink the floating panel, to restore multiple columns.",
+  },
+}
+
+const COMBINED_STACKED_LAYOUT_RECOVERY_HINTS: Record<
+  RestorableTileLayoutMode,
+  {
+    fullLabel: string
+    compactLabel: string
+    title: string
+  }
+> = {
+  "1x2": {
+    fullLabel: "Shrink sidebar + panel",
+    compactLabel: "Both wide",
+    title:
+      "Compare view stacked to fit while both the sidebar and floating panel are wide. Narrow or collapse the sidebar, shrink the floating panel, or widen the sessions area to compare side by side again.",
+  },
+  "2x2": {
+    fullLabel: "Shrink sidebar + panel",
+    compactLabel: "Both wide",
+    title:
+      "Grid view stacked to fit while both the sidebar and floating panel are wide. Narrow or collapse the sidebar, shrink the floating panel, or widen the sessions area to restore multiple columns.",
+  },
+}
+
+const PANEL_STACKED_LAYOUT_RECOVERY_HINTS: Record<
+  RestorableTileLayoutMode,
+  {
+    fullLabel: string
+    compactLabel: string
+    title: string
+  }
+> = {
+  "1x2": {
+    fullLabel: "Narrow panel to compare",
+    compactLabel: "Narrow panel",
+    title:
+      "Compare view stacked to fit while the floating panel is wide. Shrink the floating panel first, or widen the sessions area, to compare side by side again.",
+  },
+  "2x2": {
+    fullLabel: "Narrow panel for grid",
+    compactLabel: "Narrow panel",
+    title:
+      "Grid view stacked to fit while the floating panel is wide. Shrink the floating panel first, or widen the sessions area, to restore multiple columns.",
+  },
+}
+
 const NEAR_STACKED_LAYOUT_HINTS: Record<
   RestorableTileLayoutMode,
   {
@@ -168,6 +479,72 @@ const NEAR_STACKED_LAYOUT_HINTS: Record<
     compactLabel: "Tight fit",
     title:
       "Grid view will stack if the sessions area gets a little narrower. Widen the sessions area, narrow the sidebar, or shrink the floating panel to keep multiple columns visible.",
+  },
+}
+
+const COMBINED_NEAR_STACKED_LAYOUT_HINTS: Record<
+  RestorableTileLayoutMode,
+  {
+    fullLabel: string
+    compactLabel: string
+    title: string
+  }
+> = {
+  "1x2": {
+    fullLabel: "Sidebar + panel crowd tiles",
+    compactLabel: "Both tight",
+    title:
+      "Compare view is close to stacking because both the sidebar and floating panel are wide. Narrow or collapse the sidebar, shrink the floating panel, or widen the sessions area to keep sessions side by side.",
+  },
+  "2x2": {
+    fullLabel: "Sidebar + panel crowd tiles",
+    compactLabel: "Both tight",
+    title:
+      "Grid view is close to stacking because both the sidebar and floating panel are wide. Narrow or collapse the sidebar, shrink the floating panel, or widen the sessions area to keep multiple columns visible.",
+  },
+}
+
+const PANEL_NEAR_STACKED_LAYOUT_HINTS: Record<
+  RestorableTileLayoutMode,
+  {
+    fullLabel: string
+    compactLabel: string
+    title: string
+  }
+> = {
+  "1x2": {
+    fullLabel: "Panel is crowding compare",
+    compactLabel: "Panel tight",
+    title:
+      "Compare view is close to stacking because the floating panel is wide. Shrink the floating panel first, or widen the sessions area, to keep sessions side by side.",
+  },
+  "2x2": {
+    fullLabel: "Panel is crowding grid",
+    compactLabel: "Panel tight",
+    title:
+      "Grid view is close to stacking because the floating panel is wide. Shrink the floating panel first, or widen the sessions area, to keep multiple columns visible.",
+  },
+}
+
+const SIDEBAR_NEAR_STACKED_LAYOUT_HINTS: Record<
+  RestorableTileLayoutMode,
+  {
+    fullLabel: string
+    compactLabel: string
+    title: string
+  }
+> = {
+  "1x2": {
+    fullLabel: "Sidebar is crowding compare",
+    compactLabel: "Sidebar tight",
+    title:
+      "Compare view is close to stacking because the sidebar is wide. Narrow or collapse the sidebar first, or shrink the floating panel, to keep sessions side by side.",
+  },
+  "2x2": {
+    fullLabel: "Sidebar is crowding grid",
+    compactLabel: "Sidebar tight",
+    title:
+      "Grid view is close to stacking because the sidebar is wide. Narrow or collapse the sidebar first, or shrink the floating panel, to keep multiple columns visible.",
   },
 }
 
@@ -251,6 +628,262 @@ function getSessionTileLabel(
   return `Session ${sessionId.slice(0, 8)}`
 }
 
+function getHiddenSessionCountLabel(
+  hiddenSessionCount: number,
+  options?: { compact?: boolean },
+): string | null {
+  if (hiddenSessionCount <= 0) return null
+  if (options?.compact) return `${hiddenSessionCount} hidden`
+  return hiddenSessionCount === 1
+    ? "1 other hidden"
+    : `${hiddenSessionCount} others hidden`
+}
+
+function getRestoreLayoutActionLabel(
+  layoutLabel: string,
+  hiddenSessionCount: number,
+): string {
+  if (hiddenSessionCount <= 0) return `Return to ${layoutLabel}`
+  return `Return to ${layoutLabel} and show ${hiddenSessionCount} hidden ${hiddenSessionCount === 1 ? "session" : "sessions"}`
+}
+
+function getSidebarTilePressureWidth(sidebarWidth: number | null | undefined): number {
+  if (typeof sidebarWidth !== "number" || !Number.isFinite(sidebarWidth)) {
+    return 0
+  }
+
+  return Math.max(0, Math.round(sidebarWidth - SIDEBAR_TILE_PRESSURE_WIDTH))
+}
+
+function getPanelTilePressureWidth(panelWidth: number | null | undefined): number {
+  if (typeof panelWidth !== "number" || !Number.isFinite(panelWidth)) {
+    return 0
+  }
+
+  return Math.max(0, Math.round(panelWidth - PANEL_TILE_PRESSURE_WIDTH))
+}
+
+function getTilePressureBadgeLabel(
+  pressureWidth: number,
+  options?: { compact?: boolean },
+): string | null {
+  if (pressureWidth <= 0) {
+    return null
+  }
+
+  return options?.compact ? `+${pressureWidth}px` : `${pressureWidth}px over`
+}
+
+function getSidebarTileComfortWidthLabel(): string {
+  return `${SIDEBAR_TILE_PRESSURE_WIDTH}px`
+}
+
+function getPanelTileComfortWidthLabel(): string {
+  return `${PANEL_TILE_PRESSURE_WIDTH}px`
+}
+
+function getSidebarTilePressureTitleSuffix(
+  sidebarWidth: number | null | undefined,
+): string {
+  const sidebarTilePressureWidth = getSidebarTilePressureWidth(sidebarWidth)
+
+  if (sidebarTilePressureWidth <= 0) {
+    return ""
+  }
+
+  const sidebarTileComfortWidthLabel = getSidebarTileComfortWidthLabel()
+
+  return ` The sidebar is currently about ${sidebarTilePressureWidth}px past the tiled-session comfort threshold. Aim for about ${sidebarTileComfortWidthLabel} wide or narrower.`
+}
+
+function getPanelTilePressureTitleSuffix(
+  panelWidth: number | null | undefined,
+): string {
+  const panelTilePressureWidth = getPanelTilePressureWidth(panelWidth)
+
+  if (panelTilePressureWidth <= 0) {
+    return ""
+  }
+
+  const panelTileComfortWidthLabel = getPanelTileComfortWidthLabel()
+
+  return ` The floating panel is currently about ${panelTilePressureWidth}px past the tiled-session comfort threshold. Aim for about ${panelTileComfortWidthLabel} wide or narrower.`
+}
+
+function getCombinedTilePressureWidth({
+  sidebarWidth,
+  panelWidth,
+}: {
+  sidebarWidth: number | null | undefined
+  panelWidth: number | null | undefined
+}): number {
+  return getSidebarTilePressureWidth(sidebarWidth) + getPanelTilePressureWidth(panelWidth)
+}
+
+function getCombinedTilePressureTitleSuffix({
+  sidebarWidth,
+  panelWidth,
+}: {
+  sidebarWidth: number | null | undefined
+  panelWidth: number | null | undefined
+}): string {
+  return `${getSidebarTilePressureTitleSuffix(sidebarWidth)}${getPanelTilePressureTitleSuffix(panelWidth)}`
+}
+
+function getResponsiveStackedWidthDeficitBadgeLabel(
+  deficitWidth: number,
+  options?: { compact?: boolean },
+): string | null {
+  if (deficitWidth <= 0) {
+    return null
+  }
+
+  return options?.compact ? `Need ${deficitWidth}px` : `Need ~${deficitWidth}px`
+}
+
+function getResponsiveStackedWidthDeficitTitleSuffix(deficitWidth: number): string {
+  if (deficitWidth <= 0) {
+    return ""
+  }
+
+  return ` The sessions area is about ${deficitWidth}px narrower than the minimum width needed for side-by-side tiles.`
+}
+
+function getResponsiveStackedWidthHeadroomBadgeLabel(
+  remainingWidth: number,
+  options?: { compact?: boolean },
+): string | null {
+  if (remainingWidth <= 0) {
+    return null
+  }
+
+  return options?.compact ? `${remainingWidth}px left` : `~${remainingWidth}px left`
+}
+
+function getResponsiveStackedWidthHeadroomTitleSuffix(remainingWidth: number): string {
+  if (remainingWidth <= 0) {
+    return ""
+  }
+
+  return ` The sessions area only has about ${remainingWidth}px left before compare or grid tiles stack into one column.`
+}
+
+function getVisibleTilePressureHintBadgeLabel({
+  sidebarTilePressureWidth,
+  panelTilePressureWidth,
+  compact,
+}: {
+  sidebarTilePressureWidth: number
+  panelTilePressureWidth: number
+  compact?: boolean
+}): string | null {
+  if (sidebarTilePressureWidth > 0 && panelTilePressureWidth > 0) {
+    return getTilePressureBadgeLabel(
+      sidebarTilePressureWidth + panelTilePressureWidth,
+      { compact },
+    )
+  }
+
+  if (sidebarTilePressureWidth > 0) {
+    return getTilePressureBadgeLabel(sidebarTilePressureWidth, { compact })
+  }
+
+  return getTilePressureBadgeLabel(panelTilePressureWidth, { compact })
+}
+
+function getAdaptiveTileLayoutDescription({
+  mode,
+  visibleTileCount,
+  hasMeasuredSessionGridWidth,
+  containerWidth,
+  gap,
+}: {
+  mode: TileLayoutMode
+  visibleTileCount: number
+  hasMeasuredSessionGridWidth: boolean
+  containerWidth: number
+  gap: number
+}): string | null {
+  if (mode === "1x1") {
+    return null
+  }
+
+  if (visibleTileCount === 1) {
+    return TEMPORARY_SINGLE_VISIBLE_LAYOUT_DESCRIPTION
+  }
+
+  if (
+    hasMeasuredSessionGridWidth &&
+    isResponsiveStackedTileLayout(containerWidth, gap, mode, visibleTileCount)
+  ) {
+    return RESPONSIVE_STACKED_LAYOUT_DESCRIPTION
+  }
+
+  return null
+}
+
+function getTileLayoutOptionTitle({
+  mode,
+  currentLayoutMode,
+  activeLayoutDescription,
+  baseTitle,
+  visibleTileCount,
+  hasMeasuredSessionGridWidth,
+  containerWidth,
+  gap,
+}: {
+  mode: TileLayoutMode
+  currentLayoutMode: TileLayoutMode
+  activeLayoutDescription: string
+  baseTitle: string
+  visibleTileCount: number
+  hasMeasuredSessionGridWidth: boolean
+  containerWidth: number
+  gap: number
+}): string {
+  if (mode === currentLayoutMode) {
+    return `Current layout: ${LAYOUT_LABELS[mode]} — ${activeLayoutDescription}`
+  }
+
+  const adaptiveLayoutDescription = getAdaptiveTileLayoutDescription({
+    mode,
+    visibleTileCount,
+    hasMeasuredSessionGridWidth,
+    containerWidth,
+    gap,
+  })
+
+  if (!adaptiveLayoutDescription) {
+    return baseTitle
+  }
+
+  return adaptiveLayoutDescription === TEMPORARY_SINGLE_VISIBLE_LAYOUT_DESCRIPTION
+    ? `Switch to ${LAYOUT_LABELS[mode]} — expanded for one visible session`
+    : `Switch to ${LAYOUT_LABELS[mode]} — stacked to fit at the current width`
+}
+
+function getSingleViewBrowseActionLabel({
+  direction,
+  targetSessionLabel,
+  isAtBoundary,
+}: {
+  direction: "previous" | "next"
+  targetSessionLabel: string | null
+  isAtBoundary: boolean
+}): string {
+  if (isAtBoundary) {
+    return direction === "previous"
+      ? "Already showing the first session in single view"
+      : "Already showing the last session in single view"
+  }
+
+  if (!targetSessionLabel) {
+    return `Show ${direction} session in single view`
+  }
+
+  return `Show ${direction} session in single view: ${targetSessionLabel}`
+}
+
 function getFocusLayoutFallbackSessionId(
   focusableSessionIds: string[],
   previousFocusableSessionIds: string[],
@@ -279,10 +912,14 @@ const SessionProgressTile = React.memo(function SessionProgressTile({
   index,
   isCollapsed,
   isDraggable,
+  isReorderInteractionActive,
   isFocused,
   isExpanded,
   isDragTarget,
+  dragTargetPosition,
   isDragging,
+  isNewlyAdded,
+  isRestoredFromSingleView,
   showTileMaximize,
   onFocusSession,
   onDismissSession,
@@ -291,6 +928,10 @@ const SessionProgressTile = React.memo(function SessionProgressTile({
   onDragStart,
   onDragOver,
   onDragEnd,
+  onMoveBackward,
+  onMoveForward,
+  canMoveBackward,
+  canMoveForward,
   setSessionRef,
 }: {
   sessionId: string
@@ -298,10 +939,14 @@ const SessionProgressTile = React.memo(function SessionProgressTile({
   index: number
   isCollapsed: boolean
   isDraggable: boolean
+  isReorderInteractionActive?: boolean
   isFocused: boolean
   isExpanded: boolean
   isDragTarget: boolean
+  dragTargetPosition?: "before" | "after" | null
   isDragging: boolean
+  isNewlyAdded: boolean
+  isRestoredFromSingleView: boolean
   showTileMaximize: boolean
   onFocusSession: (sessionId: string) => Promise<void>
   onDismissSession: (sessionId: string) => Promise<void>
@@ -310,6 +955,10 @@ const SessionProgressTile = React.memo(function SessionProgressTile({
   onDragStart: (sessionId: string, index: number) => void
   onDragOver: (index: number) => void
   onDragEnd: () => void
+  onMoveBackward: (sessionId: string) => void
+  onMoveForward: (sessionId: string) => void
+  canMoveBackward: boolean
+  canMoveForward: boolean
   setSessionRef: (sessionId: string, el: HTMLDivElement | null) => void
 }) {
   const handleFocus = useCallback(() => {
@@ -345,11 +994,19 @@ const SessionProgressTile = React.memo(function SessionProgressTile({
         index={index}
         isCollapsed={isCollapsed}
         isDraggable={isDraggable}
+        isReorderInteractionActive={isReorderInteractionActive}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
+        onMoveBackward={onMoveBackward}
+        onMoveForward={onMoveForward}
+        canMoveBackward={canMoveBackward}
+        canMoveForward={canMoveForward}
         isDragTarget={isDragTarget}
+        dragTargetPosition={dragTargetPosition}
         isDragging={isDragging}
+        isNewlyAdded={isNewlyAdded}
+        isRestoredFromSingleView={isRestoredFromSingleView}
       >
         <AgentProgress
           progress={progress}
@@ -488,8 +1145,13 @@ function EmptyState({
 export function Component() {
   const queryClient = useQueryClient()
   const { id: routeHistoryItemId } = useParams<{ id: string }>()
-  const { onOpenPastSessionsDialog, sidebarWidth } =
-    (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
+  const {
+    onOpenPastSessionsDialog,
+    sidebarWidth,
+    resetSidebar,
+    panelVisible = false,
+    panelWidth,
+  } = (useOutletContext<LayoutContext>() ?? {}) as Partial<LayoutContext>
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
@@ -521,6 +1183,16 @@ export function Component() {
   const [sessionOrder, setSessionOrder] = useState<string[]>([])
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null)
   const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null)
+  const [recentReorderFeedback, setRecentReorderFeedback] =
+    useState<SessionReorderFeedback | null>(null)
+  const [recentNewSessionFeedback, setRecentNewSessionFeedback] =
+    useState<RecentNewSessionFeedback | null>(null)
+  const [recentSingleViewRestoreFeedback, setRecentSingleViewRestoreFeedback] =
+    useState<RecentSingleViewRestoreFeedback | null>(null)
+  const [recentTilePressureRecoveryFeedback, setRecentTilePressureRecoveryFeedback] =
+    useState<RecentTilePressureRecoveryFeedback | null>(null)
+  const [isResettingPanelSize, setIsResettingPanelSize] = useState(false)
+  const [isHidingCrowdingPanel, setIsHidingCrowdingPanel] = useState(false)
   const [collapsedSessions, setCollapsedSessions] = useState<
     Record<string, boolean>
   >({})
@@ -709,13 +1381,17 @@ export function Component() {
       return entries.sort((a, b) => {
         const aIndex = sessionOrder.indexOf(a[0])
         const bIndex = sessionOrder.indexOf(b[0])
-        // New sessions (not in order list) should appear first (at top)
+        // Once the user is already working in a tiled layout, keep the current
+        // arrangement stable and let new sessions join at the end instead of
+        // reshuffling everything upward.
         if (aIndex === -1 && bIndex === -1) {
-          // Both are new - sort by last activity (newest first)
+          // If multiple new sessions arrive together, keep the newest one first
+          // within the appended tail so the freshest addition is closest to the
+          // existing arranged tiles.
           return getLastActivityTimestamp(b[1]) - getLastActivityTimestamp(a[1])
         }
-        if (aIndex === -1) return -1 // a is new, put it first
-        if (bIndex === -1) return 1 // b is new, put it first
+        if (aIndex === -1) return 1
+        if (bIndex === -1) return -1
         return aIndex - bIndex
       })
     }
@@ -734,6 +1410,14 @@ export function Component() {
     pendingConversationId,
   ])
 
+  const currentSessionOrder = useMemo(
+    () =>
+      sessionOrder.length > 0
+        ? sessionOrder
+        : allProgressEntries.map(([id]) => id),
+    [allProgressEntries, sessionOrder],
+  )
+
   // Sync session order when new sessions appear
   useEffect(() => {
     const currentIds = Array.from(agentProgressById.keys())
@@ -744,20 +1428,37 @@ export function Component() {
 
       // On initial load, sort sessions by most recently modified first so the
       // freshest sessions appear at the top of the list.
-      // When a new session is added during an active view, it still goes to the front.
-      const sortedNewIds = isInitialLoad
-        ? [...newIds].sort(
-            (a, b) =>
-              getLastActivityTimestamp(agentProgressById.get(b)) -
-              getLastActivityTimestamp(agentProgressById.get(a)),
-          )
-        : newIds
+      // After that, preserve the current tile arrangement and append brand-new
+      // sessions so compare/grid layouts do not jump when work is already in progress.
+      const sortedNewIds = [...newIds].sort(
+        (a, b) =>
+          getLastActivityTimestamp(agentProgressById.get(b)) -
+          getLastActivityTimestamp(agentProgressById.get(a)),
+      )
 
-      // Add (sorted) new sessions to the beginning of the order
-      setSessionOrder((prev) => [
-        ...sortedNewIds,
-        ...prev.filter((id) => currentIds.includes(id)),
-      ])
+      if (!isInitialLoad) {
+        const latestSessionId = sortedNewIds[0]
+
+        if (latestSessionId) {
+          setRecentNewSessionFeedback({
+            id: Date.now(),
+            sessionIds: sortedNewIds,
+            latestSessionLabel: getSessionTileLabel(
+              latestSessionId,
+              agentProgressById.get(latestSessionId),
+            ),
+            count: sortedNewIds.length,
+          })
+        }
+      }
+
+      setSessionOrder((prev) => {
+        const validExistingIds = prev.filter((id) => currentIds.includes(id))
+
+        return isInitialLoad
+          ? [...sortedNewIds, ...validExistingIds]
+          : [...validExistingIds, ...sortedNewIds]
+      })
     } else {
       // Remove sessions that no longer exist
       const validOrder = sessionOrder.filter((id) => currentIds.includes(id))
@@ -766,6 +1467,106 @@ export function Component() {
       }
     }
   }, [agentProgressById, getLastActivityTimestamp])
+
+  useEffect(() => {
+    const currentIds = new Set(agentProgressById.keys())
+
+    setRecentNewSessionFeedback((current) => {
+      if (!current) return null
+
+      const validRecentSessionIds = current.sessionIds.filter((id) =>
+        currentIds.has(id),
+      )
+
+      if (validRecentSessionIds.length === 0) {
+        return null
+      }
+
+      if (validRecentSessionIds.length === current.sessionIds.length) {
+        return current
+      }
+
+      const latestSessionId = validRecentSessionIds[0]
+      if (!latestSessionId) return null
+
+      return {
+        ...current,
+        sessionIds: validRecentSessionIds,
+        latestSessionLabel: getSessionTileLabel(
+          latestSessionId,
+          agentProgressById.get(latestSessionId),
+        ),
+        count: validRecentSessionIds.length,
+      }
+    })
+  }, [agentProgressById])
+
+  const captureSessionReorderFeedback = useCallback(
+    (sessionId: string, nextOrder: string[]) => {
+      const movedProgress = allProgressEntries.find(([id]) => id === sessionId)?.[1]
+      const nextIndex = nextOrder.indexOf(sessionId)
+
+      if (nextIndex < 0) {
+        return
+      }
+
+      setRecentReorderFeedback({
+        id: Date.now(),
+        sessionLabel: getSessionTileLabel(sessionId, movedProgress),
+        position: nextIndex + 1,
+        total: nextOrder.length,
+      })
+    },
+    [allProgressEntries],
+  )
+
+  useEffect(() => {
+    if (!recentReorderFeedback) return
+
+    const timeoutId = window.setTimeout(() => {
+      setRecentReorderFeedback((current) =>
+        current?.id === recentReorderFeedback.id ? null : current,
+      )
+    }, 2400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [recentReorderFeedback])
+
+  useEffect(() => {
+    if (!recentNewSessionFeedback) return
+
+    const timeoutId = window.setTimeout(() => {
+      setRecentNewSessionFeedback((current) =>
+        current?.id === recentNewSessionFeedback.id ? null : current,
+      )
+    }, 4200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [recentNewSessionFeedback])
+
+  useEffect(() => {
+    if (!recentSingleViewRestoreFeedback) return
+
+    const timeoutId = window.setTimeout(() => {
+      setRecentSingleViewRestoreFeedback((current) =>
+        current?.id === recentSingleViewRestoreFeedback.id ? null : current,
+      )
+    }, 2600)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [recentSingleViewRestoreFeedback])
+
+  useEffect(() => {
+    if (!recentTilePressureRecoveryFeedback) return
+
+    const timeoutId = window.setTimeout(() => {
+      setRecentTilePressureRecoveryFeedback((current) =>
+        current?.id === recentTilePressureRecoveryFeedback.id ? null : current,
+      )
+    }, 2800)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [recentTilePressureRecoveryFeedback])
 
   // Handle route parameter for deep-linking to specific session
   // When navigating to /:id, focus the active session tile or create a new tile for past sessions
@@ -1069,6 +1870,7 @@ export function Component() {
 
   // Drag and drop handlers
   const handleDragStart = useCallback((sessionId: string, _index: number) => {
+    setRecentReorderFeedback(null)
     setDraggedSessionId(sessionId)
   }, [])
 
@@ -1078,25 +1880,46 @@ export function Component() {
 
   const handleDragEnd = useCallback(() => {
     if (draggedSessionId && dragTargetIndex !== null) {
-      // Reorder the sessions
-      setSessionOrder((prev) => {
-        const currentOrder =
-          prev.length > 0 ? prev : allProgressEntries.map(([id]) => id)
-        const draggedIndex = currentOrder.indexOf(draggedSessionId)
+      const draggedIndex = currentSessionOrder.indexOf(draggedSessionId)
+      const nextOrder = moveSessionOrderEntry(
+        currentSessionOrder,
+        draggedIndex,
+        dragTargetIndex,
+      )
 
-        if (draggedIndex === -1 || draggedIndex === dragTargetIndex) {
-          return currentOrder
-        }
-
-        const newOrder = [...currentOrder]
-        newOrder.splice(draggedIndex, 1)
-        newOrder.splice(dragTargetIndex, 0, draggedSessionId)
-        return newOrder
-      })
+      if (nextOrder !== currentSessionOrder) {
+        setSessionOrder(nextOrder)
+        captureSessionReorderFeedback(draggedSessionId, nextOrder)
+      }
     }
     setDraggedSessionId(null)
     setDragTargetIndex(null)
-  }, [draggedSessionId, dragTargetIndex, allProgressEntries])
+  }, [
+    captureSessionReorderFeedback,
+    currentSessionOrder,
+    dragTargetIndex,
+    draggedSessionId,
+  ])
+
+  const handleKeyboardReorder = useCallback(
+    (sessionId: string, direction: "backward" | "forward") => {
+      const currentIndex = currentSessionOrder.indexOf(sessionId)
+      const targetIndex =
+        direction === "backward" ? currentIndex - 1 : currentIndex + 1
+      const nextOrder = moveSessionOrderEntry(
+        currentSessionOrder,
+        currentIndex,
+        targetIndex,
+      )
+
+      if (nextOrder !== currentSessionOrder) {
+        setSessionOrder(nextOrder)
+        captureSessionReorderFeedback(sessionId, nextOrder)
+        scrollSessionTileIntoView(sessionId)
+      }
+    },
+    [captureSessionReorderFeedback, currentSessionOrder, scrollSessionTileIntoView],
+  )
 
   const handleClearInactiveSessions = async () => {
     const inactiveSessions = allProgressEntries
@@ -1125,6 +1948,11 @@ export function Component() {
         return
       }
 
+      const isSingleViewTransition =
+        tileLayoutMode === "1x1" || nextMode === "1x1"
+      const shouldPreserveWidthAcrossLayoutChange =
+        shouldPreserveTileWidthAcrossLayoutChange(tileLayoutMode, nextMode)
+
       if (nextMode === "1x1") {
         previousLayoutModeRef.current =
           tileLayoutMode === "1x1"
@@ -1134,10 +1962,13 @@ export function Component() {
         previousLayoutModeRef.current = nextMode
       }
 
-      clearPersistedSize("session-tile")
+      if (!isSingleViewTransition && !shouldPreserveWidthAcrossLayoutChange) {
+        clearPersistedSize("session-tile")
+        setTileResetKey((prev) => prev + 1)
+      }
+
       persistTileLayoutPreference(nextMode, previousLayoutModeRef.current)
       setTileLayoutMode(nextMode)
-      setTileResetKey((prev) => prev + 1)
     },
     [tileLayoutMode],
   )
@@ -1170,6 +2001,9 @@ export function Component() {
   const hasPendingTile = !!pendingProgress || hasPendingLoadingTile
   const totalTileCount = allProgressEntries.length + (hasPendingTile ? 1 : 0)
   const isFocusLayout = tileLayoutMode === "1x1"
+  const previousIsFocusLayoutRef = useRef(isFocusLayout)
+  const previousTileLayoutModeRef = useRef(tileLayoutMode)
+  const latestSingleViewSessionIdRef = useRef<string | null>(null)
 
   const focusableSessionIds = useMemo(
     () => [
@@ -1211,6 +2045,12 @@ export function Component() {
   }, [focusableSessionIds])
 
   useEffect(() => {
+    if (!isFocusLayout || !maximizedSessionId) return
+
+    latestSingleViewSessionIdRef.current = maximizedSessionId
+  }, [isFocusLayout, maximizedSessionId])
+
+  useEffect(() => {
     if (!isFocusLayout) return
     if (hasExplicitFocusedSession) return
     if (focusedSessionId === maximizedSessionId) return
@@ -1222,6 +2062,34 @@ export function Component() {
     isFocusLayout,
     maximizedSessionId,
     setFocusedSessionId,
+  ])
+
+  useEffect(() => {
+    if (!isFocusLayout || !maximizedSessionId) return
+
+    scrollSessionTileIntoView(maximizedSessionId)
+  }, [isFocusLayout, maximizedSessionId, scrollSessionTileIntoView])
+
+  useEffect(() => {
+    const previousTileLayoutMode = previousTileLayoutModeRef.current
+    previousTileLayoutModeRef.current = tileLayoutMode
+
+    if (
+      previousTileLayoutMode === tileLayoutMode ||
+      previousTileLayoutMode === "1x1" ||
+      tileLayoutMode === "1x1" ||
+      !focusedSessionId ||
+      !focusableSessionIds.includes(focusedSessionId)
+    ) {
+      return
+    }
+
+    scrollSessionTileIntoView(focusedSessionId)
+  }, [
+    focusableSessionIds,
+    focusedSessionId,
+    scrollSessionTileIntoView,
+    tileLayoutMode,
   ])
 
   const visibleProgressEntries = useMemo(() => {
@@ -1244,9 +2112,15 @@ export function Component() {
     (!isFocusLayout || maximizedSessionId === pendingSessionId)
   const hasVisiblePendingTile =
     showPendingProgressTile || showPendingLoadingTile
+  const draggedSessionIndex = draggedSessionId
+    ? currentSessionOrder.indexOf(draggedSessionId)
+    : -1
   const visibleTileCount =
     visibleProgressEntries.length + (hasVisiblePendingTile ? 1 : 0)
-  const showTileMaximize = !isFocusLayout
+  const isTemporarySingleVisibleLayout =
+    !isFocusLayout && visibleTileCount === 1
+  const showTileMaximize =
+    !isFocusLayout && !isTemporarySingleVisibleLayout
   const canReorderTiles = !isFocusLayout && allProgressEntries.length > 1
   const focusedLayoutSessionIndex = maximizedSessionId
     ? focusableSessionIds.indexOf(maximizedSessionId)
@@ -1256,21 +2130,19 @@ export function Component() {
     isFocusLayout && focusableSessionCount > 1 && !!maximizedSessionId
   const canBrowseFocusedSessions =
     showFocusLayoutHint && focusedLayoutSessionIndex >= 0
-  const isTemporarySingleVisibleLayout =
-    !isFocusLayout && visibleTileCount === 1
-  const isResponsiveStackedLayout = isResponsiveStackedTileLayout(
-    sessionGridMeasurements.containerWidth,
-    sessionGridMeasurements.gap,
-    tileLayoutMode,
+  const hasMeasuredSessionGridWidth = sessionGridMeasurements.containerWidth > 0
+  const activeAdaptiveLayoutDescription = getAdaptiveTileLayoutDescription({
+    mode: tileLayoutMode,
     visibleTileCount,
-  )
-  const usesAdaptiveLayoutDescription =
-    isTemporarySingleVisibleLayout || isResponsiveStackedLayout
-  const activeLayoutDescription = isTemporarySingleVisibleLayout
-    ? TEMPORARY_SINGLE_VISIBLE_LAYOUT_DESCRIPTION
-    : isResponsiveStackedLayout
-      ? RESPONSIVE_STACKED_LAYOUT_DESCRIPTION
-      : LAYOUT_DESCRIPTIONS[tileLayoutMode]
+    hasMeasuredSessionGridWidth,
+    containerWidth: sessionGridMeasurements.containerWidth,
+    gap: sessionGridMeasurements.gap,
+  })
+  const isResponsiveStackedLayout =
+    activeAdaptiveLayoutDescription === RESPONSIVE_STACKED_LAYOUT_DESCRIPTION
+  const usesAdaptiveLayoutDescription = !!activeAdaptiveLayoutDescription
+  const activeLayoutDescription =
+    activeAdaptiveLayoutDescription ?? LAYOUT_DESCRIPTIONS[tileLayoutMode]
   const activeLayoutCompactDescription = isTemporarySingleVisibleLayout
     ? TEMPORARY_SINGLE_VISIBLE_LAYOUT_SHORT_LABEL
     : isResponsiveStackedLayout
@@ -1284,11 +2156,39 @@ export function Component() {
     ? (TILE_LAYOUT_OPTIONS.find(({ mode }) => mode === restoreLayoutMode) ??
       TILE_LAYOUT_OPTIONS[0])
     : null
+  const isSidebarLikelyCrowdingTiles =
+    typeof sidebarWidth === "number" &&
+    sidebarWidth >= SIDEBAR_TILE_PRESSURE_WIDTH
+  const isPanelLikelyCrowdingTiles =
+    panelVisible &&
+    typeof panelWidth === "number" &&
+    panelWidth >= PANEL_TILE_PRESSURE_WIDTH
+  const isSidebarAndPanelLikelyCrowdingTiles =
+    isSidebarLikelyCrowdingTiles && isPanelLikelyCrowdingTiles
+  const sidebarTilePressureWidth = getSidebarTilePressureWidth(sidebarWidth)
+  const panelTilePressureWidth = getPanelTilePressureWidth(panelWidth)
+  const sessionGridLayoutChangeKey = `${sidebarWidth ?? "none"}:${panelVisible ? panelWidth ?? "auto" : "hidden"}`
+  const combinedTilePressureWidth = getCombinedTilePressureWidth({
+    sidebarWidth,
+    panelWidth,
+  })
+  const responsiveStackedLayoutMinimumWidth =
+    hasMeasuredSessionGridWidth && tileLayoutMode !== "1x1" && visibleTileCount > 1
+      ? getResponsiveStackedTileLayoutMinimumWidth(
+          sessionGridMeasurements.gap,
+          visibleTileCount,
+        )
+      : 0
   const stackedLayoutRecoveryHint =
     isResponsiveStackedLayout && tileLayoutMode !== "1x1"
-      ? STACKED_LAYOUT_RECOVERY_HINTS[tileLayoutMode]
+      ? isSidebarAndPanelLikelyCrowdingTiles
+        ? COMBINED_STACKED_LAYOUT_RECOVERY_HINTS[tileLayoutMode]
+        : isSidebarLikelyCrowdingTiles
+        ? SIDEBAR_STACKED_LAYOUT_RECOVERY_HINTS[tileLayoutMode]
+        : isPanelLikelyCrowdingTiles
+          ? PANEL_STACKED_LAYOUT_RECOVERY_HINTS[tileLayoutMode]
+        : STACKED_LAYOUT_RECOVERY_HINTS[tileLayoutMode]
       : null
-  const hasMeasuredSessionGridWidth = sessionGridMeasurements.containerWidth > 0
   const isCompactSessionHeader =
     hasMeasuredSessionGridWidth &&
     sessionGridMeasurements.containerWidth < COMPACT_SESSION_HEADER_WIDTH
@@ -1310,14 +2210,53 @@ export function Component() {
       tileLayoutMode,
       visibleTileCount,
     )
-      ? NEAR_STACKED_LAYOUT_HINTS[tileLayoutMode]
+      ? isSidebarAndPanelLikelyCrowdingTiles
+        ? COMBINED_NEAR_STACKED_LAYOUT_HINTS[tileLayoutMode]
+        : isSidebarLikelyCrowdingTiles
+        ? SIDEBAR_NEAR_STACKED_LAYOUT_HINTS[tileLayoutMode]
+        : isPanelLikelyCrowdingTiles
+          ? PANEL_NEAR_STACKED_LAYOUT_HINTS[tileLayoutMode]
+        : NEAR_STACKED_LAYOUT_HINTS[tileLayoutMode]
       : null
   const showStackedLayoutRecoveryHint = !!stackedLayoutRecoveryHint
   const showNearStackedLayoutHint = !!nearStackedLayoutHint
+  const stackedLayoutWidthDeficit =
+    showStackedLayoutRecoveryHint && responsiveStackedLayoutMinimumWidth > 0
+      ? Math.max(
+          0,
+          responsiveStackedLayoutMinimumWidth - sessionGridMeasurements.containerWidth,
+        )
+      : 0
+  const nearStackedLayoutWidthHeadroom =
+    showNearStackedLayoutHint && responsiveStackedLayoutMinimumWidth > 0
+      ? Math.max(
+          0,
+          sessionGridMeasurements.containerWidth - responsiveStackedLayoutMinimumWidth,
+        )
+      : 0
+  const shouldOfferEarlyTilePressureRecovery =
+    !showFocusLayoutHint &&
+    isCompactSessionHeader &&
+    !isVeryCompactSessionHeader &&
+    visibleTileCount > 1 &&
+    !showStackedLayoutRecoveryHint &&
+    !showNearStackedLayoutHint
+  const hasMeaningfulSidebarTilePressure =
+    sidebarTilePressureWidth >= EARLY_TILE_PRESSURE_RECOVERY_WIDTH
+  const hasMeaningfulPanelTilePressure =
+    panelTilePressureWidth >= EARLY_TILE_PRESSURE_RECOVERY_WIDTH
+  const tilePressureRecoveryUrgency = showStackedLayoutRecoveryHint
+    ? "stacked"
+    : showNearStackedLayoutHint
+      ? "near-stacked"
+      : shouldOfferEarlyTilePressureRecovery &&
+          (hasMeaningfulSidebarTilePressure || hasMeaningfulPanelTilePressure)
+        ? "early"
+        : null
   const showSingleViewRestore = isFocusLayout && !!restoreLayoutOption
-  const showSingleViewRestoreLabel =
-    showSingleViewRestore && !isVeryCompactSessionHeader
-  const showCurrentLayoutChip = usesAdaptiveLayoutDescription
+  const showCurrentLayoutChip =
+    usesAdaptiveLayoutDescription &&
+    !(isCompactSessionHeader && showStackedLayoutRecoveryHint)
   const showLayoutDescriptionSuffix = !isCompactSessionHeader
   const showCompactAdaptiveLayoutDescription =
     usesAdaptiveLayoutDescription &&
@@ -1330,6 +2269,11 @@ export function Component() {
       : isCompactSessionHeader
         ? stackedLayoutRecoveryHint.compactLabel
         : stackedLayoutRecoveryHint.fullLabel
+  const stackedLayoutRecoveryTitle = !showStackedLayoutRecoveryHint || !stackedLayoutRecoveryHint
+    ? null
+    : `${stackedLayoutRecoveryHint.title}${getResponsiveStackedWidthDeficitTitleSuffix(
+        stackedLayoutWidthDeficit,
+      )}`
   const nearStackedLayoutHintLabel = !showNearStackedLayoutHint
     ? null
     : isVeryCompactSessionHeader
@@ -1337,44 +2281,473 @@ export function Component() {
       : isCompactSessionHeader
         ? nearStackedLayoutHint.compactLabel
         : nearStackedLayoutHint.fullLabel
+  const nearStackedLayoutHintTitle = !showNearStackedLayoutHint || !nearStackedLayoutHint
+    ? null
+    : `${nearStackedLayoutHint.title}${getResponsiveStackedWidthHeadroomTitleSuffix(
+        nearStackedLayoutWidthHeadroom,
+      )}`
+  const stackedLayoutRecoveryWidthLabel =
+    !showStackedLayoutRecoveryHint || isVeryCompactSessionHeader
+      ? null
+      : getResponsiveStackedWidthDeficitBadgeLabel(
+          stackedLayoutWidthDeficit,
+          { compact: isCompactSessionHeader },
+        )
+  const nearStackedLayoutWidthLabel =
+    !showNearStackedLayoutHint || isVeryCompactSessionHeader
+      ? null
+      : getResponsiveStackedWidthHeadroomBadgeLabel(
+          nearStackedLayoutWidthHeadroom,
+          { compact: isCompactSessionHeader },
+        )
+  const showCombinedSizeRecoveryAction =
+    !!resetSidebar &&
+    isSidebarAndPanelLikelyCrowdingTiles &&
+    (showStackedLayoutRecoveryHint ||
+      showNearStackedLayoutHint ||
+      (tilePressureRecoveryUrgency === "early" &&
+        hasMeaningfulSidebarTilePressure &&
+        hasMeaningfulPanelTilePressure))
+  const showTilePressureRecoveryActionBadges =
+    !isVeryCompactSessionHeader &&
+    (!isCompactSessionHeader ||
+      (tilePressureRecoveryUrgency !== "stacked" &&
+        tilePressureRecoveryUrgency !== "near-stacked"))
+  const combinedSizeRecoveryActionLabel = !showCombinedSizeRecoveryAction
+    ? null
+    : isVeryCompactSessionHeader
+      ? "Both"
+      : isCompactSessionHeader
+      ? "Reset both"
+      : "Reset sidebar + panel"
+  const combinedSizeRecoveryPressureLabel =
+    !showCombinedSizeRecoveryAction || !showTilePressureRecoveryActionBadges
+      ? null
+      : getTilePressureBadgeLabel(combinedTilePressureWidth, {
+          compact: isCompactSessionHeader,
+        })
+  const combinedSizeRecoveryActionTitle = !showCombinedSizeRecoveryAction
+    ? null
+    : `Reset the sidebar width and floating panel size to their defaults to recover room for tiled sessions.${getCombinedTilePressureTitleSuffix({
+        sidebarWidth,
+        panelWidth,
+      })}`
+  const showPanelSizeRecoveryAction =
+    !showCombinedSizeRecoveryAction &&
+    isPanelLikelyCrowdingTiles &&
+    (showStackedLayoutRecoveryHint ||
+      showNearStackedLayoutHint ||
+      (tilePressureRecoveryUrgency === "early" && hasMeaningfulPanelTilePressure))
+  const showSidebarSizeRecoveryAction =
+    !showCombinedSizeRecoveryAction &&
+    !!resetSidebar &&
+    isSidebarLikelyCrowdingTiles &&
+    (showStackedLayoutRecoveryHint ||
+      showNearStackedLayoutHint ||
+      (tilePressureRecoveryUrgency === "early" && hasMeaningfulSidebarTilePressure))
+  const sidebarSizeRecoveryActionLabel = !showSidebarSizeRecoveryAction
+    ? null
+    : isVeryCompactSessionHeader
+      ? "Sidebar"
+      : isCompactSessionHeader
+      ? "Reset sidebar"
+      : "Reset sidebar width"
+  const sidebarSizeRecoveryPressureLabel =
+    !showSidebarSizeRecoveryAction || !showTilePressureRecoveryActionBadges
+      ? null
+      : getTilePressureBadgeLabel(sidebarTilePressureWidth, {
+          compact: isCompactSessionHeader,
+        })
+  const sidebarSizeRecoveryActionTitle = !showSidebarSizeRecoveryAction
+    ? null
+    : `Reset the sidebar to the default width to recover room for tiled sessions.${getSidebarTilePressureTitleSuffix(sidebarWidth)}`
+  const panelSizeRecoveryActionLabel = !showPanelSizeRecoveryAction
+    ? null
+    : isVeryCompactSessionHeader
+      ? "Panel"
+      : isCompactSessionHeader
+      ? "Reset panel"
+      : "Reset panel size"
+  const panelSizeRecoveryPressureLabel =
+    !showPanelSizeRecoveryAction || !showTilePressureRecoveryActionBadges
+      ? null
+      : getTilePressureBadgeLabel(panelTilePressureWidth, {
+          compact: isCompactSessionHeader,
+        })
+  const panelSizeRecoveryActionTitle = !showPanelSizeRecoveryAction
+    ? null
+    : isSidebarLikelyCrowdingTiles
+      ? `Reset the floating panel to the default size for the current mode. The sidebar is still wide, but this should recover some room for tiled sessions.${getPanelTilePressureTitleSuffix(panelWidth)}`
+      : `Reset the floating panel to the default size for the current mode to recover room for tiled sessions.${getPanelTilePressureTitleSuffix(panelWidth)}`
+  const shouldOfferUrgentHidePanelRecoveryAction =
+    tilePressureRecoveryUrgency === "stacked" ||
+    tilePressureRecoveryUrgency === "near-stacked"
+  const showHidePanelRecoveryAction =
+    !isVeryCompactSessionHeader &&
+    shouldOfferUrgentHidePanelRecoveryAction &&
+    panelVisible &&
+    isPanelLikelyCrowdingTiles &&
+    (showPanelSizeRecoveryAction || showCombinedSizeRecoveryAction)
+  const hidePanelRecoveryActionLabel = !showHidePanelRecoveryAction
+    ? null
+    : isCompactSessionHeader
+      ? "Hide"
+      : "Hide panel"
+  const hidePanelRecoveryActionTitle = !showHidePanelRecoveryAction
+    ? null
+    : isSidebarLikelyCrowdingTiles
+      ? `Hide the floating panel to reclaim room immediately for tiled sessions. The sidebar is still wide, but this removes the panel entirely instead of only resetting its size.${getPanelTilePressureTitleSuffix(panelWidth)}`
+      : `Hide the floating panel to reclaim room immediately for tiled sessions. Sessions continue in background and you can reopen the panel later.${getPanelTilePressureTitleSuffix(panelWidth)}`
+  const isUpdatingPanelRecovery = isResettingPanelSize || isHidingCrowdingPanel
+  const tilePressureRecoveryActionToneClasses =
+    tilePressureRecoveryUrgency === "stacked"
+      ? "border-blue-500/35 bg-background/80 text-blue-700 hover:bg-blue-500/10 dark:text-blue-300"
+      : tilePressureRecoveryUrgency === "near-stacked"
+        ? "border-amber-500/35 bg-background/80 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+        : "border-border/60 bg-background/80 text-foreground hover:bg-muted/40"
+  const shouldPrioritizeWidthPressureHint =
+    !showFocusLayoutHint &&
+    isCompactSessionHeader &&
+    tilePressureRecoveryUrgency !== null
   const showReorderHint =
     canReorderTiles &&
     visibleTileCount > 1 &&
     !isResponsiveStackedLayout &&
     !showNearStackedLayoutHint
+  const showReorderFeedback =
+    canReorderTiles && visibleTileCount > 1 && !!recentReorderFeedback
+  const showNewSessionFeedback =
+    !showReorderFeedback &&
+    !isFocusLayout &&
+    visibleTileCount > 1 &&
+    !shouldPrioritizeWidthPressureHint &&
+    !!recentNewSessionFeedback
+  const captureTilePressureRecoveryFeedback = useCallback(
+    (source: TilePressureRecoverySource) => {
+      setRecentTilePressureRecoveryFeedback({
+        id: Date.now(),
+        source,
+        announcement: getTilePressureRecoveryAnnouncementLabel({
+          source,
+          sidebarStillWide:
+            source === "panel" || source === "panel-hidden"
+              ? isSidebarLikelyCrowdingTiles
+              : false,
+        }),
+      })
+    },
+    [isSidebarLikelyCrowdingTiles],
+  )
   const handleRestorePreviousLayout = useCallback(() => {
     if (!isFocusLayout) return
 
     handleSelectTileLayout(previousLayoutModeRef.current)
   }, [handleSelectTileLayout, isFocusLayout])
+  const handleResetCrowdingPanel = useCallback(async () => {
+    if (isUpdatingPanelRecovery || !isPanelLikelyCrowdingTiles) return
+
+    setIsResettingPanelSize(true)
+
+    try {
+      await tipcClient.resetPanelSizeForCurrentMode({})
+      captureTilePressureRecoveryFeedback("panel")
+    } catch (error) {
+      console.error("Failed to reset floating panel size from tiled sessions:", error)
+      toast.error("Failed to reset panel size")
+    } finally {
+      setIsResettingPanelSize(false)
+    }
+  }, [
+    captureTilePressureRecoveryFeedback,
+    isPanelLikelyCrowdingTiles,
+    isUpdatingPanelRecovery,
+  ])
+  const handleHideCrowdingPanel = useCallback(async () => {
+    if (isUpdatingPanelRecovery || !panelVisible || !isPanelLikelyCrowdingTiles) {
+      return
+    }
+
+    setIsHidingCrowdingPanel(true)
+
+    try {
+      await tipcClient.hidePanelWindow({})
+      captureTilePressureRecoveryFeedback("panel-hidden")
+    } catch (error) {
+      console.error("Failed to hide floating panel from tiled sessions:", error)
+      toast.error("Failed to hide panel")
+    } finally {
+      setIsHidingCrowdingPanel(false)
+    }
+  }, [
+    captureTilePressureRecoveryFeedback,
+    isPanelLikelyCrowdingTiles,
+    isUpdatingPanelRecovery,
+    panelVisible,
+  ])
+  const handleResetCrowdingSidebarAndPanel = useCallback(async () => {
+    if (
+      !resetSidebar ||
+      isUpdatingPanelRecovery ||
+      !isSidebarAndPanelLikelyCrowdingTiles
+    ) {
+      return
+    }
+
+    setIsResettingPanelSize(true)
+
+    try {
+      resetSidebar()
+      await tipcClient.resetPanelSizeForCurrentMode({})
+      captureTilePressureRecoveryFeedback("both")
+    } catch (error) {
+      console.error(
+        "Failed to reset sidebar and floating panel size from tiled sessions:",
+        error,
+      )
+      toast.error("Reset the sidebar, but failed to reset panel size")
+    } finally {
+      setIsResettingPanelSize(false)
+    }
+  }, [
+    isUpdatingPanelRecovery,
+    isSidebarAndPanelLikelyCrowdingTiles,
+    resetSidebar,
+    captureTilePressureRecoveryFeedback,
+  ])
+  const handleResetCrowdingSidebar = useCallback(() => {
+    if (!resetSidebar || !isSidebarLikelyCrowdingTiles || showCombinedSizeRecoveryAction) {
+      return
+    }
+
+    resetSidebar()
+    captureTilePressureRecoveryFeedback("sidebar")
+  }, [
+    captureTilePressureRecoveryFeedback,
+    isSidebarLikelyCrowdingTiles,
+    resetSidebar,
+    showCombinedSizeRecoveryAction,
+  ])
+  const getFocusableSessionLabel = useCallback(
+    (sessionId: string | null | undefined) => {
+      if (!sessionId) return null
+
+      if (pendingSessionId && sessionId === pendingSessionId) {
+        return getSessionTileLabel(pendingSessionId, pendingProgress)
+      }
+
+      const sessionEntry = allProgressEntries.find(
+        ([progressSessionId]) => progressSessionId === sessionId,
+      )
+
+      return getSessionTileLabel(sessionId, sessionEntry?.[1])
+    },
+    [allProgressEntries, pendingProgress, pendingSessionId],
+  )
   const focusedLayoutSessionLabel = useMemo(() => {
     if (!showFocusLayoutHint || !maximizedSessionId) return null
 
-    if (pendingSessionId && maximizedSessionId === pendingSessionId) {
-      return getSessionTileLabel(pendingSessionId, pendingProgress)
-    }
+    return getFocusableSessionLabel(maximizedSessionId)
+  }, [getFocusableSessionLabel, maximizedSessionId, showFocusLayoutHint])
 
-    const focusedEntry = allProgressEntries.find(
-      ([sessionId]) => sessionId === maximizedSessionId,
-    )
-    return getSessionTileLabel(maximizedSessionId, focusedEntry?.[1])
+  useEffect(() => {
+    const wasFocusLayout = previousIsFocusLayoutRef.current
+    previousIsFocusLayoutRef.current = isFocusLayout
+
+    if (!wasFocusLayout || isFocusLayout) return
+
+    const restoredSessionId =
+      (focusedSessionId && focusableSessionIds.includes(focusedSessionId)
+        ? focusedSessionId
+        : latestSingleViewSessionIdRef.current) ?? null
+
+    if (!restoredSessionId) return
+
+    scrollSessionTileIntoView(restoredSessionId)
+    setRecentSingleViewRestoreFeedback({
+      id: Date.now(),
+      sessionId: restoredSessionId,
+      announcement: getSingleViewRestoreAnnouncementLabel({
+        sessionLabel: getFocusableSessionLabel(restoredSessionId),
+        layoutLabel: LAYOUT_LABELS[tileLayoutMode],
+      }),
+    })
   }, [
-    allProgressEntries,
-    maximizedSessionId,
-    pendingProgress,
-    pendingSessionId,
-    showFocusLayoutHint,
+    focusableSessionIds,
+    focusedSessionId,
+    getFocusableSessionLabel,
+    isFocusLayout,
+    scrollSessionTileIntoView,
+    tileLayoutMode,
   ])
+
+  const shouldPrioritizeSingleViewHeaderControls =
+    showFocusLayoutHint && isCompactSessionHeader
   const showFocusedSessionLabel =
     !!focusedLayoutSessionLabel && !isCompactSessionHeader
   const showBrowsingSessionsLabel =
     !focusedLayoutSessionLabel && !isCompactSessionHeader
-  const showLayoutButtonLabels = !isVeryCompactSessionHeader
+  const hiddenFocusLayoutSessionCount = showFocusLayoutHint
+    ? Math.max(0, focusableSessionCount - 1)
+    : 0
+  const hiddenNewFocusLayoutSessionCount =
+    showFocusLayoutHint && recentNewSessionFeedback
+      ? recentNewSessionFeedback.sessionIds.filter(
+          (sessionId) => sessionId !== maximizedSessionId,
+        ).length
+      : 0
+  const newestHiddenFocusLayoutSessionId =
+    !showFocusLayoutHint || !recentNewSessionFeedback
+      ? null
+      : (recentNewSessionFeedback.sessionIds.find(
+          (sessionId) =>
+            sessionId !== maximizedSessionId && focusableSessionIds.includes(sessionId),
+        ) ?? null)
+  const focusedLayoutSessionPositionLabel = !showFocusLayoutHint
+    ? null
+    : shouldPrioritizeSingleViewHeaderControls
+      ? `${focusedLayoutSessionIndex + 1}/${focusableSessionCount}`
+      : `${focusedLayoutSessionIndex + 1} of ${focusableSessionCount}`
+  const hiddenFocusLayoutSessionLabel =
+    !showFocusLayoutHint ||
+    isVeryCompactSessionHeader ||
+    shouldPrioritizeSingleViewHeaderControls
+      ? null
+      : hiddenNewFocusLayoutSessionCount > 0
+        ? getSingleViewNewSessionBadgeLabel(hiddenNewFocusLayoutSessionCount, {
+            compact: isCompactSessionHeader,
+          })
+        : getHiddenSessionCountLabel(hiddenFocusLayoutSessionCount, {
+            compact: isCompactSessionHeader,
+          })
+  const hiddenFocusLayoutSessionTitleParts: string[] = []
+  if (hiddenFocusLayoutSessionCount > 0) {
+    hiddenFocusLayoutSessionTitleParts.push(
+      `${hiddenFocusLayoutSessionCount} other ${hiddenFocusLayoutSessionCount === 1 ? "session" : "sessions"} hidden`,
+    )
+  }
+  if (hiddenNewFocusLayoutSessionCount > 0) {
+    hiddenFocusLayoutSessionTitleParts.push(
+      `${hiddenNewFocusLayoutSessionCount} newly added ${hiddenNewFocusLayoutSessionCount === 1 ? "session" : "sessions"} waiting in Single view`,
+    )
+  }
+  const hiddenFocusLayoutSessionTitleSuffix =
+    hiddenFocusLayoutSessionTitleParts.length > 0
+      ? `; ${hiddenFocusLayoutSessionTitleParts.join("; ")}`
+      : ""
+  const restoreLayoutNewSessionTitleSuffix =
+    hiddenNewFocusLayoutSessionCount > 0
+      ? `, including ${hiddenNewFocusLayoutSessionCount} newly added ${hiddenNewFocusLayoutSessionCount === 1 ? "session" : "sessions"}`
+      : ""
+  const restoreLayoutActionLabel = restoreLayoutOption
+    ? `${getRestoreLayoutActionLabel(
+        LAYOUT_LABELS[restoreLayoutOption.mode],
+        hiddenFocusLayoutSessionCount,
+      )}${restoreLayoutNewSessionTitleSuffix}`
+    : null
+  const shouldCondenseSingleViewRestoreButton =
+    showSingleViewRestore && isCompactSessionHeader
+  const restoreLayoutButtonLabel = !showSingleViewRestore || !restoreLayoutOption
+    ? null
+    : shouldCondenseSingleViewRestoreButton
+      ? "Back"
+      : `Back to ${restoreLayoutOption.label}`
+  const previousFocusedSessionId =
+    focusedLayoutSessionIndex > 0
+      ? (focusableSessionIds[focusedLayoutSessionIndex - 1] ?? null)
+      : null
+  const nextFocusedSessionId =
+    focusedLayoutSessionIndex >= 0 &&
+    focusedLayoutSessionIndex < focusableSessionCount - 1
+      ? (focusableSessionIds[focusedLayoutSessionIndex + 1] ?? null)
+      : null
+  const previousFocusedSessionLabel = getFocusableSessionLabel(
+    previousFocusedSessionId,
+  )
+  const nextFocusedSessionLabel = getFocusableSessionLabel(nextFocusedSessionId)
+  const newestHiddenFocusLayoutSessionLabel = getFocusableSessionLabel(
+    newestHiddenFocusLayoutSessionId,
+  )
+  const previousFocusedSessionActionLabel = getSingleViewBrowseActionLabel({
+    direction: "previous",
+    targetSessionLabel: previousFocusedSessionLabel,
+    isAtBoundary: focusedLayoutSessionIndex <= 0,
+  })
+  const nextFocusedSessionActionLabel = getSingleViewBrowseActionLabel({
+    direction: "next",
+    targetSessionLabel: nextFocusedSessionLabel,
+    isAtBoundary: focusedLayoutSessionIndex >= focusableSessionCount - 1,
+  })
+  const showJumpToNewestHiddenSessionAction =
+    !!newestHiddenFocusLayoutSessionId && hiddenNewFocusLayoutSessionCount > 0
+  const jumpToNewestHiddenSessionActionLabel =
+    !showJumpToNewestHiddenSessionAction || !newestHiddenFocusLayoutSessionId
+      ? null
+      : getJumpToNewestHiddenSessionActionLabel({
+          targetSessionLabel: newestHiddenFocusLayoutSessionLabel,
+          hiddenNewSessionCount: hiddenNewFocusLayoutSessionCount,
+        })
+  const shouldCondenseLayoutSelector =
+    !isVeryCompactSessionHeader &&
+    (shouldPrioritizeSingleViewHeaderControls || shouldPrioritizeWidthPressureHint)
+  const showLayoutButtonLabels =
+    !isVeryCompactSessionHeader && !shouldCondenseLayoutSelector
+  const showSelectedLayoutButtonLabel = shouldCondenseLayoutSelector
+  const selectedAdaptiveLayoutButtonBadgeLabel =
+    showSelectedLayoutButtonLabel && usesAdaptiveLayoutDescription
+      ? activeLayoutCompactDescription
+      : null
+  const showSingleViewPagerLabels = !isCompactSessionHeader
+  const showJumpToNewestHiddenSessionBadge =
+    showJumpToNewestHiddenSessionAction && !showSingleViewPagerLabels
+  const jumpToNewestHiddenSessionBadgeLabel =
+    showJumpToNewestHiddenSessionBadge
+      ? getSingleViewNewSessionBadgeLabel(hiddenNewFocusLayoutSessionCount, {
+          compact: !isVeryCompactSessionHeader,
+          veryCompact: isVeryCompactSessionHeader,
+        })
+      : null
   const reorderHintLabel = isVeryCompactSessionHeader
     ? null
     : isCompactSessionHeader
-      ? "Reorder"
-      : "Drag to reorder"
+      ? "Grab"
+      : "Grab to reorder"
+  const reorderFeedbackAnnouncement = recentReorderFeedback
+    ? getSessionReorderAnnouncementLabel(recentReorderFeedback)
+    : null
+  const reorderFeedbackLabel = !recentReorderFeedback
+    ? null
+    : getSessionReorderChipLabel(
+        recentReorderFeedback.position,
+        recentReorderFeedback.total,
+        {
+          compact: isCompactSessionHeader,
+          veryCompact: isVeryCompactSessionHeader,
+        },
+      )
+  const showNewSessionAnnouncement =
+    !showReorderFeedback &&
+    !recentTilePressureRecoveryFeedback &&
+    !!recentNewSessionFeedback
+  const newSessionFeedbackAnnouncement = recentNewSessionFeedback
+    ? getNewSessionFeedbackAnnouncementLabel({
+        ...recentNewSessionFeedback,
+        hiddenInSingleView: isFocusLayout,
+      })
+    : null
+  const newSessionFeedbackLabel = !recentNewSessionFeedback
+    ? null
+    : getNewSessionFeedbackChipLabel(recentNewSessionFeedback.count, {
+        compact: isCompactSessionHeader,
+        veryCompact: isVeryCompactSessionHeader,
+      })
+  const showTilePressureRecoveryFeedback =
+    !showReorderFeedback && !!recentTilePressureRecoveryFeedback
+  const tilePressureRecoveryFeedbackLabel = !recentTilePressureRecoveryFeedback
+    ? null
+    : getTilePressureRecoveryChipLabel(recentTilePressureRecoveryFeedback.source, {
+        compact: isCompactSessionHeader,
+        veryCompact: isVeryCompactSessionHeader,
+      })
 
   const handleStepFocusedSession = useCallback(
     (direction: "previous" | "next") => {
@@ -1397,6 +2770,11 @@ export function Component() {
       setFocusedSessionId,
     ],
   )
+  const handleJumpToNewestHiddenSession = useCallback(() => {
+    if (!isFocusLayout || !newestHiddenFocusLayoutSessionId) return
+
+    setFocusedSessionId(newestHiddenFocusLayoutSessionId)
+  }, [isFocusLayout, newestHiddenFocusLayoutSessionId, setFocusedSessionId])
 
   const hasSessions = allProgressEntries.length > 0 || hasPendingTile
 
@@ -1406,6 +2784,26 @@ export function Component() {
           when SessionGrid measures the parent to size tiles. */}
       {hasSessions && (
         <div className="bg-muted/20 flex-shrink-0 border-b px-3 py-2">
+          {showReorderFeedback && reorderFeedbackAnnouncement ? (
+            <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              {reorderFeedbackAnnouncement}
+            </div>
+          ) : null}
+          {recentSingleViewRestoreFeedback ? (
+            <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              {recentSingleViewRestoreFeedback.announcement}
+            </div>
+          ) : null}
+          {showTilePressureRecoveryFeedback && recentTilePressureRecoveryFeedback ? (
+            <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              {recentTilePressureRecoveryFeedback.announcement}
+            </div>
+          ) : null}
+          {showNewSessionAnnouncement && newSessionFeedbackAnnouncement ? (
+            <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              {newSessionFeedbackAnnouncement}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <AgentSelector
@@ -1492,12 +2890,20 @@ export function Component() {
                       "flex max-w-full items-center gap-1.5 rounded-md border border-dashed border-blue-500/30 bg-blue-500/10 py-1 text-[11px] text-blue-700 dark:text-blue-300",
                       isVeryCompactSessionHeader ? "px-1.5" : "px-2",
                     )}
-                    title={stackedLayoutRecoveryHint.title}
+                    title={stackedLayoutRecoveryTitle ?? stackedLayoutRecoveryHint.title}
                   >
                     <activeLayoutOption.Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="whitespace-nowrap">
                       {stackedLayoutRecoveryLabel}
                     </span>
+                    {stackedLayoutRecoveryWidthLabel ? (
+                      <span
+                        data-tile-layout-stacked-width-badge
+                        className="border-current/15 bg-background/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap"
+                      >
+                        {stackedLayoutRecoveryWidthLabel}
+                      </span>
+                    ) : null}
                   </div>
                 )}
               {showNearStackedLayoutHint &&
@@ -1508,26 +2914,181 @@ export function Component() {
                       "flex max-w-full items-center gap-1.5 rounded-md border border-dashed border-amber-500/30 bg-amber-500/10 py-1 text-[11px] text-amber-700 dark:text-amber-300",
                       isVeryCompactSessionHeader ? "px-1.5" : "px-2",
                     )}
-                    title={nearStackedLayoutHint.title}
+                    title={nearStackedLayoutHintTitle ?? nearStackedLayoutHint.title}
                   >
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                     <span className="whitespace-nowrap">
                       {nearStackedLayoutHintLabel}
                     </span>
+                    {nearStackedLayoutWidthLabel ? (
+                      <span
+                        data-tile-layout-near-width-badge
+                        className="border-current/15 bg-background/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap"
+                      >
+                        {nearStackedLayoutWidthLabel}
+                      </span>
+                    ) : null}
                   </div>
                 )}
+              {showCombinedSizeRecoveryAction &&
+                combinedSizeRecoveryActionLabel &&
+                combinedSizeRecoveryActionTitle && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetCrowdingSidebarAndPanel}
+                    disabled={isUpdatingPanelRecovery}
+                    data-tile-pressure-combined-recovery={
+                      tilePressureRecoveryUrgency ?? undefined
+                    }
+                    className={cn(
+                      isVeryCompactSessionHeader
+                        ? "h-6 gap-1 rounded-md px-1.5 text-[10px]"
+                        : "h-6 gap-1 rounded-md px-2 text-[11px]",
+                      tilePressureRecoveryActionToneClasses,
+                    )}
+                    aria-label={combinedSizeRecoveryActionTitle}
+                    title={combinedSizeRecoveryActionTitle}
+                  >
+                    {isResettingPanelSize ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : isVeryCompactSessionHeader ? (
+                      <RotateCcw className="h-3 w-3 shrink-0" />
+                    ) : null}
+                    <span className="whitespace-nowrap">
+                      {combinedSizeRecoveryActionLabel}
+                    </span>
+                    {combinedSizeRecoveryPressureLabel ? (
+                      <span
+                        data-tile-pressure-combined-badge
+                        className="border-current/15 bg-background/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap"
+                      >
+                        {combinedSizeRecoveryPressureLabel}
+                      </span>
+                    ) : null}
+                  </Button>
+                )}
+              {showSidebarSizeRecoveryAction &&
+                sidebarSizeRecoveryActionLabel &&
+                sidebarSizeRecoveryActionTitle && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetCrowdingSidebar}
+                    data-tile-pressure-sidebar-recovery={
+                      tilePressureRecoveryUrgency ?? undefined
+                    }
+                    className={cn(
+                      isVeryCompactSessionHeader
+                        ? "h-6 gap-1 rounded-md px-1.5 text-[10px]"
+                        : "h-6 gap-1 rounded-md px-2 text-[11px]",
+                      tilePressureRecoveryActionToneClasses,
+                    )}
+                    aria-label={sidebarSizeRecoveryActionTitle}
+                    title={sidebarSizeRecoveryActionTitle}
+                  >
+                    {isVeryCompactSessionHeader ? (
+                      <RotateCcw className="h-3 w-3 shrink-0" />
+                    ) : null}
+                    <span className="whitespace-nowrap">
+                      {sidebarSizeRecoveryActionLabel}
+                    </span>
+                    {sidebarSizeRecoveryPressureLabel ? (
+                      <span
+                        data-tile-pressure-sidebar-badge
+                        className="border-current/15 bg-background/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap"
+                      >
+                        {sidebarSizeRecoveryPressureLabel}
+                      </span>
+                    ) : null}
+                  </Button>
+                )}
+              {showPanelSizeRecoveryAction &&
+                panelSizeRecoveryActionLabel &&
+                panelSizeRecoveryActionTitle && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetCrowdingPanel}
+                    disabled={isUpdatingPanelRecovery}
+                    data-tile-pressure-panel-recovery={
+                      tilePressureRecoveryUrgency ?? undefined
+                    }
+                    className={cn(
+                      isVeryCompactSessionHeader
+                        ? "h-6 gap-1 rounded-md px-1.5 text-[10px]"
+                        : "h-6 gap-1 rounded-md px-2 text-[11px]",
+                      tilePressureRecoveryActionToneClasses,
+                    )}
+                    aria-label={panelSizeRecoveryActionTitle}
+                    title={panelSizeRecoveryActionTitle}
+                  >
+                    {isResettingPanelSize ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : isVeryCompactSessionHeader ? (
+                      <RotateCcw className="h-3 w-3 shrink-0" />
+                    ) : null}
+                    <span className="whitespace-nowrap">
+                      {panelSizeRecoveryActionLabel}
+                    </span>
+                    {panelSizeRecoveryPressureLabel ? (
+                      <span
+                        data-tile-pressure-panel-badge
+                        className="border-current/15 bg-background/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap"
+                      >
+                        {panelSizeRecoveryPressureLabel}
+                      </span>
+                    ) : null}
+                  </Button>
+                )}
+              {showHidePanelRecoveryAction && hidePanelRecoveryActionTitle && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleHideCrowdingPanel}
+                  disabled={isUpdatingPanelRecovery}
+                  data-tile-pressure-hide-panel={tilePressureRecoveryUrgency ?? undefined}
+                  className={cn(
+                    "h-6 gap-1 rounded-md px-2 text-[11px]",
+                    tilePressureRecoveryUrgency === "stacked"
+                      ? "text-blue-700 hover:bg-blue-500/10 dark:text-blue-300"
+                      : tilePressureRecoveryUrgency === "near-stacked"
+                        ? "text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+                  )}
+                  aria-label={hidePanelRecoveryActionTitle}
+                  title={hidePanelRecoveryActionTitle}
+                >
+                  {isHidingCrowdingPanel ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Minimize2 className="h-3 w-3 shrink-0" />
+                  )}
+                  {hidePanelRecoveryActionLabel ? (
+                    <span className="whitespace-nowrap">{hidePanelRecoveryActionLabel}</span>
+                  ) : null}
+                </Button>
+              )}
               {showFocusLayoutHint && (
                 <div
-                  className="border-border/60 bg-background/80 text-muted-foreground flex min-w-0 max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]"
+                  className={cn(
+                    "border-border/60 bg-background/80 text-muted-foreground flex min-w-0 max-w-full items-center rounded-md border px-2 py-1 text-[11px]",
+                    shouldPrioritizeSingleViewHeaderControls ? "gap-1" : "gap-1.5",
+                  )}
                   title={
                     focusedLayoutSessionLabel
-                      ? `Single view: ${focusedLayoutSessionLabel} (${focusedLayoutSessionIndex + 1} of ${focusableSessionCount})`
-                      : `Single view: showing session ${focusedLayoutSessionIndex + 1} of ${focusableSessionCount}`
+                      ? `Single view: ${focusedLayoutSessionLabel} (${focusedLayoutSessionIndex + 1} of ${focusableSessionCount}${hiddenFocusLayoutSessionTitleSuffix})`
+                      : `Single view: showing session ${focusedLayoutSessionIndex + 1} of ${focusableSessionCount}${hiddenFocusLayoutSessionTitleSuffix}`
                   }
                 >
                   <span className="border-border/60 bg-muted/40 text-foreground/80 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
-                    {focusedLayoutSessionIndex + 1} of {focusableSessionCount}
+                    {focusedLayoutSessionPositionLabel}
                   </span>
+                  {hiddenFocusLayoutSessionLabel ? (
+                    <span className="border-border/60 bg-blue-500/10 text-blue-700 dark:text-blue-300 rounded-full border border-dashed px-1.5 py-0.5 text-[10px] font-medium">
+                      {hiddenFocusLayoutSessionLabel}
+                    </span>
+                  ) : null}
                   {showFocusedSessionLabel ? (
                     <>
                       <span className="text-muted-foreground/50 whitespace-nowrap">
@@ -1547,13 +3108,51 @@ export function Component() {
                   ) : null}
                 </div>
               )}
-              {showReorderHint && (
+              {showTilePressureRecoveryFeedback &&
+              recentTilePressureRecoveryFeedback &&
+              tilePressureRecoveryFeedbackLabel ? (
+                <div
+                  data-tile-pressure-recovery-feedback={
+                    recentTilePressureRecoveryFeedback.source
+                  }
+                  className={cn(
+                    "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 flex max-w-full items-center gap-1.5 rounded-md border border-dashed py-1 text-[11px]",
+                    isVeryCompactSessionHeader ? "px-1.5" : "px-2",
+                  )}
+                  title={recentTilePressureRecoveryFeedback.announcement}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{tilePressureRecoveryFeedbackLabel}</span>
+                </div>
+              ) : showNewSessionFeedback && newSessionFeedbackLabel ? (
+                <div
+                  className={cn(
+                    "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 flex max-w-full items-center gap-1.5 rounded-md border border-dashed py-1 text-[11px]",
+                    isVeryCompactSessionHeader ? "px-1.5" : "px-2",
+                  )}
+                  title={newSessionFeedbackAnnouncement ?? undefined}
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{newSessionFeedbackLabel}</span>
+                </div>
+              ) : showReorderFeedback && reorderFeedbackLabel ? (
+                <div
+                  className={cn(
+                    "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 flex max-w-full items-center gap-1.5 rounded-md border border-dashed py-1 text-[11px]",
+                    isVeryCompactSessionHeader ? "px-1.5" : "px-2",
+                  )}
+                  title={reorderFeedbackAnnouncement ?? undefined}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{reorderFeedbackLabel}</span>
+                </div>
+              ) : showReorderHint ? (
                 <div
                   className={cn(
                     "border-border/60 bg-background/70 text-muted-foreground flex max-w-full items-center gap-1.5 rounded-md border border-dashed py-1 text-[11px]",
                     reorderHintLabel ? "px-2" : "px-1.5",
                   )}
-                  title="Drag the reorder handle on any session tile to reorder the grid"
+                  title="Grab the reorder handle on any session tile to drag the grid order, or focus it and use arrow keys to move a session."
                 >
                   <GripVertical className="h-3.5 w-3.5 shrink-0" />
                   {reorderHintLabel ? (
@@ -1562,7 +3161,7 @@ export function Component() {
                     </span>
                   ) : null}
                 </div>
-              )}
+              ) : null}
             </div>
             <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
               {showSingleViewRestore && restoreLayoutOption && (
@@ -1571,16 +3170,26 @@ export function Component() {
                   variant="ghost"
                   size="sm"
                   onClick={handleRestorePreviousLayout}
-                  aria-label={`Return to ${LAYOUT_LABELS[restoreLayoutOption.mode]}`}
-                  title={`Return to ${LAYOUT_LABELS[restoreLayoutOption.mode]}`}
+                  aria-label={
+                    restoreLayoutActionLabel ??
+                    `Return to ${LAYOUT_LABELS[restoreLayoutOption.mode]}`
+                  }
+                  title={
+                    restoreLayoutActionLabel ??
+                    `Return to ${LAYOUT_LABELS[restoreLayoutOption.mode]}`
+                  }
                   className={cn(
                     "border-border/60 bg-background/80 text-muted-foreground hover:bg-background hover:text-foreground h-7 border text-[11px]",
-                    showSingleViewRestoreLabel ? "gap-1 px-2" : "px-1.5",
+                    restoreLayoutButtonLabel
+                      ? shouldCondenseSingleViewRestoreButton
+                        ? "gap-1 px-1.5"
+                        : "gap-1 px-2"
+                      : "px-1.5",
                   )}
                 >
-                  <restoreLayoutOption.Icon className="h-3.5 w-3.5 shrink-0" />
-                  {showSingleViewRestoreLabel ? (
-                    <span>{`Back to ${restoreLayoutOption.label}`}</span>
+                  <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
+                  {restoreLayoutButtonLabel ? (
+                    <span>{restoreLayoutButtonLabel}</span>
                   ) : null}
                 </Button>
               )}
@@ -1596,12 +3205,44 @@ export function Component() {
                     size="sm"
                     onClick={() => handleStepFocusedSession("previous")}
                     disabled={focusedLayoutSessionIndex <= 0}
-                    aria-label="Show previous session in single view"
-                    title="Show previous session in single view"
-                    className="text-muted-foreground hover:text-foreground h-7 w-7 px-0 disabled:cursor-default disabled:opacity-40"
+                    aria-label={previousFocusedSessionActionLabel}
+                    title={previousFocusedSessionActionLabel}
+                    className={cn(
+                      "text-muted-foreground hover:text-foreground h-7 disabled:cursor-default disabled:opacity-40",
+                      showSingleViewPagerLabels ? "gap-1 px-2 text-[11px]" : "w-7 px-0",
+                    )}
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
+                    {showSingleViewPagerLabels ? <span>Previous</span> : null}
                   </Button>
+                  {showJumpToNewestHiddenSessionAction &&
+                    jumpToNewestHiddenSessionActionLabel && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleJumpToNewestHiddenSession}
+                        aria-label={jumpToNewestHiddenSessionActionLabel}
+                        title={jumpToNewestHiddenSessionActionLabel}
+                        data-single-view-jump-newest
+                        className={cn(
+                          "hover:bg-blue-500/10 text-blue-700 hover:text-blue-800 dark:text-blue-300 h-7",
+                          showSingleViewPagerLabels
+                            ? "gap-1 px-2 text-[11px]"
+                            : jumpToNewestHiddenSessionBadgeLabel
+                              ? "gap-1 px-1.5 text-[10px]"
+                              : "w-7 px-0",
+                        )}
+                      >
+                        <ChevronsRight className="h-3.5 w-3.5" />
+                        {showSingleViewPagerLabels ? <span>Newest</span> : null}
+                        {jumpToNewestHiddenSessionBadgeLabel ? (
+                          <span className="border-current/15 bg-background/80 rounded-full border border-dashed px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap">
+                            {jumpToNewestHiddenSessionBadgeLabel}
+                          </span>
+                        ) : null}
+                      </Button>
+                    )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -1610,10 +3251,14 @@ export function Component() {
                     disabled={
                       focusedLayoutSessionIndex >= focusableSessionCount - 1
                     }
-                    aria-label="Show next session in single view"
-                    title="Show next session in single view"
-                    className="text-muted-foreground hover:text-foreground h-7 w-7 px-0 disabled:cursor-default disabled:opacity-40"
+                    aria-label={nextFocusedSessionActionLabel}
+                    title={nextFocusedSessionActionLabel}
+                    className={cn(
+                      "text-muted-foreground hover:text-foreground h-7 disabled:cursor-default disabled:opacity-40",
+                      showSingleViewPagerLabels ? "gap-1 px-2 text-[11px]" : "w-7 px-0",
+                    )}
                   >
+                    {showSingleViewPagerLabels ? <span>Next</span> : null}
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -1623,31 +3268,62 @@ export function Component() {
                 aria-label="Session tile layout"
                 className="border-border/60 bg-background/80 flex items-center gap-0.5 rounded-lg border p-0.5"
               >
-                {TILE_LAYOUT_OPTIONS.map(({ mode, label, title, Icon }) => (
-                  <Button
-                    key={mode}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSelectTileLayout(mode)}
-                    aria-label={title}
-                    aria-pressed={tileLayoutMode === mode}
-                    title={
-                      tileLayoutMode === mode
-                        ? `Current layout: ${LAYOUT_LABELS[mode]} — ${activeLayoutDescription}`
-                        : title
-                    }
-                    className={cn(
-                      "text-muted-foreground hover:text-foreground h-7 text-[11px]",
-                      showLayoutButtonLabels ? "gap-1 px-2" : "px-1.5",
-                      tileLayoutMode === mode &&
-                        "bg-accent text-foreground hover:bg-accent shadow-sm",
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5 shrink-0" />
-                    {showLayoutButtonLabels ? <span>{label}</span> : null}
-                  </Button>
-                ))}
+                {TILE_LAYOUT_OPTIONS.map(({ mode, label, title, Icon }) => {
+                  const showThisLayoutButtonLabel =
+                    showLayoutButtonLabels ||
+                    (showSelectedLayoutButtonLabel && tileLayoutMode === mode)
+                  const showSelectedAdaptiveLayoutBadge =
+                    tileLayoutMode === mode &&
+                    showThisLayoutButtonLabel &&
+                    !!selectedAdaptiveLayoutButtonBadgeLabel
+                  const showSelectedAdaptiveLayoutEmphasis =
+                    tileLayoutMode === mode && showSelectedAdaptiveLayoutBadge
+                  const layoutOptionTitle = getTileLayoutOptionTitle({
+                    mode,
+                    currentLayoutMode: tileLayoutMode,
+                    activeLayoutDescription,
+                    baseTitle: title,
+                    visibleTileCount,
+                    hasMeasuredSessionGridWidth,
+                    containerWidth: sessionGridMeasurements.containerWidth,
+                    gap: sessionGridMeasurements.gap,
+                  })
+
+                  return (
+                    <Button
+                      key={mode}
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSelectTileLayout(mode)}
+                      aria-label={layoutOptionTitle}
+                      data-session-layout-selected-adaptive={
+                        showSelectedAdaptiveLayoutEmphasis ? mode : undefined
+                      }
+                      aria-pressed={tileLayoutMode === mode}
+                      title={layoutOptionTitle}
+                      className={cn(
+                        "text-muted-foreground hover:text-foreground h-7 text-[11px] transition-[background-color,color,box-shadow]",
+                        showThisLayoutButtonLabel ? "gap-1 px-2" : "px-1.5",
+                        tileLayoutMode === mode &&
+                          (showSelectedAdaptiveLayoutEmphasis
+                            ? "bg-blue-500/10 text-blue-700 hover:bg-blue-500/12 shadow-sm ring-1 ring-inset ring-blue-500/35 dark:text-blue-200"
+                            : "bg-accent text-foreground hover:bg-accent shadow-sm"),
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      {showThisLayoutButtonLabel ? <span>{label}</span> : null}
+                      {showSelectedAdaptiveLayoutBadge ? (
+                        <span
+                          data-session-layout-adaptive-badge={mode}
+                          className="border-current/15 bg-background/80 text-foreground/80 rounded-full border border-dashed px-1.5 py-0.5 text-[9px] leading-none font-medium whitespace-nowrap"
+                        >
+                          {selectedAdaptiveLayoutButtonBadgeLabel}
+                        </span>
+                      ) : null}
+                    </Button>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1676,76 +3352,79 @@ export function Component() {
             sessionCount={visibleTileCount}
             resetKey={tileResetKey}
             layoutMode={tileLayoutMode}
-            layoutChangeKey={sidebarWidth}
+            layoutChangeKey={sessionGridLayoutChangeKey}
             onMeasurementsChange={handleSessionGridMeasurementsChange}
           >
             {/* Pending continuation tile first */}
             {showPendingProgressTile && pendingSessionId && pendingProgress && (
-              <SessionTileWrapper
-                key={pendingSessionId}
-                sessionId={pendingSessionId}
-                index={0}
-                isCollapsed={collapsedSessions[pendingSessionId] ?? false}
-                isDraggable={false}
-                onDragStart={() => {}}
-                onDragOver={() => {}}
-                onDragEnd={() => {}}
-                isDragTarget={false}
-                isDragging={false}
-              >
-                <AgentProgress
-                  progress={pendingProgress}
-                  variant="tile"
-                  isFocused={true}
-                  onFocus={() => {}}
-                  onDismiss={handleDismissPendingContinuation}
-                  onFollowUpSent={handlePendingContinuationStarted}
+              <div ref={(el) => setSessionRef(pendingSessionId, el)}>
+                <SessionTileWrapper
+                  key={pendingSessionId}
+                  sessionId={pendingSessionId}
+                  index={0}
                   isCollapsed={collapsedSessions[pendingSessionId] ?? false}
-                  onCollapsedChange={(collapsed) =>
-                    handleCollapsedChange(pendingSessionId, collapsed)
-                  }
-                  onExpand={
-                    showTileMaximize
-                      ? () => handleMaximizeTile(pendingSessionId)
-                      : undefined
-                  }
-                  isExpanded={isFocusLayout}
-                  isFollowUpInputInitializing={
-                    pendingContinuationStartedAt !== null
-                  }
-                />
-              </SessionTileWrapper>
+                  isDraggable={false}
+                  onDragStart={() => {}}
+                  onDragOver={() => {}}
+                  onDragEnd={() => {}}
+                  isDragTarget={false}
+                  isDragging={false}
+                >
+                  <AgentProgress
+                    progress={pendingProgress}
+                    variant="tile"
+                    isFocused={true}
+                    onFocus={() => {}}
+                    onDismiss={handleDismissPendingContinuation}
+                    onFollowUpSent={handlePendingContinuationStarted}
+                    isCollapsed={collapsedSessions[pendingSessionId] ?? false}
+                    onCollapsedChange={(collapsed) =>
+                      handleCollapsedChange(pendingSessionId, collapsed)
+                    }
+                    onExpand={
+                      showTileMaximize
+                        ? () => handleMaximizeTile(pendingSessionId)
+                        : undefined
+                    }
+                    isExpanded={isFocusLayout}
+                    isFollowUpInputInitializing={
+                      pendingContinuationStartedAt !== null
+                    }
+                  />
+                </SessionTileWrapper>
+              </div>
             )}
             {showPendingLoadingTile && pendingSessionId && (
-              <SessionTileWrapper
-                key={pendingSessionId}
-                sessionId={pendingSessionId}
-                index={0}
-                isCollapsed={false}
-                isDraggable={false}
-                onDragStart={() => {}}
-                onDragOver={() => {}}
-                onDragEnd={() => {}}
-                isDragTarget={false}
-                isDragging={false}
-              >
-                <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4">
-                  <div className="border-border/60 flex items-center gap-2 border-b pb-3">
-                    <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-                    <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+              <div ref={(el) => setSessionRef(pendingSessionId, el)}>
+                <SessionTileWrapper
+                  key={pendingSessionId}
+                  sessionId={pendingSessionId}
+                  index={0}
+                  isCollapsed={false}
+                  isDraggable={false}
+                  onDragStart={() => {}}
+                  onDragOver={() => {}}
+                  onDragEnd={() => {}}
+                  isDragTarget={false}
+                  isDragging={false}
+                >
+                  <div className="border-border bg-card flex h-full flex-col rounded-xl border p-4">
+                    <div className="border-border/60 flex items-center gap-2 border-b pb-3">
+                      <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                      <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="bg-muted/70 h-3 w-full animate-pulse rounded" />
+                      <div className="bg-muted/70 h-3 w-5/6 animate-pulse rounded" />
+                      <div className="bg-muted/70 h-3 w-2/3 animate-pulse rounded" />
+                    </div>
                   </div>
-                  <div className="mt-4 space-y-2">
-                    <div className="bg-muted/70 h-3 w-full animate-pulse rounded" />
-                    <div className="bg-muted/70 h-3 w-5/6 animate-pulse rounded" />
-                    <div className="bg-muted/70 h-3 w-2/3 animate-pulse rounded" />
-                  </div>
-                </div>
-              </SessionTileWrapper>
+                </SessionTileWrapper>
+              </div>
             )}
             {/* Regular sessions */}
             {visibleProgressEntries.map(([sessionId, progress], index) => {
               const isCollapsed = collapsedSessions[sessionId] ?? false
-              const adjustedIndex = hasVisiblePendingTile ? index + 1 : index
               const isSessionFocused =
                 focusedSessionId === sessionId ||
                 (isFocusLayout && maximizedSessionId === sessionId)
@@ -1754,17 +3433,29 @@ export function Component() {
                   key={sessionId}
                   sessionId={sessionId}
                   progress={progress}
-                  index={adjustedIndex}
+                  index={index}
                   isCollapsed={isCollapsed}
                   isDraggable={canReorderTiles}
+                  isReorderInteractionActive={canReorderTiles && draggedSessionId !== null}
                   isFocused={isSessionFocused}
                   isExpanded={isFocusLayout}
                   isDragTarget={
                     canReorderTiles &&
-                    dragTargetIndex === adjustedIndex &&
+                    dragTargetIndex === index &&
                     draggedSessionId !== sessionId
                   }
+                  dragTargetPosition={
+                    canReorderTiles &&
+                    dragTargetIndex === index &&
+                    draggedSessionId !== sessionId
+                      ? getSessionDragTargetPosition(draggedSessionIndex, index)
+                      : null
+                  }
                   isDragging={canReorderTiles && draggedSessionId === sessionId}
+                  isNewlyAdded={recentNewSessionFeedback?.sessionIds.includes(sessionId) ?? false}
+                  isRestoredFromSingleView={
+                    recentSingleViewRestoreFeedback?.sessionId === sessionId
+                  }
                   showTileMaximize={showTileMaximize}
                   onFocusSession={handleFocusSession}
                   onDismissSession={handleDismissSession}
@@ -1773,6 +3464,14 @@ export function Component() {
                   onDragStart={handleDragStart}
                   onDragOver={handleDragOver}
                   onDragEnd={handleDragEnd}
+                  onMoveBackward={(sessionId) =>
+                    handleKeyboardReorder(sessionId, "backward")
+                  }
+                  onMoveForward={(sessionId) =>
+                    handleKeyboardReorder(sessionId, "forward")
+                  }
+                  canMoveBackward={index > 0}
+                  canMoveForward={index < visibleProgressEntries.length - 1}
                   setSessionRef={setSessionRef}
                 />
               )

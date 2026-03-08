@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, MoreHorizontal } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -16,6 +16,13 @@ import { logUI, logExpand } from "@renderer/lib/debug"
 import { TileFollowUpInput } from "./tile-follow-up-input"
 import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import { getToolResultsSummary } from "@dotagents/shared"
 import { ToolExecutionStats } from "./tool-execution-stats"
@@ -103,7 +110,63 @@ type DisplayItem =
     } }
 
 const TILE_TRANSCRIPT_PREVIEW_ITEMS = 6
+const COMPACT_TILE_TRANSCRIPT_PREVIEW_ITEMS = 4
 const OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS = 12
+
+function getCompactTileContextUsagePercent(
+  contextInfo: AgentProgressUpdate["contextInfo"] | null | undefined,
+): number | null {
+  if (!contextInfo || contextInfo.maxTokens <= 0) return null
+
+  return Math.min(
+    100,
+    Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100),
+  )
+}
+
+function getCompactTileStatusLabel({
+  hasPendingApproval,
+  isSnoozed,
+  isComplete,
+  wasStopped,
+  hasErrors,
+  currentIteration,
+  maxIterations,
+}: {
+  hasPendingApproval: boolean
+  isSnoozed: boolean | undefined
+  isComplete: boolean
+  wasStopped: boolean
+  hasErrors: boolean
+  currentIteration: number
+  maxIterations: number
+}): string {
+  if (hasPendingApproval) return "Needs approval"
+  if (isSnoozed) return "Snoozed"
+  if (isComplete) {
+    return wasStopped ? "Stopped" : hasErrors ? "Failed" : "Complete"
+  }
+
+  return `Working · ${currentIteration}/${isFinite(maxIterations) ? maxIterations : "∞"}`
+}
+
+function getHiddenTileHistoryLabel(
+  hiddenItemCount: number,
+  options?: { compact?: boolean },
+): string {
+  if (hiddenItemCount <= 0) return ""
+
+  return options?.compact
+    ? `${hiddenItemCount} hidden`
+    : `${hiddenItemCount} earlier hidden`
+}
+
+function getHiddenTileHistoryTitle(hiddenItemCount: number): string {
+  if (hiddenItemCount <= 0) return ""
+
+  const updateLabel = hiddenItemCount === 1 ? "update" : "updates"
+  return `${hiddenItemCount} earlier ${updateLabel} hidden in compact view`
+}
 
 function extractRespondToUserContentFromArgs(args: unknown): string | null {
   if (!args || typeof args !== "object") return null
@@ -1293,6 +1356,7 @@ const RetryStatusBanner: React.FC<{
 
 // Subagent Conversation Message - individual message in the collapsible conversation
 const DELEGATION_COMPACT_WIDTH = 360
+const TILE_TAB_COMPACT_WIDTH = 360
 
 const truncatePreview = (text: string | undefined, maxLength: number): string => {
   const normalized = (text ?? "").trim().replace(/\s+/g, " ")
@@ -2317,6 +2381,28 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Tile-specific state - support controlled mode
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false)
   const isCollapsed = controlledIsCollapsed ?? internalIsCollapsed
+  const isCompactTileTranscriptMode = variant === "tile" && !isFocused && !isExpanded
+  const wasCompactTileTranscriptModeRef = useRef(isCompactTileTranscriptMode)
+
+  useEffect(() => {
+    const wasCompactTileTranscriptMode = wasCompactTileTranscriptModeRef.current
+    wasCompactTileTranscriptModeRef.current = isCompactTileTranscriptMode
+
+    if (!wasCompactTileTranscriptMode || isCompactTileTranscriptMode) return
+
+    const scrollContainer = scrollContainerRef.current
+    if (!scrollContainer) return
+
+    clearPendingInitialScrollAttempts()
+    shouldAutoScrollRef.current = true
+    scrollContainer.scrollTop = scrollContainer.scrollHeight
+    requestAnimationFrame(() => {
+      if (!shouldAutoScrollRef.current) return
+      scrollContainer.scrollTop = scrollContainer.scrollHeight
+    })
+    setShouldAutoScroll(true)
+    setIsUserScrolling(false)
+  }, [clearPendingInitialScrollAttempts, isCompactTileTranscriptMode])
 
   // Use shared resize hook for tile variant
   const {
@@ -2328,6 +2414,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     minHeight: TILE_DIMENSIONS.height.min,
     maxHeight: TILE_DIMENSIONS.height.max,
   })
+  const { ref: tileContainerRef, isCompact: isCompactTileChrome } =
+    useCompactWidth<HTMLDivElement>(TILE_TAB_COMPACT_WIDTH)
 
   // Handle tile collapse toggle
   const handleToggleCollapse = (e: React.MouseEvent) => {
@@ -3220,16 +3308,139 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const hasPendingApproval = !!progress.pendingToolApproval
     const isSnoozed = progress.isSnoozed
     const shouldLimitTileTranscript = !isFocused && !isExpanded
+    const shouldUseCompactTileSummaryView = !isFocused && !isExpanded
     const shouldUseCompactTileFooter = !isFocused && !isExpanded
+    const shouldUseCompactTileTabs = isCompactTileChrome
+    const tileTranscriptPreviewItemLimit = shouldLimitTileTranscript
+      ? isCompactTileChrome
+        ? COMPACT_TILE_TRANSCRIPT_PREVIEW_ITEMS
+        : TILE_TRANSCRIPT_PREVIEW_ITEMS
+      : displayItems.length
+    const compactTileContextUsagePercent = shouldUseCompactTileFooter
+      ? getCompactTileContextUsagePercent(contextInfo)
+      : null
+    const compactTileStatusLabel = getCompactTileStatusLabel({
+      hasPendingApproval,
+      isSnoozed,
+      isComplete,
+      wasStopped,
+      hasErrors,
+      currentIteration,
+      maxIterations,
+    })
+    const shouldShowCompactTileContextChip =
+      shouldUseCompactTileFooter &&
+      !isComplete &&
+      !!contextInfo &&
+      contextInfo.maxTokens > 0 &&
+      compactTileContextUsagePercent !== null
+    const shouldShowCompactTileIdentityRow =
+      shouldUseCompactTileFooter && !!acpSessionInfo
     const tileDisplayItems = shouldLimitTileTranscript
-      ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
+      ? displayItems.slice(-tileTranscriptPreviewItemLimit)
       : displayItems
-    const hiddenTileItemCount = displayItems.length - tileDisplayItems.length
     const tileDisplayOffset = displayItems.length - tileDisplayItems.length
+    const tilePreviewCurrentStateItems = shouldLimitTileTranscript
+      ? currentStateDisplayItems
+      : []
+    const tilePreviewRecentItemLimit = shouldLimitTileTranscript
+      ? Math.max(
+          0,
+          tileTranscriptPreviewItemLimit - tilePreviewCurrentStateItems.length,
+        )
+      : 0
+    const tilePreviewRecentItems = shouldLimitTileTranscript
+      ? timestampedDisplayItems.slice(-tilePreviewRecentItemLimit)
+      : []
+    const tilePreviewHistoryOffset =
+      timestampedDisplayItems.length - tilePreviewRecentItems.length
+    const hiddenTileHistoryItemCount = shouldLimitTileTranscript
+      ? Math.max(0, timestampedDisplayItems.length - tilePreviewRecentItems.length)
+      : 0
+    const hiddenTileHistoryLabel =
+      hiddenTileHistoryItemCount > 0
+        ? getHiddenTileHistoryLabel(hiddenTileHistoryItemCount, {
+            compact: isCompactTileChrome,
+          })
+        : null
+    const hiddenTileHistoryTitleText =
+      hiddenTileHistoryItemCount > 0
+        ? getHiddenTileHistoryTitle(hiddenTileHistoryItemCount)
+        : null
+    const hiddenTileHistoryButtonLabel = isCompactTileChrome ? "Focus" : "Focus tile"
+    const hiddenTileHistoryButtonTitle = "Focus tile to show the full transcript"
+    const handleCompactTranscriptFocus = (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onFocus?.()
+    }
+    const shouldShowSeparatedTilePreview =
+      shouldLimitTileTranscript && tilePreviewCurrentStateItems.length > 0
+    const showCompactRecentActivityMetaRow =
+      shouldLimitTileTranscript &&
+      (shouldShowSeparatedTilePreview || !!hiddenTileHistoryLabel)
+    const showCompactRecentActivitySection = shouldShowSeparatedTilePreview
+      ? tilePreviewRecentItems.length > 0 || !!hiddenTileHistoryLabel
+      : tileDisplayItems.length > 0
+    const summaryCount = progress.stepSummaries?.length ?? 0
+    const showTileTabLabels = !shouldUseCompactTileTabs
+    const chatTabActionLabel =
+      activeTab === "chat"
+        ? "Chat transcript is selected"
+        : "Show chat transcript"
+    const summaryTabActionLabel =
+      activeTab === "summary"
+        ? `Step summaries are selected (${summaryCount})`
+        : `Show step summaries (${summaryCount})`
+    const expandTileButtonVisibleLabel = "Single view"
+    const compactExpandTileButtonVisibleLabel = "Single"
+    const expandTileActionLabel = "Open in Single view"
+    const expandTileActionTitle = "Open this session in Single view"
+    const tileOverflowActionCount =
+      Number(!!onExpand && !isExpanded) + Number(!isComplete && !isSnoozed)
+    const shouldOverflowCollapsedTerminalTileAction =
+      isCollapsed && (!isComplete || !!onDismiss)
+    const shouldUseCollapsedTileOverflowMenu =
+      (isCollapsed && tileOverflowActionCount > 1) ||
+      shouldOverflowCollapsedTerminalTileAction
+    const shouldUseCompactTileOverflowMenu =
+      isCompactTileChrome && tileOverflowActionCount > 1
+    // Collapsed tiles are recognition-first: keep multiple secondary actions behind
+    // the existing overflow menu even before compact-width rules would require it.
+    const shouldUseTileOverflowMenu =
+      shouldUseCompactTileOverflowMenu || shouldUseCollapsedTileOverflowMenu
+    const showTileOverflowSecondaryActionSeparator =
+      shouldOverflowCollapsedTerminalTileAction &&
+      (!!onExpand && !isExpanded || (!isComplete && !isSnoozed))
+    const showCompactExpandTileButtonLabel =
+      isCompactTileChrome && !shouldUseTileOverflowMenu
+    const showExpandTileButtonLabel =
+      !isCompactTileChrome || showCompactExpandTileButtonLabel
+    const currentExpandTileButtonVisibleLabel =
+      showCompactExpandTileButtonLabel
+        ? compactExpandTileButtonVisibleLabel
+        : expandTileButtonVisibleLabel
+    const tileOverflowMenuTitle =
+      onExpand && !isExpanded ? "Single view and more actions" : "More actions"
+    const tileOverflowMenuAriaLabel =
+      onExpand && !isExpanded
+        ? "Single view and more tile actions"
+        : "More tile actions"
+    const collapseTileActionLabel = isCollapsed ? "Expand tile" : "Collapse tile"
+    const collapseTileButtonVisibleLabel =
+      isCollapsed && !isCompactTileChrome ? "Expand" : null
+    const collapsedTileHintLabel =
+      isCollapsed && !isCompactTileChrome ? "Click header to expand" : null
+    const showCollapsedTileMetaRow = !!profileName || isCollapsed
     return (
       <div
+        ref={tileContainerRef}
         onClick={onFocus}
-        className={cn(containerClasses, "relative min-h-0 border h-full group/tile", className)}
+        className={cn(
+          containerClasses,
+          "relative min-h-0 border group/tile",
+          isCollapsed ? "h-auto" : "h-full",
+          className,
+        )}
         dir="ltr"
         style={{
           WebkitAppRegion: "no-drag"
@@ -3237,7 +3448,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       >
         {/* Tile Header - clickable to toggle collapse */}
         <div
-          className="flex flex-wrap items-start gap-2 px-3 py-2 border-b bg-muted/30 flex-shrink-0 cursor-pointer"
+          className={cn(
+            "flex flex-wrap items-start gap-2 flex-shrink-0 cursor-pointer transition-colors",
+            isCollapsed
+              ? "border-border/60 bg-slate-50/85 px-3 py-1.5 dark:bg-slate-900/40"
+              : "border-b bg-muted/30 px-3 py-2",
+          )}
           onClick={handleToggleCollapse}
         >
           <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -3248,46 +3464,148 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               <span className="truncate font-medium text-sm">
                 {getTitle()}
               </span>
-              {/* Agent name indicator in header */}
-              {profileName && (
-                <span className="flex items-center gap-1 text-[10px] text-primary/70">
-                  <Bot className="h-2.5 w-2.5 shrink-0" />
-                  <span className="truncate">{profileName}</span>
-                </span>
-              )}
+              {showCollapsedTileMetaRow ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
+                  {/* Agent name indicator in header */}
+                  {profileName ? (
+                    <span className="flex min-w-0 items-center gap-1 text-primary/70">
+                      <Bot className="h-2.5 w-2.5 shrink-0" />
+                      <span className="truncate">{profileName}</span>
+                    </span>
+                  ) : null}
+                  {isCollapsed ? (
+                    <>
+                      <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-background/80 px-1.5 py-0.5 font-medium text-slate-700 dark:border-slate-700/80 dark:text-slate-300">
+                        Collapsed
+                      </span>
+                      {collapsedTileHintLabel ? (
+                        <span className="truncate text-slate-600 dark:text-slate-300/80">
+                          {collapsedTileHintLabel}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+          <div className={cn(
+            "ml-auto flex max-w-full flex-wrap items-center justify-end gap-1",
+            isCompactTileChrome && "gap-0.5",
+          )}>
             {hasPendingApproval && (
-              <Badge variant="outline" className="shrink-0 border-amber-500 text-xs text-amber-600">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "shrink-0 border-amber-500 text-amber-600",
+                  isCompactTileChrome ? "px-1.5 py-0 text-[10px]" : "text-xs",
+                )}
+              >
                 Approval
               </Badge>
             )}
             {/* Collapse/Expand toggle */}
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleToggleCollapse} title={isCollapsed ? "Expand panel" : "Collapse panel"}>
+            <Button
+              variant="ghost"
+              size={collapseTileButtonVisibleLabel ? "sm" : "icon"}
+              className={cn(
+                "h-6 shrink-0",
+                collapseTileButtonVisibleLabel ? "gap-1 px-2 text-[11px]" : "w-6",
+              )}
+              onClick={handleToggleCollapse}
+              title={collapseTileActionLabel}
+              aria-label={collapseTileActionLabel}
+              aria-expanded={!isCollapsed}
+            >
               {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+              {collapseTileButtonVisibleLabel ? (
+                <span>{collapseTileButtonVisibleLabel}</span>
+              ) : null}
             </Button>
 
-            {onExpand && !isExpanded && (
+            {onExpand && !isExpanded && !shouldUseTileOverflowMenu && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
+                size={showExpandTileButtonLabel ? "sm" : "icon"}
+                className={cn(
+                  "h-6 shrink-0",
+                  showExpandTileButtonLabel
+                    ? showCompactExpandTileButtonLabel
+                      ? "gap-1 px-1.5 text-[10px]"
+                      : "gap-1 px-2 text-[11px]"
+                    : "w-6",
+                )}
                 onClick={(e) => {
                   e.stopPropagation()
                   onExpand()
                 }}
-                title="Show only this session"
-                aria-label="Show only this session"
+                title={expandTileActionTitle}
+                aria-label={expandTileActionTitle}
               >
                 <Maximize2 className="h-3 w-3" />
+                {showExpandTileButtonLabel ? (
+                  <span>{currentExpandTileButtonVisibleLabel}</span>
+                ) : null}
               </Button>
             )}
 
-            {!isComplete && !isSnoozed && (
+            {!isComplete && !isSnoozed && !shouldUseTileOverflowMenu && (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); handleSnooze(e); }} title="Minimize">
                 <Minimize2 className="h-3 w-3" />
               </Button>
+            )}
+            {shouldUseTileOverflowMenu && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                    title={tileOverflowMenuTitle}
+                    aria-label={tileOverflowMenuAriaLabel}
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-48"
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                >
+                  {onExpand && !isExpanded && (
+                    <DropdownMenuItem onClick={() => onExpand()}>
+                      <Maximize2 className="h-3.5 w-3.5" />
+                      <span>{expandTileActionLabel}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {!isComplete && !isSnoozed && (
+                    <DropdownMenuItem onClick={() => { void handleSnooze() }}>
+                      <Minimize2 className="h-3.5 w-3.5" />
+                      <span>Minimize session</span>
+                    </DropdownMenuItem>
+                  )}
+                  {showTileOverflowSecondaryActionSeparator ? (
+                    <DropdownMenuSeparator />
+                  ) : null}
+                  {shouldOverflowCollapsedTerminalTileAction ? (
+                    !isComplete ? (
+                      <DropdownMenuItem
+                        className="text-destructive focus:bg-destructive/10 focus:text-destructive dark:focus:bg-destructive/20"
+                        onClick={() => handleKillConfirmation()}
+                      >
+                        <OctagonX className="h-3.5 w-3.5" />
+                        <span>Stop agent</span>
+                      </DropdownMenuItem>
+                    ) : onDismiss ? (
+                      <DropdownMenuItem onClick={() => onDismiss()}>
+                        <X className="h-3.5 w-3.5" />
+                        <span>Dismiss session</span>
+                      </DropdownMenuItem>
+                    ) : null
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {isSnoozed && (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={async (e) => {
@@ -3323,11 +3641,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </Button>
             )}
             {/* Combined close button: stops agent if running, dismisses if complete */}
-            {!isComplete ? (
+            {!shouldOverflowCollapsedTerminalTileAction && !isComplete ? (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:bg-destructive/20 hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleKillConfirmation(); }} title="Stop agent">
                 <OctagonX className="h-3 w-3" />
               </Button>
-            ) : onDismiss ? (
+            ) : !shouldOverflowCollapsedTerminalTileAction && onDismiss ? (
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); onDismiss(); }} title="Dismiss">
                 <X className="h-3 w-3" />
               </Button>
@@ -3344,30 +3662,44 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
+                  aria-label={chatTabActionLabel}
+                  title={chatTabActionLabel}
                   className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                    "inline-flex min-w-0 max-w-full items-center rounded-md py-1 text-xs font-medium transition-colors",
+                    shouldUseCompactTileTabs ? "gap-0.5 px-1.5" : "gap-1 px-2",
                     activeTab === "chat"
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <MessageSquare className="h-3 w-3" />
-                  <span className="truncate">Chat</span>
+                  {showTileTabLabels ? <span className="truncate">Chat</span> : null}
                 </button>
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
+                  aria-label={summaryTabActionLabel}
+                  title={summaryTabActionLabel}
                   className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                    "inline-flex min-w-0 max-w-full items-center rounded-md py-1 text-xs font-medium transition-colors",
+                    shouldUseCompactTileTabs ? "gap-0.5 px-1.5" : "gap-1 px-2",
                     activeTab === "summary"
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <Brain className="h-3 w-3" />
-                  <span className="truncate">Summary</span>
-                  <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
-                    {progress.stepSummaries?.length ?? 0}
+                  {showTileTabLabels ? <span className="truncate">Summary</span> : null}
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "h-4 shrink-0 px-1 py-0 text-[10px]",
+                      shouldUseCompactTileTabs
+                        ? "ml-0.5 min-w-4 justify-center"
+                        : "ml-1",
+                    )}
+                  >
+                    {summaryCount}
                   </Badge>
                 </button>
               </div>
@@ -3381,14 +3713,81 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 className="h-full overflow-y-auto scrollbar-hide-until-hover"
               >
                 {tileDisplayItems.length > 0 ? (
-                  <div className="space-y-1 p-2">
-                    {hiddenTileItemCount > 0 && (
-                      <div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
-                        Showing latest {tileDisplayItems.length} of {displayItems.length} updates
-                      </div>
-                    )}
+                  <div className="space-y-1.5 p-2">
                     {shouldLimitTileTranscript
-                      ? tileDisplayItems.map((item, index) => renderDisplayItem(item, tileDisplayOffset + index, "tile"))
+                      ? (
+                          <>
+                            {shouldShowSeparatedTilePreview && (
+                              <div className="space-y-1">
+                                <div className="px-1 text-[10px] font-medium uppercase tracking-wider text-primary/70">
+                                  Live now
+                                </div>
+                                {tilePreviewCurrentStateItems.map((item, index) =>
+                                  renderDisplayItem(
+                                    item,
+                                    timestampedDisplayItems.length + index,
+                                    "tile",
+                                  ),
+                                )}
+                              </div>
+                            )}
+                            {showCompactRecentActivitySection && (
+                              <div
+                                className={cn(
+                                  "space-y-1",
+                                  shouldShowSeparatedTilePreview &&
+                                    "border-t border-border/40 pt-1.5",
+                                )}
+                              >
+                                {showCompactRecentActivityMetaRow ? (
+                                  <div className="flex flex-wrap items-center justify-between gap-1.5 px-1">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                        Recent activity
+                                      </div>
+                                      {hiddenTileHistoryLabel ? (
+                                        <span
+                                          className="inline-flex shrink-0 items-center rounded-full border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground"
+                                          title={hiddenTileHistoryTitleText ?? undefined}
+                                        >
+                                          {hiddenTileHistoryLabel}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    {hiddenTileHistoryLabel ? (
+                                      <button
+                                        type="button"
+                                        onClick={handleCompactTranscriptFocus}
+                                        className={cn(
+                                          "inline-flex shrink-0 items-center rounded-md border border-border/70 bg-background/80 font-medium text-foreground transition-colors hover:bg-background",
+                                          isCompactTileChrome
+                                            ? "px-1.5 py-0.5 text-[10px]"
+                                            : "px-2 py-1 text-[10px]",
+                                        )}
+                                        title={hiddenTileHistoryButtonTitle}
+                                        aria-label={hiddenTileHistoryButtonTitle}
+                                      >
+                                        {hiddenTileHistoryButtonLabel}
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                {(shouldShowSeparatedTilePreview
+                                  ? tilePreviewRecentItems
+                                  : tileDisplayItems
+                                ).map((item, index) =>
+                                  renderDisplayItem(
+                                    item,
+                                    shouldShowSeparatedTilePreview
+                                      ? tilePreviewHistoryOffset + index
+                                      : tileDisplayOffset + index,
+                                    "tile",
+                                  ),
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )
                       : (
                         <>
                           {renderedTimestampedDisplayItems}
@@ -3419,10 +3818,17 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
             {/* Summary View Tab */}
             {activeTab === "summary" && (progress.stepSummaries?.length ?? 0) > 0 && (
-              <div className="relative flex-1 min-h-0 overflow-y-auto p-3" onClick={(e) => e.stopPropagation()}>
+              <div
+                className={cn(
+                  "relative flex-1 min-h-0 overflow-y-auto",
+                  shouldUseCompactTileSummaryView ? "p-2.5" : "p-3",
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <AgentSummaryView
                   progress={progress}
                   conversationId={progress.conversationId}
+                  compact={shouldUseCompactTileSummaryView}
                 />
               </div>
             )}
@@ -3432,48 +3838,102 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               "px-3 py-2 border-t text-xs text-muted-foreground flex-shrink-0",
               shouldUseCompactTileFooter ? "bg-muted/10" : "bg-muted/20"
             )}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                  {/* ACP Session info for tile variant */}
-                  {acpSessionInfo && (
-                    <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
-                  )}
-                  {/* Model info - only show for non-ACP sessions */}
-                  {!isComplete && modelInfo && !acpSessionInfo && !shouldUseCompactTileFooter && (
-                    <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
-                      {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
-                    </span>
-                  )}
-                  {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-                    <div
-                      className="flex shrink-0 items-center gap-1"
-                      title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
+              {shouldUseCompactTileFooter ? (
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap",
+                        hasPendingApproval
+                          ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300"
+                          : isSnoozed
+                            ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800/80 dark:bg-slate-900/40 dark:text-slate-300"
+                            : isComplete
+                              ? wasStopped
+                                ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800/80 dark:bg-slate-900/40 dark:text-slate-300"
+                                : hasErrors
+                                  ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300"
+                              : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-300"
+                      )}
                     >
-                      <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
-                        <div
+                      {compactTileStatusLabel}
+                    </span>
+                    {shouldShowCompactTileContextChip ? (
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                          compactTileContextUsagePercent > 90
+                            ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300"
+                            : compactTileContextUsagePercent > 70
+                              ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300"
+                        )}
+                        title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${compactTileContextUsagePercent}%)`}
+                      >
+                        <span
                           className={cn(
-                            "h-full transition-all duration-300 ease-out rounded-full",
-                            contextInfo.estTokens / contextInfo.maxTokens > 0.9
+                            "h-1.5 w-1.5 rounded-full",
+                            compactTileContextUsagePercent > 90
                               ? "bg-red-500"
-                              : contextInfo.estTokens / contextInfo.maxTokens > 0.7
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
+                              : compactTileContextUsagePercent > 70
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
                           )}
-                          style={{
-                            width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
-                          }}
                         />
-                      </div>
+                        {`Context ${compactTileContextUsagePercent}%`}
+                      </span>
+                    ) : null}
+                  </div>
+                  {shouldShowCompactTileIdentityRow ? (
+                    <div className="flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground/80">
+                      <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
                     </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                    {/* ACP Session info for tile variant */}
+                    {acpSessionInfo && (
+                      <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
+                    )}
+                    {/* Model info - only show for non-ACP sessions */}
+                    {!isComplete && modelInfo && !acpSessionInfo && !shouldUseCompactTileFooter && (
+                      <span className="min-w-0 max-w-full truncate text-[10px]" title={`${modelInfo.provider}: ${modelInfo.model}`}>
+                        {modelInfo.provider}/{modelInfo.model.split('/').pop()?.substring(0, 15)}
+                      </span>
+                    )}
+                    {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
+                      <div
+                        className="flex shrink-0 items-center gap-1"
+                        title={`Context: ${Math.round(contextInfo.estTokens / 1000)}k / ${Math.round(contextInfo.maxTokens / 1000)}k tokens (${Math.min(100, Math.round((contextInfo.estTokens / contextInfo.maxTokens) * 100))}%)`}
+                      >
+                        <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full transition-all duration-300 ease-out rounded-full",
+                              contextInfo.estTokens / contextInfo.maxTokens > 0.9
+                                ? "bg-red-500"
+                                : contextInfo.estTokens / contextInfo.maxTokens > 0.7
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
+                            )}
+                            style={{
+                              width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {!isComplete ? (
+                    <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                  ) : (
+                    <span className="shrink-0 whitespace-nowrap">{wasStopped ? "Stopped" : hasErrors ? "Failed" : "Complete"}</span>
                   )}
                 </div>
-                {!isComplete && (
-                  <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
-                )}
-                {isComplete && (
-                  <span className="shrink-0 whitespace-nowrap">{wasStopped ? "Stopped" : hasErrors ? "Failed" : "Complete"}</span>
-                )}
-              </div>
+              )}
             </div>
           </>
         )}
@@ -3490,7 +3950,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           </div>
         )}
 
-        {/* Follow-up input - always visible for quick continuation */}
+        {/* Follow-up input - compact at rest for non-focused grid tiles, full when focused/expanded */}
         <TileFollowUpInput
           conversationId={progress.conversationId}
           sessionId={progress.sessionId}

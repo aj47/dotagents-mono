@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
@@ -15,14 +15,26 @@ import {
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
 
+const COMPACT_DRAFT_PREVIEW_LIMIT = 48
+
+function getCompactDraftPreview(text: string): string {
+  const normalized = text.trim().replace(/\s+/g, " ")
+  if (!normalized) return ""
+  if (normalized.length <= COMPACT_DRAFT_PREVIEW_LIMIT) return normalized
+  return `${normalized.slice(0, COMPACT_DRAFT_PREVIEW_LIMIT - 1).trimEnd()}…`
+}
+
 interface TileFollowUpInputProps {
   conversationId?: string
   sessionId?: string
   isSessionActive?: boolean
   isInitializingSession?: boolean
+  preferCompact?: boolean
   className?: string
   /** Agent/profile name to display as indicator */
   agentName?: string
+  /** Optional callback to let parents align focus state when expanding compact mode */
+  onRequestFocus?: () => void
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
@@ -37,8 +49,10 @@ export function TileFollowUpInput({
   sessionId,
   isSessionActive = false,
   isInitializingSession = false,
+  preferCompact = false,
   className,
   agentName,
+  onRequestFocus,
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
@@ -46,6 +60,8 @@ export function TileFollowUpInput({
   const [text, setText] = useState("")
   const [imageAttachments, setImageAttachments] = useState<MessageImageAttachment[]>([])
   const [isStoppingSession, setIsStoppingSession] = useState(false)
+  const [isCompactExpanded, setIsCompactExpanded] = useState(!preferCompact)
+  const formRef = useRef<HTMLFormElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
@@ -54,6 +70,9 @@ export function TileFollowUpInput({
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
   const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
+  const requestTileFocus = () => {
+    onRequestFocus?.()
+  }
 
   const sendMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -81,6 +100,9 @@ export function TileFollowUpInput({
 
       setText("")
       setImageAttachments([])
+      if (preferCompact) {
+        setIsCompactExpanded(false)
+      }
       // Optimistically append user message to the session's conversation history
       // so it appears immediately in the session tile without waiting for agent progress updates
       if (sessionId) {
@@ -176,6 +198,8 @@ export function TileFollowUpInput({
     e.stopPropagation()
     if (isInitializingSession) return
 
+    requestTileFocus()
+
     // Pass conversationId and sessionId directly through IPC to continue in the same session
     // This is more reliable than using Zustand store which has timing issues
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
@@ -243,6 +267,12 @@ export function TileFollowUpInput({
     sendMutation.isPending ||
     (isSessionActive && !isQueueEnabled)
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
+  const showCompactComposer =
+    preferCompact &&
+    !isCompactExpanded &&
+    !isInitializingSession &&
+    !isSubmitting &&
+    !sendMutation.isPending
 
   // Show appropriate placeholder based on state
   // Use minimal placeholders - loading states indicated by spinners instead
@@ -259,13 +289,167 @@ export function TileFollowUpInput({
     return "Continue conversation..."
   }
 
+  const getCompactComposerLabel = () => {
+    if (isSessionActive && isQueueEnabled) {
+      return "Queue follow-up…"
+    }
+    if (isSessionActive) {
+      return "Wait for response…"
+    }
+    return "Continue in tile…"
+  }
+
+  const compactDraftPreview = getCompactDraftPreview(text)
+  const compactAttachmentLabel =
+    imageAttachments.length > 0
+      ? `${imageAttachments.length} image${imageAttachments.length === 1 ? "" : "s"}`
+      : null
+  const compactComposerSummaryLabel = compactDraftPreview
+    ? `Draft: ${compactDraftPreview}`
+    : compactAttachmentLabel
+      ? `Draft with ${compactAttachmentLabel}`
+      : getCompactComposerLabel()
+  const compactComposerTitle = compactDraftPreview
+    ? compactAttachmentLabel
+      ? `${text.trim()} (${compactAttachmentLabel})`
+      : text.trim()
+    : compactComposerSummaryLabel
+
+  useEffect(() => {
+    if (
+      !preferCompact ||
+      hasMessageContent ||
+      isInitializingSession ||
+      isSubmitting ||
+      sendMutation.isPending
+    ) {
+      return
+    }
+
+    setIsCompactExpanded(false)
+  }, [
+    hasMessageContent,
+    isInitializingSession,
+    isSubmitting,
+    preferCompact,
+    sendMutation.isPending,
+  ])
+
+  useEffect(() => {
+    if (
+      !preferCompact ||
+      !hasMessageContent ||
+      isInitializingSession ||
+      isSubmitting ||
+      sendMutation.isPending
+    ) {
+      return
+    }
+
+    const activeElement = document.activeElement
+    if (activeElement && formRef.current?.contains(activeElement)) {
+      return
+    }
+
+    setIsCompactExpanded(false)
+  }, [
+    hasMessageContent,
+    isInitializingSession,
+    isSubmitting,
+    preferCompact,
+    sendMutation.isPending,
+  ])
+
+  const handleExpandCompactComposer = () => {
+    if (isSessionActive && !isQueueEnabled) {
+      return
+    }
+
+    requestTileFocus()
+    setIsCompactExpanded(true)
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }
+
+  const handleCompactComposerBlur = (e: React.FocusEvent<HTMLFormElement>) => {
+    if (
+      !preferCompact ||
+      isInitializingSession ||
+      isSubmitting ||
+      sendMutation.isPending
+    ) {
+      return
+    }
+
+    const nextFocusedElement = e.relatedTarget as Node | null
+    if (nextFocusedElement && e.currentTarget.contains(nextFocusedElement)) {
+      return
+    }
+
+    setIsCompactExpanded(false)
+  }
+
+  if (showCompactComposer) {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-1.5 border-t bg-muted/10 px-2 py-1.5",
+          className,
+        )}
+        onFocusCapture={requestTileFocus}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={handleExpandCompactComposer}
+          disabled={isSessionActive && !isQueueEnabled}
+          className={cn(
+            "border-border/60 bg-background/70 text-muted-foreground hover:text-foreground flex min-w-0 flex-1 items-center gap-2 rounded-md border px-2 py-1 text-left text-xs transition-colors",
+            isSessionActive && !isQueueEnabled
+              ? "cursor-not-allowed opacity-60"
+              : "hover:bg-background",
+          )}
+          title={compactComposerTitle}
+          aria-label={compactComposerTitle}
+        >
+          <Send className="h-3 w-3 shrink-0" />
+          <span className="truncate">{compactComposerSummaryLabel}</span>
+          {compactAttachmentLabel ? (
+            <span className="bg-muted shrink-0 rounded-full px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {compactAttachmentLabel}
+            </span>
+          ) : null}
+        </button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 shrink-0"
+          disabled={isVoiceDisabled}
+          onClick={handleVoiceClick}
+          title={
+            isSessionActive && isQueueEnabled
+              ? "Record voice message (will be queued)"
+              : "Continue with voice"
+          }
+        >
+          <Mic className="h-3 w-3" />
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit}
       className={cn(
         "flex flex-col gap-1.5 border-t bg-muted/20 px-2 py-1.5",
         className
       )}
+      onBlur={handleCompactComposerBlur}
+      onFocusCapture={requestTileFocus}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Agent indicator - shows which agent is handling this session */}

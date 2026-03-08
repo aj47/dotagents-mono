@@ -10,6 +10,23 @@ export const SIDEBAR_DIMENSIONS = {
   },
 } as const
 
+export const SIDEBAR_KEYBOARD_RESIZE_STEP = 24
+
+export function getSidebarResizeKeyboardAdjustment(key: string): number {
+  switch (key) {
+    case "ArrowLeft":
+      return -SIDEBAR_KEYBOARD_RESIZE_STEP
+    case "ArrowRight":
+      return SIDEBAR_KEYBOARD_RESIZE_STEP
+    default:
+      return 0
+  }
+}
+
+export function isSidebarResizeResetKey(key: string): boolean {
+  return key === "Enter"
+}
+
 const STORAGE_KEY = "dotagents-sidebar"
 
 interface SidebarState {
@@ -49,9 +66,11 @@ export interface UseSidebarReturn {
   isCollapsed: boolean
   width: number
   isResizing: boolean
+  resizeDelta: number
   toggleCollapse: () => void
   setCollapsed: (collapsed: boolean) => void
   handleResizeStart: (e: React.MouseEvent) => void
+  adjustWidthBy: (delta: number) => void
   reset: () => void
 }
 
@@ -85,6 +104,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
   const [width, setWidth] = useState(initialWidthValue)
 
   const [isResizing, setIsResizing] = useState(false)
+  const [resizeDelta, setResizeDelta] = useState(0)
 
   const widthBeforeCollapseRef = useRef(width)
   // Store ref for removing listeners only (for unmount cleanup without triggering state/callbacks)
@@ -110,6 +130,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
       width: newCollapsed ? widthBeforeCollapseRef.current : width,
     }
     savePersistedState(newState)
+    setResizeDelta(0)
     onToggle?.(newCollapsed)
   }, [isCollapsed, width, onToggle])
 
@@ -124,6 +145,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
         isCollapsed: collapsed,
         width: collapsed ? widthBeforeCollapseRef.current : width,
       })
+      setResizeDelta(0)
       onToggle?.(collapsed)
     },
     [width, isCollapsed, onToggle]
@@ -136,6 +158,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
       e.preventDefault()
       e.stopPropagation()
       setIsResizing(true)
+      setResizeDelta(0)
 
       const startX = e.clientX
       const startWidth = width
@@ -145,6 +168,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
         const delta = moveEvent.clientX - startX
         lastWidth = clampWidth(startWidth + delta)
         setWidth(lastWidth)
+        setResizeDelta(lastWidth - startWidth)
       }
 
       // Separate function to only remove listeners (for unmount cleanup)
@@ -160,6 +184,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
       const fullCleanup = () => {
         removeListeners()
         setIsResizing(false)
+        setResizeDelta(0)
         savePersistedState({ isCollapsed: false, width: lastWidth })
         onResizeEnd?.(lastWidth)
       }
@@ -182,7 +207,36 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
     [width, isCollapsed, clampWidth, onResizeEnd]
   )
 
+  const adjustWidthBy = useCallback(
+    (delta: number) => {
+      if (isCollapsed || delta === 0) return
+
+      if (removeListenersRef.current) {
+        removeListenersRef.current()
+      }
+
+      setIsResizing(false)
+      setResizeDelta(0)
+
+      const nextWidth = clampWidth(width + delta)
+      if (nextWidth === width) return
+
+      widthBeforeCollapseRef.current = nextWidth
+      setWidth(nextWidth)
+      savePersistedState({ isCollapsed: false, width: nextWidth })
+      onResizeEnd?.(nextWidth)
+    },
+    [width, isCollapsed, clampWidth, onResizeEnd]
+  )
+
   const reset = useCallback(() => {
+    if (removeListenersRef.current) {
+      removeListenersRef.current()
+    }
+
+    widthBeforeCollapseRef.current = initialWidth
+    setIsResizing(false)
+    setResizeDelta(0)
     setIsCollapsed(initialCollapsed)
     setWidth(initialWidth)
     try {
@@ -203,9 +257,11 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
     isCollapsed,
     width,
     isResizing,
+    resizeDelta,
     toggleCollapse,
     setCollapsed,
     handleResizeStart,
+    adjustWidthBy,
     reset,
   }
 }

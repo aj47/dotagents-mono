@@ -9,7 +9,13 @@ import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
 import { AgentCapabilitiesSidebar } from "@renderer/components/agent-capabilities-sidebar"
 
 import { PastSessionsDialog } from "@renderer/components/past-sessions-dialog"
-import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
+import {
+  getSidebarResizeKeyboardAdjustment,
+  isSidebarResizeResetKey,
+  SIDEBAR_DIMENSIONS,
+  SIDEBAR_KEYBOARD_RESIZE_STEP,
+  useSidebar,
+} from "@renderer/hooks/use-sidebar"
 import {
   useConfigQuery,
   useSaveConfigMutation,
@@ -43,13 +49,40 @@ interface AgentSessionsResponse {
   activeSessions: AgentSession[]
 }
 
+function isPanelSize(value: unknown): value is { width: number; height: number } {
+  return !!value &&
+    typeof value === "object" &&
+    "width" in value &&
+    "height" in value &&
+    typeof (value as { width: unknown }).width === "number" &&
+    typeof (value as { height: unknown }).height === "number"
+}
+
+function isPanelVisibilityState(value: unknown): value is { visible: boolean } {
+  return !!value &&
+    typeof value === "object" &&
+    "visible" in value &&
+    typeof (value as { visible: unknown }).visible === "boolean"
+}
+
 export const Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
-  const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
+  const [panelWidth, setPanelWidth] = useState<number | null>(null)
+  const [panelVisible, setPanelVisible] = useState(false)
+  const {
+    isCollapsed,
+    width,
+    isResizing,
+    resizeDelta,
+    toggleCollapse,
+    handleResizeStart,
+    adjustWidthBy: adjustSidebarWidthBy,
+    reset: resetSidebar,
+  } =
     useSidebar()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
@@ -76,6 +109,62 @@ export const Component = () => {
     })
     return unlisten
   }, [isCollapsed, refetchSessionData])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadInitialPanelState = async () => {
+      const [initialPanelSize, initialPanelVisibility] = await Promise.allSettled([
+        tipcClient.getPanelSize(),
+        tipcClient.getPanelVisibility(),
+      ])
+
+      if (
+        isMounted &&
+        initialPanelSize.status === "fulfilled" &&
+        isPanelSize(initialPanelSize.value)
+      ) {
+        setPanelWidth(initialPanelSize.value.width)
+      } else if (initialPanelSize.status === "rejected") {
+        console.error(
+          "Failed to load panel size for sessions layout context:",
+          initialPanelSize.reason,
+        )
+      }
+
+      if (
+        isMounted &&
+        initialPanelVisibility.status === "fulfilled" &&
+        typeof initialPanelVisibility.value === "boolean"
+      ) {
+        setPanelVisible(initialPanelVisibility.value)
+      } else if (initialPanelVisibility.status === "rejected") {
+        console.error(
+          "Failed to load panel visibility for sessions layout context:",
+          initialPanelVisibility.reason,
+        )
+      }
+    }
+
+    void loadInitialPanelState()
+
+    const unlistenPanelSize = rendererHandlers.onPanelSizeChanged.listen((size) => {
+      if (isPanelSize(size)) {
+        setPanelWidth(size.width)
+      }
+    })
+    const unlistenPanelVisibility = rendererHandlers.onPanelVisibilityChanged.listen((payload) => {
+      if (isPanelVisibilityState(payload)) {
+        setPanelVisible(payload.visible)
+      }
+    })
+
+    return () => {
+      isMounted = false
+      unlistenPanelSize()
+      unlistenPanelVisibility()
+    }
+  }, [])
 
   const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
@@ -252,6 +341,7 @@ export const Component = () => {
   }
 
   const sidebarWidth = isCollapsed ? SIDEBAR_DIMENSIONS.width.collapsed : width
+  const SIDEBAR_TILING_HINT_DEADBAND_PX = 12
 
   const isSessionsActive =
     location.pathname === "/" ||
@@ -260,6 +350,43 @@ export const Component = () => {
       !location.pathname.startsWith("/setup") &&
       !location.pathname.startsWith("/panel") &&
       !location.pathname.startsWith("/memories"))
+
+  const showSidebarResizeHint = isSessionsActive && isResizing
+  const sidebarResizeImpactLabel =
+    resizeDelta > SIDEBAR_TILING_HINT_DEADBAND_PX
+      ? "Less room for tiled sessions"
+      : resizeDelta < -SIDEBAR_TILING_HINT_DEADBAND_PX
+        ? "More room for tiled sessions"
+        : "Sidebar width affects tiled session space"
+  const sidebarResizeHintClassName =
+    resizeDelta > SIDEBAR_TILING_HINT_DEADBAND_PX
+      ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+      : resizeDelta < -SIDEBAR_TILING_HINT_DEADBAND_PX
+        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+        : "border-border/70 bg-background/95 text-muted-foreground"
+  const sidebarResizeKeyboardHint =
+    `Use Left and Right Arrow to resize by ${SIDEBAR_KEYBOARD_RESIZE_STEP}px. Press Enter or double-click to reset to the default width.`
+  const sidebarResizeHandleTitle = isSessionsActive
+    ? `Drag to resize sidebar. ${sidebarResizeKeyboardHint} Wider sidebar leaves less room for tiled sessions.`
+    : `Drag to resize sidebar. ${sidebarResizeKeyboardHint}`
+  const handleSidebarResizeKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const keyboardAdjustment = getSidebarResizeKeyboardAdjustment(event.key)
+      if (keyboardAdjustment !== 0) {
+        event.preventDefault()
+        event.stopPropagation()
+        adjustSidebarWidthBy(keyboardAdjustment)
+        return
+      }
+
+      if (isSidebarResizeResetKey(event.key)) {
+        event.preventDefault()
+        event.stopPropagation()
+        resetSidebar()
+      }
+    },
+    [adjustSidebarWidthBy, resetSidebar],
+  )
 
   return (
     <>
@@ -607,15 +734,57 @@ export const Component = () => {
 
           {/* Resize handle - only visible when not collapsed */}
           {!isCollapsed && (
-            <div
-              className={cn(
-                "absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors",
-                "hover:bg-primary/20",
-                isResizing && "bg-primary/30",
+            <>
+              {showSidebarResizeHint && (
+                <div
+                  className={cn(
+                    "pointer-events-none absolute left-full top-16 z-20 ml-2 flex max-w-48 items-start gap-2 rounded-md border px-2 py-1.5 text-[11px] shadow-sm backdrop-blur-sm",
+                    sidebarResizeHintClassName,
+                  )}
+                  data-sidebar-resize-impact-hint
+                >
+                  <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-current/80" />
+                  <div className="min-w-0">
+                    <div className="font-medium leading-tight">{sidebarResizeImpactLabel}</div>
+                    <div className="mt-0.5 text-[10px] leading-tight opacity-80">
+                      {`Sidebar ${Math.round(sidebarWidth)}px wide`}
+                    </div>
+                    <div className="mt-1 text-[10px] leading-tight opacity-75">
+                      Double-click rail to reset to default width
+                    </div>
+                  </div>
+                </div>
               )}
-              onMouseDown={handleResizeStart}
-              title="Drag to resize sidebar"
-            />
+
+              <div
+                className={cn(
+                  "group/sidebar-resize absolute right-0 top-0 h-full w-3 cursor-col-resize transition-colors focus-visible:outline-none",
+                  isResizing ? "bg-blue-500/6" : "focus-visible:bg-blue-500/8",
+                )}
+                data-sidebar-resize-handle
+                data-sidebar-resize-resettable
+                tabIndex={0}
+                aria-keyshortcuts="ArrowLeft ArrowRight Enter"
+                onMouseDown={handleResizeStart}
+                onKeyDown={handleSidebarResizeKeyDown}
+                onDoubleClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  resetSidebar()
+                }}
+                title={sidebarResizeHandleTitle}
+                aria-label={sidebarResizeHandleTitle}
+              >
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-y-3 right-1 w-px rounded-full bg-border/60 transition-all duration-200",
+                    isResizing
+                      ? "bg-blue-500/90 shadow-[0_0_0_1px_rgba(59,130,246,0.2)]"
+                      : "opacity-55 group-hover/sidebar-resize:opacity-100 group-hover/sidebar-resize:bg-blue-500/55 group-focus-visible/sidebar-resize:opacity-100 group-focus-visible/sidebar-resize:bg-blue-500/70",
+                  )}
+                />
+              </div>
+            </>
           )}
         </div>
 
@@ -629,6 +798,9 @@ export const Component = () => {
             <Outlet
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
+                panelVisible,
+                panelWidth,
+                resetSidebar,
                 sidebarWidth,
               }}
             />

@@ -20,6 +20,7 @@ interface ACPSessionBadgeProps {
       options?: Array<{ value: string; name: string }> | unknown
     }>
   }
+  compact?: boolean
   className?: string
 }
 
@@ -32,12 +33,12 @@ function getConfigOptionLabel(option: {
 }
 
 /**
- * A compact badge component showing ACP session agent info.
+ * A badge component showing ACP session agent info.
  * Displays agent title/version and model/mode in a compact format.
  * 
  * Visual example: `[Claude Code v0.12.6] [Sonnet 4.5]`
  */
-export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
+export function ACPSessionBadge({ info, compact = false, className }: ACPSessionBadgeProps) {
   const { agentTitle, agentVersion, currentModel, currentMode, configOptions } = info
 
   // Build agent label (e.g., "Claude Code v0.12.6")
@@ -54,6 +55,7 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
       ? `${modelLabel} • ${currentMode}`
       : modelLabel
     : null
+  const shouldHideModelBadgeInCompactMode = compact && !!agentLabel
 
   // If nothing to display, return null
   if (!agentLabel && !modelLabel) {
@@ -78,7 +80,8 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex max-w-full min-w-0 flex-wrap items-center gap-1.5 cursor-help",
+              "inline-flex max-w-full min-w-0 flex-wrap items-center cursor-help",
+              compact ? "gap-1" : "gap-1.5",
               className
             )}
           >
@@ -90,7 +93,7 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
                 <span className="truncate">{agentLabel}</span>
               </Badge>
             )}
-            {modelBadgeLabel && (
+            {modelBadgeLabel && !shouldHideModelBadgeInCompactMode && (
               <Badge
                 variant="outline"
                 className="max-w-full min-w-0 text-[10px] px-1.5 py-0 font-mono"
