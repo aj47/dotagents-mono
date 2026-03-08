@@ -119,6 +119,21 @@ describe("constructSystemPrompt", () => {
     expect(minimalPrompt).toContain("dumping entire notes trees")
   })
 
+  it("guides obvious probe payloads toward concrete acknowledgment instead of clarification bounce", async () => {
+    const { constructSystemPrompt, constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+    const minimalPrompt = constructMinimalSystemPrompt([], true)
+
+    expect(prompt).toContain("TEST / PROBE PAYLOADS")
+    expect(prompt).toContain('line-numbered "scroll/jump/focus probe" text blocks')
+    expect(prompt).toContain("concrete observed result first")
+    expect(prompt).toContain("What would you like me to do with it?")
+
+    expect(minimalPrompt).toContain("obvious test/probe payloads")
+    expect(minimalPrompt).toContain("confirm the observable result directly")
+  })
+
   it("omits delegation guidance for specialist sub-sessions that should execute directly", async () => {
     const { agentProfileService } = await import("./agent-profile-service")
     vi.mocked(agentProfileService.getByRole).mockReturnValue([

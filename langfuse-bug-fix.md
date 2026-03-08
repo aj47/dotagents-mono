@@ -1232,6 +1232,32 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ✅ passed (`31 passed`)
   - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test file exits successfully
 
+## 2026-03-08 — Obvious probe payloads bounced into clarification instead of concrete acknowledgment
+
+- Langfuse evidence reviewed first:
+  - confirmed this trace cluster was not already logged in `langfuse-bug-fix.md`
+  - inspected fresh related traces:
+    - `session_1772918939961_s91cl2l21` / `conv_1772918939959_xwy5bkjdx`
+    - `session_1772919024604_x8wh8cqik` / `conv_1772919024600_f463mz2iv`
+    - `session_1772919055915_fazbcwdef` / `conv_1772919055914_i9kguqlam`
+- What went wrong:
+  - the user sent obvious line-numbered probe blocks labeled `Scroll probe`, `Jump probe`, and `Focus jump probe`
+  - instead of treating those as likely UI/continuity/exactness checks and returning the observed result succinctly, the agent kept bouncing back with variants of `What would you like me to do with it?`
+  - that missed the likely single-run intent: confirm the payload came through intact and state the concrete observed range/count/result
+- Concrete root cause:
+  - the desktop system prompt had guidance for capability questions, notes/guidelines updates, delegation failures, etc., but no explicit rule for obvious probe/test payloads with an observable success criterion
+  - without that guardrail, the model treated these payload-only messages as ambiguous requests and defaulted to clarification chatter
+- Minimal fix applied:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - added a `TEST / PROBE PAYLOADS` section telling the model to treat obvious probe payloads as receipt/continuity/count/exactness checks when no transformation is requested
+    - added the same policy to `constructMinimalSystemPrompt(...)` so the fallback prompt keeps the behavior under context pressure
+  - `apps/desktop/src/main/system-prompts.test.ts`
+    - added a regression asserting both full and minimal prompts now steer obvious probe payloads toward concrete acknowledgment instead of the `What would you like me to do with it?` bounce
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - ✅ passed (`8 passed`)
+  - note: the test runner still emits the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test file exits successfully
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1258,4 +1284,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
 - Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
 - Recheck a fresh capability/introspection trace (for example asking why tools were `cut off` or whether a server/agent is available) to confirm the agent now inspects `list_mcp_servers` / `list_server_tools` / `list_running_agents` / `list_agent_profiles` first instead of speculating.
+- Recheck a fresh `Scroll probe` / `Jump probe` / `Focus jump probe` style trace after the next desktop smoke run, to confirm the model now answers with the concrete observed range/result directly instead of bouncing into `What would you like me to do with it?`.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

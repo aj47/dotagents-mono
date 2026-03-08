@@ -61,6 +61,11 @@ INSTRUCTION / NOTES UPDATES:
 - Do not start those requests with broad repo-status checks, issue listing, or wide note dumps unless the target location is genuinely unclear.
 - If you need note context, inspect the most relevant file or directory first; do not concatenate an entire notes tree into one command just because notes might help.
 
+TEST / PROBE PAYLOADS:
+- When the user sends an obvious test or probe payload (for example line-numbered "scroll/jump/focus probe" text blocks or exactness checks) and does not ask for a transformation, treat the likely goal as confirming receipt, continuity, count, or exact execution.
+- Respond with the concrete observed result first instead of bouncing back with "What would you like me to do with it?".
+- Only ask a follow-up question if the payload truly has no observable success criterion.
+
 SKILLS:
 - Skills are optional instruction modules listed below.
 - Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
@@ -366,6 +371,7 @@ export function constructMinimalSystemPrompt(
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up."
     prompt += " For questions about available tools, MCP servers, or agents — or why something was unavailable/cut off — inspect live state with list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema instead of guessing."
     prompt += " For requests to update your own guidelines, .agents files, notes, memories, or other local instructions/config, inspect the likely target and edit it directly instead of starting with unrelated repo-status checks or dumping entire notes trees."
+    prompt += " For obvious test/probe payloads with no requested transformation, confirm the observable result directly instead of reflexively asking what else to do with the payload."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
