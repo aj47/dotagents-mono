@@ -875,3 +875,34 @@
   - If no official path emerges, consider reframing the user ask toward easier-to-support alternatives (for example, clearer OpenAI-compatible preset onboarding or cost-awareness UX) rather than pretending subscription billing works via the API.
 
 - Next recommended issue work item: refresh the open issue list again and prefer a new bug or tightly-scoped enhancement with a direct implementation path, since `#54` is now better triaged but still fundamentally blocked on external platform support.
+
+##### Issue #55 — Session tile spacing follow-up: collapsed pending continuation tiles no longer hold the lead grid slot
+
+- Selection rationale:
+  - `#55` is still the only open bug in the current repo issue set, and the prior collapsed-tile packing fix left one clear desktop-specific edge case: pending continuation tiles were still rendered first even when collapsed.
+- Investigation:
+  - Re-read issue `#55`, confirmed there were still no comments beyond the original report, and revisited the earlier `#55` ledger entry to avoid repeating the already-landed maximize/name fixes.
+  - Inspected `apps/desktop/src/renderer/src/pages/sessions.tsx` and confirmed the previous packing logic only reordered `orderedVisibleProgressEntries` for regular sessions.
+  - Confirmed the pending continuation tile path was still rendered unconditionally before regular tiles with `index={0}`, even when `collapsedSessions[pendingSessionId]` was true, which could preserve the same empty-space symptom the issue calls out.
+  - Checked nearby desktop-only layout code in `apps/desktop/src/renderer/src/components/session-grid.tsx` and confirmed collapsed tiles use `height: auto`, so DOM/render order directly affects whether an expanded tile can reclaim the primary grid slot.
+- Important assumptions:
+  - Assumption: source-level confirmation of the pending-tile render order is a sufficient repro for this slice.
+  - Why acceptable: the bug follows directly from the current render contract (`pending` tile always first, collapsed regular tiles packed later), and this worktree still lacks the installed desktop Vitest toolchain for heavier renderer execution.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the bug is specific to the desktop sessions tile grid / pending continuation flow, which does not have an equivalent mobile tile-layout surface.
+- Changes implemented:
+  - Added `shouldDeferPendingProgressTile` in `apps/desktop/src/renderer/src/pages/sessions.tsx` so a collapsed pending continuation tile is deferred behind expanded regular tiles whenever there is another visible tile to reclaim the lead grid slot.
+  - Extracted a small local `renderPendingProgressTile(index)` helper so the same pending tile can render either first or after the regular ordered entries without duplicating the tile body.
+  - Replaced the regular-tile index offset logic with `pendingTileIndexOffset`, so drag-target/index math only shifts when a pending tile actually renders ahead of the regular session list.
+  - Added `apps/desktop/src/renderer/src/pages/sessions.pending-tile-layout.test.js`, a dependency-free regression test covering the new defer-after-expanded logic and the corresponding index-offset wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/sessions.pending-tile-layout.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #55:
+  - Consider whether collapsed-tile packing should eventually preserve drag-reorder even when one or more regular tiles are collapsed.
+  - If users still report awkward gaps, evaluate a fuller masonry/grid-row-aware layout rather than additional ad hoc ordering rules.
+
+- Next recommended issue work item: refresh the current open issues again and pick the next smallest direct-value slice outside `#55`, unless collapsed-tile drag-reorder becomes the next clearly reported UX gap.

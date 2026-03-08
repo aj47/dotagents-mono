@@ -1285,11 +1285,22 @@ export function Component() {
     !!pendingSessionId &&
     hasPendingLoadingTile &&
     (!isFocusLayout || maximizedSessionId === pendingSessionId)
+  const shouldDeferPendingProgressTile =
+    showPendingProgressTile &&
+    !!pendingSessionId &&
+    (collapsedSessions[pendingSessionId] ?? false) &&
+    !isFocusLayout &&
+    orderedVisibleProgressEntries.length > 0
   const hasVisiblePendingTile =
     showPendingProgressTile || showPendingLoadingTile
   const visibleTileCount =
     visibleProgressEntries.length + (hasVisiblePendingTile ? 1 : 0)
   const showTileMaximize = !isFocusLayout
+  const pendingTileIndexOffset =
+    showPendingLoadingTile ||
+    (showPendingProgressTile && !shouldDeferPendingProgressTile)
+      ? 1
+      : 0
   const canReorderTiles =
     !isFocusLayout && allProgressEntries.length > 1 && !hasCollapsedVisibleTile
   const focusedLayoutSessionIndex = maximizedSessionId
@@ -1443,6 +1454,49 @@ export function Component() {
   )
 
   const hasSessions = allProgressEntries.length > 0 || hasPendingTile
+
+  const renderPendingProgressTile = (index: number) => {
+    if (!showPendingProgressTile || !pendingSessionId || !pendingProgress) {
+      return null
+    }
+
+    return (
+      <SessionTileWrapper
+        key={pendingSessionId}
+        sessionId={pendingSessionId}
+        index={index}
+        isCollapsed={collapsedSessions[pendingSessionId] ?? false}
+        isDraggable={false}
+        onDragStart={() => {}}
+        onDragOver={() => {}}
+        onDragEnd={() => {}}
+        isDragTarget={false}
+        isDragging={false}
+      >
+        <AgentProgress
+          progress={pendingProgress}
+          variant="tile"
+          isFocused={true}
+          onFocus={() => {}}
+          onDismiss={handleDismissPendingContinuation}
+          onFollowUpSent={handlePendingContinuationStarted}
+          isCollapsed={collapsedSessions[pendingSessionId] ?? false}
+          onCollapsedChange={(collapsed) =>
+            handleCollapsedChange(pendingSessionId, collapsed)
+          }
+          onExpand={
+            showTileMaximize
+              ? () => handleMaximizeTile(pendingSessionId)
+              : undefined
+          }
+          isExpanded={isFocusLayout}
+          isFollowUpInputInitializing={
+            pendingContinuationStartedAt !== null
+          }
+        />
+      </SessionTileWrapper>
+    )
+  }
 
   return (
     <div className="group/tile flex h-full flex-col">
@@ -1723,43 +1777,8 @@ export function Component() {
             layoutChangeKey={sidebarWidth}
             onMeasurementsChange={handleSessionGridMeasurementsChange}
           >
-            {/* Pending continuation tile first */}
-            {showPendingProgressTile && pendingSessionId && pendingProgress && (
-              <SessionTileWrapper
-                key={pendingSessionId}
-                sessionId={pendingSessionId}
-                index={0}
-                isCollapsed={collapsedSessions[pendingSessionId] ?? false}
-                isDraggable={false}
-                onDragStart={() => {}}
-                onDragOver={() => {}}
-                onDragEnd={() => {}}
-                isDragTarget={false}
-                isDragging={false}
-              >
-                <AgentProgress
-                  progress={pendingProgress}
-                  variant="tile"
-                  isFocused={true}
-                  onFocus={() => {}}
-                  onDismiss={handleDismissPendingContinuation}
-                  onFollowUpSent={handlePendingContinuationStarted}
-                  isCollapsed={collapsedSessions[pendingSessionId] ?? false}
-                  onCollapsedChange={(collapsed) =>
-                    handleCollapsedChange(pendingSessionId, collapsed)
-                  }
-                  onExpand={
-                    showTileMaximize
-                      ? () => handleMaximizeTile(pendingSessionId)
-                      : undefined
-                  }
-                  isExpanded={isFocusLayout}
-                  isFollowUpInputInitializing={
-                    pendingContinuationStartedAt !== null
-                  }
-                />
-              </SessionTileWrapper>
-            )}
+            {/* Keep collapsed pending continuations behind expanded tiles so they do not hold the lead grid slot. */}
+            {showPendingProgressTile && !shouldDeferPendingProgressTile ? renderPendingProgressTile(0) : null}
             {showPendingLoadingTile && pendingSessionId && (
               <SessionTileWrapper
                 key={pendingSessionId}
@@ -1789,7 +1808,7 @@ export function Component() {
             {/* Regular sessions */}
             {orderedVisibleProgressEntries.map(([sessionId, progress], index) => {
               const isCollapsed = collapsedSessions[sessionId] ?? false
-              const adjustedIndex = hasVisiblePendingTile ? index + 1 : index
+              const adjustedIndex = pendingTileIndexOffset ? index + 1 : index
               const isSessionFocused =
                 focusedSessionId === sessionId ||
                 (isFocusLayout && maximizedSessionId === sessionId)
@@ -1821,6 +1840,9 @@ export function Component() {
                 />
               )
             })}
+            {showPendingProgressTile && shouldDeferPendingProgressTile
+              ? renderPendingProgressTile(orderedVisibleProgressEntries.length)
+              : null}
           </SessionGrid>
         )}
       </div>
