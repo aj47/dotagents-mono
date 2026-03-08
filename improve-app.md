@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop past-sessions dialog destructive-action guardrails / inline delete recovery in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, with history-query/delete mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, mobile parity checked in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile already confirms single-session deletion), focused source-level coverage added in `tests/desktop-past-sessions-dialog-guardrails.test.js`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop repeat-task settings load/fetch-failure feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with adjacent inline loading/retry patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, focused source-level coverage added in `tests/desktop-settings-loops-feedback.test.js`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop overlay follow-up composer session-scope cleanup in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, with overlay mount reuse reviewed in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, existing follow-up guardrails checked in `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts`, stronger focused renderer regression coverage added in `apps/desktop/src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx`, dependency-free source assertions added in `tests/desktop-overlay-follow-up-session-scope.test.js`, and mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile composer is screen-scoped rather than reused across focused desktop sessions).
 - 2026-03-08: Desktop sessions empty-state past-sessions discoverability / recent-history loading feedback in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with conversation-history query behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, past-history dialog behavior checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile already shows the session list directly), and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -55,6 +56,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop `Past Sessions` now confirms before deleting an individual session, keeps delete failures inline with a local `Retry delete` path, blocks nested keyboard delete actions from accidentally opening the session row, and shows row-scoped delete progress so history cleanup is safer and easier to recover from without broad dialog churn; tradeoff: this pass intentionally leaves list-load retry/focus-restoration polish for a follow-up because the highest-risk issue was destructive action confidence.
 - 2026-03-08: Desktop repeat-task settings now keep the `Repeat Tasks` page in a distinct loading state while saved schedules are still resolving and show an inline fetch-failure banner with `Retry loading` instead of falling straight to the empty-state copy, so transient query failures no longer look like all loops disappeared; tradeoff: this pass intentionally leaves `getLoopStatuses()` failure messaging for a follow-up because the highest-risk confusion was the main loop list query being mistaken for “no tasks”.
 - 2026-03-08: Desktop overlay follow-up input now treats `conversationId` + `sessionId` as a composer scope, clears stale draft/error/image state when the focused overlay session changes, and ignores late async submit/image completions from the previous session so a failed or delayed follow-up from session A cannot leak into session B or wipe a new draft there; tradeoff: this pass intentionally stays scoped to the overlay composer because the tile composer is mounted per-session already, so it does not share the same cross-session reuse risk.
 - 2026-03-08: Desktop `No Active Sessions` now keeps a visible `Past Sessions` action alongside the existing start buttons and shows inline recent-history loading/failure guidance while conversation history is still resolving, so returning users no longer have to wait for a silently completing history query or for the `View all` link threshold before finding prior chats; tradeoff: this intentionally reuses the existing past-sessions dialog instead of adding a second inline history browser, which keeps the fix small and behavior consistent.
@@ -101,6 +103,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-past-sessions-dialog-guardrails.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
+- 2026-03-08: `git diff --check` after the desktop past-sessions delete-guardrails pass
 - 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
 - 2026-03-08: `git diff --check` after the desktop repeat-task fetch-state feedback pass
@@ -207,6 +212,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this past-sessions delete-guardrails pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this repeat-task fetch-state feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this overlay session-scope pass is blocked in this worktree because `node_modules` is missing, so `pnpm run test -- --run src/renderer/src/components/overlay-follow-up-input.session-scope.test.tsx ...` fails during the required `build:shared` pretest step when `tsup` cannot be found.
 - 2026-03-08: Live desktop UI inspection for this sessions empty-state history/discoverability pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -254,14 +260,15 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Desktop session lifecycle and error-state cleanup consistency (`apps/desktop/src/main/state.ts`, `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`)
-- Desktop past-sessions dialog search / delete / failure-state clarity (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
+- Mobile `Agent Loops` fetch-failure feedback (`apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/lib/settingsApi.ts`)
 
 ### Next Highest-Value Targets
+- Once a runnable Electron target is available, live-check the desktop past-sessions dialog across keyboard navigation, single-session delete confirmation, failed-delete retry, and delete-all failure states to confirm the new recovery hierarchy feels clear in the real UI
 - Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, fetch failure, empty, and populated states to confirm the new non-empty-state feedback reads clearly in the real UI
 - Desktop repeat-task runtime-status fetch feedback is the most adjacent follow-up if another loops pass is needed, especially when `getLoopStatuses()` fails and the list still needs to explain stale `Running` / `Next run` details
 - Mobile `Agent Loops` fetch-failure feedback in `apps/mobile/src/screens/SettingsScreen.tsx` is the closest cross-platform parity follow-up now that desktop no longer conflates a failed loop query with an empty list
 - Once a runnable Electron target is available, live-check the desktop sessions empty state with no history, loading history, a few recent sessions, and more than eight sessions to confirm the new `Past Sessions` action and loading hint feel obvious without overcrowding the primary start actions
-- Desktop past-sessions dialog search/delete behavior is the most adjacent follow-up if another history/navigation pass is needed, especially around keyboard focus, error recovery, and destructive-action confidence
+- Desktop past-sessions dialog list-load retry / focus-restoration polish is the most adjacent follow-up if another history/navigation pass is needed, now that single-delete safety and failure recovery are tightened
 - Once a runnable Electron target is available, live-check the desktop queued-send flow across paused, failed-head, `Retry & Resume`, and edited-head recovery states to confirm the new recovery path feels obvious in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Kitten and Supertonic provider sections across download failure, downloaded, runtime-unavailable, runtime-ready, and voice-test failure states to confirm the new retry/error hierarchy reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Parakeet provider section across not-downloaded, downloaded, runtime-unavailable, and preview-enabled states to confirm the new warning hierarchy reads clearly in the actual UI
@@ -1833,6 +1840,39 @@ Track small, shippable product improvements. Review this file before each iterat
   - once a runnable Electron target is available, live-check the desktop Repeat Tasks list across loading, error, empty, and populated states
   - inspect whether `loopStatusesQuery` also needs stale-status or retry guidance for `Running` / `Next run` metadata
   - consider the analogous mobile Agent Loops fetch-failure feedback path if the next iteration needs a cross-platform loops follow-up
+
+### 2026-03-08 — Desktop past-sessions delete guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop session history management in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
+  - specifically single-session deletion safety, failure recovery, and keyboard interaction inside the dialog list
+- Why it was chosen:
+  - the previous sessions empty-state pass improved discoverability into `Past Sessions`, which made the dialog’s destructive-action safety more important on a core navigation surface
+  - the dialog still allowed one-click single-session deletion, relied on toast-only failure feedback, and let row-level keyboard activation logic see key events from the nested delete button
+  - the opportunity had clear user value, stayed localized to one renderer component, and already had a mobile parity reference showing desktop was the weaker version
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
+  - `apps/desktop/src/renderer/src/lib/queries.ts` to confirm history-delete mutation behavior and query invalidation
+  - `apps/mobile/src/screens/SessionListScreen.tsx`; confirmed mobile already requires confirmation before deleting a session, so no equivalent change was needed there
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - added confirmation before deleting an individual past session so dense-history cleanup is less error-prone
+  - added inline single-delete failure guidance with a local `Retry delete` action instead of relying on toast-only feedback
+  - kept delete-all failures inline inside the destructive confirmation state so users can retry without losing context
+  - prevented the session row’s keyboard open handler from reacting to key events that originate from the nested delete button, which reduces accidental open/delete conflicts for keyboard users
+  - added row-scoped delete progress feedback and focused dependency-free regression coverage in `tests/desktop-past-sessions-dialog-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the implementation local to this dialog and reused the existing mutation/query invalidation flow instead of introducing a new shared confirmation abstraction
+  - used the existing browser/Electron confirmation pattern already present elsewhere in the desktop renderer to keep the change small and consistent with nearby destructive flows
+  - did not broaden this pass into query-load retry or focus-restoration refinements; those remain good adjacent follow-ups once the higher-risk destructive-action confidence gap is closed
+- Tests / verification:
+  - `node --test tests/desktop-past-sessions-dialog-guardrails.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check the dialog across keyboard navigation, single delete confirmation, failed delete retry, and delete-all failure states
+  - inspect whether the dialog also needs an inline `Retry loading` path or focus restoration after delete/close in a future history/navigation pass
 
 ### Iteration Template
 - Date:

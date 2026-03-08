@@ -11,13 +11,17 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@renderer/components/ui/dialog"
 import { toast } from "sonner"
 
 const INITIAL_PAST_SESSIONS = 20
+
+type PastSessionListItem = {
+  id: string
+  title: string
+}
 
 function formatTimestamp(timestamp: number): string {
   const now = dayjs()
@@ -54,12 +58,18 @@ export function PastSessionsDialog({
     INITIAL_PAST_SESSIONS,
   )
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
+  const [pendingDeleteSessionId, setPendingDeleteSessionId] = useState<string | null>(null)
+  const [deleteSessionError, setDeleteSessionError] = useState<PastSessionListItem | null>(null)
+  const [deleteAllErrorMessage, setDeleteAllErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) {
       setSearchQuery("")
       setPastSessionsCount(INITIAL_PAST_SESSIONS)
       setShowDeleteAllConfirm(false)
+      setPendingDeleteSessionId(null)
+      setDeleteSessionError(null)
+      setDeleteAllErrorMessage(null)
       return
     }
 
@@ -90,23 +100,53 @@ export function PastSessionsDialog({
     onOpenChange(false)
   }
 
-  const handleDeleteSession = async (conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const deleteSession = async (session: PastSessionListItem) => {
+    setDeleteSessionError(null)
+    setDeleteAllErrorMessage(null)
+    setPendingDeleteSessionId(session.id)
     try {
-      await deleteConversationMutation.mutateAsync(conversationId)
+      await deleteConversationMutation.mutateAsync(session.id)
     } catch (error) {
       console.error("Failed to delete session:", error)
-      toast.error("Failed to delete session")
+      setDeleteSessionError(session)
+    } finally {
+      setPendingDeleteSessionId(null)
     }
   }
 
+  const handleDeleteSession = async (
+    session: PastSessionListItem,
+    e: React.MouseEvent,
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (deleteConversationMutation.isPending || deleteAllConversationsMutation.isPending) {
+      return
+    }
+    if (!confirm(`Delete "${session.title}"? This session will be removed from Past Sessions.`)) {
+      return
+    }
+
+    await deleteSession(session)
+  }
+
+  const handleRetryDeleteSession = async () => {
+    if (!deleteSessionError) return
+    await deleteSession(deleteSessionError)
+  }
+
   const handleDeleteAll = async () => {
+    setDeleteSessionError(null)
+    setDeleteAllErrorMessage(null)
     try {
       await deleteAllConversationsMutation.mutateAsync()
       toast.success("All history deleted")
       setShowDeleteAllConfirm(false)
     } catch (error) {
-      toast.error("Failed to delete history")
+      console.error("Failed to delete history:", error)
+      setDeleteAllErrorMessage(
+        "Couldn't delete your past sessions yet. Your history is still available, so you can try again.",
+      )
     }
   }
 
@@ -137,8 +177,16 @@ export function PastSessionsDialog({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowDeleteAllConfirm(true)}
-              disabled={!conversationHistoryQuery.data?.length}
+              onClick={() => {
+                setDeleteSessionError(null)
+                setDeleteAllErrorMessage(null)
+                setShowDeleteAllConfirm(true)
+              }}
+              disabled={
+                !conversationHistoryQuery.data?.length
+                || deleteConversationMutation.isPending
+                || deleteAllConversationsMutation.isPending
+              }
               className="h-8 shrink-0 text-xs text-muted-foreground hover:border-destructive/50 hover:text-destructive"
               title="Delete all history"
             >
@@ -146,6 +194,41 @@ export function PastSessionsDialog({
               Delete All
             </Button>
           </div>
+
+          {deleteSessionError && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {`Couldn't delete "${deleteSessionError.title}" yet.`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    The session is still available, so you can try again.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setDeleteSessionError(null)}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleRetryDeleteSession}
+                  disabled={deleteConversationMutation.isPending || deleteAllConversationsMutation.isPending}
+                >
+                  Retry delete
+                </Button>
+              </div>
+            </div>
+          )}
 
           {showDeleteAllConfirm && (
             <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
@@ -156,12 +239,16 @@ export function PastSessionsDialog({
               <p className="text-xs text-muted-foreground">
                 This action cannot be undone.
               </p>
+              {deleteAllErrorMessage && (
+                <p className="text-xs text-destructive">{deleteAllErrorMessage}</p>
+              )}
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
                   onClick={() => setShowDeleteAllConfirm(false)}
+                  disabled={deleteAllConversationsMutation.isPending}
                 >
                   Cancel
                 </Button>
@@ -201,6 +288,7 @@ export function PastSessionsDialog({
                     tabIndex={0}
                     onClick={() => handleOpenPastSession(session.id)}
                     onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault()
                         handleOpenPastSession(session.id)
@@ -225,13 +313,22 @@ export function PastSessionsDialog({
                           </span>
                           <button
                             type="button"
-                            onClick={(e) => handleDeleteSession(session.id, e)}
-                            disabled={deleteConversationMutation.isPending}
+                            onClick={(e) =>
+                              handleDeleteSession(
+                                { id: session.id, title: session.title },
+                                e,
+                              )
+                            }
+                            disabled={deleteConversationMutation.isPending || deleteAllConversationsMutation.isPending}
                             className="col-start-1 row-start-1 rounded p-0.5 opacity-0 pointer-events-none transition-all hover:bg-destructive/20 hover:text-destructive focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
-                            title="Delete session"
-                            aria-label={`Delete ${session.title}`}
+                            title={pendingDeleteSessionId === session.id ? "Deleting session" : "Delete session"}
+                            aria-label={pendingDeleteSessionId === session.id ? `Deleting ${session.title}` : `Delete ${session.title}`}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            {pendingDeleteSessionId === session.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
                           </button>
                         </div>
                       </div>
