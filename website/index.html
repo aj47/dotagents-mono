@@ -1664,6 +1664,39 @@
             return 'No startup trigger — the first run waits for the normal interval schedule after install.'
         }
 
+        function normalizeStringArray(value) {
+            if (!Array.isArray(value)) return []
+            return value.map((item) => String(item || '').trim()).filter(Boolean)
+        }
+
+        function getMemoryPreviewContent(memory) {
+            const sections = []
+            const content = typeof memory.content === 'string' ? memory.content.trim() : ''
+            const keyFindings = normalizeStringArray(memory.keyFindings)
+            const userNotes = typeof memory.userNotes === 'string' ? memory.userNotes.trim() : ''
+
+            if (content) sections.push(`## Memory\n${content}`)
+            if (keyFindings.length) sections.push(`## Key findings\n${keyFindings.map((finding) => `- ${finding}`).join('\n')}`)
+            if (userNotes) sections.push(`## User notes\n${userNotes}`)
+
+            return sections.join('\n\n').trim()
+        }
+
+        function getMemoryMetaSummary(memory) {
+            const parts = []
+            const importance = typeof memory.importance === 'string' ? memory.importance.trim() : ''
+            const tags = normalizeStringArray(memory.tags)
+            const keyFindings = normalizeStringArray(memory.keyFindings)
+            const userNotes = typeof memory.userNotes === 'string' ? memory.userNotes.trim() : ''
+
+            if (importance) parts.push(`${importance} importance`)
+            if (tags.length) parts.push(`tags: ${tags.join(', ')}`)
+            if (keyFindings.length) parts.push(`${keyFindings.length} key finding${keyFindings.length === 1 ? '' : 's'}`)
+            if (userNotes) parts.push('includes user notes')
+
+            return parts.join(' · ')
+        }
+
         function isRecord(value) {
             return !!value && typeof value === 'object' && !Array.isArray(value)
         }
@@ -1914,6 +1947,28 @@
                         <h4>🧾 ${bundle.memories.length} bundled memories</h4>
                         <p class="bundle-memory-warning">Review memories carefully before installing publicly shared bundles — they can contain personal context, preferences, or semi-sensitive notes.</p>
                     </article>
+                    ${bundle.memories.map((memory) => {
+                        const details = getMemoryPreviewContent(memory)
+                        const preview = buildMarkdownPreview(details, { maxLines: 5, maxChars: 420 })
+                        const meta = getMemoryMetaSummary(memory)
+                        const title = typeof memory.title === 'string' && memory.title.trim()
+                            ? memory.title.trim()
+                            : (typeof memory.id === 'string' && memory.id.trim() ? memory.id.trim() : 'Untitled memory')
+
+                        return `
+                            <article class="bundle-entry">
+                                <h4>🧾 ${escapeHtml(title)}</h4>
+                                ${meta ? `<p class="bundle-entry-subtitle">${escapeHtml(meta)}</p>` : ''}
+                                ${preview.preview ? renderMarkdown(preview.preview) : ''}
+                                ${preview.truncated ? `
+                                    <details class="bundle-inline-details">
+                                        <summary>Show full memory note</summary>
+                                        <div class="bundle-inline-details-body">${renderMarkdown(details)}</div>
+                                    </details>
+                                ` : ''}
+                            </article>
+                        `
+                    }).join('')}
                 `
                 sections.push(renderSection(`🧾 Memories (${bundle.memories.length})`, memoryHtml))
             }

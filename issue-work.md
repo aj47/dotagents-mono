@@ -3307,3 +3307,37 @@
   - Re-run full desktop renderer/package validation once the missing desktop dependency baseline in this worktree is restored.
 
 - Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice outside both `#57` and `#58`; if no sharper candidate appears, the next honest `#57` follow-up is symmetric slot-activation affordances for import-targeted new slots rather than more restore copy.
+
+##### Issue #56 — Website inspector now previews bundled memory entries instead of only a generic count
+
+- Selection rationale:
+  - Re-read `issue-work.md` first, refreshed the still-open repo issues, and avoided diving back into `#57`/`#58` immediately after their recent desktop work.
+  - Re-checked issue `#56` plus its owner comment and confirmed the website inspector remained the cleanest local trust surface with direct user value.
+  - In source, the modal already previewed agent prompts, skills, tasks, and MCP details, but memories still rendered as a single count + warning block with no item-level context.
+  - That left a meaningful inspect-before-install gap for public bundles containing memories, while still being a tight website-only slice with low implementation risk.
+- Investigation:
+  - Re-read issue `#56` and its comment about inspect-before-install trust, warnings, and memory handling.
+  - Inspected `website/index.html` and confirmed `renderBundle(...)` only emitted one generic `🧾 {count} bundled memories` card plus the warning copy, with no title, tags, importance, or content preview per memory.
+  - Inspected `website/website-hub-inspector.test.js` and confirmed existing dependency-free source assertions were already the accepted verification path for the website inspector.
+- Important assumptions:
+  - Assumption: showing compact memory previews (title, metadata, excerpt) is acceptable even though the earlier owner comment only explicitly called for count + warning.
+  - Why acceptable: the modal’s purpose is to help users inspect what is already bundled publicly, and a short preview materially improves trust without turning the modal into a full editor.
+  - Assumption: the existing warning should remain even after previews are added.
+  - Why acceptable: previews improve transparency, but memories can still contain personal or semi-sensitive context, so the cautionary framing remains useful.
+- Changes implemented:
+  - Added `normalizeStringArray(...)`, `getMemoryPreviewContent(...)`, and `getMemoryMetaSummary(...)` helpers in `website/index.html` to build concise, human-readable memory previews from memory content, key findings, tags, importance, and optional user notes.
+  - Updated the bundle inspector memory section so it still leads with the existing warning card, but now also renders one entry per bundled memory with a title, metadata summary, markdown preview, and a `Show full memory note` inline details affordance when the preview is truncated.
+  - Extended `website/website-hub-inspector.test.js` with source assertions covering the new memory preview helpers, metadata summary strings, preview sizing, and inline details affordance.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: inline script syntax parse for `website/index.html` via `new Function(...)` extraction ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If real hub bundles start publishing larger curated memory packs, consider whether the modal should group memories by tags/importance or cap previews more aggressively for scanability.
+  - If users need deeper trust cues later, consider lightweight dependency metadata or bundle size/content density badges rather than expanding every section by default.
+  - Keep the modal preview-first; avoid turning website inspection into a browser-side bundle editor.
+
+- Next recommended issue work item: refresh open issues again and prefer a concrete bug or reliability slice outside `#56`, `#57`, and `#58`; if no sharper runtime bug emerges, reassess whether `#55` can now be validated more directly or whether another small website/desktop trust gap is still plainly visible in source.

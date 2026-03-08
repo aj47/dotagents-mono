@@ -28,6 +28,21 @@ test('bundle inspector modal includes required sections and warnings', () => {
     assert.match(source, /Memories \(\$\{bundle\.memories\.length\}\)/)
 })
 
+test('memory sections preview bundled memory context before install', () => {
+    assert.match(source, /function normalizeStringArray\(value\)/)
+    assert.match(source, /function getMemoryPreviewContent\(memory\)/)
+    assert.match(source, /function getMemoryMetaSummary\(memory\)/)
+    assert.match(source, /## Memory/)
+    assert.match(source, /## Key findings/)
+    assert.match(source, /## User notes/)
+    assert.match(source, /const details = getMemoryPreviewContent\(memory\)/)
+    assert.match(source, /const preview = buildMarkdownPreview\(details, \{ maxLines: 5, maxChars: 420 \}\)/)
+    assert.match(source, /const meta = getMemoryMetaSummary\(memory\)/)
+    assert.match(source, /tags: \$\{tags\.join\(', '\)\}/)
+    assert.match(source, /includes user notes/)
+    assert.match(source, /Show full memory note/)
+})
+
 test('repeat task preview discloses startup behavior and bundle defaults', () => {
     assert.match(source, /function getRepeatTaskScheduleSummary\(task\)/)
     assert.match(source, /function getRepeatTaskBehaviorNote\(task\)/)
