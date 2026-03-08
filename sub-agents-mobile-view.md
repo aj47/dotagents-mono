@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 154 - Make the ACP no-agent warning immediately recoverable on mobile
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-edited selector recovery copy or the agent edit helper-text pass without a new issue.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-agent-mode-mobile.test.js`, focusing on the `Agent Settings` ACP main-agent flow because recent iterations had improved copy/state summaries there but had not yet made the zero-enabled-agent warning actionable.
+  - Tried again to recover live-validation confidence, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - In `Settings → Agent Settings`, ACP mode already surfaced a clear warning when no enabled ACP or Stdio main agent was available.
+  - But on mobile that notice was still passive text only: users had to read the warning and then manually move back to the nearby `API` / `ACP` mode chips to recover.
+  - On a narrow screen, that added avoidable cognitive load right in a high-risk state where new chats would otherwise have no ready ACP main agent.
+- Issue identified:
+  - The ACP zero-enabled-agent warning explained the broken state but did not offer an immediate in-place recovery action, weakening state clarity and user control on mobile.
+- Decision and rationale:
+  - Keep the existing `Agent Settings` layout, warning copy, and agent-selection controls unchanged.
+  - Avoid a broader redesign or a more opinionated action like auto-switching modes.
+  - Make the smallest effective improvement instead: add a single primary recovery button inside the warning card only when ACP mode has zero enabled command-based agents, so users can switch new chats back to API mode without hunting for the chip row.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to derive `showAgentSettingsSwitchToApiAction` for the exact ACP/no-enabled-agent state.
+  - Added an inline `Use API mode instead` button inside the existing notice card, wired to `handleRemoteSettingUpdate('mainAgentMode', 'api')` with explicit accessibility label and hint.
+  - Added focused button styles that reuse the mobile minimum-touch-target pattern while stretching cleanly across the notice card.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` to cover the new state gate, button label/hint, mode-switch action wiring, and notice-button styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that, in the no-enabled-agent ACP state, switching back to API mode is the safest immediate recovery because it restores a working main-agent path without changing or creating any agent configs.
+  - Kept the action scoped to the zero-enabled-agent case only; when command-based agents are available, the existing selector chips remain the more direct recovery path.
+  - This remains a source-backed improvement and still needs live confirmation that the extra button fits comfortably inside the warning card on very narrow screens.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the warning card now shows `Use API mode instead` with balanced spacing and no awkward wrapping.
+  - Confirm the button feels clearly subordinate to the warning text rather than competing with the main agent mode chips above it.
+  - If live validation shows the action card feels too visually heavy, keep the behavior but trim the label or reduce its visual emphasis before changing the layout.
+
 ## Iteration 153 - Explain that disabled mobile agents pause auto-spawn
 
 - Date: 2026-03-08

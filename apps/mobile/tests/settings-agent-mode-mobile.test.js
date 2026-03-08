@@ -29,9 +29,15 @@ test('turns the ACP no-agent state into explicit, mode-aware guidance', () => {
   assert.match(settingsSource, /availableAcpMainAgents\.length > 0 \? \(/);
   assert.match(settingsSource, /API uses external LLMs, ACP routes to an enabled ACP or Stdio agent/);
   assert.match(settingsSource, /No enabled command-based agents are available\. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent\./);
+  assert.match(settingsSource, /const showAgentSettingsSwitchToApiAction = remoteSettings\?\.mainAgentMode === 'acp'[\s\S]*?availableAcpMainAgents\.length === 0;/);
+  assert.match(settingsSource, /const switchToApiModeButtonLabel = 'Use API mode instead';/);
+  assert.match(settingsSource, /const switchToApiModeButtonHint = 'Switches new chats back to the direct API model until an enabled ACP or Stdio main agent is available again\.'/);
+  assert.match(settingsSource, /\{showAgentSettingsSwitchToApiAction && \([\s\S]*?handleRemoteSettingUpdate\('mainAgentMode', 'api'\)[\s\S]*?createButtonAccessibilityLabel\(switchToApiModeButtonLabel\)[\s\S]*?accessibilityHint=\{switchToApiModeButtonHint\}[\s\S]*?\{switchToApiModeButtonLabel\}[\s\S]*?\)\}/);
   assert.match(settingsSource, /\{availableAcpMainAgents\.length > 0 && \([\s\S]*?Select which enabled ACP or Stdio agent handles requests[\s\S]*?\)\}/);
   assert.match(settingsSource, /agentSettingsNoticeContainer:\s*\{[\s\S]*?padding:\s*spacing\.md[\s\S]*?borderColor:\s*theme\.colors\.border[\s\S]*?backgroundColor:\s*theme\.colors\.secondary/);
   assert.match(settingsSource, /agentSettingsNoticeText:\s*\{[\s\S]*?fontSize:\s*13,[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.foreground/);
+  assert.match(settingsSource, /agentSettingsNoticeButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget[\s\S]*?marginTop:\s*spacing\.sm,[\s\S]*?alignSelf:\s*'stretch'[\s\S]*?alignItems:\s*'center'/);
+  assert.match(settingsSource, /agentSettingsNoticeButtonText:\s*\{[\s\S]*?fontSize:\s*14,[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?textAlign:\s*'center'/);
 });
 
 test('keeps Agent Settings mode context visible in the collapsible header on mobile', () => {

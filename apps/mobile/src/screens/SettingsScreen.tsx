@@ -345,6 +345,10 @@ export default function SettingsScreen({ navigation }: any) {
     selectedMainAgentAvailabilityState,
     selectedMainAgentLabel,
   ]);
+  const showAgentSettingsSwitchToApiAction = remoteSettings?.mainAgentMode === 'acp'
+    && availableAcpMainAgents.length === 0;
+  const switchToApiModeButtonLabel = 'Use API mode instead';
+  const switchToApiModeButtonHint = 'Switches new chats back to the direct API model until an enabled ACP or Stdio main agent is available again.';
   const agentSettingsSectionSummary = useMemo(() => {
     if (!remoteSettings) return null;
 
@@ -2031,6 +2035,18 @@ export default function SettingsScreen({ navigation }: any) {
                         >
                           {agentSettingsMainAgentNotice}
                         </Text>
+                        {showAgentSettingsSwitchToApiAction && (
+                          <TouchableOpacity
+                            style={styles.agentSettingsNoticeButton}
+                            onPress={() => handleRemoteSettingUpdate('mainAgentMode', 'api')}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(switchToApiModeButtonLabel)}
+                            accessibilityHint={switchToApiModeButtonHint}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.agentSettingsNoticeButtonText}>{switchToApiModeButtonLabel}</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                     {availableAcpMainAgents.length > 0 ? (
@@ -3456,6 +3472,23 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 13,
       lineHeight: 18,
       color: theme.colors.foreground,
+    },
+    agentSettingsNoticeButton: {
+      ...compactActionTouchTarget,
+      marginTop: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '26',
+      backgroundColor: theme.colors.primary + '10',
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    agentSettingsNoticeButtonText: {
+      fontSize: 14,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     agentSettingsWarningNoticeContainer: {
       borderColor: '#f59e0b',
