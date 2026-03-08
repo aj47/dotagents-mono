@@ -109,6 +109,14 @@ test('LoopEditScreen explains when no saved profiles are available to assign', (
   assert.match(loopEditSource, /showNoSavedProfilesNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?No saved profiles yet\. This loop can still run with No profile, or you can create an agent in Settings → Agents and come back to assign it here\.[\s\S]*?<\/View>[\s\S]*?\)/);
 });
 
+test('LoopEditScreen makes profile loading feel in-progress instead of passive helper text', () => {
+  assert.match(loopEditSource, /const showProfileLoadingNotice = !!settingsClient && isLoadingProfiles;/);
+  assert.match(loopEditSource, /showProfileLoadingNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?<View style=\{styles\.profileLoadingNoticeRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?Loading saved profiles\. You can keep No profile if you want this loop unassigned\.[\s\S]*?<\/View>[\s\S]*?\)/);
+  assert.match(loopEditSource, /profileLoadingNoticeRow:\s*\{[\s\S]*?flexDirection:\s*'row'[\s\S]*?alignItems:\s*'center'[\s\S]*?gap:\s*spacing\.sm/);
+  assert.match(loopEditSource, /profileLoadingNoticeText:\s*\{[\s\S]*?flex:\s*1/);
+  assert.doesNotMatch(loopEditSource, /\{isLoadingProfiles && <Text style=\{styles\.helperText\}>Loading profiles\.\.\.<\/Text>\}/);
+});
+
 test('LoopEditScreen explains when the loop is intentionally left unassigned', () => {
   assert.match(loopEditSource, /const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length > 0 && !formData\.profileId;/);
   assert.match(loopEditSource, /showNoProfileSelectedHelper && \([\s\S]*?No profile selected\. This loop will run without a saved profile until you choose one\.[\s\S]*?\)/);

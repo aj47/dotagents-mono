@@ -2785,3 +2785,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long agent names still show a clear selector affordance in the composer chip.
   - Compare the composer chip against the header badge and selector sheet with the same long-name data so truncation feels consistent across entry points.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 65: make loop profile loading read like active progress
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the `Agent Profile` section already used explicit inline notices for load failures and the zero-saved-profiles state.
+  - The in-progress state still rendered only `Loading profiles...` as plain helper text under the chips.
+  - On mobile, that made the section feel visually settled even while saved profile choices were still loading, and it did not reaffirm that keeping `No profile` was still a safe path during the wait.
+- Issue selected:
+  - The loop-profile loading state still read like passive metadata instead of active progress, weakening state clarity and user confidence in a dense mobile edit flow.
+- Decision:
+  - Keep the existing chip layout, retry path, and neutral/warning notice styling unchanged.
+  - Do not add a new action or redesign the `Agent Profile` section while live validation is blocked.
+  - Make the smallest local hierarchy fix: promote only the loading state into the same inline-notice family, add a spinner, and clarify that `No profile` remains valid while profiles load.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - derive `showProfileLoadingNotice` from the existing profile-loading state,
+    - replace the helper-text-only loading copy with a neutral inline notice containing an `ActivityIndicator`,
+    - clarify that users can keep `No profile` selected while saved profiles continue loading,
+    - add a compact loading-row layout so the spinner and copy stay readable on narrow screens.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new loading notice, spinner row, and removal of the old helper-text-only loading treatment.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the loading notice feels appropriately distinct without crowding the `No profile selected`, zero-saved-profiles, and retry-warning states.
+  - If live validation later shows the loading copy feels too heavy for a transient state, the next refinement should tighten the wording before adding any new UI.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the loading notice is visibly distinct from both the neutral empty state and the retry warning.
+  - Check the `Agent Profile` section with a slow or delayed profile fetch to confirm the notice keeps `No profile` feeling safe and intentional while choices load.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

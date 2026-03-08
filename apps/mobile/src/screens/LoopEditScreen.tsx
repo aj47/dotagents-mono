@@ -293,6 +293,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const trimmedPrompt = formData.prompt.trim();
   const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
+  const showProfileLoadingNotice = !!settingsClient && isLoadingProfiles;
   const showProfileLoadErrorNotice = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
   const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length > 0 && !formData.profileId;
   const showNoSavedProfilesNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
@@ -467,7 +468,16 @@ export default function LoopEditScreen({ navigation, route }: any) {
           </TouchableOpacity>
         ))}
       </View>
-      {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
+      {showProfileLoadingNotice && (
+        <View style={styles.profileNoticeContainer}>
+          <View style={styles.profileLoadingNoticeRow}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={[styles.profileNoticeText, styles.profileLoadingNoticeText]}>
+              Loading saved profiles. You can keep No profile if you want this loop unassigned.
+            </Text>
+          </View>
+        </View>
+      )}
       {showProfileLoadErrorNotice && (
         <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
           <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>
@@ -577,6 +587,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.secondary,
       gap: spacing.sm,
     },
+    profileLoadingNoticeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
     profileNoticeWarningContainer: {
       backgroundColor: theme.colors.destructive + '12',
       borderColor: theme.colors.destructive + '24',
@@ -585,6 +600,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 12,
       lineHeight: 18,
       color: theme.colors.foreground,
+    },
+    profileLoadingNoticeText: {
+      flex: 1,
     },
     profileNoticeWarningText: {
       color: theme.colors.destructive,
