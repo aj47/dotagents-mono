@@ -198,6 +198,18 @@ test('LoopEditScreen disables unavailable saved-profile chips while refreshing o
   assert.match(loopEditSource, /profileOptionDisabled:\s*\{[\s\S]*?opacity:\s*0\.6/);
 });
 
+test('LoopEditScreen explains unavailable saved-profile options before the chip list', () => {
+  const profileOptionsIndex = loopEditSource.indexOf('<View style={styles.profileOptions}>');
+  const loadingNoticeIndex = loopEditSource.indexOf('{showProfileLoadingNotice && (');
+  const loadErrorNoticeIndex = loopEditSource.indexOf('{showProfileLoadErrorNotice && (');
+
+  assert.notStrictEqual(profileOptionsIndex, -1);
+  assert.notStrictEqual(loadingNoticeIndex, -1);
+  assert.notStrictEqual(loadErrorNoticeIndex, -1);
+  assert.ok(loadingNoticeIndex < profileOptionsIndex, 'Expected the loading notice to render before the profile chips');
+  assert.ok(loadErrorNoticeIndex < profileOptionsIndex, 'Expected the load-error notice to render before the profile chips');
+});
+
 test('LoopEditScreen refreshes saved profiles when returning from nested agent creation', () => {
   assert.match(loopEditSource, /import \{ useCallback, useEffect, useMemo, useRef, useState \} from 'react';/);
   assert.match(loopEditSource, /const hasSeenScreenFocusRef = useRef\(false\);/);

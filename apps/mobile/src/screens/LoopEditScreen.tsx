@@ -523,6 +523,33 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
       <Text style={styles.label}>Agent Profile (optional)</Text>
       <Text style={styles.profileAssignmentSummary}>{profileAssignmentSummaryText}</Text>
+      {showProfileLoadingNotice && (
+        <View style={styles.profileNoticeContainer}>
+          <View style={styles.profileLoadingNoticeRow}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={[styles.profileNoticeText, styles.profileLoadingNoticeText]}>
+              {profileLoadingNoticeText}
+            </Text>
+          </View>
+        </View>
+      )}
+      {showProfileLoadErrorNotice && (
+        <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
+          <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>
+            {profileLoadErrorNoticeText}
+          </Text>
+          <TouchableOpacity
+            style={styles.profileNoticeRetryButton}
+            onPress={handleRetryProfiles}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Retry loading saved profiles')}
+            accessibilityHint="Attempts to load saved profiles for this loop again."
+            activeOpacity={0.7}
+          >
+            <Text style={styles.profileNoticeRetryButtonText}>Retry Saved Profiles</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <View style={styles.profileOptions}>
         <TouchableOpacity
           style={[styles.profileOption, !formData.profileId && styles.profileOptionActive]}
@@ -573,33 +600,6 @@ export default function LoopEditScreen({ navigation, route }: any) {
           </TouchableOpacity>
         ))}
       </View>
-      {showProfileLoadingNotice && (
-        <View style={styles.profileNoticeContainer}>
-          <View style={styles.profileLoadingNoticeRow}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={[styles.profileNoticeText, styles.profileLoadingNoticeText]}>
-              {profileLoadingNoticeText}
-            </Text>
-          </View>
-        </View>
-      )}
-      {showProfileLoadErrorNotice && (
-        <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
-          <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>
-            {profileLoadErrorNoticeText}
-          </Text>
-          <TouchableOpacity
-            style={styles.profileNoticeRetryButton}
-            onPress={handleRetryProfiles}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Retry loading saved profiles')}
-            accessibilityHint="Attempts to load saved profiles for this loop again."
-            activeOpacity={0.7}
-          >
-            <Text style={styles.profileNoticeRetryButtonText}>Retry Saved Profiles</Text>
-          </TouchableOpacity>
-        </View>
-      )}
       {showMissingSelectedProfileNotice && (
         <View style={[styles.profileNoticeContainer, styles.profileNoticeWarningContainer]}>
           <Text style={[styles.profileNoticeText, styles.profileNoticeWarningText]}>

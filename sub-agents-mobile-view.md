@@ -1,5 +1,46 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 142 - Put saved-profile loading and retry guidance before disabled mobile chips
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-touched disabled-save helper work or selector sheet height change without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/tests/sub-agent-edit-mobile.test.js` because the loop profile assignment section still had a source-backed state-ordering issue available.
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi` → `root node_modules: missing`
+    - `printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi` → `apps/mobile node_modules: missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `LoopEditScreen` already disabled saved-profile chips while profile options were refreshing or when the most recent refresh failed.
+  - The explanatory loading / retry notices were rendered only after the wrapped chip list.
+  - On a narrow mobile screen, that ordering could expose inert chips before the reason was visible, especially once profile names wrapped across multiple lines.
+- Issue identified:
+  - The mobile loop profile picker surfaced disabled saved-profile controls before the explanation for why those controls were temporarily unavailable, weakening state clarity at the point of interaction.
+- Decision and rationale:
+  - Keep the existing notices, retry action, chip layout, and `No profile` affordance intact.
+  - Avoid another style pass or broader section redesign; the smallest effective change is to move the existing loading/error guidance ahead of the chips it explains.
+  - Limit the reordering to the unavailable-options states so the stable, normal assignment flow remains familiar.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` so `showProfileLoadingNotice` and `showProfileLoadErrorNotice` render immediately after the `Agent Profile` summary and before the wrapped chip list.
+  - Left the missing-selected-profile warning and the `No saved profiles yet` recovery notice in place after the chip list because those messages describe the post-selection outcome rather than a temporary disabled state.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage that asserts the loading and load-error notices appear before `styles.profileOptions`.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed users benefit more from seeing the reason before disabled chips than from preserving the previous label → chips → notice order.
+  - Kept the `No profile` chip above the later missing-selection / no-saved-profiles notices so users still reach the unassigned fallback quickly.
+  - This still needs live confirmation that the reordered notices feel obvious without making the section look too notice-heavy on very short screens.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that loading and retry guidance stays visible before disabled saved-profile chips on narrow screens.
+  - Check the section with long profile names and wrapped chip rows to confirm the pre-list notice actually reduces confused tapping.
+  - If live validation shows the section now feels too notice-heavy, prefer a small spacing adjustment before changing the copy or chip behavior.
+
 ## Iteration 141 - Keep disabled save-state guidance visible near mobile edit CTAs
 
 - Date: 2026-03-08
