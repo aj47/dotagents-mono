@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task creation flow in `apps/desktop/src/renderer/src/pages/settings-loops.tsx` plus main-process repeat-task persistence in `apps/desktop/src/main/loop-service.ts` / `apps/desktop/src/main/agents-files/tasks.ts`, with mobile loop-creation parity review in `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts`.
 - 2026-03-08: Desktop transcript post-processing prompt editor save behavior in `apps/desktop/src/renderer/src/pages/settings-general.tsx` plus mobile parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider numeric TTS inputs (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` plus mobile TTS parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider settings Groq/Gemini credential inputs (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`) plus mobile parity check in `apps/mobile/src/screens/SettingsScreen.tsx`.
@@ -15,26 +16,66 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop repeat-task creation now uses collision-safe readable IDs, so creating a second task with the same name no longer silently overwrites the first task file/config entry.
 - 2026-03-08: Desktop transcript post-processing prompt editing now uses a local draft, debounced autosave, blur flush, and latest-config merging instead of mutating config on every keystroke inside the dialog.
 - 2026-03-08: Desktop provider numeric TTS settings now keep local drafts for OpenAI speed plus Supertonic speed/quality steps, debounce config writes, flush valid edits on blur, and restore invalid drafts to the last saved value.
 - 2026-03-08: Desktop provider settings now keep local drafts for Groq/Gemini API keys and base URLs, debounce config writes, flush on blur, and merge delayed saves against the latest config snapshot.
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.ids.test.ts` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: `git diff --check`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused desktop Vitest verification for `src/renderer/src/pages/settings-loops.ids.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Agent/task management flows
 - Shared utility reliability / guardrails
+- Memories management flows
 
 ### Next Highest-Value Targets
-- Inspect agent/task management flows for the next small reliability or UX win
+- Inspect shared utility reliability / guardrails for the next small resilience win
+- Inspect memories management flows for the next localized UX/reliability improvement
 - Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Desktop repeat-task duplicate-create guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task management in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - repeat-task persistence in `apps/desktop/src/main/loop-service.ts` and `apps/desktop/src/main/agents-files/tasks.ts`
+- Why it was chosen:
+  - the ledger identified agent/task management flows as the next fresh area that had not been investigated recently
+  - desktop repeat-task creation derived the task ID directly from the task name, so creating another task with the same or similar name would reuse the same ID and silently overwrite the existing task file/config entry
+  - the fix had direct user value, was highly localized, and avoided a broader scheduling refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `apps/desktop/src/main/loop-service.ts`
+  - `apps/desktop/src/main/agents-files/tasks.ts`
+  - repeat-task IPC handlers in `apps/desktop/src/main/tipc.ts`
+  - mobile loop creation in `apps/mobile/src/screens/LoopEditScreen.tsx` plus `apps/mobile/src/lib/settingsApi.ts`; confirmed mobile creates new loops through the API layer rather than reusing the desktop name-slug path
+  - remote loop creation in `apps/desktop/src/main/remote-server.ts`; confirmed the remote API already creates random loop IDs, so the silent-overwrite risk was localized to desktop settings create flow
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - extracted a small `settings-loops.ids.ts` helper for readable slug generation plus collision-safe ID suffixing
+  - desktop repeat-task creation now keeps readable IDs when available, but automatically appends `-2`, `-3`, etc. when the base slug already exists
+  - collision checks are case-insensitive so desktop task creation does not accidentally collide on case-insensitive filesystems
+  - editing an existing task still preserves its current ID instead of renaming task files behind the user’s back
+  - added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-loops.ids.test.ts`
+- Assumptions / tradeoffs / rationale:
+  - kept readable, name-derived IDs rather than switching desktop repeat tasks to opaque UUIDs so the underlying `.agents/tasks/<id>/task.md` structure stays predictable for users browsing files directly
+  - scoped the change to desktop create flow because mobile and remote API creation paths already avoid this specific overwrite mode
+  - preferred automatic suffixing over a blocking validation error so creating similarly named tasks remains fast and low-friction
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.ids.test.ts`, but the current workspace still lacks installed dependencies and `vitest` was unavailable
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run `src/renderer/src/pages/settings-loops.ids.test.ts`
+  - inspect shared utility reliability / guardrails for the next localized resilience pass
+  - inspect memories management flows for the next non-overlapping UX/reliability improvement
 
 ### 2026-03-08 — Desktop transcript post-processing prompt draft/save resilience
 - Date:

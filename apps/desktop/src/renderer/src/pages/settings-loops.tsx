@@ -4,6 +4,7 @@ import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
+import { buildUniqueLoopId } from "./settings-loops.ids"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
@@ -135,9 +136,8 @@ export function SettingsLoops() {
     const sanitizedIntervalMinutes = Number.isFinite(editing.intervalMinutes) && editing.intervalMinutes >= 1
       ? Math.floor(editing.intervalMinutes)
       : 1
-    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
-      id: editing.id || slugify(editing.name),
+      id: editing.id || buildUniqueLoopId(editing.name, loops.map((loop) => loop.id)),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
       intervalMinutes: sanitizedIntervalMinutes,
