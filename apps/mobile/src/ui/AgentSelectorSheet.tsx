@@ -192,7 +192,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         <View style={styles.profileInfo}>
           <Text
             style={[styles.profileName, isSelected && styles.profileNameSelected]}
-            numberOfLines={1}
+            numberOfLines={2}
             ellipsizeMode="tail"
           >
             {item.name}
@@ -406,6 +406,7 @@ function createStyles(theme: Theme) {
     },
     profileName: {
       fontSize: 16,
+      lineHeight: 20,
       fontWeight: '500',
       color: theme.colors.foreground,
       flexShrink: 1,
@@ -421,6 +422,7 @@ function createStyles(theme: Theme) {
       flexShrink: 1,
     },
     profileCurrentBadge: {
+      alignSelf: 'flex-start',
       flexShrink: 0,
       paddingHorizontal: spacing.sm,
       paddingVertical: 6,
@@ -439,6 +441,7 @@ function createStyles(theme: Theme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
+      alignSelf: 'flex-start',
       flexShrink: 0,
       paddingHorizontal: spacing.sm,
       paddingVertical: 6,

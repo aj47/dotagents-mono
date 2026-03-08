@@ -41,11 +41,12 @@ test('keeps selector-sheet retry and cancel actions mobile-sized with explicit b
 });
 
 test('keeps long agent names and descriptions stable inside selector rows on narrow screens', () => {
-  assert.match(sheetSource, /<Text[\s\S]*?style=\{\[styles\.profileName, isSelected && styles\.profileNameSelected\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{item\.name\}/);
+  assert.match(sheetSource, /<Text[\s\S]*?style=\{\[styles\.profileName, isSelected && styles\.profileNameSelected\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{item\.name\}/);
   assert.match(sheetSource, /profileInfo:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:/);
-  assert.match(sheetSource, /profileName:\s*\{[\s\S]*?flexShrink:\s*1/);
+  assert.match(sheetSource, /profileName:\s*\{[\s\S]*?lineHeight:\s*20,[\s\S]*?flexShrink:\s*1/);
   assert.match(sheetSource, /profileDescription:\s*\{[\s\S]*?flexShrink:\s*1/);
-  assert.match(sheetSource, /profileCurrentBadge:\s*\{[\s\S]*?flexShrink:\s*0/);
+  assert.match(sheetSource, /profileCurrentBadge:\s*\{[\s\S]*?alignSelf:\s*'flex-start',[\s\S]*?flexShrink:\s*0/);
+  assert.match(sheetSource, /profilePendingBadge:\s*\{[\s\S]*?alignSelf:\s*'flex-start',[\s\S]*?flexShrink:\s*0/);
 });
 
 test('gives selector rows the shared 44px mobile touch-target baseline', () => {

@@ -2401,3 +2401,44 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that selector rows still feel proportionate while now clearing the mobile tap-target baseline.
   - Check a long agent name in both current and pending states to confirm the larger guaranteed target does not crowd the badge treatment.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 56: let long selector names breathe beside current and pending badges
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+  - Fresh screenshot-backed Expo Web or simulator validation was still not practical in this worktree.
+- Current behavior observed before the fix:
+  - Source review showed selector rows already had stronger switching-state feedback and a guaranteed `44px` touch target.
+  - The primary agent name in each row was still clamped to a single line while `Current` / `Switching…` badges stayed fixed on the right.
+  - On narrow mobile rows, that meant longer agent names could lose too much identifying text exactly when state badges were present and competing for the same horizontal space.
+- Issue selected:
+  - `AgentSelectorSheet` still compressed long agent names too aggressively, weakening scanability and state clarity in current/pending selector rows on mobile.
+- Decision:
+  - Keep the existing selector layout, one-line secondary description, and current/pending badge treatments unchanged.
+  - Do not broaden into a selector-sheet redesign while live validation is blocked.
+  - Make the smallest local readability fix: allow the primary agent name to use two lines and anchor status badges to the top edge so long names and badges coexist more predictably on narrow screens.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - let selector-row agent names wrap to two lines with tail truncation,
+    - add explicit `lineHeight` for the multi-line name block,
+    - top-align the `Current` and `Switching…` badges so they stay visually stable beside taller names.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new long-name selector-row contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The two-line selector-name treatment still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - If live validation later shows two-line names make dense selector lists feel too tall, the next step may need a tighter badge/text balance rather than more copy.
+  - Because live inspection is still blocked, broader selector-sheet spacing or hierarchy changes should continue waiting for real mobile evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long current and pending agent names remain readable without making selector rows feel oversized.
+  - Check both profile mode and ACP mode to confirm the two-line clamp behaves well with real server-provided names.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
