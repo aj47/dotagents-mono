@@ -2695,3 +2695,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long current-agent names stay readable in the selector empty state without forcing awkward overflow.
   - Smoke-test the same long-name scenario in the header badge and any other selector entry points so truncation remains consistent across mobile sub-agent surfaces.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 63: keep the header selector chevron visible beside long agent names
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - `apps/mobile/src/screens/SessionListScreen.tsx`
+  - focused header regression coverage in `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed both mobile header entry points already clamp the current agent badge to one line.
+  - But the interactive badge still rendered the agent name and `▼` inside the same truncating text node.
+  - On narrow screens, a longer current agent name could therefore truncate away the chevron entirely, weakening the visual cue that the badge still opens the selector.
+- Issue selected:
+  - The primary mobile sub-agent header entry point could lose its selector affordance under long agent names, weakening interaction clarity exactly where users decide whether switching is available.
+- Decision:
+  - Keep the existing stacked header layout, badge sizing, and no-options passive-state treatment unchanged.
+  - Do not redesign the header or add more copy while live validation is blocked.
+  - Make the smallest local fix: split the interactive badge into a truncating label plus a fixed chevron so the current agent can shrink without hiding the selector affordance.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx` to:
+    - render the current agent label and chevron as separate badge nodes in the interactive header state,
+    - add explicit tail truncation and `flexShrink` to the label,
+    - keep the chevron fixed-width so it remains visible beside long names,
+    - add the same explicit tail truncation to the passive no-options badge text for consistency.
+  - Updated `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` with focused coverage for the separated chevron contract and explicit truncation markup.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the fixed chevron remains visually balanced beside very long agent names in both `Chat` and `Chats` headers.
+  - The composer-level agent chip still uses the combined `name + chevron` string and may need the same treatment later if live validation shows similar affordance loss there.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long agent names still show a clear selector affordance in both mobile headers.
+  - Compare the header badge against the composer chip with the same long-name data before duplicating this pattern elsewhere.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

@@ -24,7 +24,8 @@ for (const [screenName, source] of [
 
   test(`${screenName} keeps the header agent label legible on narrow screens`, () => {
     assert.match(source, /style=\{styles\.headerAgentSelectorBadge\}/);
-    assert.match(source, /style=\{styles\.headerAgentSelectorBadgeText\} numberOfLines=\{1\}/);
+    assert.match(source, /style=\{styles\.headerAgentSelectorBadgeText\} numberOfLines=\{1\} ellipsizeMode="tail"/);
+    assert.match(source, /headerAgentSelectorBadgeText:\s*\{[\s\S]*?flexShrink: 1/);
     assert.match(source, /maxWidth: 180/);
   });
 
@@ -33,12 +34,14 @@ for (const [screenName, source] of [
     assert.match(source, /hasAgentSelectorOptions \? \(/);
     assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
     assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. No switchable agents are available right now\.`\}/);
-    assert.match(source, /\{`\$\{currentAgentLabel\} ▼`\}/);
+    assert.match(source, /\{currentAgentLabel\}/);
+    assert.match(source, /style=\{styles\.headerAgentSelectorBadgeChevron\}[\s\S]*?>\s*▼\s*<\/Text>/);
+    assert.doesNotMatch(source, /\{`\$\{currentAgentLabel\} ▼`\}/);
   });
 
   test(`${screenName} styles the no-options header badge as passive status instead of an active selector`, () => {
     assert.match(source, /style=\{\[styles\.headerAgentSelectorBadge, styles\.headerAgentSelectorBadgeStatic\]\}/);
-    assert.match(source, /style=\{\[styles\.headerAgentSelectorBadgeText, styles\.headerAgentSelectorBadgeTextStatic\]\} numberOfLines=\{1\}/);
+    assert.match(source, /style=\{\[styles\.headerAgentSelectorBadgeText, styles\.headerAgentSelectorBadgeTextStatic\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"/);
     assert.match(source, /headerAgentSelectorBadgeStatic:\s*\{[\s\S]*?backgroundColor: theme\.colors\.muted/);
     assert.match(source, /headerAgentSelectorBadgeTextStatic:\s*\{[\s\S]*?color: theme\.colors\.mutedForeground/);
   });

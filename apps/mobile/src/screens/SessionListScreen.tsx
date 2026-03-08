@@ -651,8 +651,11 @@ export default function SessionListScreen({ navigation }: Props) {
           >
             <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
             <View style={styles.headerAgentSelectorBadge}>
-              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
-                {`${currentAgentLabel} ▼`}
+              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1} ellipsizeMode="tail">
+                {currentAgentLabel}
+              </Text>
+              <Text style={styles.headerAgentSelectorBadgeChevron}>
+                ▼
               </Text>
             </View>
           </TouchableOpacity>
@@ -664,7 +667,11 @@ export default function SessionListScreen({ navigation }: Props) {
           >
             <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
             <View style={[styles.headerAgentSelectorBadge, styles.headerAgentSelectorBadgeStatic]}>
-              <Text style={[styles.headerAgentSelectorBadgeText, styles.headerAgentSelectorBadgeTextStatic]} numberOfLines={1}>
+              <Text
+                style={[styles.headerAgentSelectorBadgeText, styles.headerAgentSelectorBadgeTextStatic]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {currentAgentLabel}
               </Text>
             </View>
@@ -1062,6 +1069,14 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 12,
       color: theme.colors.primary,
       fontWeight: '600',
+      flexShrink: 1,
+    },
+    headerAgentSelectorBadgeChevron: {
+      fontSize: 11,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      marginLeft: 4,
+      flexShrink: 0,
     },
     headerAgentSelectorBadgeTextStatic: {
       color: theme.colors.mutedForeground,
