@@ -15,6 +15,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { preprocessTextForTTS } from '@dotagents/shared';
+import {
+  createButtonAccessibilityLabel,
+  createExpandCollapseAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+} from '../lib/accessibility';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
@@ -71,6 +76,17 @@ export function ResponseHistoryPanel({
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const isMountedRef = useRef(true);
   const speechRequestIdRef = useRef(0);
+  const historyHeaderTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 12,
+    verticalPadding: 8,
+    horizontalMargin: 0,
+  });
+  const responseSpeakTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalMargin: 0,
+  });
+  const responseHistoryDisclosureHint = 'Shows or hides recent respond-to-user outputs from the current agent session.';
 
   const nextSpeechRequestId = useCallback(() => {
     speechRequestIdRef.current += 1;
@@ -170,11 +186,10 @@ export function ResponseHistoryPanel({
       marginBottom: spacing.sm,
     },
     header: {
+      ...historyHeaderTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
       borderBottomWidth: isCollapsed ? 0 : 1,
       borderBottomColor: theme.colors.border,
       backgroundColor: `${theme.colors.muted}50`,
@@ -221,7 +236,12 @@ export function ResponseHistoryPanel({
       color: theme.colors.mutedForeground,
     },
     speakButton: {
-      padding: 4,
+      ...responseSpeakTouchTarget,
+      borderRadius: 999,
+      flexShrink: 0,
+    },
+    speakButtonActive: {
+      backgroundColor: `${theme.colors.primary}18`,
     },
     separator: {
       height: 1,
@@ -235,8 +255,10 @@ export function ResponseHistoryPanel({
         style={styles.header}
         onPress={() => setIsCollapsed((prev) => !prev)}
         accessibilityRole="button"
-        accessibilityLabel={isCollapsed ? 'Show agent responses' : 'Hide agent responses'}
+        accessibilityLabel={createExpandCollapseAccessibilityLabel('agent responses', !isCollapsed)}
+        accessibilityHint={responseHistoryDisclosureHint}
         accessibilityState={{ expanded: !isCollapsed }}
+        activeOpacity={0.7}
       >
         <View style={styles.headerLeft}>
           <Ionicons name="chatbubbles-outline" size={16} color={theme.colors.mutedForeground} />
@@ -270,9 +292,17 @@ export function ResponseHistoryPanel({
                         {formatTime(response.timestamp)}
                       </Text>
                       <TouchableOpacity
-                        style={styles.speakButton}
+                        style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
                         onPress={() => handleSpeak(response.text, originalIndex)}
-                        accessibilityLabel={isSpeaking ? 'Stop speaking' : 'Speak this response'}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(
+                          isSpeaking ? 'Stop speaking this response' : 'Speak this response aloud'
+                        )}
+                        accessibilityHint={isSpeaking
+                          ? 'Stops text to speech for this agent response.'
+                          : 'Reads this agent response aloud with text to speech.'}
+                        accessibilityState={{ selected: isSpeaking }}
+                        activeOpacity={0.7}
                       >
                         <Ionicons
                           name={isSpeaking ? 'stop-circle' : 'volume-medium'}

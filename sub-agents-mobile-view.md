@@ -3482,3 +3482,48 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the full-width `Open Agent Settings` action reads clearly and is easy to tap in both empty and missing-config states.
   - Reconfirm the selector sheet's visual hierarchy after this recovery-action change before making any further source-only layout tweaks.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this selector action without new evidence.
+
+### 2026-03-08 — Iteration 80: strengthen response-history playback controls for mobile touch and state clarity
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `ChatScreen` renders `ResponseHistoryPanel` above the main chat scroll view when agent `respond_to_user` messages exist.
+  - The panel disclosure used only compact `Show/Hide` labeling.
+  - Each per-response playback control was still a tiny icon-only button with `padding: 4`, no explicit role, no playback hint, and no active-state semantics beyond icon color.
+- Issue selected:
+  - The mobile response-history disclosure and speak/stop controls were easier to miss or mis-tap than nearby sub-agent activity controls, and their playback state was too implicit for assistive tech.
+- Decision:
+  - Keep the panel layout, response ordering, and TTS behavior unchanged.
+  - Do not redesign the response-history stack while live validation is blocked.
+  - Make the smallest local fix: apply the existing mobile touch-target baseline to the disclosure and playback controls, add explicit disclosure/playback semantics, and give active playback a subtle inline treatment.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - add `44px` minimum touch-target helpers for the panel disclosure and per-response playback button,
+    - switch the disclosure label to the shared expand/collapse accessibility helper plus a clearer hint,
+    - give the speak/stop button explicit button role, labels, hints, selected-state semantics, and pressed-state behavior,
+    - add a subtle active background tint while a response is currently being spoken.
+  - Added focused regression coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the larger playback button and active tint feel balanced beside long response markdown.
+  - The `ResponseHistoryPanel` still lacks fresh live validation overall, so any broader hierarchy changes should wait for screenshot-backed evidence instead of more source-only tweaks.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the response-history disclosure and speak/stop controls are comfortably tappable at narrow widths.
+  - Confirm the active playback tint reads clearly without overpowering timestamps or markdown content.
+  - If live validation still shows response-history friction, evaluate whether the next smallest improvement is a clearer inline `Speaking` cue or tighter vertical spacing rather than another control-only pass.
