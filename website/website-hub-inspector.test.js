@@ -138,6 +138,17 @@ test('ready footer metadata includes author and source provenance links', () => 
     assert.match(source, /modalFooterMeta\.innerHTML = buildBundleFooterMeta\(bundle, bundleUrl\)/)
 })
 
+test('modal header shows fetched bundle summary or description once preview data loads', () => {
+    assert.match(source, /id="modal-bundle-summary" class="hub-modal-summary" hidden/)
+    assert.match(source, /const modalBundleSummary = document\.querySelector\('#modal-bundle-summary'\)/)
+    assert.match(source, /function getBundleSummary\(bundle\)/)
+    assert.match(source, /bundle\.manifest\?\.publicMetadata\?\.summary/)
+    assert.match(source, /bundle\.manifest\?\.description/)
+    assert.match(source, /modalBundleName\.textContent = bundle\.manifest\?\.name \|\| bundleName/)
+    assert.match(source, /modalBundleSummary\.hidden = !bundleSummary/)
+    assert.match(source, /modalBundleSummary\.textContent = bundleSummary/)
+})
+
 test('markdown content is formatted before rendering', () => {
     assert.match(source, /function stripFrontmatter\(value\)/)
     assert.match(source, /function renderMarkdown\(value\)/)

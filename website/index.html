@@ -686,6 +686,13 @@
             color: var(--color-fg-dim);
             font-size: 11px;
         }
+        .hub-modal-summary {
+            margin: 10px 0 0;
+            color: var(--color-fg-muted);
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 620px;
+        }
         .hub-modal-state[hidden],
         .hub-warning-row[hidden],
         .hub-modal-content[hidden] {
@@ -1483,6 +1490,7 @@
                 </div>
                 <button id="modal-close" class="hub-modal-close" type="button" aria-label="Close bundle inspector">✕</button>
             </div>
+            <p id="modal-bundle-summary" class="hub-modal-summary" hidden></p>
 
             <div class="hub-modal-body">
                 <div id="modal-loading" class="hub-modal-state">
@@ -1511,6 +1519,7 @@
         const modalClose = document.querySelector('#modal-close')
         const modalBundleName = document.querySelector('#modal-bundle-name')
         const modalBundleMeta = document.querySelector('#modal-bundle-meta')
+        const modalBundleSummary = document.querySelector('#modal-bundle-summary')
         const modalFooterMeta = document.querySelector('#modal-footer-meta')
         const modalInstallBtn = document.querySelector('#modal-install-btn')
         const modalInstallStatus = document.querySelector('#modal-install-status')
@@ -1877,6 +1886,18 @@
             return sections.join('\n\n').trim()
         }
 
+        function getBundleSummary(bundle) {
+            const summary = typeof bundle.manifest?.publicMetadata?.summary === 'string'
+                ? bundle.manifest.publicMetadata.summary.trim()
+                : ''
+            if (summary) return summary
+
+            const description = typeof bundle.manifest?.description === 'string'
+                ? bundle.manifest.description.trim()
+                : ''
+            return description
+        }
+
         function buildBundleFooterMeta(bundle, bundleUrl) {
             const author = bundle.manifest?.publicMetadata?.author || {}
             const authorLabel = author.handle || author.displayName || ''
@@ -2033,6 +2054,8 @@
             modalContent.hidden = true
             modalContent.innerHTML = ''
             modalBundleMeta.innerHTML = ''
+            modalBundleSummary.hidden = true
+            modalBundleSummary.textContent = ''
             modalFooterMeta.innerHTML = ''
             setModalInstallStatus({ state: 'loading' })
             setModalInstallButtonState({ disabled: true })
@@ -2139,12 +2162,14 @@
                     const bundle = await response.json()
                     const sizeBytes = sizeFromHeader || (await responseClone.blob()).size
                     const sizeLabel = sizeBytes ? `${Math.max(1, Math.round(sizeBytes / 1024))} KB` : 'bundle JSON'
+                    const bundleSummary = getBundleSummary(bundle)
                     const author = bundle.manifest?.publicMetadata?.author || {}
                     const authorLabel = author.displayName || author.handle || 'community author'
                     const warningBadges = buildWarningBadges(bundle)
 
                     if (requestId !== activeBundleRequestId || modal.hidden) return
 
+                    modalBundleName.textContent = bundle.manifest?.name || bundleName
                     modalBundleMeta.innerHTML = `
                         <span>v${escapeHtml(bundle.manifest?.version ?? 1)}</span>
                         <span>·</span>
@@ -2152,6 +2177,8 @@
                         <span>·</span>
                         <span>${escapeHtml(authorLabel)}</span>
                     `
+                    modalBundleSummary.hidden = !bundleSummary
+                    modalBundleSummary.textContent = bundleSummary
                     modalFooterMeta.innerHTML = buildBundleFooterMeta(bundle, bundleUrl)
 
                     if (warningBadges.length) {

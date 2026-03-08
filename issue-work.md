@@ -3917,3 +3917,36 @@
   - The umbrella issue still has larger product work open beyond docs, especially broader Hub workflows and any deeper restore/import provenance that exceeds the current safety baseline.
 
 - Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` is still not practically reproducible here, prefer a narrow desktop trust/history slice under `#58` or another concrete source-confirmed issue rather than revisiting already-documented bundle behavior.
+
+##### Issue #56 — Bundle inspector header now surfaces fetched bundle summary/description
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest guidance to avoid immediately looping back into the heaviest recent `#53` / `#57` / `#58` tracks when a fresh, source-confirmed trust slice still existed elsewhere.
+  - Refreshed issue `#56`, its owner comment, and the current website inspector source. The modal already exposed author/source/footer trust cues, but it still hid the bundle’s own fetched summary/description even though real public bundles publish that metadata today.
+  - This was a small, reviewable landing-page change with strong user value: it answers “what is this bundle?” before users scan the long section list or install.
+- Investigation:
+  - Re-read issue `#56` and the owner comment about inspect-before-install trust surfaces, warnings, and mobile-friendly preview readability.
+  - Inspected `website/index.html` and confirmed the inspector fetch path already parsed the full bundle manifest, but only used it for version/author/footer metadata; there was no modal summary/description element.
+  - Fetched real public bundles (`dev-powerpack.dotagents`, `research-analyst.dotagents`) and confirmed they currently carry both `manifest.publicMetadata.summary` and `manifest.description`, so this was a live data-visibility gap rather than speculative polish.
+  - Re-checked `website/website-hub-inspector.test.js` and confirmed the existing dependency-free source assertions were the right targeted regression guard for another narrow website slice.
+- Important assumptions:
+  - Assumption: `manifest.publicMetadata.summary` should be preferred over `manifest.description`, with `description` as a fallback when the shorter summary is absent.
+  - Why acceptable: the summary is the more scan-friendly, public-facing metadata intended for bundle browsing, while the description still gives an honest fallback for older or less-polished manifests.
+  - Assumption: surfacing this text in the modal header is preferable to adding another dedicated details section.
+  - Why acceptable: users need the high-level “what this bundle does” context before diving into the lower sections, and the header is the smallest, most discoverable place to add it without making the modal denser.
+- Changes implemented:
+  - Added a dedicated `hub-modal-summary` header line plus `modal-bundle-summary` element in `website/index.html`.
+  - Added `getBundleSummary(bundle)` to prefer `manifest.publicMetadata.summary` and fall back to `manifest.description`.
+  - Updated the fetch success path to populate the summary line and to switch the modal title to the fetched manifest name when available, keeping the preview header tied to the exact downloaded bundle metadata.
+  - Extended `website/website-hub-inspector.test.js` with focused assertions covering the new summary element, helper, and header wiring.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If more bundles start publishing compatibility/dependency metadata consistently, surface a similarly compact compatibility line near the new summary instead of hiding it in deeper sections.
+  - If the website later gains browser/runtime tests, add one for the new ready-state header summary so this behavior is covered beyond source assertions.
+
+- Next recommended issue work item: stay bug-first if `#55` becomes directly reproducible in a prepared Electron environment; otherwise prefer another fresh, source-confirmed UX/reliability slice outside the most recently touched `#53` / `#56` / `#25` tracks.
