@@ -201,6 +201,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const currentSelectionNoticeActionHint = selectorMode === 'acp'
     ? 'Opens Settings so you can review why this main agent is unavailable and manage enabled agents.'
     : 'Opens Settings so you can review why this agent is unavailable and manage switchable agents.';
+  const selectorSubtitle = selectorMode === 'acp'
+    ? 'Pick which enabled command-based agent handles new chats.'
+    : 'Switch between saved chat profiles. Delegation agents stay in Settings → Agents.';
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
@@ -278,10 +281,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.handle} />
         <Text style={styles.title}>{selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}</Text>
-        <Text style={styles.subtitle}>
-          {selectorMode === 'acp'
-            ? 'Choose which enabled command-based agent should act as the main agent for new chats.'
-            : 'Switch between saved chat profiles. Delegation agents stay available from Settings → Agents.'}
+        <Text style={styles.subtitle} numberOfLines={2} ellipsizeMode="tail">
+          {selectorSubtitle}
         </Text>
 
         {isSwitching && (

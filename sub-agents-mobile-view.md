@@ -1,5 +1,48 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 144 - Keep the mobile selector subtitle from stealing option space
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not immediately revisit the just-touched agents-list auto-start preview or earlier selector-height work without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector still had a small, source-backed narrow-screen hierarchy issue available.
+  - Tried to restore live-validation confidence first, but Expo Web / simulator inspection is still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi` / `printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi` → `root node_modules: missing` / `apps/mobile node_modules: missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `AgentSelectorSheet` already used a taller adaptive sheet and a flexing options list, but it still rendered a full-sentence subtitle directly under the title in both selector modes.
+  - That subtitle had no line clamp, so on narrow screens it could expand to multiple lines before the switching status, missing-current-selection notice, and actual options list.
+  - Because the sheet itself is capped at `72%` height, every extra subtitle line reduced the number of immediately visible agent options.
+- Issue identified:
+  - The mobile agent selector spent too much vertical space on explanatory subtitle copy, weakening scanability of the actual selectable options.
+- Decision and rationale:
+  - Keep the existing sheet pattern, title, notices, option rows, and bottom cancel action intact.
+  - Avoid another height-cap change right after the recent selector-sheet sizing work.
+  - Make the smallest effective hierarchy fix instead: tighten the subtitle copy and cap it at two lines so it remains helpful without crowding the list.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive a compact `selectorSubtitle` string for ACP and profile modes,
+    - shorten ACP copy to `Pick which enabled command-based agent handles new chats.`,
+    - shorten profile-mode copy to `Switch between saved chat profiles. Delegation agents stay in Settings → Agents.`,
+    - render the subtitle with `numberOfLines={2}` and `ellipsizeMode="tail"`.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the compact subtitle contract and two-line clamp.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the selector title plus option list carries more user value on mobile than keeping the longer explanatory subtitle fully visible.
+  - Kept the subtitle in place instead of removing it entirely so first-time users still get mode-aware context.
+  - Accepted that, on extremely narrow or large-text combinations, the subtitle may truncate after two lines in exchange for preserving more option visibility.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector subtitle stays to one or two lines and exposes more options above the fold on a narrow viewport.
+  - Compare ACP and profile modes to confirm the shorter copy still feels clear without the older, longer sentence.
+  - If live validation shows the subtitle is still too tall at large text sizes, prefer a small spacing or wording trim before revisiting the sheet height again.
+
 ## Iteration 143 - Surface auto-start behavior in the mobile Agents list
 
 - Date: 2026-03-08
