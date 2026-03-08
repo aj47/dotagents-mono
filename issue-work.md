@@ -3451,3 +3451,41 @@
   - Re-run the real desktop package test target once the missing workspace dependency baseline is restored so the renderer/package Vitest path can cover the same dialog flow.
 
 - Next recommended issue work item: refresh the open issues again and prefer a fresh source-confirmed bug or high-value UX gap outside the now-heavily-worked `#57`/`#58` threads; if staying on bundle trust, only do so for a very small remaining slot/write-semantics polish.
+
+##### Issue #25 — `.dotagents` docs/spec sync for slot-targeted restore defaults and post-import activation
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and refreshed the still-open repo issues again before making any edits.
+  - Stayed bug-first by retrying the focused `#55` desktop verification path, but the real package runner remained blocked by missing workspace dependencies while the dependency-free source checks still passed.
+  - Re-read issue `#25` plus its owner planning comment and confirmed this umbrella issue is explicitly where finalized `#56`/`#57` trust defaults should be fed back into the repo docs/spec.
+  - That made a small docs/spec sync the next honest, non-thrashy slice with immediate value for users and future issue iterations.
+- Investigation:
+  - Re-checked issue `#25`, its planning comment, `DOTAGENTS_BUNDLES.md`, `README.md`, `tests/dotagents-bundles-docs.test.js`, `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, and `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`.
+  - Confirmed the current desktop UI now defaults restore previews back to the original snapshot target when safe, shows exact slot labels in backup/import provenance, and offers one-click activation after successful import/restore into a non-active slot.
+  - Confirmed the current docs only described the broader preview/backup/slot model and did not yet mention those newer slot-targeted restore/activation trust defaults.
+  - Re-attempted the focused `#55` desktop package verification (`pnpm --filter @dotagents/desktop test:run -- ...`) and confirmed it is still blocked in this worktree by missing workspace dependencies (`sh: tsup: command not found`), while `node --test apps/desktop/src/renderer/src/components/agent-progress.issue55-regressions.test.js apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` passed.
+- Important assumptions:
+  - Assumption: issue `#25` is the right place to document the newer slot-targeted restore/import trust behavior even though the implementation landed under `#57`.
+  - Why acceptable: the owner planning comment explicitly says finalized `#56`/`#57` UX/security defaults should flow back into this umbrella spec.
+  - Assumption: a docs/spec sync plus dependency-free docs regression coverage is a meaningful shippable slice when the sharper bug-first runtime/package validation remains blocked by missing dependencies.
+  - Why acceptable: it reduces ambiguity for users and future contributors without pretending the blocked package-runner validation has been completed.
+- Changes implemented:
+  - Updated `DOTAGENTS_BUNDLES.md` so the current-state bundle workflow now documents exact slot labels in recent-backup provenance, restore defaulting back to the recorded snapshot target when safe, restore-target mismatch warnings, and the post-success one-click activation affordance for inactive slot imports/restores.
+  - Updated the `Settings -> Capabilities` summary in `DOTAGENTS_BUNDLES.md` to mention safe restore-target defaulting alongside the existing backup/slot management surfaces.
+  - Updated the portable bundles section in `README.md` so the homepage summary now mentions safe restore defaulting and one-click activation after import/restore into inactive bundle slots.
+  - Extended `tests/dotagents-bundles-docs.test.js` with dependency-free assertions locking the new restore-target and post-activation wording in place.
+- Verification run:
+  - Attempted earlier in this iteration: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/agent-progress.tile-layout.test.ts src/renderer/src/components/agent-progress.issue55-regressions.test.js src/renderer/src/components/session-grid.collapsed-layout.test.js`
+  - Result: still blocked by missing workspace dependencies / `node_modules`; desktop pretest failed building `@dotagents/shared` with `sh: tsup: command not found`.
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.issue55-regressions.test.js apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` ✅
+  - Completed: `node --test tests/dotagents-bundles-docs.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Keep `DOTAGENTS_BUNDLES.md` and `README.md` aligned if future bundle-slot activation or restore-target behavior becomes more explicit in the app UI.
+  - If another small website trust disclosure lands under `#56`, mirror that finalized inspect-before-install behavior here instead of letting the umbrella spec drift.
+  - Once this worktree has a full dependency install again, revisit `#55` with a real desktop package run or direct UI smoke validation so the remaining open bug has stronger runtime evidence than the current dependency-free checks.
+
+- Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` still cannot be validated more directly because dependencies remain unavailable, prefer another fresh source-confirmed UX/reliability slice outside the recent `#57`/`#58` threads rather than churning on the blocked package runner.

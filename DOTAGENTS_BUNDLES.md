@@ -53,9 +53,16 @@ Backups are not toast-only anymore. Desktop users can restore them from:
 Recent backup rows also surface compact provenance and recovery context, including:
 
 - bundle timestamp
-- protected target layer (`global`, `workspace`, or `custom` when available)
+- protected target layer (`global`, `workspace`, the exact bundle slot label when available, or `custom`)
 - component counts
+- the last recorded import/restore outcome summary when available
 - the full backup file path
+
+Current restore behavior also includes:
+
+- restore defaults back to the original snapshot target when that target is still resolvable
+- the restore preview warns when the current target differs from the recorded snapshot origin
+- restoring into a non-active slot keeps the current runtime slot unchanged and offers a one-click activation action afterward
 
 ### 3. Preview before write
 
@@ -78,6 +85,7 @@ Current behavior:
 - `Settings -> Capabilities` surfaces active-slot status plus switch / clear actions
 - active slots are mounted between global and workspace layers at runtime, so workspace config still overrides slot content when both define the same id
 - slot-targeted imports stay inside the same preview / backup / restore trust model rather than creating a second import pipeline
+- imports into a non-active slot do **not** auto-switch runtime state; DotAgents offers a one-click activation action after success instead
 
 ### 5. MCP setup disclosure before and after import
 
@@ -166,7 +174,7 @@ This establishes the default trust posture for `.dotagents` sharing:
 
 - `Settings -> Skills` — import/export local bundles
 - `Settings -> Agents` — import/export bundles and prepare Hub publish artifacts
-- `Settings -> Capabilities` — restore backups, inspect recent backups, reveal/copy backup paths, switch/clear the active slot, and open backup/slot folders
+- `Settings -> Capabilities` — restore backups, inspect recent backups, reveal/copy backup paths, default restores back to their recorded target when safe, switch/clear the active slot, and open backup/slot folders
 - `website/index.html` — inspect featured bundles before installing and review setup/task-timing warnings
 
 ## Still intentionally open under issue #25
