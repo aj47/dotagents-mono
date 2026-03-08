@@ -178,6 +178,9 @@
 - [x] 2026-03-08: Confirmed mobile has no equivalent shared `AudioPlayer` component in `apps/mobile`, so this playback-feedback fix can stay desktop-local.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and confirmed the visible `Server Logs` panel still relied on `serverLogs[name]?.length > 0` only, with no separate loading/error state for the on-demand `getMcpServerLogs(...)` fetch.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` exposes MCP-server toggles/settings but no equivalent per-server log viewer, so this diagnostic-state fix can stay desktop-local.
+- [x] 2026-03-08: Reviewed the adjacent desktop MCP OAuth status path in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and confirmed `refreshOAuthStatus(...)` still used one outer `try/catch` while rebuilding the full `oauthStatus` map, so one rejected `getOAuthStatus(...)` call could abort refreshes for every visible streamable-HTTP server card.
+- [x] 2026-03-08: Confirmed the same server cards rendered auth actions from `oauthStatus[name]?.authenticated` / `.configured`, so missing or stale status entries could hide or freeze the visible desktop OAuth controls even though the local MCP config still declared OAuth.
+- [x] 2026-03-08: Assumption accepted: deriving a fallback OAuth `configured` state from the saved desktop server config (`transport === "streamableHttp"`, `url`, and `oauth`) is acceptable because that config is the local source of truth for whether the user should still see an auth button when live status refresh fails.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -381,6 +384,11 @@
    - That meant the first load showed the same empty-state copy while logs were still loading, and an actual fetch failure also fell through to the exact same visible `No logs available` message even though the app had no successful log result.
    - The bug affects an active desktop diagnostics surface and mobile has no equivalent per-server log viewer, so this is a concrete desktop-only UI correctness bug rather than a parity-only question.
 
+- [x] **Desktop MCP OAuth status refresh failures could leave auth controls stale or missing (directly confirmed in source):**
+   - In `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`, `refreshOAuthStatus(...)` previously rebuilt a fresh `oauthStatus` object behind one outer `try/catch` and only committed the new map after every awaited `getOAuthStatus(name)` call succeeded.
+   - That meant one rejected status lookup for any streamable-HTTP server could abort the entire refresh, leaving unrelated server cards with stale or missing auth state even though the user was looking at visible `Authenticate` / `Revoke` controls.
+   - The card actions were gated directly by `oauthStatus[name]?.authenticated` / `.configured`, and revoke/auth-completion paths refreshed all servers instead of the active one, so an unrelated server failure could block the current card's visible auth controls.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/resize-handle.tsx` so rejected or invalid drag-start size reads now keep console logging but also surface a visible `toast.error(...)` instead of making the resize handle appear dead.
 - [x] Updated `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` so a fully failed final size-persistence path now raises a visible toast explaining that the floating panel resize may not persist.
@@ -539,6 +547,9 @@
 - [x] Added `apps/desktop/src/renderer/src/components/audio-player.feedback.test.ts` with focused source-level assertions that lock in the new shared-player playback-error state, visible compact/full inline feedback, and retry/reset behavior.
 - [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so per-server log panels now track explicit loading/error state, show `Loading logs...` during the first fetch, show `Couldn't load logs.` when the fetch fails, and keep the last successful snapshot visible with a `Couldn't refresh logs.` warning instead of mislabeling failures as empty logs.
 - [x] Added `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new log-status state plus the visible loading/error/stale-snapshot copy.
+- [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so OAuth status refreshes now normalize each server independently, keep config-derived fallback auth availability when a status request fails, and avoid dropping the entire visible auth-state map because one `getOAuthStatus(...)` call rejected.
+- [x] Updated the desktop MCP server-card OAuth actions to refresh only the active server after `Revoke` / auth completion and to stop polling cleanly with a fallback state if an OAuth status poll throws.
+- [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new OAuth fallback/normalization contract and targeted per-server refresh behavior.
 
 ### Verified
 - [x] Ran a low-cost Node file-read sanity check for `resize-handle.tsx`, `panel-resize-wrapper.tsx`, and `panel-resize.feedback.test.ts`; the assertions passed for the new floating-panel resize toast wiring and regression test coverage.
@@ -672,6 +683,10 @@
 - [x] Manual source verification: the desktop MCP `Server Logs` panel in `mcp-config-manager.tsx` now distinguishes four states instead of collapsing everything into `No logs available`: initial loading, first-load failure, successful logs, and successful-empty logs; later refresh failures keep previously loaded logs visible with a warning banner.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `mcp-config-manager.tsx` and `mcp-config-manager.server-diagnostics-feedback.test.ts`, confirming the new log-status state plus the visible loading/error/stale-snapshot copy.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the MCP server-log state fix and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` now normalizes OAuth status per server, falls back to config-derived OAuth availability when status reads fail, keeps `Authenticate` visible for configured servers even if status refresh errors, and refreshes only the active server after `Revoke` / auth completion.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` now asserts the new OAuth fallback helper, normalization path, per-server failure isolation, and targeted `refreshOAuthStatus(name)` updates.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `mcp-config-manager.tsx`, confirming the new OAuth resilience snippets (`getOAuthStatusFallback(...)`, per-server `Promise.all(...)` isolation, targeted refreshes, and poll-failure fallback state) are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the MCP OAuth status resilience fix.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -722,6 +737,7 @@
 - [x] Targeted automated verification for this `AgentProgress` close-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails before Vitest starts because the shared pretest cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this shared `AudioPlayer` playback-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.feedback.test.ts src/renderer/src/components/audio-player.layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this MCP server-log state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this MCP OAuth status resilience fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails in `pretest` because `packages/shared` cannot find `tsup` (`sh: tsup: command not found`), which confirms `node_modules` is still absent in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the throttled mid-drag `updatePanelSize(...)` failure path in `panel-resize-wrapper.tsx` should also surface limited user feedback, or remain console-only to avoid toast spam once live desktop verification is available.
@@ -732,6 +748,7 @@
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
+- [ ] Whether the MCP server cards should also render inline OAuth error text/badges when status refresh fails, or whether keeping the auth button available via config-derived fallback is the better low-noise UX once live desktop verification is available.
 - [ ] Whether the desktop post-processing prompt editor should eventually gain explicit save/cancel dialog affordances instead of autosaving a local draft.
 - [ ] Whether the Groq STT prompt should eventually move to an explicit save/cancel affordance if the field grows beyond a short guidance prompt in real usage.
 - [ ] Whether any other desktop provider editors still need temporary local-draft handling once the current numeric fixes are covered and the environment blocker is cleared.

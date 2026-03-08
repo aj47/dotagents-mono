@@ -76,6 +76,13 @@ interface DetailedTool {
   inputSchema: any
 }
 
+type OAuthStatusSummary = {
+  configured: boolean
+  authenticated: boolean
+  tokenExpiry?: number
+  error?: string
+}
+
 function getLogFetchErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message.trim()
@@ -86,6 +93,30 @@ function getLogFetchErrorMessage(error: unknown): string {
   }
 
   return "Please try again."
+}
+
+function getOAuthStatusFallback(serverConfig?: MCPServerConfig): OAuthStatusSummary {
+  return {
+    configured: Boolean(
+      serverConfig?.transport === "streamableHttp" &&
+        serverConfig.url &&
+        serverConfig.oauth,
+    ),
+    authenticated: false,
+  }
+}
+
+function normalizeOAuthStatus(
+  serverConfig: MCPServerConfig | undefined,
+  status: OAuthStatusSummary,
+): OAuthStatusSummary {
+  const fallback = getOAuthStatusFallback(serverConfig)
+
+  return {
+    ...fallback,
+    ...status,
+    configured: fallback.configured || status.configured,
+  }
 }
 
 
@@ -917,7 +948,7 @@ export function MCPConfigManager({
     isInitializing: boolean
     progress: { current: number; total: number; currentServer?: string }
   }>({ isInitializing: false, progress: { current: 0, total: 0 } })
-  const [oauthStatus, setOAuthStatus] = useState<Record<string, { configured: boolean; authenticated: boolean; tokenExpiry?: number; error?: string }>>({})
+  const [oauthStatus, setOAuthStatus] = useState<Record<string, OAuthStatusSummary>>({})
   const [serverLogs, setServerLogs] = useState<Record<string, ServerLogEntry[]>>({})
   const [serverLogStatus, setServerLogStatus] = useState<Record<string, { isLoading: boolean; error: string | null }>>({})
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
@@ -1076,24 +1107,57 @@ export function MCPConfigManager({
 
   // Load OAuth status for all servers
   const refreshOAuthStatus = async (serverName?: string) => {
-    try {
-      if (serverName) {
+    if (serverName) {
+      const serverConfig = servers[serverName]
+
+      try {
         const status = await window.electronAPI.getOAuthStatus(serverName)
-        setOAuthStatus(prev => ({ ...prev, [serverName]: status }))
-      } else {
-        // Load status for all servers
-        const newStatus: Record<string, any> = {}
-        for (const [name, config] of Object.entries(servers)) {
-          if (config.transport === "streamableHttp" && config.url) {
-            const status = await window.electronAPI.getOAuthStatus(name)
-            newStatus[name] = status
-          }
-        }
-        setOAuthStatus(newStatus)
+        setOAuthStatus((prev) => ({
+          ...prev,
+          [serverName]: normalizeOAuthStatus(serverConfig, status),
+        }))
+      } catch (error) {
+        console.error(`Failed to load OAuth status for ${serverName}:`, error)
+        setOAuthStatus((prev) => ({
+          ...prev,
+          [serverName]: {
+            ...getOAuthStatusFallback(serverConfig),
+            error: getLogFetchErrorMessage(error),
+          },
+        }))
       }
-    } catch (error) {
-      console.error('Failed to load OAuth status:', error)
+
+      return
     }
+
+    const oauthServers = Object.entries(servers).filter(
+      ([, config]) => config.transport === "streamableHttp" && config.url,
+    )
+
+    if (oauthServers.length === 0) {
+      setOAuthStatus({})
+      return
+    }
+
+    const statuses = await Promise.all(
+      oauthServers.map(async ([name, config]) => {
+        try {
+          const status = await window.electronAPI.getOAuthStatus(name)
+          return [name, normalizeOAuthStatus(config, status)] as const
+        } catch (error) {
+          console.error(`Failed to load OAuth status for ${name}:`, error)
+          return [
+            name,
+            {
+              ...getOAuthStatusFallback(config),
+              error: getLogFetchErrorMessage(error),
+            },
+          ] as const
+        }
+      }),
+    )
+
+    setOAuthStatus(Object.fromEntries(statuses) as Record<string, OAuthStatusSummary>)
   }
 
   // Fetch logs for expanded servers
@@ -2163,6 +2227,7 @@ export function MCPConfigManager({
                 const status = serverStatus[name]
                 const serverTools = toolsByServer[name] || []
                 const enabledToolCount = serverTools.filter((t) => t.enabled).length
+                const oauthState = serverConfig ? oauthStatus[name] ?? getOAuthStatusFallback(serverConfig) : undefined
                 const logEntries = serverLogs[name] ?? []
                 const logStatus = serverLogStatus[name]
 
@@ -2290,7 +2355,7 @@ export function MCPConfigManager({
                           {/* OAuth authorization controls */}
                           {serverConfig.transport === "streamableHttp" && serverConfig.url && (
                             <>
-                              {oauthStatus[name]?.authenticated ? (
+                              {oauthState?.authenticated ? (
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -2298,7 +2363,7 @@ export function MCPConfigManager({
                                     try {
                                       await window.electronAPI.revokeOAuthTokens(name)
                                       toast.success("OAuth authentication revoked")
-                                      refreshOAuthStatus()
+                                      await refreshOAuthStatus(name)
                                     } catch (error) {
                                       toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`)
                                     }
@@ -2307,7 +2372,7 @@ export function MCPConfigManager({
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
-                              ) : oauthStatus[name]?.configured ? (
+                              ) : oauthState?.configured ? (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -2317,11 +2382,27 @@ export function MCPConfigManager({
                                       toast.success("OAuth authentication started")
                                       // Poll for completion
                                       const checkCompletion = setInterval(async () => {
-                                        const statusResult = await window.electronAPI.getOAuthStatus(name)
-                                        if (statusResult.authenticated) {
+                                        try {
+                                          const statusResult = normalizeOAuthStatus(
+                                            serverConfig,
+                                            await window.electronAPI.getOAuthStatus(name),
+                                          )
+
+                                          if (statusResult.authenticated) {
+                                            clearInterval(checkCompletion)
+                                            await refreshOAuthStatus(name)
+                                            toast.success("OAuth authentication completed")
+                                          }
+                                        } catch (error) {
                                           clearInterval(checkCompletion)
-                                          refreshOAuthStatus()
-                                          toast.success("OAuth authentication completed")
+                                          console.error(`Failed to poll OAuth status for ${name}:`, error)
+                                          setOAuthStatus((prev) => ({
+                                            ...prev,
+                                            [name]: {
+                                              ...getOAuthStatusFallback(serverConfig),
+                                              error: getLogFetchErrorMessage(error),
+                                            },
+                                          }))
                                         }
                                       }, 2000)
                                       setTimeout(() => clearInterval(checkCompletion), 60000)

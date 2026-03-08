@@ -26,4 +26,13 @@ describe("desktop MCP config manager server diagnostics", () => {
     expect(source).toContain("Couldn't refresh logs.")
     expect(source).toContain("Showing the last successful log snapshot.")
   })
+
+  it("keeps OAuth auth controls resilient when one status refresh fails", () => {
+    expect(source).toContain("function getOAuthStatusFallback(serverConfig?: MCPServerConfig): OAuthStatusSummary")
+    expect(source).toContain("configured: fallback.configured || status.configured")
+    expect(source).toContain("return [name, normalizeOAuthStatus(config, status)] as const")
+    expect(source).toContain("Failed to load OAuth status for ${name}:")
+    expect(source).toContain("const oauthState = serverConfig ? oauthStatus[name] ?? getOAuthStatusFallback(serverConfig) : undefined")
+    expect(source).toContain("await refreshOAuthStatus(name)")
+  })
 })
