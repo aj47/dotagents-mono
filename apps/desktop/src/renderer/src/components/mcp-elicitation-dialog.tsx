@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import {
   Dialog,
@@ -29,10 +30,17 @@ import type {
 
 type FormValues = Record<string, string | number | boolean>
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
 function McpElicitationDialog() {
   const [request, setRequest] = useState<ElicitationRequest | null>(null)
   const [formValues, setFormValues] = useState<FormValues>({})
   const [isOpen, setIsOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Listen for elicitation requests
   useEffect(() => {
@@ -76,16 +84,36 @@ function McpElicitationDialog() {
   }, [request])
 
   const handleAction = async (action: "accept" | "decline" | "cancel") => {
-    if (!request) return
+    if (!request || isSubmitting) return
 
-    const content = action === "accept" && request.mode === "form" ? formValues : undefined
-    await tipcClient.resolveElicitation({
-      requestId: request.requestId,
-      action,
-      content,
-    })
-    setIsOpen(false)
-    setRequest(null)
+    const currentRequest = request
+    const content = action === "accept" && currentRequest.mode === "form" ? formValues : undefined
+    setIsSubmitting(true)
+
+    try {
+      const resolved = await tipcClient.resolveElicitation({
+        requestId: currentRequest.requestId,
+        action,
+        content,
+      })
+
+      if (!resolved) {
+        setIsOpen(false)
+        setRequest(null)
+        toast.error("This request is no longer pending.")
+        return
+      }
+
+      setIsOpen(false)
+      setRequest(null)
+    } catch (error) {
+      console.error(`[MCP Elicitation] Failed to ${action} request:`, error)
+      toast.error(
+        `Failed to ${action} request. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleOpenUrl = () => {
@@ -170,7 +198,14 @@ function McpElicitationDialog() {
   const urlRequest = !isFormMode ? (request as ElicitationUrlRequest) : null
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleAction("cancel")}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          void handleAction("cancel")
+        }
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Request from {request.serverName}</DialogTitle>
@@ -191,20 +226,20 @@ function McpElicitationDialog() {
               Please complete the required action in your browser. The dialog will close
               automatically when the action is complete.
             </p>
-            <Button variant="outline" onClick={handleOpenUrl} className="w-full">
+            <Button variant="outline" onClick={handleOpenUrl} className="w-full" disabled={isSubmitting}>
               Open URL Again
             </Button>
           </div>
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="ghost" onClick={() => handleAction("cancel")}>
+          <Button variant="ghost" onClick={() => void handleAction("cancel")} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="outline" onClick={() => handleAction("decline")}>
+          <Button variant="outline" onClick={() => void handleAction("decline")} disabled={isSubmitting}>
             Decline
           </Button>
-          <Button onClick={() => handleAction("accept")}>Accept</Button>
+          <Button onClick={() => void handleAction("accept")} disabled={isSubmitting}>Accept</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

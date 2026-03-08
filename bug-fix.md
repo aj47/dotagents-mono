@@ -128,6 +128,11 @@
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` has no equivalent desktop-generated API-key/deep-link/tunnel copy controls, so this is a desktop-only user-action failure bug rather than a cross-platform parity decision.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the visible `Copy prompt`, `Copy response`, `Copy message`, `Copy conversation`, and tool-parameter copy actions still routed rejected `copyTextToClipboard(...)` calls to `console.error(...)` only (or swallowed the error entirely in the tool-parameter case).
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/session-tile.tsx` and confirmed the visible session-tile `Copy prompt` action still caught clipboard failures with `console.error(...)` only.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` and confirmed the visible MCP elicitation dialog still awaited `tipcClient.resolveElicitation(...)` with no `try/catch`, so rejected `Accept` / `Decline` / `Cancel` actions could throw out of the click handler with no visible feedback.
+- [x] 2026-03-08: Confirmed the TIPC contract in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/mcp-elicitation.ts` returns `false` when an elicitation request is no longer pending, while the renderer previously still closed the dialog immediately afterward, so stale elicitation responses could silently dismiss the dialog without telling the user their action was ignored.
+- [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/App.tsx` mounts `McpElicitationDialog` and `apps/mobile` has no matching elicitation UI, so this is a live desktop-only MCP workflow bug rather than dead code or a shared mobile flow.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop elicitation-dialog feedback fix and regression test addition.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ChatScreen.tsx` has no equivalent message-copy/chat-transcript copy surface, so this copy-feedback fix is desktop-only rather than a cross-platform parity gap.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `agent-progress.tsx`, `session-tile.tsx`, and `copy-feedback.test.ts`; the assertions passed for the new copy-error helper/toast wiring and regression test coverage.
@@ -277,6 +282,10 @@
   - `apps/desktop/src/renderer/src/components/agent-progress.tsx` still exposed several user-facing copy actions (`Copy prompt`, `Copy response`, `Copy message`, `Copy conversation`, and expanded tool-parameter copy) where rejected clipboard writes either only logged to the console or were swallowed entirely.
   - `apps/desktop/src/renderer/src/components/session-tile.tsx` still exposed a visible `Copy prompt` action whose rejection path only called `console.error(...)`.
   - Because these buttons live in the main desktop session history/progress surfaces, a clipboard failure looked like a dead/no-op button even though the user had just invoked an explicit copy action.
+- [x] **Desktop MCP elicitation dialog actions could fail silently or dismiss a stale request with no explanation (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` handles visible `Accept`, `Decline`, and `Cancel` actions for MCP form/URL elicitation, but `handleAction(...)` previously awaited `tipcClient.resolveElicitation(...)` without any `try/catch` or visible error UI.
+  - The TIPC route in `apps/desktop/src/main/tipc.ts` forwards to `resolveElicitation(...)` in `apps/desktop/src/main/mcp-elicitation.ts`, which returns `false` when the request is already gone; the old renderer still called `setIsOpen(false)` / `setRequest(null)` immediately afterward, so a stale dialog could disappear as if the action worked even though nothing was resolved.
+  - `McpElicitationDialog` is lazy-mounted in the desktop app shell and mobile has no equivalent elicitation UI, so this is a live desktop MCP workflow bug rather than dead code or a parity choice.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -403,6 +412,9 @@
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so its visible prompt/response/message/conversation/tool-parameter copy actions now preserve console logging but also surface a `toast.error(...)` message when clipboard writes reject.
 - [x] Updated `apps/desktop/src/renderer/src/components/session-tile.tsx` so its visible `Copy prompt` action now surfaces a `toast.error(...)` message instead of failing silently when the clipboard write rejects.
 - [x] Added `apps/desktop/src/renderer/src/components/copy-feedback.test.ts` with focused source-level assertions that lock in the new `AgentProgress` / `SessionTile` clipboard-failure toast paths.
+- [x] Updated `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` so `handleAction(...)` now tracks `isSubmitting`, catches rejected `resolveElicitation(...)` calls, and surfaces visible `toast.error(...)` feedback instead of failing silently.
+- [x] Taught the dialog to detect `resolveElicitation(...) === false`, close the stale dialog, and tell the user `This request is no longer pending.` rather than silently dismissing an ignored action.
+- [x] Added `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts` with focused source-level assertions that lock in the `sonner` toast import, stale-request feedback, guarded close handler, and failed action toast path.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -497,6 +509,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/session-tile.tsx` now calls `toast.error(getCopyErrorMessage("prompt", err))` when `Copy prompt` fails, so clipboard rejection is no longer a no-op in the sessions-page tile surface.
 - [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `agent-progress.tsx`, `session-tile.tsx`, and `copy-feedback.test.ts`, confirming the new copy-error helpers, visible toast wiring, and regression test case are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop session-copy feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` now imports `toast` from `sonner`, guards repeated submissions with `isSubmitting`, surfaces visible `Failed to accept/decline/cancel request. ...` feedback on rejected IPC responses, and shows `This request is no longer pending.` when the request has already expired.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `mcp-elicitation-dialog.tsx` and `mcp-elicitation-dialog.feedback.test.ts`, confirming the new toast strings, stale-request branch, guarded close handler, and regression file are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop elicitation-dialog feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -659,6 +674,8 @@
 - Assumption: keeping live-preview failure feedback inline in the panel (instead of using a toast/dialog) is acceptable because chunk preview is a secondary best-effort aid during recording, while the final transcription still runs when the user stops recording.
 - Assumption: using `toast.error(...)` for remote-server copy failures is acceptable because desktop already mounts a global `sonner` toaster, successful copy behavior is unchanged, and the concrete bug is missing feedback when the clipboard write rejects.
 - Assumption: using `toast.error(...)` for `AgentProgress` / `SessionTile` copy failures is acceptable because those desktop surfaces already use toasts for other explicit user-action failures, and the concrete bug here is missing visible feedback rather than clipboard implementation semantics.
+- Assumption: using the existing desktop toast pattern for MCP elicitation `Accept` / `Decline` / `Cancel` failures is acceptable because `sonner` is already mounted app-wide, these are explicit user responses to a live MCP request, and the dialog had no inline error state before.
+- Assumption: closing the dialog only for the `resolveElicitation(...) === false` stale-request case is acceptable because the main-process request is already gone at that point, while keeping the dialog open on thrown IPC failures preserves the user's chance to retry a transient failure.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -707,3 +724,5 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` and live-verify the desktop remote-server `Copy` / `Copy Deep Link` / tunnel copy buttons by forcing a clipboard-write failure to confirm the new toasts appear instead of silent no-ops.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts` and live-verify the desktop `AgentProgress` / `SessionTile` copy buttons by forcing a clipboard-write failure to confirm the new toasts appear instead of silent no-ops.
 - After that, inspect any remaining desktop clipboard-copy actions outside `AgentProgress` / `SessionTile` / remote-server settings for the same silent-failure pattern.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts` and live-verify an MCP form/URL elicitation by forcing both a stale request and a rejected `resolveElicitation(...)` call to confirm the new toasts appear while retry remains possible after transient IPC failure.
+- After that, inspect whether the adjacent desktop `mcp-sampling` dialog needs the same stale-request / rejected-response feedback treatment for parity with elicitation.
