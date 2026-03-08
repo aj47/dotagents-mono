@@ -105,7 +105,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
   }, [navigation, isEditing]);
 
   const handleSave = useCallback(async () => {
-    if (!settingsClient) return;
+    if (!settingsClient) {
+      setError('Configure Base URL and API key in Settings before saving');
+      return;
+    }
     if (!formData.displayName.trim()) {
       Alert.alert('Error', 'Display name is required');
       return;
@@ -194,6 +197,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
+  const isSaveDisabled = isSaving || !settingsClient;
 
   const renderFieldLabel = (label: string, options?: { required?: boolean; readOnly?: boolean }) => (
     <Text style={styles.label}>
@@ -222,6 +226,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>⚠️ {error}</Text>
         </View>
+      )}
+
+      {!settingsClient && (
+        <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
       )}
 
       {isBuiltInAgent && (
@@ -416,9 +424,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={isSaving}
+        disabled={isSaveDisabled}
       >
         {isSaving ? (
           <ActivityIndicator color={theme.colors.primaryForeground} size="small" />
@@ -469,6 +477,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     errorText: {
       color: theme.colors.destructive,
       fontSize: 14,
+    },
+    helperText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginBottom: spacing.xs,
     },
     warningContainer: {
       backgroundColor: '#f59e0b20',

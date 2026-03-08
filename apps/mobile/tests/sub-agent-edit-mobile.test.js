@@ -76,6 +76,15 @@ test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', 
   assert.match(agentEditSource, /accessibilityState=\{\{ checked: formData\.autoSpawn \}\}/);
 });
 
+test('AgentEditScreen makes missing server config explicit before the primary save action', () => {
+  assert.match(agentEditSource, /if \(!settingsClient\) \{[\s\S]*?setError\('Configure Base URL and API key in Settings before saving'\);[\s\S]*?return;[\s\S]*?\}/);
+  assert.match(agentEditSource, /const isSaveDisabled = isSaving \|\| !settingsClient;/);
+  assert.match(agentEditSource, /!settingsClient && \([\s\S]*?Configure Base URL and API key in Settings to save changes\.[\s\S]*?\)/);
+  assert.match(agentEditSource, /style=\{\[styles\.saveButton, isSaveDisabled && styles\.saveButtonDisabled\]\}/);
+  assert.match(agentEditSource, /disabled=\{isSaveDisabled\}/);
+  assert.match(agentEditSource, /helperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+});
+
 test('LoopEditScreen wraps the enabled switch in a named mobile-sized control', () => {
   assert.match(loopEditSource, /const switchTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(loopEditSource, /Platform\.OS === 'web'[\s\S]*?styles\.switchTrack/);

@@ -934,3 +934,48 @@
   - Restore the mobile install in this worktree, then re-open the selector sheet error and dismissal paths in Expo Web to confirm the stronger touch targets feel proportionate on a narrow viewport.
   - Once live validation returns, smoke-test the selector sheet across empty, error, and populated states for consistency.
   - Continue only with the next highest-signal sub-agent mobile issue after a fresh narrow-screen pass re-establishes where the remaining friction actually is.
+
+### 2026-03-08 — Iteration 22: disable the dead-end agent save action when mobile config is missing
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen`
+  - `LoopEditScreen` for the current missing-config treatment baseline
+  - `apps/mobile/package.json` mobile workflow scripts
+- Live inspection / workflow status:
+  - Reconfirmed the worktree is still missing the mobile install before editing:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails with missing Expo / React Native dependencies and missing `expo/tsconfig.base`
+  - Because that install gap remains, Expo Web / simulator validation was still not practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` already warns when server config is missing and disables its primary save action.
+  - `AgentEditScreen` did not match that behavior:
+    - no missing-config helper text was shown,
+    - the primary `Create Agent` / `Save Changes` button only disabled while saving,
+    - `handleSave` silently returned immediately when `settingsClient` was unavailable.
+- Issue selected:
+  - On mobile, the main save CTA in `AgentEditScreen` still looked actionable even when the screen had no server/API configuration needed to save, creating a dead-end primary action and weaker state clarity.
+- Decision:
+  - Keep the current agent edit flow and form layout.
+  - Do not redesign the footer or add a new empty state while live validation is blocked.
+  - Make the smallest local fix in `AgentEditScreen`: mirror the clearer `LoopEditScreen` pattern by surfacing the missing-config state inline, disabling the primary CTA, and avoiding a silent no-op if save is somehow triggered.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - set an explicit error if save is attempted without server config,
+    - derive `isSaveDisabled` from both `isSaving` and missing `settingsClient`,
+    - show inline helper text (`Configure Base URL and API key in Settings to save changes.`),
+    - disable and visually mute the primary save button whenever config is missing.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the missing-config helper text, disabled save wiring, and explicit guard in `handleSave`.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by the missing mobile install / unresolved Expo + React Native dependencies / missing `expo/tsconfig.base`
+- Remaining nearby issues noted, not addressed this iteration:
+  - The disabled/muted save state still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - `AgentEditScreen` and `LoopEditScreen` primary actions may still benefit from explicit accessibility labels/hints later, but that should wait until live validation is back.
+  - A broader edit-flow hierarchy pass should still wait for fresh live evidence instead of continuing source-only tweaks too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then confirm on a narrow viewport that the disabled `Create Agent` / `Save Changes` state reads clearly before any typing begins.
+  - After live validation returns, compare `AgentEditScreen` and `LoopEditScreen` end-to-end for any remaining state-clarity mismatches in their primary actions.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
