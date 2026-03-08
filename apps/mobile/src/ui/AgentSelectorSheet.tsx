@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -17,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
+import { createButtonAccessibilityLabel } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient, Profile } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
@@ -33,6 +35,7 @@ interface AgentSelectorSheetProps {
 }
 
 export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
+  const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
@@ -90,9 +93,19 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   useEffect(() => {
     if (visible) {
-      fetchProfiles();
+      void Promise.all([refresh(), fetchProfiles()]);
     }
-  }, [visible, fetchProfiles]);
+  }, [visible, fetchProfiles, refresh]);
+
+  const currentAgentName = currentProfile?.name || (selectorMode === 'acp' ? 'Main Agent' : 'Default Agent');
+  const emptyStateMessage = selectorMode === 'acp'
+    ? 'No enabled ACP agents are available yet. Add or enable one in Settings → Agents to use it as your main agent.'
+    : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
+
+  const handleOpenAgentSettings = () => {
+    onClose();
+    navigation.navigate('Settings');
+  };
 
   const handleSelectProfile = async (profile: SelectableProfile) => {
     if (!hasApiConfig) {
@@ -163,6 +176,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.handle} />
         <Text style={styles.title}>{selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}</Text>
+        <Text style={styles.subtitle}>
+          {selectorMode === 'acp'
+            ? 'Choose which enabled ACP agent should act as the main agent for new chats.'
+            : 'Switch between saved chat profiles. Delegation agents stay available from Settings → Agents.'}
+        </Text>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -177,9 +195,24 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </TouchableOpacity>
           </View>
         ) : profiles.length === 0 ? (
-          <Text style={styles.emptyText}>
-            {selectorMode === 'acp' ? 'No ACP agents available' : 'No agents available'}
-          </Text>
+          <View style={styles.emptyStateCard}>
+            <View style={styles.currentAgentBadge}>
+              <Text style={styles.currentAgentBadgeText}>Current: {currentAgentName}</Text>
+            </View>
+            <Text style={styles.emptyStateTitle}>
+              {selectorMode === 'acp' ? 'No ACP agents ready yet' : 'No switchable agents yet'}
+            </Text>
+            <Text style={styles.emptyText}>{emptyStateMessage}</Text>
+            <TouchableOpacity
+              style={styles.manageAgentsButton}
+              onPress={handleOpenAgentSettings}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Open agent settings')}
+              accessibilityHint="Returns to Settings so you can review agents and agent mode."
+            >
+              <Text style={styles.manageAgentsButtonText}>Open Agent Settings</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <FlatList
             data={profiles}
@@ -224,6 +257,13 @@ function createStyles(theme: Theme) {
       fontSize: 18,
       fontWeight: '600',
       color: theme.colors.foreground,
+      textAlign: 'center',
+      marginBottom: spacing.xs,
+    },
+    subtitle: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.mutedForeground,
       textAlign: 'center',
       marginBottom: spacing.md,
     },
@@ -292,7 +332,47 @@ function createStyles(theme: Theme) {
     emptyText: {
       textAlign: 'center',
       color: theme.colors.mutedForeground,
+      lineHeight: 20,
+    },
+    emptyStateCard: {
+      alignItems: 'center',
       paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.sm,
+      gap: spacing.sm,
+    },
+    emptyStateTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+      textAlign: 'center',
+    },
+    currentAgentBadge: {
+      backgroundColor: theme.colors.primary + '18',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '33',
+    },
+    currentAgentBadgeText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    manageAgentsButton: {
+      minHeight: 44,
+      minWidth: 180,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.lg,
+      backgroundColor: theme.colors.primary + '14',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    manageAgentsButtonText: {
+      color: theme.colors.primary,
+      fontSize: 15,
+      fontWeight: '600',
     },
     closeButton: {
       alignItems: 'center',
