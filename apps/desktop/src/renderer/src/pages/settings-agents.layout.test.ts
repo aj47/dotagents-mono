@@ -40,4 +40,8 @@ describe("settings agents page layout", () => {
       'className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12"',
     )
   })
+
+  it("lets create-agent quick setup presets wrap under tighter widths and larger text", () => {
+    expect(settingsAgentsSource).toContain('className="flex flex-wrap gap-2"')
+  })
 })

@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 54: Desktop agent create-form quick-setup presets clip horizontally under tighter settings widths and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-agents.tsx` (`Create Agent` → `General` tab → `Quick Setup (Optional)` preset row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched sessions, WhatsApp, onboarding, repeat-tasks, and loop-editor surfaces.
+  - Chunk 43 explicitly left the agent create/edit form as the strongest follow-up inside `settings-agents.tsx`, and this was a fresh-enough sub-area with a practical live renderer target.
+  - A real Electron renderer session was available again on `:9333`, so this was a good opportunity to prefer screenshot-backed live inspection over source review alone.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer, navigated to `http://localhost:5174/settings/agents`, opened `Add Agent`, and inspected the `General` tab live instead of relying on source review alone
+  - stress-tested the create form at `760×670`, then applied a simulated `150%` zoom via `document.body.style.zoom = '1.5'` to approximate tighter text/scale pressure inside the real settings column
+  - captured screenshot-backed evidence in `tmp/ui-audit/settings-agents-live-initial.png`, `tmp/ui-audit/settings-agents-add-agent-760x670.png`, and `tmp/ui-audit/settings-agents-add-agent-760x670-zoom150.png`
+  - measured the live preset row and button bounds directly in the mounted DOM before choosing a fix, then prototyped the smallest candidate change in place and captured `tmp/ui-audit/settings-agents-add-agent-760x670-zoom150-prototype-wrap.png`
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/AgentEditScreen.tsx` does not expose this desktop-only quick-setup preset row
+
+#### Findings
+
+- Before the fix, the desktop agent create flow had one concrete UI issue with clear user impact:
+  - the `Quick Setup (Optional)` presets rendered in a single non-wrapping horizontal row near the top of the `Create Agent` form
+  - in live inspection at `760×670` with simulated `150%` zoom, the preset row shrank to about `231px` of visible width but still needed about `272px` of scroll width
+  - the `Claude Code` preset button extended to about `x=498px` while the row ended around `x=456.7px`, leaving about `41px` of horizontal overflow and partially pushing the second preset out of its visible lane
+  - this is materially risky because quick setup is a first-run acceleration affordance in the create flow; hiding part of a preset button makes the shortcut feel broken or harder to discover exactly where users are trying to get started quickly
+
+#### Changes made
+
+- Hardened the create-form quick-setup row in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` with the smallest effective layout fix verified live:
+  - changed the preset row from `flex gap-2` to `flex flex-wrap gap-2` so preset buttons can drop to a second line instead of overflowing horizontally under tighter widths and larger text
+  - kept the existing button styling and information architecture intact; this is a local wrap-path fix rather than a broader redesign of the form chrome
+- Extended `apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts` with focused source-contract coverage for the new wrap-safe quick-setup row
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `flex flex-wrap gap-2` quick-setup row and the focused regression test are present
+- Live Electron evidence before the fix at `http://localhost:5174/settings/agents`:
+  - screenshots: `tmp/ui-audit/settings-agents-live-initial.png`, `tmp/ui-audit/settings-agents-add-agent-760x670.png`, `tmp/ui-audit/settings-agents-add-agent-760x670-zoom150.png`
+  - at `760×670` + simulated `150%` zoom, the quick-setup row measured about `clientWidth = 231px` and `scrollWidth = 272px`
+  - the `Claude Code` preset button overflowed the row by about `41px`, confirming the second preset was partially pushed outside the visible lane
+- Live DOM prototype verification of the intended fix:
+  - after applying only `flex-wrap` directly to the mounted preset row, the row measured `scrollWidth = clientWidth = 231px`, eliminating the horizontal overflow
+  - the `Claude Code` preset wrapped onto a second line and remained fully visible/tappable without changing button labels or removing presets
+  - screenshot: `tmp/ui-audit/settings-agents-add-agent-760x670-zoom150-prototype-wrap.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-agents.tsx apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired real pre-fix renderer evidence with a live DOM prototype of the exact wrap treatment and direct source verification of the patch.
+- This chunk is desktop-only: the mobile app’s `AgentEditScreen` uses a different React Native editor flow and does not include this desktop quick-setup preset row, so no parallel mobile change was needed.
+- Tradeoff/rationale: under tighter settings widths or larger text, the presets may now stack into two rows sooner than before, but that is a deliberate and safer tradeoff than clipping a first-run shortcut action near the top of the form.
+- Best next UI audit chunk after this one: stay on `settings-agents.tsx` only for another live create-form follow-up like the ACP `Auto-spawn on startup` toggle row or avatar/action block under zoom, or move to another fresh live-inspectable desktop/mobile surface.
+
 ### 2026-03-08 — Chunk 53: Desktop sessions empty state can push recent-session recovery below the fold under tighter pane heights and larger text
 
 - Area selected:

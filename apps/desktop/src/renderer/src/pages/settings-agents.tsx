@@ -574,7 +574,7 @@ export function SettingsAgents() {
               {isCreating && (
                 <div className="space-y-2">
                   <Label>Quick Setup (Optional)</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {Object.entries(AGENT_PRESETS).map(([key, preset]) => (
                       <Button key={key} variant="outline" size="sm"
                         onClick={() => setEditing({ ...emptyAgent(), ...preset })}
