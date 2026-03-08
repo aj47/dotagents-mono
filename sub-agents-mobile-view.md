@@ -5452,3 +5452,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the queue panel now lines up with the chat transcript and gains visibly useful row width on a narrow screen.
   - Capture screenshot-backed evidence of the queue panel beside the transcript and response-history panel so the gutter alignment can be judged with real mobile constraints.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this gutter-alignment tweak without fresh evidence.
+
+## Iteration 123 - Let the mobile queue header keep more of its state summary on narrow screens
+
+- Date: 2026-03-08
+- Summary: Improved narrow-screen queue-state clarity by letting the `MessageQueuePanel` header status wrap to two lines instead of truncating longer blocked/processing summaries after a single line.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent queue-gutter and queue-height work without a fresh local issue.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/tests/message-queue-panel-mobile.test.js`, and the surrounding `ChatScreen` usage before editing.
+  - Confirmed the current queue-header status still rendered with `numberOfLines={1}` even after recent iterations made that summary more informative (`Blocked by …`, `Sending now`, `… waiting`).
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker before and after the change with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed hierarchy review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - The queue header already surfaced richer mobile state text after recent iterations, especially when failures, active sends, and waiting counts were all present.
+  - Source review showed that same summary was still hard-clamped to one line with tail truncation.
+  - On narrow screens, that meant the most important queue state could still lose secondary context once the title badge, chevron, and `Clear All` action shared the same horizontal space.
+- Issue identified:
+  - The mobile queue header was doing a better job prioritizing blocked state, but it still risked cutting off meaningful queue context because the status line could never grow beyond a single line.
+- Decision and rationale:
+  - Keep the queue card layout, header actions, badge pattern, and summary wording unchanged.
+  - Do not broaden this into a header redesign or remove the existing `Clear All` affordance while live validation is blocked.
+  - Make the smallest hierarchy fix instead: allow the status line to use two lines and add a shrink guardrail so narrow screens can preserve more of the queue summary before truncating.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add `flexShrink: 1` to the header status text style,
+    - change the visible queue status line from `numberOfLines={1}` to `numberOfLines={2}` while keeping tail truncation.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new shrink/wrap contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed preserving more blocked/processing context in the queue header is more valuable than preserving the shortest possible card height, because this panel exists specifically to explain queued agent work.
+  - Kept the change strictly to the status text instead of moving actions or changing the badge/title row, minimizing layout risk without live screenshots.
+  - Still expect a real narrow-screen pass once Expo is restored, since a two-line header summary may slightly increase card height in the busiest queue states.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that its gutter, responsive height, header hierarchy, and row state copy have all evolved without fresh Expo confirmation in this worktree.
+  - The stacked relationship between the response-history panel and the queue panel still deserves live one-handed scanability review once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that longer queue summaries now stay readable without making the header feel disproportionately tall.
+  - Capture screenshot-backed evidence of a queue state that includes blocked, sending, and waiting counts so the new two-line summary can be judged on a real narrow viewport.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this header-summary tweak without fresh evidence.

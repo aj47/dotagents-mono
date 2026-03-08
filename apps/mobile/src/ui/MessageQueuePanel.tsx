@@ -612,6 +612,7 @@ export function MessageQueuePanel({
       fontSize: 12,
       lineHeight: 16,
       color: theme.colors.mutedForeground,
+      flexShrink: 1,
     },
     headerStatusTextActive: {
       color: theme.colors.primary,
@@ -728,7 +729,7 @@ export function MessageQueuePanel({
                       ? styles.headerStatusTextActive
                       : null,
                 ]}
-                numberOfLines={1}
+                numberOfLines={2}
                 ellipsizeMode="tail"
               >
                 {queueHeaderStatusText}

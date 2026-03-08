@@ -51,11 +51,12 @@ test('keeps the full queue header informative when the list is collapsed', () =>
   assert.match(queuePanelSource, /headerTitleRow:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*6/);
   assert.match(queuePanelSource, /badge:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.primary,[\s\S]*?minWidth:\s*20,[\s\S]*?height:\s*20/);
   assert.match(queuePanelSource, /badgeText:\s*\{[\s\S]*?fontSize:\s*11,[\s\S]*?fontWeight:\s*'600',[\s\S]*?theme\.colors\.primaryForeground/);
-  assert.match(queuePanelSource, /headerStatusText:\s*\{[\s\S]*?lineHeight:\s*16,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+  assert.match(queuePanelSource, /headerStatusText:\s*\{[\s\S]*?lineHeight:\s*16,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?flexShrink:\s*1/);
   assert.match(queuePanelSource, /headerStatusTextActive:\s*\{[\s\S]*?color:\s*theme\.colors\.primary/);
   assert.match(queuePanelSource, /headerStatusTextDanger:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
   assert.match(queuePanelSource, /<View style=\{styles\.headerTitleRow\}>[\s\S]*?<Text style=\{styles\.headerTitle\} numberOfLines=\{1\} ellipsizeMode="tail">[\s\S]*?Queued Messages[\s\S]*?<\/Text>[\s\S]*?<View style=\{styles\.badge\}>[\s\S]*?<Text style=\{styles\.badgeText\}>\{messages\.length\}<\/Text>/);
   assert.match(queuePanelSource, /style=\{\[[\s\S]*?styles\.headerStatusText,[\s\S]*?failedCount > 0[\s\S]*?styles\.headerStatusTextDanger[\s\S]*?hasProcessingMessage[\s\S]*?styles\.headerStatusTextActive/);
+  assert.match(queuePanelSource, /style=\{\[[\s\S]*?styles\.headerStatusText,[\s\S]*?\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"/);
   assert.match(queuePanelSource, /\{queueHeaderStatusText\}/);
   assert.match(queuePanelSource, /accessibilityLabel=\{queueDisclosureLabel\}/);
 });
