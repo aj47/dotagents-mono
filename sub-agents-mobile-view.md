@@ -5694,3 +5694,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the full-width `Retry` CTA is easy to notice and tap without overpowering the surrounding selector error copy.
   - Capture screenshot-backed evidence for the recoverable selector error state so the promoted retry action can be judged against the existing `Open Agent Settings` empty/missing-config actions.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this retry-CTA tweak without fresh evidence.
+
+## Iteration 128 - Let the response-history header keep more of its status summary on narrow screens
+
+- Date: 2026-03-08
+- Summary: Improved narrow-screen response-history clarity by letting the `ResponseHistoryPanel` header status wrap to two lines instead of forcing `Speaking now` / `Latest …` context into a single truncated line.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recently touched queue, selector-sheet, and loop-retry work without a fresh local issue.
+  - Re-checked `apps/mobile/src/ui/ResponseHistoryPanel.tsx`, `apps/mobile/tests/response-history-panel-mobile.test.js`, and the adjacent `MessageQueuePanel` header pattern before editing.
+  - Confirmed the queue header had already adopted a shrink-safe two-line status treatment in Iteration 123, while the response-history header still used `numberOfLines={1}`.
+- Live inspection / workflow status:
+  - Reconfirmed the existing mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker with a focused command:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING && pnpm --filter @dotagents/mobile exec expo --version` → `APPS_MOBILE_NODE_MODULES_MISSING`, then `undefined`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed hierarchy review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ResponseHistoryPanel` already surfaced helpful collapsed-state context like `Speaking now` and `Latest HH:MM` beneath the `Agent Responses` title.
+  - Source review showed that status line still rendered with `numberOfLines={1}` and no explicit shrink guardrail.
+  - On narrow screens, that meant the header's most useful activity summary still risked truncation once it shared space with the title, count badge, and chevron.
+- Issue identified:
+  - The mobile response-history header now carried useful activity context, but it still compressed that context too aggressively for narrow screens.
+- Decision and rationale:
+  - Keep the response-history layout, title row, count badge, playback controls, and accessibility label unchanged.
+  - Do not broaden this into a larger response-history/header redesign while live validation is blocked.
+  - Make the smallest local hierarchy fix instead: mirror the queue header's already-shipped narrow-screen pattern by letting the status text shrink and wrap to two lines before truncating.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - add `flexShrink: 1` to the header status text style,
+    - change the visible header status line from `numberOfLines={1}` to `numberOfLines={2}` while keeping tail truncation.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new shrink/wrap contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed preserving a bit more response-history status context is more valuable than holding the header to a strict single-line height, because this panel exists to summarize recent agent activity above the chat.
+  - Reused the queue header's already-shipped pattern instead of inventing a new response-history-specific treatment.
+  - This remains a source-backed improvement and still needs live confirmation that the two-line status feels balanced beside the compact badge and disclosure chevron on a real narrow viewport.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `ResponseHistoryPanel` still lacks fresh screenshot-backed validation after multiple targeted header, playback, height, and state-reset improvements.
+  - A live pass is still needed to confirm the two-line header summary does not make the collapsed panel feel disproportionately tall when stacked with the nearby queue panel.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that longer response-history summaries remain readable without making the collapsed panel feel too tall on a narrow screen.
+  - Capture screenshot-backed evidence of the collapsed response-history panel in both `Latest HH:MM` and `Speaking now` states so the new two-line summary can be judged in context.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this response-history header tweak without fresh evidence.

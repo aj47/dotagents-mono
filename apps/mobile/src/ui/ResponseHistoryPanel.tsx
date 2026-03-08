@@ -278,6 +278,7 @@ export function ResponseHistoryPanel({
       fontSize: 12,
       color: theme.colors.mutedForeground,
       lineHeight: 16,
+      flexShrink: 1,
     },
     headerStatusTextActive: {
       color: theme.colors.primary,
@@ -377,7 +378,7 @@ export function ResponseHistoryPanel({
             </View>
             <Text
               style={[styles.headerStatusText, speakingIndex !== null && styles.headerStatusTextActive]}
-              numberOfLines={1}
+              numberOfLines={2}
               ellipsizeMode="tail"
             >
               {headerStatusText}

@@ -38,9 +38,9 @@ test('surfaces response recency and active playback state directly in the histor
   assert.match(responseHistorySource, /const headerStatusText = speakingIndex !== null[\s\S]*?'Speaking now'[\s\S]*?`Latest \$\{formatTime\(newestTimestamp, false\)\}`/);
   assert.match(responseHistorySource, /headerLeft:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0/);
   assert.match(responseHistorySource, /headerTitleGroup:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0/);
-  assert.match(responseHistorySource, /headerStatusText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?lineHeight:\s*16/);
+  assert.match(responseHistorySource, /headerStatusText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?lineHeight:\s*16,[\s\S]*?flexShrink:\s*1/);
   assert.match(responseHistorySource, /headerStatusTextActive:\s*\{[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?fontWeight:\s*'600'/);
-  assert.match(responseHistorySource, /style=\{\[styles\.headerStatusText, speakingIndex !== null && styles\.headerStatusTextActive\]\}[\s\S]*?numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{headerStatusText\}/);
+  assert.match(responseHistorySource, /style=\{\[styles\.headerStatusText, speakingIndex !== null && styles\.headerStatusTextActive\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{headerStatusText\}/);
 });
 
 test('caps expanded response history height relative to the viewport so it does not take over shorter mobile screens', () => {
