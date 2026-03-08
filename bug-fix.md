@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-selector.tsx` and confirmed the desktop selector still destructured `data: agents = []` from `useQuery(...)` and returned `null` whenever `enabledAgents.length === 0`, so initial loading and rejected profile loads collapsed into the same hidden-control state.
+- [x] 2026-03-08: Confirmed `AgentSelector` is mounted by the visible desktop sessions empty state/header in `apps/desktop/src/renderer/src/pages/sessions.tsx` and by the new-session composer surfaces in `apps/desktop/src/renderer/src/components/session-input.tsx`, so a failed profile fetch can remove the primary agent-picking control from active session-start UI.
+- [x] 2026-03-08: Compared desktop `AgentSelector` against mobile `apps/mobile/src/ui/AgentSelectorSheet.tsx`; mobile already shows explicit loading, error, retry, and empty states for agent loading, so visible desktop selector feedback is consistent with existing repo UX rather than a new pattern.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/memories.tsx` and confirmed the visible desktop `deleteMemory` / `updateMemory` mutations still treated any resolved promise as success, even though both TIPC calls resolve to booleans rather than throwing on every failure.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/memory-service.ts` that `updateMemory(...)` and `deleteMemory(...)` return `false` when the memory is missing or persistence fails, so the desktop Memories page could honestly receive a non-throwing failed result.
 - [x] 2026-03-08: Compared the desktop Memories page against mobile `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx`; mobile appears to have a similar `{ success: false }` contract gap, but this loop fixes the already confirmed desktop bug only and leaves mobile as a separate follow-up lead.
@@ -197,6 +200,9 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
 
 ### Reproduced
+- [x] **Desktop AgentSelector could silently disappear on agent-profile load failure (directly confirmed in source):**
+  - In `apps/desktop/src/renderer/src/components/agent-selector.tsx`, the selector previously defaulted `agents` to `[]` and returned `null` whenever `enabledAgents.length === 0`, without distinguishing first-load, rejected `getAgentProfiles()` queries, or genuine zero-enabled-agent results.
+  - Because `AgentSelector` is used on the desktop sessions empty state/header and session-input chrome, a rejected agent-profile load made those start surfaces look like they simply had no selectable agents instead of telling the user the load failed or offering retry.
 - [x] **Desktop MCP Tool Management could misreport a load failure as “No tools available” (directly confirmed in source):**
   - In `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx`, the initial/polled `fetchTools()` path previously wrapped `tipcClient.getMcpDetailedToolList({})` in an empty `catch`, so a rejected IPC request left the component at its default `tools = []` state without any visible error.
   - The render path only distinguished `filteredToolsByServer.length === 0`, so a real loading failure on the visible desktop MCP Tool Management page fell through to the same empty-state card copy used for a legitimate zero-tools configuration, which hides the failure cause and gives the user no retry affordance.
@@ -401,6 +407,8 @@
    - The card actions were gated directly by `oauthStatus[name]?.authenticated` / `.configured`, and revoke/auth-completion paths refreshed all servers instead of the active one, so an unrelated server failure could block the current card's visible auth controls.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/agent-selector.tsx` so the desktop selector now keeps a bounded outline button visible while agent profiles are loading and replaces silent initial load failures with a retryable `Retry agents` trigger that exposes the backend error in the button tooltip/title.
+- [x] Added `apps/desktop/src/renderer/src/components/agent-selector.feedback.test.ts` with focused source-level regression coverage locking in the new loading and retry states while the existing layout test continues to cover the normal selector chrome.
 - [x] Updated `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` so the desktop MCP Tool Management page now tracks explicit initial loading and fetch-error state, logs rejected tool-list loads, shows a retryable inline error card for failed first loads, and reserves the “No tools available” empty state for genuine zero-tool results.
 - [x] Added `apps/desktop/src/renderer/src/components/mcp-tool-manager.feedback.test.ts` with focused source-level regression coverage locking in the new loading/error/retry contract for the MCP Tool Management page.
 - [x] Updated `apps/desktop/src/renderer/src/pages/memories.tsx` so `deleteMemory` / `updateMemory` only invalidate queries, close dialogs, and show success toasts when the backend result is actually `true`; `false` results now surface a visible failure toast instead of pretending the action worked.
@@ -567,6 +575,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new OAuth fallback/normalization contract and targeted per-server refresh behavior.
 
 ### Verified
+- [x] Manual source verification: `AgentSelector` now distinguishes `isLoading` / `isFetching` / `error` from a genuine success-empty state, rendering `Loading agents...` or `Retry agents` buttons instead of returning `null` whenever the first profile query has no data yet.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `apps/desktop/src/renderer/src/components/agent-selector.tsx` and `apps/desktop/src/renderer/src/components/agent-selector.feedback.test.ts`, confirming the new load-error helper, loading state, retry trigger, and regression coverage are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop AgentSelector loading/error feedback fix.
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` now contains explicit `isLoadingTools` / `toolsLoadError` state, preserves the real empty-state card for genuine zero-tool results, and shows `Loading MCP tools...` / `Failed to load MCP tools` plus a `Retry` button when the initial fetch rejects.
 - [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` and `apps/desktop/src/renderer/src/components/mcp-tool-manager.feedback.test.ts`, confirming the new loading/error/retry strings and regression assertions are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the MCP Tool Management load-state fix.
@@ -711,6 +722,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this desktop AgentSelector fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-selector.feedback.test.ts src/renderer/src/components/agent-selector.layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this MCP Tool Management load-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-tool-manager.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-resize.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] Targeted automated verification for this follow-up voice-start feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` fails before Vitest starts because the shared `pretest` cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
@@ -762,6 +774,7 @@
 - [x] Targeted automated verification for this MCP OAuth status resilience fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails in `pretest` because `packages/shared` cannot find `tsup` (`sh: tsup: command not found`), which confirms `node_modules` is still absent in this worktree.
 
 ### Still Uncertain
+- [ ] Whether a successful zero-enabled-agent result on desktop should eventually show an explicit empty-state/manage-agents affordance like mobile, rather than continuing to hide the selector outside of load/error states.
 - [ ] Whether later background polling failures in `mcp-tool-manager.tsx` should eventually surface a non-blocking stale-data banner/toast once live desktop verification is available, or whether keeping the last successful tool list visible without extra noise is the better UX.
 - [ ] Whether the throttled mid-drag `updatePanelSize(...)` failure path in `panel-resize-wrapper.tsx` should also surface limited user feedback, or remain console-only to avoid toast spam once live desktop verification is available.
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -797,6 +810,8 @@
 - [ ] Whether the adjacent `refreshOAuthStatus(...)` failure path in `mcp-config-manager.tsx` should also surface explicit inline status instead of staying console-only once desktop settings can be exercised live.
 
 ### Diagnosis / Rationale
+- The desktop AgentSelector issue is a primary entry-point load-state bug: when profile loading failed, the agent picker vanished from session-start surfaces and looked indistinguishable from “there are no agents to choose from.”
+- Reusing the existing compact button chrome for loading and retry states is the smallest safe fix because it avoids layout shifts in dense headers/composers, preserves normal dropdown behavior when data exists, and does not widen the component into a larger settings-style panel.
 - The floating panel resize issue is a concrete visible-UI bug: when the user grabs a resize handle and the initial size read fails, the gesture simply does nothing; when final persistence fails, the resize looks successful until the next reopen resets it. Both states are misleading without explicit feedback.
 - The desktop follow-up mic buttons are another core conversation action where silent failure is especially misleading: when “continue by voice” fails to start recording, the user gets no transcript, no state change, and previously no visible explanation.
 - Reusing the existing local `toast.error(...)` pattern in those two click handlers is the smallest safe fix because the components already use `sonner` for adjacent send/stop failures, the successful recording flow is unchanged, and no new shared abstraction is needed.
@@ -881,6 +896,7 @@
 - Tracking per-server log loading/error state is the smallest safe fix because the component already owns per-server expanded/polled state, and inline status avoids toast spam from repeated background refresh failures while preserving the existing successful log rendering.
 
 ### Assumptions
+- Assumption: keeping the successful zero-enabled-agent state hidden for this pass is acceptable because the confirmed bug was load/error misreporting rather than the broader empty-agent UX, and mobile’s richer manage-settings empty state would be a larger product decision for dense desktop headers/composers.
 - Assumption: surfacing only drag-start and final-persistence resize failures with `toast.error(...)` is acceptable because those are the user-meaningful breakpoints in the floating-panel resize flow, while the high-frequency throttled `updatePanelSize(...)` path would risk noisy toast spam during normal drags.
 - Assumption: showing a visible toast and keeping the desktop memory delete/edit UI open on `deleteMemory(...) === false` or `updateMemory(...) === false` is acceptable because the backend has explicitly not completed the requested action, and auto-closing the dialog/editor would be more misleading than preserving the user's chance to retry or refresh.
 - Assumption: using the existing desktop toast pattern for rejected follow-up `triggerMcpRecording(...)` calls is acceptable because `sonner` is already mounted app-wide, adjacent follow-up send/stop actions already surface visible errors the same way, and mobile already treats notable voice-start failures as user-visible.
@@ -933,6 +949,7 @@
 - Assumption: using an inline loading/error/retry card for the initial MCP tool-list fetch is acceptable because this failure happens while the settings page itself is loading, the error is page-scoped rather than action-scoped, and an inline retry affordance is less noisy and more informative than a toast for first-render failures.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-selector.feedback.test.ts src/renderer/src/components/agent-selector.layout.test.ts` and live-verify the desktop sessions empty state/header plus `SessionInput` surfaces by forcing one rejected `getAgentProfiles()` response to confirm the selector now stays visible with `Retry agents` instead of disappearing.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-tool-manager.feedback.test.ts` and live-verify the desktop MCP Tool Management page by forcing one initial `getMcpDetailedToolList(...)` rejection plus one later poll failure to confirm first-load errors now show the retry card while later transient failures keep the last good tool list visible.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.feedback.test.ts` and live-verify the desktop Memories page by forcing one stale/missing memory id plus one persistence failure to confirm it now keeps the editor/delete dialog open and shows the new failure toast instead of a false success message.
 - After that, inspect the analogous mobile memory edit/delete flows in `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx`, which appear to have the same `{ success: false }` contract gap but were intentionally left out of this single-bug desktop fix.

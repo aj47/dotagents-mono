@@ -6,7 +6,7 @@
 import React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { Bot, ChevronDown, Check } from "lucide-react"
+import { AlertTriangle, Bot, Check, ChevronDown, Loader2 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProfile } from "../../../shared/types"
 import {
@@ -20,6 +20,18 @@ import { Button } from "./ui/button"
 
 const STORAGE_KEY = "dotagents-selected-agent"
 const STORAGE_EVENT = "dotagents-selected-agent-changed"
+
+function getAgentLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Failed to load agents"
+}
 
 function loadSelectedAgentId(): string | null {
   try {
@@ -84,13 +96,17 @@ interface AgentSelectorProps {
 }
 
 export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false }: AgentSelectorProps) {
-  const { data: agents = [] } = useQuery<AgentProfile[]>({
+  const { data: agents = [], error, isLoading, isFetching, refetch } = useQuery<AgentProfile[]>({
     queryKey: ["agentProfilesSelector"],
     queryFn: () => tipcClient.getAgentProfiles(),
   })
 
   const enabledAgents = agents.filter((a) => a.enabled)
   const selectedAgent = enabledAgents.find((a) => a.id === selectedAgentId)
+  const buttonClassName = cn(
+    "min-w-0 max-w-[min(13rem,calc(100vw-2rem))] justify-between gap-1.5 text-xs font-normal",
+    compact && "h-7 px-2",
+  )
 
   // If the selected agent was disabled/deleted, reset to default
   React.useEffect(() => {
@@ -98,6 +114,39 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
       onSelectAgent(null)
     }
   }, [selectedAgentId, enabledAgents, selectedAgent, onSelectAgent])
+
+  if ((isLoading || isFetching) && agents.length === 0) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className={buttonClassName}
+        disabled
+        aria-label="Loading agents"
+        title="Loading agents"
+      >
+        <Bot className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-left">Loading agents...</span>
+        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+      </Button>
+    )
+  }
+
+  if (error && agents.length === 0) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className={buttonClassName}
+        onClick={() => void refetch()}
+        aria-label="Retry loading agents"
+        title={getAgentLoadErrorMessage(error)}
+      >
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+        <span className="min-w-0 flex-1 truncate text-left">Retry agents</span>
+      </Button>
+    )
+  }
 
   if (enabledAgents.length === 0) {
     return null
@@ -111,10 +160,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent, compact = false 
         <Button
           variant="outline"
           size="sm"
-          className={cn(
-            "min-w-0 max-w-[min(13rem,calc(100vw-2rem))] justify-between gap-1.5 text-xs font-normal",
-            compact && "h-7 px-2",
-          )}
+          className={buttonClassName}
           title={displayName}
         >
           <Bot className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
