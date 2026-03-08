@@ -105,8 +105,8 @@ test('LoopEditScreen explains when no saved profiles are available to assign', (
   assert.match(loopEditSource, /const \[profileLoadError, setProfileLoadError\] = useState<string \| null>\(null\);/);
   assert.match(loopEditSource, /setProfileLoadError\(null\);[\s\S]*?settingsClient\.getAgentProfiles\(\)/);
   assert.match(loopEditSource, /setProfileLoadError\(err\.message \|\| 'Failed to load agent profiles'\);/);
-  assert.match(loopEditSource, /const showNoSavedProfilesHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length === 0;/);
-  assert.match(loopEditSource, /showNoSavedProfilesHelper && \([\s\S]*?No saved profiles yet\. Create one in Settings → Agents to assign it here\.[\s\S]*?\)/);
+  assert.match(loopEditSource, /const showNoSavedProfilesNotice = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length === 0;/);
+  assert.match(loopEditSource, /showNoSavedProfilesNotice && \([\s\S]*?<View style=\{styles\.profileNoticeContainer\}>[\s\S]*?No saved profiles yet\. This loop can still run with No profile, or you can create an agent in Settings → Agents and come back to assign it here\.[\s\S]*?<\/View>[\s\S]*?\)/);
 });
 
 test('LoopEditScreen explains when the loop is intentionally left unassigned', () => {

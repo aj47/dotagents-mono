@@ -2608,3 +2608,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Retry profiles` notice is easy to spot and use on a narrow screen.
   - Confirm the retry path behaves well after a transient fetch failure and still leaves `No profile` usable as the fallback path.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 61: promote the empty loop-profile state from helper text to a real notice
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` `Agent Profile` section
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the recent profile-load failure path now uses a bordered warning notice with a retry action.
+  - But the ordinary zero-saved-profiles state still rendered only as helper text under the profile chips:
+    - `No saved profiles yet. Create one in Settings → Agents to assign it here.`
+  - On mobile, that made a key assignment-state explanation easy to miss even though the section had effectively run out of choices beyond `No profile`.
+- Issue selected:
+  - The loop editor treated the everyday `no saved profiles yet` state too softly, weakening state clarity in a compact section where users need to quickly understand both the fallback path and the next setup step.
+- Decision:
+  - Keep the existing chip layout, `No profile` option, and retry-warning treatment unchanged.
+  - Do not add a new navigation button or another warning-style treatment for a non-error state.
+  - Make the smallest local hierarchy fix: promote only the zero-saved-profiles state to a neutral inline notice that keeps `No profile` viable while explicitly pointing back to `Settings → Agents`.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - rename the empty-state guard to `showNoSavedProfilesNotice`,
+    - replace the old helper-text-only state with a compact `profileNoticeContainer`,
+    - clarify that the loop can still run with `No profile` or be assigned later after creating an agent in `Settings → Agents`.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new notice treatment.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new neutral notice feels prominent enough without crowding the `Agent Profile` section.
+  - The ordinary `No profile selected` helper remains intentionally lighter than the zero-options state, but should be revisited if live validation later shows the distinction is too subtle.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new empty-state notice is easy to notice and does not overpower the profile chips on a narrow screen.
+  - Compare the neutral empty-state notice against the existing warning retry notice so the two states feel appropriately distinct on mobile.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
