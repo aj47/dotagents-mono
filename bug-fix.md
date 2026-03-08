@@ -19,12 +19,15 @@
 - [x] 2026-03-08: Attempted verification with `pnpm --filter @dotagents/desktop typecheck:web`, but the worktree still has no installed desktop dependencies (`node_modules` missing; `@electron-toolkit/tsconfig/tsconfig.web.json` not found).
 - [x] 2026-03-08: Attempted formatting verification with `pnpm --filter @dotagents/desktop exec prettier --check src/renderer/src/pages/settings-general.tsx src/renderer/src/pages/settings-general.langfuse-draft.test.tsx`, but `prettier` is unavailable in this worktree (`Command "prettier" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the Groq STT prompt draft-save fix and regression test additions.
+- [x] 2026-03-08: Reviewed `settings-general.tsx` `Max Iterations` handling against the existing mobile `SettingsScreen.tsx` `inputDrafts.mcpMaxIterations` flow and confirmed desktop still saved/coerced on every keystroke.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop `Max Iterations` draft-save fix and regression test additions.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
 - [ ] Current desktop/mobile logs or reproducible failing tests tied to user-facing regressions once the environment blocker is cleared.
 - [ ] Other desktop settings text inputs that may still save on every keystroke.
-- [ ] Whether adjacent numeric/text settings in `settings-general.tsx` (for example `mcpMaxIterations`) still need draft-first handling or blur-only persistence.
+- [ ] Whether adjacent numeric/text settings in `settings-general.tsx` still need draft-first handling or blur-only persistence now that `mcpMaxIterations` is covered.
 
 ### Reproduced
 - [x] **Desktop Langfuse settings save-on-every-keystroke bug (directly confirmed in source):**
@@ -43,6 +46,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` rendered the Groq STT `Prompt` textarea with `defaultValue={configQuery.data.groqSttPrompt || ""}` and called `saveConfig({ groqSttPrompt: ... })` directly from `onChange`.
   - That meant every typed or pasted character in a transcription prompt triggered a config mutation + invalidation round-trip while the user was still editing long-form guidance text.
   - The prompt is consumed in desktop transcription requests via `form.append("prompt", config.groqSttPrompt.trim())` in `apps/desktop/src/main/tipc.ts`, so this was a real user-facing STT configuration flow rather than dead settings code.
+- [x] **Desktop `Max Iterations` numeric editing bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` bound the `Max Iterations` number input straight to `configQuery.data?.mcpMaxIterations ?? 10` and called `saveConfig({ mcpMaxIterations: parseInt(e.target.value) || 1 })` from each `onChange`.
+  - That meant every keystroke triggered a config mutation + invalidation round-trip, and temporary input states like an empty field were immediately coerced to `1` while the user was still editing.
+  - Mobile already keeps `mcpMaxIterations` in `inputDrafts` and only persists valid values, so the desktop behavior was another clear parity gap and a broken numeric-editing flow rather than an intentional immediate-save UX.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` to use local Langfuse drafts with debounced saves and blur flushes for `langfusePublicKey`, `langfuseSecretKey`, and `langfuseBaseUrl`.
@@ -69,6 +76,14 @@
   - debounced Groq STT prompt saving with latest-config merge behavior
   - blur flushing of the latest Groq STT prompt draft without waiting for a rerender
   - resyncing the Groq STT prompt draft from saved config updates
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so `Max Iterations` uses a local string draft with debounced valid saves and blur handling instead of coercing/saving on every keystroke.
+- [x] Kept the `Max Iterations` save path on the existing latest-config merge helper so delayed numeric saves cannot overwrite newer unrelated settings.
+- [x] Cancelled stale pending `Max Iterations` saves when the draft becomes invalid so clearing the field cannot later persist an older number the user has already erased.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` with focused regression coverage for:
+  - keeping temporary empty numeric input local without saving
+  - debounced valid `Max Iterations` saving with latest-config merge behavior
+  - cancelling pending numeric saves when a once-valid draft becomes invalid before the debounce fires
+  - blur flushing of the latest valid numeric draft and reset of invalid drafts back to the saved config
 
 ### Verified
 - [x] Manual source verification: the desktop Langfuse inputs no longer call `saveConfig(...)` directly from `onChange`; they now update local draft state and use debounce/blur persistence.
@@ -78,11 +93,14 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the settings-providers / test updates.
 - [x] Manual source verification: the desktop Groq STT prompt textarea no longer calls `saveConfig(...)` directly from `onChange`; it now uses a controlled local draft with debounce/blur persistence.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the Groq STT prompt / regression test updates.
+- [x] Manual source verification: the desktop `Max Iterations` input no longer calls `saveConfig(...)` directly from `onChange`; it now keeps a local draft, only schedules saves for valid values, and resets invalid blur states to the saved config.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the `Max Iterations` / regression test updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
 - [x] Live desktop reproduction and automated tests are blocked because this worktree does not have installed dependencies (`tsup` missing in predev, `vitest` missing for targeted tests). Per instructions, I did not install dependencies without separate permission.
 - [x] Additional desktop verification for this Groq STT prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`, and `pnpm --filter @dotagents/desktop exec prettier ...` cannot find `prettier`, which indicates `apps/desktop/node_modules` is absent in this worktree.
+- [x] Targeted automated verification for this `Max Iterations` fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
@@ -100,6 +118,8 @@
 - Using one shared providers-page draft helper for Groq/Gemini keeps the fix small while covering both the active and inactive provider sections that exposed the same broken editing path.
 - The Groq STT prompt is another long-form text-editing flow where per-keystroke persistence has no user benefit and can create noisy config churn while the user is still composing or pasting transcription guidance.
 - Keeping this fix inside the existing `settings-general.tsx` draft-save pattern is the smallest safe change: it improves a concrete editing flow without changing how the saved prompt is consumed by desktop transcription requests.
+- `Max Iterations` is the numeric version of the same bug: per-keystroke persistence makes the field fight the user during normal editing because empty/intermediate values are part of typing, not a real final setting.
+- Keeping the fix inside the existing `settings-general.tsx` draft-save pattern is the smallest safe change here too: it improves the editing flow without changing how the runtime consumes the persisted numeric limit.
 
 ### Assumptions
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
@@ -107,6 +127,7 @@
 - Assumption: debouncing the desktop transcript post-processing prompt is acceptable because the mobile settings screen already treats the same field as a local draft and prompt editing does not require per-keystroke persistence.
 - Assumption: debouncing Groq/Gemini provider API keys and base URLs is acceptable because these are long-form credential/endpoint text edits where per-keystroke persistence has no user benefit and the repo already uses draft-first handling for similar settings inputs.
 - Assumption: debouncing the desktop Groq STT prompt is acceptable because it is optional long-form guidance text, downstream transcription reads the saved config only when a request is made, and there is no user value in persisting every intermediate keystroke.
+- Assumption: keeping invalid `Max Iterations` input local until blur, then snapping back to the saved config when still invalid, is acceptable because the field already has an enforced numeric range in the UI and there is no meaningful persisted empty/zero state for this setting.
 
 ### Next Leads
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.
@@ -116,3 +137,5 @@
 - After that, inspect whether other providers-page free-text inputs (for example `groqSttPrompt` or numeric freeform fields) still merit draft-first handling.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` to execute the new Groq STT prompt coverage and confirm the existing transcript/Langfuse cases still pass together.
 - After that, inspect remaining immediate-save numeric/text inputs in `settings-general.tsx` to decide whether they should become draft-backed or blur-committed instead of per-change saves.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` to execute the new `Max Iterations` coverage alongside the existing Langfuse/transcript/Groq-STT draft tests.
+- After that, inspect remaining immediate-save numeric inputs in desktop settings (for example other bounded number fields) to decide whether they need the same draft-first or blur-commit treatment.
