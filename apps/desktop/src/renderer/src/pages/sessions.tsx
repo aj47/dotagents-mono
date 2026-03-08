@@ -1023,22 +1023,37 @@ export function Component() {
   const handleTextClick = async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindowWithTextInput({})
+    try {
+      await tipcClient.showPanelWindowWithTextInput({})
+    } catch (error) {
+      console.error("Failed to start text session:", error)
+      toast.error(getSessionActionErrorMessage("Failed to start text session", error))
+    }
   }
 
   // Handle voice start - trigger MCP recording
   const handleVoiceStart = async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindow({})
-    await tipcClient.triggerMcpRecording({})
+    try {
+      await tipcClient.showPanelWindow({})
+      await tipcClient.triggerMcpRecording({})
+    } catch (error) {
+      console.error("Failed to start voice session:", error)
+      toast.error(getSessionActionErrorMessage("Failed to start voice session", error))
+    }
   }
 
   // Handle predefined prompt selection - open panel with text input pre-filled
   const handleSelectPrompt = async (content: string) => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+    try {
+      await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+    } catch (error) {
+      console.error("Failed to start prompt session:", error)
+      toast.error(getSessionActionErrorMessage("Failed to start prompt session", error))
+    }
   }
 
   const handleFocusSession = useCallback(

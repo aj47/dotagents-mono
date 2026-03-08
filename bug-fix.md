@@ -142,6 +142,13 @@
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `agent-progress.tsx`, `session-tile.tsx`, and `copy-feedback.test.ts`; the assertions passed for the new copy-error helper/toast wiring and regression test coverage.
 - [x] 2026-03-08: `git diff --check` completed cleanly after the desktop session-copy feedback fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/sessions.tsx` and confirmed the visible `handleTextClick`, `handleVoiceStart`, and `handleSelectPrompt` sessions-page launch actions still awaited `showPanelWindowWithTextInput(...)`, `showPanelWindow()`, and `triggerMcpRecording()` with no local `try/catch` or visible error feedback.
+- [x] 2026-03-08: Confirmed those handlers are wired to both the sessions header CTA row and the empty-state primary actions, so this silent-failure path affects the main desktop “start a new session” surface rather than dead or edge-case UI.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/lib/apply-selected-agent.ts` and confirmed selected-agent handoff failures already return `false` with their own toast, so the missing feedback bug is specifically the post-handoff panel/recording IPC step in `sessions.tsx`.
+- [x] 2026-03-08: Searched `apps/mobile/src/screens/ChatScreen.tsx` and confirmed mobile has no equivalent panel-launcher sessions surface; mobile still uses visible recovery for core send/voice failures, so adding desktop toast feedback for failed session launches is a safe repo-local UX alignment.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.launch-actions.test.ts src/renderer/src/pages/sessions.focus-session.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `sessions.tsx` and `sessions.launch-actions.test.ts`; the assertions passed for the new sessions launch-action toast wiring and regression test coverage.
+- [x] 2026-03-08: `git diff --check` completed cleanly after the sessions launch-action feedback fix and regression test addition.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -151,7 +158,6 @@
 - [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
 - [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
-- [ ] Whether the Sessions page `Start typing`, `Start voice`, or predefined-prompt launch actions also need the same visible error handling pattern once live desktop debugging is available.
 
 ### Reproduced
 - [x] **Desktop follow-up send failures were silent (directly confirmed in source):**
@@ -300,6 +306,10 @@
   - `apps/desktop/src/renderer/src/pages/sessions.tsx` optimistically called `setFocusedSessionId(sessionId)` before awaiting `tipcClient.focusAgentSession(...)`, `tipcClient.setPanelMode(...)`, and `tipcClient.showPanelWindow(...)`.
   - The same handler only logged `Failed to show panel window:` in its catch path, so a failed tile click could leave the session visually focused with no toast even though the panel did not actually open/focus that session.
   - `apps/desktop/src/main/tipc.ts` also returned `{ success: true }` from `focusAgentSession` even when the panel renderer handler was missing, so the renderer had no way to roll back that optimistic focus on a real panel-focus failure.
+- [x] **Desktop sessions-page launch actions could fail silently (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/sessions.tsx` awaited `tipcClient.showPanelWindowWithTextInput({})`, `tipcClient.showPanelWindow()`, `tipcClient.triggerMcpRecording({})`, and `tipcClient.showPanelWindowWithTextInput({ initialText: content })` from `handleTextClick`, `handleVoiceStart`, and `handleSelectPrompt` without any local `try/catch` or visible feedback.
+  - Those handlers drive both the sessions header CTA buttons and the empty-state primary actions, so a rejected panel-open or voice-start IPC could make a core “start a new session” click look like nothing happened.
+  - `applySelectedAgentToNextSession(...)` already handles its own failure feedback in `apps/desktop/src/renderer/src/lib/apply-selected-agent.ts`, which isolates the bug to the sessions-page launch IPC step rather than the agent-selection handoff.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -435,6 +445,8 @@
 - [x] Updated `apps/desktop/src/main/tipc.ts` so `focusAgentSession` now returns `{ success: false, error: ... }` when the panel renderer handler is unavailable or the focus event send throws, instead of always claiming success.
 - [x] Updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so session-tile focus now remembers the previous `focusedSessionId`, rolls back that optimistic local focus when the panel-focus step fails, and surfaces visible `toast.error(...)` feedback for both focus and panel-open failures.
 - [x] Added `apps/desktop/src/renderer/src/pages/sessions.focus-session.test.ts` with focused source-level assertions that lock in the new focus-result contract, previous-focus rollback, and visible sessions-page error feedback.
+- [x] Updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so the visible `Start with Text`, `Start with Voice`, and predefined-prompt launch actions now catch rejected panel/recording IPC calls and surface visible `toast.error(...)` feedback instead of failing silently.
+- [x] Added `apps/desktop/src/renderer/src/pages/sessions.launch-actions.test.ts` with focused source-level assertions that lock in the new sessions launch-action error-feedback contract.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -539,6 +551,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/sessions.tsx` now captures `previousFocusedSessionId`, rolls local focus back on failed `focusAgentSession(...)`, and surfaces visible `Failed to focus session...` / `Failed to open session...` toasts instead of leaving the sessions page silently stuck in the optimistic state.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `sessions.tsx`, `sessions.focus-session.test.ts`, and `tipc.ts`, confirming the new previous-focus rollback, toast strings, and `focusAgentSession` failure contract are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the sessions focus-recovery update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/sessions.tsx` now catches rejected `showPanelWindowWithTextInput(...)`, `showPanelWindow()`, and `triggerMcpRecording(...)` calls from the visible new-session launch actions and surfaces `Failed to start text/voice/prompt session...` toasts instead of leaving those clicks silent.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `sessions.tsx` and `sessions.launch-actions.test.ts`, confirming the new launch-action toast strings and regression test file are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the sessions launch-action feedback fix and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -546,6 +561,7 @@
 - [x] Targeted automated verification for this controlled-settings fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction and automated tests are blocked because this worktree does not have installed dependencies (`tsup` missing in predev, `vitest` missing for targeted tests). Per instructions, I did not install dependencies without separate permission.
 - [x] Additional desktop verification for this Groq STT prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`, and `pnpm --filter @dotagents/desktop exec prettier ...` cannot find `prettier`, which indicates `apps/desktop/node_modules` is absent in this worktree.
+- [x] Targeted automated verification for this sessions launch-action feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.launch-actions.test.ts src/renderer/src/pages/sessions.focus-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this `Max Iterations` fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop session-copy feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this Supertonic numeric-editing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -582,6 +598,7 @@
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the post-success `AgentProgress` `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the adjacent `tipcClient.stopAllTts()` failure path in `app-layout.tsx` also needs visible feedback, or whether keeping that secondary best-effort cleanup console-only is preferable once live desktop verification is available.
+- [ ] Whether the sessions-page `Start with Text` / `Start with Voice` actions should also get a local in-flight disabled/busy guard to prevent accidental double-click startup races once live desktop debugging is available.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
