@@ -39,7 +39,13 @@ import {
 } from "./cloudflare-tunnel"
 import { initModelsDevService } from "./models-dev-service"
 import { loopService } from "./loop-service"
-import { setHeadlessMode } from "./state"
+import {
+  agentProcessManager,
+  agentSessionStateManager,
+  llmRequestAbortManager,
+  setHeadlessMode,
+  toolApprovalManager,
+} from "./state"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import { downloadHubBundleToTempFile, findHubBundleInstallBundleUrl } from "./hub-install"
 import { buildHubBundleInstallUrl, resolveStartupMainWindowDecision } from "./startup-routing"
@@ -49,6 +55,17 @@ const isQRMode = process.argv.includes("--qr")
 // Check for --headless flag (headless mode without GUI)
 const isHeadlessMode = process.argv.includes("--headless")
 const CLEANUP_TIMEOUT_MS = 5000 // 5 second timeout for graceful cleanup
+
+async function stopAgentRuntimeForShutdown(): Promise<void> {
+  // Deny any in-flight approval prompts so their callers can unwind before services stop.
+  toolApprovalManager.cancelAllApprovals()
+  // Stop session-scoped runs first so they abort HTTP requests and kill session-owned processes.
+  agentSessionStateManager.stopAllSessions()
+  // Keep the legacy/global abort path for requests that may not be attached to a session.
+  llmRequestAbortManager.abortAll()
+  // Also reap any globally tracked child processes to avoid hanging quit on legacy/orphan work.
+  await agentProcessManager.killAllProcesses()
+}
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
 // This must be called before app.whenReady()
@@ -266,6 +283,7 @@ app.whenReady().then(async () => {
       loopService.stopAllLoops()
 
       const cleanupTasks = [
+        { label: "agent runtime shutdown", run: () => stopAgentRuntimeForShutdown() },
         { label: "ACP service shutdown", run: () => acpService.shutdown() },
         { label: "MCP service cleanup", run: () => mcpService.cleanup() },
         { label: "remote server shutdown", run: () => stopRemoteServer() },
@@ -640,8 +658,9 @@ app.whenReady().then(async () => {
     loopService.stopAllLoops()
 
     // Wait for long-lived child services to stop so quit does not leave behind
-    // ACP child processes or a lingering local remote-server listener.
+    // ACP child processes, active agent work, or a lingering local remote-server listener.
     const cleanupTasks = [
+      { label: "agent runtime shutdown", run: () => stopAgentRuntimeForShutdown() },
       { label: "ACP service shutdown", run: () => acpService.shutdown() },
       { label: "MCP service cleanup", run: () => mcpService.cleanup() },
       { label: "remote server shutdown", run: () => stopRemoteServer() },

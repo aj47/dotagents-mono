@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop/headless quit-path agent-runtime cleanup in `apps/desktop/src/main/index.ts`, with quit and `--headless` shutdown sequencing reviewed in that file, agent-runtime/process/approval cleanup APIs cross-checked in `apps/desktop/src/main/state.ts` and `apps/desktop/src/main/emergency-stop.ts`, focused dependency-free source guardrails extended in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
 - 2026-03-08: Desktop queued-message action-failure feedback in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx`, with queue action return semantics rechecked in `apps/desktop/src/main/tipc.ts`, nearby inline retry/error patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` and `apps/desktop/src/renderer/src/components/audio-player.tsx`, mobile parity reviewed in `apps/mobile/src/ui/MessageQueuePanel.tsx` / `apps/mobile/src/store/message-queue.ts` (same general silent-failure risk exists there, but this pass stayed desktop-scoped because the IPC-backed desktop queue is the sharper user-trust risk and offered the smallest local fix), focused source-level coverage extended in `tests/desktop-message-queue-recovery.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and desktop renderer typecheck attempted via `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this dependency-light worktree is missing installed desktop dependencies / `node_modules`).
 - 2026-03-08: Desktop Memories edit-save resilience in `apps/desktop/src/renderer/src/pages/memories.tsx`, with edit-dialog state and `updateMemory(...)` return semantics reviewed in that file plus `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/memory-service.ts`, adjacent unsaved-draft dialog patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, mobile parity reviewed in `apps/mobile/src/screens/MemoryEditScreen.tsx` (no equivalent change needed because mobile memory editing lives on a dedicated screen rather than a backdrop-dismissible desktop dialog), focused source-level coverage added in `tests/desktop-memories-edit-guardrails.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
 - 2026-03-08: Mobile config-persistence guardrails in `apps/mobile/src/store/config.ts`, with `AppConfig` consumers reviewed in `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, and `apps/mobile/src/ui/TTSSettings.tsx` to confirm malformed stored booleans/numbers/strings could leak into real UI behavior, existing mobile connection guardrail patterns rechecked in `apps/mobile/tests/connection-settings-validation.test.js`, focused source-level coverage added in `apps/mobile/tests/config-storage-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
@@ -488,7 +489,6 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile queued-message action-failure parity (`apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/src/store/message-queue.ts`)
 - Desktop Memories edit dialog live validation / save-failure cadence check (`apps/desktop/src/renderer/src/pages/memories.tsx`)
 - Desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
-- Desktop app `before-quit` cleanup execution-path validation (`apps/desktop/src/main/index.ts`)
 - Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop `Settings → General` ACP main-agent warning density / recovery flow live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
@@ -2969,6 +2969,37 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Electron target is available, live-check backdrop/Escape dismissal, failed-save retry clarity, and the disabled-save affordance with unchanged memory data
   - if another memories pass becomes worthwhile later, inspect whether adjacent memory-management actions still rely too heavily on toast-only success/error feedback
+
+### 2026-03-08 — Desktop/headless quit-path agent-runtime cleanup
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process shutdown flow in `apps/desktop/src/main/index.ts`
+  - both GUI `before-quit` cleanup and `--headless` `gracefulShutdown(...)`
+- Why it was chosen:
+  - `improve-app.md` still listed desktop quit-path execution validation as not checked recently, and shutdown reliability has outsized user impact when the app is closed during active agent work
+  - the current quit handlers waited for ACP/MCP/remote-server shutdown, but they did not explicitly stop active agent runtime work such as pending approvals, in-flight LLM requests, or globally tracked child processes
+  - that gap risked slow or sticky shutdown behavior precisely when users expect quit to be dependable and immediate
+- What was inspected:
+  - `apps/desktop/src/main/index.ts`
+  - `apps/desktop/src/main/state.ts`
+  - `apps/desktop/src/main/emergency-stop.ts`
+  - `tests/desktop-app-quit-cleanup.test.js`
+  - `tests/desktop-headless-shutdown-guardrails.test.js`
+- Improvement made:
+  - added a shared `stopAgentRuntimeForShutdown()` helper in `index.ts`
+  - both GUI quit and headless shutdown now cancel pending tool approvals, stop session-scoped runs, abort legacy/global LLM requests, and await globally tracked agent-process cleanup before persistent service shutdown begins
+  - kept the change local to shutdown sequencing rather than broadening into a larger emergency-stop refactor, since the user-facing value here was simply more reliable exit behavior
+- Assumptions / tradeoffs / rationale:
+  - reused existing shutdown-safe state APIs instead of calling the full emergency-stop flow because app quit does not need queue pausing or final UI progress emission
+  - accepted a small amount of overlap between session-scoped process killing and global tracked-process cleanup because the second pass safely reaps legacy/orphan work and makes quit more robust
+  - improved both GUI and headless paths together because they shared the same omission in the same file, and keeping them aligned avoids future behavior drift
+- Tests / verification:
+  - `node --test tests/desktop-app-quit-cleanup.test.js tests/desktop-headless-shutdown-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run deeper desktop main-process verification around quit during an active agent run to confirm there is no late-update noise beyond the source-level guardrails in this worktree
+  - next highest-value nearby target: inspect repeat-task `runOnStartup` disable/restart/shutdown execution paths in `apps/desktop/src/main/loop-service.ts`
 
 ### Iteration Template
 - Date:
