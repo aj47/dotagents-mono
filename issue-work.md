@@ -531,3 +531,35 @@
   - Consider a targeted integration test for recreated ACP sessions once local desktop test dependencies are available in this worktree.
 
 - Next recommended issue work item: stay on `#58` for protocol-level ACP resume fidelity or live-session provenance polish, unless a new bug with a tighter repro path supersedes it.
+
+##### Issue #58 — Conversation History: Preserve full data on disk & UI access, exclude from LLM context
+
+- Selection rationale:
+  - Re-reviewed issue `#58` plus its scope-locking comment and chose the smallest remaining user-facing gap: the desktop live-session tile still only exposed `Show Full History` when the tile already carried raw-history data, so active summarized sessions could hide the affordance entirely even though preserved history existed on disk.
+  - This was a narrow follow-up with clear UX value and direct alignment with the issue’s acceptance criteria around browsing complete history and clearly separating active context from stored history.
+- Investigation:
+  - Inspected the issue metadata/labels/comments and confirmed the open scope still explicitly calls for `Open History Folder` + `Show Full History` UI affordances and a clear active-window-vs-stored-history contract.
+  - Re-read `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the tile transcript already had the full-history viewer UI, boundary marker, and legacy partial warning, but only rendered them when `fullConversationHistory` / `conversationCompaction` were already present on the progress object.
+  - Confirmed `apps/desktop/src/renderer/src/pages/sessions.tsx` only injects raw-history metadata for the pending past-session continuation tile, not for normal live progress updates.
+  - Confirmed the renderer already has `useConversationQuery(...)` backed by `tipcClient.loadConversation(...)`, giving a minimal way to hydrate disk-backed history without changing the live progress event pipeline.
+- Important assumptions:
+  - Assumption: for this slice, lazily hydrating preserved history from disk inside the tile component is preferable to broadening every live `AgentProgressUpdate` payload.
+  - Why acceptable: it keeps the change local to the UI affordance, reuses the existing persisted-conversation API, avoids touching active streaming/update paths, and still delivers the missing user-visible behavior for summarized live sessions.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` to lazily call `useConversationQuery(progress.conversationId)` when a live tile shows summary blocks but does not yet have `fullConversationHistory` attached.
+  - Mapped persisted `rawMessages` into the existing `AgentProgress` full-history viewer model so the current `Show Full History` / `Show Active Window` toggle, divider, and provenance copy work for hydrated live sessions too.
+  - Reused persisted compaction metadata when present so legacy partial-history warnings still surface correctly even for live tiles.
+  - Added a lightweight loading state (`Checking for preserved full history on disk…`) and retry affordance if the disk hydration request fails, instead of silently hiding the feature.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with a regression assertion covering the lazy live-session hydration path.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` ⚠️ blocked by existing worktree/tooling issue (`@electron-toolkit/tsconfig/tsconfig.web.json` not found), so typecheck could not be used as a signal for this slice.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether the same lazy full-history hydration should also be exposed in the desktop overlay view, not just the tile transcript.
+  - Consider pushing compaction metadata/full-history references directly through live progress updates later if the same provenance needs to appear in more renderer surfaces without extra fetches.
+  - Re-run desktop web typecheck once the missing `@electron-toolkit/tsconfig` dependency/config issue in this worktree is resolved.
+
+- Next recommended issue work item: either finish `#58` by extending the same provenance affordance into the live overlay surface, or pivot to a fresh issue only if it has a tighter local repro path than the remaining `#58` polish.

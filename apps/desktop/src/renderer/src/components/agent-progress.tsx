@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
+import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Conversation } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, RefreshCw, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
@@ -10,7 +10,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useConversationStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
-import { useConfigQuery } from "@renderer/lib/queries"
+import { useConfigQuery, useConversationQuery } from "@renderer/lib/queries"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { logUI, logExpand } from "@renderer/lib/debug"
 import { TileFollowUpInput } from "./tile-follow-up-input"
@@ -104,6 +104,19 @@ type DisplayItem =
 
 const TILE_TRANSCRIPT_PREVIEW_ITEMS = 6
 const OFFSCREEN_TRANSCRIPT_BUFFER_ITEMS = 12
+
+function mapConversationMessageForProgress(message: Conversation["messages"][number]) {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    toolCalls: message.toolCalls,
+    toolResults: message.toolResults,
+    timestamp: message.timestamp,
+    isSummary: message.isSummary,
+    summarizedMessageCount: message.summarizedMessageCount,
+  }
+}
 
 function extractRespondToUserContentFromArgs(args: unknown): string | null {
   if (!args || typeof args !== "object") return null
@@ -2711,12 +2724,38 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [conversationHistory],
   )
 
+  const summaryBlockCount = useMemo(
+    () => visibleConversationHistory.filter((entry) => entry.isSummary).length,
+    [visibleConversationHistory],
+  )
+
+  const shouldHydrateStoredHistory =
+    variant === "tile" &&
+    !!progress.conversationId &&
+    summaryBlockCount > 0 &&
+    !(fullConversationHistory?.length)
+
+  const storedConversationQuery = useConversationQuery(
+    shouldHydrateStoredHistory ? progress.conversationId ?? null : null,
+  )
+
+  const hydratedFullConversationHistory = useMemo(
+    () => storedConversationQuery.data?.rawMessages?.map(mapConversationMessageForProgress),
+    [storedConversationQuery.data],
+  )
+
+  const effectiveFullConversationHistory =
+    fullConversationHistory ?? hydratedFullConversationHistory
+
+  const effectiveConversationCompaction =
+    conversationCompaction ?? storedConversationQuery.data?.compaction
+
   const visibleFullConversationHistory = useMemo(
     () =>
-      (fullConversationHistory ?? []).filter(
+      (effectiveFullConversationHistory ?? []).filter(
         (entry) => !(entry.role === "user" && isInternalCompletionNudge(entry.content)),
       ),
-    [fullConversationHistory],
+    [effectiveFullConversationHistory],
   )
 
   const fullHistoryDisplayItems = useMemo<DisplayItem[]>(
@@ -2742,11 +2781,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [visibleConversationHistory],
   )
 
-  const summaryBlockCount = useMemo(
-    () => visibleConversationHistory.filter((entry) => entry.isSummary).length,
-    [visibleConversationHistory],
-  )
-
   const hasStoredEarlierHistory =
     visibleFullConversationHistory.length > 0 &&
     visibleFullConversationHistory.length > activeWindowMessageCount
@@ -2761,16 +2795,33 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       : null
 
   const storedHistoryMessageCount =
-    conversationCompaction?.storedRawMessageCount
+    effectiveConversationCompaction?.storedRawMessageCount
     ?? (visibleFullConversationHistory.length > 0 ? visibleFullConversationHistory.length : undefined)
 
   const representedHistoryMessageCount =
-    conversationCompaction?.representedMessageCount
+    effectiveConversationCompaction?.representedMessageCount
     ?? Math.max(visibleConversationHistory.length, visibleFullConversationHistory.length)
 
   const hasLegacyPartialHistoryWarning =
     !hasStoredEarlierHistory &&
-    conversationCompaction?.partialReason === "legacy_summary_without_raw_messages"
+    effectiveConversationCompaction?.partialReason === "legacy_summary_without_raw_messages"
+
+  const isHydratingStoredHistory =
+    shouldHydrateStoredHistory &&
+    !storedConversationQuery.data &&
+    (storedConversationQuery.isLoading || storedConversationQuery.isFetching)
+
+  const hasStoredHistoryLoadError =
+    shouldHydrateStoredHistory &&
+    !storedConversationQuery.data &&
+    storedConversationQuery.isError &&
+    !hasLegacyPartialHistoryWarning
+
+  const shouldShowStoredHistoryBanner =
+    hasStoredEarlierHistory ||
+    hasLegacyPartialHistoryWarning ||
+    isHydratingStoredHistory ||
+    hasStoredHistoryLoadError
 
   const isShowingStoredFullHistory = variant === "tile" && showFullHistory && hasStoredEarlierHistory
 
@@ -3455,7 +3506,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
             {/* Message Stream (Chat Tab) */}
             <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
-              {(hasStoredEarlierHistory || hasLegacyPartialHistoryWarning) && (
+              {shouldShowStoredHistoryBanner && (
                 <div className="border-b border-border/40 bg-muted/20 px-3 py-2">
                   {hasStoredEarlierHistory ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -3481,10 +3532,33 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         {isShowingStoredFullHistory ? "Show Active Window" : "Show Full History"}
                       </Button>
                     </div>
-                  ) : (
+                  ) : hasLegacyPartialHistoryWarning ? (
                     <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                       <span>Earlier summarized history is unavailable for this legacy session.</span>
+                    </div>
+                  ) : isHydratingStoredHistory ? (
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span>Checking for preserved full history on disk…</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-amber-700 dark:text-amber-300">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>Couldn&apos;t load preserved full history from disk.</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => {
+                          void storedConversationQuery.refetch()
+                        }}
+                      >
+                        Retry
+                      </Button>
                     </div>
                   )}
                 </div>

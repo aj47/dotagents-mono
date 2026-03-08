@@ -31,3 +31,11 @@ test('tile transcript exposes a full-history toggle and legacy partial warning',
   assert.match(agentProgressSource, /Active context window starts here\./)
   assert.match(agentProgressSource, /Earlier summarized history is unavailable for this legacy session\./)
 })
+
+test('live tiles lazily hydrate preserved history from disk when only summaries are in memory', () => {
+  assert.match(agentProgressSource, /useConversationQuery/)
+  assert.match(agentProgressSource, /storedConversationQuery\.data\?\.rawMessages\?\.map\(mapConversationMessageForProgress\)/)
+  assert.match(agentProgressSource, /Checking for preserved full history on disk/)
+  assert.match(agentProgressSource, /Couldn&apos;t load preserved full history from disk\./)
+  assert.match(agentProgressSource, /storedConversationQuery\.refetch\(\)/)
+})
