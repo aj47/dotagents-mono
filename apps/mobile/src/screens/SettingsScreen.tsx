@@ -215,6 +215,10 @@ function formatAgentRoleLabel(role?: AgentProfile['role']): 'Profile' | 'Delegat
   }
 }
 
+function normalizeAgentLookupName(name?: string): string {
+  return name?.trim().toLowerCase() || '';
+}
+
 function getLoopStatusLabel(loop: Loop): 'Running' | 'Active' | 'Paused' {
   if (loop.isRunning) return 'Running';
   return loop.enabled ? 'Active' : 'Paused';
@@ -276,6 +280,10 @@ export default function SettingsScreen({ navigation }: any) {
   const selectedAcpMainAgentOption = useMemo(
     () => availableAcpMainAgents.find((agent) => agent.name === remoteSettings?.mainAgentName),
     [availableAcpMainAgents, remoteSettings?.mainAgentName]
+  );
+  const selectedMainAgentLookupName = useMemo(
+    () => normalizeAgentLookupName(remoteSettings?.mainAgentMode === 'acp' ? remoteSettings.mainAgentName : undefined),
+    [remoteSettings?.mainAgentMode, remoteSettings?.mainAgentName]
   );
   const agentSettingsSectionSummary = useMemo(() => {
     if (!remoteSettings) return null;
@@ -2408,7 +2416,17 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : agentProfiles.length === 0 ? (
                   <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
-                  agentProfiles.map((profile) => (
+                  agentProfiles.map((profile) => {
+                    const isSelectedMainAgentProfile = selectedMainAgentLookupName.length > 0
+                      && normalizeAgentLookupName(profile.name) === selectedMainAgentLookupName;
+                    const agentEditHint = isSelectedMainAgentProfile
+                      ? 'Opens this agent so you can review and change its settings. This is the current main agent for new chats in ACP mode.'
+                      : 'Opens this agent so you can review and change its settings.';
+                    const agentToggleHint = isSelectedMainAgentProfile
+                      ? 'Enables or disables this agent for delegation. This agent is currently selected as the main agent for new chats in ACP mode.'
+                      : 'Enables or disables this agent for delegation.';
+
+                    return (
                     <View
                       key={profile.id}
                       style={styles.serverRow}
@@ -2418,7 +2436,7 @@ export default function SettingsScreen({ navigation }: any) {
                         onPress={() => handleAgentProfileEdit(profile.id)}
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(`Edit ${profile.displayName} agent`)}
-                        accessibilityHint="Opens this agent so you can review and change its settings."
+                        accessibilityHint={agentEditHint}
                         activeOpacity={0.7}
                       >
                         <View style={styles.serverInfo}>
@@ -2430,8 +2448,13 @@ export default function SettingsScreen({ navigation }: any) {
                             >
                               {profile.displayName}
                             </Text>
-                            {(profile.isBuiltIn || !profile.enabled) && (
+                            {(isSelectedMainAgentProfile || profile.isBuiltIn || !profile.enabled) && (
                               <View style={styles.agentRowBadges}>
+                                {isSelectedMainAgentProfile && (
+                                  <View style={[styles.agentRowBadge, styles.agentRowBadgeMainAgent]}>
+                                    <Text style={[styles.agentRowBadgeText, styles.agentRowBadgeTextMainAgent]}>Main agent</Text>
+                                  </View>
+                                )}
                                 {profile.isBuiltIn && (
                                   <View style={styles.agentRowBadge}>
                                     <Text style={styles.agentRowBadgeText}>Built-in</Text>
@@ -2460,7 +2483,7 @@ export default function SettingsScreen({ navigation }: any) {
                           onPress={() => handleAgentProfileToggle(profile.id)}
                           accessibilityRole="switch"
                           accessibilityLabel={createSwitchAccessibilityLabel(`${profile.displayName} agent`)}
-                          accessibilityHint="Enables or disables this agent for delegation."
+                          accessibilityHint={agentToggleHint}
                           accessibilityState={{ checked: profile.enabled }}
                           activeOpacity={0.7}
                         >
@@ -2486,7 +2509,8 @@ export default function SettingsScreen({ navigation }: any) {
                         )}
                       </View>
                     </View>
-                  ))
+                  );
+                  })
                 )}
                 <TouchableOpacity
                   style={styles.subAgentCreateButton}
@@ -3456,6 +3480,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     agentRowBadgeDisabled: {
       backgroundColor: theme.colors.secondary,
     },
+    agentRowBadgeMainAgent: {
+      borderColor: theme.colors.primary + '35',
+      backgroundColor: theme.colors.primary + '14',
+    },
     agentRowBadgeText: {
       fontSize: 10,
       lineHeight: 12,
@@ -3463,6 +3491,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     agentRowBadgeTextDisabled: {
       color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    agentRowBadgeTextMainAgent: {
+      color: theme.colors.primary,
       fontWeight: '600',
     },
     serverName: {

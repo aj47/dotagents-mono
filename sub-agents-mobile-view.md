@@ -4277,3 +4277,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that a single-current-agent server state now shows passive header status with no composer selector chip.
   - Live-test a state where exactly one alternative agent is available to confirm the header and composer selector stay interactive when there is still a real switch to make.
   - After live validation is restored, continue with the next highest-signal mobile sub-agent issue instead of revisiting this selector-entry gating without fresh evidence.
+
+### 2026-03-08 — Iteration 98: mark the current ACP main agent directly in the mobile agents list
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially the recent selector and agent-settings iterations to avoid repeating already-covered fixes
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused agent-settings regression coverage in `apps/mobile/tests/settings-agent-actions-mobile.test.js` and `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+  - current mobile workflow / install state before attempting any live validation
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile blocker before editing and validation:
+    - `git status --short` → clean worktree before this iteration started
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --help` → failed with `sh: expo: command not found`; pnpm also warned that local `node_modules` are missing
+  - Because Expo is still unavailable here, this iteration relied on source-backed state-flow review plus focused regression coverage instead of screenshot-backed Expo Web or simulator evidence.
+- Current behavior observed before the fix:
+  - Source review showed recent work already improved the collapsed `Agent Settings` summary and ACP selector terminology, so the currently selected main agent was visible in some places.
+  - The mobile `Settings > Agents` list itself still did not mark which row matched `remoteSettings.mainAgentName` while ACP mode was active.
+  - On mobile, that meant a user scanning enabled ACP / Stdio agents to edit or disable one could not quickly tell which row was currently steering new chats without mentally cross-referencing a different section.
+- Issue selected:
+  - The mobile agents list hid the currently selected ACP main agent, weakening state clarity and user control exactly where users review delegation-capable agents.
+- Decision:
+  - Keep the existing list layout, row density, and edit / toggle controls unchanged.
+  - Do not broaden this into another multi-section settings redesign while live validation is blocked.
+  - Make the smallest local fix: derive the selected ACP main-agent name once, surface a compact `Main agent` badge on the matching row, and tune the row edit / toggle accessibility hints so assistive-tech users get the same state clue.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `normalizeAgentLookupName()` plus a memoized `selectedMainAgentLookupName` for ACP-mode matching,
+    - mark the matching agent row with a compact primary-tinted `Main agent` badge,
+    - keep that badge visible even if the matching row is also built-in or disabled so conflicting state stays explicit,
+    - upgrade the row edit and enable/disable accessibility hints when the row is the current ACP main agent.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new main-agent badge, styling, and state-aware accessibility hints.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo / simulator validation ⚠️ blocked because this worktree is still missing both repository and `apps/mobile` `node_modules`, so `expo` is unavailable
+- Remaining nearby issues noted, not addressed this iteration:
+  - This new `Main agent` badge still needs a real narrow-screen pass once Expo is restored to confirm it stays balanced beside `Built-in` / `Disabled` badges without causing awkward wraps.
+  - The `Settings > Agents` list still lacks fresh screenshot-backed validation after several state-clarity improvements around selectors and agent settings.
+  - The missing mobile install continues to block live prioritization for subsequent sub-agent mobile iterations.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the `Main agent` badge remains readable and tappable-adjacent rows still feel balanced on narrow screens.
+  - Live-test a conflicting state where the current ACP main agent row is disabled or built-in to confirm the combined badges remain understandable instead of visually noisy.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this agent-row state marker without fresh evidence.
