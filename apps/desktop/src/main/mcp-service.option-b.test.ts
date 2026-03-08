@@ -123,5 +123,37 @@ describe("MCPService Option B (builtin allowlist)", () => {
     expect(ok.isError).toBe(false)
     expect(mockExecuteBuiltinTool).toHaveBeenCalledTimes(1)
   })
+
+  it("times out stalled external tool calls instead of hanging forever", async () => {
+    currentConfig.mcpConfig = {
+      mcpServers: {
+        github: {
+          transport: "stdio",
+          timeout: 25,
+        },
+      },
+    }
+
+    const { mcpService } = await import("./mcp-service")
+    const callTool = vi.fn(() => new Promise(() => {}))
+
+    ;(mcpService as any).clients.set("github", { callTool })
+    ;(mcpService as any).availableTools = [
+      { name: "github:list_issues", description: "List issues", inputSchema: { type: "object", properties: {} } },
+    ]
+
+    const resultPromise = mcpService.executeToolCall(
+      { name: "github:list_issues", arguments: { state: "open" } } as any,
+      undefined,
+      true,
+    )
+
+    await vi.advanceTimersByTimeAsync(26)
+
+    const result = await resultPromise
+    expect(result.isError).toBe(true)
+    expect(result.content[0]?.text).toContain("Tool timeout: github:list_issues did not complete within the time limit")
+    expect(callTool).toHaveBeenCalledTimes(1)
+  })
 })
 

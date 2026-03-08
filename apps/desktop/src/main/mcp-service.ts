@@ -1416,6 +1416,8 @@ export class MCPService {
     if (!client) {
       throw new Error(`Server ${serverName} not found or not connected`)
     }
+    const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName]
+    const toolTimeoutMs = serverConfig?.timeout ?? 30000
 
     // Enhanced argument processing with session injection
     let processedArguments = { ...arguments_ }
@@ -1491,6 +1493,28 @@ export class MCPService {
     // The LLM-based context extraction handles resource management
     // No need for complex session injection logic here
 
+    const callToolWithTimeout = async (toolArguments: any) => {
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+      try {
+        return await Promise.race([
+          client.callTool({
+            name: toolName,
+            arguments: toolArguments,
+          }),
+          new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(
+              () => reject(new Error(`Tool execution timed out after ${toolTimeoutMs}ms`)),
+              toolTimeoutMs,
+            )
+          }),
+        ])
+      } finally {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle)
+        }
+      }
+    }
+
     try {
       const fullToolName = `${serverName}:${toolName}`
       if (isDebugTools()) {
@@ -1507,11 +1531,8 @@ export class MCPService {
         arguments: processedArguments,
       })
 
-      // Execute tool - no artificial timeout, let MCP server handle its own timing
-      const result = await client.callTool({
-        name: toolName,
-        arguments: processedArguments,
-      })
+      // Execute tool with a client-side timeout so a hung MCP call cannot stall the agent forever.
+      const result = await callToolWithTimeout(processedArguments)
 
       // Log complete MCP response
       logMCP("RESPONSE", serverName, {
@@ -1600,10 +1621,7 @@ export class MCPService {
                 retry: true,
               })
 
-              const retryResult = await client.callTool({
-                name: toolName,
-                arguments: correctedArgs,
-              })
+              const retryResult = await callToolWithTimeout(correctedArgs)
 
               // Log retry MCP response
               logMCP("RESPONSE", serverName, {

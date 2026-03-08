@@ -20,6 +20,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
 | 2026-03-08 | conv_1772929409915_6nhw5bvkd | session_1772929409919_659x5kkj1 | fix implemented (verification blocked) | User asked `Can you run it in a new terminal window so it works in dotagents-mono`; Langfuse showed `iterm:create_window` succeeded but there was no terminal write/run step, and the final reply only handed back manual shell commands (`Run it with ...`). Root repo issue found: completion logic could treat manual terminal instructions as done even when the requested terminal execution never happened. |
 | 2026-03-08 | conv_1772760072745_y04jxkisp | session_1772760071840_tx7z5kq1e | fix implemented (verification blocked) | User asked to tile laptop windows neatly. Langfuse showed repeated successful `execute_command` window-management passes, then a completed `delegate_to_agent` call for `Computer Use` whose output was still just a progress update (`I can see the windows are partially arranged... Let me do a more precise tiling pass now.`). The parent run treated that as successful delegated work, re-delegated again with empty content, and still ended with `output: null`. Root repo issue found: delegation plumbing accepted progress-only sub-agent output as a completed result instead of surfacing it as an incomplete/failed delegation for the parent agent to recover from. |
+| 2026-03-08 | conv_1772854646654_q7kryv45t | session_1772854646655_k5gmpg0wu | fix implemented (verification blocked) | User asked `what's next`; Langfuse showed a parallel batch where `execute_command` completed, but `Tool: github:list_issues` never recorded an end time. The run then closed with `output: null` and no answer. Root repo issue found: MCP server tool execution had connection/test timeouts, but `client.callTool(...)` itself had no timeout, so one hung tool in a parallel batch could stall the entire agent run forever. |
 
 ## Investigations
 
@@ -203,7 +204,46 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
     - `apps/desktop/src/main/agent-run-utils.test.ts`
     - `apps/desktop/src/main/llm.test.ts`
 
+### 2026-03-08 — Hung MCP tool calls could block the whole parallel batch forever
+
+- Langfuse evidence reviewed:
+  - `conv_1772854646654_q7kryv45t` / `session_1772854646655_k5gmpg0wu`
+  - user input: `what's next`
+  - trace outcome: `output: null`
+  - observations showed normal planning plus a parallel tool batch where:
+    - `Tool: execute_command` completed successfully with the relevant repo status context
+    - `Tool: github:list_issues` remained in-progress with `endTime: null`
+    - no later assistant summary or fallback response was emitted before the trace ended
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` executes multi-tool batches with `Promise.all(...)`, so one never-settling tool promise blocks the entire iteration.
+  - `apps/desktop/src/main/mcp-service.ts` already applied `serverConfig.timeout` to server connection tests, but actual MCP tool execution used raw `client.callTool(...)` with no watchdog.
+  - that meant a stalled external MCP server call could leave the agent loop waiting forever, especially in parallel execution where the other successful tool results were never allowed to advance the run.
+- Concrete root cause:
+  - MCP server tool calls had no client-side timeout despite the config type already exposing `timeout` and the service already using it for connection-time races.
+  - in a parallel batch, one hanging tool could therefore prevent the whole agent run from reaching error handling, recovery, or final user-facing output.
+- Fix implemented:
+  - `apps/desktop/src/main/mcp-service.ts`
+    - added a client-side timeout wrapper around `client.callTool(...)`
+    - reuse the server's configured `timeout` when present, otherwise fall back to a safe 30s default so hung tool calls fail closed instead of hanging forever
+    - apply the same timeout wrapper to the parameter-correction retry path
+  - tests added/updated:
+    - `apps/desktop/src/main/mcp-service.option-b.test.ts`
+      - added a regression test that simulates a never-resolving `github:list_issues` call and verifies `executeToolCall(...)` returns a timeout error instead of hanging indefinitely
+
 ## Verification Log
+
+- Targeted test command attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/mcp-service.option-b.test.ts`
+  - `npx -y -p vitest vitest run apps/desktop/src/main/mcp-service.option-b.test.ts`
+  - `npx -y -p vitest -p @electron-toolkit/tsconfig vitest run apps/desktop/src/main/mcp-service.option-b.test.ts`
+- Result:
+  - blocked by missing local desktop dependencies / `node_modules`
+  - direct `pnpm` run failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
+  - ephemeral `npx vitest` runs failed before test execution because desktop TS config inheritance could not resolve `@electron-toolkit/tsconfig/tsconfig.node.json`
+- Manual/static verification completed:
+  - confirmed the chosen Langfuse trace has one parallel tool span (`github:list_issues`) with `endTime: null` while a sibling tool in the same batch completed
+  - confirmed `mcp-service.ts` previously had connection/test timeouts but no timeout around `client.callTool(...)`
+  - `git diff --check -- apps/desktop/src/main/mcp-service.ts apps/desktop/src/main/mcp-service.option-b.test.ts` passed after the change
 
 - Targeted test command attempted:
   - `npx -y vitest run apps/desktop/src/main/llm.test.ts`
