@@ -2575,6 +2575,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         approved: true,
       })
       console.log(`[Tool Approval UI] respondToToolApproval returned:`, result)
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
       // Don't reset respondingApprovalId on success - keep showing "Processing..."
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
@@ -2610,6 +2613,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         approved: false,
       })
       console.log(`[Tool Approval UI] respondToToolApproval (deny) returned:`, result)
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
       // Don't reset respondingApprovalId on success - keep showing "Processing..."
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {

@@ -10,6 +10,8 @@ describe("desktop tool approval failure feedback", () => {
     expect(agentProgressSource).toContain(
       'function getActionErrorMessage(error: unknown, fallback: string): string',
     )
+    expect(agentProgressSource).toContain("if (!result.success)")
+    expect(agentProgressSource).toContain('throw new Error("This tool approval is no longer pending.")')
     expect(agentProgressSource).toContain(
       'console.error("[Tool Approval UI] Failed to approve tool call:", error)',
     )
@@ -29,6 +31,8 @@ describe("desktop tool approval failure feedback", () => {
     expect(sessionTileSource).toContain(
       'function getActionErrorMessage(error: unknown, fallback: string): string',
     )
+    expect(sessionTileSource).toContain("if (!result.success)")
+    expect(sessionTileSource).toContain('throw new Error("This tool approval is no longer pending.")')
     expect(sessionTileSource).toContain('console.error("Failed to approve tool call:", error)')
     expect(sessionTileSource).toContain(
       '`Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`',

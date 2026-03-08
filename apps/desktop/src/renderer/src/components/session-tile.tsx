@@ -230,7 +230,10 @@ export function SessionTile({
     if (!approvalId) return
     setIsRespondingToApproval(true)
     try {
-      await tipcClient.respondToToolApproval({ approvalId, approved: true })
+      const result = await tipcClient.respondToToolApproval({ approvalId, approved: true })
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
     } catch (error) {
       console.error("Failed to approve tool call:", error)
       toast.error(
@@ -245,7 +248,10 @@ export function SessionTile({
     if (!approvalId) return
     setIsRespondingToApproval(true)
     try {
-      await tipcClient.respondToToolApproval({ approvalId, approved: false })
+      const result = await tipcClient.respondToToolApproval({ approvalId, approved: false })
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
     } catch (error) {
       console.error("Failed to deny tool call:", error)
       toast.error(
