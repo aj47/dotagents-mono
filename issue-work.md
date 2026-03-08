@@ -1777,3 +1777,37 @@
   - Re-run any broader desktop component/Vitest coverage for bundle-import flows if/when the worktree regains that fuller test entrypoint.
 
 - Next recommended issue work item: pivot away from `#57 / #25` unless another equally small trust polish is directly observable, and prefer either a narrow `#58` provenance/reliability follow-up or a fresh bug slice from the current open issues.
+
+##### Issue #57 / #25 — Bundle import result toasts now name the mutated target layer
+
+- Selection rationale:
+  - Re-reviewed open issue `#57`, its trust-track comments, and the latest ledger note that called out one still-local follow-up: after import, the toast could reveal the backup bundle but still did not tell the user which layer had actually been mutated.
+  - This was a narrow, high-trust renderer-only slice with immediate user value across local bundle imports, restore flows, and Hub installs that reuse the same dialog.
+- Investigation:
+  - Confirmed issue `#57` remains open with labels (`enhancement`, `ux`, `hub`) and a Phase 5 comment explicitly emphasizing trust-critical follow-through on the shared import-preview/result contract.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog already knew `preview.importTarget.layer` for the pre-confirm backup card, but the success/failure toasts only mentioned the backup path and optional source URL.
+  - Re-ran the existing dependency-free regression test and confirmed there was no assertion yet locking in target-layer messaging after import completion.
+- Important assumptions:
+  - Assumption: source-level confirmation that the import-result toast omitted the target layer is sufficient reproduction for this slice.
+  - Why acceptable: the gap is a directly visible omission in a shared renderer path, and the required metadata was already available locally in the preview contract.
+  - Assumption: surfacing the target layer in both success and failure result toasts is preferable to adding a new persistent UI surface in the same pass.
+  - Why acceptable: it keeps the trust-critical detail attached to the moment users most need it, without reopening broader import-history design.
+- Changes implemented:
+  - Added `buildImportTargetOutcomeMessage(...)` in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to consistently format post-import target-layer copy from the existing preview metadata.
+  - Updated both success and failure import-result toasts so they now include the resolved target layer before the backup-path/source details.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to lock in the new toast messaging helper and its inclusion in both toast paths.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts`
+  - Result: still blocked in this worktree because the desktop package does not currently expose `vitest` on that command path (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57 / #25:
+  - If bundle trust UX still needs more permanence than toasts, consider a lightweight import-history / recent-imports surface instead of stacking more transient copy.
+  - Re-run broader desktop component/Vitest coverage for bundle-import flows if/when the desktop test command path is restored in this worktree.
+  - Prefer pivoting to a different open issue next unless another equally small, clearly observable bundle-trust gap appears.
+
+- Next recommended issue work item: pivot away from `#57 / #25` for the next pass and prefer either a fresh bug slice from the current open issues or a similarly self-contained `#58` reliability/provenance follow-up.

@@ -35,16 +35,19 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
   assert.match(dialogSource, /This import will update the \{formatImportTargetLayerLabel\(importTarget\?\.layer\)\} and store the backup in/);
   assert.match(dialogSource, /You can restore it later from Settings → Capabilities → Restore Backup\./);
   assert.match(dialogSource, /Import target: <span className="font-medium text-foreground">\{formatImportTargetLayerLabel\(importTarget\.layer\)\}<\/span>/);
+  assert.match(dialogSource, /function buildImportTargetOutcomeMessage\(layer\?: BundleImportTargetLayer\): string \{/);
+  assert.match(dialogSource, /return ` Target layer: \$\{formatImportTargetLayerLabel\(layer\)\}\.`/);
   assert.match(dialogSource, /const handleOpenBackupsFolderClick = async \(\) => \{/);
   assert.match(dialogSource, /tipcClient\.openBundleBackupFolder\(\)/);
   assert.match(dialogSource, /Open Backups Folder/);
+  assert.match(dialogSource, /const importTargetMessage = buildImportTargetOutcomeMessage\(preview\?\.importTarget\?\.layer\)/);
   assert.match(dialogSource, /const backupMessage = result\.backupFilePath/);
   assert.match(dialogSource, /const revealBackupFile = async \(filePath: string\) => \{/);
   assert.match(dialogSource, /tipcClient\.revealBundleBackupFile\(\{ filePath \}\)/);
   assert.match(dialogSource, /const getRevealBackupToastOptions = \(filePath: string \| null\) => \{/);
   assert.match(dialogSource, /label: "Reveal Backup"/);
-  assert.match(dialogSource, /toast\.success\([\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
-  assert.match(dialogSource, /toast\.error\([\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
+  assert.match(dialogSource, /toast\.success\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
+  assert.match(dialogSource, /toast\.error\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(result\.backupFilePath\)/);
 });
 
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {

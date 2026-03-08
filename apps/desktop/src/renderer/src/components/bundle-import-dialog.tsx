@@ -479,6 +479,10 @@ function buildSourceOutcomeMessage(sourceLabel: string, sourceUrl?: string): str
   return ` ${sourceLabel}: ${sourceUrl}`
 }
 
+function buildImportTargetOutcomeMessage(layer?: BundleImportTargetLayer): string {
+  return ` Target layer: ${formatImportTargetLayerLabel(layer)}.`
+}
+
 export function BundleImportDialog({
   open,
   onOpenChange,
@@ -598,6 +602,7 @@ export function BundleImportDialog({
         selectedItems,
         conflictStrategyOverrides,
       }) as BundleImportResult
+      const importTargetMessage = buildImportTargetOutcomeMessage(preview?.importTarget?.layer)
       const backupMessage = result.backupFilePath
         ? ` Pre-import backup: ${result.backupFilePath}`
         : ""
@@ -609,7 +614,7 @@ export function BundleImportDialog({
           ? ` (${importSummary.detailSummary})`
           : ""
         toast.success(
-          `Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}${sourceMessage}`,
+          `Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${importTargetMessage}${backupMessage}${sourceMessage}`,
           getRevealBackupToastOptions(result.backupFilePath)
         )
         if (importedMcpServersRequiringConfiguration.length > 0) {
@@ -630,7 +635,7 @@ export function BundleImportDialog({
           ? ` Progress: ${importSummary.detailSummary}.`
           : ""
         toast.error(
-          `${result.errors.join(", ") || "Import failed"}.${detailMessage}${backupMessage}${sourceMessage}`,
+          `${result.errors.join(", ") || "Import failed"}.${detailMessage}${importTargetMessage}${backupMessage}${sourceMessage}`,
           getRevealBackupToastOptions(result.backupFilePath)
         )
       }
