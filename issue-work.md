@@ -3600,3 +3600,39 @@
   - If the landing page later exposes a broader catalog, keep the same explicit CTA-status pattern anywhere preview gating is used.
 
 - Next recommended issue work item: refresh open issues again and stay bug-first; if `#54` is reconsidered, start with a feasibility/architecture note tied to concrete auth endpoints or a provider-transport plan, otherwise prefer another small, source-confirmed desktop or website UX/reliability slice over speculative subscription-provider work.
+
+##### Issue #54 — ChatGPT subscription provider feasibility triage (blocked on auth/transport contract)
+
+- Selection rationale:
+  - Re-read `issue-work.md` first after the prior `#56` commit and refreshed open issues again.
+  - `#54` remained the least-touched open issue, so the highest-value next step was to reduce ambiguity and confirm whether there was any honest narrow implementation slice before touching provider code.
+- Investigation:
+  - Re-read issue `#54` and confirmed it requires a *separate* provider option, OAuth login, secure token storage, token refresh, and request routing through a ChatGPT subscription session rather than the existing API billing flow.
+  - Confirmed the current desktop provider selector only exposes `openai`, `groq`, and `gemini` (`packages/shared/src/providers.ts`, `apps/desktop/src/renderer/src/pages/settings-providers.tsx`).
+  - Confirmed the current runtime model provider path is API-key-centric end to end: `apps/desktop/src/main/ai-sdk-provider.ts` limits `ProviderType` to `openai | groq | gemini`, requires `apiKey`, and constructs SDK clients around API-key-backed endpoints.
+  - Confirmed nearby model discovery code (`apps/desktop/src/main/models-service.ts`) and related config/type unions also assume the same API-key-backed provider set.
+  - Confirmed the repo *does* already have generic OAuth primitives (`oauth-client.ts`, `oauth-storage.ts`), but they are not wired into model-provider selection or request execution.
+  - External evidence gathered during triage:
+    - OpenAI Help Center (`What is ChatGPT Plus?`) states ChatGPT Plus is for the ChatGPT web app and that API usage is billed separately.
+    - OpenAI API authentication docs state the API is authenticated with API keys.
+  - Taken together, this means the current repo has reusable generic OAuth plumbing, but no verified public ChatGPT-subscription auth + model-transport contract that could be wired up safely as a working provider.
+- Important assumptions:
+  - Assumption: it is better to mark `#54` blocked than to add a visible-but-nonfunctional provider option.
+  - Why acceptable: the issue explicitly asks for a working auth and request path, and shipping a placeholder would create misleading UX without satisfying the trust/transport requirements.
+  - Assumption: the correct unblocker is concrete evidence of either an official supported OAuth/API path or an explicit repo-level decision to pursue an unsupported session-based integration with its own risk framing.
+  - Why acceptable: without one of those two decisions, any code change would be speculative and likely incompatible with the current provider architecture.
+- Changes implemented:
+  - No code changes in this iteration.
+  - Added this blocker/feasibility note to `issue-work.md` so future work starts from current architecture facts and official-product-surface constraints rather than redoing the same investigation.
+- Verification run:
+  - Completed: source inspection of provider constants, settings UI wiring, and runtime provider creation paths.
+  - Completed: external documentation review via web search results from OpenAI Help Center and OpenAI API docs.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Blocker / next evidence needed for issue #54:
+  - Identify a verified, supportable auth flow and request transport for ChatGPT subscription usage (official preferred).
+  - If no official path exists, decide explicitly whether the repo is willing to ship an unsupported session-based integration and what user-facing risk/security language would be required.
+  - Only after that decision should the repo add a new provider type to shared constants/config/runtime paths.
+
+- Next recommended issue work item: return to bug-first or trust/UX work on the already-concrete website/desktop issues unless new evidence lands for `#54`; if `#54` is revisited, start with an architecture note or spec decision rather than code.
