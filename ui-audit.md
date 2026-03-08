@@ -1,5 +1,53 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 44: Desktop Capabilities → Skills row action strip truncates long skill names under real settings-column constraints
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`
+  - desktop `apps/desktop/src/renderer/src/pages/settings-skills.tsx` (skill management list rows)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the just-touched `settings-agents` work and picked a fresh desktop settings surface that was still effectively unlogged in the ledger. A reusable live renderer session was already available, making the Capabilities → Skills page a strong screenshot-backed target.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/mobile/README.md` to stay aligned with the repo’s desktop/mobile inspection guidance
+  - confirmed a live renderer was available via CDP on `:9333`, then inspected the real mounted desktop UI at `http://localhost:5173/settings/capabilities` instead of relying on source review alone
+  - stress-tested the Skills tab around `800×670` with simulated `125%` zoom and captured screenshot-backed evidence in `tmp/capabilities-before.png`
+  - measured the live skill rows in the mounted DOM to confirm whether names were truncating under the current action-strip layout, then prototyped the intended wrap-safe treatment directly in the live DOM and captured `tmp/capabilities-prototype-2.png`
+  - cross-checked mobile and confirmed that while `apps/mobile/src/screens/SettingsScreen.tsx` exposes skill toggles, it does not share this desktop management-row action strip; no matching mobile code change was needed
+
+#### Findings
+
+- Before the fix, the Capabilities → Skills list had one concrete desktop readability issue with clear user impact:
+  - each skill row kept the title on a rigid single line while also reserving space for four fixed action buttons (`edit`, `reveal`, `export`, `delete`)
+  - in live inspection at `800×670` with simulated `125%` zoom, the row width was about `390px` while the trailing action strip still consumed about `144px`
+  - that left only about `201px` for the title lane, and the real skill name `peekaboo-macos-automation` was already truncating in the mounted UI (`scrollWidth ≈ 220px` vs `clientWidth ≈ 201px`)
+  - for a management list whose primary job is helping users identify the right skill quickly, hiding the unique tail of the skill name is materially worse than letting the row grow slightly taller when needed
+
+#### Changes made
+
+- Hardened the skill rows in `apps/desktop/src/renderer/src/pages/settings-skills.tsx` with a small, local layout fix:
+  - changed each row from a rigid single-line `justify-between` layout to a `flex-wrap` / `items-start` row that can reflow under tighter settings-column widths
+  - upgraded the title lane to `flex-[1_1_16rem]` and replaced the one-line `truncate` title with a wrap-safe `break-words` / `[overflow-wrap:anywhere]` title span
+  - changed the action strip to a wrap-safe `w-full ... justify-end ... sm:w-auto` cluster so the buttons can drop beneath the title lane instead of forcing ellipsis sooner than necessary
+  - made each action button explicitly `shrink-0` so the controls keep their hit area while the row itself reflows
+- Added `apps/desktop/src/renderer/src/pages/settings-skills.layout.test.ts` with focused source-contract coverage for the new row/title/action-wrap treatment.
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe row, flexible title lane, multiline title treatment, action-strip fallback, and new regression test file are present
+- Live renderer evidence before the fix at `http://localhost:5173/settings/capabilities`:
+  - the mounted `peekaboo-macos-automation` row measured about `390px` wide with only about `201px` of visible title width, and the title was truncating (`scrollWidth ≈ 220px`)
+- Live DOM prototype verification using the exact intended reflow strategy:
+  - after applying the wrap-safe row/title/action treatment in the mounted DOM, the same skill title no longer truncated (`clientWidth ≈ scrollWidth ≈ 220px`), and the row expanded to about `82px` tall instead of hiding the tail of the name
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-skills.tsx apps/desktop/src/renderer/src/pages/settings-skills.layout.test.ts`
+
+#### Notes
+
+- Important blocker/rationale: the live Electron/Vite session is reusable for inspection, but this worktree still lacks local dependencies, so I could not rebuild this checkout and perform a literal post-edit end-to-end pass of the edited bundle. I paired live pre-fix evidence with a DOM prototype of the exact layout treatment and dependency-free source verification instead.
+- This chunk is desktop-only: mobile settings exposes skill toggles, not the same multi-action desktop management rows.
+- Tradeoff/rationale: the list may now allow a slightly taller row for unusually long skill names under tighter widths or larger text, but that is a deliberate readability tradeoff and is better than hiding the differentiating tail of the skill name.
+- Best next UI audit chunk after this one: stay on `settings-capabilities.tsx` for the select-mode bulk action header under zoom or switch to the `MCP Servers` tab for dense row/action layouts once a fresh live pass is needed.
+
 ### 2026-03-08 — Chunk 43: Desktop Settings → Agents card grid over-compresses under real settings-column constraints
 
 - Area selected:

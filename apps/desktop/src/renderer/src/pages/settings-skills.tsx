@@ -647,10 +647,10 @@ Write your skill instructions here.
             skills.map((skill) => (
               <div
                 key={skill.id}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg border bg-card ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
+                className={`flex flex-wrap items-start gap-2 rounded-lg border bg-card px-3 py-2 ${isSelectMode ? "cursor-pointer hover:bg-accent/50" : ""} ${isSelectMode && selectedSkillIds.has(skill.id) ? "border-primary bg-primary/5" : ""}`}
                 onClick={isSelectMode ? () => toggleSkillSelection(skill.id) : undefined}
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex min-w-0 flex-[1_1_16rem] items-start gap-3">
                   {isSelectMode && (
                     <button
                       type="button"
@@ -664,13 +664,16 @@ Write your skill instructions here.
                       )}
                     </button>
                   )}
-                  <span className="font-medium truncate">{skill.name}</span>
+                  <span className="min-w-0 flex-1 break-words font-medium leading-tight [overflow-wrap:anywhere]">
+                    {skill.name}
+                  </span>
                 </div>
                 {!isSelectMode && (
-                  <div className="flex gap-1 ml-2 shrink-0">
+                  <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="shrink-0"
                       onClick={() => handleEditSkill(skill)}
                     >
                       <Pencil className="h-3 w-3" />
@@ -678,6 +681,7 @@ Write your skill instructions here.
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="shrink-0"
                       onClick={() => openSkillFileMutation.mutate(skill.id)}
                       title="Reveal skill file in Finder/Explorer"
                       aria-label="Reveal skill file"
@@ -687,6 +691,7 @@ Write your skill instructions here.
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="shrink-0"
                       onClick={() => exportSkillMutation.mutate(skill.id)}
                     >
                       <Download className="h-3 w-3" />
@@ -694,6 +699,7 @@ Write your skill instructions here.
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="shrink-0"
                       onClick={() => handleDeleteSkill(skill)}
                     >
                       <Trash2 className="h-3 w-3" />
