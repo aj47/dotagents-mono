@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
@@ -17,6 +17,14 @@ import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
 import { EyeOff, ExternalLink } from "lucide-react"
+
+const REMOTE_SERVER_INPUT_SAVE_DEBOUNCE_MS = 400
+
+type RemoteServerTextDraftKey =
+  | "remoteServerCorsOrigins"
+  | "cloudflareTunnelId"
+  | "cloudflareTunnelHostname"
+  | "cloudflareTunnelCredentialsPath"
 
 /**
  * Mask a URL for streamer mode - masks all alphanumeric content (including the protocol)
@@ -58,6 +66,51 @@ function formatHostForHttpUrl(host: string): string {
   return normalizedHost
 }
 
+function formatCorsOriginsDraft(origins?: string[]): string {
+  return (origins || ["*"]).join(", ")
+}
+
+function getRemoteServerTextDrafts(config?: Partial<Config>) {
+  return {
+    remoteServerCorsOrigins: formatCorsOriginsDraft(config?.remoteServerCorsOrigins),
+    cloudflareTunnelId: config?.cloudflareTunnelId ?? "",
+    cloudflareTunnelHostname: config?.cloudflareTunnelHostname ?? "",
+    cloudflareTunnelCredentialsPath: config?.cloudflareTunnelCredentialsPath ?? "",
+  }
+}
+
+function parseRemoteServerPortDraft(value: string): number {
+  const parsed = Number.parseInt(value.trim(), 10)
+  if (!Number.isFinite(parsed)) return 3210
+  return Math.min(65535, Math.max(1, parsed))
+}
+
+function parseRemoteServerCorsOriginsDraft(value: string): string[] {
+  const origins = value
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean)
+  return origins.length > 0 ? origins : ["*"]
+}
+
+function getRemoteServerTextConfigUpdate(
+  key: RemoteServerTextDraftKey,
+  value: string,
+): Partial<Config> {
+  switch (key) {
+    case "remoteServerCorsOrigins":
+      return { remoteServerCorsOrigins: parseRemoteServerCorsOriginsDraft(value) }
+    case "cloudflareTunnelId":
+      return { cloudflareTunnelId: value }
+    case "cloudflareTunnelHostname":
+      return { cloudflareTunnelHostname: value }
+    case "cloudflareTunnelCredentialsPath":
+      return { cloudflareTunnelCredentialsPath: value }
+  }
+
+  return {}
+}
+
 interface RemoteServerSettingsGroupsProps {
   collapsible?: boolean
   defaultCollapsed?: boolean
@@ -70,16 +123,117 @@ export function RemoteServerSettingsGroups({
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const queryClient = useQueryClient()
+  const configRef = useRef<Config | undefined>(configQuery.data as Config | undefined)
+  const [remoteServerTextDrafts, setRemoteServerTextDrafts] = useState(() =>
+    getRemoteServerTextDrafts(configQuery.data as Config | undefined),
+  )
+  const [remoteServerPortDraft, setRemoteServerPortDraft] = useState(() =>
+    String((configQuery.data as Config | undefined)?.remoteServerPort ?? 3210),
+  )
+  const remoteServerTextSaveTimeoutsRef = useRef<Record<RemoteServerTextDraftKey, ReturnType<typeof setTimeout> | null>>({
+    remoteServerCorsOrigins: null,
+    cloudflareTunnelId: null,
+    cloudflareTunnelHostname: null,
+    cloudflareTunnelCredentialsPath: null,
+  })
+  const remoteServerPortSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cfg = configQuery.data as Config | undefined
 
   const saveConfig = useCallback(
     (partial: Partial<Config>) => {
-      if (!cfg) return
-      saveConfigMutation.mutate({ config: { ...cfg, ...partial } })
+      const currentConfig = configRef.current
+      if (!currentConfig) return
+      saveConfigMutation.mutate({ config: { ...currentConfig, ...partial } })
     },
-    [cfg, saveConfigMutation],
+    [saveConfigMutation],
   )
+
+  const cancelRemoteServerTextSave = useCallback((key: RemoteServerTextDraftKey) => {
+    const timeout = remoteServerTextSaveTimeoutsRef.current[key]
+    if (!timeout) return
+    clearTimeout(timeout)
+    remoteServerTextSaveTimeoutsRef.current[key] = null
+  }, [])
+
+  const flushRemoteServerTextSave = useCallback(
+    (key: RemoteServerTextDraftKey, value: string) => {
+      cancelRemoteServerTextSave(key)
+      saveConfig(getRemoteServerTextConfigUpdate(key, value))
+    },
+    [cancelRemoteServerTextSave, saveConfig],
+  )
+
+  const scheduleRemoteServerTextSave = useCallback(
+    (key: RemoteServerTextDraftKey, value: string) => {
+      cancelRemoteServerTextSave(key)
+      remoteServerTextSaveTimeoutsRef.current[key] = setTimeout(() => {
+        remoteServerTextSaveTimeoutsRef.current[key] = null
+        saveConfig(getRemoteServerTextConfigUpdate(key, value))
+      }, REMOTE_SERVER_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [cancelRemoteServerTextSave, saveConfig],
+  )
+
+  const flushRemoteServerPortSave = useCallback(
+    (value: string) => {
+      if (remoteServerPortSaveTimeoutRef.current) {
+        clearTimeout(remoteServerPortSaveTimeoutRef.current)
+        remoteServerPortSaveTimeoutRef.current = null
+      }
+
+      const normalizedValue = String(parseRemoteServerPortDraft(value))
+      setRemoteServerPortDraft(normalizedValue)
+      saveConfig({ remoteServerPort: parseRemoteServerPortDraft(normalizedValue) })
+    },
+    [saveConfig],
+  )
+
+  const scheduleRemoteServerPortSave = useCallback(
+    (value: string) => {
+      if (remoteServerPortSaveTimeoutRef.current) {
+        clearTimeout(remoteServerPortSaveTimeoutRef.current)
+        remoteServerPortSaveTimeoutRef.current = null
+      }
+
+      if (!value.trim()) return
+
+      remoteServerPortSaveTimeoutRef.current = setTimeout(() => {
+        remoteServerPortSaveTimeoutRef.current = null
+        saveConfig({ remoteServerPort: parseRemoteServerPortDraft(value) })
+      }, REMOTE_SERVER_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  useEffect(() => {
+    configRef.current = configQuery.data as Config | undefined
+  }, [configQuery.data])
+
+  useEffect(() => {
+    setRemoteServerTextDrafts(getRemoteServerTextDrafts(configQuery.data as Config | undefined))
+  }, [
+    configQuery.data?.remoteServerCorsOrigins,
+    configQuery.data?.cloudflareTunnelId,
+    configQuery.data?.cloudflareTunnelHostname,
+    configQuery.data?.cloudflareTunnelCredentialsPath,
+  ])
+
+  useEffect(() => {
+    setRemoteServerPortDraft(String(configQuery.data?.remoteServerPort ?? 3210))
+  }, [configQuery.data?.remoteServerPort])
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of Object.values(remoteServerTextSaveTimeoutsRef.current)) {
+        if (timeout) clearTimeout(timeout)
+      }
+
+      if (remoteServerPortSaveTimeoutRef.current) {
+        clearTimeout(remoteServerPortSaveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Cloudflare Tunnel queries and mutations
   const cloudflaredInstalledQuery = useQuery({
@@ -185,6 +339,9 @@ export function RemoteServerSettingsGroups({
     shouldShowConnectabilityWarning && isWildcardMobileHost(configuredBindAddress)
   const showLoopbackBindWarning =
     shouldShowConnectabilityWarning && isLoopbackMobileHost(configuredBindAddress)
+  const trimmedTunnelIdDraft = remoteServerTextDrafts.cloudflareTunnelId.trim()
+  const trimmedTunnelHostnameDraft = remoteServerTextDrafts.cloudflareTunnelHostname.trim()
+  const trimmedTunnelCredentialsPathDraft = remoteServerTextDrafts.cloudflareTunnelCredentialsPath.trim()
 
   return (
     <>
@@ -281,15 +438,22 @@ export function RemoteServerSettingsGroups({
                 />
               </Control>
 
+              <div className="px-3 text-xs text-muted-foreground">
+                Port, CORS, and named tunnel fields save automatically after a short pause. Your draft stays visible if saving fails.
+              </div>
+
               <Control label={<ControlLabel label="Port" tooltip="HTTP port to listen on" />} className="px-3">
                 <Input
                   type="number"
                   min={1}
                   max={65535}
-                  value={cfg.remoteServerPort ?? 3210}
-                  onChange={(e) =>
-                    saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || "3210", 10) })
-                  }
+                  value={remoteServerPortDraft}
+                  onChange={(e) => {
+                    const nextDraft = e.currentTarget.value
+                    setRemoteServerPortDraft(nextDraft)
+                    scheduleRemoteServerPortSave(nextDraft)
+                  }}
+                  onBlur={(e) => flushRemoteServerPortSave(e.currentTarget.value)}
                   className="w-36"
                 />
               </Control>
@@ -378,14 +542,16 @@ export function RemoteServerSettingsGroups({
               <Control label={<ControlLabel label="CORS Origins" tooltip="Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081" />} className="px-3">
                 <Input
                   type="text"
-                  value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}
+                  value={remoteServerTextDrafts.remoteServerCorsOrigins}
                   onChange={(e) => {
-                    const origins = e.currentTarget.value
-                      .split(",")
-                      .map(s => s.trim())
-                      .filter(Boolean)
-                    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+                    const nextDraft = e.currentTarget.value
+                    setRemoteServerTextDrafts((current) => ({
+                      ...current,
+                      remoteServerCorsOrigins: nextDraft,
+                    }))
+                    scheduleRemoteServerTextSave("remoteServerCorsOrigins", nextDraft)
                   }}
+                  onBlur={(e) => flushRemoteServerTextSave("remoteServerCorsOrigins", e.currentTarget.value)}
                   placeholder="* or http://localhost:8081, http://example.com"
                   className="w-full"
                 />
@@ -575,8 +741,16 @@ export function RemoteServerSettingsGroups({
                           <div className="flex flex-col gap-2">
                             <Input
                               type="text"
-                              value={cfg?.cloudflareTunnelId ?? ""}
-                              onChange={(e) => saveConfig({ cloudflareTunnelId: e.currentTarget.value })}
+                              value={remoteServerTextDrafts.cloudflareTunnelId}
+                              onChange={(e) => {
+                                const nextDraft = e.currentTarget.value
+                                setRemoteServerTextDrafts((current) => ({
+                                  ...current,
+                                  cloudflareTunnelId: nextDraft,
+                                }))
+                                scheduleRemoteServerTextSave("cloudflareTunnelId", nextDraft)
+                              }}
+                              onBlur={(e) => flushRemoteServerTextSave("cloudflareTunnelId", e.currentTarget.value)}
                               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                               className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                             />
@@ -587,10 +761,17 @@ export function RemoteServerSettingsGroups({
                                     key={t.id}
                                     type="button"
                                     className="underline cursor-pointer ml-1 hover:text-foreground"
-                                    onClick={() => saveConfig({
-                                      cloudflareTunnelId: t.id,
-                                      cloudflareTunnelName: t.name,
-                                    })}
+                                    onClick={() => {
+                                      cancelRemoteServerTextSave("cloudflareTunnelId")
+                                      setRemoteServerTextDrafts((current) => ({
+                                        ...current,
+                                        cloudflareTunnelId: t.id,
+                                      }))
+                                      saveConfig({
+                                        cloudflareTunnelId: t.id,
+                                        cloudflareTunnelName: t.name,
+                                      })
+                                    }}
                                   >
                                     {t.name}
                                   </button>
@@ -603,8 +784,16 @@ export function RemoteServerSettingsGroups({
                         <Control label={<ControlLabel label="Hostname" tooltip="The public hostname for your tunnel (e.g., myapp.example.com). Must be configured in Cloudflare DNS." />} className="px-3">
                           <Input
                             type="text"
-                            value={cfg?.cloudflareTunnelHostname ?? ""}
-                            onChange={(e) => saveConfig({ cloudflareTunnelHostname: e.currentTarget.value })}
+                            value={remoteServerTextDrafts.cloudflareTunnelHostname}
+                            onChange={(e) => {
+                              const nextDraft = e.currentTarget.value
+                              setRemoteServerTextDrafts((current) => ({
+                                ...current,
+                                cloudflareTunnelHostname: nextDraft,
+                              }))
+                              scheduleRemoteServerTextSave("cloudflareTunnelHostname", nextDraft)
+                            }}
+                            onBlur={(e) => flushRemoteServerTextSave("cloudflareTunnelHostname", e.currentTarget.value)}
                             placeholder="myapp.example.com"
                             className="w-full sm:w-[300px] max-w-full min-w-0"
                           />
@@ -613,8 +802,16 @@ export function RemoteServerSettingsGroups({
                         <Control label={<ControlLabel label="Credentials Path" tooltip="Path to credentials JSON file. Leave empty to use default (~/.cloudflared/<tunnel-id>.json)" />} className="px-3">
                           <Input
                             type="text"
-                            value={cfg?.cloudflareTunnelCredentialsPath ?? ""}
-                            onChange={(e) => saveConfig({ cloudflareTunnelCredentialsPath: e.currentTarget.value })}
+                            value={remoteServerTextDrafts.cloudflareTunnelCredentialsPath}
+                            onChange={(e) => {
+                              const nextDraft = e.currentTarget.value
+                              setRemoteServerTextDrafts((current) => ({
+                                ...current,
+                                cloudflareTunnelCredentialsPath: nextDraft,
+                              }))
+                              scheduleRemoteServerTextSave("cloudflareTunnelCredentialsPath", nextDraft)
+                            }}
+                            onBlur={(e) => flushRemoteServerTextSave("cloudflareTunnelCredentialsPath", e.currentTarget.value)}
                             placeholder="~/.cloudflared/<tunnel-id>.json (default)"
                             className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                           />
@@ -655,13 +852,13 @@ export function RemoteServerSettingsGroups({
                         size="sm"
                         onClick={() => {
                           if (tunnelMode === "named") {
-                            if (!cfg?.cloudflareTunnelId || !cfg?.cloudflareTunnelHostname) {
+                            if (!trimmedTunnelIdDraft || !trimmedTunnelHostnameDraft) {
                               return // Validation handled in UI
                             }
                             startNamedTunnelMutation.mutate({
-                              tunnelId: cfg.cloudflareTunnelId,
-                              hostname: cfg.cloudflareTunnelHostname,
-                              credentialsPath: cfg.cloudflareTunnelCredentialsPath || undefined,
+                              tunnelId: trimmedTunnelIdDraft,
+                              hostname: trimmedTunnelHostnameDraft,
+                              credentialsPath: trimmedTunnelCredentialsPathDraft || undefined,
                             })
                           } else {
                             startTunnelMutation.mutate()
@@ -670,7 +867,7 @@ export function RemoteServerSettingsGroups({
                         disabled={
                           startTunnelMutation.isPending ||
                           startNamedTunnelMutation.isPending ||
-                          (tunnelMode === "named" && (!cfg?.cloudflareTunnelId || !cfg?.cloudflareTunnelHostname))
+                          (tunnelMode === "named" && (!trimmedTunnelIdDraft || !trimmedTunnelHostnameDraft))
                         }
                       >
                         {startTunnelMutation.isPending || startNamedTunnelMutation.isPending
@@ -687,12 +884,12 @@ export function RemoteServerSettingsGroups({
                         {stopTunnelMutation.isPending ? "Stopping..." : "Stop Tunnel"}
                       </Button>
                     )}
-                    {tunnelMode === "named" && !cfg?.cloudflareTunnelId && (
+                    {tunnelMode === "named" && !trimmedTunnelIdDraft && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">
                         Enter Tunnel ID to start
                       </span>
                     )}
-                    {tunnelMode === "named" && cfg?.cloudflareTunnelId && !cfg?.cloudflareTunnelHostname && (
+                    {tunnelMode === "named" && trimmedTunnelIdDraft && !trimmedTunnelHostnameDraft && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">
                         Enter Hostname to start
                       </span>

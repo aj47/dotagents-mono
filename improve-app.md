@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop remote-server settings draft-save resilience in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server field wiring reviewed in that file, shared config-save mutation/error behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts` and `apps/desktop/src/renderer/src/lib/config-save-error.ts`, local-draft test patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`, mobile parity reviewed in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile surface exists because mobile connects to a desktop-hosted server rather than authoring desktop remote-server or Cloudflare tunnel settings), targeted source-level coverage extended in `tests/desktop-remote-server-settings-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
 - 2026-03-08: Desktop sessions pending past-session continuation failure visibility in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with the pending conversation query / synthetic tile / startup-timeout flow reviewed in that file, nearby inline retry/warning patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent pending continuation tile exists there because mobile opens session history directly instead of staging a desktop continuation tile), focused source-level coverage added in `tests/desktop-sessions-pending-continuation-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available in this environment).
 - 2026-03-08: Mobile `ChatScreen` image-attachment feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with the React Native / Expo image-picker flow reviewed in that file, the existing desktop inline attachment-feedback copy pattern cross-checked in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`, adjacent mobile composer/banner accessibility patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-image-attachment-feedback.test.js`, adjacent `ChatScreen` composer / TTS / emergency-stop coverage re-run in `apps/mobile/tests/chat-composer-accessibility.test.js`, `apps/mobile/tests/chat-kill-switch-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop headless shutdown cleanup bounding in `apps/desktop/src/main/index.ts`, with `--headless` startup / `gracefulShutdown(...)` flow reviewed in that file, GUI quit-path parity rechecked in the same file, focused dependency-free source guardrails added in `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
@@ -86,6 +87,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop remote-server settings draft-save flow still needs live Electron validation once a runnable target is available, especially to confirm port/CORS edits feel calm while typing, blank-port blur normalization is unsurprising, and named-tunnel `Start Tunnel` correctly reflects the visible draft fields without waiting for a config refetch.
 - 2026-03-08: Desktop sessions pending continuation recovery feedback still needs live Electron validation once a runnable target is available, especially to confirm the standalone load-failure tile, inline startup-timeout warning, retry/dismiss actions, and focus-layout behavior remain clear when other active sessions already occupy the grid.
 - 2026-03-08: Mobile `ChatScreen` image-attachment warning/retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline banner, `Choose again` / `Add more` actions, attach-button pending spinner, and thumbnail density remain clear on compact screens and large text.
 - 2026-03-08: Desktop headless shutdown cleanup still needs behavior-level validation once desktop Vitest or a runnable headless/Electron target is available, especially to confirm `SIGTERM`, CLI-triggered shutdown, remote-server start failure, and slow ACP/MCP/remote-server teardown all respect the shared timeout budget without double-exit surprises.
@@ -111,6 +113,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop remote-server settings now keep local drafts for port, CORS origins, and named Cloudflare tunnel fields, debounce config writes, flush on blur, merge delayed saves against the latest config snapshot, and let `Start Tunnel` use the visible named-tunnel draft immediately instead of waiting for persisted config.
 - 2026-03-08: Desktop `Sessions` now keeps failed past-session continuation attempts visible in `apps/desktop/src/renderer/src/pages/sessions.tsx`, replacing toast-only disappearance with a retryable recovery tile when a saved conversation cannot be reopened and an inline timeout warning that leaves the saved conversation open when follow-up session startup stalls, so continuing an old chat no longer feels like the session vanished with no local next step; tradeoff: this pass intentionally stops short of preserving the unsent follow-up draft across startup timeout because that draft currently lives inside the existing per-tile composer and widening that state scope would be a larger refactor.
 - 2026-03-08: Mobile `ChatScreen` image attachments in `apps/mobile/src/screens/ChatScreen.tsx` now replace stacked native alerts with inline composer feedback that aggregates partial-success / failure details, preserves successfully added thumbnails in place, disables duplicate picker launches while selection is already in progress, and offers contextual `Choose again` / `Add more` recovery actions, so attachment problems no longer disappear behind dismissible dialogs or leave users guessing whether any selected images were kept; tradeoff: this pass intentionally keeps the existing Expo image-picker + base64 attachment pipeline and compact thumbnail strip instead of broadening into upload/compression refactors.
 - 2026-03-08: Desktop `--headless` shutdown in `apps/desktop/src/main/index.ts` now cleans up ACP, MCP, and the remote server in one bounded parallel batch with per-service best-effort logging and the same 5 second timeout budget used by GUI quit, so headless exits no longer risk hanging forever behind one stalled cleanup call or taking longer than necessary because services shut down sequentially; tradeoff: this pass intentionally keeps the existing inline cleanup structure in `index.ts` instead of extracting a shared helper while the worktree is limited to dependency-free guardrail verification.
@@ -188,6 +191,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-remote-server-settings-feedback.test.js` after the desktop remote-server draft-save resilience pass
+- 2026-03-08: `git diff --check` after the desktop remote-server draft-save resilience pass
 - 2026-03-08: `node --test apps/mobile/tests/chat-image-attachment-feedback.test.js apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js` after the mobile ChatScreen image-attachment feedback pass
 - 2026-03-08: `pnpm --filter @dotagents/mobile exec expo --version` after the mobile ChatScreen image-attachment feedback pass *(blocked: `Command "expo" not found`)*
 - 2026-03-08: `git diff --check` after the mobile ChatScreen image-attachment feedback pass
@@ -378,6 +383,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this remote-server draft-save resilience pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this ChatScreen image-attachment feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this ChatScreen emergency-stop pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Runtime desktop main-process verification for the before-quit cleanup pass is still blocked because `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, so this iteration relied on source inspection plus dependency-free `node:test` coverage.
@@ -450,6 +456,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
+- Desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
 - Desktop app `before-quit` cleanup execution-path validation (`apps/desktop/src/main/index.ts`)
 - Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
@@ -459,6 +466,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop remote-server settings now have source-level draft/save guardrails, but live Electron validation of the edited-field pacing, blur normalization, and named-tunnel start affordance is the freshest adjacent UX follow-up once a runnable renderer target is available.
 - Desktop headless shutdown now has source-level guardrails, but mocked execution-path validation for `SIGTERM`, CLI-initiated exit, remote-server start failure, and slow shutdown collaborators is the freshest adjacent reliability follow-up because the key user value is graceful termination under real timing and re-entry conditions, not just structural parity with GUI quit.
 - Desktop app `before-quit` cleanup now has source-level guardrails, but real Electron or mocked main-process execution-path validation is the freshest adjacent reliability follow-up because the user value depends on actual quit re-entry and timeout behavior, not just source structure.
 - Mobile `ChatScreen` image-attachment live validation is now the freshest adjacent mobile follow-up, because the source-level guardrails now cover inline recovery and picker-pending behavior, but the actual banner density, thumbnail layout, and retry affordances still need real product evidence once Expo is available.
@@ -2798,6 +2806,34 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Electron target is available, live-check the standalone error tile, timeout warning, retry/dismiss actions, and focus-layout behavior with multiple active sessions already present
   - next highest-value related target: investigate desktop session lifecycle follow-through in queue/user-response cleanup after interrupted or failed continuation sends, because that remains the most adjacent unverified session-state edge after this renderer feedback pass
+
+### Iteration 2026-03-08 (Desktop remote-server draft-save resilience)
+- Date: 2026-03-08
+- Area / screen / subsystem: Desktop `Settings → Remote Server` in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
+- Why it was chosen:
+  - `improve-app.md` still listed settings/text-input save behavior as open backlog, and this page was a fresh local seam that had not yet received the newer local-draft/latest-config treatment used in adjacent settings surfaces
+  - the user value is immediate: port, CORS, and named-tunnel edits no longer write config on every keystroke or risk merging delayed saves against a stale render snapshot
+- What was inspected:
+  - remote-server field wiring, status actions, and save helper usage in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
+  - shared config mutation/error plumbing in `apps/desktop/src/renderer/src/lib/queries.ts` and `apps/desktop/src/renderer/src/lib/config-save-error.ts`
+  - nearby local-draft test patterns in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`
+  - mobile parity in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx` to confirm there is no equivalent mobile authoring surface for desktop remote-server / Cloudflare tunnel fields
+- Improvement made:
+  - added local draft state plus debounced autosave/blur flush for remote-server port, CORS origins, Cloudflare tunnel ID, hostname, and credentials path
+  - changed delayed saves to merge against a `configRef` latest snapshot instead of the render-time `cfg`, reducing stale-overwrite risk when multiple remote-server settings change close together
+  - updated the named-tunnel start action and inline validation to use the visible draft values immediately, so users do not need to wait for a refetch before starting a tunnel after editing
+  - added compact helper copy explaining that these fields save after a short pause and keep the draft visible if persistence fails
+- Assumptions / tradeoffs / rationale:
+  - kept the change intentionally local to the text/numeric fields that benefit most from draft buffering instead of widening into switches/selects that already behave predictably with immediate saves
+  - accepted source-level verification because live Electron inspection is blocked in this dependency-light worktree
+  - intentionally did not broaden this pass into a reusable settings-draft abstraction because nearby settings pages already have slightly different parsing/flush rules and the smallest shippable improvement was to harden this one page in place
+- Tests / verification:
+  - `node --test tests/desktop-remote-server-settings-feedback.test.js`
+  - `git diff --check`
+  - `electron_execute` live inspection attempt *(blocked: no Electron/CDP target available)*
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check port/CORS typing cadence, empty-port blur normalization, and named-tunnel start behavior immediately after editing
+  - next highest-value related target: inspect another remaining settings surface that still saves text inputs eagerly, or shift to live validation of this remote-server pass if a runnable desktop target becomes available first
 
 ### Iteration Template
 - Date:
