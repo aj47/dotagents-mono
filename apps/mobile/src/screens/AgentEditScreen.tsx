@@ -197,12 +197,18 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
-  const isSaveDisabled = isSaving || !settingsClient;
+  const hasDisplayName = formData.displayName.trim().length > 0;
+  const saveValidationMessage = !hasDisplayName
+    ? 'Add a display name to enable saving.'
+    : null;
+  const isSaveDisabled = isSaving || !settingsClient || !!saveValidationMessage;
   const saveButtonAccessibilityLabel = createButtonAccessibilityLabel(isEditing ? 'Save agent changes' : 'Create agent');
   const saveButtonAccessibilityHint = !settingsClient
     ? 'Configure Base URL and API key in Settings before saving this agent.'
     : isSaving
       ? 'Saving this agent now.'
+      : saveValidationMessage
+        ? saveValidationMessage
       : isEditing
         ? 'Saves your changes to this agent.'
         : 'Creates this agent with the current settings.';
@@ -431,6 +437,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </TouchableOpacity>
       </View>
 
+      {settingsClient && saveValidationMessage && (
+        <Text style={styles.saveHelperText}>{saveValidationMessage}</Text>
+      )}
+
       <TouchableOpacity
         style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
@@ -494,6 +504,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginBottom: spacing.xs,
+    },
+    saveHelperText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.md,
     },
     warningContainer: {
       backgroundColor: '#f59e0b20',

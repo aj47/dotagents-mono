@@ -1022,3 +1022,54 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the save CTA announces the right state in both edit flows.
   - After live validation returns, compare `AgentEditScreen` and `LoopEditScreen` end-to-end for any remaining primary-action clarity mismatch.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 24: disable invalid edit-flow save actions until required fields are ready
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen`
+  - `LoopEditScreen`
+  - existing edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the mobile workflow before editing:
+    - `test -d node_modules && echo root_node_modules_present || echo root_node_modules_missing` → `root_node_modules_missing`
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Expo Web / simulator validation is still blocked in this worktree until dependencies are restored.
+- Current behavior observed before the fix:
+  - Source review showed both edit flows only disabled the primary save CTA for missing config or active saving.
+  - That left the main action looking tappable even when required fields were incomplete:
+    - `AgentEditScreen` still showed an active save CTA with a blank `Display Name`
+    - `LoopEditScreen` still showed an active save CTA with a blank `Name`, blank `Prompt`, or invalid/empty interval
+- Issue selected:
+  - The primary mobile save action could still lead users into avoidable error states before the form was even minimally ready, weakening state clarity and encouraging trial-and-error taps.
+- Decision:
+  - Keep the current form layouts, field order, and existing `handleSave` guards.
+  - Make the smallest local fix by deriving save readiness from the existing required-field rules, then surface that reason inline near the CTA instead of redesigning the forms.
+  - Accept the tradeoff that helper copy can appear before first interaction because the clearer disabled state is more valuable on mobile than a late surprise error.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - derive save readiness from a non-empty display name,
+    - disable the primary save CTA until the form is ready,
+    - expose the same readiness reason through button accessibility hints,
+    - show inline helper copy (`Add a display name to enable saving.`) above the save action.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - derive save readiness from non-empty name/prompt fields plus a valid interval,
+    - disable the primary save CTA until those requirements are met,
+    - expose state-aware helper/hint copy for missing name, missing prompt, or invalid interval,
+    - show that helper copy above the save action.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new save-readiness wiring and inline helper copy.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the broken mobile install / missing Expo workspace setup in this worktree (including `expo/tsconfig.base` not found plus widespread missing React Native / Expo module resolution)
+  - Expo Web / device re-validation ⚠️ blocked by the same missing install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new save-helper copy and disabled CTA visuals still need a narrow-screen pass once Expo Web or a simulator is available again.
+  - The timing/placement of the helper text may still want refinement after live validation confirms whether it feels too persistent or visually heavy.
+  - Broader edit-flow polish should still wait for fresh live evidence instead of continuing source-only tweaks too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then confirm in Expo Web that both edit flows keep the save action visibly disabled until the form is minimally valid.
+  - Verify on a narrow viewport that the new helper copy is understandable without feeling repetitive once users start filling fields.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.

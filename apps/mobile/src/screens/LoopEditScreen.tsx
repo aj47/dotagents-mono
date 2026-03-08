@@ -275,13 +275,27 @@ export default function LoopEditScreen({ navigation, route }: any) {
     }
   }, [effectiveLoopId, formData, isEditing, navigation, settingsClient]);
 
-  const isSaveDisabled = isSaving || !settingsClient;
+  const trimmedName = formData.name.trim();
+  const trimmedPrompt = formData.prompt.trim();
+  const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
+  const saveValidationMessage = !trimmedName && !trimmedPrompt
+    ? 'Add a name and prompt to enable saving.'
+    : !trimmedName
+      ? 'Add a name to enable saving.'
+      : !trimmedPrompt
+        ? 'Add a prompt to enable saving.'
+        : !trimmedIntervalMinutes || intervalPreview.isInvalid
+          ? 'Enter a valid interval in whole minutes to enable saving.'
+          : null;
+  const isSaveDisabled = isSaving || !settingsClient || !!saveValidationMessage;
   const saveButtonAccessibilityLabel = createButtonAccessibilityLabel(isEditing ? 'Save loop changes' : 'Create loop');
   const saveButtonAccessibilityHint = !settingsClient
     ? 'Configure Base URL and API key in Settings before saving this loop.'
     : isSaving
       ? 'Saving this loop now.'
+      : saveValidationMessage
+        ? saveValidationMessage
       : isEditing
         ? 'Saves your changes to this loop.'
         : 'Creates this loop with the current settings.';
@@ -403,6 +417,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
 
+      {settingsClient && saveValidationMessage && (
+        <Text style={styles.saveHelperText}>{saveValidationMessage}</Text>
+      )}
+
       <TouchableOpacity
         style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
@@ -440,6 +458,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },
+    saveHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.md },
     intervalHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs, lineHeight: 17 },
     intervalHelperTextWarning: { color: theme.colors.destructive },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },

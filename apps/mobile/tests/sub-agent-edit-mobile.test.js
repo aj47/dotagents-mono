@@ -78,16 +78,19 @@ test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', 
 
 test('AgentEditScreen makes missing server config explicit before the primary save action', () => {
   assert.match(agentEditSource, /if \(!settingsClient\) \{[\s\S]*?setError\('Configure Base URL and API key in Settings before saving'\);[\s\S]*?return;[\s\S]*?\}/);
-  assert.match(agentEditSource, /const isSaveDisabled = isSaving \|\| !settingsClient;/);
+  assert.match(agentEditSource, /const hasDisplayName = formData\.displayName\.trim\(\)\.length > 0;/);
+  assert.match(agentEditSource, /const saveValidationMessage = !hasDisplayName[\s\S]*?Add a display name to enable saving\./);
+  assert.match(agentEditSource, /const isSaveDisabled = isSaving \|\| !settingsClient \|\| !!saveValidationMessage;/);
   assert.match(agentEditSource, /!settingsClient && \([\s\S]*?Configure Base URL and API key in Settings to save changes\.[\s\S]*?\)/);
+  assert.match(agentEditSource, /settingsClient && saveValidationMessage && \([\s\S]*?styles\.saveHelperText[\s\S]*?\{saveValidationMessage\}[\s\S]*?\)/);
   assert.match(agentEditSource, /style=\{\[styles\.saveButton, isSaveDisabled && styles\.saveButtonDisabled\]\}/);
   assert.match(agentEditSource, /disabled=\{isSaveDisabled\}/);
-  assert.match(agentEditSource, /helperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
+  assert.match(agentEditSource, /saveHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
 });
 
 test('AgentEditScreen gives the primary save action explicit mobile button semantics', () => {
   assert.match(agentEditSource, /const saveButtonAccessibilityLabel = createButtonAccessibilityLabel\(isEditing \? 'Save agent changes' : 'Create agent'\);/);
-  assert.match(agentEditSource, /const saveButtonAccessibilityHint = !settingsClient[\s\S]*?Configure Base URL and API key in Settings before saving this agent\.[\s\S]*?Saving this agent now\.[\s\S]*?Saves your changes to this agent\.[\s\S]*?Creates this agent with the current settings\./);
+  assert.match(agentEditSource, /const saveButtonAccessibilityHint = !settingsClient[\s\S]*?Configure Base URL and API key in Settings before saving this agent\.[\s\S]*?Saving this agent now\.[\s\S]*?saveValidationMessage[\s\S]*?Saves your changes to this agent\.[\s\S]*?Creates this agent with the current settings\./);
   assert.match(agentEditSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{saveButtonAccessibilityLabel\}[\s\S]*?accessibilityHint=\{saveButtonAccessibilityHint\}[\s\S]*?accessibilityState=\{\{ disabled: isSaveDisabled, busy: isSaving \}\}/);
 });
 
@@ -100,7 +103,14 @@ test('LoopEditScreen wraps the enabled switch in a named mobile-sized control', 
 });
 
 test('LoopEditScreen gives the primary save action explicit mobile button semantics', () => {
+  assert.match(loopEditSource, /const trimmedName = formData\.name\.trim\(\);/);
+  assert.match(loopEditSource, /const trimmedPrompt = formData\.prompt\.trim\(\);/);
+  assert.match(loopEditSource, /const trimmedIntervalMinutes = formData\.intervalMinutes\.trim\(\);/);
+  assert.match(loopEditSource, /const saveValidationMessage = !trimmedName && !trimmedPrompt[\s\S]*?Add a name and prompt to enable saving\.[\s\S]*?Add a name to enable saving\.[\s\S]*?Add a prompt to enable saving\.[\s\S]*?Enter a valid interval in whole minutes to enable saving\./);
+  assert.match(loopEditSource, /const isSaveDisabled = isSaving \|\| !settingsClient \|\| !!saveValidationMessage;/);
   assert.match(loopEditSource, /const saveButtonAccessibilityLabel = createButtonAccessibilityLabel\(isEditing \? 'Save loop changes' : 'Create loop'\);/);
-  assert.match(loopEditSource, /const saveButtonAccessibilityHint = !settingsClient[\s\S]*?Configure Base URL and API key in Settings before saving this loop\.[\s\S]*?Saving this loop now\.[\s\S]*?Saves your changes to this loop\.[\s\S]*?Creates this loop with the current settings\./);
+  assert.match(loopEditSource, /const saveButtonAccessibilityHint = !settingsClient[\s\S]*?Configure Base URL and API key in Settings before saving this loop\.[\s\S]*?Saving this loop now\.[\s\S]*?saveValidationMessage[\s\S]*?Saves your changes to this loop\.[\s\S]*?Creates this loop with the current settings\./);
+  assert.match(loopEditSource, /settingsClient && saveValidationMessage && \([\s\S]*?styles\.saveHelperText[\s\S]*?\{saveValidationMessage\}[\s\S]*?\)/);
   assert.match(loopEditSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{saveButtonAccessibilityLabel\}[\s\S]*?accessibilityHint=\{saveButtonAccessibilityHint\}[\s\S]*?accessibilityState=\{\{ disabled: isSaveDisabled, busy: isSaving \}\}/);
+  assert.match(loopEditSource, /saveHelperText:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
 });
