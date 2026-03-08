@@ -1,5 +1,49 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 52: Desktop WhatsApp allowlist input can collapse into an almost unusable slit under real settings-column pressure
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` (`Settings` → `Allowed Senders` row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided randomly revisiting the just-touched desktop/mobile surfaces.
+  - This is an intentional follow-up on chunk 40, not duplicate churn: live mocked inspection showed a residual usability problem stronger than a speculative new target.
+  - `settings-whatsapp.tsx` was already called out as a good follow-up for true live confirmation, and the allowlist row exposed a concrete high-impact control-width failure.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid reworking a recently investigated area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, repo design guidance, and the existing browser/live-route workflow
+  - inspected `http://localhost:5174/settings/whatsapp` with a mocked preload bridge because the plain browser route otherwise fails on missing Electron `ipcRenderer`
+  - stress-tested the `Allowed Senders` row under tighter desktop settings-column conditions (`760px` viewport with `125%` zoom approximation)
+  - confirmed the current source still used the shared `Control` row's default `52% / 48%` label/value split, then applied the smallest row-local follow-up rather than redesigning the shared control contract
+
+#### Findings
+
+- Before the fix, the desktop WhatsApp allowlist row still had one concrete usability issue with clear user impact:
+  - chunk 40 improved the helper/status copy stacking beneath the field, but the row still inherited the shared `Control` side-by-side split that only gives the value lane about `48%` of the row from `sm` upward
+  - in live mocked inspection at `760px` with `125%` zoom, the main settings card was about `382px` wide, the row's right-side control lane was about `171px`, but the visible allowlist input wrapper collapsed to about `46px` and the editable text area to about `28px`
+  - the field still needed about `461px` of scroll width for real allowlist content, so users could be forced to edit a long sender list through an almost unreadable slit
+  - for a security/privacy-sensitive allowlist, that is materially risky because users may misread, mistype, or fail to confirm which senders are currently allowed
+
+#### Changes made
+
+- Hardened only the `Allowed Senders` row in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` with the smallest effective follow-up fix:
+  - kept the existing helper/error text stacking from chunk 40 intact
+  - added a row-local `Control` width rebalance so this row now gives the short label lane `30%` and the input lane `70%` at `sm+`, instead of inheriting the shared `52% / 48%` split
+  - avoided broad churn in `components/ui/control.tsx`; this is a targeted exception for a clearly input-heavy row rather than a new global settings abstraction
+- Extended `apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts` with focused source-contract coverage for the new allowlist row width split
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-whatsapp.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `Allowed Senders` row-specific `30% / 70%` split is present in `settings-whatsapp.tsx` and asserted in `settings-whatsapp.layout.test.ts`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts`
+
+#### Notes
+
+- Important blocker/rationale: the currently running browser/Electron sessions are not guaranteed to be serving this checkout's edited bundle, and the browser route needs mocked preload APIs to mount, so I did not claim a literal rebuilt post-edit product pass from this worktree.
+- This chunk is desktop-only: mobile does not expose the same WhatsApp integration row or shared desktop `Control` contract, so no parallel mobile change was needed.
+- Tradeoff/rationale: the label lane now yields more space to the input on this row, but `Allowed Senders` is a short label and this is a safer tradeoff than leaving an allowlist field nearly unusable under realistic width + zoom pressure.
+- Best next UI audit chunk after this one: stay in `settings-whatsapp.tsx` only if a renderer session tied to this checkout becomes available for literal post-edit confirmation of the QR/status block and allowlist row, or move to another fresh live-inspectable desktop/mobile surface.
+
 ### 2026-03-08 — Chunk 51: Mobile Loop editor disconnected/error states were visually easy to miss
 
 - Area selected:

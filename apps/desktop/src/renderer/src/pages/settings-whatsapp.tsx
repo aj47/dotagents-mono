@@ -343,7 +343,7 @@ export function Component() {
           <ControlGroup title="Settings">
             <Control
               label={<ControlLabel label="Allowed Senders" tooltip="Only messages from these senders will be processed. Accepts phone numbers (E.164) or WhatsApp LIDs. Leave empty to allow all (not recommended)." />}
-              className="px-3"
+              className="px-3 [&>div:first-child]:sm:max-w-[30%] [&>div:last-child]:sm:max-w-[70%]"
             >
               <div className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]">
                 <Input

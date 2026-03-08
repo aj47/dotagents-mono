@@ -9,6 +9,9 @@ const settingsWhatsAppSource = readFileSync(
 describe("settings whatsapp page layout", () => {
   it("stacks WhatsApp settings helper and status copy beneath their controls", () => {
     expect(settingsWhatsAppSource).toContain(
+      'className="px-3 [&>div:first-child]:sm:max-w-[30%] [&>div:last-child]:sm:max-w-[70%]"',
+    )
+    expect(settingsWhatsAppSource).toContain(
       'className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]"',
     )
     const toggleStackMatches = settingsWhatsAppSource.match(
