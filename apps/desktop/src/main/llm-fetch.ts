@@ -1303,7 +1303,7 @@ export async function verifyCompletionWithFetch(
           if (generationId) {
             endLLMGeneration(generationId, {
               level: "ERROR",
-              statusMessage: error instanceof Error ? error.message : "verification generateText failed",
+              statusMessage: getErrorMessage(error, "verification generateText failed"),
             })
           }
           throw error

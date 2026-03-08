@@ -35,6 +35,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1771714066742_a3r3bqee6, conv_1771817444023_7v2d8szph | session_1771714066745_wb6k5ig9v, session_1771817444027_h74z83ol9 | fix implemented | Fresh unlogged output-leak class: one trace answering `Did it work` ended with raw pseudo tool-result text starting `Let me check right now. [iterm:list_sessions] { ... }`; corroborating trace `do we need to make more skills to make this easier` ended with `... [Calling tools: speakmcp-settings:execute_command]`. Root repo issue found: final-output helpers only unwrapped pseudo `respond_to_user` text, not generic pseudo tool scaffolding or raw tool-result wrappers, so tool-intent text and structured tool payloads could leak into final user-visible output. |
 | 2026-03-08 | conv_1771906984773_vmb3xu66b | session_1771906984466_gy5dfya2s, session_1771907772476_dae5yojje | fix implemented | Fresh follow-up delegation recovery case around posting a Discord recap. On `post it!`, Langfuse showed `delegate_to_agent` sending `Post the Discord recap tweet...`, but the completed result still returned the earlier recap-prep output (`All files are ready — just say the word to post to @techfren_ai!`). The user had to send `try again` to recover. Root repo issue found: external ACP delegation reused the prior ACP session by default, so a new delegated task could inherit stale session context/output from the previous task instead of starting clean. |
 | 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
+| 2026-03-08 | conv_1772249976658_045heyp88, conv_1772250042517_yukonvxdj | session_1772249976661_2mliad71c, session_1772250042521_skxsyi7og | fix implemented | User asked twice to make a note of repo changes after checking commit history; both runs ended `output: null` and Langfuse recorded unreadable binary-gzip provider noise in the failing generation/text-completion error path. Repo reconstruction showed the main text-completion path was already normalized, but `verifyCompletionWithFetch(...)` still finalized verification generations with raw `error.message`, leaving the same upstream-noise class reachable in live verification traces. |
 
 ## Investigations
 
@@ -1202,6 +1203,35 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts`
   - ✅ passed
 
+### 2026-03-08 — Verification generateText errors should use the same readable provider-error normalization
+
+- Langfuse evidence reviewed:
+  - primary failed-intent traces:
+    - `conv_1772249976658_045heyp88` / `session_1772249976661_2mliad71c`
+    - `conv_1772250042517_yukonvxdj` / `session_1772250042521_skxsyi7og`
+    - user input in both runs: `Can you make note of the changes I've made to the repo after looking at the commit messages / history?`
+    - both runs ended with `output: null`, forcing the user to restate the same intent
+    - the failing observations were generation/text-completion errors whose Langfuse `statusMessage` was unreadable binary/gzip noise (`\x1f\x8b...`) instead of the underlying provider/network cause
+  - corroborating live verification-path trace:
+    - `conv_1772918671940_gvonl0y27` / `session_1772918671941_oo26zg4qb`
+    - this run still completed successfully, but Langfuse showed a real `Verification Call` generation after `respond_to_user` / `mark_work_complete`, confirming the verification path is active in normal agent runs and should stay consistent with the rest of error normalization
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm-fetch.ts` already normalized provider errors for the main `makeLLMCallWithFetch(...)`, plain-streaming, streaming+tools, and text-completion paths via `getErrorMessage(...)`
+  - however, `verifyCompletionWithFetch(...)` still had one nested `generateText(...)` catch that ended the Langfuse generation with raw `error.message`
+  - that meant verification traces could still regress to the same low-signal provider-noise class seen in the repeated blank-output note-writing traces, even though adjacent call paths had already been hardened
+- Concrete root cause:
+  - error normalization was inconsistent across AI SDK `generateText(...)` callers
+  - verification generations bypassed the repo's existing nested-cause / binary-noise cleanup, so upstream transport garbage could still leak into Langfuse as unreadable status text for verification failures
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - switched the verification `generateText(...)` error finalization path from raw `error.message` to `getErrorMessage(error, "verification generateText failed")`
+  - `apps/desktop/src/main/llm-fetch.test.ts`
+    - added a regression proving `verifyCompletionWithFetch(...)` now records the readable nested-cause message (`Cannot connect to API: upstream reset the connection`) when the underlying error surface is binary/gzip noise
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-fetch.test.ts`
+  - ✅ passed (`31 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test file exits successfully
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1209,6 +1239,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh ad-hoc extraction trace after dependencies are restored, to confirm the agent now chooses a source-adjacent or dedicated subdirectory instead of writing extracted notes straight into repo root.
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` / `I'll help you ... Let me first ...` text with the generic timeout note.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now surface the normalized readable error message instead of binary/gzip transport noise or low-signal plain-streaming statuses like `Bad Request`.
+- Recheck a fresh verification-failure trace after desktop dependencies are restored, to confirm `Verification Call` generations now also surface the normalized nested-cause error text instead of raw provider garbage or empty `error.message` output.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
