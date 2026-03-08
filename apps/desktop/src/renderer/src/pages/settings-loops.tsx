@@ -221,27 +221,27 @@ export function SettingsLoops() {
               !loop.enabled && "opacity-60",
             )}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{loop.name}</span>
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="min-w-0 flex-[1_1_16rem]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere]">{loop.name}</span>
                   {isRunning ? (
-                    <Badge variant="secondary">Running</Badge>
+                    <Badge variant="secondary" className="shrink-0">Running</Badge>
                   ) : loop.enabled ? (
-                    <Badge variant="default">Active</Badge>
+                    <Badge variant="default" className="shrink-0">Active</Badge>
                   ) : (
-                    <Badge variant="outline">Disabled</Badge>
+                    <Badge variant="outline" className="shrink-0">Disabled</Badge>
                   )}
                 </div>
-                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
                   {loop.prompt}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 px-2"
+                  className="h-7 shrink-0 gap-1.5 px-2"
                   onClick={() => handleRunNow(loop)}
                 >
                   <Play className="h-3.5 w-3.5" />Run
@@ -249,7 +249,7 @@ export function SettingsLoops() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 px-2"
+                  className="h-7 shrink-0 gap-1.5 px-2"
                   onClick={() => handleOpenTaskFile(loop)}
                 >
                   <FileText className="h-3.5 w-3.5" />File
@@ -257,7 +257,7 @@ export function SettingsLoops() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-7 w-7 shrink-0"
                   title="Edit task"
                   onClick={() => handleEdit(loop)}
                 >
@@ -266,7 +266,7 @@ export function SettingsLoops() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-7 w-7 shrink-0"
                   title="Delete task"
                   onClick={() => handleDelete(loop.id)}
                 >
@@ -275,19 +275,19 @@ export function SettingsLoops() {
               </div>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
                 Every {formatInterval(loop.intervalMinutes)}
               </div>
-              {loop.runOnStartup && <Badge variant="secondary">Run on startup</Badge>}
+              {loop.runOnStartup && <Badge variant="secondary" className="shrink-0">Run on startup</Badge>}
               {typeof nextRunAt === "number" && (
-                <div>Next run: {formatLastRun(nextRunAt)}</div>
+                <div className="break-words [overflow-wrap:anywhere]">Next run: {formatLastRun(nextRunAt)}</div>
               )}
-              <div>Last run: {formatLastRun(lastRunAt)}</div>
+              <div className="break-words [overflow-wrap:anywhere]">Last run: {formatLastRun(lastRunAt)}</div>
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <Switch
                 checked={loop.enabled}
                 onCheckedChange={() => handleToggleEnabled(loop)}

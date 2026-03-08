@@ -1,5 +1,86 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 34: Desktop repeat-task rows action rail under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+- Why this chunk: chunk 33 suggested `settings-loops.tsx` as a fresh desktop/settings follow-up. An older broad sweep had marked the page safe, but the repeat-task list still had an unlogged dense row header where the task title/status and four row actions all depended on a single line. That is a higher-risk pattern once the settings pane narrows or text scaling increases.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid re-auditing the just-logged setup/settings surfaces
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - confirmed live inspection is still blocked in this worktree: root, desktop, and mobile `node_modules` are absent, and `electron_execute_electron-native` still reports `No Electron targets found`
+  - inspected `settings-loops.tsx` directly with narrow settings-column constraints in mind, then cross-checked the mobile loop-management surface in `apps/mobile/src/screens/SettingsScreen.tsx` to confirm the issue was desktop-specific
+
+#### Findings
+
+- Before the fix, the repeat-task list still had one concrete desktop responsiveness issue with clear user impact:
+  - each loop row used a single header line for the task name, status badge, and `Run` / `File` / edit / delete actions, so the most important text and controls had to fight for the same horizontal lane
+  - the task prompt was capped to one truncated line, which made the row lose nearly all prompt context precisely when the action rail was consuming the remaining width
+  - the metadata/footer rows had wrapping in places, but the row header itself had no intentional fallback, so zoomed text or a narrower settings pane would force abrupt truncation instead of graceful reflow
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/pages/settings-loops.tsx` with a small, local row-layout fix:
+  - converted the row header to a wrap-safe `flex-wrap` layout so the action rail can drop below the text column instead of crushing it
+  - gave the task text column a flexible basis and upgraded the title row to wrap-safe text with `break-words` / `[overflow-wrap:anywhere]`
+  - expanded the prompt preview from a single truncated line to a calmer two-line preview with explicit relaxed leading so users keep more context without redesigning the card
+  - moved the row actions into a `w-full ... flex-wrap ... justify-end` cluster with non-shrinking buttons, preserving the current action set while giving it a deliberate narrow-width fallback
+  - tightened the schedule/status footer with wrap-safe metadata copy and a wrap-aware enabled/disabled switch row
+- Added `apps/desktop/src/renderer/src/pages/settings-loops.layout.test.ts` so this repeat-task row contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/settings-loops.tsx` to confirm the new wrap-safe row classes are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-loops.tsx apps/desktop/src/renderer/src/pages/settings-loops.layout.test.ts`
+
+#### Notes
+
+- This chunk is desktop-only: mobile loop management already uses a separate touch-oriented action column and recently received its own action-rail hardening, so no matching mobile code change was needed here.
+- Tradeoff/rationale: kept the existing card density and action set intact instead of redesigning repeat-task cards; the fix only adds a reliable wrap path and a more informative prompt preview.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect the repeat-task list with a long task name, a longer prompt preview, a narrow settings width, and increased font zoom.
+- Best next UI audit chunk after this one: move to another fresh desktop settings surface such as the dense server/tool headers in `mcp-config-manager.tsx`, or return here only for live confirmation once the runtime blocker is cleared.
+
+### 2026-03-08 — Chunk 33: Desktop setup window permission rows and restart CTA under fixed-window constraints and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/setup.tsx`
+- Why this chunk: chunk 32 suggested `setup.tsx` as a fresh desktop/settings-adjacent surface. An older broad sweep had marked it clear, but this fixed-size setup window (`800×600`, non-resizable) still had an untested combination of vertical centering offset plus rigid two-column permission rows that is easy to miss until font zoom or longer button labels are considered.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting the just-logged settings and memories surfaces
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `README.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - checked runtime readiness again before choosing the surface: root, desktop, and mobile `node_modules` are still absent, and an `electron_execute_electron-native` probe confirmed live desktop inspection is blocked here (`No Electron targets found`)
+  - inspected `setup.tsx` directly with the fixed-window constraints from `apps/desktop/src/main/window.ts` in mind, focusing on the permission rows, success state, and bottom restart CTA
+
+#### Findings
+
+- Before the fix, the desktop setup screen still had one concrete responsiveness/polish issue with direct user impact:
+  - the page relied on an upward `-mt-20` visual offset inside a fixed `800×600` non-resizable setup window, which made the bottom restart CTA more vulnerable to being pushed toward the lower edge under larger font zoom or longer copy
+  - each permission row used a rigid `grid-cols-2` layout, so the explanatory text and the `Enable in System Settings` / `Request Access` action had to share one line with no intentional wrap path
+  - the granted state was only a plain inline green label, which made the completed state feel less intentional than the surrounding permission card chrome
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/pages/setup.tsx` with a small, local layout fix:
+  - replaced the rigid centered-offset shell with an `overflow-y-auto` container and a bounded `max-w-3xl` content column so the setup page stays reachable if text grows taller
+  - removed the manual `-mt-20` offset and switched the heading block to calmer spacing with a wrap-safe subtitle width
+  - converted `PermissionBlock` from a hard `grid-cols-2` row into a wrap-safe `flex-col` → `sm:flex-row` layout so the descriptive copy yields before the action control is crowded
+  - made the permission text column `min-w-0` with relaxed multiline body copy, and let the action/status area take full width before collapsing back to auto alignment on larger widths
+  - promoted the granted state into a padded status pill and made the success banner text wrap-safe for better completion polish
+- Added `apps/desktop/src/renderer/src/pages/setup.layout.test.ts` so the scroll-safe shell and wrap-safe permission-row contract now have focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/setup.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/setup.tsx` and `apps/desktop/src/renderer/src/pages/setup.layout.test.ts` to confirm the new scroll-safe shell and wrap-safe permission-row classes are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/setup.tsx apps/desktop/src/renderer/src/pages/setup.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- This chunk is desktop-only: there is no equivalent mobile setup-permissions window using the same fixed Electron window constraints, so no parallel mobile change was needed.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect the setup window with the permissions still pending, the success banner visible, and font zoom increased.
+- Best next UI audit chunk after this one: move to another fresh desktop/settings surface such as `settings-loops.tsx` or `settings-capabilities.tsx`, or return to `setup.tsx` only for live confirmation once the runtime blocker is cleared.
+
 ### 2026-03-08 — Chunk 32: Desktop agent editor capabilities section headers under narrow settings widths and zoom
 
 - Area selected:
