@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop provider settings Groq/Gemini credential inputs (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`) plus mobile parity check in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop general settings Langfuse text inputs (`apps/desktop/src/renderer/src/pages/settings-general.tsx`) and mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-07: Initial setup. No prior investigation log existed.
 - 2026-03-07: Desktop main-process session shutdown guardrails (`apps/desktop/src/main/state.ts`).
@@ -12,23 +13,58 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop provider settings now keep local drafts for Groq/Gemini API keys and base URLs, debounce config writes, flush on blur, and merge delayed saves against the latest config snapshot.
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
 - 2026-03-08: `git diff --check`
 
 ### Blocked
-- 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`.
+- 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop provider settings API key / base URL inputs that still save on every keystroke
 - Desktop transcript post-processing prompt editor save behavior in `settings-general.tsx`
+- Desktop provider numeric inputs that still save on every change (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`)
 - Agent/task management flows
 - Shared utility reliability / guardrails
 
 ### Next Highest-Value Targets
-- Inspect desktop provider settings (`settings-providers.tsx`) for the same local-draft/debounce pattern, especially API key and base URL fields duplicated across active/inactive provider sections
 - Revisit desktop transcript post-processing prompt editing UX once the workspace can run tests again
+- Inspect desktop provider numeric settings (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) for similar save-churn or stale-merge issues
+
+### 2026-03-08 — Desktop provider credential draft/save resilience
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop provider settings in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - specifically Groq and Gemini API key / base URL inputs in both active and inactive provider sections
+- Why it was chosen:
+  - the ledger explicitly called out remaining provider settings text inputs that still saved on every keystroke
+  - API keys and base URLs are long, high-friction values where eager autosave causes visible churn and unnecessary config writes
+  - the fix was local, user-visible, and did not require a broad provider-settings refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` for the existing Langfuse local-draft/debounce pattern
+  - `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` for the latest config-ref save pattern
+  - `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx` and `apps/desktop/src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` for focused regression-test structure
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile does not expose the same provider credential-editing surface, so no parity change was needed for this pass
+  - attempted live desktop inspection, but no Electron CDP target was available in this environment
+- Improvement made:
+  - added shared local draft state for Groq and Gemini API keys / base URLs across both active and inactive provider sections
+  - debounced provider credential saves by 400ms while typing and flushes the latest draft on blur
+  - switched these delayed saves to merge against the latest config snapshot via a ref, avoiding stale-config overwrites when unrelated settings change before the timeout fires
+  - added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-providers.credentials.test.tsx`
+- Assumptions / tradeoffs / rationale:
+  - kept the existing autosave interaction model instead of adding explicit Save/Cancel controls to keep the change small and consistent with nearby settings UX
+  - limited this pass to Groq/Gemini credential text inputs because they were the clearest remaining save-on-every-keystroke pain point in this screen; numeric provider settings remain separate follow-up work
+  - introduced only a small local helper for the duplicated credential controls instead of broadly reorganizing provider sections
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx`, but the current workspace still lacks installed dependencies and `vitest` was unavailable
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run `src/renderer/src/pages/settings-providers.credentials.test.tsx` and the previously blocked Langfuse settings test file
+  - inspect remaining provider numeric inputs (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) for the same autosave-churn pattern
+  - revisit transcript post-processing prompt editing UX after verification can run again
 
 ### 2026-03-07 — Desktop session shutdown guardrails
 - Date:

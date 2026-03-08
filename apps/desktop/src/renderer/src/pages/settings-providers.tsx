@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Input } from "@renderer/components/ui/input"
@@ -43,6 +43,28 @@ import {
   DEFAULT_MODEL_PRESET_ID,
 } from "@shared/index"
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
+
+const PROVIDER_TEXT_INPUT_SAVE_DEBOUNCE_MS = 400
+
+type ProviderTextDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+
+function getProviderTextDrafts(config?: Partial<Config>) {
+  return {
+    groqApiKey: config?.groqApiKey ?? "",
+    groqBaseUrl: config?.groqBaseUrl ?? "",
+    geminiApiKey: config?.geminiApiKey ?? "",
+    geminiBaseUrl: config?.geminiBaseUrl ?? "",
+  }
+}
+
+function getOptionalStringConfigUpdate<Key extends ProviderTextDraftKey>(
+  key: Key,
+  value: string,
+): Pick<Config, Key> {
+  return {
+    [key]: value || undefined,
+  } as Pick<Config, Key>
+}
 
 // Badge component to show which features are using this provider
 function ActiveProviderBadge({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
@@ -101,6 +123,47 @@ function ProviderSelector({
         </SelectContent>
       </Select>
     </Control>
+  )
+}
+
+function ProviderCredentialInputs({
+  apiKeyValue,
+  baseUrlValue,
+  baseUrlPlaceholder,
+  onApiKeyChange,
+  onApiKeyBlur,
+  onBaseUrlChange,
+  onBaseUrlBlur,
+}: {
+  apiKeyValue: string
+  baseUrlValue: string
+  baseUrlPlaceholder: string
+  onApiKeyChange: (value: string) => void
+  onApiKeyBlur: (value: string) => void
+  onBaseUrlChange: (value: string) => void
+  onBaseUrlBlur: (value: string) => void
+}) {
+  return (
+    <>
+      <Control label="API Key" className="px-3">
+        <Input
+          type="password"
+          value={apiKeyValue}
+          onChange={(e) => onApiKeyChange(e.currentTarget.value)}
+          onBlur={(e) => onApiKeyBlur(e.currentTarget.value)}
+        />
+      </Control>
+
+      <Control label="API Base URL" className="px-3">
+        <Input
+          type="url"
+          placeholder={baseUrlPlaceholder}
+          value={baseUrlValue}
+          onChange={(e) => onBaseUrlChange(e.currentTarget.value)}
+          onBlur={(e) => onBaseUrlBlur(e.currentTarget.value)}
+        />
+      </Control>
+    </>
   )
 }
 
@@ -840,18 +903,75 @@ export function Component() {
   const configQuery = useConfigQuery()
 
   const saveConfigMutation = useSaveConfigMutation()
+  const configRef = useRef<Config | undefined>(configQuery.data as Config | undefined)
+  const [providerTextDrafts, setProviderTextDrafts] = useState(() =>
+    getProviderTextDrafts(configQuery.data as Config | undefined),
+  )
+  const providerTextSaveTimeoutsRef = useRef<Record<ProviderTextDraftKey, ReturnType<typeof setTimeout> | null>>({
+    groqApiKey: null,
+    groqBaseUrl: null,
+    geminiApiKey: null,
+    geminiBaseUrl: null,
+  })
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
       saveConfigMutation.mutate({
         config: {
-          ...configQuery.data,
+          ...(configRef.current as any),
           ...config,
         },
       })
     },
-    [saveConfigMutation, configQuery.data],
+    [saveConfigMutation],
   )
+
+  const flushProviderTextDraft = useCallback(
+    (key: ProviderTextDraftKey, value: string) => {
+      const timeout = providerTextSaveTimeoutsRef.current[key]
+      if (timeout) {
+        clearTimeout(timeout)
+        providerTextSaveTimeoutsRef.current[key] = null
+      }
+
+      saveConfig(getOptionalStringConfigUpdate(key, value))
+    },
+    [saveConfig],
+  )
+
+  const scheduleProviderTextSave = useCallback(
+    (key: ProviderTextDraftKey, value: string) => {
+      const timeout = providerTextSaveTimeoutsRef.current[key]
+      if (timeout) clearTimeout(timeout)
+
+      providerTextSaveTimeoutsRef.current[key] = setTimeout(() => {
+        providerTextSaveTimeoutsRef.current[key] = null
+        saveConfig(getOptionalStringConfigUpdate(key, value))
+      }, PROVIDER_TEXT_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  useEffect(() => {
+    configRef.current = configQuery.data as Config | undefined
+  }, [configQuery.data])
+
+  useEffect(() => {
+    setProviderTextDrafts(getProviderTextDrafts(configQuery.data as Config | undefined))
+  }, [
+    configQuery.data?.groqApiKey,
+    configQuery.data?.groqBaseUrl,
+    configQuery.data?.geminiApiKey,
+    configQuery.data?.geminiBaseUrl,
+  ])
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of Object.values(providerTextSaveTimeoutsRef.current)) {
+        if (timeout) clearTimeout(timeout)
+      }
+    }
+  }, [])
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
@@ -1148,30 +1268,21 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedGroq && (
               <div id="groq-provider-content" className="divide-y border-t">
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.groqApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
-
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://api.groq.com/openai/v1"
-                    defaultValue={configQuery.data.groqBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                <ProviderCredentialInputs
+                  apiKeyValue={providerTextDrafts.groqApiKey}
+                  baseUrlValue={providerTextDrafts.groqBaseUrl}
+                  baseUrlPlaceholder="https://api.groq.com/openai/v1"
+                  onApiKeyChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, groqApiKey: value }))
+                    scheduleProviderTextSave("groqApiKey", value)
+                  }}
+                  onApiKeyBlur={(value) => flushProviderTextDraft("groqApiKey", value)}
+                  onBaseUrlChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, groqBaseUrl: value }))
+                    scheduleProviderTextSave("groqBaseUrl", value)
+                  }}
+                  onBaseUrlBlur={(value) => flushProviderTextDraft("groqBaseUrl", value)}
+                />
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
@@ -1265,30 +1376,21 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedGemini && (
               <div id="gemini-provider-content" className="divide-y border-t">
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.geminiApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
-
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://generativelanguage.googleapis.com"
-                    defaultValue={configQuery.data.geminiBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                <ProviderCredentialInputs
+                  apiKeyValue={providerTextDrafts.geminiApiKey}
+                  baseUrlValue={providerTextDrafts.geminiBaseUrl}
+                  baseUrlPlaceholder="https://generativelanguage.googleapis.com"
+                  onApiKeyChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, geminiApiKey: value }))
+                    scheduleProviderTextSave("geminiApiKey", value)
+                  }}
+                  onApiKeyBlur={(value) => flushProviderTextDraft("geminiApiKey", value)}
+                  onBaseUrlChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, geminiBaseUrl: value }))
+                    scheduleProviderTextSave("geminiBaseUrl", value)
+                  }}
+                  onBaseUrlBlur={(value) => flushProviderTextDraft("geminiBaseUrl", value)}
+                />
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
@@ -1417,30 +1519,21 @@ export function Component() {
                   </p>
                 </div>
 
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.groqApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
-
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://api.groq.com/openai/v1"
-                    defaultValue={configQuery.data.groqBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                <ProviderCredentialInputs
+                  apiKeyValue={providerTextDrafts.groqApiKey}
+                  baseUrlValue={providerTextDrafts.groqBaseUrl}
+                  baseUrlPlaceholder="https://api.groq.com/openai/v1"
+                  onApiKeyChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, groqApiKey: value }))
+                    scheduleProviderTextSave("groqApiKey", value)
+                  }}
+                  onApiKeyBlur={(value) => flushProviderTextDraft("groqApiKey", value)}
+                  onBaseUrlChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, groqBaseUrl: value }))
+                    scheduleProviderTextSave("groqBaseUrl", value)
+                  }}
+                  onBaseUrlBlur={(value) => flushProviderTextDraft("groqBaseUrl", value)}
+                />
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
@@ -1534,30 +1627,21 @@ export function Component() {
                   </p>
                 </div>
 
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.geminiApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
-
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://generativelanguage.googleapis.com"
-                    defaultValue={configQuery.data.geminiBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                <ProviderCredentialInputs
+                  apiKeyValue={providerTextDrafts.geminiApiKey}
+                  baseUrlValue={providerTextDrafts.geminiBaseUrl}
+                  baseUrlPlaceholder="https://generativelanguage.googleapis.com"
+                  onApiKeyChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, geminiApiKey: value }))
+                    scheduleProviderTextSave("geminiApiKey", value)
+                  }}
+                  onApiKeyBlur={(value) => flushProviderTextDraft("geminiApiKey", value)}
+                  onBaseUrlChange={(value) => {
+                    setProviderTextDrafts((current) => ({ ...current, geminiBaseUrl: value }))
+                    scheduleProviderTextSave("geminiBaseUrl", value)
+                  }}
+                  onBaseUrlBlur={(value) => flushProviderTextDraft("geminiBaseUrl", value)}
+                />
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
