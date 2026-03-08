@@ -618,6 +618,7 @@ export function MessageQueuePanel({
         <ScrollView
           style={styles.list}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {messages.map((msg, index) => (
             <React.Fragment key={msg.id}>

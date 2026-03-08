@@ -3272,3 +3272,41 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the updated ACP-mode copy stays readable on a narrow screen.
   - If the longer guidance text feels too dense live, tighten the copy while keeping `Stdio` support explicit.
   - Continue with the next highest-signal local mobile issue only after a fresh live pass re-establishes which sub-agent surface now has the most friction.
+
+### 2026-03-08 — Iteration 76: let queue edits dismiss the keyboard with a drag
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the queue list `ScrollView` now keeps edit actions tappable with `keyboardShouldPersistTaps="handled"`.
+  - That same list still used the default keyboard-dismiss behavior, so when queue edit mode auto-focused its multiline field, the keyboard could stay pinned open while users tried to drag the list to recover vertical space or recheck nearby queue context.
+- Issue selected:
+  - Queue edit mode still made it harder than necessary to reclaim screen space on narrow devices, weakening control once the keyboard covered part of the queued-message stack.
+- Decision:
+  - Keep the queue edit layout, helper text, and action behavior unchanged.
+  - Do not redesign the queue edit stack while live validation is blocked.
+  - Make the smallest local fix: keep tap handling as-is and add drag-to-dismiss keyboard behavior to the queue list.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to add `keyboardDismissMode="on-drag"` to the queue list `ScrollView`, pairing it with the existing `keyboardShouldPersistTaps="handled"` behavior.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with a focused regression check for the combined keyboard interaction contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / device re-validation ⚠️ blocked by the same missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm dragging the queue list dismisses the keyboard smoothly without making edit mode feel jumpy.
+  - The queued-message edit field, helper text, and action stack still deserve live validation to confirm they remain balanced once the keyboard can be dismissed on drag.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queue edit mode now supports both first-tap action handling and drag-to-dismiss keyboard behavior.
+  - Compare queue edit mode before and after dragging to confirm the preserved context text and helper copy still read clearly once more vertical space is available.
+  - If live validation shows the queue edit stack still feels cramped, tighten edit-mode spacing before attempting any broader queue-panel redesign.
