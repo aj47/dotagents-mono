@@ -27,5 +27,9 @@ test('advanced system prompt reset and save flow now have guardrails', () => {
   assert.match(source, /Reset this custom system prompt and use the default base prompt instead\?/);
   assert.match(source, /className=\{isSavingAgent \? "pointer-events-none opacity-70" : undefined\}/);
   assert.match(source, /\{isSavingAgent \? \(isCreating \? "Creating\.\.\." : "Saving\.\.\."\) : "Save"\}/);
-  assert.match(source, /Failed to save agent\. Your changes are still open\./);
+  assert.match(source, /const \[saveAgentErrorMessage, setSaveAgentErrorMessage\] = useState<string \| null>\(null\)/);
+  assert.match(source, /const savedAgent = isCreating[\s\S]*?await tipcClient\.updateAgentProfile\(\{ id: editing\.id, updates: data \}\)/);
+  assert.match(source, /if \(!savedAgent\) \{[\s\S]*?Couldn't create this new agent yet\. Your draft is still open, so you can try again\.[\s\S]*?Couldn't save your changes to "\$\{editingLabel\}" yet\. Your draft is still open, so you can try again\./);
+  assert.match(source, /setSaveAgentErrorMessage\(saveErrorMessage\)/);
+  assert.match(source, /<span>\{saveAgentErrorMessage\}<\/span>/);
 });

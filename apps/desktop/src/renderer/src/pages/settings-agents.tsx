@@ -173,6 +173,7 @@ export function SettingsAgents() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [pendingDeleteAgentId, setPendingDeleteAgentId] = useState<string | null>(null)
   const [deleteAgentError, setDeleteAgentError] = useState<{ id: string; message: string } | null>(null)
+  const [saveAgentErrorMessage, setSaveAgentErrorMessage] = useState<string | null>(null)
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -188,6 +189,7 @@ export function SettingsAgents() {
     setEditing(null)
     setEditingBaseline(null)
     setIsCreating(false)
+    setSaveAgentErrorMessage(null)
     setPrefilledImportFilePath(installBundlePath)
     setIsImportDialogOpen(true)
 
@@ -205,6 +207,7 @@ export function SettingsAgents() {
       setEditing(null)
       setEditingBaseline(null)
       setIsCreating(false)
+      setSaveAgentErrorMessage(null)
       setSearchParams({}, { replace: true })
       return
     }
@@ -242,6 +245,7 @@ export function SettingsAgents() {
     setIsCreating(false)
     setNewPropKey("")
     setNewPropValue("")
+    setSaveAgentErrorMessage(null)
   }
 
   const isEditingDirty = hasAgentDraftChanges(editing, editingBaseline)
@@ -250,6 +254,7 @@ export function SettingsAgents() {
   const handleCreate = () => {
     setDeleteConfirmId(null)
     setDeleteAgentError(null)
+    setSaveAgentErrorMessage(null)
     setIsCreating(true)
     setEditing(emptyAgent())
     setEditingBaseline(emptyAgent())
@@ -258,6 +263,7 @@ export function SettingsAgents() {
   const handleEdit = (agent: AgentProfile) => {
     setDeleteConfirmId(null)
     setDeleteAgentError(null)
+    setSaveAgentErrorMessage(null)
     setIsCreating(false)
     setEditing(toEditingAgent(agent))
     setEditingBaseline(toEditingAgent(agent))
@@ -266,6 +272,7 @@ export function SettingsAgents() {
   const handleSave = async () => {
     if (!editing || isSavingAgent) return
     setIsSavingAgent(true)
+    setSaveAgentErrorMessage(null)
     const connection: AgentProfileConnection = {
       type: editing.connectionType, command: editing.connectionCommand,
       args: editing.connectionArgs?.split(" ").filter(Boolean),
@@ -287,17 +294,31 @@ export function SettingsAgents() {
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }
     try {
-      if (isCreating) await tipcClient.createAgentProfile({ profile: data })
-      else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
+      const savedAgent = isCreating
+        ? await tipcClient.createAgentProfile({ profile: data })
+        : editing.id
+          ? await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
+          : null
+
+      if (!savedAgent) {
+        throw new Error(isCreating
+          ? "Couldn't create this new agent yet. Your draft is still open, so you can try again."
+          : `Couldn't save your changes to "${editingLabel}" yet. Your draft is still open, so you can try again.`)
+      }
+
       closeEditor()
       void loadAgents()
       // Invalidate sidebar query so it reflects changes immediately
       queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
     } catch (error) {
       console.error("[SettingsAgents] Failed to save agent", error)
-      toast.error(isCreating
-        ? "Failed to create agent. Your draft is still open."
-        : "Failed to save agent. Your changes are still open.")
+      const saveErrorMessage = error instanceof Error && error.message.trim()
+        ? error.message
+        : (isCreating
+          ? "Couldn't create this new agent yet. Your draft is still open, so you can try again."
+          : `Couldn't save your changes to "${editingLabel}" yet. Your draft is still open, so you can try again.`)
+      setSaveAgentErrorMessage(saveErrorMessage)
+      toast.error(saveErrorMessage)
     } finally {
       setIsSavingAgent(false)
     }
@@ -1126,9 +1147,18 @@ export function SettingsAgents() {
             </Tabs>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <Button variant="outline" className="gap-2" onClick={handleCancel} disabled={isSavingAgent}><X className="h-4 w-4" />Cancel</Button>
-            <Button className="gap-2" onClick={handleSave} disabled={isSavingAgent}><Save className="h-4 w-4" />{isSavingAgent ? (isCreating ? "Creating..." : "Saving...") : "Save"}</Button>
+          <div className="space-y-3 pt-4 border-t mt-4">
+            {saveAgentErrorMessage && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{saveAgentErrorMessage}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleCancel} disabled={isSavingAgent}><X className="h-4 w-4" />Cancel</Button>
+              <Button className="gap-2" onClick={handleSave} disabled={isSavingAgent}><Save className="h-4 w-4" />{isSavingAgent ? (isCreating ? "Creating..." : "Saving...") : "Save"}</Button>
+            </div>
           </div>
         </CardContent>
       </Card>
