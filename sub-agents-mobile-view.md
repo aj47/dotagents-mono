@@ -5219,3 +5219,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new save busy labels remain legible and balanced inside both edit-form CTAs on a narrow screen.
   - Capture screenshot-backed evidence for both `AgentEdit` and `LoopEdit` while saving so the spinner + label combination can be judged with real mobile width constraints.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this save-state clarification without fresh evidence.
+
+## Iteration 118 - Put blocked queue state ahead of secondary queue metadata on mobile
+
+- Date: 2026-03-08
+- Summary: Improved mobile queue state clarity by moving blocking/failure status ahead of timestamps and secondary counts so the most important queue problem is less likely to get buried on narrow screens.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting recently touched edit-flow/history/settings work without a fresh local issue.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx` and `apps/mobile/tests/message-queue-panel-mobile.test.js` because the queue panel remained an active sub-agent surface with a still-local hierarchy problem.
+  - Noted that Iteration 86 clarified failed rows and Iteration 90 made queue processing copy count-aware, but the most important blocked state still appeared last in both row metadata and the collapsed/full header summary.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker before this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed hierarchy review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Failed queue rows already said `Failed - blocking queue`, but the visible row meta still rendered `14:40 • Failed - blocking queue`, leading with less-important timing context.
+  - The queue header summary still built its status line in `Sending now • 2 waiting • 1 failed` order.
+  - On narrow screens, that meant the highest-consequence state (`blocking` / `failed`) was the easiest part of the queue metadata to truncate or miss.
+- Issue identified:
+  - Mobile queue summaries buried the most important recovery context behind secondary timing and activity details, weakening state clarity in a high-frequency sub-agent activity surface.
+- Decision and rationale:
+  - Keep the queue layout, action rail, row copy, and disclosure structure unchanged.
+  - Do not broaden this into a bigger queue-panel redesign or a compact-mode rewrite while live validation is blocked.
+  - Make the smallest local fix instead: lead with queue state in row metadata and make the collapsed/full queue header mention blocked failures before processing/waiting counts.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - derive `queueMetaText` so rows now read `Failed - blocking queue • 14:40`, `Processing... • 14:40`, or `Queued • 14:40`,
+    - derive `queueFailureSummary` (`Blocked by 1 failed`, `Blocked by N failed`),
+    - prepend that failure summary ahead of processing/waiting counts in `queueHeaderStatusText`.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new status-first row metadata and failure-first header summary ordering.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed mobile queue scanability improves when consequence/state leads and timestamp trails, because users typically need to know `blocked`, `processing`, or `queued` before they need the exact minute.
+  - Kept the compact queue summary unchanged because compact mode is not the active mobile chat surface in the current flow, so broadening the wording there would add risk without current evidence.
+  - This is a low-risk hierarchy tweak, but it still needs live confirmation that the longer failure-first header copy stays balanced beside the disclosure chevron and `Clear All` action.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that failure copy, count-aware processing copy, and header hierarchy have all changed without fresh Expo confirmation in this worktree.
+  - Mixed queue states (`blocked` + `sending now` + `waiting`) still need live validation to confirm the reordered header summary feels clearer rather than heavier.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Blocked by 1 failed • Sending now • 2 waiting` remains legible and appropriately prioritized on a narrow screen.
+  - Capture screenshot-backed evidence for a failed queue row so the new `Failed - blocking queue • 14:40` ordering can be judged beside long queued-message text and the action rail.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this queue-summary ordering without fresh evidence.

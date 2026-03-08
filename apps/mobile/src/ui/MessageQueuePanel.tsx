@@ -119,6 +119,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const queuedMessageAccessibilityContext = formatQueuedMessageAccessibilityContext(message.text, rowTimestampLabel);
   const trimmedEditText = editText.trim();
   const queueStatusLabel = isFailed ? 'Failed - blocking queue' : isProcessing ? 'Processing...' : 'Queued';
+  const queueMetaText = `${queueStatusLabel} • ${rowTimestampLabel}`;
   const historyLockDetailText = isAddedToHistory ? 'In chat history • Edit unavailable' : null;
   const retryAccessibilityHint = isFailed
     ? isAddedToHistory
@@ -405,7 +406,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           )}
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
-              {rowTimestampLabel} • {queueStatusLabel}
+              {queueMetaText}
             </Text>
             {isLongMessage && (
               <TouchableOpacity
@@ -497,10 +498,11 @@ export function MessageQueuePanel({
   const failedCount = messages.filter((m) => m.status === 'failed').length;
   const queuedMessageLabel = `${messages.length} queued message${messages.length > 1 ? 's' : ''}`;
   const queueProcessingSummary = processingCount === 1 ? 'Sending now' : `${processingCount} sending now`;
+  const queueFailureSummary = failedCount === 1 ? 'Blocked by 1 failed' : `Blocked by ${failedCount} failed`;
   const queueHeaderStatusParts: string[] = [];
+  if (failedCount > 0) queueHeaderStatusParts.push(queueFailureSummary);
   if (processingCount > 0) queueHeaderStatusParts.push(queueProcessingSummary);
   if (waitingCount > 0) queueHeaderStatusParts.push(`${waitingCount} waiting`);
-  if (failedCount > 0) queueHeaderStatusParts.push(`${failedCount} failed`);
   const queueHeaderStatusText = queueHeaderStatusParts.join(' • ') || 'Queue activity updated';
   const compactSummaryText = hasProcessingMessage
     ? `${queuedMessageLabel} • ${queueProcessingSummary}`

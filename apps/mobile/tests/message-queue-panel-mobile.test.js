@@ -38,7 +38,8 @@ test('keeps the full queue header informative when the list is collapsed', () =>
   assert.match(queuePanelSource, /const processingCount = messages\.filter\(\(m\) => m\.status === 'processing'\)\.length;/);
   assert.match(queuePanelSource, /const waitingCount = messages\.filter\(\(m\) => m\.status === 'pending'\)\.length;/);
   assert.match(queuePanelSource, /const failedCount = messages\.filter\(\(m\) => m\.status === 'failed'\)\.length;/);
-  assert.match(queuePanelSource, /const queueHeaderStatusParts: string\[\] = \[];[\s\S]*?if \(processingCount > 0\) queueHeaderStatusParts\.push\(queueProcessingSummary\);[\s\S]*?if \(waitingCount > 0\) queueHeaderStatusParts\.push\(`\$\{waitingCount\} waiting`\);[\s\S]*?if \(failedCount > 0\) queueHeaderStatusParts\.push\(`\$\{failedCount\} failed`\);/);
+  assert.match(queuePanelSource, /const queueFailureSummary = failedCount === 1 \? 'Blocked by 1 failed' : `Blocked by \$\{failedCount\} failed`;/);
+  assert.match(queuePanelSource, /const queueHeaderStatusParts: string\[\] = \[];[\s\S]*?if \(failedCount > 0\) queueHeaderStatusParts\.push\(queueFailureSummary\);[\s\S]*?if \(processingCount > 0\) queueHeaderStatusParts\.push\(queueProcessingSummary\);[\s\S]*?if \(waitingCount > 0\) queueHeaderStatusParts\.push\(`\$\{waitingCount\} waiting`\);/);
   assert.match(queuePanelSource, /const queueHeaderStatusText = queueHeaderStatusParts\.join\(' • '\) \|\| 'Queue activity updated';/);
   assert.match(queuePanelSource, /const queueDisclosureLabel = `\$\{createExpandCollapseAccessibilityLabel\('queued messages', !isListCollapsed\)\}\. \$\{queuedMessageLabel\}\. \$\{queueHeaderStatusText\}\.`;/);
   assert.match(queuePanelSource, /headerTitleGroup:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0/);
@@ -60,7 +61,8 @@ test('gives queued-message row actions mobile-sized targets and explicit labels'
   assert.match(queuePanelSource, /const rowTimestampLabel = formatTime\(message\.createdAt\);/);
   assert.match(queuePanelSource, /const queuedMessageAccessibilityContext = formatQueuedMessageAccessibilityContext\(message\.text, rowTimestampLabel\);/);
   assert.match(queuePanelSource, /const queueStatusLabel = isFailed \? 'Failed - blocking queue' : isProcessing \? 'Processing\.\.\.' : 'Queued';/);
-  assert.match(queuePanelSource, /\{rowTimestampLabel\} • \{queueStatusLabel\}/);
+  assert.match(queuePanelSource, /const queueMetaText = `\$\{queueStatusLabel\} • \$\{rowTimestampLabel\}`;/);
+  assert.match(queuePanelSource, /<Text style=\{styles\.metaText\}>[\s\S]*?\{queueMetaText\}[\s\S]*?<\/Text>/);
   assert.match(queuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.queueActionTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(queuePanelSource, /actionButtonDanger:\s*\{[\s\S]*?theme\.colors\.destructive/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Retry failed queued message \$\{queuedMessageAccessibilityContext\}`\)/);
