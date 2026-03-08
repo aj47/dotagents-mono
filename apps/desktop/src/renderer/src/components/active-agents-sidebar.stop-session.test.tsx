@@ -252,6 +252,48 @@ describe("ActiveAgentsSidebar session-action feedback", () => {
     expect(consoleError).toHaveBeenCalled()
   })
 
+  it("shows a visible partial-failure error when minimize succeeds but hiding the panel fails", async () => {
+    const runtime = createHookRuntime()
+    const hidePanelWindow = vi.fn(async () => {
+      throw new Error("panel renderer unavailable")
+    })
+    const {
+      ActiveAgentsSidebar,
+      toast,
+      snoozeAgentSession,
+      setFocusedSessionId,
+      setSessionSnoozed,
+    } = await loadSidebar(runtime, { hidePanelWindow })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    })
+
+    const tree = runtime.render(ActiveAgentsSidebar, {} as any)
+    runtime.commitEffects()
+
+    const snoozeButton = findNode(
+      tree,
+      (node) => node.type === "button" && node.props?.title === "Minimize - run in background",
+    )
+    snoozeButton.props.onClick({ stopPropagation: vi.fn() })
+    await flushPromises()
+
+    expect(snoozeAgentSession).toHaveBeenCalledWith({ sessionId: "session-1" })
+    expect(setSessionSnoozed).toHaveBeenCalledTimes(1)
+    expect(setSessionSnoozed).toHaveBeenCalledWith("session-1", true)
+    expect(setFocusedSessionId).toHaveBeenCalledWith(null)
+    expect(toast.error).toHaveBeenCalledWith(
+      "Session minimized, but failed to hide the panel. panel renderer unavailable",
+    )
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to update UI after snooze:",
+      expect.any(Error),
+    )
+  })
+
   it("restores the previous focus and shows a visible error when restoring a snoozed session fails", async () => {
     const runtime = createHookRuntime()
     const unsnoozeAgentSession = vi.fn(async () => {

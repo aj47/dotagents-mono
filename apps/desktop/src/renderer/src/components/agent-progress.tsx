@@ -2512,6 +2512,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // Log UI errors but don't rollback - the backend state is already updated
       logUI('🔴 [AgentProgress OVERLAY] Session snoozed but UI update failed')
       console.error("Failed to update UI after snooze:", error)
+      toast.error(
+        `Session minimized, but failed to hide the panel. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     }
   }
 

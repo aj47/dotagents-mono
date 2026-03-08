@@ -31,6 +31,9 @@ describe("agent progress stop-session feedback", () => {
       '`Failed to restore session. ${getActionErrorMessage(error, "Please try again.")}`',
     )
     expect(agentProgressSource).toContain(
+      '`Session minimized, but failed to hide the panel. ${getActionErrorMessage(error, "Please try again.")}`',
+    )
+    expect(agentProgressSource).toContain(
       'const focusResult = await tipcClient.focusAgentSession({ sessionId: progress.sessionId })',
     )
     expect(agentProgressSource).toContain('if (focusResult?.success === false) {')

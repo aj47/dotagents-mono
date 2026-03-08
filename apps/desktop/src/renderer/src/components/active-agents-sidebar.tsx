@@ -326,6 +326,12 @@ export function ActiveAgentsSidebar({
       } catch (error) {
         // Log UI errors but don't rollback - the backend state is already updated
         console.error("Failed to update UI after snooze:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(
+          details
+            ? `Session minimized, but failed to hide the panel. ${details}`
+            : "Session minimized, but failed to hide the panel",
+        )
       }
     }
   }
