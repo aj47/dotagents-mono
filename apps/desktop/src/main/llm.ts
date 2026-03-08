@@ -287,10 +287,14 @@ export async function processTranscriptWithTools(
 export interface AgentModeResponse {
   content: string
   conversationHistory: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
+    timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
   }>
   totalIterations: number
 }
@@ -438,10 +442,14 @@ export async function processTranscriptWithAgentMode(
   executeToolCall: (toolCall: MCPToolCall, onProgress?: (message: string) => void) => Promise<MCPToolResult>,
   maxIterations: number = 10,
   previousConversationHistory?: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
+    timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
   }>,
   conversationId?: string, // Conversation ID for linking to conversation history
   sessionId?: string, // Session ID for progress routing and isolation
@@ -918,11 +926,14 @@ export async function processTranscriptWithAgentMode(
   }
 
   const conversationHistory: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
     timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
     ephemeral?: boolean
   }> = [
     ...(previousConversationHistory || []),
@@ -980,6 +991,7 @@ export async function processTranscriptWithAgentMode(
       .filter((entry) => !entry.ephemeral)
       .filter((entry) => !(entry.role === "user" && isNudge(entry.content)))
       .map((entry) => ({
+        id: entry.id,
         role: entry.role,
         content: entry.content,
         toolCalls: entry.toolCalls?.map((tc) => ({
@@ -1000,6 +1012,8 @@ export async function processTranscriptWithAgentMode(
         }),
         // Preserve original timestamp if available, otherwise use current time
         timestamp: entry.timestamp || Date.now(),
+        isSummary: entry.isSummary,
+        summarizedMessageCount: entry.summarizedMessageCount,
       }))
   }
 

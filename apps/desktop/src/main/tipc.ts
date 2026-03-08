@@ -417,11 +417,14 @@ async function processWithAgentMode(
     // full preserved raw transcript so storage policy stays separate from LLM context.
     let previousConversationHistory:
       | Array<{
+          id?: string
           role: "user" | "assistant" | "tool"
           content: string
           toolCalls?: any[]
           toolResults?: any[]
           timestamp?: number
+          isSummary?: boolean
+          summarizedMessageCount?: number
         }>
       | undefined
 
@@ -438,10 +441,13 @@ async function processWithAgentMode(
         const messagesToConvert = conversation.messages.slice(0, -1)
         logLLM(`[tipc.ts processWithAgentMode] Converting ${messagesToConvert.length} messages (excluding last message)`)
         previousConversationHistory = messagesToConvert.map((msg) => ({
+          id: msg.id,
           role: msg.role,
           content: msg.content,
           toolCalls: msg.toolCalls,
           timestamp: msg.timestamp,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
           // Convert toolResults from stored format (content as string) to MCPToolResult format (content as array)
           toolResults: msg.toolResults?.map((tr) => ({
             content: [

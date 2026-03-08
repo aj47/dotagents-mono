@@ -494,20 +494,27 @@ interface RunAgentOptions {
 
 function formatConversationHistoryForApi(
   history: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: any[]
     toolResults?: any[]
     timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
   }>
 ): Array<{
+  id?: string
   role: "user" | "assistant" | "tool"
   content: string
   toolCalls?: Array<{ name: string; arguments: any }>
   toolResults?: Array<{ success: boolean; content: string; error?: string }>
   timestamp?: number
+  isSummary?: boolean
+  summarizedMessageCount?: number
 }> {
   return history.map((entry) => ({
+    id: entry.id,
     role: entry.role,
     content: entry.content,
     toolCalls: entry.toolCalls?.map((tc: any) => ({
@@ -526,6 +533,8 @@ function formatConversationHistoryForApi(
       }
     }),
     timestamp: entry.timestamp,
+    isSummary: entry.isSummary,
+    summarizedMessageCount: entry.summarizedMessageCount,
   }))
 }
 
@@ -533,11 +542,14 @@ async function runAgent(options: RunAgentOptions): Promise<{
   content: string
   conversationId: string
   conversationHistory: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
   }>
 }> {
   const { prompt, conversationId: inputConversationId, onProgress } = options
@@ -550,11 +562,14 @@ async function runAgent(options: RunAgentOptions): Promise<{
 
   // Load previous conversation history if conversationId is provided
   let previousConversationHistory: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: any[]
     toolResults?: any[]
     timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
   }> | undefined
   let shouldLoadCompactedConversationContext = false
   let conversationId = inputConversationId
@@ -656,11 +671,14 @@ async function runAgent(options: RunAgentOptions): Promise<{
       )
 
       previousConversationHistory = messagesToConvert.map((msg) => ({
+        id: msg.id,
         role: msg.role,
         content: msg.content,
         toolCalls: msg.toolCalls,
         // Preserve timestamp for correct ordering in UI (matching tipc.ts)
         timestamp: msg.timestamp,
+        isSummary: msg.isSummary,
+        summarizedMessageCount: msg.summarizedMessageCount,
         // Convert toolResults from stored format to MCPToolResult format (matching tipc.ts)
         toolResults: msg.toolResults?.map((tr) => ({
           content: [

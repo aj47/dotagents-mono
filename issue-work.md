@@ -2224,3 +2224,38 @@
   - Only continue `#58` if another similarly concrete provenance/reliability gap is directly observable; otherwise pivot to a different open issue next.
 
 - Next recommended issue work item: prefer a fresh open issue for the next pass unless another comparably tight `#58` live-history gap appears immediately from source or manual repro.
+
+##### Issue #58 — ACP live progress preserves compaction summary metadata for history UI hydration
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` first, then refreshed the remaining open issues and the last `#58` ledger follow-up before selecting this pass.
+  - The previous `#58` entry explicitly called out checking non-ACP live progress paths for stripped summary metadata, and both desktop `tipc` agent resumes and the remote server resume/API formatting path still showed a direct source-level gap.
+  - I chose this slice because it is small, user-visible, and tightly aligned with the issue’s trust/provenance goal: the renderer can already explain compacted history, but non-ACP resume paths were still dropping the metadata needed to do that consistently.
+- Investigation:
+  - Inspected `apps/desktop/src/main/tipc.ts` and confirmed `processWithAgentMode(...)` loaded compacted conversation context via `conversationService.loadConversationWithCompaction(...)` but remapped prior messages into `previousConversationHistory` without `id`, `isSummary`, or `summarizedMessageCount`.
+  - Inspected `apps/desktop/src/main/remote-server.ts` and found the same stripping in two places: `runAgent(...)`’s `previousConversationHistory` bootstrap mapping and `formatConversationHistoryForApi(...)`, which shaped `conversation_history` responses for remote/mobile callers.
+  - Cross-checked `apps/desktop/src/main/llm.ts` and confirmed the non-ACP progress formatter also omitted summary metadata even if earlier layers had preserved it.
+  - Re-used the existing `#58` renderer understanding from prior entries rather than re-opening the UI: `agent-progress.tsx` already knows how to surface compacted-history provenance once `conversationHistory` entries still carry summary markers.
+- Important assumptions:
+  - Assumption: preserving compacted summary metadata on non-ACP resume/progress and remote API formatting is the highest-value follow-up, even without expanding the public conversation create/update schema in the same pass.
+  - Why acceptable: this directly fixes the active resume/hydration path users hit after compaction, while API schema broadening would be a separate compatibility change with less immediate desktop UX impact.
+  - Assumption: preserving `id` alongside summary flags is acceptable even though the issue primarily called out `isSummary` / `summarizedMessageCount`.
+  - Why acceptable: ACP already keeps IDs for the same history hydration purpose, and retaining IDs here improves parity and stable renderer reconciliation with no meaningful downside.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/tipc.ts` so non-ACP agent-mode resumes now carry `id`, `isSummary`, and `summarizedMessageCount` through `previousConversationHistory` when loading a compacted conversation window.
+  - Updated `apps/desktop/src/main/remote-server.ts` so remote agent resumes preserve the same metadata and `formatConversationHistoryForApi(...)` now keeps those fields in returned `conversation_history` payloads.
+  - Updated `apps/desktop/src/main/llm.ts` so non-ACP progress formatting and `AgentModeResponse` typing preserve `id`, `timestamp`, `isSummary`, and `summarizedMessageCount` once they are present in prior history.
+  - Added `apps/desktop/src/main/non-acp-summary-progress.test.js` with source-level regression coverage locking in the `tipc`, `llm`, and `remote-server` summary-metadata passthrough.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/non-acp-summary-progress.test.js apps/desktop/src/main/remote-server.conversation-history-response.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If another `#58` slice is needed later, inspect whether the remote conversation create/update endpoints should also accept and persist incoming summary metadata instead of stripping those fields on save.
+  - If a live repro still shows missing provenance after this patch, inspect any remaining progress sanitization/replay layers between `emitAgentProgress(...)` and renderer store hydration rather than revisiting these now-covered mappings first.
+  - Otherwise prefer a fresh open issue next instead of continuing to mine `#58`.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or reliability slice next; only return to `#58` if a new direct metadata-loss path is observed.
