@@ -3,6 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
+import { createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
 
@@ -229,10 +230,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
             onPress={() => updateField('connectionType', ct.value)}
             disabled={isBuiltInAgent}
           >
-            <Text style={[
-              styles.connectionTypeText,
-              formData.connectionType === ct.value && styles.connectionTypeTextActive,
-            ]}>
+            <Text
+              style={[
+                styles.connectionTypeText,
+                formData.connectionType === ct.value && styles.connectionTypeTextActive,
+              ]}
+              numberOfLines={2}
+            >
               {ct.label}
             </Text>
           </TouchableOpacity>
@@ -319,8 +323,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
       />
 
       <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Enabled</Text>
+        <View style={styles.switchTextGroup}>
+          <Text style={styles.switchLabel}>Enabled</Text>
+        </View>
         <Switch
+          style={styles.switchControl}
           value={formData.enabled}
           onValueChange={v => updateField('enabled', v)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
@@ -329,11 +336,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
       </View>
 
       <View style={styles.switchRow}>
-        <View>
+        <View style={styles.switchTextGroup}>
           <Text style={styles.switchLabel}>Auto Spawn</Text>
           <Text style={styles.switchHelperText}>Start agent automatically on app launch</Text>
         </View>
         <Switch
+          style={styles.switchControl}
           value={formData.autoSpawn}
           onValueChange={v => updateField('autoSpawn', v)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
@@ -358,6 +366,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const connectionTypeTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: {
       padding: spacing.lg,
@@ -413,12 +428,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     connectionTypeRow: {
       flexDirection: 'row',
-      gap: spacing.xs,
       flexWrap: 'wrap',
+      gap: spacing.xs,
     },
     connectionTypeOption: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      ...connectionTypeTouchTarget,
+      maxWidth: '100%',
+      alignSelf: 'flex-start',
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -430,7 +446,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     connectionTypeText: {
       fontSize: 13,
+      lineHeight: 18,
       color: theme.colors.foreground,
+      textAlign: 'center',
+      flexShrink: 1,
     },
     connectionTypeTextActive: {
       color: theme.colors.primaryForeground,
@@ -438,11 +457,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     switchRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: spacing.md,
+      minWidth: 0,
       paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    switchTextGroup: {
+      minWidth: 0,
+      flex: 1,
+      flexShrink: 1,
     },
     switchLabel: {
       fontSize: 14,
@@ -451,7 +476,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     switchHelperText: {
       fontSize: 12,
+      lineHeight: 16,
       color: theme.colors.mutedForeground,
+      marginTop: 2,
+    },
+    switchControl: {
+      flexShrink: 0,
+      alignSelf: 'flex-start',
       marginTop: 2,
     },
     saveButton: {

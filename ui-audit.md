@@ -1,5 +1,40 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 27: Mobile Agent editor chips and switch rows under narrow widths and larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/AgentEditScreen.tsx`
+- Why this chunk: chunk 26 explicitly called out `AgentEditScreen` as the next strongest unlogged mobile editor surface. It has the same kind of narrow-width / larger-text pressure already fixed in nearby editors, but its connection-type controls and switch rows were still using older one-line assumptions.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid overlap with prior chunks
+  - reused `apps/desktop/DEBUGGING.md`, `AGENTS.md`, and `DEVELOPMENT.md` for the repo’s Electron/mobile debugging workflow and design guidance
+  - attempted live inspection again, but this worktree still lacks local app dependencies / `node_modules`: `pnpm --filter @dotagents/mobile exec expo --version` fails because `expo` is missing, and `REMOTE_DEBUGGING_PORT=9393 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9399" pnpm dev -- -d` fails before launch because desktop/shared dev dependencies such as `tsup` are unavailable
+  - inspected `AgentEditScreen.tsx` directly and compared it against the recent mobile editor fixes that already use shared minimum-touch-target and shrink-safe row patterns
+
+#### Findings
+
+- Before the fix, `AgentEditScreen` still had two clear mobile polish issues:
+  - the `Connection Type` chips only used padding-based sizing, so they fell short of the shared 44px mobile touch-target standard and had no explicit width cap or text-wrap contract
+  - the `Enabled` / `Auto Spawn` rows still used a plain `justifyContent: 'space-between'` layout with no shrink-safe text group, so larger text or narrow widths could crowd the switch controls, especially once the `Auto Spawn` helper copy wrapped
+
+#### Changes made
+
+- Hardened `apps/mobile/src/screens/AgentEditScreen.tsx` with a small, local layout fix:
+  - reused `createMinimumTouchTargetStyle(...)` for the connection-type chips so each option now reaches the shared 44px mobile target
+  - capped each chip to `maxWidth: '100%'`, kept it aligned to wrapped rows, and allowed chip labels up to two centered lines with explicit line height and `flexShrink`
+  - wrapped both switch labels in a dedicated `switchTextGroup` and made the `Switch` control a non-shrinking trailing element so multiline label/helper text yields before the toggle is crowded off-axis
+- Added `apps/mobile/tests/agent-edit-screen-layout.test.js` so this screen’s touch-target and wrap-safe layout contract now has focused regression coverage.
+
+#### Verification
+
+- Targeted regression test: `node --test apps/mobile/tests/agent-edit-screen-layout.test.js`
+- Attempted targeted mobile typecheck: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked because the worktree is still missing Expo/mobile dependencies and `expo/tsconfig.base`)*
+
+#### Notes
+
+- Live mobile and desktop inspection remain blocked in this worktree until local dependencies are installed, so this chunk is source-inspection-driven with source-contract tests rather than screenshot-backed runtime evidence.
+- Best next UI audit chunk after this one: `MemoryEditScreen` now stands out as the next unlogged mobile editor surface, especially its row spacing, empty/error states, and multiline form controls under narrow widths / larger text.
+
 ### 2026-03-08 — Chunk 26: Mobile Loop editor profile chips under narrow widths and larger text
 
 - Area selected:
