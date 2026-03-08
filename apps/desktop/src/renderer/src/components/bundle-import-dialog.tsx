@@ -71,6 +71,24 @@ interface BundlePreview {
   error?: string
 }
 
+interface ImportItemResult {
+  id: string
+  name: string
+  action: "imported" | "skipped" | "renamed" | "overwritten"
+  error?: string
+}
+
+interface BundleImportResult {
+  success: boolean
+  backupFilePath: string | null
+  agentProfiles: ImportItemResult[]
+  mcpServers: ImportItemResult[]
+  skills: ImportItemResult[]
+  repeatTasks: ImportItemResult[]
+  memories: ImportItemResult[]
+  errors: string[]
+}
+
 interface BundleImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -86,6 +104,76 @@ interface BundleImportDialogProps {
 
 export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
   return (await tipcClient.previewBundleWithConflicts({ filePath })) as BundlePreview
+}
+
+function getSelectedConflictCount(
+  conflicts: BundlePreview["conflicts"] | undefined,
+  components: BundleComponentsState,
+): number {
+  if (!conflicts) return 0
+
+  return COMPONENT_KEYS.reduce((total, key) => {
+    if (!components[key]) return total
+    return total + conflicts[key].length
+  }, 0)
+}
+
+function formatCount(label: string, count: number): string {
+  return `${count} ${label}${count === 1 ? "" : "s"}`
+}
+
+function formatExpectedConflictOutcome(conflictCount: number, strategy: ConflictStrategy): string | null {
+  if (conflictCount === 0) return null
+
+  if (strategy === "skip") {
+    return `${formatCount("existing item", conflictCount)} will be skipped.`
+  }
+
+  if (strategy === "overwrite") {
+    return `${formatCount("existing item", conflictCount)} will be overwritten.`
+  }
+
+  return `${formatCount("existing item", conflictCount)} will be imported with renamed IDs.`
+}
+
+function summarizeImportResult(result: BundleImportResult): {
+  appliedCount: number
+  outcomeLabel: string
+  detailSummary: string
+} {
+  const counts = {
+    imported: 0,
+    renamed: 0,
+    overwritten: 0,
+    skipped: 0,
+    failed: 0,
+  }
+
+  for (const key of COMPONENT_KEYS) {
+    for (const item of result[key]) {
+      if (item.error) {
+        counts.failed += 1
+        continue
+      }
+
+      counts[item.action] += 1
+    }
+  }
+
+  const appliedCount = counts.imported + counts.renamed + counts.overwritten
+  const detailSummary = [
+    counts.imported > 0 ? formatCount("imported item", counts.imported) : null,
+    counts.renamed > 0 ? formatCount("renamed item", counts.renamed) : null,
+    counts.overwritten > 0 ? formatCount("overwritten item", counts.overwritten) : null,
+    counts.skipped > 0 ? formatCount("skipped item", counts.skipped) : null,
+    counts.failed > 0 ? formatCount("failed item", counts.failed) : null,
+  ].filter(Boolean).join(", ")
+
+  return {
+    appliedCount,
+    outcomeLabel: appliedCount > 0 ? formatCount("item", appliedCount) : "no new items",
+    detailSummary,
+  }
 }
 
 export function BundleImportDialog({
@@ -193,23 +281,23 @@ export function BundleImportDialog({
         filePath: preview.filePath,
         conflictStrategy,
         components: normalizedComponents,
-      })
+      }) as BundleImportResult
       const backupMessage = result.backupFilePath
         ? ` Pre-import backup: ${result.backupFilePath}`
         : ""
+      const importSummary = summarizeImportResult(result)
       if (result.success) {
-        const imported = [
-          result.agentProfiles.filter(r => r.action !== "skipped").length,
-          result.mcpServers.filter(r => r.action !== "skipped").length,
-          result.skills.filter(r => r.action !== "skipped").length,
-          result.repeatTasks.filter(r => r.action !== "skipped").length,
-          result.memories.filter(r => r.action !== "skipped").length,
-        ].reduce((a, b) => a + b, 0)
-        toast.success(`Successfully ${successVerb} ${imported} item(s).${backupMessage}`)
+        const detailMessage = importSummary.detailSummary
+          ? ` (${importSummary.detailSummary})`
+          : ""
+        toast.success(`Successfully ${successVerb} ${importSummary.outcomeLabel}.${detailMessage}${backupMessage}`)
         onImportComplete()
         handleClose()
       } else {
-        toast.error(`${result.errors.join(", ") || "Import failed"}${backupMessage}`)
+        const detailMessage = importSummary.detailSummary
+          ? ` Progress: ${importSummary.detailSummary}.`
+          : ""
+        toast.error(`${result.errors.join(", ") || "Import failed"}.${detailMessage}${backupMessage}`)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -231,6 +319,8 @@ export function BundleImportDialog({
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
+  const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents)
+  const expectedConflictOutcome = formatExpectedConflictOutcome(selectedConflictCount, conflictStrategy)
   const hasConflicts = conflicts
     ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
     : false
@@ -354,6 +444,11 @@ export function BundleImportDialog({
                 <p className="text-xs text-muted-foreground">
                   Some items already exist in your configuration.
                 </p>
+                {expectedConflictOutcome && (
+                  <p className="text-xs text-muted-foreground">
+                    Current selection: {expectedConflictOutcome}
+                  </p>
+                )}
               </div>
             )}
           </div>

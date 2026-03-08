@@ -32,12 +32,16 @@ test('settings capabilities exposes a restore-backup entrypoint that reuses the 
   assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["bundle-import-backups"\] \}\)/)
 })
 
-test('bundle import dialog supports restore-specific labels without forking the import flow', () => {
+test('bundle import dialog supports restore-specific labels and clearer import provenance without forking the flow', () => {
   assert.match(dialogSource, /confirmLabel\?: string/)
   assert.match(dialogSource, /successVerb\?: string/)
   assert.match(dialogSource, /confirmLabel = "Import"/)
   assert.match(dialogSource, /successVerb = "imported"/)
-  assert.match(dialogSource, /Successfully \$\{successVerb\} \$\{imported\} item\(s\)/)
+  assert.match(dialogSource, /function formatExpectedConflictOutcome\(conflictCount: number, strategy: ConflictStrategy\): string \| null/)
+  assert.match(dialogSource, /Current selection: \{expectedConflictOutcome\}/)
+  assert.match(dialogSource, /function summarizeImportResult\(result: BundleImportResult\): \{/)
+  assert.match(dialogSource, /Successfully \$\{successVerb\} \$\{importSummary\.outcomeLabel\}/)
+  assert.match(dialogSource, /Progress: \$\{importSummary\.detailSummary\}\./)
   assert.match(dialogSource, /<Button onClick=\{handleImport\}[\s\S]*\{confirmLabel\}/)
 })
 

@@ -623,3 +623,34 @@
   - Reuse the same backup provenance contract in Hub install flows so local bundle imports and Hub installs surface consistent trust metadata.
 
 - Next recommended issue work item: stay on `#57` for import-result/conflict provenance only if a similarly small slice is obvious, otherwise pivot to a fresh bug/enhancement with a clearer new local repro path.
+
+##### Issue #57 — Bundle import dialog: clearer import-result and conflict provenance
+
+- Selection rationale:
+  - `#54` remains too speculative for a small shippable pass, while `#57` still had one explicit trust-focused follow-up in this ledger with a tight local implementation path: make import and restore outcomes more self-explanatory.
+- Investigation:
+  - Re-read the latest `#57` ledger notes and confirmed the remaining follow-up was to surface richer import-result/conflict provenance in the restore/import UI.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog already had conflict counts plus per-item import actions from the backend, but the success toast still collapsed everything into `Successfully imported/restored N item(s)`.
+  - Confirmed this meant users could skip or rename conflicting items without getting a clear outcome summary, even though the underlying result already knew which items were imported, overwritten, renamed, or skipped.
+- Important assumptions:
+  - Assumption: tightening provenance in the existing dialog/toast flow is the right next slice, rather than inventing a new post-import results screen.
+  - Why acceptable: the issue is about import trust/safety, and the missing information was already available in the current flow; surfacing it in-place is the smallest useful fix.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the bundle import/restore dialog is part of the desktop Electron settings flow, and there is no corresponding mobile bundle-restore surface.
+- Changes implemented:
+  - Added local import-result summarization helpers in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so the dialog can distinguish imported, renamed, overwritten, skipped, and failed items.
+  - Updated import success/error toasts to report clearer outcomes such as `Successfully restored 3 items (2 imported items, 1 skipped item)` instead of only a flat item count.
+  - Added an inline `Current selection:` summary under the conflict strategy picker so the dialog explains what the selected strategy will do to the currently selected conflicting items before the user confirms.
+  - Extended `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with source-level assertions covering the new provenance helpers and messaging.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider adding copy-path or reveal-file affordances for individual backup entries if users need more direct file management than the existing `Open Backups Folder` action.
+  - If richer trust telemetry becomes necessary later, consider persisting import-result provenance onto backup manifests or import history rather than only surfacing it in the live dialog/toast flow.
+  - Reuse the same clearer provenance language in Hub install flows if bundle installs continue to share this dialog.
+
+- Next recommended issue work item: treat `#57` as largely wrapped unless a very small backup-management affordance is obviously missing, and otherwise pivot to a fresh bug/enhancement with a clearer new repro path than `#54`.
