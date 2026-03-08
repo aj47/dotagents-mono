@@ -1330,3 +1330,36 @@
   - If summary messages prove noisy on mobile, consider whether TTS/other per-message controls should be suppressed or restyled for summary blocks.
 
 - Next recommended issue work item: treat `#58` as advanced again; if the next worktree has dependencies installed, a mobile full-history browsing slice is now more feasible, otherwise pivot to another narrow issue with dependency-light verification.
+
+##### Issue #57 — Bundle import cherry-pick UX: section bulk selection + empty-import guard
+
+- Selection rationale:
+  - `#57` remains open, and the current import dialog already supports per-item cherry-pick toggles, but using them on larger bundles is still unnecessarily tedious and can lead to a confusing no-op import when every item is deselected.
+  - This was a tight, user-facing follow-up with clear local value: make the existing cherry-pick plan faster to use and prevent accidental empty imports.
+- Investigation:
+  - Re-read the latest `#57` ledger entries to avoid repeating the already-landed conflict preview, full import plan, and per-item toggle work.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed each import-plan row already had its own toggle, but there was no section-level `Select all` / `Clear all` affordance even though items are grouped by component.
+  - Confirmed the dialog already computes `selectedPlanItemCount`, but the primary import button still ignored that count and remained enabled even when every item had been excluded.
+- Important assumptions:
+  - Assumption: section-level bulk selection and a zero-selected import guard are valid `#57` follow-ups even without introducing more advanced mixed per-conflict actions.
+  - Why acceptable: they directly improve the practical cherry-pick workflow users already have, stay entirely within the existing renderer contract, and reduce accidental confusing imports without broadening scope.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the bundle import dialog is still a desktop-only Electron workflow.
+- Changes implemented:
+  - Refactored `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to reuse a shared `getBundleImportItems(...)` helper for import-plan item derivation and bulk section selection.
+  - Added per-section `Select all` / `Clear all` controls to each import-plan group so users can quickly include or exclude all items within a component type.
+  - Added an empty-selection safeguard so the dialog now shows `Select at least one item to import.` and disables the primary action when the current plan has zero selected items.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` with dependency-free source assertions covering the new bulk-selection controls and zero-selected import guard.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Re-checked: `pnpm --filter @dotagents/desktop exec vitest --version` ❌ still blocked in this worktree with `Command "vitest" not found`, so dependency-backed desktop Vitest coverage remains unavailable.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Re-run the targeted desktop Vitest coverage (`bundle-service.test.ts` and related dialog tests) once the workspace dependency baseline is restored.
+  - If users still need more control inside one import, consider true per-conflict mixed actions rather than the current import-wide skip/overwrite/rename policy.
+  - If the import plan grows further, consider adding collapse/expand or search inside large component sections instead of overloading the dialog with more always-visible rows.
+
+- Next recommended issue work item: refresh the open issue list again and prefer either a verification/unblock step once desktop Vitest is available or another equally narrow, dependency-light UX/reliability slice from the remaining open issues.

@@ -193,6 +193,39 @@ interface ImportPlanItem {
   renameTargetId?: string
 }
 
+function getBundleImportItems(
+  bundle: BundlePreview["bundle"] | undefined,
+  key: BundleComponentKey,
+): Array<{ id: string; name: string }> {
+  switch (key) {
+    case "agentProfiles":
+      return (bundle?.agentProfiles ?? []).map((profile) => ({
+        id: profile.id,
+        name: profile.displayName || profile.name,
+      }))
+    case "mcpServers":
+      return (bundle?.mcpServers ?? []).map((server) => ({
+        id: server.name,
+        name: server.name,
+      }))
+    case "skills":
+      return (bundle?.skills ?? []).map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+      }))
+    case "repeatTasks":
+      return (bundle?.repeatTasks ?? []).map((task) => ({
+        id: task.id,
+        name: task.name,
+      }))
+    case "memories":
+      return (bundle?.memories ?? []).map((memory) => ({
+        id: memory.id,
+        name: memory.title,
+      }))
+  }
+}
+
 function buildImportPlanItems(
   preview: BundlePreview | null,
   key: BundleComponentKey,
@@ -202,35 +235,7 @@ function buildImportPlanItems(
   const bundle = preview?.bundle
   const conflicts = new Map((preview?.conflicts?.[key] ?? []).map((conflict) => [conflict.id, conflict]))
   const selectedIdSet = new Set(selectedIds)
-  const items = (() => {
-    switch (key) {
-      case "agentProfiles":
-        return (bundle?.agentProfiles ?? []).map((profile) => ({
-          id: profile.id,
-          name: profile.displayName || profile.name,
-        }))
-      case "mcpServers":
-        return (bundle?.mcpServers ?? []).map((server) => ({
-          id: server.name,
-          name: server.name,
-        }))
-      case "skills":
-        return (bundle?.skills ?? []).map((skill) => ({
-          id: skill.id,
-          name: skill.name,
-        }))
-      case "repeatTasks":
-        return (bundle?.repeatTasks ?? []).map((task) => ({
-          id: task.id,
-          name: task.name,
-        }))
-      case "memories":
-        return (bundle?.memories ?? []).map((memory) => ({
-          id: memory.id,
-          name: memory.title,
-        }))
-    }
-  })()
+  const items = getBundleImportItems(bundle, key)
 
   return items.map((item) => {
     const conflict = conflicts.get(item.id)
@@ -535,6 +540,20 @@ export function BundleImportDialog({
     })
   }
 
+  const setImportPlanSectionSelection = (key: BundleComponentKey, selected: boolean) => {
+    setSelectedItems((prev) => {
+      const selectionKey = ITEM_SELECTION_KEYS[key]
+      const allIds = getBundleImportItems(preview?.bundle, key).map((item) => item.id)
+
+      return {
+        ...prev,
+        [selectionKey]: selected ? allIds : [],
+      }
+    })
+  }
+
+  const importDisabled = !preview?.filePath || importing || loading || selectedPlanItemCount === 0
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -696,9 +715,17 @@ export function BundleImportDialog({
                       items={section.items}
                       selectedCount={section.items.filter((item) => item.selected).length}
                       onToggleItem={(itemId) => toggleImportPlanItem(section.key, itemId)}
+                      onSelectAll={() => setImportPlanSectionSelection(section.key, true)}
+                      onClearAll={() => setImportPlanSectionSelection(section.key, false)}
                     />
                   ))}
                 </div>
+
+                {selectedPlanItemCount === 0 && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Select at least one item to import.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -708,7 +735,7 @@ export function BundleImportDialog({
           <Button variant="outline" onClick={handleClose} disabled={importing}>
             Cancel
           </Button>
-          <Button onClick={handleImport} disabled={!preview?.filePath || importing || loading}>
+          <Button onClick={handleImport} disabled={importDisabled}>
             {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {confirmLabel}
           </Button>
@@ -751,15 +778,28 @@ interface ImportPlanSectionProps {
   items: ImportPlanItem[]
   selectedCount: number
   onToggleItem: (itemId: string) => void
+  onSelectAll: () => void
+  onClearAll: () => void
 }
 
-function ImportPlanSection({ label, items, selectedCount, onToggleItem }: ImportPlanSectionProps) {
+function ImportPlanSection({ label, items, selectedCount, onToggleItem, onSelectAll, onClearAll }: ImportPlanSectionProps) {
+  const allSelected = items.length > 0 && selectedCount === items.length
+  const noneSelected = selectedCount === 0
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-medium">{label}</p>
         <Badge variant="secondary" className="text-xs">{items.length}</Badge>
         <Badge variant="outline" className="text-xs">{selectedCount} selected</Badge>
+        <div className="ml-auto flex items-center gap-1">
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={onSelectAll} disabled={allSelected}>
+            Select all
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={onClearAll} disabled={noneSelected}>
+            Clear all
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">

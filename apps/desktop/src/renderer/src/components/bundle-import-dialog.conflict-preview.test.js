@@ -40,3 +40,13 @@ test('bundle import supports per-item cherry-pick selection across dialog, tipc,
   assert.match(dialogSource, /Excluded/);
   assert.match(dialogSource, /Switch checked=\{item\.selected\} onCheckedChange=\{\(\) => onToggleItem\(item\.id\)\}/);
 });
+
+test('bundle import dialog supports section-level bulk selection and blocks empty imports', () => {
+  assert.match(dialogSource, /function getBundleImportItems\(/);
+  assert.match(dialogSource, /const setImportPlanSectionSelection = \(key: BundleComponentKey, selected: boolean\) => \{/);
+  assert.match(dialogSource, /Select all/);
+  assert.match(dialogSource, /Clear all/);
+  assert.match(dialogSource, /Select at least one item to import\./);
+  assert.match(dialogSource, /const importDisabled = !preview\?\.filePath \|\| importing \|\| loading \|\| selectedPlanItemCount === 0/);
+  assert.match(dialogSource, /<Button onClick=\{handleImport\} disabled=\{importDisabled\}>/);
+});
