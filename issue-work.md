@@ -2927,3 +2927,35 @@
   - Consider persisting an explicit `slotId` in backup metadata later if backup provenance needs to survive renamed/moved slot directories more robustly.
   - Keep aligning slot-targeted import/restore affordances with any future Hub install trust flow so bundle origin and rollback remain equally clear.
 - Next recommended issue work item: refresh the open issues again and prefer another concrete desktop reliability/UX slice; if staying on `#57`, the next honest increment is richer backup/import provenance rather than broader new abstractions.
+
+##### Issue #57 — Import preview/toast now name the exact slot being targeted
+
+- Selection rationale:
+  - Re-read the updated `issue-work.md` first, then re-screened the still-open repo issues for the next smallest trustworthy slice.
+  - Re-checked several candidate gaps (`#58` remote save-path metadata, `#55` tile regressions) and skipped them when the current source already covered the suspected issue.
+  - Stayed on `#57` only after finding a concrete source-confirmed trust gap in the import dialog itself: slot-targeted imports still surfaced only the generic label `Bundle slot`, even when the exact slot directory was already known.
+- Investigation:
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog’s safety-backup copy, import-target card, and import-result toast all routed through `formatImportTargetLayerLabel(layer)`, which collapses every slot-targeted flow to the same generic `Bundle slot` string.
+  - Confirmed the dialog already has everything needed for a renderer-local fix: `preview.importTarget.agentsDir` from the preview/import pipeline plus live `bundleSlotState` from `tipcClient.getBundleSlotState()`.
+  - Confirmed new-slot previews are also covered by the same data shape because `importTarget.agentsDir` already points at the predicted slot directory, so the slot id can be inferred even before the slot exists in the active slot list.
+- Important assumptions:
+  - Assumption: inferring the slot id from `importTarget.agentsDir` is acceptable here instead of widening the import preview/result contract with a dedicated `slotId` field.
+  - Why acceptable: the import preview already guarantees the destination directory path, and using that existing value keeps this improvement small, local, and easy to review.
+  - Assumption: marking a slot as `(active)` is helpful when the inferred slot id matches the live `activeSlotId`.
+  - Why acceptable: the active-slot marker reduces ambiguity for rollback and import confidence without changing any import behavior.
+- Changes implemented:
+  - Added import-target path normalization plus slot-label inference helpers in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`.
+  - Added a slot-aware `formatImportTargetLabel(...)` helper that resolves `Bundle slot "{slotId}"` (and appends `(active)` when appropriate) from the preview target path and current slot state.
+  - Updated the safety-backup explainer, import-target summary card, and success/error toast target text to use the slot-aware label instead of the generic layer-only label.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` with source assertions covering the new slot-label helpers and the updated dialog/toast wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - If users still need more post-import confidence, persist or surface richer import provenance (for example imported/skipped counts or conflict-summary breadcrumbs) alongside recent backups.
+  - Consider a shared slot-label utility if future bundle surfaces keep needing the same slot-path-to-label mapping in multiple renderer files.
+- Next recommended issue work item: refresh open issues again and prefer a new source-confirmed reliability bug or trust UX slice; the best remaining `#57` work is deeper provenance, while `#58` should only continue if another path-level history mismatch is confirmed in source.

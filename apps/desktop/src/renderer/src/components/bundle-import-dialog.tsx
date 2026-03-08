@@ -302,6 +302,42 @@ function formatImportTargetLayerLabel(layer?: BundleImportTargetLayer): string {
   }
 }
 
+function normalizeImportTargetPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/\/+$/, "")
+}
+
+function getImportTargetSlotLabel(
+  importTarget?: BundlePreview["importTarget"],
+  slotState?: BundleSlotState | null,
+): string | null {
+  if (importTarget?.layer !== "slot" || !importTarget.agentsDir) {
+    return null
+  }
+
+  const normalizedTargetDir = normalizeImportTargetPath(importTarget.agentsDir)
+  const matchingSlot = slotState?.slots.find(
+    (slot) => normalizeImportTargetPath(slot.slotDir) === normalizedTargetDir,
+  )
+  const inferredSlotId = matchingSlot?.id
+    ?? normalizedTargetDir.split("/").filter(Boolean).pop()
+
+  if (!inferredSlotId) {
+    return "Bundle slot"
+  }
+
+  return slotState?.activeSlotId === inferredSlotId
+    ? `Bundle slot "${inferredSlotId}" (active)`
+    : `Bundle slot "${inferredSlotId}"`
+}
+
+function formatImportTargetLabel(
+  importTarget?: BundlePreview["importTarget"],
+  slotState?: BundleSlotState | null,
+): string {
+  return getImportTargetSlotLabel(importTarget, slotState)
+    ?? formatImportTargetLayerLabel(importTarget?.layer)
+}
+
 function getTemplatePlaceholderTokens(value: unknown): string[] {
   if (typeof value !== "string") return []
   return Array.from(value.matchAll(/<([A-Z0-9][A-Z0-9_-]*)>/g)).map((match) => match[1])
@@ -623,8 +659,11 @@ function buildSourceOutcomeMessage(sourceLabel: string, sourceUrl?: string): str
   return ` ${sourceLabel}: ${sourceUrl}`
 }
 
-function buildImportTargetOutcomeMessage(layer?: BundleImportTargetLayer): string {
-  return ` Target layer: ${formatImportTargetLayerLabel(layer)}.`
+function buildImportTargetOutcomeMessage(
+  importTarget?: BundlePreview["importTarget"],
+  slotState?: BundleSlotState | null,
+): string {
+  return ` Target layer: ${formatImportTargetLabel(importTarget, slotState)}.`
 }
 
 export function BundleImportDialog({
@@ -827,7 +866,7 @@ export function BundleImportDialog({
         selectedItems,
         conflictStrategyOverrides,
       }) as BundleImportResult
-      const importTargetMessage = buildImportTargetOutcomeMessage(preview?.importTarget?.layer)
+      const importTargetMessage = buildImportTargetOutcomeMessage(preview?.importTarget, bundleSlotState)
       const backupMessage = result.backupFilePath
         ? ` Pre-import backup: ${result.backupFilePath}`
         : ""
@@ -1142,12 +1181,12 @@ export function BundleImportDialog({
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup. This import will update the {formatImportTargetLayerLabel(importTarget?.layer)} and store the backup in <span className="font-mono">{importTarget?.backupDir ?? "~/.agents/backups"}</span>. You can restore it later from Settings → Capabilities → Restore Backup.
+                  Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup. This import will update the {formatImportTargetLabel(importTarget, bundleSlotState)} and store the backup in <span className="font-mono">{importTarget?.backupDir ?? "~/.agents/backups"}</span>. You can restore it later from Settings → Capabilities → Restore Backup.
                 </p>
                 {importTarget && (
                   <div className="rounded-md border border-emerald-200 bg-background/70 px-2 py-2 text-[11px] text-muted-foreground">
                     <p>
-                      Import target: <span className="font-medium text-foreground">{formatImportTargetLayerLabel(importTarget.layer)}</span>
+                      Import target: <span className="font-medium text-foreground">{formatImportTargetLabel(importTarget, bundleSlotState)}</span>
                     </p>
                     <p className="mt-1 break-all font-mono">{importTargetPath}</p>
                   </div>

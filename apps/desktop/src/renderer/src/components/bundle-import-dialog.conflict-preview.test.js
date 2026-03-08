@@ -32,15 +32,21 @@ test('bundle import dialog renders an import plan with add and rename outcome de
 test('bundle import dialog shows the automatic safety backup guarantee before confirmation', () => {
   assert.match(dialogSource, /<Label>Automatic safety backup<\/Label>/);
   assert.match(dialogSource, /Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup\./);
-  assert.match(dialogSource, /This import will update the \{formatImportTargetLayerLabel\(importTarget\?\.layer\)\} and store the backup in/);
+  assert.match(dialogSource, /function normalizeImportTargetPath\(value: string\): string/);
+  assert.match(dialogSource, /function getImportTargetSlotLabel\([\s\S]*slotState\?: BundleSlotState \| null,[\s\S]*\): string \| null/);
+  assert.match(dialogSource, /normalizeImportTargetPath\(slot\.slotDir\) === normalizedTargetDir/);
+  assert.match(dialogSource, /Bundle slot "\$\{inferredSlotId\}" \(active\)/);
+  assert.match(dialogSource, /Bundle slot "\$\{inferredSlotId\}"/);
+  assert.match(dialogSource, /function formatImportTargetLabel\([\s\S]*importTarget\?: BundlePreview\["importTarget"\],[\s\S]*slotState\?: BundleSlotState \| null,[\s\S]*\): string/);
+  assert.match(dialogSource, /This import will update the \{formatImportTargetLabel\(importTarget, bundleSlotState\)\} and store the backup in/);
   assert.match(dialogSource, /You can restore it later from Settings → Capabilities → Restore Backup\./);
-  assert.match(dialogSource, /Import target: <span className="font-medium text-foreground">\{formatImportTargetLayerLabel\(importTarget\.layer\)\}<\/span>/);
-  assert.match(dialogSource, /function buildImportTargetOutcomeMessage\(layer\?: BundleImportTargetLayer\): string \{/);
-  assert.match(dialogSource, /return ` Target layer: \$\{formatImportTargetLayerLabel\(layer\)\}\.`/);
+  assert.match(dialogSource, /Import target: <span className="font-medium text-foreground">\{formatImportTargetLabel\(importTarget, bundleSlotState\)\}<\/span>/);
+  assert.match(dialogSource, /function buildImportTargetOutcomeMessage\([\s\S]*importTarget\?: BundlePreview\["importTarget"\],[\s\S]*slotState\?: BundleSlotState \| null,[\s\S]*\): string \{/);
+  assert.match(dialogSource, /return ` Target layer: \$\{formatImportTargetLabel\(importTarget, slotState\)\}\.`/);
   assert.match(dialogSource, /const handleOpenBackupsFolderClick = async \(\) => \{/);
   assert.match(dialogSource, /tipcClient\.openBundleBackupFolder\(\)/);
   assert.match(dialogSource, /Open Backups Folder/);
-  assert.match(dialogSource, /const importTargetMessage = buildImportTargetOutcomeMessage\(preview\?\.importTarget\?\.layer\)/);
+  assert.match(dialogSource, /const importTargetMessage = buildImportTargetOutcomeMessage\(preview\?\.importTarget, bundleSlotState\)/);
   assert.match(dialogSource, /const backupMessage = result\.backupFilePath/);
   assert.match(dialogSource, /const revealBackupFile = async \(filePath: string\) => \{/);
   assert.match(dialogSource, /tipcClient\.revealBundleBackupFile\(\{ filePath \}\)/);
