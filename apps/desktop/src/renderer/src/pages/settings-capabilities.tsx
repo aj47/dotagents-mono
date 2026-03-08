@@ -612,6 +612,7 @@ export function Component() {
         onOpenChange={handleRestoreDialogOpenChange}
         onImportComplete={handleRestoreImportComplete}
         initialFilePath={restoreFilePath}
+        initialTargetMode="backup-origin"
         title="Restore Backup"
         description="Preview and restore a previously created .dotagents backup bundle. DotAgents will create a fresh safety snapshot before any restore writes."
         confirmLabel="Restore"

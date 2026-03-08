@@ -22,7 +22,7 @@ type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type ConflictStrategyOverrideKey = Exclude<BundleComponentKey, "memories">
 type BundleImportTargetLayer = "global" | "workspace" | "slot" | "custom"
-type BundleImportTargetMode = "default" | "active-slot" | "new-slot"
+type BundleImportTargetMode = "default" | "active-slot" | "backup-origin" | "new-slot"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 type BundleItemSelectionKey = "agentProfileIds" | "mcpServerNames" | "skillIds" | "repeatTaskIds" | "memoryIds"
 type BundleItemSelectionState = Record<BundleItemSelectionKey, string[]>
@@ -193,6 +193,7 @@ interface BundleImportDialogProps {
   onOpenChange: (open: boolean) => void
   onImportComplete: () => void
   initialFilePath?: string
+  initialTargetMode?: BundleImportTargetMode
   initialComponents?: Partial<BundleComponentsState>
   availableComponents?: Partial<Record<BundleComponentKey, boolean>>
   title?: string
@@ -754,6 +755,7 @@ export function BundleImportDialog({
   onOpenChange,
   onImportComplete,
   initialFilePath,
+  initialTargetMode = "default",
   initialComponents,
   availableComponents,
   title = "Import Bundle",
@@ -770,7 +772,7 @@ export function BundleImportDialog({
   const [isOpeningBackupFolder, setIsOpeningBackupFolder] = useState(false)
   const [preview, setPreview] = useState<BundlePreview | null>(null)
   const [bundleSlotState, setBundleSlotState] = useState<BundleSlotState | null>(null)
-  const [importTargetMode, setImportTargetMode] = useState<BundleImportTargetMode>("default")
+  const [importTargetMode, setImportTargetMode] = useState<BundleImportTargetMode>(initialTargetMode)
   const [newSlotIdInput, setNewSlotIdInput] = useState("")
   const [hasEditedNewSlotId, setHasEditedNewSlotId] = useState(false)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
@@ -795,7 +797,7 @@ export function BundleImportDialog({
       previewRequestIdRef.current += 1
       setPreview(null)
       setBundleSlotState(null)
-      setImportTargetMode("default")
+      setImportTargetMode(initialTargetMode)
       setNewSlotIdInput("")
       setHasEditedNewSlotId(false)
       setConflictStrategy("skip")
@@ -803,12 +805,12 @@ export function BundleImportDialog({
       setSelectedItems(createDefaultItemSelections())
       setConflictStrategyOverrides(createDefaultConflictStrategyOverrides())
     }
-  }, [initialComponents, open])
+  }, [initialComponents, initialTargetMode, open])
 
   useEffect(() => {
     if (!open || !allowImportTargetSelection) {
       setBundleSlotState(null)
-      setImportTargetMode("default")
+      setImportTargetMode(initialTargetMode)
       return
     }
 
@@ -819,20 +821,20 @@ export function BundleImportDialog({
         const nextState = await tipcClient.getBundleSlotState() as BundleSlotState
         if (cancelled) return
         setBundleSlotState(nextState)
-        if (!nextState.activeSlotId) {
+        if (!nextState.activeSlotId && initialTargetMode === "default") {
           setImportTargetMode("default")
         }
       } catch {
         if (cancelled) return
         setBundleSlotState(null)
-        setImportTargetMode("default")
+        setImportTargetMode(initialTargetMode)
       }
     })()
 
     return () => {
       cancelled = true
     }
-  }, [allowImportTargetSelection, open])
+  }, [allowImportTargetSelection, initialTargetMode, open])
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -1002,7 +1004,7 @@ export function BundleImportDialog({
     setLoading(false)
     setPreview(null)
     setBundleSlotState(null)
-    setImportTargetMode("default")
+    setImportTargetMode(initialTargetMode)
     setNewSlotIdInput("")
     setHasEditedNewSlotId(false)
     setConflictStrategy("skip")
@@ -1031,7 +1033,9 @@ export function BundleImportDialog({
   const activeBundleSlot = bundleSlotState?.activeSlotId
     ? (bundleSlotState.slots.find((slot) => slot.id === bundleSlotState.activeSlotId) ?? null)
     : null
-  const showImportTargetSelector = allowImportTargetSelection && Boolean(bundleSlotState)
+  const showImportTargetSelector = allowImportTargetSelection
+    && importTargetMode !== "backup-origin"
+    && Boolean(bundleSlotState)
   const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
   const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
@@ -1236,6 +1240,11 @@ export function BundleImportDialog({
                     {restoreTargetDiffersFromBackupOrigin && importTarget && (
                       <p className="text-[11px] text-amber-700">
                         This restore is currently pointed at {formatImportTargetLabel(importTarget, bundleSlotState)} instead of the original snapshot target. If you meant to roll back a slot-specific import, activate that slot from Settings → Capabilities → Bundle slots before restoring.
+                      </p>
+                    )}
+                    {!restoreTargetDiffersFromBackupOrigin && importTargetMode === "backup-origin" && (
+                      <p className="text-[11px] text-sky-700">
+                        This restore is defaulting back to the original snapshot target recorded in the backup.
                       </p>
                     )}
                   </div>

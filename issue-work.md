@@ -3099,3 +3099,41 @@
   - Reuse the same provenance/mismatch cues in Hub-installed bundle restore paths if those flows diverge later.
 
 - Next recommended issue work item: refresh the open issue list again and prefer a fresh, well-scoped bug first; if `#57` continues, the next honest slice is restore-target defaulting/original-slot restoration rather than more backup metadata text.
+
+##### Issue #57 — Restore now defaults back to the backup's original target when safe
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and deliberately followed the most recent `#57` recommendation instead of reopening the broader history track again.
+  - Refreshed the open issue list for this repo and confirmed there was still no narrower unworked bug than the restore-target gap already documented in the ledger.
+  - This was the smallest trust-focused follow-up with clear user value: make restore actually point back at the original snapshot destination by default instead of only warning when it differs.
+- Investigation:
+  - Re-read issue `#57` plus its trust-track comments and confirmed the slot-aware rollback requirement still fit the active “safe multi-bundle swapping” direction.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, and `apps/desktop/src/main/tipc.ts`.
+  - Confirmed the restore dialog was opened with `allowImportTargetSelection={false}` and still initialized preview/import to the generic `default` writable layer, so backup provenance could warn about a mismatch but could not actually target the original slot/layer automatically.
+  - Confirmed the backup bundle already carries trustworthy enough metadata for a narrow first fix (`manifest.backup.targetLayer` + `targetAgentsDir`), while the main-process import target resolver already owns the right config/runtime knowledge to translate that metadata into a safe target path.
+- Important assumptions:
+  - Assumption: restore should only auto-default to the backup's original destination when the target can be resolved safely from known app-managed layers (`global`, `workspace`, or a bundle slot inferred from the recorded slot path).
+  - Why acceptable: it improves rollback accuracy without opening an arbitrary-path write capability from bundle metadata, and it matches the ledger's earlier “when unambiguous” constraint.
+  - Assumption: falling back to the current default writable layer remains acceptable for backups whose original target cannot be safely re-derived (for example, malformed or no-longer-meaningful metadata).
+  - Why acceptable: it preserves the prior behavior as the safe fallback while still fixing the common trustworthy cases.
+- Changes implemented:
+  - Added a restore-oriented `backup-origin` bundle import target mode in `apps/desktop/src/main/tipc.ts`.
+  - Updated main-process target resolution so backup restores can re-derive the original destination from backup metadata and safely default to the recorded global layer, workspace layer, or slot directory without mutating the active slot pointer during preview.
+  - Allowed slot-targeted restores to re-create the recorded slot directory on the mutating import path when needed, while still keeping preview write-free.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` with an `initialTargetMode` prop so restore flows can open in `backup-origin` mode without changing normal import behavior.
+  - Updated the restore dialog to explicitly tell the user when DotAgents is defaulting back to the original snapshot target recorded in the backup.
+  - Updated `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` so `Restore Backup` now opens the shared dialog with `initialTargetMode="backup-origin"`.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` to cover the new restore-target-defaulting contract.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Decide whether restores that target an inactive recorded slot should also offer a one-click `activate restored slot` follow-up after success, instead of only restoring its files.
+  - Consider whether the same backup-origin defaulting should be reused anywhere else a backup bundle can be selected outside Settings → Capabilities.
+  - If custom-layer imports become a supported long-term concept, define an equally safe restore-target-defaulting story for those backups instead of falling back to the writable default.
+
+- Next recommended issue work item: refresh open issues again and prefer a fresh, well-scoped bug or high-value UX slice outside `#57`; if `#57` continues, the next honest step is post-restore slot activation/default-slot polish rather than more provenance copy.

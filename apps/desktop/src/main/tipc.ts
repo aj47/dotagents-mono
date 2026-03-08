@@ -687,7 +687,7 @@ type BundleConflictPreview = {
   conflicts?: BundleConflictMap
 }
 
-type BundleImportTargetMode = "default" | "active-slot" | "new-slot"
+type BundleImportTargetMode = "default" | "active-slot" | "backup-origin" | "new-slot"
 
 type ResolvedBundleImportTarget = {
   targetDir: string
@@ -744,7 +744,7 @@ function mergeConflictMaps(
 
 async function resolveBundleImportTarget(
   targetMode: BundleImportTargetMode | undefined,
-  options: { newSlotId?: string; createSlot?: boolean } = {}
+  options: { filePath?: string; newSlotId?: string; createSlot?: boolean } = {}
 ): Promise<ResolvedBundleImportTarget> {
   const {
     getRuntimeAgentsLayers,
@@ -753,6 +753,53 @@ async function resolveBundleImportTarget(
     createBundleSlot,
   } = await import("./config")
   const { globalLayer, activeSlotLayer, workspaceLayer, writableLayer } = getRuntimeAgentsLayers()
+
+  if (targetMode === "backup-origin" && options.filePath) {
+    const { previewBundle } = await import("./bundle-service")
+    const backupOrigin = previewBundle(options.filePath)?.manifest.backup
+
+    if (backupOrigin?.kind === "pre-import-snapshot") {
+      if (backupOrigin.targetLayer === "global") {
+        return {
+          targetDir: globalLayer.paths.agentsDir,
+          targetLayer: "global",
+          comparisonLayerDirs: workspaceLayer
+            ? [globalLayer.paths.agentsDir, workspaceLayer.paths.agentsDir]
+            : [globalLayer.paths.agentsDir],
+        }
+      }
+
+      if (backupOrigin.targetLayer === "workspace" && workspaceLayer) {
+        return {
+          targetDir: workspaceLayer.paths.agentsDir,
+          targetLayer: "workspace",
+          comparisonLayerDirs: [globalLayer.paths.agentsDir, workspaceLayer.paths.agentsDir],
+        }
+      }
+
+      if (backupOrigin.targetLayer === "slot" && backupOrigin.targetAgentsDir) {
+        try {
+          const inferredSlotId = path.basename(path.resolve(backupOrigin.targetAgentsDir))
+          const slot = getBundleSlotDirectory(inferredSlotId)
+          if (options.createSlot && !listBundleSlotDirectories().some((existingSlot) => existingSlot.id === slot.id)) {
+            createBundleSlot(slot.id)
+          }
+
+          return {
+            targetDir: slot.slotDir,
+            targetLayer: "slot",
+            comparisonLayerDirs: [
+              globalLayer.paths.agentsDir,
+              slot.slotDir,
+              ...(workspaceLayer ? [workspaceLayer.paths.agentsDir] : []),
+            ],
+          }
+        } catch {
+          // Fall through to the default writable layer if the stored slot id is no longer valid.
+        }
+      }
+    }
+  }
 
   if (targetMode === "new-slot") {
     if (!options.newSlotId) {
@@ -4784,6 +4831,7 @@ export const router = {
     .action(async ({ input }) => {
       const { previewBundleWithConflicts } = await import("./bundle-service")
       const { comparisonLayerDirs, targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode, {
+        filePath: input.filePath,
         newSlotId: input.newSlotId,
       })
       const targetPreview = previewBundleWithConflicts(input.filePath, targetDir, { targetLayer })
@@ -4836,6 +4884,7 @@ export const router = {
     .action(async ({ input }) => {
       const { importBundle } = await import("./bundle-service")
       const { targetDir, targetLayer } = await resolveBundleImportTarget(input.targetMode, {
+        filePath: input.filePath,
         newSlotId: input.newSlotId,
         createSlot: input.targetMode === "new-slot",
       })

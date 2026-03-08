@@ -73,18 +73,21 @@ test('bundle import dialog surfaces backup provenance when restoring an automati
   assert.match(dialogSource, /This bundle was created as a pre-import snapshot on \{new Date\(manifest\.createdAt\)\.toLocaleString\(\)\}\. \{backupProvenance\}/);
   assert.match(dialogSource, /Original snapshot target: <span className="font-medium text-foreground">\{formatBackupTargetLabel\(backupMetadata, bundleSlotState\)\}<\/span>/);
   assert.match(dialogSource, /This restore is currently pointed at \{formatImportTargetLabel\(importTarget, bundleSlotState\)\} instead of the original snapshot target\./);
+  assert.match(dialogSource, /This restore is defaulting back to the original snapshot target recorded in the backup\./);
 });
 
 test('bundle import can explicitly target the active bundle slot through the existing preview and import pipeline', () => {
-  assert.match(tipcSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "new-slot"/);
+  assert.match(tipcSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "backup-origin" \| "new-slot"/);
+  assert.match(tipcSource, /async function resolveBundleImportTarget\([\s\S]*if \(targetMode === "backup-origin" && options\.filePath\)[\s\S]*previewBundle\(options\.filePath\)\?\.manifest\.backup/);
   assert.match(tipcSource, /async function resolveBundleImportTarget\([\s\S]*activeSlotLayer[\s\S]*targetLayer: "slot"/);
   assert.match(tipcSource, /previewBundleWithConflicts: t\.procedure[\s\S]*targetMode\?: BundleImportTargetMode/);
   assert.match(tipcSource, /importBundle: t\.procedure[\s\S]*targetMode\?: BundleImportTargetMode/);
   assert.match(bundleServiceSource, /targetLayer\?: BundleBackupTargetLayer/);
+  assert.match(dialogSource, /initialTargetMode\?: BundleImportTargetMode/);
   assert.match(dialogSource, /allowImportTargetSelection\?: boolean/);
-  assert.match(dialogSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "new-slot"/);
+  assert.match(dialogSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "backup-origin" \| "new-slot"/);
   assert.match(dialogSource, /filePath,[\s\S]*\.\.\.\(targetMode === "default" \? \{\} : \{ targetMode \}\),[\s\S]*\.\.\.\(targetMode === "new-slot" && newSlotId \? \{ newSlotId \} : \{\}\)/);
-  assert.match(dialogSource, /const \[importTargetMode, setImportTargetMode\] = useState<BundleImportTargetMode>\("default"\)/);
+  assert.match(dialogSource, /const \[importTargetMode, setImportTargetMode\] = useState<BundleImportTargetMode>\(initialTargetMode\)/);
   assert.match(dialogSource, /const \[newSlotIdInput, setNewSlotIdInput\] = useState\(""\)/);
   assert.match(dialogSource, /function getBundleSlotIdError\([\s\S]*Use 1-64 letters, numbers, dots, underscores, or hyphens\.[\s\S]*Bundle slot "\$\{value\}" already exists\./);
   assert.match(dialogSource, /function buildBundleSlotPreviewPath\(/);
@@ -98,6 +101,7 @@ test('bundle import can explicitly target the active bundle slot through the exi
   assert.match(dialogSource, /\{newSlotIdError \?\? "Use 1-64 letters, numbers, dots, underscores, or hyphens\."\}/);
   assert.match(dialogSource, /importTargetMode === "default" \? \{\} : \{ targetMode: importTargetMode \}/);
   assert.match(dialogSource, /importTargetMode === "new-slot" \? \{ newSlotId: resolvedNewSlotId \} : \{\}/);
+  assert.match(dialogSource, /allowImportTargetSelection[\s\S]*importTargetMode !== "backup-origin"/);
 });
 
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {
