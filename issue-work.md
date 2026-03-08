@@ -1917,3 +1917,31 @@
   - Avoid taking on broader hub-catalog/search work here unless the repo website intentionally becomes the full hub surface.
 
 - Next recommended issue work item: refresh the open issue list again and prefer either a fresh bug with a direct local repro or another equally small trust/UX slice, avoiding `#54` unless a concrete provider contract appears.
+
+##### Issue #57 — Bundle presets / slots follow-up triage (new comment, no code landed yet)
+
+- Selection rationale:
+  - After the latest `#56` commit, I refreshed the current repo’s open issues and comment threads instead of guessing another micro-follow-up from memory.
+  - Issue `#57` has a brand-new owner comment (2026-03-07 22:44 UTC) introducing `Bundle Presets / Slots` as the next trust-track direction, which is higher-signal than inventing more polish on already-advanced surfaces.
+- Investigation:
+  - Re-read the new `#57` comment and its proposed slot model: `~/.agents/bundle-slots/{slotId}/`, `active-slot.json`, runtime loader mounts the active slot as a higher-priority layer, and `Switch Slot` becomes a pointer flip + runtime refresh instead of a destructive merge.
+  - Inspected current config/layer loading and confirmed the runtime is not currently slot-ready:
+    - `apps/desktop/src/main/config.ts` hardcodes merged loading as `global .agents + optional workspace .agents` via `loadMergedAgentsConfig(...)`.
+    - `apps/desktop/src/main/agents-files/modular-config.ts` only exposes two-layer merge helpers (`global`, then `workspace`).
+    - `loop-service.ts`, `memory-service.ts`, and `agent-profiles.ts` each independently resolve the same `global + workspace` layering assumption.
+    - `tipc.ts` bundle preview/import helpers currently choose one concrete mutable target dir (`workspace || global`) and then call `refreshRuntimeAfterBundleImport()` to reload the existing merge model.
+  - Confirmed this means a real slot implementation is broader than a bundle-service-only change: it needs a shared layer-resolution contract that every runtime loader and refresh path can consume consistently.
+- Important assumptions / blockers:
+  - Blocker: a safe first implementation slice for slots cannot be just "write files under `bundle-slots/`" because the runtime would still ignore them.
+  - Blocker: slot precedence relative to workspace `.agents` is not yet settled in code, even though the new issue comment says the active slot should be a higher-priority layer; today repo guidance says workspace wins on conflicts.
+  - Assumption: the right next engineering slice is to centralize layer resolution before any slot-switch UI or import-target changes.
+  - Why acceptable: that keeps the future slot behavior honest and avoids shipping a misleading UI that appears to support presets while the core loaders still bypass them.
+- Recommended next implementation slice for `#57` slots:
+  - Introduce a single shared main-process helper that resolves the effective ordered `.agents` layers for the current runtime (initially `global`, optional `active slot`, optional `workspace` once precedence is explicitly decided).
+  - Migrate `config.ts`, `agent profile`, `memory`, `task`, and bundle-preview/import target selection code to use that helper instead of each resolving layers ad hoc.
+  - Only after that layer contract exists, add `active-slot.json` metadata/TIPC and a minimal read-only UI surface showing the active slot state.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+
+- Next recommended issue work item: for actual code, prefer the `#57` slot-foundation helper as the next safe trust-track slice; otherwise refresh again and pick a fresh bug or similarly concrete non-slot issue rather than forcing a partial slot UI.
