@@ -21,3 +21,10 @@ test('adds explicit accessibility semantics for loop actions', () => {
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Run \$\{loop\.name\} loop now`\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete \$\{loop\.name\} loop`\)/);
 });
+
+test('adds an explicit edit affordance to each loop row', () => {
+  assert.match(settingsSource, /onPress=\{\(\) => handleLoopEdit\(loop\)\}[\s\S]*?accessibilityRole="button"/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Edit \$\{loop\.name\} loop`\)/);
+  assert.match(settingsSource, /accessibilityHint="Opens this loop so you can review and change its schedule or prompt\."/);
+  assert.match(settingsSource, /renderInlineEditAffordance\(\)/);
+});

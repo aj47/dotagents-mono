@@ -250,3 +250,44 @@
   - Reduce `Agent Loops` card density further with a small hierarchy tweak (for example, separating prompt preview from schedule/status metadata more clearly).
   - Revisit the chat/session header trigger sizing and state clarity on narrow screens.
   - Inspect whether long agent descriptions need better truncation or metadata grouping on mobile.
+
+### 2026-03-08 — Iteration 6: surface the hidden edit affordance in agent and loop rows
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agents`
+  - `Settings > Agent Loops`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Confirmed agent and loop rows were editable by tapping the left row body, but the visible UI mainly emphasized toggle/run/delete controls.
+  - Verified from the live UI that tapping `augustus` opened `Edit Agent` and tapping `Discord Recap Tweeter` opened `Edit Loop`, despite no row-level edit cue being shown.
+- Issue selected:
+  - The primary edit path for agents and loops was hidden in plain sight; on mobile the rows looked static, so users could easily assume only the explicit action-rail controls were available.
+- Decision:
+  - Keep the existing navigation flow and action rails.
+  - Add a lightweight row-level `Edit ›` cue plus explicit button semantics to the tappable row body instead of introducing a new trailing action button.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add shared inline `Edit ›` affordance styling for editable sub-agent rows,
+    - show that cue inside each `Settings > Agents` row and each `Settings > Agent Loops` row,
+    - add explicit button accessibility labels/hints for opening agent and loop editors.
+  - Updated focused tests in:
+    - `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+    - `apps/mobile/tests/settings-loop-actions-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - agent rows now show visible `Edit ›` cues (for example `augustus`, `Main Agent`)
+    - loop rows now show visible `Edit ›` cues (for example `Discord Recap Tweeter`, `Email Triage`)
+    - tapping those rows still navigates correctly to `Edit Agent` / `Edit Loop`
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Agent Loops` cards still stack prompt text and metadata densely on narrow screens.
+  - The chat/session header sub-agent trigger still deserves a fresh pass for touch-target size and state clarity.
+  - Long agent descriptions may still want tighter truncation or metadata grouping.
+- Next checks:
+  - Reduce `Agent Loops` card density with a small hierarchy tweak that preserves the current controls.
+  - Revisit the chat/session header trigger sizing/state clarity on narrow screens.
+  - Inspect long agent descriptions for a local truncation/grouping improvement.

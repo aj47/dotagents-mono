@@ -726,6 +726,13 @@ export default function SettingsScreen({ navigation }: any) {
     });
   }, [navigation]);
 
+  const renderInlineEditAffordance = useCallback(() => (
+    <View style={styles.editAffordance} pointerEvents="none">
+      <Text style={styles.editAffordanceText}>Edit</Text>
+      <Text style={styles.editAffordanceChevron}>›</Text>
+    </View>
+  ), [styles]);
+
   const handleLoopDelete = useCallback((loop: Loop) => {
     if (!settingsClient) return;
     confirmDestructiveAction('Delete Loop', `Are you sure you want to delete "${loop.name}"?`, async () => {
@@ -2218,6 +2225,9 @@ export default function SettingsScreen({ navigation }: any) {
                       <TouchableOpacity
                         style={styles.agentInfoPressable}
                         onPress={() => handleAgentProfileEdit(profile.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${profile.displayName} agent`)}
+                        accessibilityHint="Opens this agent so you can review and change its settings."
                         activeOpacity={0.7}
                       >
                         <View style={styles.serverInfo}>
@@ -2235,6 +2245,7 @@ export default function SettingsScreen({ navigation }: any) {
                           {profile.description && (
                             <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
                           )}
+                          {renderInlineEditAffordance()}
                         </View>
                       </TouchableOpacity>
                       <View style={styles.agentActions}>
@@ -2296,6 +2307,9 @@ export default function SettingsScreen({ navigation }: any) {
                       <TouchableOpacity
                         style={styles.agentInfoPressable}
                         onPress={() => handleLoopEdit(loop)}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${loop.name} loop`)}
+                        accessibilityHint="Opens this loop so you can review and change its schedule or prompt."
                         activeOpacity={0.7}
                       >
                         <View style={[styles.serverInfo, { flex: 1 }]}> 
@@ -2312,6 +2326,7 @@ export default function SettingsScreen({ navigation }: any) {
                             {loop.profileName && ` • ${loop.profileName}`}
                             {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
                           </Text>
+                          {renderInlineEditAffordance()}
                         </View>
                       </TouchableOpacity>
                       <View style={styles.loopActions}>
@@ -3122,6 +3137,28 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     agentInfoPressable: {
       flex: 1,
       minWidth: 0,
+    },
+    editAffordance: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.primary + '14',
+    },
+    editAffordanceText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    editAffordanceChevron: {
+      marginLeft: 4,
+      fontSize: 12,
+      fontWeight: '600',
+      lineHeight: 12,
+      color: theme.colors.primary,
     },
     agentActions: {
       flexDirection: 'row',

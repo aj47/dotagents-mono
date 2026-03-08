@@ -24,3 +24,11 @@ test('gives agent delete actions explicit button semantics and a mobile-sized ta
   assert.match(settingsSource, /accessibilityHint="Removes this agent after confirmation\."/);
   assert.match(settingsSource, /agentDeleteButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget/);
 });
+
+test('adds an explicit edit affordance to each agent row', () => {
+  assert.match(settingsSource, /onPress=\{\(\) => handleAgentProfileEdit\(profile\.id\)\}[\s\S]*?accessibilityRole="button"/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Edit \$\{profile\.displayName\} agent`\)/);
+  assert.match(settingsSource, /accessibilityHint="Opens this agent so you can review and change its settings\."/);
+  assert.match(settingsSource, /renderInlineEditAffordance\(\)/);
+  assert.match(settingsSource, /editAffordance:\s*\{[\s\S]*?backgroundColor: theme\.colors\.primary \+ '14'/);
+});
