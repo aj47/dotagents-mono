@@ -431,14 +431,15 @@ export function ActiveAgentsSidebar({
                     }
                   }}
                   className={cn(
-                    "text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    "text-muted-foreground flex items-start gap-1.5 rounded px-1.5 py-1.5 text-left text-xs transition-all",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
+                  title={session.conversationTitle || "Untitled session"}
                 >
                   {/* Archive icon for past agents */}
-                  <Archive className="h-3 w-3 shrink-0 opacity-50" />
-                  <p className="flex-1 truncate">
+                  <Archive className="mt-0.5 h-3 w-3 shrink-0 opacity-50" />
+                  <p className="min-w-0 flex-1 line-clamp-2 text-[11px] leading-snug break-words [overflow-wrap:anywhere]">
                     {session.conversationTitle || "Untitled session"}
                   </p>
                 </div>

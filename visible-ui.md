@@ -187,3 +187,44 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
   - launch this worktree itself once dependencies are available or linked, then capture a real after-state screenshot to confirm the chip width drops materially and the row scans faster at common desktop widths
   - after this pass, avoid more sessions-header churn unless live screenshots still show it as the dominant readability problem
 
+### Iteration 2026-03-08 / 06
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and current-worktree launch blocker documented
+- Screen / area reviewed: desktop left sidebar `Sessions` section, specifically archived/past session rows shown beneath active sessions in the expanded sidebar
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/#/sessions` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - confirmed again that the running Electron/Vite instance belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-06.png`
+  - live DOM-backed inspection at a `900x670` renderer size showed the sidebar sessions list at only about `159px` wide, with archived session rows about `147px` wide and their title text constrained to about `117px`
+  - the archived titles were rendered as single-line `truncate` text (`height≈16px` inside `height≈24px` rows), so long conversation titles like `Write 200 numbered bullet points...` collapsed into ellipses before enough distinguishing words were visible for fast scanning
+- Issues found:
+  - archived/past session titles in the sidebar gave up too much useful information to a one-line ellipsis in the default desktop window size
+  - the sidebar favored extreme row compactness over recognizability, which made it harder to pick the right past conversation without opening the full history dialog
+- Assumptions:
+  - the mobile app does not need a matching change because `apps/mobile/src/screens/SessionListScreen.tsx` already uses a separate full-width list pattern with title + preview rows rather than this cramped desktop sidebar archive strip
+  - active sessions should stay denser because they already carry live state and action controls; the improvement is most valuable on archived rows that currently show only a title
+  - a compact two-line title preview is an acceptable density tradeoff inside the sidebar's `max-h-[45vh]` scroll region
+- Design rationale:
+  - preserve the sidebar's role as a fast session switcher, but let archived items expose enough title information to be recognizable at a glance
+  - spend a little vertical space on content clarity instead of forcing users into the heavier `Past Sessions` dialog for basic disambiguation
+  - keep the change local to the archived rows rather than widening the sidebar or redesigning the whole sessions rail
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` so archived session rows top-align their icon and title, use slightly roomier vertical padding, and render the title as a compact two-line clamped preview with resilient word wrapping
+  - added a hover/focus `title` attribute with the full session title for extra recovery without changing the resting UI
+  - added `apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts` to lock in the multi-line archived-row layout and prevent the old single-line truncation from returning
+- Verification:
+  - live before-state screenshot + DOM measurements via `agent-browser --cdp 9333` against the main `/sessions` renderer target
+  - live after-state approximation by applying an in-memory DOM style patch that mirrors the intended row layout, then capturing `tmp/visible-ui-after-2026-03-08-06.png`; the sampled archived rows grew from about `24px` to about `39.5px` tall while their visible text area grew from about `16px` to about `27.5px` high
+  - targeted source-level test passed against this worktree using the sibling worktree's installed tooling without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/active-agents-sidebar.layout.test.ts`
+  - attempted current-worktree Electron launch: `REMOTE_DEBUGGING_PORT=9444 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9449' pnpm dev -- -d` → failed in `packages/shared` because this worktree still lacks runnable local tooling (`sh: tsup: command not found` plus `node_modules missing` warnings)
+  - attempted direct renderer typecheck: `tsc --noEmit -p apps/desktop/tsconfig.web.json --composite false` with sibling tool binaries in `PATH` → blocked because this worktree is missing local package resolution for `@electron-toolkit/tsconfig/tsconfig.web.json`
+  - `git diff --check`
+- After-state observation:
+  - `tmp/visible-ui-after-2026-03-08-06.png`
+  - DOM-simulated live preview showed the archived rows reading more like compact list items than cropped labels: the archive icon aligned with the first text line, the title wrapped naturally to a second line when needed, and the extra height stayed modest enough for the sidebar scroll region
+  - expected visible effect once this worktree is runnable: users should be able to distinguish similarly named recent conversations from the sidebar more often without immediately opening `Past Sessions`
+- Remaining opportunities:
+  - once this worktree can launch, capture a true after-state screenshot of the sidebar and confirm the extra row height still feels efficient when many archived sessions are visible
+  - if the sidebar still feels hard to scan after this, the next likely improvement is giving archived rows a subtle timestamp or recency cue without reintroducing horizontal crowding
+
