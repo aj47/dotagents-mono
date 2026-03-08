@@ -344,3 +344,44 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
 - Remaining opportunities:
   - once this worktree can launch directly, capture a true after-state screenshot of the compare tiles and confirm the new chip remains calm alongside approval badges and longer agent names
   - after this pass, prefer moving away from the compare-tile header unless live screenshots still show it as the clearest blocker; the next likely compare-tile candidate would be the footer model/provider row, not more header chrome
+
+### Iteration 2026-03-08 / 10
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and cross-worktree live-after limitation documented
+- Screen / area reviewed: desktop compare-mode session tile footer composer, specifically the narrow follow-up input row beneath the transcript preview
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/#/settings/general` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - visible center surface was still the sessions compare view, and the running Electron/Vite instance again belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-10-tile-composer.png`
+  - live DOM-backed inspection on the first visible compare tile showed the footer composer row at about `320x24px`, with the text input squeezed to about `160x20px` while five icon-only actions (`prompts`, `image`, `queue/send`, `voice`, `stop`) occupied the remaining width on the same line
+  - at this realistic narrow tile width, the composer read more like a crowded mini-toolbar than a clear place to type the next instruction
+- Issues found:
+  - the tile composer spent too much horizontal space on secondary controls before the primary text-entry field could breathe
+  - because the narrow compare tile kept all footer actions on one line, the input affordance felt visually compressed at exactly the moment the user needs to continue the conversation
+- Assumptions:
+  - in compare-mode tiles, typing the next instruction is the primary footer job; image/prompt/voice/stop actions are important but secondary enough to yield onto a wrapped control row
+  - mobile does not need a matching change: `apps/mobile/src/screens/ChatScreen.tsx` already uses a distinct full-width composer layout with a text send button and separate mic treatment rather than this desktop tile mini-toolbar pattern
+  - requesting tile focus before interacting with the compact composer is locally coherent because `agent-progress.tsx` was already passing `onRequestFocus` into `TileFollowUpInput`
+- Design rationale:
+  - give the text field the first line in compact tile mode so the next action reads as “type here” before “manage tools here”
+  - keep all existing footer actions available, but move them into a wrapped trailing row in constrained tiles instead of removing capabilities or inventing new chrome
+  - make the local change by honoring the already-passed compact intent in `TileFollowUpInput` rather than redesigning the whole tile footer
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` to accept `preferCompact` and `onRequestFocus`, matching the props already passed from `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+  - when `preferCompact` is true, the tile composer now uses a wrapping row, gives the input a flexible `min-w-0 flex-[1_1_10rem]` basis, and moves the action buttons into a full-width wrapped trailing control group
+  - compact tile controls now request tile focus on input/click interactions and use the slightly roomier small prompt/action button sizing already used by the overlay composer pattern
+  - added `apps/desktop/src/renderer/src/components/tile-follow-up-input.layout.test.ts` to lock in the compact wrapping layout and focus-request behavior
+- Verification:
+  - live before-state screenshot + DOM measurements via CDP against the main renderer target
+  - targeted source-level tests passed against this worktree using the sibling worktree's installed tooling without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/tile-follow-up-input.layout.test.ts apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts`
+  - syntax/transpile sanity check passed using the sibling worktree's installed `typescript` via `transpileModule` for `tile-follow-up-input.tsx` and `tile-follow-up-input.layout.test.ts`
+  - live after-state approximation by applying an in-memory DOM patch that mirrors the intended compact layout, then capturing `tmp/visible-ui-after-2026-03-08-10-tile-composer.png`; the sampled input grew from about `160px` wide to `320px` wide while the composer row grew from about `24px` to `56px` tall and the action icons moved into a second right-aligned row
+  - `git diff --check`
+- After-state observation:
+  - `tmp/visible-ui-after-2026-03-08-10-tile-composer.png`
+  - the DOM-simulated footer reads more clearly as a continuation composer: the text field owns the first line, while the icon actions sit together beneath it as supportive controls instead of competing for the same narrow horizontal strip
+  - the extra height stayed modest relative to the gain in legibility, so the tile still feels dense but less cramped under the common `~338px` compare-tile width
+- Remaining opportunities:
+  - once this worktree can launch directly, capture a true after-state screenshot of the tile footer and confirm the wrapped controls still feel calm when queued-image thumbnails are present
+  - if the compare tile still feels busy after this, the next likely footer candidate is simplifying the resting-state action prominence rather than adding more metadata or buttons

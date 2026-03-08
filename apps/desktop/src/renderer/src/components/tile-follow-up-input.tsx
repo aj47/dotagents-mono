@@ -20,9 +20,12 @@ interface TileFollowUpInputProps {
   sessionId?: string
   isSessionActive?: boolean
   isInitializingSession?: boolean
+  preferCompact?: boolean
   className?: string
   /** Agent/profile name to display as indicator */
   agentName?: string
+  /** Request focus for the parent tile before composer interaction */
+  onRequestFocus?: () => void
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
@@ -37,8 +40,10 @@ export function TileFollowUpInput({
   sessionId,
   isSessionActive = false,
   isInitializingSession = false,
+  preferCompact = false,
   className,
   agentName,
+  onRequestFocus,
   onMessageSent,
   onStopSession,
 }: TileFollowUpInputProps) {
@@ -184,6 +189,14 @@ export function TileFollowUpInput({
     await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
   }
 
+  const requestTileFocus = () => {
+    onRequestFocus?.()
+  }
+
+  const handleControlMouseDown = () => {
+    requestTileFocus()
+  }
+
   // Handle stop session - kill switch functionality
   const handleStopSession = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -297,16 +310,19 @@ export function TileFollowUpInput({
         </div>
       )}
 
-      <div className="flex w-full items-center gap-2">
+      <div className={cn("flex w-full items-center gap-2", preferCompact && "flex-wrap items-start")}>
         <input
           ref={inputRef}
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
+          onClick={requestTileFocus}
+          onFocus={requestTileFocus}
           placeholder={getPlaceholder()}
           className={cn(
-            "flex-1 text-sm bg-transparent border-0 outline-none",
+            preferCompact ? "min-w-0 flex-[1_1_10rem]" : "flex-1",
+            "text-sm bg-transparent border-0 outline-none",
             "placeholder:text-muted-foreground/60",
             "focus:ring-0"
           )}
@@ -320,76 +336,85 @@ export function TileFollowUpInput({
           className="hidden"
           onChange={handleImageSelection}
         />
-        <PredefinedPromptsMenu
-          onSelectPrompt={(content) => setText(content)}
-          disabled={isDisabled}
-          className="h-6 w-6"
-        />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
-          disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
-          onClick={() => fileInputRef.current?.click()}
-          title="Attach image"
-        >
-          <ImagePlus className="h-3 w-3" />
-        </Button>
-        <Button
-          type="submit"
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
-          disabled={!hasMessageContent || isDisabled}
-          title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-          aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-        >
-          {isInitializingSession ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Send className={cn(
-              "h-3 w-3",
-              sendMutation.isPending && "animate-pulse"
-            )} aria-hidden="true" />
+        <div className={cn("flex max-w-full shrink-0 items-center", preferCompact ? "w-full flex-wrap justify-end gap-1.5" : "gap-2")}>
+          <div onMouseDown={handleControlMouseDown}>
+            <PredefinedPromptsMenu
+              onSelectPrompt={(content) => setText(content)}
+              disabled={isDisabled}
+              buttonSize={preferCompact ? "sm" : "icon"}
+              className={preferCompact ? undefined : "h-6 w-6"}
+            />
+          </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(preferCompact ? "h-7 w-7" : "h-6 w-6", "flex-shrink-0")}
+            disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+            onMouseDown={handleControlMouseDown}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach image"
+          >
+            <ImagePlus className="h-3 w-3" />
+          </Button>
+          <Button
+            type="submit"
+            size="icon"
+            variant="ghost"
+            className={cn(preferCompact ? "h-7 w-7" : "h-6 w-6", "flex-shrink-0")}
+            disabled={!hasMessageContent || isDisabled}
+            onMouseDown={handleControlMouseDown}
+            title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+            aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          >
+            {isInitializingSession ? (
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className={cn(
+                "h-3 w-3",
+                sendMutation.isPending && "animate-pulse"
+              )} aria-hidden="true" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(
+              preferCompact ? "h-7 w-7 flex-shrink-0" : "h-6 w-6 flex-shrink-0",
+              "hover:bg-red-100 dark:hover:bg-red-900/30",
+              "hover:text-red-600 dark:hover:text-red-400"
+            )}
+            disabled={isVoiceDisabled}
+            onMouseDown={handleControlMouseDown}
+            onClick={handleVoiceClick}
+            title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
+          >
+            <Mic className="h-3 w-3" />
+          </Button>
+          {/* Kill switch - stop agent button (only show when session is active) */}
+          {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className={cn(
+                preferCompact ? "h-7 w-7 flex-shrink-0" : "h-6 w-6 flex-shrink-0",
+                "text-red-500 hover:text-red-600",
+                "hover:bg-red-100 dark:hover:bg-red-950/30"
+              )}
+              disabled={isStoppingSession}
+              onMouseDown={handleControlMouseDown}
+              onClick={handleStopSession}
+              title="Stop agent execution"
+            >
+              <OctagonX className={cn(
+                "h-3 w-3",
+                isStoppingSession && "animate-pulse"
+              )} />
+            </Button>
           )}
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "h-6 w-6 flex-shrink-0",
-            "hover:bg-red-100 dark:hover:bg-red-900/30",
-            "hover:text-red-600 dark:hover:text-red-400"
-          )}
-          disabled={isVoiceDisabled}
-          onClick={handleVoiceClick}
-          title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
-        >
-          <Mic className="h-3 w-3" />
-        </Button>
-        {/* Kill switch - stop agent button (only show when session is active) */}
-        {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "h-6 w-6 flex-shrink-0",
-            "text-red-500 hover:text-red-600",
-            "hover:bg-red-100 dark:hover:bg-red-950/30"
-          )}
-          disabled={isStoppingSession}
-          onClick={handleStopSession}
-          title="Stop agent execution"
-        >
-          <OctagonX className={cn(
-            "h-3 w-3",
-            isStoppingSession && "animate-pulse"
-          )} />
-        </Button>
-        )}
+        </div>
       </div>
     </form>
   )
