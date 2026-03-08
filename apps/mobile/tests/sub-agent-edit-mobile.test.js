@@ -60,6 +60,11 @@ test('LoopEditScreen explains when no saved profiles are available to assign', (
   assert.match(loopEditSource, /showNoSavedProfilesHelper && \([\s\S]*?No saved profiles yet\. Create one in Settings → Agents to assign it here\.[\s\S]*?\)/);
 });
 
+test('LoopEditScreen explains when the loop is intentionally left unassigned', () => {
+  assert.match(loopEditSource, /const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles\.length > 0 && !formData\.profileId;/);
+  assert.match(loopEditSource, /showNoProfileSelectedHelper && \([\s\S]*?No profile selected\. This loop will run without a saved profile until you choose one\.[\s\S]*?\)/);
+});
+
 test('LoopEditScreen keeps profile load failures local to the Agent Profile section', () => {
   assert.match(loopEditSource, /const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;/);
   assert.match(loopEditSource, /showProfileLoadErrorHelper && \([\s\S]*?Saved profiles couldn't load right now\. You can still save this loop with No profile\.[\s\S]*?\)/);

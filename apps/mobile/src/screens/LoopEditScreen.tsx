@@ -282,6 +282,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const trimmedIntervalMinutes = formData.intervalMinutes.trim();
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
   const showProfileLoadErrorHelper = !!settingsClient && !isLoadingProfiles && !!profileLoadError;
+  const showNoProfileSelectedHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length > 0 && !formData.profileId;
   const showNoSavedProfilesHelper = !!settingsClient && !isLoadingProfiles && !profileLoadError && profiles.length === 0;
   const saveValidationMessage = !trimmedName && !trimmedPrompt
     ? 'Add a name and prompt to enable saving.'
@@ -424,6 +425,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
         <Text style={[styles.helperText, styles.helperTextWarning]}>
           Saved profiles couldn't load right now. You can still save this loop with No profile.
         </Text>
+      )}
+      {showNoProfileSelectedHelper && (
+        <Text style={styles.helperText}>No profile selected. This loop will run without a saved profile until you choose one.</Text>
       )}
       {showNoSavedProfilesHelper && (
         <Text style={styles.helperText}>No saved profiles yet. Create one in Settings → Agents to assign it here.</Text>

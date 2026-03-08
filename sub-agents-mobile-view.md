@@ -1468,3 +1468,44 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the localized profile warning is visually distinct from both `Loading profiles...` and `No saved profiles yet...`.
   - After live validation returns, confirm the inline warning still leaves the `No profile` option feeling safe and available on narrow screens.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 34: explain the intentional unassigned loop-profile state
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `LoopEditScreen` `Agent Profile` success state
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` already had explicit `Agent Profile` helpers for loading, zero saved profiles, and saved-profile load failures.
+  - In the normal success state where saved profiles existed but the loop intentionally stayed on `No profile`, the UI showed only the selected chip with no nearby visible explanation.
+  - On mobile, that made the default unassigned state easier to read as unfinished rather than intentionally safe, especially because adjacent helper text only appeared for exceptional states.
+- Issue selected:
+  - The successful `No profile` state still lacked visible meaning in `LoopEditScreen`, weakening state clarity for a common mobile path.
+- Decision:
+  - Keep the existing chip layout and the recent loading/empty/error helpers unchanged.
+  - Do not add a new CTA or redesign the section while live validation is blocked.
+  - Make the smallest local fix in `LoopEditScreen`: show one passive helper only when saved profiles exist and the loop is intentionally left unassigned.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - derive `showNoProfileSelectedHelper` only when profile loading has succeeded, at least one saved profile exists, and `No profile` remains selected,
+    - render inline helper copy: `No profile selected. This loop will run without a saved profile until you choose one.`
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new unassigned-state helper.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new unassigned-state helper still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - If live inspection later shows the helper adds too much vertical copy, it may need tighter wording — but only with visual evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the new unassigned helper is visually distinct from `Loading profiles...`, `No saved profiles yet...`, and the inline warning state.
+  - After live validation returns, confirm that leaving a loop on `No profile` feels intentionally safe when saved profiles are available.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
