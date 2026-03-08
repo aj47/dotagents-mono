@@ -22,8 +22,9 @@ test('repeat task deletion uses row-level confirmation and retry state instead o
 test('repeat task deletion handles false delete results explicitly and disables row controls while pending', () => {
   assert.match(settingsSource, /const result = await tipcClient\.deleteLoop\(\{ loopId: loop\.id \}\)/)
   assert.match(settingsSource, /if \(!result\?\.success\) \{[\s\S]*setDeleteErrorById/)
-  assert.match(settingsSource, /disabled=\{isDeleting\}[\s\S]*handleRunNow\(loop\)/)
-  assert.match(settingsSource, /disabled=\{isDeleting\}[\s\S]*handleOpenTaskFile\(loop\)/)
-  assert.match(settingsSource, /disabled=\{isDeleting\}[\s\S]*handleEdit\(loop\)/)
-  assert.match(settingsSource, /<Switch[\s\S]*disabled=\{isDeleting\}/)
+  assert.match(settingsSource, /const isBusy = isDeleting \|\| isRowActionPending/)
+  assert.match(settingsSource, /disabled=\{isBusy\}[\s\S]*handleRunNow\(loop\)/)
+  assert.match(settingsSource, /disabled=\{isBusy\}[\s\S]*handleOpenTaskFile\(loop\)/)
+  assert.match(settingsSource, /disabled=\{isBusy\}[\s\S]*handleEdit\(loop\)/)
+  assert.match(settingsSource, /<Switch[\s\S]*disabled=\{isBusy\}/)
 })

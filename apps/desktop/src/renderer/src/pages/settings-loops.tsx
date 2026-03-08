@@ -31,6 +31,14 @@ interface LoopRuntimeStatus {
   lastRunAt?: number
 }
 
+type LoopPendingAction =
+  | { kind: "run" }
+  | { kind: "toggle"; targetEnabled: boolean }
+
+type LoopActionFeedback =
+  | { kind: "run"; tone: "error"; message: string }
+  | { kind: "toggle"; tone: "warning" | "error"; targetEnabled: boolean; message: string }
+
 const emptyLoop: EditingLoop = {
   name: "",
   prompt: "",
@@ -107,6 +115,8 @@ export function SettingsLoops() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [deleteErrorById, setDeleteErrorById] = useState<Record<string, string>>({})
+  const [pendingActionById, setPendingActionById] = useState<Record<string, LoopPendingAction>>({})
+  const [actionFeedbackById, setActionFeedbackById] = useState<Record<string, LoopActionFeedback>>({})
 
   const loopsQuery = useQuery({
     queryKey: ["loops"],
@@ -136,6 +146,33 @@ export function SettingsLoops() {
       delete next[loopId]
       return next
     })
+  }
+
+  const clearPendingAction = (loopId: string) => {
+    setPendingActionById((prev) => {
+      if (!(loopId in prev)) return prev
+
+      const next = { ...prev }
+      delete next[loopId]
+      return next
+    })
+  }
+
+  const clearActionFeedback = (loopId: string) => {
+    setActionFeedbackById((prev) => {
+      if (!(loopId in prev)) return prev
+
+      const next = { ...prev }
+      delete next[loopId]
+      return next
+    })
+  }
+
+  const setPendingAction = (loopId: string, action: LoopPendingAction) => {
+    setPendingActionById((prev) => ({
+      ...prev,
+      [loopId]: action,
+    }))
   }
 
   const handleCreate = () => {
@@ -238,34 +275,102 @@ export function SettingsLoops() {
     }
   }
 
-  const handleToggleEnabled = async (loop: LoopConfig) => {
-    const updatedLoop = { ...loop, enabled: !loop.enabled }
+  const handleSetEnabled = async (loop: LoopConfig, targetEnabled: boolean) => {
+    const updatedLoop = { ...loop, enabled: targetEnabled }
+    setDeleteConfirmId((current) => (current === loop.id ? null : current))
+    clearDeleteError(loop.id)
+    clearActionFeedback(loop.id)
+    setPendingAction(loop.id, { kind: "toggle", targetEnabled })
+
     try {
       await tipcClient.saveLoop({ loop: updatedLoop })
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
+      await queryClient.invalidateQueries({ queryKey: ["loops"] })
 
-      if (updatedLoop.enabled) {
-        await tipcClient.startLoop?.({ loopId: loop.id })
+      if (targetEnabled) {
+        const startResult = await tipcClient.startLoop?.({ loopId: loop.id })
+
+        if (startResult && !startResult.success) {
+          setActionFeedbackById((prev) => ({
+            ...prev,
+            [loop.id]: {
+              kind: "toggle",
+              tone: "warning",
+              targetEnabled,
+              message: `\"${loop.name}\" was saved as enabled, but its schedule could not start yet. Retry enabling to start it again.`,
+            },
+          }))
+        } else {
+          toast.success("Task enabled")
+        }
       } else {
         await tipcClient.stopLoop?.({ loopId: loop.id })
+        toast.success("Task disabled")
       }
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
-      toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
-    } catch {
-      toast.error("Failed to update task")
+
+      await queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+    } catch (error) {
+      setActionFeedbackById((prev) => ({
+        ...prev,
+        [loop.id]: {
+          kind: "toggle",
+          tone: "error",
+          targetEnabled,
+          message: getLoopMutationErrorMessage(
+            error,
+            targetEnabled
+              ? `Couldn't enable \"${loop.name}\" right now. The saved task is still shown below.`
+              : `Couldn't disable \"${loop.name}\" right now. The saved task is still shown below.`,
+          ),
+        },
+      }))
+    } finally {
+      clearPendingAction(loop.id)
     }
   }
 
+  const handleToggleEnabled = async (loop: LoopConfig) => {
+    await handleSetEnabled(loop, !loop.enabled)
+  }
+
   const handleRunNow = async (loop: LoopConfig) => {
+    setDeleteConfirmId((current) => (current === loop.id ? null : current))
+    clearDeleteError(loop.id)
+    clearActionFeedback(loop.id)
+    setPendingAction(loop.id, { kind: "run" })
+
     try {
       const result = await tipcClient.triggerLoop?.({ loopId: loop.id })
+
       if (result && !result.success) {
-        toast.error(`Could not trigger "${loop.name}" right now`)
+        setActionFeedbackById((prev) => ({
+          ...prev,
+          [loop.id]: {
+            kind: "run",
+            tone: "error",
+            message: `Couldn't run \"${loop.name}\" right now. It may already be running, or the agent may be temporarily unavailable.`,
+          },
+        }))
         return
       }
-      toast.success(`Running "${loop.name}"...`)
-    } catch {
-      toast.error("Failed to trigger task")
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["loops"] }),
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] }),
+      ])
+    } catch (error) {
+      setActionFeedbackById((prev) => ({
+        ...prev,
+        [loop.id]: {
+          kind: "run",
+          tone: "error",
+          message: getLoopMutationErrorMessage(
+            error,
+            `Couldn't run \"${loop.name}\" right now. It may already be running, or the agent may be temporarily unavailable.`,
+          ),
+        },
+      }))
+    } finally {
+      clearPendingAction(loop.id)
     }
   }
 
@@ -370,8 +475,19 @@ export function SettingsLoops() {
             const nextRunAt = runtime?.nextRunAt
             const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
             const isDeleting = pendingDeleteId === loop.id
+            const pendingAction = pendingActionById[loop.id]
+            const actionFeedback = actionFeedbackById[loop.id]
             const deleteErrorMessage = deleteErrorById[loop.id]
             const isDeleteConfirming = deleteConfirmId === loop.id
+            const isRowActionPending = Boolean(pendingAction)
+            const isBusy = isDeleting || isRowActionPending
+            const toggleStatusLabel = pendingAction?.kind === "toggle"
+              ? pendingAction.targetEnabled
+                ? "Enabling..."
+                : "Disabling..."
+              : loop.enabled
+                ? "Enabled"
+                : "Disabled"
             return (
               <div
                 key={loop.id}
@@ -401,16 +517,24 @@ export function SettingsLoops() {
                       variant="outline"
                       size="sm"
                       className="h-7 gap-1.5 px-2"
-                      disabled={isDeleting}
+                      disabled={isBusy}
                       onClick={() => handleRunNow(loop)}
                     >
-                      <Play className="h-3.5 w-3.5" />Run
+                      {pendingAction?.kind === "run" ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />Running...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3.5 w-3.5" />Run
+                        </>
+                      )}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-7 gap-1.5 px-2"
-                      disabled={isDeleting}
+                      disabled={isBusy}
                       onClick={() => handleOpenTaskFile(loop)}
                     >
                       <FileText className="h-3.5 w-3.5" />File
@@ -419,7 +543,7 @@ export function SettingsLoops() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      disabled={isDeleting}
+                      disabled={isBusy}
                       title="Edit task"
                       onClick={() => handleEdit(loop)}
                     >
@@ -429,11 +553,12 @@ export function SettingsLoops() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      disabled={isDeleting}
-                      title={isDeleting ? "Deleting task" : "Delete task"}
+                      disabled={isBusy}
+                      title={isDeleting ? "Deleting task" : isRowActionPending ? "Task action in progress" : "Delete task"}
                       onClick={() => {
                         setDeleteConfirmId(loop.id)
                         clearDeleteError(loop.id)
+                        clearActionFeedback(loop.id)
                       }}
                     >
                       {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -456,11 +581,87 @@ export function SettingsLoops() {
                 <div className="mt-2 flex items-center gap-2">
                   <Switch
                     checked={loop.enabled}
-                    disabled={isDeleting}
+                    disabled={isBusy}
                     onCheckedChange={() => handleToggleEnabled(loop)}
                   />
-                  <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
+                  <Label className="text-xs">{toggleStatusLabel}</Label>
                 </div>
+
+                {(pendingAction || actionFeedback) && (
+                  <div
+                    className={cn(
+                      "mt-3 rounded-md border px-3 py-3",
+                      pendingAction && "border-border/60 bg-muted/30",
+                      actionFeedback?.tone === "warning" && "border-amber-500/30 bg-amber-500/10",
+                      actionFeedback?.tone === "error" && "border-destructive/30 bg-destructive/5",
+                    )}
+                    role={actionFeedback ? "alert" : "status"}
+                  >
+                    <div className="flex items-start gap-2">
+                      {pendingAction ? (
+                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />
+                      ) : (
+                        <AlertTriangle
+                          className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0",
+                            actionFeedback?.tone === "warning"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-destructive",
+                          )}
+                        />
+                      )}
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <p
+                          className={cn(
+                            "break-words text-xs",
+                            pendingAction && "text-muted-foreground",
+                            actionFeedback?.tone === "warning" && "text-amber-700 dark:text-amber-300",
+                            actionFeedback?.tone === "error" && "text-destructive",
+                          )}
+                        >
+                          {pendingAction
+                            ? pendingAction.kind === "run"
+                              ? `Running \"${loop.name}\" now. Other actions stay disabled until this request finishes.`
+                              : pendingAction.targetEnabled
+                                ? `Enabling \"${loop.name}\" and starting its schedule...`
+                                : `Disabling \"${loop.name}\" and clearing its active schedule...`
+                            : actionFeedback?.message}
+                        </p>
+                        {actionFeedback && (
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (actionFeedback.kind === "run") {
+                                  void handleRunNow(loop)
+                                  return
+                                }
+
+                                void handleSetEnabled(loop, actionFeedback.targetEnabled)
+                              }}
+                            >
+                              {actionFeedback.kind === "run"
+                                ? "Retry run"
+                                : actionFeedback.targetEnabled
+                                  ? "Retry enable"
+                                  : "Retry disable"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => clearActionFeedback(loop.id)}
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {(isDeleteConfirming || deleteErrorMessage) && (
                   <div
@@ -484,7 +685,7 @@ export function SettingsLoops() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            disabled={isDeleting}
+                            disabled={isBusy}
                             onClick={() => {
                               setDeleteConfirmId((current) => (current === loop.id ? null : current))
                               clearDeleteError(loop.id)
@@ -496,7 +697,7 @@ export function SettingsLoops() {
                             type="button"
                             variant="destructive"
                             size="sm"
-                            disabled={isDeleting}
+                            disabled={isBusy}
                             onClick={() => handleDelete(loop)}
                           >
                             {isDeleting && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}

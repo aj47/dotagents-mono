@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task `Run` / enable-toggle local action feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `triggerLoop` / `startLoop` / `stopLoop` semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/loop-service.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (similar mutation-only feedback still lives in a separate remote/native flow there, so it remains a dedicated mobile follow-up rather than part of this desktop pass), focused source-level coverage extended in `tests/desktop-settings-loops-feedback.test.js` and `tests/desktop-settings-loops-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target with `--inspect` in this environment).
 - 2026-03-08: Desktop emergency-stop ACP-wide cancellation / shutdown best-effort isolation in `apps/desktop/src/main/emergency-stop.ts`, with ACP run-tracking behavior reviewed in `apps/desktop/src/main/acp/acp-client-service.ts`, ACP shutdown semantics cross-checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/acp/acp-process-manager.ts`, kill-switch callers reviewed in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`, focused source-level coverage extended in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree does not have `node_modules` / `vitest` available.
 - 2026-03-08: Desktop skills delete guardrails in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, with `deleteSkill` / `deleteSkills` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/skills-service.ts`, adjacent destructive-action patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile delete surface exists there because mobile currently exposes skill toggling but not desktop skill authoring/deletion), focused source-level coverage added in `tests/desktop-settings-skills-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
 - 2026-03-08: Desktop main-process emergency-stop best-effort failure isolation in `apps/desktop/src/main/emergency-stop.ts`, with session-state ownership reviewed in `apps/desktop/src/main/state.ts`, tracker/queue/user-response cleanup behavior cross-checked in `apps/desktop/src/main/agent-session-tracker.ts`, `apps/desktop/src/main/message-queue-service.ts`, and `apps/desktop/src/main/session-user-response-store.ts`, focused source-level guardrail coverage added in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree does not have `node_modules` / `vitest` available.
@@ -77,6 +78,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop repeat-task `Run` / enable-toggle inline pending/error/retry UI still needs live Electron validation once a runnable target is available, especially to confirm the new row-level status panel, `Running...` / `Enabling...` labels, and retry affordances feel clear without overcrowding already compact task rows.
 - 2026-03-08: Desktop `Settings → Skills` single/bulk delete dialogs still need live Electron validation once a runnable target is available, especially to confirm the destructive-modal cadence, partial-failure retry copy, and selection-preservation behavior feel clear in select mode without making bulk cleanup cumbersome.
 - 2026-03-08: Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity still needs live Electron validation once the renderer mounts real product content, especially to confirm the new `Active prompt layer` summary, Skills/Memories path density, and `Reveal Active …` labels stay understandable without making the advanced section feel overly busy.
 - 2026-03-08: Desktop `Settings → General` ACP main-agent warnings still need live Electron validation once the renderer mounts real product content, especially to confirm the warning-card density, disabled picker, and `Open Agents Settings` / `Use API Mode` recovery actions feel clear beside the adjacent `Inject DotAgents Tools` control when there are zero, one, or newly re-enabled ACP agents.
@@ -93,6 +95,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop `Repeat Tasks` now gives `Run` and enabled/disabled actions row-local pending/error feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, disabling conflicting controls while a request is in flight, replacing the old fire-and-forget action feel with inline `Running...` / `Enabling...` / `Disabling...` status copy, refreshing loop metadata after manual runs, and surfacing retryable inline warnings when an enable save succeeds but the schedule cannot start, so loop actions no longer feel inert or ambiguously successful; tradeoff: this pass intentionally stays scoped to desktop renderer feedback and stops short of reworking the separate mobile/native loops action flow.
 - 2026-03-08: Desktop emergency stop now treats ACP-wide `acpClientService.cancelAllRuns()` as best-effort in `apps/desktop/src/main/emergency-stop.ts`, so a thrown ACP cancellation edge case can no longer prevent the later spawned-agent and stdio-agent shutdown attempts from running; rationale: the kill switch should keep making forward cleanup progress even if one ACP subsystem misbehaves, and the smallest safe fix is to align ACP run cancellation with the surrounding guarded cleanup steps rather than broaden ACP client internals in the same pass.
 - 2026-03-08: Desktop `Settings → Skills` now replaces one-shot browser `confirm(...)` deletion with recoverable single and bulk confirmation dialogs, treats false `deleteSkill(...)` results as failures instead of success, keeps failed bulk deletions selected for retry, and disables conflicting actions while delete mutations are in flight, so skill cleanup no longer silently succeeds or drops the user's selection after a partial failure; tradeoff: this pass intentionally stays scoped to deletion and leaves the earlier draft-discard confirmation flow as a separate follow-up decision.
 - 2026-03-08: Desktop emergency stop now isolates per-session failures in `apps/desktop/src/main/emergency-stop.ts`, so one broken approval cancel, queue pause, progress emit, or tracker update can no longer short-circuit the rest of the kill-switch pass, and session cleanup now snapshots session IDs before mutating `state.agentSessions` while treating response-store + state cleanup as best-effort per session; tradeoff: this pass intentionally stays scoped to the existing kill-switch path and stops short of broader ACP-subsystem refactors.
@@ -161,6 +164,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js tests/desktop-settings-loops-delete-guardrails.test.js` after the desktop repeat-task run/toggle action-feedback pass
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx` after the desktop repeat-task run/toggle action-feedback pass
+- 2026-03-08: `git diff --check` after the desktop repeat-task run/toggle action-feedback pass
 - 2026-03-08: `node --test tests/desktop-emergency-stop-guardrails.test.js` after the desktop ACP-wide cancellation isolation pass
 - 2026-03-08: `git diff --check` after the desktop ACP-wide cancellation isolation pass
 - 2026-03-08: `node --test tests/desktop-settings-skills-unsaved-changes.test.js tests/desktop-settings-skills-delete-guardrails.test.js`
@@ -330,6 +336,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this repeat-task run/toggle action-feedback pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this modular-config path/source clarity pass is still effectively blocked because the available `electron_execute` target only exposed a blank `#root` shell at `http://localhost:5174/` instead of a mounted app view, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this ACP main-agent guidance pass is still effectively blocked because the available `electron_execute` target only exposed a blank `#root` shell at `http://localhost:5174/` instead of a mounted app view, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for the repeat-task delete-guardrails pass is still effectively blocked because the available `electron_execute` target only exposed a blank `#root` shell at `http://localhost:5174/` instead of a mounted app view, so this iteration relied on source inspection plus targeted source-level verification.
@@ -399,11 +406,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop `Settings → General` ACP main-agent warning density / recovery flow live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
-- Desktop repeat-task `Run` / enable-toggle mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
+- Mobile `Settings → Agent Loops` mutation feedback (`run`, `toggle`, `delete`) in `apps/mobile/src/screens/SettingsScreen.tsx`
 
 ### Next Highest-Value Targets
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest desktop UX follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
-- Desktop repeat-task `Run` / enable-toggle mutation pending-state and partial-success feedback is now the freshest adjacent loops follow-up, because deletion no longer depends on blocking confirms but the remaining action buttons still rely mostly on toast-only feedback.
+- Mobile loop action mutation failure feedback (`run`, `toggle`, `delete`) is now the freshest adjacent loops follow-up, because desktop repeat-task actions now have row-local recovery but mobile still relies on separate remote/native mutation handling.
 - Desktop emergency-stop still lacks execution-path validation against throwing ACP collaborators in this dependency-light worktree, because current coverage locks in the best-effort guardrails at the source level but does not yet exercise the runtime function with mocked ACP failures.
 - Once a runnable Electron target is available, live-check desktop `Settings → General` modular config across global-only, upward-detected workspace, and `DOTAGENTS_WORKSPACE_DIR` cases to confirm the new active-layer summary and prompt-file labels make it obvious which files will actually be edited.
 - Once a runnable Electron target is available, live-check desktop `Settings → WhatsApp` across first load, QR-required connect, reconnect with cached credentials, disconnect, logout, and background-status refresh overlap to confirm the new loading/pending hierarchy feels trustworthy in the real UI
@@ -415,10 +422,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop floating-panel live transcription preview chunk failures are the most adjacent voice-input product follow-up now that both desktop and mobile recording-start failures surface visible recovery guidance
 - Once a runnable Electron target is available, live-check desktop `AgentProgress` while switching between sessions with the transcript/tools tabs open, expanded items, and the stop confirmation recently used to confirm the remaining per-session view state feels consistent in the real UI
 - Once a runnable Electron target is available, live-check the desktop past-sessions dialog across initial load, blocking load failure, cached-list refresh failure, search with no matches, keyboard navigation, single-session delete confirmation, failed-delete retry, and delete-all failure states to confirm the new recovery hierarchy feels clear in the real UI
-- Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, list-fetch failure, runtime-status failure (with and without cached status data), empty, and populated states to confirm the new status-warning hierarchy reads clearly in the real UI
-- Desktop repeat-task run/toggle/delete mutation failure feedback is the most adjacent follow-up if another loops pass is needed now that both list-fetch and runtime-status recovery are clearer
+- Once a runnable Electron target is available, live-check the desktop `Repeat Tasks` page across loading, list-fetch failure, runtime-status failure (with and without cached status data), empty, populated, and the new run/toggle/delete pending + retry states to confirm the row-density and status hierarchy read clearly in the real UI
 - Once a runnable mobile target is available, live-check `Settings → Agent Loops` across first load, refresh with existing loops, empty state, and inline retry after a fetch failure to confirm the new state hierarchy feels clear on-device
-- Mobile loop action mutation failure feedback (`run`, `toggle`, `delete`) is the most adjacent follow-up if another mobile loops pass is needed now that fetch-state recovery is clearer
 - Once a runnable Electron target is available, live-check the desktop sessions empty state with no history, loading history, a few recent sessions, and more than eight sessions to confirm the new `Past Sessions` action and loading hint feel obvious without overcrowding the primary start actions
 - Desktop past-sessions dialog list-load retry / focus-restoration polish is the most adjacent follow-up if another history/navigation pass is needed, now that single-delete safety and failure recovery are tightened
 - Once a runnable Electron target is available, live-check the desktop queued-send flow across paused, failed-head, `Retry & Resume`, and edited-head recovery states to confirm the new recovery path feels obvious in the actual UI
@@ -2063,6 +2068,40 @@ Track small, shippable product improvements. Review this file before each iterat
   - once dependencies are available, run `pnpm --filter @dotagents/desktop exec vitest run src/main/state.test.ts src/main/tipc.session-lifecycle.test.ts`
   - once dependencies are available, run `pnpm --filter @dotagents/desktop typecheck:node`
   - inspect remaining queue/user-response cleanup consistency on interrupted queued runs, since this pass fixed the core runtime-session leak but did not broaden queue/follow-up behavior changes
+
+### 2026-03-08 — Desktop repeat-task run/toggle action feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task management in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - specifically the per-row `Run` button and enabled/disabled toggle actions on populated task rows
+- Why it was chosen:
+  - the ledger already covered repeat-task list loading, runtime-status recovery, and deletion guardrails, which made the remaining row-action ambiguity the highest-leverage adjacent gap
+  - manual run and enable/disable requests still felt mostly fire-and-forget, with little local feedback while the action was in flight and no clear inline recovery when a request failed or only partially succeeded
+  - the opportunity had clear user value, stayed localized to one renderer page plus focused tests, and avoided a broader loops-service refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `apps/desktop/src/main/tipc.ts` to confirm the renderer-facing `triggerLoop`, `startLoop`, and `stopLoop` return contracts
+  - `apps/desktop/src/main/loop-service.ts` to confirm that manual runs update persisted runtime metadata and that enabling can save successfully even if scheduler startup later fails
+  - `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile has a similar mutation-only feedback gap but uses separate remote/native settings plumbing, so it remains a separate follow-up instead of widening this desktop pass
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - added per-row pending state for `Run` and enabled/disabled updates, with conflicting row controls disabled while the request is in flight
+  - replaced the old toast-only mutation feel with inline `Running...`, `Enabling...`, and `Disabling...` status copy inside each affected row
+  - refreshed both `loops` and `loop-statuses` queries after successful manual runs so `Last run` metadata updates promptly once the request finishes
+  - surfaced retryable inline feedback for run failures and for the partial-success case where a task saves as enabled but its schedule fails to start
+  - extended dependency-free regression coverage in `tests/desktop-settings-loops-feedback.test.js` and `tests/desktop-settings-loops-delete-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the change scoped to row-local renderer feedback because the primary product problem was ambiguous action state, not missing loop-service capability
+  - intentionally do not treat `stopLoop(...)` returning a falsy result as a user-facing failure on disable, because the important persisted outcome is that the task is saved as disabled and there may be no active timer left to cancel
+  - left the analogous mobile mutation UX for a separate pass because it uses different state management, alerts, and network plumbing than the desktop Electron page
+- Tests / verification:
+  - `node --test tests/desktop-settings-loops-feedback.test.js tests/desktop-settings-loops-delete-guardrails.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check the desktop Repeat Tasks page across run success, run failure, enable partial-success, disable success, and retry flows to confirm the compact row layout still reads clearly
+  - if another loops pass is warranted after that, investigate the analogous mobile `Settings → Agent Loops` mutation feedback gap
 
 ### 2026-03-08 — Desktop repeat-task runtime-status feedback
 - Date:
