@@ -134,6 +134,21 @@ describe("constructSystemPrompt", () => {
     expect(minimalPrompt).toContain("confirm the observable result directly")
   })
 
+  it("asks for clarification on fragmentary inputs before broad context gathering", async () => {
+    const { constructSystemPrompt, constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+    const minimalPrompt = constructMinimalSystemPrompt([], true)
+
+    expect(prompt).toContain("LOW-CONTEXT / AMBIGUOUS INPUTS")
+    expect(prompt).toContain("ask a brief clarification before loading repo context")
+    expect(prompt).toContain("stray words or vague fragments")
+    expect(prompt).toContain("surrounding conversation already makes the intended next step obvious")
+
+    expect(minimalPrompt).toContain("fragmentary, truncated, or garbled inputs")
+    expect(minimalPrompt).toContain("before loading repo context")
+  })
+
   it("omits delegation guidance for specialist sub-sessions that should execute directly", async () => {
     const { agentProfileService } = await import("./agent-profile-service")
     vi.mocked(agentProfileService.getByRole).mockReturnValue([

@@ -1376,6 +1376,39 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ❌ still blocked by pre-existing unrelated desktop typecheck issues (`src/main/acp-service.test.ts` mock typing, missing `uuid` types in `src/main/acp/internal-agent.ts`, and long-standing `src/main/llm.test.ts` mock typing mismatches)
   - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
 
+## 2026-03-08 — Fragmentary first-turn inputs should clarify before broad repo/context reconnaissance
+
+- Reviewed `langfuse-bug-fix.md` first and skipped already-logged timeout / stale-output / ACP delegation cases unless a fresh trace pointed somewhere new.
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772913557144_mh1va1cl4` / `session_1772913556392_0g7ccbcf2`
+    - user input: ` fulfilling`
+    - final output: `No specific task was requested — I just loaded context about your DotAgents project. What would you like me to work on?`
+    - observations showed the run first did unrelated broad reconnaissance before asking the needed clarification:
+      - `execute_command` dumped `~/Documents/agent-notes/*.md`
+      - `github:list_issues` fetched repo issue context
+      - only after that did the model call `respond_to_user` with the clarification question
+  - adjacent recent trace: `conv_1772913407725_0v74xn5f2` / `session_1772913407189_6uvp458gf`
+    - garbled input was handled with a direct clarification prompt and no broad repo inspection, which is the behavior we want the fragmentary-input case to follow consistently
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` already contains targeted behavioral guardrails for capability questions, notes/config updates, and obvious probe payloads.
+  - there was no parallel guardrail telling the model that fragmentary/truncated/garbled inputs should be clarified *before* loading memories, notes, GitHub state, or other broad background.
+  - that made the `fulfilling` run prompt-compliant enough to wander into proactive context gathering even though the user had not expressed a concrete task.
+- Concrete root cause:
+  - missing prompt policy for low-context/ambiguous inputs allowed unnecessary repo/note reconnaissance to consume the run before the agent asked the only thing it actually needed: a clarification.
+- Minimal fix applied:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - added a new `LOW-CONTEXT / AMBIGUOUS INPUTS` policy section to the full agent-mode prompt
+    - added the equivalent compact rule to `constructMinimalSystemPrompt(...)` so the behavior survives context-budget fallback
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - regression proving both the full and minimal prompts now instruct the agent to ask for clarification before broad context gathering on fragmentary inputs
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - ✅ passed (`9 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt test exits successfully
+  - debugging-guided live verification attempt (per `apps/desktop/DEBUGGING.md`): `REMOTE_DEBUGGING_PORT=9333 pnpm --filter @dotagents/desktop dev -- -d`
+  - ❌ blocked by the pre-existing desktop `predev` failure: missing `node_modules/.pnpm/tsx@4.21.0/.../tsx/dist/cli.mjs` while running `npx tsx scripts/ensure-rust-binary.ts`
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1404,4 +1437,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
 - Recheck a fresh capability/introspection trace (for example asking why tools were `cut off` or whether a server/agent is available) to confirm the agent now inspects `list_mcp_servers` / `list_server_tools` / `list_running_agents` / `list_agent_profiles` first instead of speculating.
 - Recheck a fresh `Scroll probe` / `Jump probe` / `Focus jump probe` style trace after the next desktop smoke run, to confirm the model now answers with the concrete observed range/result directly instead of bouncing into `What would you like me to do with it?`.
+- Recheck a fresh fragmentary first-turn trace (for example a stray word, truncated clause, or garbled partial message) after the next desktop smoke run, to confirm the model now asks for clarification immediately instead of first loading notes, memories, repo status, or GitHub state.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

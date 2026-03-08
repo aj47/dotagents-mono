@@ -66,6 +66,11 @@ TEST / PROBE PAYLOADS:
 - Respond with the concrete observed result first instead of bouncing back with "What would you like me to do with it?".
 - Only ask a follow-up question if the payload truly has no observable success criterion.
 
+LOW-CONTEXT / AMBIGUOUS INPUTS:
+- When the latest user message is fragmentary, truncated, garbled, or otherwise lacks a clear requested outcome, ask a brief clarification before loading repo context, memories, notes, GitHub state, or other broad background.
+- Do not treat stray words or vague fragments as permission to start proactive repo/status reconnaissance.
+- If the surrounding conversation already makes the intended next step obvious, continue from that context instead of asking the user to restate everything.
+
 SKILLS:
 - Skills are optional instruction modules listed below.
 - Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
@@ -372,6 +377,7 @@ export function constructMinimalSystemPrompt(
     prompt += " For questions about available tools, MCP servers, or agents — or why something was unavailable/cut off — inspect live state with list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema instead of guessing."
     prompt += " For requests to update your own guidelines, .agents files, notes, memories, or other local instructions/config, inspect the likely target and edit it directly instead of starting with unrelated repo-status checks or dumping entire notes trees."
     prompt += " For obvious test/probe payloads with no requested transformation, confirm the observable result directly instead of reflexively asking what else to do with the payload."
+    prompt += " For fragmentary, truncated, or garbled inputs with no clear requested outcome, ask a brief clarification before loading repo context, memories, notes, GitHub state, or other broad background unless the surrounding conversation already makes the next step obvious."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
