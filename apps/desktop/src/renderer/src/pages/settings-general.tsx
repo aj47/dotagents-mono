@@ -47,6 +47,9 @@ import {
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
+const MCP_MAX_ITERATIONS_MIN = 1
+const MCP_MAX_ITERATIONS_MAX = 50
+const MCP_MAX_ITERATIONS_DEFAULT = 10
 
 type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
 
@@ -56,6 +59,13 @@ function getLangfuseDrafts(config: Config | undefined) {
     langfuseSecretKey: config?.langfuseSecretKey ?? "",
     langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
   }
+}
+
+function parseMcpMaxIterationsDraft(value: string) {
+  const parsedValue = Number.parseInt(value, 10)
+  if (Number.isNaN(parsedValue)) return null
+  if (parsedValue < MCP_MAX_ITERATIONS_MIN || parsedValue > MCP_MAX_ITERATIONS_MAX) return null
+  return parsedValue
 }
 
 export function Component() {
@@ -73,6 +83,10 @@ export function Component() {
     () => cfg?.transcriptPostProcessingPrompt ?? "",
   )
   const transcriptPostProcessingPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [mcpMaxIterationsDraft, setMcpMaxIterationsDraft] = useState(
+    () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+  )
+  const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -210,6 +224,10 @@ export function Component() {
   }, [cfg?.transcriptPostProcessingPrompt])
 
   useEffect(() => {
+    setMcpMaxIterationsDraft(String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT))
+  }, [cfg?.mcpMaxIterations])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
@@ -221,6 +239,10 @@ export function Component() {
 
       if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
         clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
+      }
+
+      if (mcpMaxIterationsSaveTimeoutRef.current) {
+        clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
       }
     }
   }, [])
@@ -304,6 +326,41 @@ export function Component() {
     setTranscriptPostProcessingPromptDraft(value)
     scheduleTranscriptPostProcessingPromptSave(value)
   }, [scheduleTranscriptPostProcessingPromptSave])
+
+  const flushMcpMaxIterationsSave = useCallback((value: string) => {
+    if (mcpMaxIterationsSaveTimeoutRef.current) {
+      clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      mcpMaxIterationsSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpMaxIterationsDraft(value)
+    if (parsedValue === null) {
+      setMcpMaxIterationsDraft(String(cfgRef.current?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT))
+      return
+    }
+
+    saveConfig({ mcpMaxIterations: parsedValue })
+  }, [saveConfig])
+
+  const scheduleMcpMaxIterationsSave = useCallback((value: string) => {
+    if (mcpMaxIterationsSaveTimeoutRef.current) {
+      clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      mcpMaxIterationsSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpMaxIterationsDraft(value)
+    if (parsedValue === null) return
+
+    mcpMaxIterationsSaveTimeoutRef.current = setTimeout(() => {
+      mcpMaxIterationsSaveTimeoutRef.current = null
+      saveConfig({ mcpMaxIterations: parsedValue })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateMcpMaxIterationsDraft = useCallback((value: string) => {
+    setMcpMaxIterationsDraft(value)
+    scheduleMcpMaxIterationsSave(value)
+  }, [scheduleMcpMaxIterationsSave])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -454,11 +511,13 @@ export function Component() {
             <Control label={<ControlLabel label="Max Iterations" tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer." />} className="px-3">
               <Input
                 type="number"
-                min="1"
-                max="50"
+                min={String(MCP_MAX_ITERATIONS_MIN)}
+                max={String(MCP_MAX_ITERATIONS_MAX)}
                 step="1"
-                value={configQuery.data?.mcpMaxIterations ?? 10}
-                onChange={(e) => saveConfig({ mcpMaxIterations: parseInt(e.target.value) || 1 })}
+                value={mcpMaxIterationsDraft}
+                onChange={(e) => updateMcpMaxIterationsDraft(e.currentTarget.value)}
+                onBlur={(e) => flushMcpMaxIterationsSave(e.currentTarget.value)}
+                placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
                 className="w-32"
               />
             </Control>

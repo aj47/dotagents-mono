@@ -104,6 +104,13 @@ function findTextarea(node: any) {
   return findNode(node, candidate => candidate.type === "Textarea" && candidate.props?.rows === 10)
 }
 
+function findMaxIterationsInput(node: any) {
+  return findNode(
+    node,
+    candidate => candidate.type === "Input" && candidate.props?.type === "number" && candidate.props?.placeholder === "10",
+  )
+}
+
 const GROQ_STT_PROMPT_PLACEHOLDER = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
 
 async function flushPromises() {
@@ -267,6 +274,116 @@ describe("desktop general settings draft behavior", () => {
 
     expect(findInputByPlaceholder(tree, "pk-lf-...").props.value).toBe("pk-lf-synced")
     expect(findInputByPlaceholder(tree, "https://cloud.langfuse.com (default)").props.value).toBe("https://langfuse.example")
+  })
+
+  it("keeps the max-iterations draft local, allows temporary empty input, and debounces valid saves", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let maxIterationsInput = findMaxIterationsInput(tree)
+    expect(maxIterationsInput.props.value).toBe("10")
+
+    maxIterationsInput.props.onChange({ currentTarget: { value: "" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    maxIterationsInput = findMaxIterationsInput(tree)
+    expect(maxIterationsInput.props.value).toBe("")
+    expect(mutate).not.toHaveBeenCalled()
+
+    maxIterationsInput.props.onChange({ currentTarget: { value: "25" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    maxIterationsInput = findMaxIterationsInput(tree)
+    expect(maxIterationsInput.props.value).toBe("25")
+    expect(mutate).not.toHaveBeenCalled()
+
+    setConfig({ ...getCurrentConfig(), launchAtLogin: true })
+    runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        mcpMaxIterations: 25,
+      },
+    })
+  })
+
+  it("flushes the latest valid max-iterations draft on blur without waiting for a rerender", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const maxIterationsInput = findMaxIterationsInput(tree)
+    maxIterationsInput.props.onChange({ currentTarget: { value: "18" } })
+    maxIterationsInput.props.onBlur({ currentTarget: { value: "18" } })
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        mcpMaxIterations: 18,
+      },
+    })
+  })
+
+  it("cancels pending max-iterations saves when the draft becomes invalid", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let maxIterationsInput = findMaxIterationsInput(tree)
+    maxIterationsInput.props.onChange({ currentTarget: { value: "25" } })
+    maxIterationsInput.props.onChange({ currentTarget: { value: "" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    maxIterationsInput = findMaxIterationsInput(tree)
+    expect(maxIterationsInput.props.value).toBe("")
+
+    vi.advanceTimersByTime(400)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it("resets invalid max-iterations drafts back to the saved config on blur", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let maxIterationsInput = findMaxIterationsInput(tree)
+    maxIterationsInput.props.onChange({ currentTarget: { value: "0" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    maxIterationsInput = findMaxIterationsInput(tree)
+    expect(maxIterationsInput.props.value).toBe("0")
+
+    maxIterationsInput.props.onBlur({ currentTarget: { value: "0" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    maxIterationsInput = findMaxIterationsInput(tree)
+    expect(maxIterationsInput.props.value).toBe("10")
+    expect(mutate).not.toHaveBeenCalled()
   })
 
   it("keeps the Groq STT prompt draft local, debounces saves, and merges with the latest config", async () => {
