@@ -51,16 +51,19 @@ test('keeps the full queue header informative when the list is collapsed', () =>
 
 test('gives queued-message row actions mobile-sized targets and explicit labels', () => {
   assert.match(queuePanelSource, /const queueActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(queuePanelSource, /function formatQueuedMessageAccessibilityContext\(text: string, timestampLabel: string\): string \{[\s\S]*?text\.replace\(/);
+  assert.match(queuePanelSource, /const rowTimestampLabel = formatTime\(message\.createdAt\);/);
+  assert.match(queuePanelSource, /const queuedMessageAccessibilityContext = formatQueuedMessageAccessibilityContext\(message\.text, rowTimestampLabel\);/);
   assert.match(queuePanelSource, /const queueStatusLabel = isFailed \? 'Failed - blocking queue' : isProcessing \? 'Processing\.\.\.' : 'Queued';/);
-  assert.match(queuePanelSource, /\{formatTime\(message\.createdAt\)\} • \{queueStatusLabel\}/);
+  assert.match(queuePanelSource, /\{rowTimestampLabel\} • \{queueStatusLabel\}/);
   assert.match(queuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.queueActionTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(queuePanelSource, /actionButtonDanger:\s*\{[\s\S]*?theme\.colors\.destructive/);
-  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Retry failed queued message'\)/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Retry failed queued message \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /const retryAccessibilityHint = isFailed[\s\S]*?Moves this failed message back into the queue so it can send again and unblock later queued messages\.[\s\S]*?Moves this queued message back into the queue so it can send again\./);
   assert.match(queuePanelSource, /accessibilityHint=\{retryAccessibilityHint\}/);
-  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Edit queued message'\)/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Edit queued message \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /accessibilityHint="Lets you revise this queued message before it sends\."/);
-  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Remove queued message'\)/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Remove queued message \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /const removeAccessibilityHint = isFailed[\s\S]*?Deletes this failed queued message so later queued messages can continue\.[\s\S]*?Deletes this queued message without sending it\./);
   assert.match(queuePanelSource, /accessibilityHint=\{removeAccessibilityHint\}/);
 });
@@ -68,7 +71,7 @@ test('gives queued-message row actions mobile-sized targets and explicit labels'
 test('gives the queued-message expander disclosure semantics with a mobile touch target', () => {
   assert.match(queuePanelSource, /const expandButtonTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(queuePanelSource, /expandButton:\s*\{[\s\S]*?\.\.\.expandButtonTouchTarget[\s\S]*?borderRadius:\s*999/);
-  assert.match(queuePanelSource, /createExpandCollapseAccessibilityLabel\('queued message details', isExpanded\)/);
+  assert.match(queuePanelSource, /createExpandCollapseAccessibilityLabel\(`queued message details for \$\{queuedMessageAccessibilityContext\}`, isExpanded\)/);
   assert.match(queuePanelSource, /accessibilityHint="Shows or hides the full queued message text\."/);
   assert.match(queuePanelSource, /accessibilityState=\{\{ expanded: isExpanded \}\}/);
 });
@@ -84,12 +87,12 @@ test('gives queued-message edit actions mobile-sized targets and explicit save/c
   assert.match(queuePanelSource, /editHelperTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
   assert.match(queuePanelSource, /editButton:\s*\{[\s\S]*?\.\.\.queueEditActionTouchTarget[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',[\s\S]*?borderRadius:\s*999,[\s\S]*?borderWidth:\s*1/);
   assert.match(queuePanelSource, /saveButtonDisabled:\s*\{[\s\S]*?opacity:\s*0\.6/);
-  assert.match(queuePanelSource, /createTextInputAccessibilityLabel\('Queued message edit'\)/);
+  assert.match(queuePanelSource, /createTextInputAccessibilityLabel\(`Queued message edit \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /accessibilityHint=\{editValidationMessage \?\? 'Revise this queued message before it sends\.'\}/);
   assert.match(queuePanelSource, /\{editValidationMessage && \([\s\S]*?<Text[\s\S]*?styles\.editHelperText,[\s\S]*?!trimmedEditText && styles\.editHelperTextWarning,[\s\S]*?\{editValidationMessage\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
-  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Cancel queued message edit'\)/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Cancel queued message edit \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /accessibilityHint="Restores the original queued message text without saving your changes\."/);
-  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Save queued message edit'\)/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Save queued message edit \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /accessibilityHint=\{isSaveEditDisabled[\s\S]*?Enter message text before saving your queued message changes\.[\s\S]*?Change the queued message text before saving\.[\s\S]*?Applies your queued message edits before it sends\.[\s\S]*?\}/);
   assert.match(queuePanelSource, /disabled=\{isSaveEditDisabled\}/);
   assert.match(queuePanelSource, /accessibilityState=\{\{ disabled: isSaveEditDisabled \}\}/);
@@ -97,7 +100,7 @@ test('gives queued-message edit actions mobile-sized targets and explicit save/c
 });
 
 test('keeps queue edit mode anchored to the current queued or failed message context', () => {
-  assert.match(queuePanelSource, /const editContextLabel = `\$\{isFailed \? 'Editing failed queued message' : 'Editing queued message'\} • \$\{formatTime\(message\.createdAt\)\}`;/);
+  assert.match(queuePanelSource, /const editContextLabel = `\$\{isFailed \? 'Editing failed queued message' : 'Editing queued message'\} • \$\{rowTimestampLabel\}`;/);
   assert.match(queuePanelSource, /editContextText:\s*\{[\s\S]*?lineHeight:\s*17,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?fontWeight:\s*'600'/);
   assert.match(queuePanelSource, /editContextTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
   assert.match(queuePanelSource, /editFailureText:\s*\{[\s\S]*?color:\s*`\$\{theme\.colors\.destructive\}CC`,[\s\S]*?marginTop:\s*2/);

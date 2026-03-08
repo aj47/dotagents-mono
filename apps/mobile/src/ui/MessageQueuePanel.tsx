@@ -41,6 +41,17 @@ interface QueuedMessageItemProps {
   onRetry: () => void;
 }
 
+function formatQueuedMessageAccessibilityContext(text: string, timestampLabel: string): string {
+  const normalizedText = text.replace(/\s+/g, ' ').trim();
+  if (!normalizedText) return `from ${timestampLabel}`;
+
+  const preview = normalizedText.length > 48
+    ? `${normalizedText.slice(0, 45).replace(/\s+$/g, '')}…`
+    : normalizedText;
+
+  return `"${preview}" from ${timestampLabel}`;
+}
+
 function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
   const { theme } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -104,6 +115,8 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const isFailed = message.status === 'failed';
   const isProcessing = message.status === 'processing';
   const isAddedToHistory = message.addedToHistory === true;
+  const rowTimestampLabel = formatTime(message.createdAt);
+  const queuedMessageAccessibilityContext = formatQueuedMessageAccessibilityContext(message.text, rowTimestampLabel);
   const trimmedEditText = editText.trim();
   const queueStatusLabel = isFailed ? 'Failed - blocking queue' : isProcessing ? 'Processing...' : 'Queued';
   const retryAccessibilityHint = isFailed
@@ -112,7 +125,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const removeAccessibilityHint = isFailed
     ? 'Deletes this failed queued message so later queued messages can continue.'
     : 'Deletes this queued message without sending it.';
-  const editContextLabel = `${isFailed ? 'Editing failed queued message' : 'Editing queued message'} • ${formatTime(message.createdAt)}`;
+  const editContextLabel = `${isFailed ? 'Editing failed queued message' : 'Editing queued message'} • ${rowTimestampLabel}`;
   const editValidationMessage = !trimmedEditText
     ? 'Enter message text to save your queued message changes.'
     : trimmedEditText === trimmedOriginalText
@@ -297,7 +310,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             onChangeText={setEditText}
             multiline
             autoFocus
-            accessibilityLabel={createTextInputAccessibilityLabel('Queued message edit')}
+            accessibilityLabel={createTextInputAccessibilityLabel(`Queued message edit ${queuedMessageAccessibilityContext}`)}
             accessibilityHint={editValidationMessage ?? 'Revise this queued message before it sends.'}
           />
           {editValidationMessage && (
@@ -315,7 +328,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Cancel queued message edit')}
+              accessibilityLabel={createButtonAccessibilityLabel(`Cancel queued message edit ${queuedMessageAccessibilityContext}`)}
               accessibilityHint="Restores the original queued message text without saving your changes."
               activeOpacity={0.7}
             >
@@ -326,7 +339,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               onPress={handleSaveEdit}
               disabled={isSaveEditDisabled}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Save queued message edit')}
+              accessibilityLabel={createButtonAccessibilityLabel(`Save queued message edit ${queuedMessageAccessibilityContext}`)}
               accessibilityHint={isSaveEditDisabled
                 ? !trimmedEditText
                   ? 'Enter message text before saving your queued message changes.'
@@ -364,14 +377,14 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           )}
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
-              {formatTime(message.createdAt)} • {queueStatusLabel}
+              {rowTimestampLabel} • {queueStatusLabel}
             </Text>
             {isLongMessage && (
               <TouchableOpacity
                 style={styles.expandButton}
                 onPress={() => setIsExpanded(!isExpanded)}
                 accessibilityRole="button"
-                accessibilityLabel={createExpandCollapseAccessibilityLabel('queued message details', isExpanded)}
+                accessibilityLabel={createExpandCollapseAccessibilityLabel(`queued message details for ${queuedMessageAccessibilityContext}`, isExpanded)}
                 accessibilityHint="Shows or hides the full queued message text."
                 accessibilityState={{ expanded: isExpanded }}
                 activeOpacity={0.7}
@@ -395,7 +408,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 style={styles.actionButton}
                 onPress={onRetry}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Retry failed queued message')}
+                accessibilityLabel={createButtonAccessibilityLabel(`Retry failed queued message ${queuedMessageAccessibilityContext}`)}
                 accessibilityHint={retryAccessibilityHint}
                 activeOpacity={0.7}
               >
@@ -407,7 +420,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 style={styles.actionButton}
                 onPress={() => setIsEditing(true)}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Edit queued message')}
+                accessibilityLabel={createButtonAccessibilityLabel(`Edit queued message ${queuedMessageAccessibilityContext}`)}
                 accessibilityHint="Lets you revise this queued message before it sends."
                 activeOpacity={0.7}
               >
@@ -418,7 +431,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.actionButton, styles.actionButtonDanger]}
               onPress={onRemove}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Remove queued message')}
+              accessibilityLabel={createButtonAccessibilityLabel(`Remove queued message ${queuedMessageAccessibilityContext}`)}
               accessibilityHint={removeAccessibilityHint}
               activeOpacity={0.7}
             >

@@ -3961,3 +3961,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that singular and plural queue-processing states both read cleanly at narrow widths.
   - Compare single-processing vs multi-processing queue states live to confirm the new copy improves clarity without making the header/noise feel heavier.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting queue copy again without new evidence.
+
+### 2026-03-08 — Iteration 91: disambiguate queued-message row actions
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Reconfirmed the current worktree blocker before and during validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → `sh: expo: command not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install / missing `expo/tsconfig.base`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the mobile queue already had icon-only per-row actions for retry, edit, remove, and expand.
+  - Those controls still used generic accessibility labels like `Edit queued message` and `Remove queued message`, even when several queued rows were visible at once.
+  - On a dense mobile queue this made per-row user control less clear for screen readers and switch-control users because adjacent rows could expose indistinguishable action names.
+- Issue selected:
+  - Queued-message row actions were not anchored to row-specific context, weakening mobile state clarity and delegation control when multiple queued messages were present.
+- Decision:
+  - Keep the visual layout unchanged so this remains a low-risk, local improvement.
+  - Follow the same general direction as recent response-history label improvements instead of inventing a new queue UI pattern.
+  - Make the smallest effective fix: derive a short row context from the queued message preview plus timestamp and reuse it in action/input labels.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add `formatQueuedMessageAccessibilityContext()` for a whitespace-normalized, truncated queued-message preview plus timestamp,
+    - derive one reusable row context label per queued item,
+    - apply that context to queued-message edit, save, cancel, retry, remove, expand/collapse, and edit-input accessibility labels,
+    - reuse a single `rowTimestampLabel` in the visible meta line and edit context copy.
+  - Kept the queue’s visible hierarchy, icons, spacing, and action density unchanged to avoid a broader redesign while live validation is blocked.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new row-context helper and the row-specific accessibility labels.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by missing mobile dependencies / missing `expo/tsconfig.base`
+- Remaining nearby issues noted, not addressed this iteration:
+  - This round improves control clarity for assistive tech, but it still needs a live pass once Expo is restored to confirm the longer labels do not produce any unexpected accessibility verbosity in practice.
+  - The queue still relies on icon-only visible actions, so after live validation is possible it is worth checking whether any row action still feels visually ambiguous on very narrow screens.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify with Expo Web or a simulator that multiple queued rows now announce clearly distinct actions in a mobile accessibility pass.
+  - Compare queue rows with very similar timestamps live to confirm the added message preview meaningfully reduces ambiguity.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting queued-message row labeling again without new evidence.
