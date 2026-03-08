@@ -53,4 +53,11 @@ describe("past sessions dialog layout", () => {
     )
     expect(pastSessionsDialogSource).toContain('aria-label={`Delete ${session.title}`}')
   })
+
+  it("shows compacted-history provenance badges in session rows", () => {
+    expect(pastSessionsDialogSource).toContain("function getPastSessionHistoryBadge(session: ConversationHistoryItem)")
+    expect(pastSessionsDialogSource).toContain("History compacted")
+    expect(pastSessionsDialogSource).toContain("History partial")
+    expect(pastSessionsDialogSource).toContain("Earlier raw history is unavailable for this legacy summarized session.")
+  })
 })

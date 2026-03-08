@@ -456,6 +456,7 @@ export interface ConversationHistoryItem {
   messageCount: number
   lastMessage: string
   preview: string
+  compaction?: ConversationCompactionMetadata
 }
 
 export type ProfileMcpServerConfig = {

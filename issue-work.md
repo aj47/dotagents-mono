@@ -812,3 +812,36 @@
   - Re-run broader desktop Vitest/typecheck once this worktree has the missing dependency/tooling baseline restored.
 
 - Next recommended issue work item: either keep tightening `#58` with ACP/live-session provenance polish if a concrete mismatch remains, or pivot to a fresh issue with a similarly strong local repro path instead of the still-speculative `#54`.
+
+##### Issue #58 — Conversation History: past-session compaction provenance badges
+
+- Selection rationale:
+  - After landing header-level provenance badges for live/default session chrome, the next clear `#58` gap was in Past Sessions: compacted or legacy-partial sessions were still indistinguishable in the history list before opening them.
+- Investigation:
+  - Inspected `apps/desktop/src/shared/types.ts`, `apps/desktop/src/main/conversation-service.ts`, and `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`.
+  - Confirmed `ConversationHistoryItem` only exposed title/timestamps/preview counts, so `useConversationHistoryQuery()` could not surface compaction state to the renderer even though full conversation files already carry `compaction` metadata.
+  - Confirmed the Past Sessions dialog had no badge/label for compacted vs legacy-partial sessions, so users had no at-a-glance provenance signal in the historical list.
+- Important assumptions:
+  - Assumption: backfilling missing index metadata only for history items with `messageCount > COMPACTION_MESSAGE_THRESHOLD` is sufficient for this slice.
+  - Why acceptable: the current compaction path only activates above that threshold, so this avoids a broad file-scan penalty for obviously non-compacted sessions while still covering the sessions most likely to need provenance badges.
+  - Assumption: deriving compaction metadata in memory from the stored conversation JSON is enough even if the conversation file itself is not rewritten during the backfill path.
+  - Why acceptable: this slice needs the metadata primarily for history-list display; the canonical conversation metadata is still normalized the next time those sessions are loaded/saved through standard paths.
+- Changes implemented:
+  - Added optional `compaction` metadata to `ConversationHistoryItem` in `apps/desktop/src/shared/types.ts`.
+  - Updated `apps/desktop/src/main/conversation-service.ts` so new history index entries persist `conversation.compaction`, and added a best-effort backfill path that enriches older index entries from on-disk conversation files when the index predates this metadata.
+  - Updated `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` to render `History compacted` and `History partial` badges in session rows with explanatory `title` text.
+  - Extended source-level regression coverage in `apps/desktop/src/main/conversation-storage-integrity.test.js` and `apps/desktop/src/renderer/src/components/past-sessions-dialog.layout.test.ts`.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run apps/desktop/src/renderer/src/components/past-sessions-dialog.layout.test.ts` ⚠️ failed because the current workspace does not have a runnable `vitest` binary available on PATH for that package.
+  - Completed fallback: `node -e "const fs=require('fs'); const src=fs.readFileSync('apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx','utf8'); ..."` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If the desktop workspace dependency baseline is restored, re-run the targeted Vitest file to replace the no-install renderer fallback verification.
+  - Consider whether the Sessions page recent-history surfaces should mirror the same compacted/partial badge treatment for consistency.
+  - Consider whether very old compacted sessions below current thresholds need a one-time fuller index migration if real user data disproves the threshold-based backfill assumption.
+
+- Next recommended issue work item: refresh the remaining open issues and choose a new concrete slice outside `#58` unless a specific provenance inconsistency is still observable, because the highest-value trust/visibility gaps for compacted history are now largely covered.

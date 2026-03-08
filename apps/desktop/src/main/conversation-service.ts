@@ -5,6 +5,7 @@ import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
   Conversation,
+  ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
 } from "../shared/types"
@@ -151,6 +152,7 @@ export class ConversationService {
           messageCount: this.getRepresentedMessageCount(conversation),
           lastMessage: lastMessage?.content || "",
           preview: this.generatePreview(storedMessages),
+          compaction: conversation.compaction,
         }
 
         // Add to beginning of array (most recent first)
@@ -471,6 +473,64 @@ export class ConversationService {
     return this.getStoredRawMessages(conversation).length
   }
 
+  private async readConversationCompactionMetadata(
+    conversationId: string,
+  ): Promise<ConversationCompactionMetadata | undefined> {
+    try {
+      const conversationPath = this.getConversationPath(conversationId)
+      const conversationData = await fsPromises.readFile(conversationPath, "utf8")
+      const conversation = JSON.parse(conversationData) as unknown
+
+      if (!this.isValidConversationShape(conversation)) {
+        return undefined
+      }
+
+      const normalizedConversation = conversation as Conversation
+      this.syncConversationStorageMetadata(normalizedConversation)
+
+      return normalizedConversation.compaction
+    } catch {
+      return undefined
+    }
+  }
+
+  private async backfillHistoryIndexCompactionMetadata(
+    index: ConversationHistoryItem[],
+  ): Promise<ConversationHistoryItem[]> {
+    const needsBackfill = index.some(
+      (item) => item.compaction === undefined && item.messageCount > COMPACTION_MESSAGE_THRESHOLD,
+    )
+
+    if (!needsBackfill) {
+      return index
+    }
+
+    let changed = false
+    const backfilledIndex = await Promise.all(index.map(async (item) => {
+      if (item.compaction !== undefined || item.messageCount <= COMPACTION_MESSAGE_THRESHOLD) {
+        return item
+      }
+
+      const compaction = await this.readConversationCompactionMetadata(item.id)
+      if (typeof compaction === "undefined") {
+        return item
+      }
+
+      changed = true
+      return {
+        ...item,
+        compaction,
+      }
+    }))
+
+    if (changed) {
+      this.indexCache = backfilledIndex
+      this.scheduleDiskWrite()
+    }
+
+    return backfilledIndex
+  }
+
   private syncConversationStorageMetadata(conversation: Conversation): boolean {
     let changed = false
 
@@ -569,9 +629,10 @@ export class ConversationService {
   async getConversationHistory(): Promise<ConversationHistoryItem[]> {
     try {
       const index = await this.ensureIndexLoaded()
+      const hydratedIndex = await this.backfillHistoryIndexCompactionMetadata(index)
 
       // Sort by updatedAt descending (most recent first)
-      const sorted = [...index].sort((a, b) => b.updatedAt - a.updatedAt)
+      const sorted = [...hydratedIndex].sort((a, b) => b.updatedAt - a.updatedAt)
       return sorted
     } catch (error) {
       logApp("[ConversationService] Error loading conversation history:", error)

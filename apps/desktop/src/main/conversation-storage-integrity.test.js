@@ -31,9 +31,17 @@ test('conversation service preserves raw messages during compaction and marks le
 test('conversation indexing and append flow follow represented full-history counts', () => {
   assert.match(serviceSource, /const storedMessages = this\.getStoredRawMessages\(conversation\)/)
   assert.match(serviceSource, /messageCount: this\.getRepresentedMessageCount\(conversation\)/)
+  assert.match(serviceSource, /compaction: conversation\.compaction/)
   assert.match(serviceSource, /if \(Array\.isArray\(conversation\.rawMessages\) && conversation\.rawMessages\.length > 0\) \{/)
   assert.match(serviceSource, /conversation\.rawMessages\.push\(message\)/)
   assert.match(serviceSource, /await this\.persistStorageMetadataIfNeeded\(conversationId, conversationPath, normalizedConversation\)/)
+})
+
+test('conversation history index can backfill compaction metadata for past-session provenance', () => {
+  assert.match(typesSource, /export interface ConversationHistoryItem \{[\s\S]*compaction\?: ConversationCompactionMetadata/)
+  assert.match(serviceSource, /private async backfillHistoryIndexCompactionMetadata\(/)
+  assert.match(serviceSource, /item\.compaction === undefined && item\.messageCount > COMPACTION_MESSAGE_THRESHOLD/)
+  assert.match(serviceSource, /const hydratedIndex = await this\.backfillHistoryIndexCompactionMetadata\(index\)/)
 })
 
 test('agent resume path loads the compacted context window instead of raw full history', () => {
