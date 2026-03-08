@@ -2884,6 +2884,12 @@ export default function ChatScreen({ route, navigation }: any) {
             const hasErrors = hasToolResults && m.toolResults!.some(r => !r.success);
             // isPending is true when there are more tool calls than results (including partial completion)
             const isPending = toolCallCount > 0 && toolCallCount > toolResultCount;
+            const toolCallNames = (m.toolCalls ?? []).map(tc => tc.name);
+            const collapsedToolPrimaryName = toolCallNames[0] || 'Tool execution';
+            const additionalToolCallCount = Math.max(toolCallNames.length - 1, 0);
+            const toolExecutionSummaryLabel = additionalToolCallCount > 0
+              ? `${toolCallNames.length} tool execution details`
+              : `${collapsedToolPrimaryName} tool execution details`;
 
             return (
               <View
@@ -2957,7 +2963,7 @@ export default function ChatScreen({ route, navigation }: any) {
                           <Pressable
                             onPress={() => toggleMessageExpansion(i)}
                             accessibilityRole="button"
-                            accessibilityLabel={createExpandCollapseAccessibilityLabel('tool execution details', false)}
+                            accessibilityLabel={createExpandCollapseAccessibilityLabel(toolExecutionSummaryLabel, false)}
                             accessibilityHint="Expands this tool execution summary"
                             accessibilityState={{ expanded: false }}
                             aria-expanded={false}
@@ -2984,8 +2990,11 @@ export default function ChatScreen({ route, navigation }: any) {
                               ]}
                               numberOfLines={1}
                             >
-                              {(m.toolCalls?.map(tc => tc.name) ?? []).join(', ')}
+                              {collapsedToolPrimaryName}
                             </Text>
+                            {additionalToolCallCount > 0 && (
+                              <Text style={styles.toolCallCompactCountBadge}>+{additionalToolCallCount}</Text>
+                            )}
                             <Text style={[
                               styles.toolCallCompactStatus,
                               isPending && styles.toolCallCompactStatusPending,
@@ -4043,6 +4052,17 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolCallCompactNameError: {
       color: theme.colors.mutedForeground,
+    },
+    toolCallCompactCountBadge: {
+      fontSize: 10,
+      lineHeight: 14,
+      fontWeight: '600',
+      color: theme.colors.mutedForeground,
+      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.08),
+      borderRadius: 999,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      flexShrink: 0,
     },
     toolCallCompactStatus: {
       fontSize: 11,

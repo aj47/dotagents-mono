@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 160 - Keep multi-tool mobile summaries explicit even when names truncate
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-shipped expanded tool-result header fix or recent selector/routing-copy work without new evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-tool-execution-mobile.test.js`, staying on the delegated tool-execution surface because the collapsed summary row still carried one more narrow-screen state-clarity issue after iterations 155 and 159.
+  - Tried again to recover live validation in this worktree before finishing the change.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the collapsed tool-execution row still rendered all tool names as one comma-separated string with `numberOfLines={1}`.
+  - When multiple tools ran, that meant narrow screens could truncate away the fact that several tools were involved, leaving only part of the first name visible.
+  - The same row's accessibility label also stayed generic (`Expand tool execution details`) instead of reflecting whether it represented one tool or several.
+- Issue identified:
+  - The mobile collapsed tool-execution summary could hide multi-tool scope on narrow screens, weakening delegated-activity state clarity right in the densest summary row.
+- Decision and rationale:
+  - Keep the existing compact row layout, preview slot, status icon, and collapse behavior unchanged.
+  - Avoid replacing the compact summary with a longer sentence or a broader card redesign while live validation remains blocked.
+  - Make the smallest effective fix instead: show the primary tool name plus a compact `+N` badge when more tools are present, and make the disclosure accessibility label reflect whether the row contains one tool or multiple tool details.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to derive `toolCallNames`, `collapsedToolPrimaryName`, `additionalToolCallCount`, and a mode-aware `toolExecutionSummaryLabel` for the collapsed summary row.
+  - Replaced the old comma-joined tool-name string with the primary tool name plus a dedicated `+N` count badge that stays visible even when the main label truncates.
+  - Updated the collapsed row accessibility label so it now expands either the specific tool's details or the number of tool execution details represented by the row.
+  - Added focused regression coverage in `apps/mobile/tests/chat-tool-execution-mobile.test.js` for the new summary/count/a11y contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-tool-execution-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that, on mobile, preserving explicit awareness that multiple tools ran is more valuable than continuing to show the full comma-separated list when that list cannot reliably fit.
+  - Kept the count badge visually small and neutral so it clarifies scope without competing with the existing status icon or preview text.
+  - This remains a source-backed improvement and still needs live confirmation that the new `+N` badge feels legible and balanced in tool-heavy messages.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that collapsed tool-execution rows clearly show multi-tool scope around ~320px width without pushing the status icon or preview off balance.
+  - Capture screenshot-backed evidence for a one-tool row and a multi-tool row so the new count badge can be judged beside the preview text and status icon.
+  - If live validation shows the badge adds too much density, prefer trimming badge padding or switching to a shorter count token before changing the overall row structure.
+
 ## Iteration 159 - Let expanded mobile tool-result metadata wrap before it gets squeezed
 
 - Date: 2026-03-08

@@ -21,6 +21,17 @@ test('keeps collapsed tool execution labels legible on narrow mobile screens', (
   assert.match(chatScreenSource, /toolCallCompactChevron:\s*\{[\s\S]*?fontSize: 10/);
 });
 
+test('keeps collapsed multi-tool summaries explicit on narrow mobile screens', () => {
+  assert.match(chatScreenSource, /const toolCallNames = \(m\.toolCalls \?\? \[\]\)\.map\(tc => tc\.name\);/);
+  assert.match(chatScreenSource, /const collapsedToolPrimaryName = toolCallNames\[0\] \|\| 'Tool execution';/);
+  assert.match(chatScreenSource, /const additionalToolCallCount = Math\.max\(toolCallNames\.length - 1, 0\);/);
+  assert.match(chatScreenSource, /const toolExecutionSummaryLabel = additionalToolCallCount > 0[\s\S]*?\? `\$\{toolCallNames\.length\} tool execution details`[\s\S]*?: `\$\{collapsedToolPrimaryName\} tool execution details`;/);
+  assert.match(chatScreenSource, /accessibilityLabel=\{createExpandCollapseAccessibilityLabel\(toolExecutionSummaryLabel, false\)\}/);
+  assert.match(chatScreenSource, /\{collapsedToolPrimaryName\}/);
+  assert.match(chatScreenSource, /\{additionalToolCallCount > 0 && \([\s\S]*?<Text style=\{styles\.toolCallCompactCountBadge\}>\+\{additionalToolCallCount\}<\/Text>[\s\S]*?\)\}/);
+  assert.match(chatScreenSource, /toolCallCompactCountBadge:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?fontWeight: '600',[\s\S]*?borderRadius: 999,[\s\S]*?flexShrink: 0/);
+});
+
 test('gives each expanded tool disclosure header a mobile-sized tap target and clearer text sizing', () => {
   assert.match(chatScreenSource, /const toolCallHeaderTouchTarget = createMinimumTouchTargetStyle\([\s\S]*?minSize: 44,[\s\S]*?horizontalMargin: 0[\s\S]*?\);/);
   assert.match(chatScreenSource, /toolCallHeader:\s*\{[\s\S]*?\.\.\.toolCallHeaderTouchTarget,[\s\S]*?justifyContent: 'space-between',[\s\S]*?minWidth: 0,[\s\S]*?gap: spacing\.xs/);
