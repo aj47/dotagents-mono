@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getErrorMessage, normalizeError } from "./error-utils"
+import { formatTerminalErrorMessage, getErrorMessage, normalizeError } from "./error-utils"
 
 describe("error-utils", () => {
   it("returns fallback for nullish thrown values", () => {
@@ -82,5 +82,20 @@ describe("error-utils", () => {
     expect(normalized).not.toBe(original)
     expect(normalized.message).toBe("Fallback message")
     expect((normalized as Error & { cause?: unknown }).cause).toBe(original)
+  })
+
+  it("formats terminal error messages with a stable Error prefix", () => {
+    expect(formatTerminalErrorMessage(new Error("API key expired"), "Fallback message")).toBe(
+      "Error: API key expired",
+    )
+    expect(formatTerminalErrorMessage("Error: Already prefixed", "Fallback message")).toBe(
+      "Error: Already prefixed",
+    )
+  })
+
+  it("strips stack-trace lines from terminal error messages", () => {
+    const error = new Error("Provider returned 401\n    at send (client.ts:10:2)\n    at run (agent.ts:22:1)")
+
+    expect(formatTerminalErrorMessage(error, "Fallback message")).toBe("Error: Provider returned 401")
   })
 })

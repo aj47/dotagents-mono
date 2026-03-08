@@ -9,6 +9,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
+| 2026-03-08 | conv_1772944149514_dhmqtdvqt | session_1772944149515_tgt7e6ykh | fix implemented (verification blocked) | Simple user input `Hi` produced trace `output: null`; the only observation was `LLM Call` with error `API key expired. Please renew the API key.` Root repo issue found: provider/API errors could escape before `finalContent` was populated, leaving the run trace blank instead of preserving a terminal error message. |
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | inspected-not-chosen | Follow-up recovery case (`continue`, then `i dont see 35`) with stalled/null trace outputs after tool use. Kept as a lead for a later loop if the current delegation fix is insufficient. |
 
 ## Investigations
@@ -39,6 +40,30 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
     - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
     - `apps/desktop/src/main/system-prompts.test.ts`
 
+### 2026-03-08 — Provider/API errors left Langfuse trace output blank
+
+- Langfuse evidence reviewed:
+  - `conv_1772944149514_dhmqtdvqt` / `session_1772944149515_tgt7e6ykh`
+  - user input: `Hi`
+  - trace outcome: `output: null`
+  - only recorded observation: `LLM Call` error with status message `API key expired. Please renew the API key.`
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` catches LLM-call failures inside the agent loop and rethrows them.
+  - before this change, the non-abort error path did not populate `finalContent` or append a terminal assistant message before rethrowing.
+  - `tipc.ts` can still surface an outer error event, but Langfuse traces and any downstream consumers of `finalContent`/conversation state were left with a blank terminal output.
+- Concrete root cause:
+  - provider/API failures escaped the loop without preserving a final user-visible error string in the agent run state.
+  - this turned a concrete failure into a silent/null Langfuse trace instead of a readable terminal error, which made the single-run failure harder to understand and recover from.
+- Fix implemented:
+  - `apps/desktop/src/main/error-utils.ts`
+    - added `formatTerminalErrorMessage()` for stable, stack-trace-free terminal error text
+  - `apps/desktop/src/main/llm.ts`
+    - when a non-abort LLM/tool loop error occurs, persist a terminal error string into `finalContent`
+    - append that terminal error as the last assistant message when needed before rethrowing
+    - keep the error throw so outer callers still handle completion/error state normally
+  - tests added/updated:
+    - `apps/desktop/src/main/error-utils.test.ts`
+
 ## Verification Log
 
 - Targeted test command attempted:
@@ -50,10 +75,20 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Manual verification completed:
   - confirmed the tool contract / prompt wording / runtime behavior now align for internal async delegation
   - confirmed the async code path populates delegated run status so `check_agent_status` has terminal data to return after completion
+- Targeted test command attempted:
+  - `pnpm --filter @dotagents/desktop run test:run -- src/main/error-utils.test.ts`
+- Result:
+  - blocked by missing local dependencies / `node_modules`
+  - failure occurred in desktop `pretest` while building `@dotagents/shared`
+  - exact blocker: `tsup: command not found`
+- Manual verification completed:
+  - confirmed the chosen trace has a concrete upstream error (`API key expired`) but no terminal trace output
+  - confirmed the new non-abort error path now records a cleaned terminal error string into `finalContent` before rethrowing, which should prevent future blank Langfuse outputs for this failure class
 
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
 - Revisit `conv_1772646724648_5kkw3rvk0` if more evidence is needed; its null-output traces after tool activity may indicate a second issue in completion/finalization after successful tool calls.
+- Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

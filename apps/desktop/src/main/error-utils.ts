@@ -77,6 +77,19 @@ export function getErrorMessage(error: unknown, fallback = "Unknown error"): str
   return findNestedErrorMessage(error, new WeakSet()) || fallback
 }
 
+export function formatTerminalErrorMessage(error: unknown, fallback = "Unknown error"): string {
+  const lines = getErrorMessage(error, fallback).split("\n")
+  const cleaned = lines
+    .filter((line) => {
+      const trimmed = line.trim()
+      return !(trimmed.startsWith("at ") || /^\s*at\s+.*\.(js|ts|mjs):\d+/.test(trimmed))
+    })
+    .join("\n")
+    .trim() || fallback
+
+  return /^error:/i.test(cleaned) ? cleaned : `Error: ${cleaned}`
+}
+
 export function normalizeError(error: unknown, fallback = "Unknown error"): Error {
   const message = getErrorMessage(error, fallback)
 

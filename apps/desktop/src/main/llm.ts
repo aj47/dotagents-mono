@@ -50,6 +50,7 @@ import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
+import { formatTerminalErrorMessage } from "./error-utils"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -1767,7 +1768,23 @@ Return ONLY JSON per schema.`,
         continue
       }
 
-      // Other errors - throw (llm-fetch.ts handles JSON validation/failedGeneration recovery)
+      thinkingStep.status = "error"
+      thinkingStep.title = "Error"
+      thinkingStep.description = cleanErrorMessage(error?.message || String(error))
+
+      if (!finalContent.trim()) {
+        finalContent = formatTerminalErrorMessage(error, "Unknown agent error")
+      }
+
+      const lastMessage = conversationHistory[conversationHistory.length - 1]
+      if (
+        finalContent.trim().length > 0 &&
+        (!lastMessage || lastMessage.role !== "assistant" || lastMessage.content !== finalContent)
+      ) {
+        conversationHistory.push({ role: "assistant", content: finalContent, timestamp: Date.now() })
+      }
+
+      // Other errors - throw (tipc/acp callers handle user-visible completion state)
       throw error
     }
 
