@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
@@ -47,6 +48,12 @@ interface AgentProgressProps {
   onExpand?: () => void
   /** For tile variant: whether this tile is in expanded/full view mode */
   isExpanded?: boolean
+}
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
 }
 
 // Enhanced conversation message component
@@ -2392,6 +2399,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     } catch (error) {
       const stopPath = progress?.sessionId ? "stopAgentSession" : "emergencyStopAgent"
       console.error(`Failed to stop agent (via ${stopPath}):`, error)
+      toast.error(
+        `Failed to stop agent. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     } finally {
       setIsKilling(false)
     }

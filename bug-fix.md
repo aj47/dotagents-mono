@@ -93,6 +93,9 @@
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the app-layout emergency-stop feedback fix and regression test addition.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/panel.tsx`, `apps/desktop/src/renderer/src/lib/recorder.ts`, and the desktop onboarding mic-permission flow. Confirmed the floating panel has four `startRecording()` failure paths that only reset state + `console.error(...)`, while onboarding already treats microphone permission/device failures as visible user-facing errors.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the visible overlay/tile stop buttons still routed rejected `tipcClient.stopAgentSession(...)` / fallback `tipcClient.emergencyStopAgent()` requests to `console.error(...)` only.
+- [x] 2026-03-08: Confirmed `AgentProgress` is mounted by both the floating panel overlay in `apps/desktop/src/renderer/src/pages/panel.tsx` and the sessions-page tile flow in `apps/desktop/src/renderer/src/pages/sessions.tsx`, so this silent stop-failure path affects primary desktop session controls rather than dead UI.
+- [x] 2026-03-08: Compared desktop `AgentProgress` stop failure handling against `apps/mobile/src/screens/ChatScreen.tsx`; mobile already surfaces kill-switch success/failure via `Alert.alert(...)` / `window.alert(...)`, so adding visible desktop failure feedback is consistent with existing product behavior.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -194,6 +197,10 @@
   - `apps/desktop/src/renderer/src/components/agent-processing-view.tsx` renders a visible `Stop agent execution` button and confirmation dialog specifically when the panel is in the loading-only state with `agentProgress === null`.
   - That dialog previously called `handleKillSwitch()`, but the handler only invoked `tipcClient.stopAgentSession(...)` when `agentProgress?.sessionId` existed; in the loading-only state it simply closed the dialog without stopping anything.
   - This surface is mounted by the main desktop panel/text-input processing flow, so the user-facing result was a misleading stop button that could appear to work while doing nothing during the exact early-run window when the spinner UI is shown.
+- [x] **Desktop `AgentProgress` stop failures were still silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` renders visible `Stop agent execution` / `Stop agent` controls in both overlay and tile variants, but `handleKillSwitch()` still caught rejected `stopAgentSession(...)` / fallback `emergencyStopAgent()` requests with `console.error(...)` only.
+  - Because that catch path showed no toast, banner, or dialog, a failed stop request in the floating panel or sessions-page tile could still look like “Stop did nothing” even though the user had clicked a destructive session-control action.
+  - `AgentProgress` is used by both the primary panel overlay and desktop sessions tiles, so this is another active desktop control-surface bug rather than an edge-case or dead code path.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -293,6 +300,8 @@
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-processing-view.tsx` so the visible loading-state stop dialog now falls back to `tipcClient.emergencyStopAgent()` when no `sessionId` exists yet, matching the existing desktop pending-session kill-switch pattern instead of becoming a no-op.
 - [x] Added visible toast feedback in `agent-processing-view.tsx` for rejected stop attempts and updated the loading-state confirmation copy to warn that stopping before full startup may stop all running sessions.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-processing-view.stop-session.test.tsx` to assert that the loading-state stop button opens the warning dialog, falls back to `emergencyStopAgent()`, and surfaces `Failed to stop agent. ...` feedback when that fallback rejects.
+- [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so rejected overlay/tile stop requests now surface `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-progress.stop-session.test.ts` with source-level assertions that lock in the `sonner` import, shared action-error helper, and visible `Failed to stop agent. ...` toast path.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -351,6 +360,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-processing-view.tsx` now routes the loading-state stop action through `tipcClient.emergencyStopAgent()` when no `sessionId` exists yet and shows visible toast feedback if that fallback rejects.
 - [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `agent-processing-view.tsx` now contains the `emergencyStopAgent()` fallback, the `Failed to stop agent (via emergencyStopAgent)` logging path, the visible toast error, and the updated loading-state warning copy; the new regression test also asserts the same contract.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the loading-state stop fallback update.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-progress.tsx` now imports `toast` from `sonner` and calls `toast.error(...)` from `handleKillSwitch()` when `stopAgentSession(...)` or the fallback `emergencyStopAgent()` rejects, so the overlay/tile stop action no longer fails silently.
+- [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `agent-progress.tsx` now contains the `toast.error(...)` stop-failure path and the new regression test locks in the expected `Failed to stop agent. ...` message contract.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the `AgentProgress` stop-feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -375,9 +387,9 @@
 - [x] Live desktop reproduction for the floating-panel microphone failure was attempted with `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm dev -- -dui -dapp`, but predev failed immediately because `packages/shared` could not find `tsup` (`node_modules` is absent in this worktree).
 - [x] Targeted automated verification for this floating-panel microphone error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this `AgentProcessingView` stop fallback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-processing-view.stop-session.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this `AgentProgress` stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
-- [ ] Whether other desktop stop-session surfaces outside the now-covered follow-up composers, `ActiveAgentsSidebar`, and `AgentProcessingView` (for example `AgentProgress`) should also surface a toast instead of remaining console-only once live verification is available.
 - [ ] Whether adjacent `ActiveAgentsSidebar` minimize/restore (`snooze` / `unsnooze`) failure paths should also surface visible feedback instead of console-only logging once this smaller stop-action fix is live-verified.
 - [ ] Whether the adjacent `tipcClient.stopAllTts()` failure path in `app-layout.tsx` also needs visible feedback, or whether keeping that secondary best-effort cleanup console-only is preferable once live desktop verification is available.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
@@ -439,6 +451,8 @@
 - The loading-state `AgentProcessingView` bug is higher-signal than a cosmetic spinner issue because the UI explicitly offers a destructive stop action at the exact moment when the handler previously lacked any actionable path and could silently do nothing.
 - Falling back to `emergencyStopAgent()` is the smallest safe fix because there is no narrower pending-session cancel API yet, and the desktop repo already uses the same fallback when a stop action is invoked before a stable session id exists.
 - Updating the confirmation copy is part of the minimal safe fix here because the fallback can affect more than one running session, so the dialog should no longer promise narrower stop semantics during that pre-session window.
+- The broader `AgentProgress` issue is the same high-signal bug on even more common desktop surfaces: the overlay and sessions-page tile both expose a visible destructive stop action, so a rejected stop request should not disappear into DevTools-only logging.
+- Reusing the same `toast.error(...)` pattern already adopted in nearby desktop stop/send flows is the smallest safe fix because it preserves the current confirmation dialog, stop semantics, and loading-state handling while finally making the failure visible.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -463,6 +477,7 @@
 - Assumption: surfacing only the rejected `emergencyStopAgent()` path with a toast (while keeping the best-effort pre-stop `stopAllTts()` cleanup console-only) is acceptable for this pass because the user-facing bug is the silent failure of the destructive kill-switch action itself, and widening the UX contract around secondary audio cleanup would be a larger behavior decision.
 - Assumption: mapping `NotReadableError` / `TrackStartError` to a generic “microphone unavailable / another app may be using it” message is acceptable for this pass because that is a common Chromium/Electron failure mode, onboarding already distinguishes microphone setup failures at a similar level, and the fallback still preserves the raw error message for unexpected cases.
 - Assumption: using `emergencyStopAgent()` from `AgentProcessingView` before a session id exists is acceptable for this pass because there is no narrower pending-session cancel API, existing desktop pending-session stop flows already use the same fallback, and the dialog copy now warns users that this pre-start stop can affect all running sessions.
+- Assumption: using the existing desktop toast pattern for `AgentProgress` stop failures is acceptable because `sonner` is already mounted app-wide, nearby desktop stop flows already use visible failure feedback, and mobile already exposes comparable kill-switch success/failure state to the user.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
