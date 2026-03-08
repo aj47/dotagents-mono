@@ -320,6 +320,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Description') : {})}
         editable={!isBuiltInAgent}
       />
+      <Text style={styles.helperText}>Shown only in the UI. Use Guidelines for instructions the agent should follow.</Text>
 
       {renderFieldLabel('Connection Type', { readOnly: isBuiltInAgent })}
       <View style={styles.connectionTypeRow}>

@@ -1984,3 +1984,43 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `ACP`, `Stdio`, `Remote`, and `Delegation` read clearly at a glance in `Settings > Agents`.
   - Check a long agent name plus description together to confirm the improved metadata wording does not create extra truncation pressure.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 46: clarify that agent descriptions are UI-only on mobile
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen`
+  - desktop agent-edit wording in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile `AgentEditScreen` placed `Description`, `System Prompt`, and `Guidelines` in the same dense form without explaining the role of `Description`.
+  - Desktop already clarifies that `Description` is UI-only, but mobile did not.
+  - On mobile that made it easier to mistake `Description` for instruction text the agent would actually follow, especially when scanning quickly.
+- Issue selected:
+  - The mobile agent edit form did not explain that `Description` is only for UI context, weakening state clarity between display copy and real agent instructions.
+- Decision:
+  - Keep the current field order and all existing inputs unchanged.
+  - Reuse the existing muted helper-text pattern instead of adding another badge or section.
+  - Make the smallest local fix in `AgentEditScreen`: add one concise helper under `Description` that points users to `Guidelines` for actual agent instructions.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to add helper copy under `Description`: `Shown only in the UI. Use Guidelines for instructions the agent should follow.`
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new description helper.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new description helper still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - If live inspection later shows the extra helper crowds the surrounding prompt fields, the wording may need tightening — but only with evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `Description` now reads as passive UI metadata instead of agent instruction space.
+  - Compare the updated `Description`, `Guidelines`, and `System Prompt` cluster on mobile to confirm the helper improves understanding without adding clutter.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

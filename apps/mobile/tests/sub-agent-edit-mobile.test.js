@@ -72,6 +72,12 @@ test('AgentEditScreen gives built-in read-only text inputs explicit accessibilit
   assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('System Prompt'\)/);
 });
 
+test('AgentEditScreen clarifies that Description is UI-only and not agent instruction text', () => {
+  assert.match(agentEditSource, /renderFieldLabel\('Description', \{ readOnly: isBuiltInAgent \}\)/);
+  assert.match(agentEditSource, /placeholder="What this agent does\.\.\."/);
+  assert.match(agentEditSource, /<Text style=\{styles\.helperText\}>Shown only in the UI\. Use Guidelines for instructions the agent should follow\.<\/Text>/);
+});
+
 test('LoopEditScreen makes profile chips mobile-sized buttons with selected-state semantics', () => {
   assert.match(loopEditSource, /createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(loopEditSource, /profileOption:\s*\{[\s\S]*?\.\.\.selectionChipTouchTarget/);
