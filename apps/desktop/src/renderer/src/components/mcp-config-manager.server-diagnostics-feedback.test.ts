@@ -36,6 +36,20 @@ describe("desktop MCP config manager server diagnostics", () => {
     expect(source).toContain("await refreshOAuthStatus(name)")
   })
 
+  it("distinguishes unavailable MCP server status from a real disconnected server", () => {
+    expect(source).toContain("const [isLoadingServerStatus, setIsLoadingServerStatus] = useState(true)")
+    expect(source).toContain("const [hasLoadedServerStatus, setHasLoadedServerStatus] = useState(false)")
+    expect(source).toContain("const [serverStatusLoadError, setServerStatusLoadError] = useState<string | null>(null)")
+    expect(source).toContain("console.error(\"[MCPConfigManager] Failed to load MCP server status:\", error)")
+    expect(source).toContain("setServerStatusLoadError(getServerStatusErrorMessage(error))")
+    expect(source).toContain("Failed to load MCP server status")
+    expect(source).toContain("Couldn't refresh MCP server status.")
+    expect(source).toContain("Showing the last successful server state.")
+    expect(source).toContain("Checking...")
+    expect(source).toContain("Unavailable")
+    expect(source).toContain("Disconnected")
+  })
+
   it("distinguishes MCP tool-list load failures from a real empty tools state", () => {
     expect(source).toContain("const [isLoadingTools, setIsLoadingTools] = useState(true)")
     expect(source).toContain("const [toolsLoadError, setToolsLoadError] = useState<string | null>(null)")

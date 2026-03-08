@@ -96,6 +96,18 @@ function getLogFetchErrorMessage(error: unknown): string {
   return "Please try again."
 }
 
+function getServerStatusErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please try again."
+}
+
 function getToolLoadErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message.trim()
@@ -957,6 +969,9 @@ export function MCPConfigManager({
       }
     >
   >({})
+  const [isLoadingServerStatus, setIsLoadingServerStatus] = useState(true)
+  const [hasLoadedServerStatus, setHasLoadedServerStatus] = useState(false)
+  const [serverStatusLoadError, setServerStatusLoadError] = useState<string | null>(null)
   const [initializationStatus, setInitializationStatus] = useState<{
     isInitializing: boolean
     progress: { current: number; total: number; currentServer?: string }
@@ -1199,30 +1214,41 @@ export function MCPConfigManager({
     }
   }
 
+  const fetchStatus = useCallback(async () => {
+    setIsLoadingServerStatus(true)
+
+    try {
+      const [status, initStatus] = await Promise.all([
+        tipcClient.getMcpServerStatus({}),
+        tipcClient.getMcpInitializationStatus({}),
+      ])
+      setServerStatus(status as any)
+      setInitializationStatus(initStatus as any)
+      setHasLoadedServerStatus(true)
+      setServerStatusLoadError(null)
+      await refreshOAuthStatus()
+
+      // Fetch logs for expanded servers
+      for (const serverName of expandedLogs) {
+        await fetchLogsForServer(serverName)
+      }
+    } catch (error) {
+      console.error("[MCPConfigManager] Failed to load MCP server status:", error)
+      setServerStatusLoadError(getServerStatusErrorMessage(error))
+    } finally {
+      setIsLoadingServerStatus(false)
+    }
+  }, [expandedLogs, refreshOAuthStatus])
+
   // Fetch server status and initialization status periodically
   useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const [status, initStatus] = await Promise.all([
-          tipcClient.getMcpServerStatus({}),
-          tipcClient.getMcpInitializationStatus({}),
-        ])
-        setServerStatus(status as any)
-        setInitializationStatus(initStatus as any)
-        await refreshOAuthStatus()
-
-        // Fetch logs for expanded servers
-        for (const serverName of expandedLogs) {
-          await fetchLogsForServer(serverName)
-        }
-      } catch (error) {}
-    }
-
-    fetchStatus()
-    const interval = setInterval(fetchStatus, 1000) // Update every second during initialization
+    void fetchStatus()
+    const interval = setInterval(() => {
+      void fetchStatus()
+    }, 1000) // Update every second during initialization
 
     return () => clearInterval(interval)
-  }, [servers, expandedLogs])
+  }, [fetchStatus])
 
   // Fetch tools function - defined as useCallback so it can be reused
   const fetchTools = useCallback(async ({ showLoadingIndicator = false }: { showLoadingIndicator?: boolean } = {}) => {
@@ -1829,6 +1855,8 @@ export function MCPConfigManager({
   const totalToolsCount = toolsFromEnabledServers.length
   const enabledToolsCount = toolsFromEnabledServers.filter((t) => t.enabled).length
   const disabledToolsCount = totalToolsCount - enabledToolsCount
+  const showInitialServerStatusFailure = Boolean(serverStatusLoadError && !hasLoadedServerStatus)
+  const showPartialServerStatusFailure = Boolean(serverStatusLoadError && hasLoadedServerStatus)
   const showInitialToolsLoading = isLoadingTools && tools.length === 0
   const showEmptyToolsLoadFailure = Boolean(toolsLoadError && tools.length === 0)
   const showPartialToolsLoadFailure = Boolean(toolsLoadError && tools.length > 0)
@@ -2291,6 +2319,33 @@ export function MCPConfigManager({
 
         {serversSectionExpanded && (
           <CardContent className="border-t pt-4">
+            {showInitialServerStatusFailure && (
+              <div className="mb-4 flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
+                <AlertTriangle className="h-10 w-10 text-destructive/70" />
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Failed to load MCP server status</p>
+                  <p className="max-w-md text-sm text-muted-foreground [overflow-wrap:anywhere]">{serverStatusLoadError}</p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => void fetchStatus()}>
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {showPartialServerStatusFailure && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-200">Couldn't refresh MCP server status.</p>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-200/80 [overflow-wrap:anywhere]">Showing the last successful server state. {serverStatusLoadError}</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => void fetchStatus()}>
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            )}
+
             <div className="grid gap-2">
               {Object.entries(allServers).map(([name, serverConfigOrBuiltin]) => {
                 const isBuiltin = name === BUILTIN_SERVER_NAME
@@ -2363,6 +2418,16 @@ export function MCPConfigManager({
                               <div className="flex shrink-0 items-center gap-1">
                                 <XCircle className="h-3 w-3 text-red-500" />
                                 <Badge variant="destructive" className="text-xs">Error</Badge>
+                              </div>
+                            ) : !hasLoadedServerStatus && isLoadingServerStatus ? (
+                              <div className="flex shrink-0 items-center gap-1">
+                                <Spinner className="h-3.5 w-3.5" />
+                                <Badge variant="outline" className="text-xs">Checking...</Badge>
+                              </div>
+                            ) : !status && serverStatusLoadError ? (
+                              <div className="flex shrink-0 items-center gap-1">
+                                <AlertCircle className="h-3 w-3 text-amber-500" />
+                                <Badge variant="outline" className="text-xs">Unavailable</Badge>
                               </div>
                             ) : (
                               <div className="flex shrink-0 items-center gap-1">
