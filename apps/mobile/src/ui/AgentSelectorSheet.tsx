@@ -258,9 +258,29 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         )}
 
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading agents...</Text>
+          <View
+            style={styles.loadingStateCard}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Loading available agents"
+            accessibilityHint="Your current agent stays active while the available agent options load."
+            accessibilityState={{ busy: true }}
+          >
+            <View style={styles.currentAgentBadge}>
+              <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+              <Text
+                style={styles.currentAgentBadgeText}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {currentAgentName}
+              </Text>
+            </View>
+            <View style={styles.loadingStatusRow}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text style={styles.loadingStatusText}>Loading available agents…</Text>
+            </View>
+            <Text style={styles.loadingText}>Your current agent stays active while options load.</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -477,9 +497,22 @@ function createStyles(theme: Theme) {
       fontWeight: '700',
       flexShrink: 0,
     },
-    loadingContainer: {
+    loadingStateCard: {
       alignItems: 'center',
       paddingVertical: spacing.xl,
+      paddingHorizontal: spacing.sm,
+      gap: spacing.sm,
+    },
+    loadingStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    loadingStatusText: {
+      color: theme.colors.primary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     switchingStatus: {
       flexDirection: 'row',
@@ -502,8 +535,9 @@ function createStyles(theme: Theme) {
       flexShrink: 1,
     },
     loadingText: {
-      marginTop: spacing.sm,
       color: theme.colors.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 20,
     },
     errorContainer: {
       alignItems: 'center',

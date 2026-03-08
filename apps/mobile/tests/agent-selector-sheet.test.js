@@ -33,6 +33,14 @@ test('turns the missing-config selector error into a direct settings escape hatc
   assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\('Open agent settings'\)[\s\S]*?Returns to Settings so you can add server details and review agent mode\.[\s\S]*?Open Agent Settings/);
 });
 
+test('makes the selector loading state read as active progress while keeping the current agent visible', () => {
+  assert.match(sheetSource, /\{isLoading \? \([\s\S]*?style=\{styles\.loadingStateCard\}[\s\S]*?accessible[\s\S]*?accessibilityRole="progressbar"[\s\S]*?accessibilityLabel="Loading available agents"[\s\S]*?accessibilityHint="Your current agent stays active while the available agent options load\."[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>Current agent<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<View style=\{styles\.loadingStatusRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.loadingStatusText\}>Loading available agents…<\/Text>[\s\S]*?<Text style=\{styles\.loadingText\}>Your current agent stays active while options load\.<\/Text>/);
+  assert.match(sheetSource, /loadingStateCard:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*spacing\.sm/);
+  assert.match(sheetSource, /loadingStatusRow:\s*\{[\s\S]*?flexDirection:\s*'row'[\s\S]*?alignItems:\s*'center'[\s\S]*?gap:\s*spacing\.sm/);
+  assert.match(sheetSource, /loadingStatusText:\s*\{[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?fontWeight:\s*'600'/);
+  assert.match(sheetSource, /loadingText:\s*\{[\s\S]*?textAlign:\s*'center',[\s\S]*?lineHeight:\s*20/);
+});
+
 test('keeps selector-sheet retry and cancel actions mobile-sized with explicit button semantics for recoverable errors', () => {
   assert.match(sheetSource, /const actionButtonTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(sheetSource, /\) : \([\s\S]*?style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Retry loading agents'\)/);

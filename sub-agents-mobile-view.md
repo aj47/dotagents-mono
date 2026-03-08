@@ -2829,3 +2829,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the loading notice is visibly distinct from both the neutral empty state and the retry warning.
   - Check the `Agent Profile` section with a slow or delayed profile fetch to confirm the notice keeps `No profile` feeling safe and intentional while choices load.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 66: make selector-sheet loading feel like active progress instead of a blank wait
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `AgentSelectorSheet` still rendered its loading state as only a centered spinner plus `Loading agents...`.
+  - That loading state did not keep the current agent visible and did not reassure the user that nothing had changed yet while options were still fetching.
+- Issue selected:
+  - The main mobile agent-switching sheet still felt visually blank during loading, weakening state clarity at a high-salience moment in the sub-agent flow.
+- Decision:
+  - Keep the existing sheet layout, list rows, empty state, and error actions unchanged.
+  - Do not redesign the selector while live validation is blocked.
+  - Make the smallest local hierarchy fix: turn loading into an explicit progress card that keeps the current agent visible and clarifies that it remains active while options load.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - replace the plain loading spinner block with a dedicated loading-state card,
+    - keep the existing `Current agent` badge visible during loading,
+    - add a progress-style loading row and helper copy explaining that the current agent stays active while options load,
+    - expose the loading container as an explicit busy `progressbar` for assistive tech.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new loading-state structure, copy, and progress semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new loading card feels distinct without crowding the existing subtitle, empty state, and error state.
+  - If live validation later shows the loading helper copy feels too heavy for a transient state, the next refinement should tighten wording before adding any more UI.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector-sheet loading card reads clearly on a narrow screen.
+  - Check the selector sheet with a slower profile fetch so the loading state can be visually compared against the existing empty and error states.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
