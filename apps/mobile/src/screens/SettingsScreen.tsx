@@ -2470,7 +2470,13 @@ export default function SettingsScreen({ navigation }: any) {
                                   ? styles.statusActive
                                   : styles.statusDisconnected,
                             ]} />
-                            <Text style={styles.serverName}>{loop.name}</Text>
+                            <Text
+                              style={[styles.serverName, styles.loopRowName]}
+                              numberOfLines={2}
+                              ellipsizeMode="tail"
+                            >
+                              {loop.name}
+                            </Text>
                             <View
                               style={[
                                 styles.loopStateBadge,
@@ -3360,6 +3366,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexShrink: 1,
       lineHeight: 18,
     },
+    loopRowName: {
+      flexGrow: 1,
+      minWidth: 0,
+    },
     serverMeta: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
@@ -3397,6 +3407,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       paddingHorizontal: 6,
       paddingVertical: 2,
+      flexShrink: 0,
     },
     loopStateBadgeRunning: {
       borderColor: '#22c55e',

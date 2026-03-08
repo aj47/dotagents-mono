@@ -2149,3 +2149,45 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that long agent names keep `Built-in` / `Disabled` readable in `Settings > Agents`.
   - Check a deliberately long agent name plus description together to confirm the new two-line clamp improves stability without hiding too much useful context.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 50: keep long loop names from crowding the runtime badge
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Loops` row header rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused mobile loop-row regression coverage in `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 44 added a compact `Running` / `Active` / `Paused` badge to each mobile loop row.
+  - Unlike the recently stabilized mobile agent rows, the loop name still rendered as an unclamped `serverName` text node with no dedicated narrow-screen stability rule.
+  - On mobile, that left long loop names more likely to crowd the new runtime badge or make the row header wrap unpredictably.
+- Issue selected:
+  - Long loop names could compete with the runtime badge in `Settings > Agent Loops`, weakening at-a-glance state clarity on narrow screens.
+- Decision:
+  - Keep the existing loop row structure, metadata ordering, prompt preview, and badge wording unchanged.
+  - Do not add another metadata line or shorten the runtime labels without live evidence.
+  - Make the smallest local stability fix: clamp loop names to two lines and keep the runtime badge from shrinking.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - apply a dedicated `loopRowName` style beside the existing `serverName`,
+    - clamp loop names to two lines with tail truncation,
+    - add `flexShrink: 0` to `loopStateBadge` so the status pill keeps its shape beside long names.
+  - Updated `apps/mobile/tests/settings-loop-metadata-mobile.test.js` with focused regression coverage for the new long-name stability contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The stabilized loop-name header still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - If live validation later shows two-line loop names still feel too tall with `Run on startup` metadata, the next step may need stricter clamping or tighter badge spacing — but only with evidence.
+  - `nextRunAt` still is not surfaced in the mobile loop list, but that should remain re-ranked only after live inspection returns because it would add more density.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that long loop names keep the `Running` / `Active` / `Paused` badge readable in `Settings > Agent Loops`.
+  - Check a deliberately long loop name plus `Run on startup` metadata together to confirm the new two-line clamp improves stability without hiding too much useful context.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

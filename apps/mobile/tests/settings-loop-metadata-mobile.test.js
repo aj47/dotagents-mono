@@ -44,3 +44,9 @@ test('surfaces loop runtime state with a compact status badge on mobile', () => 
   assert.match(settingsSource, /loopStateBadgeActive:\s*\{[\s\S]*?borderColor: theme\.colors\.primary,[\s\S]*?backgroundColor: theme\.colors\.primary \+ '12',/);
   assert.match(settingsSource, /loopStateBadgePaused:\s*\{[\s\S]*?backgroundColor: theme\.colors\.secondary,/);
 });
+
+test('keeps long loop names stable when the runtime badge is present', () => {
+  assert.match(settingsSource, /<Text[\s\S]*?style=\{\[styles\.serverName, styles\.loopRowName\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{loop\.name\}/);
+  assert.match(settingsSource, /loopRowName:\s*\{[\s\S]*?flexGrow:\s*1,[\s\S]*?minWidth:\s*0/);
+  assert.match(settingsSource, /loopStateBadge:\s*\{[\s\S]*?paddingHorizontal:\s*6,[\s\S]*?paddingVertical:\s*2,[\s\S]*?flexShrink:\s*0/);
+});
