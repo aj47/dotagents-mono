@@ -22,12 +22,9 @@ import { memoryService } from "./memory-service"
 import { messageQueueService } from "./message-queue-service"
 import { setSessionUserResponse } from "./session-user-response-store"
 import { promises as fs } from "fs"
-import { exec } from "child_process"
-import { promisify } from "util"
+import { spawn } from "child_process"
 import path from "path"
 import type { AgentMemory } from "../shared/types"
-
-const execAsync = promisify(exec)
 
 // Re-export from the dependency-free definitions module for backward compatibility
 // This breaks the circular dependency: profile-service -> builtin-tool-definitions (no cycle)
@@ -43,6 +40,7 @@ import { BUILTIN_SERVER_NAME, builtinToolDefinitions } from "./builtin-tool-defi
 
 interface BuiltinToolContext {
   sessionId?: string
+  onProgress?: (message: string) => void
 }
 
 const MAX_RESPOND_TO_USER_IMAGES = 4
@@ -128,6 +126,69 @@ async function imagePathToDataUrl(rawPath: string): Promise<string> {
 
   const fileBuffer = await fs.readFile(resolvedPath)
   return `data:${mimeType};base64,${fileBuffer.toString("base64")}`
+}
+
+const COMMAND_OUTPUT_CAPTURE_LIMIT = 10 * 1024 * 1024
+const COMMAND_PROGRESS_OUTPUT_LIMIT = 4000
+const COMMAND_RESULT_OUTPUT_LIMIT = 10000
+
+const truncateCommandOutput = (output: string): { text: string; truncated: boolean } => {
+  if (output.length <= COMMAND_RESULT_OUTPUT_LIMIT) {
+    return { text: output, truncated: false }
+  }
+
+  const half = Math.floor(COMMAND_RESULT_OUTPUT_LIMIT / 2)
+  const totalLines = output.split("\n").length
+  const totalBytes = output.length
+  const head = output.substring(0, half)
+  const tail = output.substring(output.length - half)
+
+  return {
+    text: head +
+      `\n\n... [OUTPUT TRUNCATED: ${totalBytes} bytes, ~${totalLines} lines total. ` +
+      `Showing first ${half} + last ${half} chars. ` +
+      `Use head/tail/sed to read specific ranges, e.g.: sed -n '100,200p' file] ...\n\n` +
+      tail,
+    truncated: true,
+  }
+}
+
+const appendCommandProgressChunk = (
+  currentOutput: string,
+  chunk: string,
+): { output: string; truncated: boolean } => {
+  const nextOutput = currentOutput + chunk
+  if (nextOutput.length <= COMMAND_PROGRESS_OUTPUT_LIMIT) {
+    return { output: nextOutput, truncated: false }
+  }
+
+  return {
+    output: nextOutput.slice(-COMMAND_PROGRESS_OUTPUT_LIMIT),
+    truncated: true,
+  }
+}
+
+const formatCommandProgressOutput = (output: string, truncated: boolean): string => {
+  if (!output.trim()) {
+    return "Running command..."
+  }
+
+  return truncated
+    ? `[showing last ${COMMAND_PROGRESS_OUTPUT_LIMIT} chars]\n${output}`
+    : output
+}
+
+const normalizeStderrProgressChunk = (chunk: string): string => {
+  const normalized = chunk.replace(/\r\n/g, "\n")
+  const lines = normalized.split("\n")
+  return lines
+    .map((line, index) => {
+      if (line.length === 0) {
+        return index === lines.length - 1 ? "" : "[stderr]"
+      }
+      return `[stderr] ${line}`
+    })
+    .join("\n")
 }
 
 // Tool execution handlers
@@ -737,7 +798,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  execute_command: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     const { skillsService } = await import("./skills-service")
 
     // Validate required command parameter
@@ -798,39 +859,105 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     try {
-      const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string } = {
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
+      const spawnOptions: { cwd?: string; shell?: string } = {
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       }
 
       if (cwd) {
-        execOptions.cwd = cwd
+        spawnOptions.cwd = cwd
       }
 
-      if (timeout > 0) {
-        execOptions.timeout = timeout
-      }
+      const { stdout, stderr } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        const proc = spawn(command, spawnOptions)
+        let stdout = ""
+        let stderr = ""
+        let liveOutput = ""
+        let liveOutputTruncated = false
+        let timedOut = false
 
-      const { stdout, stderr } = await execAsync(command, execOptions)
+        const appendCapturedOutput = (current: string, chunk: string): string => {
+          const next = current + chunk
+          if (next.length <= COMMAND_OUTPUT_CAPTURE_LIMIT) {
+            return next
+          }
+          return next.slice(-COMMAND_OUTPUT_CAPTURE_LIMIT)
+        }
 
-      // Truncate large outputs to prevent context bloat
-      // Keep first 5K + last 5K chars so agent sees both beginning and end
-      const MAX_OUTPUT_CHARS = 10000
-      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
-      let truncatedStdout = stdout || ""
-      let outputTruncated = false
-      if (truncatedStdout.length > MAX_OUTPUT_CHARS) {
-        const totalLines = truncatedStdout.split("\n").length
-        const totalBytes = truncatedStdout.length
-        const head = truncatedStdout.substring(0, HALF)
-        const tail = truncatedStdout.substring(truncatedStdout.length - HALF)
-        truncatedStdout = head +
-          `\n\n... [OUTPUT TRUNCATED: ${totalBytes} bytes, ~${totalLines} lines total. ` +
-          `Showing first ${HALF} + last ${HALF} chars. ` +
-          `Use head/tail/sed to read specific ranges, e.g.: sed -n '100,200p' file] ...\n\n` +
-          tail
-        outputTruncated = true
-      }
+        const emitProgress = (chunk: string) => {
+          if (!context.onProgress || chunk.length === 0) return
+          const next = appendCommandProgressChunk(liveOutput, chunk)
+          liveOutput = next.output
+          liveOutputTruncated = liveOutputTruncated || next.truncated
+          context.onProgress(formatCommandProgressOutput(liveOutput, liveOutputTruncated))
+        }
+
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+        if (timeout > 0) {
+          timeoutHandle = setTimeout(() => {
+            timedOut = true
+            emitProgress(`[stderr] Command timed out after ${timeout}ms\n`)
+            proc.kill("SIGTERM")
+          }, timeout)
+        }
+
+        proc.stdout?.on("data", (data: Buffer | string) => {
+          const chunk = data.toString()
+          stdout = appendCapturedOutput(stdout, chunk)
+          emitProgress(chunk)
+        })
+
+        proc.stderr?.on("data", (data: Buffer | string) => {
+          const chunk = data.toString()
+          stderr = appendCapturedOutput(stderr, chunk)
+          emitProgress(normalizeStderrProgressChunk(chunk))
+        })
+
+        proc.on("error", (error) => {
+          if (timeoutHandle) clearTimeout(timeoutHandle)
+          const enrichedError = error as Error & {
+            stdout?: string
+            stderr?: string
+            code?: number | null
+          }
+          enrichedError.stdout = stdout
+          enrichedError.stderr = stderr
+          reject(enrichedError)
+        })
+
+        proc.on("close", (code) => {
+          if (timeoutHandle) clearTimeout(timeoutHandle)
+
+          if (timedOut) {
+            const timeoutError = new Error(`Command timed out after ${timeout}ms`) as Error & {
+              stdout?: string
+              stderr?: string
+              code?: number | null
+            }
+            timeoutError.stdout = stdout
+            timeoutError.stderr = stderr
+            timeoutError.code = code
+            reject(timeoutError)
+            return
+          }
+
+          if (code !== 0) {
+            const exitError = new Error(`Command failed with exit code ${code ?? "unknown"}`) as Error & {
+              stdout?: string
+              stderr?: string
+              code?: number | null
+            }
+            exitError.stdout = stdout
+            exitError.stderr = stderr
+            exitError.code = code
+            reject(exitError)
+            return
+          }
+
+          resolve({ stdout, stderr })
+        })
+      })
+
+      const { text: truncatedStdout, truncated: outputTruncated } = truncateCommandOutput(stdout || "")
 
       return {
         content: [
@@ -850,23 +977,13 @@ const toolHandlers: Record<string, ToolHandler> = {
         isError: false,
       }
     } catch (error: any) {
-      // exec errors include stdout/stderr in the error object
+      // Streaming spawn errors include partial stdout/stderr in the enriched error object
       let stdout = error.stdout || ""
       const stderr = error.stderr || ""
       const errorMessage = error.message || String(error)
       const exitCode = error.code
 
-      // Truncate large error outputs too
-      const MAX_OUTPUT_CHARS = 10000
-      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
-      if (stdout.length > MAX_OUTPUT_CHARS) {
-        const totalLines = stdout.split("\n").length
-        const head = stdout.substring(0, HALF)
-        const tail = stdout.substring(stdout.length - HALF)
-        stdout = head +
-          `\n\n... [OUTPUT TRUNCATED: ${stdout.length} bytes, ~${totalLines} lines. Use head/tail/sed to read specific ranges] ...\n\n` +
-          tail
-      }
+      stdout = truncateCommandOutput(stdout).text
 
       return {
         content: [
@@ -1520,7 +1637,8 @@ const toolHandlers: Record<string, ToolHandler> = {
 export async function executeBuiltinTool(
   toolName: string,
   args: Record<string, unknown>,
-  sessionId?: string
+  sessionId?: string,
+  onProgress?: (message: string) => void,
 ): Promise<MCPToolResult | null> {
   // Check for ACP router tools first
   if (isACPRouterTool(toolName)) {
@@ -1545,7 +1663,7 @@ export async function executeBuiltinTool(
   }
 
   try {
-    return await handler(args, { sessionId })
+    return await handler(args, { sessionId, onProgress })
   } catch (error) {
     return {
       content: [

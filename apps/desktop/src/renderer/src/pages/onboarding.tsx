@@ -508,6 +508,7 @@ function AgentStep({
 }) {
   const [isInstallingExa, setIsInstallingExa] = useState(false)
   const [exaInstalled, setExaInstalled] = useState(false)
+  const [exaInstallError, setExaInstallError] = useState<string | null>(null)
   const [agentPrompt, setAgentPrompt] = useState("")
   const [isAgentRunning, setIsAgentRunning] = useState(false)
   const [agentResponse, setAgentResponse] = useState<string | null>(null)
@@ -523,6 +524,9 @@ function AgentStep({
 
   const handleInstallExa = async () => {
     setIsInstallingExa(true)
+    setExaInstallError(null)
+    let exaSavedToConfig = false
+
     try {
       // Add Exa MCP server to config
       const currentMcpConfig = config?.mcpConfig || { mcpServers: {} }
@@ -539,17 +543,37 @@ function AgentStep({
 
       // Wait for config to save, then start the server
       await onSaveConfigAsync({ mcpConfig: newMcpConfig })
+      exaSavedToConfig = true
 
       // Enable and start the server
-      await tipcClient.setMcpServerRuntimeEnabled({
+      const enableResult = await tipcClient.setMcpServerRuntimeEnabled({
         serverName: "exa",
         enabled: true,
       })
-      await tipcClient.restartMcpServer({ serverName: "exa" })
+      if (enableResult?.success === false) {
+        throw new Error(enableResult.error || "Failed to enable Exa in runtime.")
+      }
+
+      const restartResult = await tipcClient.restartMcpServer({ serverName: "exa" })
+      if (restartResult?.success === false) {
+        throw new Error(restartResult.error || "Failed to start Exa server.")
+      }
 
       setExaInstalled(true)
+      setExaInstallError(null)
     } catch (error) {
       console.error("Failed to install Exa:", error)
+
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (exaSavedToConfig) {
+        setExaInstalled(true)
+        setExaInstallError(
+          `Exa was added to Settings, but we couldn't start it.${errorMessage ? ` ${errorMessage}` : ""} You can retry from Settings → MCP Tools.`
+        )
+      } else {
+        setExaInstallError(`Failed to install Exa.${errorMessage ? ` ${errorMessage}` : ""}`)
+      }
     } finally {
       setIsInstallingExa(false)
     }
@@ -696,6 +720,12 @@ function AgentStep({
           </a>
           . Add more MCP tools in Settings → MCP Tools.
         </p>
+        {exaInstallError && (
+          <div className="mt-3 p-2 rounded bg-red-500/10 border border-red-500/20 text-sm text-red-600 dark:text-red-400">
+            <span className="i-mingcute-warning-fill mr-2"></span>
+            {exaInstallError}
+          </div>
+        )}
       </div>
 
       {/* Try Your Agent */}

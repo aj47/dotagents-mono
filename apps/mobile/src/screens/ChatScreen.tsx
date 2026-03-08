@@ -1367,6 +1367,64 @@ export default function ChatScreen({ route, navigation }: any) {
   // Get queued messages for the current conversation
   const queuedMessages = messageQueue.getQueue(currentConversationId);
 
+  const handleRemoveQueuedMessage = (messageId: string): boolean => {
+    const removed = messageQueue.removeFromQueue(currentConversationId, messageId);
+    if (!removed) {
+      Alert.alert('Unable to remove queued message', 'This queued message is already processing or no longer exists.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleUpdateQueuedMessage = (messageId: string, text: string): boolean => {
+    const updated = messageQueue.updateText(currentConversationId, messageId, text);
+    if (!updated) {
+      Alert.alert('Unable to save queued message', 'This queued message changed before your edit could be saved.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleRetryQueuedMessage = (messageId: string): boolean => {
+    const reset = messageQueue.resetToPending(currentConversationId, messageId);
+    if (!reset) {
+      Alert.alert('Unable to retry queued message', 'This queued message is no longer retryable.');
+      return false;
+    }
+
+    // If not already processing, trigger queue processing
+    if (!responding) {
+      const nextMessage = messageQueue.peek(currentConversationId);
+      if (nextMessage) {
+        console.log('[ChatScreen] onRetry: Processing queue while idle, next message:', nextMessage.id);
+
+        const markedProcessing = messageQueue.markProcessing(currentConversationId, nextMessage.id);
+        if (!markedProcessing) {
+          Alert.alert('Unable to retry queued message', 'The queued message changed before retry could start.');
+          return false;
+        }
+
+        setTimeout(() => {
+          processQueuedMessage(nextMessage);
+        }, 100);
+      }
+    }
+
+    return true;
+  };
+
+  const handleClearQueuedMessages = (): boolean => {
+    const cleared = messageQueue.clearQueue(currentConversationId);
+    if (!cleared) {
+      Alert.alert('Unable to clear queued messages', 'Wait for the current queued message to finish, or refresh if the queue already changed.');
+      return false;
+    }
+
+    return true;
+  };
+
   const handlePickImages = useCallback(async () => {
     if (pendingImages.length >= MAX_PENDING_IMAGES) {
       Alert.alert('Image limit reached', `You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
@@ -3138,23 +3196,10 @@ export default function ChatScreen({ route, navigation }: any) {
             <MessageQueuePanel
               conversationId={currentConversationId}
               messages={queuedMessages}
-              onRemove={(messageId) => messageQueue.removeFromQueue(currentConversationId, messageId)}
-              onUpdate={(messageId, text) => messageQueue.updateText(currentConversationId, messageId, text)}
-              onRetry={(messageId) => {
-                messageQueue.resetToPending(currentConversationId, messageId);
-                // If not already processing, trigger queue processing
-                if (!responding) {
-                  const nextMessage = messageQueue.peek(currentConversationId);
-                  if (nextMessage) {
-                    console.log('[ChatScreen] onRetry: Processing queue while idle, next message:', nextMessage.id);
-                    messageQueue.markProcessing(currentConversationId, nextMessage.id);
-                    setTimeout(() => {
-                      processQueuedMessage(nextMessage);
-                    }, 100);
-                  }
-                }
-              }}
-              onClear={() => messageQueue.clearQueue(currentConversationId)}
+              onRemove={handleRemoveQueuedMessage}
+              onUpdate={handleUpdateQueuedMessage}
+              onRetry={handleRetryQueuedMessage}
+              onClear={handleClearQueuedMessages}
             />
           </View>
         )}

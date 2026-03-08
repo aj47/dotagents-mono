@@ -616,6 +616,12 @@ async function runAgent(options: RunAgentOptions): Promise<{
     diagnosticsService.logInfo("remote-server", `Created new conversation ${conversationId}`)
   }
 
+  if (!conversationId) {
+    throw new Error("Conversation ID unavailable after creation")
+  }
+
+  const resolvedConversationId = conversationId
+
   // Try to find and revive an existing session for this conversation (matching tipc.ts)
   // Note: We use `conversationId` (which may be newly created) instead of `inputConversationId`
   // to ensure we find sessions for both existing and newly created conversations.
@@ -661,10 +667,10 @@ async function runAgent(options: RunAgentOptions): Promise<{
 
   // Start or reuse agent session
   const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
-  const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+  const sessionId = existingSessionId || agentSessionTracker.startSession(resolvedConversationId, conversationTitle, startSnoozed, profileSnapshot)
 
   const loadFormattedConversationHistory = async () => {
-    const latestConversation = await conversationService.loadConversation(conversationId)
+    const latestConversation = await conversationService.loadConversation(resolvedConversationId)
     return formatConversationHistoryForApi(latestConversation?.messages || [])
   }
 
@@ -2754,7 +2760,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         }
 
         const updated = { ...existing, enabled: !existing.enabled }
-        loopService.saveLoop(updated)
+        const saved = loopService.saveLoop(updated)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task toggle" })
+        }
 
         if (updated.enabled) {
           loopService.startLoop(params.id)
@@ -3015,7 +3024,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const loopService = await loadLoopService()
       if (loopService) {
-        loopService.saveLoop(newLoop)
+        const saved = loopService.saveLoop(newLoop)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task" })
+        }
+
         if (newLoop.enabled) {
           loopService.startLoop(newLoop.id)
         }
@@ -3105,7 +3118,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       if (loopService) {
-        loopService.saveLoop(updated)
+        const saved = loopService.saveLoop(updated)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task" })
+        }
+
         if (updated.enabled) {
           loopService.stopLoop(params.id)
           loopService.startLoop(params.id)

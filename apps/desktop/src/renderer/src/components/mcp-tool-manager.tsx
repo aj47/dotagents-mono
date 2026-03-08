@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@renderer/components/ui/card"
@@ -25,6 +24,8 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
+  Loader2,
+  AlertTriangle,
   Eye,
   EyeOff,
   Power,
@@ -46,27 +47,49 @@ interface MCPToolManagerProps {
   onToolToggle?: (toolName: string, enabled: boolean) => void
 }
 
+function getToolLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  return "Please check your MCP server configuration and try again."
+}
+
 export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   const [tools, setTools] = useState<DetailedTool[]>([])
+  const [isLoadingTools, setIsLoadingTools] = useState(true)
+  const [toolsLoadError, setToolsLoadError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedServer, setSelectedServer] = useState<string>("all")
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [showDisabledTools, setShowDisabledTools] = useState(true)
 
-  // Fetch tools periodically
-  useEffect(() => {
-    const fetchTools = async () => {
-      try {
-        const toolList = await tipcClient.getMcpDetailedToolList({})
-        setTools(toolList as any)
-      } catch (error) {}
+  const fetchTools = useCallback(async ({ showLoadingIndicator = false }: { showLoadingIndicator?: boolean } = {}) => {
+    if (showLoadingIndicator) {
+      setIsLoadingTools(true)
     }
 
-    fetchTools()
-    const interval = setInterval(fetchTools, 5000) // Update every 5 seconds
+    try {
+      const toolList = await tipcClient.getMcpDetailedToolList({})
+      setTools(toolList as any)
+      setToolsLoadError(null)
+    } catch (error) {
+      console.error("[MCPToolManager] Failed to load tool list:", error)
+      setToolsLoadError(getToolLoadErrorMessage(error))
+    } finally {
+      setIsLoadingTools(false)
+    }
+  }, [])
+
+  // Fetch tools periodically
+  useEffect(() => {
+    void fetchTools({ showLoadingIndicator: true })
+    const interval = setInterval(() => {
+      void fetchTools()
+    }, 5000) // Update every 5 seconds
 
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchTools])
 
   // Filter tools to only include those from enabled servers
   const toolsFromEnabledServers = tools.filter((tool) => tool.serverEnabled)
@@ -163,6 +186,11 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     const serverTools = tools.filter((tool) => tool.serverName === serverName)
     if (serverTools.length === 0) return
 
+    const originalStates = new Map<string, boolean>()
+    serverTools.forEach((tool) => {
+      originalStates.set(tool.name, tool.enabled)
+    })
+
     // Update local state immediately for better UX
     const updatedTools = tools.map((tool) => {
       if (tool.serverName === serverName) {
@@ -198,9 +226,12 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const revertedTools = tools.map((tool) => {
+        const revertedTools = updatedTools.map((tool) => {
           if (tool.serverName === serverName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
+            return {
+              ...tool,
+              enabled: originalStates.get(tool.name) ?? tool.enabled,
+            }
           }
           return tool
         })
@@ -212,9 +243,12 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
       }
     } catch (error) {
       // Revert all tools on error
-      const revertedTools = tools.map((tool) => {
+      const revertedTools = updatedTools.map((tool) => {
         if (tool.serverName === serverName) {
-          return { ...tool, enabled: !enable }
+          return {
+            ...tool,
+            enabled: originalStates.get(tool.name) ?? tool.enabled,
+          }
         }
         return tool
       })
@@ -284,7 +318,27 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
 
       {/* Tools List */}
       <div className="space-y-4">
-        {Object.keys(filteredToolsByServer).length === 0 ? (
+        {isLoadingTools && tools.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+              <Loader2 className="mb-4 h-12 w-12 animate-spin text-muted-foreground" />
+              <p className="text-muted-foreground">Loading MCP tools...</p>
+            </CardContent>
+          </Card>
+        ) : toolsLoadError && tools.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+              <AlertTriangle className="h-12 w-12 text-destructive/70" />
+              <div className="space-y-1">
+                <p className="font-medium text-destructive">Failed to load MCP tools</p>
+                <p className="text-sm text-muted-foreground">{toolsLoadError}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void fetchTools({ showLoadingIndicator: true })}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        ) : Object.keys(filteredToolsByServer).length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
               <Settings className="mb-4 h-12 w-12 text-muted-foreground" />

@@ -10,7 +10,7 @@ import { rendererHandlers, tipcClient } from "~/lib/tipc-client"
 import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-input-panel"
 import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
-import { useConversationQuery, useCreateConversationMutation, useAddMessageToConversationMutation } from "@renderer/lib/queries"
+import { useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
@@ -41,6 +41,7 @@ const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
 const TEXT_INPUT_MIN_HEIGHT = 180
 const TEXT_INPUT_MIN_WIDTH_PX = 380
 const PROGRESS_MIN_HEIGHT = 200
+const PREVIEW_TRANSCRIPTION_UNAVAILABLE_MESSAGE = "Live preview is unavailable right now. Final transcription will still run when you stop recording."
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -55,6 +56,37 @@ const resizeVisualizerData = (data: number[], targetLength: number): number[] =>
     return data.slice(data.length - targetLength)
   }
   return [...Array<number>(targetLength - data.length).fill(-1000), ...data]
+}
+
+const getRecordingStartErrorDetails = (error: unknown): { title: string; message: string } => {
+  const errorMessage = error instanceof Error ? error.message || error.name : String(error)
+
+  if (errorMessage.includes("Permission denied") || errorMessage.includes("NotAllowedError")) {
+    return {
+      title: "Microphone access denied",
+      message: "Microphone access was denied. Please allow microphone access in your system settings and try again.",
+    }
+  }
+
+  if (errorMessage.includes("NotFoundError") || errorMessage.includes("no audio input")) {
+    return {
+      title: "No microphone found",
+      message: "No microphone found. Please connect a microphone and try again.",
+    }
+  }
+
+  if (errorMessage.includes("NotReadableError") || errorMessage.includes("TrackStartError")) {
+    return {
+      title: "Microphone unavailable",
+      message:
+        "The microphone is unavailable. Another app may be using it, or the input device could not be started. Please close other recording apps and try again.",
+    }
+  }
+
+  return {
+    title: "Failed to start recording",
+    message: errorMessage ? `Failed to start recording: ${errorMessage}` : "Failed to start recording. Please try again.",
+  }
 }
 
 export function Component() {
@@ -74,6 +106,7 @@ export function Component() {
   const [continueConversationTitle, setContinueConversationTitle] = useState<string | null>(null)
   const [fromButtonClick, setFromButtonClick] = useState(false)
   const [previewText, setPreviewText] = useState("")
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recordingViewportRef = useRef<HTMLDivElement | null>(null)
   const [recordingViewportSize, setRecordingViewportSize] = useState({ width: 0, height: 0 })
@@ -85,6 +118,29 @@ export function Component() {
     if (lastRequestedModeRef.current === mode) return
     lastRequestedModeRef.current = mode
     tipcClient.setPanelMode({ mode })
+  }
+
+  const handleRecordingStartFailure = (
+    err: unknown,
+    options: { clearMcpContext?: boolean } = {},
+  ) => {
+    console.error('[panel] startRecording failed, resetting recording state:', err)
+    setRecording(false)
+    recordingRef.current = false
+    setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
+    setFromButtonClick(false)
+
+    if (options.clearMcpContext) {
+      setMcpMode(false)
+      mcpModeRef.current = false
+      mcpConversationIdRef.current = undefined
+      mcpSessionIdRef.current = undefined
+      fromTileRef.current = false
+      setContinueConversationTitle(null)
+    }
+
+    const { title, message } = getRecordingStartErrorDetails(err)
+    void tipcClient.displayError({ title, message })
   }
 
 
@@ -113,7 +169,6 @@ export function Component() {
   const isConversationActive = !!currentConversation
 
   const createConversationMutation = useCreateConversationMutation()
-  const addMessageMutation = useAddMessageToConversationMutation()
 
   const startNewConversation = async (message: string, role: "user" | "assistant") => {
     const result = await createConversationMutation.mutateAsync({ firstMessage: message, role })
@@ -121,15 +176,6 @@ export function Component() {
       setCurrentConversationId(result.id)
     }
     return result
-  }
-
-  const addMessage = async (content: string, role: "user" | "assistant") => {
-    if (!currentConversationId) return
-    await addMessageMutation.mutateAsync({
-      conversationId: currentConversationId,
-      content,
-      role,
-    })
   }
 
   const activeSessionCount = Array.from(agentProgressById?.values() ?? [])
@@ -282,11 +328,9 @@ export function Component() {
     mutationFn: async ({
       blob,
       duration,
-      transcript,
     }: {
       blob: Blob
       duration: number
-      transcript?: string
     }) => {
       // Fetch config synchronously to avoid race condition where configQuery.data
       // is undefined on early interactions (augment review feedback)
@@ -310,11 +354,6 @@ export function Component() {
       // The session will continue in the tile view
       if (wasFromTile) {
         tipcClient.hidePanelWindow({})
-      }
-
-      // If we have a transcript, start a conversation with it
-      if (transcript && !isConversationActive) {
-        await startNewConversation(transcript, "user")
       }
 
       const result = await tipcClient.createMcpRecording({
@@ -560,8 +599,9 @@ export function Component() {
         clearInterval(previewTimerRef.current)
         previewTimerRef.current = null
       }
-      if (!recording) {
+      if (!recording || !isPreviewEnabled) {
         setPreviewText("")
+        setPreviewError(null)
       }
       return undefined
     }
@@ -598,10 +638,13 @@ export function Component() {
         if (result?.text) {
           // Replace (not append) — each call returns the full transcript for
           // the entire recording so far, so there is no need to accumulate.
+          setPreviewError(null)
           setPreviewText(result.text)
         }
       } catch (err) {
         console.error("[Preview] Transcription error:", err)
+        setPreviewText("")
+        setPreviewError(PREVIEW_TRANSCRIPTION_UNAVAILABLE_MESSAGE)
       } finally {
         inflight = false
       }
@@ -625,9 +668,9 @@ export function Component() {
   // Resize the panel window when transcription preview text appears/disappears
   useEffect(() => {
     if (!recording) return
-    const hasPreview = isPreviewEnabled && previewText.length > 0
+    const hasPreview = isPreviewEnabled && (previewText.length > 0 || previewError !== null)
     tipcClient.resizePanelForWaveformPreview({ showPreview: hasPreview })
-  }, [recording, isPreviewEnabled, previewText])
+  }, [recording, isPreviewEnabled, previewError, previewText])
 
   useEffect(() => {
     const unlisten = rendererHandlers.startRecording.listen((data) => {
@@ -647,10 +690,7 @@ export function Component() {
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
       recorderRef.current?.startRecording()?.catch((err: unknown) => {
-        console.error('[panel] startRecording failed, resetting recording state:', err)
-        setRecording(false)
-        recordingRef.current = false
-        setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
+        handleRecordingStartFailure(err)
       })
     })
 
@@ -697,10 +737,7 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         tipcClient.showPanelWindow({})
         recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
-          console.error('[panel] startRecording failed, resetting recording state:', err)
-          setRecording(false)
-          recordingRef.current = false
-          setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
+          handleRecordingStartFailure(err)
           fromTileRef.current = false
         })
       }
@@ -771,13 +808,6 @@ export function Component() {
     // from history, currentConversationId will be set. Otherwise it's null for new inputs.
     const conversationIdForMcp = currentConversationId
 
-    // Start new conversation or add to existing one
-    if (!isConversationActive) {
-      await startNewConversation(text, "user")
-    } else {
-      await addMessage(text, "user")
-    }
-
     // Hide the text input immediately and show processing/overlay
     setShowTextInput(false)
     // Ensure main process no longer treats panel as textInput mode
@@ -838,17 +868,7 @@ export function Component() {
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
       recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
-        console.error('[panel] startRecording failed, resetting recording state:', err)
-        setRecording(false)
-        recordingRef.current = false
-        setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-        // Also clear MCP context to avoid leaving the panel stuck in MCP mode
-        // with no active recording.
-        setMcpMode(false)
-        mcpModeRef.current = false
-        mcpConversationIdRef.current = undefined
-        mcpSessionIdRef.current = undefined
-        fromTileRef.current = false
+        handleRecordingStartFailure(err, { clearMcpContext: true })
       })
     })
 
@@ -893,17 +913,7 @@ export function Component() {
         requestPanelMode("normal") // Ensure panel is normal size for recording
         tipcClient.showPanelWindow({})
         recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
-          console.error('[panel] startRecording failed, resetting recording state:', err)
-          setRecording(false)
-          recordingRef.current = false
-          setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-          // Also clear MCP context to avoid leaving the panel stuck in MCP mode
-          // with no active recording (similar to aborted/empty/too-short early returns).
-          setMcpMode(false)
-          mcpModeRef.current = false
-          mcpConversationIdRef.current = undefined
-          mcpSessionIdRef.current = undefined
-          fromTileRef.current = false
+          handleRecordingStartFailure(err, { clearMcpContext: true })
         })
       }
     })
@@ -1078,7 +1088,7 @@ export function Component() {
 	  }, [anyVisibleSessions, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
 
   // Use appropriate minimum height based on current mode
-  const hasPreviewVisible = recording && isPreviewEnabled && previewText.length > 0
+  const hasPreviewVisible = recording && isPreviewEnabled && (previewText.length > 0 || previewError !== null)
   const availableWaveformWidth = Math.max(
     0,
     recordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2,
@@ -1225,11 +1235,17 @@ export function Component() {
                   </div>
 
                   {/* Transcription preview */}
-                  {isPreviewEnabled && previewText && (
+                  {isPreviewEnabled && (previewText || previewError) && (
                     <div className="w-full px-4 mt-1">
-                      <p className="text-xs text-muted-foreground italic text-center line-clamp-2">
-                        {previewText}
-                      </p>
+                      {previewError ? (
+                        <p className="text-center text-xs leading-relaxed text-destructive line-clamp-2">
+                          {previewError}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic text-center line-clamp-2">
+                          {previewText}
+                        </p>
+                      )}
                     </div>
                   )}
 

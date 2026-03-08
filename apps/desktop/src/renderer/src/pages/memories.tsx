@@ -44,6 +44,12 @@ const importanceColors = {
   critical: "bg-red-500/20 text-red-600 dark:text-red-400",
 }
 
+function getMemoryMutationFailureMessage(action: "delete" | "update"): string {
+  return action === "delete"
+    ? "Failed to delete memory. Please refresh and try again."
+    : "Failed to update memory. Please refresh and try again."
+}
+
 function MemoryCard({
   memory,
   onDelete,
@@ -248,7 +254,12 @@ export function Component() {
     mutationFn: async (id: string) => {
       return await tipcClient.deleteMemory({ id })
     },
-    onSuccess: () => {
+    onSuccess: (didDelete) => {
+      if (!didDelete) {
+        toast.error(getMemoryMutationFailureMessage("delete"))
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["memories"] })
       toast.success("Memory deleted")
       setDeleteConfirmId(null)
@@ -262,7 +273,12 @@ export function Component() {
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<AgentMemory> }) => {
       return await tipcClient.updateMemory({ id, updates })
     },
-    onSuccess: () => {
+    onSuccess: (didUpdate) => {
+      if (!didUpdate) {
+        toast.error(getMemoryMutationFailureMessage("update"))
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["memories"] })
       toast.success("Memory updated")
       setEditingMemory(null)

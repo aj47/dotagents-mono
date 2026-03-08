@@ -21,6 +21,24 @@ describe("getLegacySettingsRedirectPath", () => {
     ).toBe("/settings/capabilities")
   })
 
+  it("keeps target query params while appending extra legacy query params and hashes", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/capabilities?tab=mcp-servers",
+        "http://localhost/settings/mcp-tools?source=agents#server-1"
+      )
+    ).toBe("/settings/capabilities?tab=mcp-servers&source=agents#server-1")
+  })
+
+  it("lets target query params win over conflicting legacy params", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/capabilities?tab=mcp-servers",
+        "http://localhost/settings/mcp-tools?tab=skills"
+      )
+    ).toBe("/settings/capabilities?tab=mcp-servers")
+  })
+
   it("preserves hashes even when there is no query string", () => {
     expect(
       getLegacySettingsRedirectPath(

@@ -101,6 +101,10 @@ function findInput(node: any) {
   return findNode(node, (candidate) => candidate.type === "Input")
 }
 
+function findButtonByText(node: any, text: string) {
+  return findNode(node, (candidate) => candidate.type === "Button" && collectText(candidate).includes(text))
+}
+
 function collectText(node: any, results: string[] = []): string[] {
   if (typeof node === "string") {
     results.push(node)
@@ -121,12 +125,22 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadSettingsWhatsApp(
+  runtime: ReturnType<typeof createHookRuntime>,
+  options?: {
+    whatsappConnectResult?: { success: boolean; error?: string }
+    whatsappDisconnectResult?: { success: boolean; error?: string }
+    whatsappLogoutResult?: { success: boolean; error?: string }
+  },
+) {
   vi.resetModules()
 
   const Null = () => null
   const mutate = vi.fn()
   const whatsappGetStatus = vi.fn(async () => ({ available: true, connected: false }))
+  const whatsappConnect = vi.fn(async () => options?.whatsappConnectResult ?? { success: true })
+  const whatsappDisconnect = vi.fn(async () => options?.whatsappDisconnectResult ?? { success: true })
+  const whatsappLogout = vi.fn(async () => options?.whatsappLogoutResult ?? { success: true })
   let currentConfig: any = {
     whatsappEnabled: true,
     whatsappAllowFrom: ["14155551234"],
@@ -175,17 +189,17 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
   vi.doMock("@renderer/lib/tipc-client", () => ({
     tipcClient: {
       whatsappGetStatus,
-      whatsappConnect: vi.fn(async () => ({ success: true })),
-      whatsappDisconnect: vi.fn(async () => ({ success: true })),
-      whatsappLogout: vi.fn(async () => ({ success: true })),
+      whatsappConnect,
+      whatsappDisconnect,
+      whatsappLogout,
     },
   }))
   vi.doMock("../lib/tipc-client", () => ({
     tipcClient: {
       whatsappGetStatus,
-      whatsappConnect: vi.fn(async () => ({ success: true })),
-      whatsappDisconnect: vi.fn(async () => ({ success: true })),
-      whatsappLogout: vi.fn(async () => ({ success: true })),
+      whatsappConnect,
+      whatsappDisconnect,
+      whatsappLogout,
     },
   }))
   vi.doMock("lucide-react", () => {
@@ -213,6 +227,7 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
     getCurrentConfig() {
       return currentConfig
     },
+    whatsappConnect,
     whatsappGetStatus,
   }
 }
@@ -327,5 +342,37 @@ describe("desktop WhatsApp settings allowlist", () => {
         whatsappAllowFrom: ["14155551234", "+442071838750"],
       },
     })
+  })
+
+  it("keeps a failed connect error visible after the automatic status refresh", async () => {
+    const runtime = createHookRuntime()
+    const { Component, whatsappConnect, whatsappGetStatus } = await loadSettingsWhatsApp(runtime, {
+      whatsappConnectResult: {
+        success: false,
+        error: "WhatsApp server is not running. Please enable WhatsApp in settings.",
+      },
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    const connectButton = findButtonByText(tree, "Connect with QR Code")
+    expect(connectButton).toBeTruthy()
+
+    await connectButton.props.onClick()
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    expect(whatsappConnect).toHaveBeenCalledTimes(1)
+    expect(whatsappGetStatus.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(collectText(tree)).toContain(
+      "WhatsApp server is not running. Please enable WhatsApp in settings.",
+    )
   })
 })

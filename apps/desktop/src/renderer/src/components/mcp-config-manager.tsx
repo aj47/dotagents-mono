@@ -56,6 +56,7 @@ import {
   Power,
   PowerOff,
   Wrench,
+  AlertTriangle,
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry } from "@shared/types"
@@ -74,6 +75,73 @@ interface DetailedTool {
   enabled: boolean
   serverEnabled: boolean
   inputSchema: any
+}
+
+type OAuthStatusSummary = {
+  configured: boolean
+  authenticated: boolean
+  tokenExpiry?: number
+  error?: string
+}
+
+function getLogFetchErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please try again."
+}
+
+function getServerStatusErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please try again."
+}
+
+function getToolLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please check your MCP server configuration and try again."
+}
+
+function getOAuthStatusFallback(serverConfig?: MCPServerConfig): OAuthStatusSummary {
+  return {
+    configured: Boolean(
+      serverConfig?.transport === "streamableHttp" &&
+        serverConfig.url &&
+        serverConfig.oauth,
+    ),
+    authenticated: false,
+  }
+}
+
+function normalizeOAuthStatus(
+  serverConfig: MCPServerConfig | undefined,
+  status: OAuthStatusSummary,
+): OAuthStatusSummary {
+  const fallback = getOAuthStatusFallback(serverConfig)
+
+  return {
+    ...fallback,
+    ...status,
+    configured: fallback.configured || status.configured,
+  }
 }
 
 
@@ -901,12 +969,16 @@ export function MCPConfigManager({
       }
     >
   >({})
+  const [isLoadingServerStatus, setIsLoadingServerStatus] = useState(true)
+  const [hasLoadedServerStatus, setHasLoadedServerStatus] = useState(false)
+  const [serverStatusLoadError, setServerStatusLoadError] = useState<string | null>(null)
   const [initializationStatus, setInitializationStatus] = useState<{
     isInitializing: boolean
     progress: { current: number; total: number; currentServer?: string }
   }>({ isInitializing: false, progress: { current: 0, total: 0 } })
-  const [oauthStatus, setOAuthStatus] = useState<Record<string, { configured: boolean; authenticated: boolean; tokenExpiry?: number; error?: string }>>({})
+  const [oauthStatus, setOAuthStatus] = useState<Record<string, OAuthStatusSummary>>({})
   const [serverLogs, setServerLogs] = useState<Record<string, ServerLogEntry[]>>({})
+  const [serverLogStatus, setServerLogStatus] = useState<Record<string, { isLoading: boolean; error: string | null }>>({})
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
   // Initialize expandedServers from persisted expanded state
   // All servers are collapsed by default - only expand those explicitly persisted as expanded
@@ -929,6 +1001,8 @@ export function MCPConfigManager({
   })
   // Tool management state
   const [tools, setTools] = useState<DetailedTool[]>([])
+  const [isLoadingTools, setIsLoadingTools] = useState(true)
+  const [toolsLoadError, setToolsLoadError] = useState<string | null>(null)
   const [toolSearchQuery, setToolSearchQuery] = useState("")
   const [showDisabledTools, setShowDisabledTools] = useState(true)
   // Initialize expandedTools (servers in Tools section) - all expanded by default except those persisted as collapsed
@@ -1063,73 +1137,143 @@ export function MCPConfigManager({
 
   // Load OAuth status for all servers
   const refreshOAuthStatus = async (serverName?: string) => {
-    try {
-      if (serverName) {
+    if (serverName) {
+      const serverConfig = servers[serverName]
+
+      try {
         const status = await window.electronAPI.getOAuthStatus(serverName)
-        setOAuthStatus(prev => ({ ...prev, [serverName]: status }))
-      } else {
-        // Load status for all servers
-        const newStatus: Record<string, any> = {}
-        for (const [name, config] of Object.entries(servers)) {
-          if (config.transport === "streamableHttp" && config.url) {
-            const status = await window.electronAPI.getOAuthStatus(name)
-            newStatus[name] = status
-          }
-        }
-        setOAuthStatus(newStatus)
+        setOAuthStatus((prev) => ({
+          ...prev,
+          [serverName]: normalizeOAuthStatus(serverConfig, status),
+        }))
+      } catch (error) {
+        console.error(`Failed to load OAuth status for ${serverName}:`, error)
+        setOAuthStatus((prev) => ({
+          ...prev,
+          [serverName]: {
+            ...getOAuthStatusFallback(serverConfig),
+            error: getLogFetchErrorMessage(error),
+          },
+        }))
       }
-    } catch (error) {
-      console.error('Failed to load OAuth status:', error)
+
+      return
     }
+
+    const oauthServers = Object.entries(servers).filter(
+      ([, config]) => config.transport === "streamableHttp" && config.url,
+    )
+
+    if (oauthServers.length === 0) {
+      setOAuthStatus({})
+      return
+    }
+
+    const statuses = await Promise.all(
+      oauthServers.map(async ([name, config]) => {
+        try {
+          const status = await window.electronAPI.getOAuthStatus(name)
+          return [name, normalizeOAuthStatus(config, status)] as const
+        } catch (error) {
+          console.error(`Failed to load OAuth status for ${name}:`, error)
+          return [
+            name,
+            {
+              ...getOAuthStatusFallback(config),
+              error: getLogFetchErrorMessage(error),
+            },
+          ] as const
+        }
+      }),
+    )
+
+    setOAuthStatus(Object.fromEntries(statuses) as Record<string, OAuthStatusSummary>)
   }
 
   // Fetch logs for expanded servers
   const fetchLogsForServer = async (serverName: string) => {
+    setServerLogStatus(prev => ({
+      ...prev,
+      [serverName]: { isLoading: true, error: null },
+    }))
+
     try {
       const logs = await tipcClient.getMcpServerLogs({ serverName })
       setServerLogs(prev => ({ ...prev, [serverName]: logs as ServerLogEntry[] }))
+      setServerLogStatus(prev => ({
+        ...prev,
+        [serverName]: { isLoading: false, error: null },
+      }))
     } catch (error) {
       console.error(`Failed to fetch logs for ${serverName}:`, error)
+      const details = getLogFetchErrorMessage(error)
+      setServerLogStatus(prev => ({
+        ...prev,
+        [serverName]: { isLoading: false, error: details },
+      }))
     }
   }
 
+  const fetchStatus = useCallback(async () => {
+    setIsLoadingServerStatus(true)
+
+    try {
+      const [status, initStatus] = await Promise.all([
+        tipcClient.getMcpServerStatus({}),
+        tipcClient.getMcpInitializationStatus({}),
+      ])
+      setServerStatus(status as any)
+      setInitializationStatus(initStatus as any)
+      setHasLoadedServerStatus(true)
+      setServerStatusLoadError(null)
+      await refreshOAuthStatus()
+
+      // Fetch logs for expanded servers
+      for (const serverName of expandedLogs) {
+        await fetchLogsForServer(serverName)
+      }
+    } catch (error) {
+      console.error("[MCPConfigManager] Failed to load MCP server status:", error)
+      setServerStatusLoadError(getServerStatusErrorMessage(error))
+    } finally {
+      setIsLoadingServerStatus(false)
+    }
+  }, [expandedLogs, refreshOAuthStatus])
+
   // Fetch server status and initialization status periodically
   useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const [status, initStatus] = await Promise.all([
-          tipcClient.getMcpServerStatus({}),
-          tipcClient.getMcpInitializationStatus({}),
-        ])
-        setServerStatus(status as any)
-        setInitializationStatus(initStatus as any)
-        await refreshOAuthStatus()
-
-        // Fetch logs for expanded servers
-        for (const serverName of expandedLogs) {
-          await fetchLogsForServer(serverName)
-        }
-      } catch (error) {}
-    }
-
-    fetchStatus()
-    const interval = setInterval(fetchStatus, 1000) // Update every second during initialization
+    void fetchStatus()
+    const interval = setInterval(() => {
+      void fetchStatus()
+    }, 1000) // Update every second during initialization
 
     return () => clearInterval(interval)
-  }, [servers, expandedLogs])
+  }, [fetchStatus])
 
   // Fetch tools function - defined as useCallback so it can be reused
-  const fetchTools = useCallback(async () => {
+  const fetchTools = useCallback(async ({ showLoadingIndicator = false }: { showLoadingIndicator?: boolean } = {}) => {
+    if (showLoadingIndicator) {
+      setIsLoadingTools(true)
+    }
+
     try {
       const toolList = await tipcClient.getMcpDetailedToolList({})
       setTools(toolList as DetailedTool[])
-    } catch (error) {}
+      setToolsLoadError(null)
+    } catch (error) {
+      console.error("[MCPConfigManager] Failed to load tool list:", error)
+      setToolsLoadError(getToolLoadErrorMessage(error))
+    } finally {
+      setIsLoadingTools(false)
+    }
   }, [])
 
   // Fetch tools periodically
   useEffect(() => {
-    fetchTools()
-    const interval = setInterval(fetchTools, 5000) // Update every 5 seconds
+    void fetchTools({ showLoadingIndicator: true })
+    const interval = setInterval(() => {
+      void fetchTools()
+    }, 5000) // Update every 5 seconds
 
     return () => clearInterval(interval)
   }, [fetchTools])
@@ -1260,6 +1404,11 @@ export function MCPConfigManager({
     const serverTools = tools.filter((tool) => tool.serverName === serverName)
     if (serverTools.length === 0) return
 
+    const originalStates = new Map<string, boolean>()
+    serverTools.forEach((tool) => {
+      originalStates.set(tool.name, tool.enabled)
+    })
+
     // Update local state immediately for better UX
     const updatedTools = tools.map((tool) => {
       if (tool.serverName === serverName) {
@@ -1295,9 +1444,12 @@ export function MCPConfigManager({
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const revertedTools = tools.map((tool) => {
+        const revertedTools = updatedTools.map((tool) => {
           if (tool.serverName === serverName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
+            return {
+              ...tool,
+              enabled: originalStates.get(tool.name) ?? tool.enabled,
+            }
           }
           return tool
         })
@@ -1309,9 +1461,12 @@ export function MCPConfigManager({
       }
     } catch (error: any) {
       // Revert all tools on error
-      const revertedTools = tools.map((tool) => {
+      const revertedTools = updatedTools.map((tool) => {
         if (tool.serverName === serverName) {
-          return { ...tool, enabled: !enable }
+          return {
+            ...tool,
+            enabled: originalStates.get(tool.name) ?? tool.enabled,
+          }
         }
         return tool
       })
@@ -1696,6 +1851,10 @@ export function MCPConfigManager({
     try {
       await tipcClient.clearMcpServerLogs({ serverName })
       setServerLogs(prev => ({ ...prev, [serverName]: [] }))
+      setServerLogStatus(prev => ({
+        ...prev,
+        [serverName]: { isLoading: false, error: null },
+      }))
       toast.success(`Logs cleared for ${serverName}`)
     } catch (error) {
       toast.error(`Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`)
@@ -1707,6 +1866,11 @@ export function MCPConfigManager({
   const totalToolsCount = toolsFromEnabledServers.length
   const enabledToolsCount = toolsFromEnabledServers.filter((t) => t.enabled).length
   const disabledToolsCount = totalToolsCount - enabledToolsCount
+  const showInitialServerStatusFailure = Boolean(serverStatusLoadError && !hasLoadedServerStatus)
+  const showPartialServerStatusFailure = Boolean(serverStatusLoadError && hasLoadedServerStatus)
+  const showInitialToolsLoading = isLoadingTools && tools.length === 0
+  const showEmptyToolsLoadFailure = Boolean(toolsLoadError && tools.length === 0)
+  const showPartialToolsLoadFailure = Boolean(toolsLoadError && tools.length > 0)
 
   // State for collapsible sections
   const [toolsSectionExpanded, setToolsSectionExpanded] = useState(true)
@@ -1861,70 +2025,109 @@ export function MCPConfigManager({
             <Wrench className="h-4 w-4" />
             <span className="font-medium">Tools</span>
             <Badge variant="secondary" className="text-xs">
-              {enabledToolsCount}/{totalToolsCount} enabled
+              {showEmptyToolsLoadFailure
+                ? "Unavailable"
+                : `${enabledToolsCount}/${totalToolsCount} enabled`}
             </Badge>
           </div>
         </div>
 
         {toolsSectionExpanded && (
           <CardContent className="border-t pt-4">
-            {/* Tool Search and Filter Controls */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div className="flex flex-1 items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search tools..."
-                    value={toolSearchQuery}
-                    onChange={(e) => setToolSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
+            {showInitialToolsLoading ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-8 text-center text-sm text-muted-foreground">
+                <Spinner className="h-5 w-5" />
+                <p>Loading MCP tools...</p>
+              </div>
+            ) : showEmptyToolsLoadFailure ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                <AlertTriangle className="h-10 w-10 text-destructive/70" />
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Failed to load MCP tools</p>
+                  <p className="max-w-md text-sm text-muted-foreground [overflow-wrap:anywhere]">{toolsLoadError}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowDisabledTools(!showDisabledTools)}
-                  className="shrink-0 gap-2"
+                  onClick={() => void fetchTools({ showLoadingIndicator: true })}
+                  className="gap-2"
                 >
-                  {showDisabledTools ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                  {showDisabledTools ? "Hide Disabled" : "Show All"}
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
                 </Button>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleAllTools(true)}
-                  className="shrink-0 gap-1"
-                >
-                  <Power className="h-3 w-3" />
-                  All ON
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleToggleAllTools(false)}
-                  className="shrink-0 gap-1"
-                >
-                  <PowerOff className="h-3 w-3" />
-                  All OFF
-                </Button>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Tool Search and Filter Controls */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                  <div className="flex flex-1 items-center gap-3">
+                    <div className="relative flex-1 max-w-sm">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search tools..."
+                        value={toolSearchQuery}
+                        onChange={(e) => setToolSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDisabledTools(!showDisabledTools)}
+                      className="shrink-0 gap-2"
+                    >
+                      {showDisabledTools ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      {showDisabledTools ? "Hide Disabled" : "Show All"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleAllTools(true)}
+                      className="shrink-0 gap-1"
+                    >
+                      <Power className="h-3 w-3" />
+                      All ON
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleAllTools(false)}
+                      className="shrink-0 gap-1"
+                    >
+                      <PowerOff className="h-3 w-3" />
+                      All OFF
+                    </Button>
+                  </div>
+                </div>
 
-            {/* Tools List - Grouped by Server with Collapsible Groups */}
-            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
-              {getAllFilteredTools().length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  {totalToolsCount === 0
-                    ? "No tools available. Connect a server to see its tools."
-                    : "No tools match your search"}
-                </div>
-              ) : (
+                {showPartialToolsLoadFailure && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-amber-700 dark:text-amber-200">Couldn't refresh MCP tools.</p>
+                      <p className="text-xs text-amber-700/80 dark:text-amber-200/80 [overflow-wrap:anywhere]">Showing the last successful tool list. {toolsLoadError}</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => void fetchTools()}>
+                      <RotateCcw className="h-4 w-4" />
+                      Retry
+                    </Button>
+                  </div>
+                )}
+
+                {/* Tools List - Grouped by Server with Collapsible Groups */}
+                <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
+                  {getAllFilteredTools().length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {totalToolsCount === 0
+                        ? "No tools available. Connect a server to see its tools."
+                        : "No tools match your search"}
+                    </div>
+                  ) : (
                 // Group filtered tools by server
                 (Object.entries(
                   getAllFilteredTools().reduce((acc, tool) => {
@@ -2062,8 +2265,10 @@ export function MCPConfigManager({
                     )}
                   </div>
                 )})
-              )}
-            </div>
+                  )}
+                </div>
+              </>
+            )}
           </CardContent>
         )}
       </Card>
@@ -2125,6 +2330,33 @@ export function MCPConfigManager({
 
         {serversSectionExpanded && (
           <CardContent className="border-t pt-4">
+            {showInitialServerStatusFailure && (
+              <div className="mb-4 flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
+                <AlertTriangle className="h-10 w-10 text-destructive/70" />
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Failed to load MCP server status</p>
+                  <p className="max-w-md text-sm text-muted-foreground [overflow-wrap:anywhere]">{serverStatusLoadError}</p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => void fetchStatus()}>
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {showPartialServerStatusFailure && (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-200">Couldn't refresh MCP server status.</p>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-200/80 [overflow-wrap:anywhere]">Showing the last successful server state. {serverStatusLoadError}</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => void fetchStatus()}>
+                  <RotateCcw className="h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            )}
+
             <div className="grid gap-2">
               {Object.entries(allServers).map(([name, serverConfigOrBuiltin]) => {
                 const isBuiltin = name === BUILTIN_SERVER_NAME
@@ -2132,6 +2364,9 @@ export function MCPConfigManager({
                 const status = serverStatus[name]
                 const serverTools = toolsByServer[name] || []
                 const enabledToolCount = serverTools.filter((t) => t.enabled).length
+                const oauthState = serverConfig ? oauthStatus[name] ?? getOAuthStatusFallback(serverConfig) : undefined
+                const logEntries = serverLogs[name] ?? []
+                const logStatus = serverLogStatus[name]
 
                 return (
                   <Card key={name} className="overflow-hidden">
@@ -2195,6 +2430,16 @@ export function MCPConfigManager({
                                 <XCircle className="h-3 w-3 text-red-500" />
                                 <Badge variant="destructive" className="text-xs">Error</Badge>
                               </div>
+                            ) : !hasLoadedServerStatus && isLoadingServerStatus ? (
+                              <div className="flex shrink-0 items-center gap-1">
+                                <Spinner className="h-3.5 w-3.5" />
+                                <Badge variant="outline" className="text-xs">Checking...</Badge>
+                              </div>
+                            ) : !status && serverStatusLoadError ? (
+                              <div className="flex shrink-0 items-center gap-1">
+                                <AlertCircle className="h-3 w-3 text-amber-500" />
+                                <Badge variant="outline" className="text-xs">Unavailable</Badge>
+                              </div>
                             ) : (
                               <div className="flex shrink-0 items-center gap-1">
                                 <AlertCircle className="h-3 w-3 text-yellow-500" />
@@ -2257,7 +2502,16 @@ export function MCPConfigManager({
                           {/* OAuth authorization controls */}
                           {serverConfig.transport === "streamableHttp" && serverConfig.url && (
                             <>
-                              {oauthStatus[name]?.authenticated ? (
+                              {oauthState?.error && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] border-amber-500/40 text-amber-700 dark:text-amber-200"
+                                  title={oauthState.error}
+                                >
+                                  OAuth status unavailable
+                                </Badge>
+                              )}
+                              {oauthState?.authenticated ? (
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -2265,7 +2519,7 @@ export function MCPConfigManager({
                                     try {
                                       await window.electronAPI.revokeOAuthTokens(name)
                                       toast.success("OAuth authentication revoked")
-                                      refreshOAuthStatus()
+                                      await refreshOAuthStatus(name)
                                     } catch (error) {
                                       toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`)
                                     }
@@ -2274,7 +2528,7 @@ export function MCPConfigManager({
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
-                              ) : oauthStatus[name]?.configured ? (
+                              ) : oauthState?.configured ? (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -2284,11 +2538,27 @@ export function MCPConfigManager({
                                       toast.success("OAuth authentication started")
                                       // Poll for completion
                                       const checkCompletion = setInterval(async () => {
-                                        const statusResult = await window.electronAPI.getOAuthStatus(name)
-                                        if (statusResult.authenticated) {
+                                        try {
+                                          const statusResult = normalizeOAuthStatus(
+                                            serverConfig,
+                                            await window.electronAPI.getOAuthStatus(name),
+                                          )
+
+                                          if (statusResult.authenticated) {
+                                            clearInterval(checkCompletion)
+                                            await refreshOAuthStatus(name)
+                                            toast.success("OAuth authentication completed")
+                                          }
+                                        } catch (error) {
                                           clearInterval(checkCompletion)
-                                          refreshOAuthStatus()
-                                          toast.success("OAuth authentication completed")
+                                          console.error(`Failed to poll OAuth status for ${name}:`, error)
+                                          setOAuthStatus((prev) => ({
+                                            ...prev,
+                                            [name]: {
+                                              ...getOAuthStatusFallback(serverConfig),
+                                              error: getLogFetchErrorMessage(error),
+                                            },
+                                          }))
                                         }
                                       }, 2000)
                                       setTimeout(() => clearInterval(checkCompletion), 60000)
@@ -2359,6 +2629,16 @@ export function MCPConfigManager({
                                   </div>
                                 )}
 
+                                {oauthState?.error && (
+                                  <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
+                                    <div className="font-medium">OAuth status unavailable.</div>
+                                    <div className="mt-1 [overflow-wrap:anywhere]">{oauthState.error}</div>
+                                    <div className="mt-1 text-amber-700/80 dark:text-amber-200/80">
+                                      Showing saved OAuth configuration only.
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* Error (if any) */}
                                 {status?.error && (
                                   <div className="text-sm text-red-500">
@@ -2403,9 +2683,28 @@ export function MCPConfigManager({
 
                               {expandedLogs.has(name) && (
                                 <div className="bg-black/90 rounded-md p-3 max-h-64 overflow-y-auto font-mono text-xs">
-                                  {serverLogs[name]?.length > 0 ? (
+                                  {logStatus?.isLoading && logEntries.length === 0 ? (
+                                    <div className="flex items-center justify-center gap-2 py-4 text-gray-400">
+                                      <Spinner className="h-3.5 w-3.5" />
+                                      <span>Loading logs...</span>
+                                    </div>
+                                  ) : logStatus?.error && logEntries.length === 0 ? (
+                                    <div className="space-y-1 py-4 text-center text-red-300">
+                                      <div className="font-medium">Couldn't load logs.</div>
+                                      <div className="text-[11px] leading-relaxed text-red-200/80 break-words [overflow-wrap:anywhere]">
+                                        {logStatus.error}
+                                      </div>
+                                    </div>
+                                  ) : logEntries.length > 0 ? (
                                     <div className="space-y-1">
-                                      {serverLogs[name].map((log, idx) => (
+                                      {logStatus?.error && (
+                                        <div className="mb-2 space-y-1 rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-200 break-words [overflow-wrap:anywhere]">
+                                          <div className="font-medium text-amber-100">Couldn't refresh logs.</div>
+                                          <div>{logStatus.error}</div>
+                                          <div className="text-amber-200/80">Showing the last successful log snapshot.</div>
+                                        </div>
+                                      )}
+                                      {logEntries.map((log, idx) => (
                                         <div key={idx} className="text-green-400">
                                           <span className="text-gray-500">
                                             [{new Date(log.timestamp).toLocaleTimeString()}]

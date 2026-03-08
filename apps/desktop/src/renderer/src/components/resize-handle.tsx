@@ -1,23 +1,40 @@
 import React, { useState, useRef, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
+export type ResizeHandlePosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right'
 
 interface ResizeHandleProps {
   className?: string
-  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right'
+  position: ResizeHandlePosition
   disabled?: boolean
-  onResizeStart?: () => void
+  title?: string
+  ariaLabel?: string
+  onResizeStart?: (position: ResizeHandlePosition) => void
   onResize?: (delta: { width: number; height: number }) => void
   onResizeEnd?: (size: { width: number; height: number }) => void
+  onHoverChange?: (position: ResizeHandlePosition | null) => void
+  onDoubleClick?: (position: ResizeHandlePosition) => void
 }
 
 export function ResizeHandle({
   className,
   position,
   disabled = false,
+  title,
+  ariaLabel,
   onResizeStart,
   onResize,
   onResizeEnd,
+  onHoverChange,
+  onDoubleClick,
 }: ResizeHandleProps) {
   const [isResizing, setIsResizing] = useState(false)
   const [resizeStart, setResizeStart] = useState<{
@@ -165,6 +182,7 @@ export function ResizeHandle({
       const windowSize = await tipcClient.getPanelSize()
       if (!windowSize || typeof windowSize !== 'object' || !('width' in windowSize) || !('height' in windowSize)) {
         console.error("Invalid window size response:", windowSize)
+        toast.error("Failed to start resizing the floating panel. Please try again.")
         return
       }
 
@@ -176,9 +194,13 @@ export function ResizeHandle({
         height: (windowSize as { width: number; height: number }).height,
       })
 
-      onResizeStart?.()
+      onResizeStart?.(position)
+      onHoverChange?.(position)
     } catch (error) {
       console.error("Failed to get panel size:", error)
+      toast.error(
+        `Failed to start resizing the floating panel. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     }
   }
 
@@ -233,13 +255,13 @@ export function ResizeHandle({
       case 'top-right':
       case 'bottom-left':
       case 'bottom-right':
-        return "w-4 h-4"
+        return "w-5 h-5"
       case 'top':
       case 'bottom':
-        return "w-full h-2"
+        return "w-full h-3"
       case 'left':
       case 'right':
-        return "w-2 h-full"
+        return "w-3 h-full"
       default:
         return "w-4 h-4"
     }
@@ -261,6 +283,22 @@ export function ResizeHandle({
         className,
       )}
       onMouseDown={handleMouseDown}
+      onMouseEnter={() => {
+        if (!disabled) {
+          onHoverChange?.(position)
+        }
+      }}
+      onMouseLeave={() => {
+        onHoverChange?.(null)
+      }}
+      onDoubleClick={(e) => {
+        if (disabled) return
+        e.preventDefault()
+        e.stopPropagation()
+        onDoubleClick?.(position)
+      }}
+      title={title}
+      aria-label={ariaLabel}
       style={{
         zIndex: 1000,
         userSelect: "none",

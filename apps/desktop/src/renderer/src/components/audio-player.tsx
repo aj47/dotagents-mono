@@ -18,6 +18,12 @@ interface AudioPlayerProps {
   onPlayStateChange?: (playing: boolean) => void
 }
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
 export function AudioPlayer({
   audioData,
   text,
@@ -37,34 +43,63 @@ export function AudioPlayer({
   const [hasAudio, setHasAudio] = useState(!!audioData)
   const [hasAutoPlayed, setHasAutoPlayed] = useState(false)
   const [wasStopped, setWasStopped] = useState(false)
+  const [playbackError, setPlaybackError] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (audioData) {
+    const audio = audioRef.current
+
+    if (!audioData) {
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current)
+        audioUrlRef.current = null
       }
 
-      const blob = new Blob([audioData], { type: "audio/wav" })
-      audioUrlRef.current = URL.createObjectURL(blob)
-      setHasAudio(true)
+      if (audio) {
+        audio.pause()
+        audio.removeAttribute("src")
+        audio.load()
+      }
+
+      setHasAudio(false)
       setHasAutoPlayed(false)
       setWasStopped(false)
-
-      if (audioRef.current) {
-        audioRef.current.src = audioUrlRef.current
-        setIsPlaying(false)
-        setCurrentTime(0)
-      }
+      setPlaybackError(null)
+      setIsPlaying(false)
+      setCurrentTime(0)
+      setDuration(0)
+      onPlayStateChange?.(false)
+      return
     }
 
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current)
+      audioUrlRef.current = null
+    }
+
+    const blob = new Blob([audioData], { type: "audio/wav" })
+    audioUrlRef.current = URL.createObjectURL(blob)
+    setHasAudio(true)
+    setHasAutoPlayed(false)
+    setWasStopped(false)
+    setPlaybackError(null)
+    setDuration(0)
+
+    if (audio) {
+      audio.src = audioUrlRef.current
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+  }, [audioData, onPlayStateChange])
+
+  useEffect(() => {
     return () => {
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current)
       }
     }
-  }, [audioData])
+  }, [])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -86,6 +121,7 @@ export function AudioPlayer({
 
     const handlePlay = () => {
       setIsPlaying(true)
+      setPlaybackError(null)
       onPlayStateChange?.(true)
     }
 
@@ -97,6 +133,8 @@ export function AudioPlayer({
     const handleError = (event: Event) => {
       console.error("[AudioPlayer] Audio error:", event)
       setIsPlaying(false)
+      setPlaybackError("Audio playback failed. The generated audio could not be loaded.")
+      onPlayStateChange?.(false)
     }
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata)
@@ -154,6 +192,8 @@ export function AudioPlayer({
         textPreview: text.slice(0, 80),
       }).catch((error) => {
         console.error("[AudioPlayer] Auto-play failed:", error)
+        setPlaybackError(`Couldn't start audio automatically. ${getActionErrorMessage(error, "Press play to try again.")}`)
+        onPlayStateChange?.(false)
       })
     }
   }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, text])
@@ -161,6 +201,7 @@ export function AudioPlayer({
   const handlePlayPause = async () => {
     if (!hasAudio && onGenerateAudio && !isGenerating && !error) {
       try {
+        setPlaybackError(null)
         await onGenerateAudio()
         return
       } catch (error) {
@@ -173,6 +214,7 @@ export function AudioPlayer({
         if (isPlaying) {
           audioRef.current.pause()
         } else {
+          setPlaybackError(null)
           setWasStopped(false)
           await ttsManager.playExclusive(audioRef.current, {
             source: "audio-player:manual",
@@ -183,6 +225,8 @@ export function AudioPlayer({
       } catch (playError) {
         console.error("[AudioPlayer] Playback failed:", playError)
         setIsPlaying(false)
+        setPlaybackError(`Couldn't play audio. ${getActionErrorMessage(playError, "Press play to try again.")}`)
+        onPlayStateChange?.(false)
       }
     }
   }
@@ -299,6 +343,11 @@ export function AudioPlayer({
           >
             {compactStatusDetail}
           </div>
+          {playbackError && (
+            <div className="min-w-0 text-[11px] leading-relaxed text-red-600 break-words [overflow-wrap:anywhere] dark:text-red-400">
+              {playbackError}
+            </div>
+          )}
         </div>
         <audio ref={audioRef} />
       </div>
@@ -376,6 +425,12 @@ export function AudioPlayer({
       </div>
 
       <audio ref={audioRef} />
+
+      {playbackError && (
+        <div className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300">
+          <span className="font-medium">Audio playback failed:</span> {playbackError}
+        </div>
+      )}
     </div>
   )
 }

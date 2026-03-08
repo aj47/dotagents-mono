@@ -7,6 +7,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
+import { toast } from "sonner"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import {
   buildMessageWithImages,
@@ -132,6 +133,11 @@ export function OverlayFollowUpInput({
       await sendMutation.mutateAsync(message)
     } catch (error) {
       console.error("Failed to submit overlay follow-up message:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to send follow-up message: ${error.message}`
+          : "Failed to send follow-up message",
+      )
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)
@@ -200,7 +206,23 @@ export function OverlayFollowUpInput({
     // This is more reliable than using Zustand store which has timing issues
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
-    await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+    try {
+      const recordingResult = await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+      if (recordingResult && "success" in recordingResult && recordingResult.success === false) {
+        const details = typeof recordingResult.error === "string"
+          ? recordingResult.error.trim()
+          : ""
+        console.error("Failed to start overlay follow-up voice recording:", recordingResult.error)
+        toast.error(details ? `Failed to start voice follow-up: ${details}` : "Failed to start voice follow-up")
+      }
+    } catch (error) {
+      console.error("Failed to start overlay follow-up voice recording:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to start voice follow-up: ${error.message}`
+          : "Failed to start voice follow-up",
+      )
+    }
   }
 
   // Handle stop session - kill switch functionality
@@ -215,6 +237,11 @@ export function OverlayFollowUpInput({
         await onStopSession()
       } catch (error) {
         console.error("Failed to stop agent session via callback:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? `Failed to stop agent: ${error.message}`
+            : "Failed to stop agent",
+        )
       } finally {
         setIsStoppingSession(false)
       }
@@ -229,6 +256,11 @@ export function OverlayFollowUpInput({
         await tipcClient.emergencyStopAgent()
       } catch (error) {
         console.error("Failed to emergency stop agent:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? `Failed to stop agent: ${error.message}`
+            : "Failed to stop agent",
+        )
       } finally {
         setIsStoppingSession(false)
       }
@@ -240,6 +272,11 @@ export function OverlayFollowUpInput({
       await tipcClient.stopAgentSession({ sessionId })
     } catch (error) {
       console.error("Failed to stop agent session:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to stop agent: ${error.message}`
+          : "Failed to stop agent",
+      )
     } finally {
       setIsStoppingSession(false)
     }

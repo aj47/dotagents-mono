@@ -350,6 +350,7 @@ export interface QueuedMessage {
   // Session that was active when this message was queued.
   sessionId?: string
   text: string
+  role?: "user" | "tool"
   createdAt: number
   status: "pending" | "processing" | "cancelled" | "failed"
   errorMessage?: string

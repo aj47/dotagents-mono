@@ -25,6 +25,10 @@ import { AgentSkill } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Sparkles, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package } from "lucide-react"
 
+function getDeleteSkillFailureMessage(): string {
+  return "This skill could not be deleted. The skills list was refreshed."
+}
+
 
 export function Component() {
   const queryClient = useQueryClient()
@@ -61,12 +65,9 @@ export function Component() {
   useEffect(() => {
     const unsubscribe = rendererHandlers.skillsFolderChanged.listen(async () => {
       try {
-        // Auto-scan and refresh skills when folder changes
-        const importedSkills = await tipcClient.scanSkillsFolder()
+        // Reload skills when the canonical .agents skills folders change.
+        await tipcClient.scanSkillsFolder()
         queryClient.invalidateQueries({ queryKey: ["skills"] })
-        if (importedSkills && importedSkills.length > 0) {
-          toast.success(`Auto-imported ${importedSkills.length} skill(s)`)
-        }
       } catch (error) {
         console.error("Failed to auto-refresh skills:", error)
         toast.error("Failed to auto-refresh skills")
@@ -109,7 +110,13 @@ export function Component() {
     mutationFn: async (id: string) => {
       return await tipcClient.deleteSkill({ id })
     },
-    onSuccess: () => {
+    onSuccess: (didDelete) => {
+      if (!didDelete) {
+        queryClient.invalidateQueries({ queryKey: ["skills"] })
+        toast.error(getDeleteSkillFailureMessage())
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["skills"] })
       toast.success("Skill deleted successfully")
     },
@@ -292,13 +299,9 @@ export function Component() {
     mutationFn: async () => {
       return await tipcClient.scanSkillsFolder()
     },
-    onSuccess: (importedSkills: AgentSkill[]) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
-      if (importedSkills.length > 0) {
-        toast.success(`Imported ${importedSkills.length} skill(s) from folder`)
-      } else {
-        toast.info("No new skills found in folder")
-      }
+      toast.success("Skills folder refreshed")
     },
     onError: (error: Error) => {
       toast.error(`Failed to scan skills folder: ${error.message}`)
@@ -311,18 +314,24 @@ export function Component() {
       return await tipcClient.importSkillFromGitHub({ repoIdentifier })
     },
     onSuccess: (result) => {
-      if (result) {
+      if (!result) {
+        return
+      }
+
+      if (result.imported.length > 0) {
         queryClient.invalidateQueries({ queryKey: ["skills"] })
-        if (result.imported.length > 0) {
-          toast.success(`Imported ${result.imported.length} skill(s) from GitHub: ${result.imported.map(s => s.name).join(", ")}`)
-        } else if (result.errors.length > 0) {
-          toast.error(`Failed to import: ${result.errors.join("; ")}`)
-        } else {
-          toast.info("No skills found in repository")
-        }
+        toast.success(`Imported ${result.imported.length} skill(s) from GitHub: ${result.imported.map(s => s.name).join(", ")}`)
         setIsGitHubDialogOpen(false)
         setGitHubRepoInput("")
+        return
       }
+
+      if (result.errors.length > 0) {
+        toast.error(`Failed to import: ${result.errors.join("; ")}`)
+        return
+      }
+
+      toast.info("No skills found in repository")
     },
     onError: (error: Error) => {
       toast.error(`Failed to import from GitHub: ${error.message}`)
@@ -540,7 +549,7 @@ Write your skill instructions here.
                   disabled={scanSkillsFolderMutation.isPending}
                 >
                   <RefreshCw className={`h-3 w-3 ${scanSkillsFolderMutation.isPending ? 'animate-spin' : ''}`} />
-                  Scan Folder
+                  Refresh Folder
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

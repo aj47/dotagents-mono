@@ -56,6 +56,7 @@ export function Component() {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [qrCodeData, setQrCodeData] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [allowFromDraft, setAllowFromDraft] = useState(() => formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
   const allowFromSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -136,11 +137,12 @@ export function Component() {
 
   const handleConnect = async () => {
     setIsConnecting(true)
+    setActionError(null)
     setStatusError(null)
     try {
       const result = await tipcClient.whatsappConnect()
       if (!result.success) {
-        setStatusError(result.error || "Failed to connect")
+        setActionError(result.error || "Failed to connect")
       } else if (result.qrCode) {
         setQrCodeData(result.qrCode)
       }
@@ -155,27 +157,29 @@ export function Component() {
 
   const handleDisconnect = async () => {
     try {
+      setActionError(null)
       const result = await tipcClient.whatsappDisconnect()
       if (!result.success) {
-        setStatusError(result.error || "Failed to disconnect")
+        setActionError(result.error || "Failed to disconnect")
       }
       await fetchStatus()
     } catch (error) {
-      setStatusError(error instanceof Error ? error.message : String(error))
+      setActionError(error instanceof Error ? error.message : String(error))
     }
   }
 
   const handleLogout = async () => {
     try {
+      setActionError(null)
       const result = await tipcClient.whatsappLogout()
       if (!result.success) {
-        setStatusError(result.error || "Failed to logout")
+        setActionError(result.error || "Failed to logout")
       } else {
         setQrCodeData(null)
       }
       await fetchStatus()
     } catch (error) {
-      setStatusError(error instanceof Error ? error.message : String(error))
+      setActionError(error instanceof Error ? error.message : String(error))
     }
   }
 
@@ -269,9 +273,9 @@ export function Component() {
               </div>
 
               {/* Error display */}
-              {statusError && (
+              {(actionError || statusError) && (
                 <div className="mb-4 p-2 rounded bg-red-500/10 text-sm text-red-600 dark:text-red-400">
-                  {statusError}
+                  {actionError || statusError}
                 </div>
               )}
 

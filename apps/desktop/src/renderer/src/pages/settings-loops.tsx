@@ -18,7 +18,7 @@ interface EditingLoop {
   id?: string
   name: string
   prompt: string
-  intervalMinutes: number
+  intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
 }
@@ -30,10 +30,14 @@ interface LoopRuntimeStatus {
   lastRunAt?: number
 }
 
+function hasScheduledLoopRuntime(status?: LoopRuntimeStatus): boolean {
+  return status?.isRunning === true || typeof status?.nextRunAt === "number"
+}
+
 const emptyLoop: EditingLoop = {
   name: "",
   prompt: "",
-  intervalMinutes: 15,
+  intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
 }
@@ -71,10 +75,33 @@ function formatInterval(minutes: number): string {
   return `${days}d ${hours}h ${mins}m`
 }
 
+function formatLoopIntervalDraft(minutes?: number): string {
+  const normalizedMinutes = typeof minutes === "number" && Number.isFinite(minutes)
+    ? Math.floor(minutes)
+    : 0
+
+  return normalizedMinutes >= 1 ? String(normalizedMinutes) : "1"
+}
+
+function parseLoopIntervalDraft(draft: string): number | null {
+  const trimmedDraft = draft.trim()
+  if (!/^[0-9]+$/.test(trimmedDraft)) return null
+
+  const parsed = Number(trimmedDraft)
+  if (!Number.isInteger(parsed) || parsed < 1) return null
+
+  return parsed
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+
+  const refreshLoopQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+    queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+  }
 
   const loopsQuery = useQuery({
     queryKey: ["loops"],
@@ -108,7 +135,7 @@ export function SettingsLoops() {
       id: loop.id,
       name: loop.name,
       prompt: loop.prompt,
-      intervalMinutes: loop.intervalMinutes,
+      intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
     })
@@ -117,9 +144,14 @@ export function SettingsLoops() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this repeat task?")) return
     try {
-      await tipcClient.deleteLoop({ loopId: id })
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+      const result = await tipcClient.deleteLoop({ loopId: id })
+      if (!result?.success) {
+        refreshLoopQueries()
+        toast.error("This task no longer exists. Refreshed the task list.")
+        return
+      }
+
+      refreshLoopQueries()
       toast.success("Task deleted")
     } catch {
       toast.error("Failed to delete task")
@@ -132,54 +164,123 @@ export function SettingsLoops() {
       return
     }
 
-    const sanitizedIntervalMinutes = Number.isFinite(editing.intervalMinutes) && editing.intervalMinutes >= 1
-      ? Math.floor(editing.intervalMinutes)
-      : 1
+    const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)
+    if (parsedIntervalMinutes === null) {
+      toast.error("Interval must be a positive whole number of minutes")
+      return
+    }
+
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
-      intervalMinutes: sanitizedIntervalMinutes,
+      intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
     }
 
-    try {
-      await tipcClient.saveLoop({ loop: loopData })
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
-      setEditing(null)
-      setIsCreating(false)
-      toast.success(isCreating ? "Task created" : "Task updated")
+    const saveSuccessMessage = isCreating ? "Task created" : "Task updated"
+    const hadScheduledRuntime = editing.id ? hasScheduledLoopRuntime(statusByLoopId.get(editing.id)) : false
 
-      // Start/stop loop based on enabled state
-      if (loopData.enabled) {
-        await tipcClient.startLoop?.({ loopId: loopData.id })
-      } else {
-        await tipcClient.stopLoop?.({ loopId: loopData.id })
+    try {
+      const result = await tipcClient.saveLoop({ loop: loopData })
+      if (!result?.success) {
+        refreshLoopQueries()
+        toast.error("Failed to save task")
+        return
       }
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     } catch {
       toast.error("Failed to save task")
+      return
     }
+
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+    setEditing(null)
+    setIsCreating(false)
+
+    if (loopData.enabled) {
+      try {
+        const result = await tipcClient.startLoop?.({ loopId: loopData.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success) {
+          toast.error(`${saveSuccessMessage}, but it could not be scheduled right now.`)
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.error(`${saveSuccessMessage}, but it could not be scheduled right now.`)
+        return
+      }
+    } else if (editing.id) {
+      try {
+        const result = await tipcClient.stopLoop?.({ loopId: loopData.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success && hadScheduledRuntime) {
+          toast.error(`${saveSuccessMessage}, but its previous schedule could not be cleared right now.`)
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (hadScheduledRuntime) {
+          toast.error(`${saveSuccessMessage}, but its previous schedule could not be cleared right now.`)
+          return
+        }
+      }
+    }
+
+    toast.success(saveSuccessMessage)
   }
 
   const handleToggleEnabled = async (loop: LoopConfig) => {
     const updatedLoop = { ...loop, enabled: !loop.enabled }
-    try {
-      await tipcClient.saveLoop({ loop: updatedLoop })
-      queryClient.invalidateQueries({ queryKey: ["loops"] })
+    const hadScheduledRuntime = hasScheduledLoopRuntime(statusByLoopId.get(loop.id))
 
-      if (updatedLoop.enabled) {
-        await tipcClient.startLoop?.({ loopId: loop.id })
-      } else {
-        await tipcClient.stopLoop?.({ loopId: loop.id })
+    try {
+      const result = await tipcClient.saveLoop({ loop: updatedLoop })
+      if (!result?.success) {
+        refreshLoopQueries()
+        toast.error("Failed to update task")
+        return
       }
-      queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
-      toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
     } catch {
       toast.error("Failed to update task")
+      return
     }
+
+    queryClient.invalidateQueries({ queryKey: ["loops"] })
+
+    if (updatedLoop.enabled) {
+      try {
+        const result = await tipcClient.startLoop?.({ loopId: loop.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success) {
+          toast.error("Task enabled, but it could not be scheduled right now.")
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.error("Task enabled, but it could not be scheduled right now.")
+        return
+      }
+    } else {
+      try {
+        const result = await tipcClient.stopLoop?.({ loopId: loop.id })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (!result?.success && hadScheduledRuntime) {
+          toast.error("Task disabled, but its previous schedule could not be cleared right now.")
+          return
+        }
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        if (hadScheduledRuntime) {
+          toast.error("Task disabled, but its previous schedule could not be cleared right now.")
+          return
+        }
+      }
+    }
+
+    toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
   }
 
   const handleRunNow = async (loop: LoopConfig) => {
@@ -343,8 +444,8 @@ export function SettingsLoops() {
                   id="interval"
                   type="number"
                   min={1}
-                  value={editing.intervalMinutes}
-                  onChange={(e) => setEditing({ ...editing, intervalMinutes: parseInt(e.target.value) || 15 })}
+                  value={editing.intervalMinutesDraft}
+                  onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
                   className="w-24"
                 />
                 <span className="text-sm text-muted-foreground self-center">minutes</span>
@@ -353,9 +454,9 @@ export function SettingsLoops() {
                 {INTERVAL_PRESETS.map((preset) => (
                   <Button
                     key={preset.value}
-                    variant={editing.intervalMinutes === preset.value ? "secondary" : "ghost"}
+                    variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
                     size="sm"
-                    onClick={() => setEditing({ ...editing, intervalMinutes: preset.value })}
+                    onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
                   >
                     {preset.label}
                   </Button>

@@ -80,6 +80,17 @@ export function ModelPresetManager() {
     })
   }, [config, saveConfigMutation])
 
+  const saveConfigAsync = useCallback(
+    async (updates: Partial<Config>) => {
+      if (!config) return
+
+      await saveConfigMutation.mutateAsync({
+        config: { ...config, ...updates },
+      })
+    },
+    [config, saveConfigMutation]
+  )
+
   // Save model selection to the current preset (called when user changes model)
   // Save model selection to both global config AND the current preset in a single save
   const saveModelWithPreset = useCallback((
@@ -130,7 +141,7 @@ export function ModelPresetManager() {
     })
   }, [currentPresetId, config, saveConfig])
 
-  const handlePresetChange = (presetId: string) => {
+  const handlePresetChange = async (presetId: string) => {
     const preset = allPresets.find(p => p.id === presetId)
     if (preset) {
       const updates: Partial<Config> = {
@@ -150,12 +161,12 @@ export function ModelPresetManager() {
       if (preset.summarizationModel) {
         updates.dualModelWeakModelName = preset.summarizationModel
       }
-      saveConfig(updates)
+      await saveConfigAsync(updates)
       toast.success(`Switched to preset: ${preset.name}`)
     }
   }
 
-  const handleCreatePreset = () => {
+  const handleCreatePreset = async () => {
     if (!newPreset.name?.trim()) {
       toast.error("Preset name is required")
       return
@@ -180,7 +191,7 @@ export function ModelPresetManager() {
     }
 
     const existingPresets = config?.modelPresets || []
-    saveConfig({
+    await saveConfigAsync({
       modelPresets: [...existingPresets, preset],
     })
 
@@ -189,7 +200,7 @@ export function ModelPresetManager() {
     toast.success("Preset created successfully")
   }
 
-  const handleUpdatePreset = () => {
+  const handleUpdatePreset = async () => {
     if (!editingPreset) return
 
     const existingPresets = config?.modelPresets || []
@@ -213,13 +224,13 @@ export function ModelPresetManager() {
       updates.openaiApiKey = editingPreset.apiKey
     }
 
-    saveConfig(updates)
+    await saveConfigAsync(updates)
     setIsEditDialogOpen(false)
     setEditingPreset(null)
     toast.success("Preset updated successfully")
   }
 
-  const handleDeletePreset = (preset: ModelPreset) => {
+  const handleDeletePreset = async (preset: ModelPreset) => {
     if (preset.isBuiltIn) {
       toast.error("Cannot delete built-in presets")
       return
@@ -237,7 +248,7 @@ export function ModelPresetManager() {
         updates.openaiBaseUrl = defaultPreset?.baseUrl || ""
         updates.openaiApiKey = defaultPreset?.apiKey || ""
       }
-      saveConfig(updates)
+      await saveConfigAsync(updates)
       toast.success("Preset deleted")
     }
   }

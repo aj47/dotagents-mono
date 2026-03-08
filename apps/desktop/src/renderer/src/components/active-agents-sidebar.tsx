@@ -11,6 +11,7 @@ import {
   Archive,
   Bot,
 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
@@ -223,6 +224,8 @@ export function ActiveAgentsSidebar({
       }
     } catch (error) {
       console.error("Failed to stop session:", error)
+      const details = error instanceof Error ? error.message.trim() : ""
+      toast.error(details ? `Failed to stop session. ${details}` : "Failed to stop session")
     }
   }
 
@@ -232,6 +235,7 @@ export function ActiveAgentsSidebar({
     e: React.MouseEvent,
   ) => {
     e.stopPropagation() // Prevent session focus when clicking snooze
+    const previousFocusedSessionId = focusedSessionId
     logUI("[ActiveAgentsSidebar] Toggle snooze clicked", {
       sessionId,
       sidebarSaysIsSnoozed: isSnoozed,
@@ -259,19 +263,37 @@ export function ActiveAgentsSidebar({
       } catch (error) {
         // Rollback local state only when the API call fails to keep UI and backend in sync
         setSessionSnoozed(sessionId, true)
-        setFocusedSessionId(null)
+        setFocusedSessionId(previousFocusedSessionId ?? null)
         console.error("Failed to unsnooze session:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(details ? `Failed to restore session. ${details}` : "Failed to restore session")
         return
       }
 
       // UI updates after successful API call - don't rollback if these fail
       try {
         // Keep panel context synced to the restored session, but do not force-open it.
-        await tipcClient.focusAgentSession({ sessionId })
+        const focusResult = await tipcClient.focusAgentSession({ sessionId })
+        if (focusResult?.success === false) {
+          const details = typeof focusResult.error === "string" ? focusResult.error.trim() : ""
+          console.error("Failed to sync panel focus after unsnooze:", focusResult.error)
+          toast.error(
+            details
+              ? `Session restored, but failed to sync panel focus. ${details}`
+              : "Session restored, but failed to sync panel focus",
+          )
+          return
+        }
         logUI("[ActiveAgentsSidebar] Session unsnoozed and focused")
       } catch (error) {
         // Log UI errors but don't rollback - the backend state is already updated
         console.error("Failed to update UI after unsnooze:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(
+          details
+            ? `Session restored, but failed to sync panel focus. ${details}`
+            : "Session restored, but failed to sync panel focus",
+        )
       }
     } else {
       // Snoozing: move session to background
@@ -285,6 +307,8 @@ export function ActiveAgentsSidebar({
         // Rollback local state only when the API call fails to keep UI and backend in sync
         setSessionSnoozed(sessionId, false)
         console.error("Failed to snooze session:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(details ? `Failed to minimize session. ${details}` : "Failed to minimize session")
         return
       }
 
@@ -302,6 +326,12 @@ export function ActiveAgentsSidebar({
       } catch (error) {
         // Log UI errors but don't rollback - the backend state is already updated
         console.error("Failed to update UI after snooze:", error)
+        const details = error instanceof Error ? error.message.trim() : ""
+        toast.error(
+          details
+            ? `Session minimized, but failed to hide the panel. ${details}`
+            : "Session minimized, but failed to hide the panel",
+        )
       }
     }
   }

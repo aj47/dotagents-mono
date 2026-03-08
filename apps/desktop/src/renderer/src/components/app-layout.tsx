@@ -3,6 +3,7 @@ import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
+import { toast } from "sonner"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { SettingsDragBar } from "@renderer/components/settings-drag-bar"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
@@ -43,13 +44,26 @@ interface AgentSessionsResponse {
   activeSessions: AgentSession[]
 }
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
 export const Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [pastSessionsDialogOpen, setPastSessionsDialogOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
-  const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
+  const {
+    isCollapsed,
+    width,
+    isResizing,
+    toggleCollapse,
+    setCollapsed,
+    handleResizeStart,
+  } =
     useSidebar()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
@@ -110,6 +124,9 @@ export const Component = () => {
           await tipcClient.stopAllTts()
         } catch (error) {
           console.error("Failed to stop TTS in all windows:", error)
+          toast.error(
+            `Disabled TTS for this window, but failed to stop speech in other windows. ${getActionErrorMessage(error, "Please retry if audio is still playing.")}`,
+          )
         }
       }
       saveConfig({ ttsEnabled: nextEnabled })
@@ -135,6 +152,9 @@ export const Component = () => {
         setFocusedSessionId(null)
       } catch (error) {
         console.error("Failed to trigger emergency stop:", error)
+        toast.error(
+          `Failed to stop all agent sessions. ${getActionErrorMessage(error, "Please try again.")}`,
+        )
       } finally {
         setIsEmergencyStopping(false)
       }
@@ -630,6 +650,7 @@ export const Component = () => {
               context={{
                 onOpenPastSessionsDialog: () => setPastSessionsDialogOpen(true),
                 sidebarWidth,
+                collapseSidebar: () => setCollapsed(true),
               }}
             />
           </div>

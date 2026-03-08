@@ -21,18 +21,18 @@ import { useTheme } from './ThemeProvider';
 interface MessageQueuePanelProps {
   conversationId: string;
   messages: QueuedMessage[];
-  onRemove: (messageId: string) => void;
-  onUpdate: (messageId: string, text: string) => void;
-  onRetry: (messageId: string) => void;
-  onClear: () => void;
+  onRemove: (messageId: string) => boolean;
+  onUpdate: (messageId: string, text: string) => boolean;
+  onRetry: (messageId: string) => boolean;
+  onClear: () => boolean;
   compact?: boolean;
 }
 
 interface QueuedMessageItemProps {
   message: QueuedMessage;
-  onRemove: () => void;
-  onUpdate: (text: string) => void;
-  onRetry: () => void;
+  onRemove: () => boolean;
+  onUpdate: (text: string) => boolean;
+  onRetry: () => boolean;
 }
 
 function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
@@ -64,7 +64,10 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const handleSaveEdit = () => {
     const trimmed = editText.trim();
     if (trimmed && trimmed !== message.text) {
-      onUpdate(trimmed);
+      const didUpdate = onUpdate(trimmed);
+      if (!didUpdate) {
+        return;
+      }
     }
     setIsEditing(false);
   };

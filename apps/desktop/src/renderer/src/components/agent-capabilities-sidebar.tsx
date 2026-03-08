@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
 import { ChevronDown, ChevronRight, Sparkles, Server, Wrench } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { Switch } from "@renderer/components/ui/switch"
@@ -14,6 +15,12 @@ type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: bool
 type ToolInfo = { name: string; description: string; serverName: string }
 
 const STORAGE_KEY = "agent-capabilities-sidebar-expanded"
+
+function getAgentCapabilityErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 export function AgentCapabilitiesSidebar() {
   const navigate = useNavigate()
@@ -66,8 +73,20 @@ export function AgentCapabilitiesSidebar() {
   const serverNames = Object.keys(serverStatus).filter(n => n !== "dotagents-internal")
 
   const updateAgent = useCallback(async (id: string, updates: Partial<AgentProfile>) => {
-    await tipcClient.updateAgentProfile({ id, updates })
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    try {
+      const updatedAgent = await tipcClient.updateAgentProfile({ id, updates })
+
+      if (!updatedAgent) {
+        toast.error("Failed to update agent capabilities. This agent may no longer exist.")
+      }
+    } catch (error) {
+      console.error("[AgentCapabilitiesSidebar] Failed to update agent profile:", error)
+      toast.error(
+        `Failed to update agent capabilities. ${getAgentCapabilityErrorMessage(error, "Please try again.")}`,
+      )
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    }
   }, [queryClient])
 
   // ── Capability helpers (per agent) ──
@@ -82,7 +101,7 @@ export function AgentCapabilitiesSidebar() {
     // Transitioning from "all enabled by default" to explicit opt-in mode
     if (!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault) {
       const allExcept = skills.map(s => s.id).filter(id => id !== skillId)
-      updateAgent(agent.id, { skillsConfig: { enabledSkillIds: allExcept, allSkillsDisabledByDefault: true } })
+      void updateAgent(agent.id, { skillsConfig: { enabledSkillIds: allExcept, allSkillsDisabledByDefault: true } })
       return
     }
     const ids = [...(agent.skillsConfig.enabledSkillIds || [])]
@@ -90,9 +109,9 @@ export function AgentCapabilitiesSidebar() {
     if (idx >= 0) ids.splice(idx, 1); else ids.push(skillId)
     // If all skills are re-enabled, reset to default (all enabled) state
     if (ids.length === skills.length) {
-      updateAgent(agent.id, { skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: false } })
+      void updateAgent(agent.id, { skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: false } })
     } else {
-      updateAgent(agent.id, { skillsConfig: { ...agent.skillsConfig, enabledSkillIds: ids } })
+      void updateAgent(agent.id, { skillsConfig: { ...agent.skillsConfig, enabledSkillIds: ids } })
     }
   }
 
@@ -109,12 +128,12 @@ export function AgentCapabilitiesSidebar() {
       const enabled = [...(tc.enabledServers || [])]
       const idx = enabled.indexOf(serverName)
       if (idx >= 0) enabled.splice(idx, 1); else enabled.push(serverName)
-      updateAgent(agent.id, { toolConfig: { ...tc, enabledServers: enabled } })
+      void updateAgent(agent.id, { toolConfig: { ...tc, enabledServers: enabled } })
     } else {
       const disabled = [...(tc.disabledServers || [])]
       const idx = disabled.indexOf(serverName)
       if (idx >= 0) disabled.splice(idx, 1); else disabled.push(serverName)
-      updateAgent(agent.id, { toolConfig: { ...tc, disabledServers: disabled } })
+      void updateAgent(agent.id, { toolConfig: { ...tc, disabledServers: disabled } })
     }
   }
 
@@ -126,7 +145,7 @@ export function AgentCapabilitiesSidebar() {
     const disabled = [...(tc.disabledTools || [])]
     const idx = disabled.indexOf(toolName)
     if (idx >= 0) disabled.splice(idx, 1); else disabled.push(toolName)
-    updateAgent(agent.id, { toolConfig: { ...tc, disabledTools: disabled } })
+    void updateAgent(agent.id, { toolConfig: { ...tc, disabledTools: disabled } })
   }
 
   const isBuiltinToolEnabled = (agent: AgentProfile, toolName: string) => {
@@ -148,7 +167,7 @@ export function AgentCapabilitiesSidebar() {
         if (currentList.length === builtinTools.length) currentList = []
       }
     }
-    updateAgent(agent.id, { toolConfig: { ...tc, enabledBuiltinTools: currentList.length > 0 ? currentList : undefined } })
+    void updateAgent(agent.id, { toolConfig: { ...tc, enabledBuiltinTools: currentList.length > 0 ? currentList : undefined } })
   }
 
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.serverName === serverName)

@@ -236,6 +236,14 @@ class AgentProfileService {
   private profilesData: AgentProfilesData | undefined
   private conversationsData: AgentProfileConversationsData = {}
 
+  private snapshotProfilesData(): AgentProfilesData | undefined {
+    return this.profilesData ? structuredClone(this.profilesData) : undefined
+  }
+
+  private snapshotConversationsData(): AgentProfileConversationsData {
+    return structuredClone(this.conversationsData)
+  }
+
   constructor() {
     this.loadProfiles()
     this.loadConversations()
@@ -454,6 +462,7 @@ class AgentProfileService {
       fs.writeFileSync(agentProfilesPath, JSON.stringify(this.profilesData, null, 2))
     } catch (error) {
       logApp("Error saving agent profiles:", error)
+      throw error instanceof Error ? error : new Error(String(error))
     }
   }
 
@@ -549,13 +558,20 @@ class AgentProfileService {
       updatedAt: now,
     }
 
-    if (!this.profilesData) {
-      this.profilesData = { profiles: [] }
-    }
-    this.profilesData.profiles.push(newProfile)
-    this.saveProfiles()
+    const previousProfilesData = this.snapshotProfilesData()
 
-    return newProfile
+    try {
+      if (!this.profilesData) {
+        this.profilesData = { profiles: [] }
+      }
+      this.profilesData.profiles.push(newProfile)
+      this.saveProfiles()
+
+      return newProfile
+    } catch (error) {
+      this.profilesData = previousProfilesData
+      throw error
+    }
   }
 
   /**
@@ -565,6 +581,8 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (!profile) return undefined
 
+    const previousProfilesData = this.snapshotProfilesData()
+
     // Don't allow updating certain fields
     const { id: _, createdAt, isBuiltIn, ...allowedUpdates } = updates
 
@@ -573,10 +591,15 @@ class AgentProfileService {
       allowedUpdates.name = allowedUpdates.displayName
     }
 
-    Object.assign(profile, allowedUpdates, { updatedAt: Date.now() })
-    this.saveProfiles()
+    try {
+      Object.assign(profile, allowedUpdates, { updatedAt: Date.now() })
+      this.saveProfiles()
 
-    return profile
+      return profile
+    } catch (error) {
+      this.profilesData = previousProfilesData
+      throw error
+    }
   }
 
   /**
@@ -591,22 +614,31 @@ class AgentProfileService {
     const index = this.profilesData.profiles.findIndex((p) => p.id === id)
     if (index === -1) return false
 
-    this.profilesData.profiles.splice(index, 1)
-    this.saveProfiles()
+    const previousProfilesData = this.snapshotProfilesData()
+    const previousConversationsData = this.snapshotConversationsData()
 
-    // Delete modular files from .agents/agents/
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      deleteAgentProfileFiles(globalLayer, id)
+      this.profilesData.profiles.splice(index, 1)
+      this.saveProfiles()
+
+      // Delete modular files from .agents/agents/
+      try {
+        const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+        deleteAgentProfileFiles(globalLayer, id)
+      } catch (error) {
+        logApp("Error deleting agent profile files:", error)
+      }
+
+      // Also delete conversation
+      delete this.conversationsData[id]
+      this.saveConversations()
+
+      return true
     } catch (error) {
-      logApp("Error deleting agent profile files:", error)
+      this.profilesData = previousProfilesData
+      this.conversationsData = previousConversationsData
+      throw error
     }
-
-    // Also delete conversation
-    delete this.conversationsData[id]
-    this.saveConversations()
-
-    return true
   }
 
   // ============================================================================

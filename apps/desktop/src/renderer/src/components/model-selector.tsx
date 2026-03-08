@@ -37,6 +37,7 @@ export function ModelSelector({
   const [searchQuery, setSearchQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [useCustomInput, setUseCustomInput] = useState(false)
+  const [customInputDraft, setCustomInputDraft] = useState(value || "")
   const searchInputRef = useRef<HTMLInputElement>(null)
   const customInputRef = useRef<HTMLInputElement>(null)
 
@@ -83,6 +84,12 @@ export function ModelSelector({
       onValueChange(modelsQuery.data[0].id)
     }
   }, [value, modelsQuery.data, useCustomInput])
+
+  useEffect(() => {
+    if (useCustomInput) {
+      setCustomInputDraft(value || "")
+    }
+  }, [value, useCustomInput])
 
   useEffect(() => {
     if (!isOpen) {
@@ -140,9 +147,28 @@ export function ModelSelector({
       }
     } else {
       // Switching to custom input
+      setCustomInputDraft(value || "")
       setUseCustomInput(true)
       requestAnimationFrame(() => customInputRef.current?.focus())
     }
+  }
+
+  const shouldSkipCustomBlurCommit = (relatedTarget: EventTarget | null) => {
+    if (!relatedTarget || typeof relatedTarget !== "object") {
+      return false
+    }
+
+    const maybeElement = relatedTarget as { getAttribute?: (name: string) => string | null }
+    return maybeElement.getAttribute?.("data-custom-model-toggle") === "true"
+  }
+
+  const commitCustomInputDraft = (nextValue: string) => {
+    if ((value || "") === nextValue) {
+      return
+    }
+
+    logUI('[ModelSelector] Committing custom model draft:', nextValue)
+    onValueChange(nextValue)
   }
 
   return (
@@ -158,6 +184,7 @@ export function ModelSelector({
               disabled={disabled}
               className="h-6 px-2 text-xs flex-shrink-0"
               title={useCustomInput ? "Switch to model list" : "Use custom model name"}
+              data-custom-model-toggle="true"
             >
               <Edit3 className="h-3 w-3" />
             </Button>
@@ -181,8 +208,15 @@ export function ModelSelector({
       {useCustomInput ? (
         <Input
           ref={customInputRef}
-          value={value || ""}
-          onChange={(e) => onValueChange(e.target.value)}
+          value={customInputDraft}
+          onChange={(e) => setCustomInputDraft(e.target.value)}
+          onBlur={(e) => {
+            if (shouldSkipCustomBlurCommit(e.relatedTarget)) {
+              return
+            }
+
+            commitCustomInputDraft(e.currentTarget.value)
+          }}
           placeholder="Enter custom model name (e.g., gpt-4o, claude-3-opus)"
           disabled={disabled}
           className="w-full"

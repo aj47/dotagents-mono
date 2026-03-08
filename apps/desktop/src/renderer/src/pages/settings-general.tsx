@@ -35,7 +35,7 @@ import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ExternalLink, AlertCircle, FolderOpen, FolderUp, FileText } from "lucide-react"
 import { toast } from "sonner"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
@@ -46,11 +46,53 @@ import {
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
+const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
+const MCP_MAX_ITERATIONS_MIN = 1
+const MCP_MAX_ITERATIONS_MAX = 50
+const MCP_MAX_ITERATIONS_DEFAULT = 10
+
+type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
+
+function getLangfuseDrafts(config: Config | undefined) {
+  return {
+    langfusePublicKey: config?.langfusePublicKey ?? "",
+    langfuseSecretKey: config?.langfuseSecretKey ?? "",
+    langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
+  }
+}
+
+function parseMcpMaxIterationsDraft(value: string) {
+  const parsedValue = Number.parseInt(value, 10)
+  if (Number.isNaN(parsedValue)) return null
+  if (parsedValue < MCP_MAX_ITERATIONS_MIN || parsedValue > MCP_MAX_ITERATIONS_MAX) return null
+  return parsedValue
+}
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
+  const cfg = configQuery.data as Config | undefined
 
   const saveConfigMutation = useSaveConfigMutation()
+  const cfgRef = useRef<Config | undefined>(cfg)
+  const [langfuseDrafts, setLangfuseDrafts] = useState(() => getLangfuseDrafts(cfg))
+  const langfuseSaveTimeoutsRef = useRef<Partial<Record<LangfuseDraftKey, ReturnType<typeof setTimeout>>>>({})
+  const [groqSttPromptDraft, setGroqSttPromptDraft] = useState(() => cfg?.groqSttPrompt ?? "")
+  const groqSttPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [transcriptPostProcessingPromptDraft, setTranscriptPostProcessingPromptDraft] = useState(
+    () => cfg?.transcriptPostProcessingPrompt ?? "",
+  )
+  const transcriptPostProcessingPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [mcpMaxIterationsDraft, setMcpMaxIterationsDraft] = useState(
+    () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+  )
+  const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -134,7 +176,12 @@ export function Component() {
   const showFloatingPanelNow = useCallback(async () => {
     try {
       await tipcClient.resizePanelToNormal({})
-      await tipcClient.showPanelWindow({})
+      const showResult = await tipcClient.showPanelWindow({})
+      if (showResult && "success" in showResult && showResult.success === false) {
+        toast.error(showResult.error || "Failed to show floating panel")
+        return
+      }
+
       toast.success("Floating panel shown")
     } catch (error) {
       console.error("Failed to show floating panel:", error)
@@ -158,15 +205,173 @@ export function Component() {
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
+      const currentConfig = cfgRef.current
+      if (!currentConfig) return
+
       saveConfigMutation.mutate({
         config: {
-          ...(configQuery.data as any),
+          ...currentConfig,
           ...config,
         },
       })
     },
-    [saveConfigMutation, configQuery.data],
+    [saveConfigMutation],
   )
+
+  useEffect(() => {
+    cfgRef.current = cfg
+  }, [cfg])
+
+  useEffect(() => {
+    setLangfuseDrafts(getLangfuseDrafts(cfg))
+  }, [cfg?.langfusePublicKey, cfg?.langfuseSecretKey, cfg?.langfuseBaseUrl])
+
+  useEffect(() => {
+    setGroqSttPromptDraft(cfg?.groqSttPrompt ?? "")
+  }, [cfg?.groqSttPrompt])
+
+  useEffect(() => {
+    setTranscriptPostProcessingPromptDraft(cfg?.transcriptPostProcessingPrompt ?? "")
+  }, [cfg?.transcriptPostProcessingPrompt])
+
+  useEffect(() => {
+    setMcpMaxIterationsDraft(String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT))
+  }, [cfg?.mcpMaxIterations])
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
+        if (timeout) clearTimeout(timeout as ReturnType<typeof setTimeout>)
+      }
+
+      if (groqSttPromptSaveTimeoutRef.current) {
+        clearTimeout(groqSttPromptSaveTimeoutRef.current)
+      }
+
+      if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
+        clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
+      }
+
+      if (mcpMaxIterationsSaveTimeoutRef.current) {
+        clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const flushLangfuseSave = useCallback((key: LangfuseDraftKey, value: string) => {
+    const pendingSave = langfuseSaveTimeoutsRef.current[key]
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+      delete langfuseSaveTimeoutsRef.current[key]
+    }
+
+    saveConfig({ [key]: value || undefined } as Partial<Config>)
+  }, [saveConfig])
+
+  const scheduleLangfuseSave = useCallback((key: LangfuseDraftKey, value: string) => {
+    const pendingSave = langfuseSaveTimeoutsRef.current[key]
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+    }
+
+    langfuseSaveTimeoutsRef.current[key] = setTimeout(() => {
+      delete langfuseSaveTimeoutsRef.current[key]
+      saveConfig({ [key]: value || undefined } as Partial<Config>)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateLangfuseDraft = useCallback((key: LangfuseDraftKey, value: string) => {
+    setLangfuseDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [key]: value,
+    }))
+    scheduleLangfuseSave(key, value)
+  }, [scheduleLangfuseSave])
+
+  const flushGroqSttPromptSave = useCallback((value: string) => {
+    if (groqSttPromptSaveTimeoutRef.current) {
+      clearTimeout(groqSttPromptSaveTimeoutRef.current)
+      groqSttPromptSaveTimeoutRef.current = null
+    }
+
+    saveConfig({ groqSttPrompt: value || undefined })
+  }, [saveConfig])
+
+  const scheduleGroqSttPromptSave = useCallback((value: string) => {
+    if (groqSttPromptSaveTimeoutRef.current) {
+      clearTimeout(groqSttPromptSaveTimeoutRef.current)
+    }
+
+    groqSttPromptSaveTimeoutRef.current = setTimeout(() => {
+      groqSttPromptSaveTimeoutRef.current = null
+      saveConfig({ groqSttPrompt: value || undefined })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateGroqSttPromptDraft = useCallback((value: string) => {
+    setGroqSttPromptDraft(value)
+    scheduleGroqSttPromptSave(value)
+  }, [scheduleGroqSttPromptSave])
+
+  const flushTranscriptPostProcessingPromptSave = useCallback((value: string) => {
+    if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
+      clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
+      transcriptPostProcessingPromptSaveTimeoutRef.current = null
+    }
+
+    saveConfig({ transcriptPostProcessingPrompt: value })
+  }, [saveConfig])
+
+  const scheduleTranscriptPostProcessingPromptSave = useCallback((value: string) => {
+    if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
+      clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
+    }
+
+    transcriptPostProcessingPromptSaveTimeoutRef.current = setTimeout(() => {
+      transcriptPostProcessingPromptSaveTimeoutRef.current = null
+      saveConfig({ transcriptPostProcessingPrompt: value })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateTranscriptPostProcessingPromptDraft = useCallback((value: string) => {
+    setTranscriptPostProcessingPromptDraft(value)
+    scheduleTranscriptPostProcessingPromptSave(value)
+  }, [scheduleTranscriptPostProcessingPromptSave])
+
+  const flushMcpMaxIterationsSave = useCallback((value: string) => {
+    if (mcpMaxIterationsSaveTimeoutRef.current) {
+      clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      mcpMaxIterationsSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpMaxIterationsDraft(value)
+    if (parsedValue === null) {
+      setMcpMaxIterationsDraft(String(cfgRef.current?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT))
+      return
+    }
+
+    saveConfig({ mcpMaxIterations: parsedValue })
+  }, [saveConfig])
+
+  const scheduleMcpMaxIterationsSave = useCallback((value: string) => {
+    if (mcpMaxIterationsSaveTimeoutRef.current) {
+      clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      mcpMaxIterationsSaveTimeoutRef.current = null
+    }
+
+    const parsedValue = parseMcpMaxIterationsDraft(value)
+    if (parsedValue === null) return
+
+    mcpMaxIterationsSaveTimeoutRef.current = setTimeout(() => {
+      mcpMaxIterationsSaveTimeoutRef.current = null
+      saveConfig({ mcpMaxIterations: parsedValue })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateMcpMaxIterationsDraft = useCallback((value: string) => {
+    setMcpMaxIterationsDraft(value)
+    scheduleMcpMaxIterationsSave(value)
+  }, [scheduleMcpMaxIterationsSave])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -317,11 +522,13 @@ export function Component() {
             <Control label={<ControlLabel label="Max Iterations" tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer." />} className="px-3">
               <Input
                 type="number"
-                min="1"
-                max="50"
+                min={String(MCP_MAX_ITERATIONS_MIN)}
+                max={String(MCP_MAX_ITERATIONS_MAX)}
                 step="1"
-                value={configQuery.data?.mcpMaxIterations ?? 10}
-                onChange={(e) => saveConfig({ mcpMaxIterations: parseInt(e.target.value) || 1 })}
+                value={mcpMaxIterationsDraft}
+                onChange={(e) => updateMcpMaxIterationsDraft(e.currentTarget.value)}
+                onBlur={(e) => flushMcpMaxIterationsSave(e.currentTarget.value)}
+                placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
                 className="w-32"
               />
             </Control>
@@ -373,7 +580,7 @@ export function Component() {
           {process.env.IS_MAC && (
             <Control label="Hide Dock Icon" className="px-3">
               <Switch
-                defaultChecked={configQuery.data.hideDockIcon}
+                checked={configQuery.data.hideDockIcon}
                 onCheckedChange={(value) => {
                   saveConfig({
                     hideDockIcon: value,
@@ -384,7 +591,7 @@ export function Component() {
           )}
           <Control label="Launch at Login" className="px-3">
             <Switch
-              defaultChecked={configQuery.data.launchAtLogin ?? false}
+              checked={configQuery.data.launchAtLogin ?? false}
               onCheckedChange={(value) => {
                 saveConfig({
                   launchAtLogin: value,
@@ -395,7 +602,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Streamer Mode" tooltip="Hide sensitive information (phone numbers, QR codes, API keys) when streaming or sharing your screen" />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.streamerModeEnabled ?? false}
+              checked={configQuery.data.streamerModeEnabled ?? false}
               onCheckedChange={(value) => {
                 saveConfig({
                   streamerModeEnabled: value,
@@ -541,7 +748,7 @@ export function Component() {
           <Control label="Recording" className="px-3">
             <div className="space-y-2">
               <Select
-                defaultValue={shortcut}
+                value={shortcut}
                 onValueChange={(value) => {
                   saveConfig({
                     shortcut: value as typeof configQuery.data.shortcut,
@@ -612,7 +819,7 @@ export function Component() {
               {configQuery.data?.toggleVoiceDictationEnabled && (
                 <>
                   <Select
-                    defaultValue={configQuery.data?.toggleVoiceDictationHotkey || "fn"}
+                    value={configQuery.data?.toggleVoiceDictationHotkey || "fn"}
                     onValueChange={(value) => {
                       saveConfig({
                         toggleVoiceDictationHotkey: value as typeof configQuery.data.toggleVoiceDictationHotkey,
@@ -859,11 +1066,12 @@ export function Component() {
             <Control label={<ControlLabel label="Prompt" tooltip="Optional prompt to guide the model's style or specify how to spell unfamiliar words. Limited to 224 tokens." />} className="px-3">
               <Textarea
                 placeholder="Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
-                defaultValue={configQuery.data.groqSttPrompt || ""}
+                value={groqSttPromptDraft}
                 onChange={(e) => {
-                  saveConfig({
-                    groqSttPrompt: e.currentTarget.value,
-                  })
+                  updateGroqSttPromptDraft(e.currentTarget.value)
+                }}
+                onBlur={(e) => {
+                  flushGroqSttPromptSave(e.currentTarget.value)
                 }}
                 className="min-h-[80px]"
               />
@@ -872,7 +1080,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Transcription Preview" tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider every ~10 seconds to display partial results. Note: this increases API usage — each chunk is billed separately (Groq has a 10-second minimum billing per request)." />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.transcriptionPreviewEnabled}
+              checked={configQuery.data.transcriptionPreviewEnabled}
               onCheckedChange={(value) => {
                 saveConfig({
                   transcriptionPreviewEnabled: value,
@@ -883,7 +1091,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Post-Processing" tooltip="Enable AI-powered post-processing to clean up and improve transcripts" />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.transcriptPostProcessingEnabled}
+              checked={configQuery.data.transcriptPostProcessingEnabled}
               onCheckedChange={(value) => {
                 saveConfig({
                   transcriptPostProcessingEnabled: value,
@@ -917,14 +1125,16 @@ export function Component() {
                     </DialogHeader>
                     <Textarea
                       rows={10}
-                      defaultValue={
-                        configQuery.data.transcriptPostProcessingPrompt
-                      }
+                      value={transcriptPostProcessingPromptDraft}
                       onChange={(e) => {
-                        saveConfig({
-                          transcriptPostProcessingPrompt:
-                            e.currentTarget.value,
-                        })
+                        updateTranscriptPostProcessingPromptDraft(
+                          e.currentTarget.value,
+                        )
+                      }}
+                      onBlur={(e) => {
+                        flushTranscriptPostProcessingPromptSave(
+                          e.currentTarget.value,
+                        )
                       }}
                     ></Textarea>
                     <div className="text-sm text-muted-foreground">
@@ -942,7 +1152,7 @@ export function Component() {
         <ControlGroup collapsible defaultCollapsed title="Text to Speech">
           <Control label="Enabled" className="px-3">
             <Switch
-              defaultChecked={configQuery.data.ttsEnabled ?? false}
+              checked={configQuery.data.ttsEnabled ?? false}
               onCheckedChange={async (value) => {
                 if (!value) {
                   ttsManager.stopAll("settings-global-tts-disabled")
@@ -950,6 +1160,9 @@ export function Component() {
                     await tipcClient.stopAllTts()
                   } catch (error) {
                     console.error("Failed to stop TTS in all windows:", error)
+                    toast.error(
+                      `Disabled TTS for this window, but failed to stop speech in other windows. ${getActionErrorMessage(error, "Please retry if audio is still playing.")}`,
+                    )
                   }
                 }
 
@@ -963,7 +1176,7 @@ export function Component() {
           {configQuery.data.ttsEnabled && (
             <Control label={<ControlLabel label="Auto-play" tooltip="Automatically play TTS audio when assistant responses complete" />} className="px-3">
               <Switch
-                defaultChecked={configQuery.data.ttsAutoPlay ?? true}
+                checked={configQuery.data.ttsAutoPlay ?? true}
                 onCheckedChange={(value) => {
                   saveConfig({
                     ttsAutoPlay: value,
@@ -977,7 +1190,7 @@ export function Component() {
             <>
               <Control label={<ControlLabel label="Text Preprocessing" tooltip="Enable preprocessing to make text more speech-friendly by removing code blocks, URLs, and converting markdown" />} className="px-3">
                 <Switch
-                  defaultChecked={configQuery.data.ttsPreprocessingEnabled ?? true}
+                  checked={configQuery.data.ttsPreprocessingEnabled ?? true}
                   onCheckedChange={(value) => {
                     saveConfig({
                       ttsPreprocessingEnabled: value,
@@ -990,7 +1203,7 @@ export function Component() {
                 <>
                   <Control label={<ControlLabel label="Remove Code Blocks" tooltip="Remove code blocks and replace with descriptive text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsRemoveCodeBlocks ?? true}
+                      checked={configQuery.data.ttsRemoveCodeBlocks ?? true}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsRemoveCodeBlocks: value,
@@ -1001,7 +1214,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Remove URLs" tooltip="Remove URLs and replace with descriptive text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsRemoveUrls ?? true}
+                      checked={configQuery.data.ttsRemoveUrls ?? true}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsRemoveUrls: value,
@@ -1012,7 +1225,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Convert Markdown" tooltip="Convert markdown formatting to speech-friendly text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsConvertMarkdown ?? true}
+                      checked={configQuery.data.ttsConvertMarkdown ?? true}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsConvertMarkdown: value,
@@ -1023,7 +1236,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Use AI for TTS Preprocessing" tooltip="Use an LLM to intelligently convert text to natural speech. More robust handling of abbreviations, acronyms, and context-dependent pronunciation. Adds ~1-2 seconds latency. Falls back to regex if disabled or unavailable." />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsUseLLMPreprocessing ?? false}
+                      checked={configQuery.data.ttsUseLLMPreprocessing ?? false}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsUseLLMPreprocessing: value,
@@ -1076,7 +1289,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Enable Dragging" tooltip="Enable dragging to move the panel by holding the top bar." />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data?.panelDragEnabled ?? true}
+              checked={configQuery.data?.panelDragEnabled ?? true}
               onCheckedChange={(value) => {
                 saveConfig({
                   panelDragEnabled: value,
@@ -1207,8 +1420,9 @@ export function Component() {
               <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
                 <Input
                   type="text"
-                  value={configQuery.data?.langfusePublicKey ?? ""}
-                  onChange={(e) => saveConfig({ langfusePublicKey: e.currentTarget.value || undefined })}
+                  value={langfuseDrafts.langfusePublicKey}
+                  onChange={(e) => updateLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
+                  onBlur={(e) => flushLangfuseSave("langfusePublicKey", e.currentTarget.value)}
                   placeholder="pk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
@@ -1217,8 +1431,9 @@ export function Component() {
               <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
                 <Input
                   type="password"
-                  value={configQuery.data?.langfuseSecretKey ?? ""}
-                  onChange={(e) => saveConfig({ langfuseSecretKey: e.currentTarget.value || undefined })}
+                  value={langfuseDrafts.langfuseSecretKey}
+                  onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
+                  onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
                   placeholder="sk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
@@ -1227,8 +1442,9 @@ export function Component() {
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
                 <Input
                   type="text"
-                  value={configQuery.data?.langfuseBaseUrl ?? ""}
-                  onChange={(e) => saveConfig({ langfuseBaseUrl: e.currentTarget.value || undefined })}
+                  value={langfuseDrafts.langfuseBaseUrl}
+                  onChange={(e) => updateLangfuseDraft("langfuseBaseUrl", e.currentTarget.value)}
+                  onBlur={(e) => flushLangfuseSave("langfuseBaseUrl", e.currentTarget.value)}
                   placeholder="https://cloud.langfuse.com (default)"
                   className="w-full sm:w-[360px] max-w-full min-w-0"
                 />

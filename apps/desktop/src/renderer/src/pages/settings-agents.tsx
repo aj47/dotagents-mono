@@ -37,6 +37,51 @@ import {
 } from "../../../shared/types"
 
 type ConnectionType = AgentProfileConnectionType
+type AgentEditorTab = "general" | "model" | "capabilities" | "properties"
+
+function normalizeAgentEditorTab(
+  tab: AgentEditorTab,
+  connectionType: ConnectionType | null | undefined,
+): AgentEditorTab {
+  return tab === "model" && connectionType !== "internal"
+    ? "general"
+    : tab
+}
+
+function getCapabilityLoadErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return fallback
+}
+
+function getSaveAgentFailureMessage(): string {
+  return "This agent no longer exists. Refreshed the agent list."
+}
+
+function getDeleteAgentFailureMessage(): string {
+  return "This agent could not be deleted. Refreshed the agent list."
+}
+
+function getAgentMutationErrorMessage(action: "save" | "delete", error: unknown): string {
+  const actionLabel = action === "save" ? "save" : "delete"
+  const fallback = `Failed to ${actionLabel} agent`
+
+  if (error instanceof Error && error.message.trim()) {
+    return `${fallback}: ${error.message.trim()}`
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return `${fallback}: ${error.trim()}`
+  }
+
+  return fallback
+}
 
 interface EditingAgent {
   id?: string
@@ -90,8 +135,14 @@ export function SettingsAgents() {
   const [editing, setEditing] = useState<EditingAgent | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [serverStatus, setServerStatus] = useState<Record<string, ServerInfo>>({})
+  const [isLoadingServerStatus, setIsLoadingServerStatus] = useState(false)
+  const [serverStatusLoadError, setServerStatusLoadError] = useState<string | null>(null)
   const [allTools, setAllTools] = useState<{name: string, description: string, serverName: string}[]>([])
+  const [isLoadingAllTools, setIsLoadingAllTools] = useState(false)
+  const [allToolsLoadError, setAllToolsLoadError] = useState<string | null>(null)
   const [skills, setSkills] = useState<AgentSkill[]>([])
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false)
+  const [skillsLoadError, setSkillsLoadError] = useState<string | null>(null)
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const [newPropKey, setNewPropKey] = useState("")
@@ -102,13 +153,20 @@ export function SettingsAgents() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [prefilledImportFilePath, setPrefilledImportFilePath] = useState<string | null>(null)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
+  const [activeEditorTab, setActiveEditorTab] = useState<AgentEditorTab>("general")
   const avatarFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadAgents()
     tipcClient.getDefaultSystemPrompt().then(setDefaultSystemPrompt).catch(console.error)
   }, [])
-  useEffect(() => { if (editing) { loadServers(); loadSkills(); loadAllTools() } }, [!!editing])
+  useEffect(() => {
+    if (!editing) return
+
+    void loadServers()
+    void loadSkills()
+    void loadAllTools()
+  }, [editing?.id])
 
   useEffect(() => {
     const installBundlePath = searchParams.get("installBundle")
@@ -146,21 +204,74 @@ export function SettingsAgents() {
     }
   }, [searchParams, agents])
 
+  useEffect(() => {
+    setActiveEditorTab("general")
+  }, [editing?.id, isCreating])
+
+  useEffect(() => {
+    setActiveEditorTab(currentTab =>
+      normalizeAgentEditorTab(currentTab, editing?.connectionType),
+    )
+  }, [editing?.connectionType])
+
   const loadAgents = async () => {
     const all = await tipcClient.getAgentProfiles()
     setAgents(all)
   }
+
+  const refreshAgentProfileViews = () => {
+    void loadAgents()
+    void queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+    void queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
+  }
+
   const loadServers = async () => {
-    try { const s = await tipcClient.getMcpServerStatus(); setServerStatus(s as Record<string, ServerInfo>) } catch {}
+    setIsLoadingServerStatus(true)
+
+    try {
+      const s = await tipcClient.getMcpServerStatus()
+      setServerStatus(s as Record<string, ServerInfo>)
+      setServerStatusLoadError(null)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to load MCP server status:", error)
+      setServerStatusLoadError(
+        getCapabilityLoadErrorMessage(error, "Please check your MCP server configuration and try again."),
+      )
+    } finally {
+      setIsLoadingServerStatus(false)
+    }
   }
   const loadAllTools = async () => {
+    setIsLoadingAllTools(true)
+
     try {
       const list = await tipcClient.getMcpDetailedToolList()
       setAllTools(list)
-    } catch {}
+      setAllToolsLoadError(null)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to load MCP tool list:", error)
+      setAllToolsLoadError(
+        getCapabilityLoadErrorMessage(error, "Please check your MCP server configuration and try again."),
+      )
+    } finally {
+      setIsLoadingAllTools(false)
+    }
   }
   const loadSkills = async () => {
-    try { const s = await tipcClient.getSkills(); setSkills(s) } catch {}
+    setIsLoadingSkills(true)
+
+    try {
+      const s = await tipcClient.getSkills()
+      setSkills(s)
+      setSkillsLoadError(null)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to load skills:", error)
+      setSkillsLoadError(
+        getCapabilityLoadErrorMessage(error, "Please check your skills configuration and try again."),
+      )
+    } finally {
+      setIsLoadingSkills(false)
+    }
   }
 
   const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()) }
@@ -206,17 +317,41 @@ export function SettingsAgents() {
       properties: editing.properties && Object.keys(editing.properties).length > 0 ? editing.properties : undefined,
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }
-    if (isCreating) await tipcClient.createAgentProfile({ profile: data })
-    else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
-    setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); loadAgents()
-    // Invalidate sidebar query so it reflects changes immediately
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+
+    try {
+      const savedAgent = isCreating
+        ? await tipcClient.createAgentProfile({ profile: data })
+        : editing.id
+          ? await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
+          : undefined
+
+      if (!savedAgent) {
+        refreshAgentProfileViews()
+        toast.error(getSaveAgentFailureMessage())
+        return
+      }
+
+      setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); refreshAgentProfileViews()
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to save agent:", error)
+      toast.error(getAgentMutationErrorMessage("save", error))
+    }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this agent?")) return
-    await tipcClient.deleteAgentProfile({ id }); loadAgents()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
+
+    try {
+      const didDelete = await tipcClient.deleteAgentProfile({ id })
+      refreshAgentProfileViews()
+
+      if (!didDelete) {
+        toast.error(getDeleteAgentFailureMessage())
+      }
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to delete agent:", error)
+      toast.error(getAgentMutationErrorMessage("delete", error))
+    }
   }
 
   const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue("") }
@@ -226,6 +361,18 @@ export function SettingsAgents() {
   const externalTools = allTools.filter(t => t.serverName !== "dotagents-internal")
   const serverNames = Object.keys(serverStatus).filter(n => n !== "dotagents-internal")
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.serverName === serverName)
+  const renderToolListWarning = (message: string, retryLabel = "Retry tool list") => (
+    <div className="mx-1 mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-amber-700 dark:text-amber-200">Tool list unavailable</p>
+        <p className="text-xs text-amber-700/80 dark:text-amber-200/80 [overflow-wrap:anywhere]">{message}</p>
+      </div>
+      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadAllTools()}>
+        <RefreshCw className="h-3 w-3" />
+        {retryLabel}
+      </Button>
+    </div>
+  )
 
   // Tool config helpers
   const isServerEnabled = (serverName: string): boolean => {
@@ -395,12 +542,10 @@ export function SettingsAgents() {
   }
 
   const handleImportComplete = () => {
-    void loadAgents()
+    refreshAgentProfileViews()
     void loadSkills()
     void loadServers()
     void loadAllTools()
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] })
-    queryClient.invalidateQueries({ queryKey: ["agentProfilesSelector"] })
     queryClient.invalidateQueries({ queryKey: ["skills"] })
     queryClient.invalidateQueries({ queryKey: ["skillsSidebar"] })
     queryClient.invalidateQueries({ queryKey: ["mcp-server-status"] })
@@ -411,6 +556,11 @@ export function SettingsAgents() {
     queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     queryClient.invalidateQueries({ queryKey: ["memories"] })
     queryClient.invalidateQueries({ queryKey: ["config"] })
+  }
+
+  const handleRescanFiles = async () => {
+    await tipcClient.reloadAgentProfiles()
+    refreshAgentProfileViews()
   }
 
   const handleImportDialogOpenChange = (open: boolean) => {
@@ -433,7 +583,7 @@ export function SettingsAgents() {
           <Button variant="outline" className="gap-2" onClick={() => setIsPublishDialogOpen(true)}>
             <Globe className="h-4 w-4" />Export for Hub
           </Button>
-          <Button variant="outline" className="gap-2" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
+          <Button variant="outline" className="gap-2" onClick={handleRescanFiles}>
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
           <Button className="gap-2" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
@@ -537,7 +687,11 @@ export function SettingsAgents() {
           <CardDescription>Configure agent identity, behavior, model, and capabilities.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="general" className="w-full">
+          <Tabs
+            value={activeEditorTab}
+            onValueChange={(value) => setActiveEditorTab(value as AgentEditorTab)}
+            className="w-full"
+          >
             <TabsList className="mb-4 flex-wrap h-auto gap-1">
               <TabsTrigger value="general" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />General</TabsTrigger>
               {isInternal && <TabsTrigger value="model" className="gap-1.5"><Brain className="h-3.5 w-3.5" />Model</TabsTrigger>}
@@ -622,8 +776,9 @@ export function SettingsAgents() {
                         </div>
                         <Textarea
                           id="systemPrompt"
-                          value={editing.systemPrompt || defaultSystemPrompt}
+                          value={editing.systemPrompt}
                           onChange={e => setEditing({ ...editing, systemPrompt: e.target.value })}
+                          placeholder={defaultSystemPrompt}
                           rows={8}
                           className={`font-mono text-xs resize-y min-h-[120px] max-h-[400px] ${!editing.systemPrompt ? "text-muted-foreground" : ""}`}
                         />
@@ -746,12 +901,30 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
+                    {skillsLoadError && skills.length === 0 ? (
+                      <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
+                    )}
                   </div>
                 </div>
                 {!isSectionCollapsed("skills") && (
                   <div className="border-t px-2 py-2 space-y-0.5">
-                    {skills.length === 0 ? (
+                    {isLoadingSkills && skills.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Loading skills...</p>
+                      </div>
+                    ) : skillsLoadError && skills.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <p className="text-sm font-medium text-destructive">Failed to load skills</p>
+                        <p className="max-w-md text-xs text-muted-foreground [overflow-wrap:anywhere]">{skillsLoadError}</p>
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadSkills()}>
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : skills.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No skills available.</p>
                     ) : skills.map(skill => (
                       <div key={skill.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/30">
@@ -760,7 +933,7 @@ export function SettingsAgents() {
                           <span className="text-sm truncate block">{skill.name}</span>
                           {skill.description && <span className="text-xs text-muted-foreground truncate block">{skill.description}</span>}
                         </div>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit skill" onClick={() => navigate("/settings/capabilities")}>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit skill" onClick={() => navigate("/settings/capabilities?tab=skills")}>
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -784,18 +957,40 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allServersDisabled} onClick={(e) => { e.stopPropagation(); disableAllServers() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
+                    {serverStatusLoadError && serverNames.length === 0 ? (
+                      <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
+                    )}
                   </div>
                 </div>
                 {!isSectionCollapsed("mcp-servers") && (
                   <div className="border-t px-2 py-2 space-y-1">
-                    {serverNames.length === 0 ? (
+                    {allToolsLoadError && serverNames.length > 0 && renderToolListWarning(
+                      "Tool counts may be incomplete because the MCP tool list could not be refreshed.",
+                    )}
+                    {isLoadingServerStatus && serverNames.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Loading MCP servers...</p>
+                      </div>
+                    ) : serverStatusLoadError && serverNames.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <p className="text-sm font-medium text-destructive">Failed to load MCP servers</p>
+                        <p className="max-w-md text-xs text-muted-foreground [overflow-wrap:anywhere]">{serverStatusLoadError}</p>
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadServers()}>
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : serverNames.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No MCP servers configured.</p>
                     ) : serverNames.map(name => {
                       const info = serverStatus[name]
                       const serverToolList = toolsByServer(name)
                       const isExpanded = expandedServers.has(name)
                       const enabled = isServerEnabled(name)
+                      const showMissingToolListWarning = Boolean(allToolsLoadError) && serverToolList.length === 0
                       return (
                         <div key={name} className="rounded-md border bg-card">
                           <div className="flex items-center justify-between px-3 py-2">
@@ -810,29 +1005,37 @@ export function SettingsAgents() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit server" onClick={() => navigate("/settings/capabilities")}>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit server" onClick={() => navigate("/settings/capabilities?tab=mcp-servers")}>
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </Button>
                               <button type="button" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded" onClick={() => toggleExpandServer(name)}>
-                                <span>{serverToolList.length} tools</span>
+                                <span>{showMissingToolListWarning ? "Tools unavailable" : `${serverToolList.length} tools`}</span>
                                 {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                               </button>
                             </div>
                           </div>
-                          {isExpanded && serverToolList.length > 0 && (
+                          {isExpanded && (
                             <div className="border-t mx-3 mb-2 pt-1 space-y-0.5">
-                              {serverToolList.map(tool => {
-                                const toolEnabled = enabled && !isToolDisabled(tool.name)
-                                return (
-                                  <div key={tool.name} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/30">
-                                    <Switch checked={toolEnabled} disabled={!enabled} onCheckedChange={() => toggleTool(tool.name)} />
-                                    <div className="min-w-0">
-                                      <span className={`text-sm truncate block ${!toolEnabled ? "text-muted-foreground" : ""}`}>{tool.name.replace(`${name}:`, "")}</span>
-                                      {tool.description && <span className="text-xs text-muted-foreground truncate block">{tool.description}</span>}
+                              {showMissingToolListWarning ? (
+                                <div className="px-2 py-2 text-xs text-muted-foreground">
+                                  This server's tool list is unavailable right now.
+                                </div>
+                              ) : serverToolList.length > 0 ? (
+                                serverToolList.map(tool => {
+                                  const toolEnabled = enabled && !isToolDisabled(tool.name)
+                                  return (
+                                    <div key={tool.name} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/30">
+                                      <Switch checked={toolEnabled} disabled={!enabled} onCheckedChange={() => toggleTool(tool.name)} />
+                                      <div className="min-w-0">
+                                        <span className={`text-sm truncate block ${!toolEnabled ? "text-muted-foreground" : ""}`}>{tool.name.replace(`${name}:`, "")}</span>
+                                        {tool.description && <span className="text-xs text-muted-foreground truncate block">{tool.description}</span>}
+                                      </div>
                                     </div>
-                                  </div>
-                                )
-                              })}
+                                  )
+                                })
+                              ) : (
+                                <div className="px-2 py-2 text-xs text-muted-foreground">No tools available for this server.</div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -857,12 +1060,33 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allBuiltinDisabled} onClick={(e) => { e.stopPropagation(); disableAllBuiltinTools() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{builtinTools.filter(t => isBuiltinToolEnabled(t.name)).length} of {builtinTools.length} enabled</Badge>
+                    {allToolsLoadError && allTools.length === 0 ? (
+                      <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{builtinTools.filter(t => isBuiltinToolEnabled(t.name)).length} of {builtinTools.length} enabled</Badge>
+                    )}
                   </div>
                 </div>
                 {!isSectionCollapsed("builtin-tools") && (
                   <div className="border-t px-2 py-2 space-y-0.5">
-                    {builtinTools.length === 0 ? (
+                    {allToolsLoadError && allTools.length > 0 && renderToolListWarning(
+                      "Built-in tool toggles may be incomplete because the tool list could not be refreshed.",
+                    )}
+                    {isLoadingAllTools && allTools.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Loading built-in tools...</p>
+                      </div>
+                    ) : allToolsLoadError && allTools.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <p className="text-sm font-medium text-destructive">Failed to load built-in tools</p>
+                        <p className="max-w-md text-xs text-muted-foreground [overflow-wrap:anywhere]">{allToolsLoadError}</p>
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadAllTools()}>
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : builtinTools.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No built-in tools available.</p>
                     ) : builtinTools.map(tool => {
                       const isEssential = tool.name === "mark_work_complete"

@@ -5,6 +5,13 @@ import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 interface MessageQueuePanelProps {
   conversationId: string
@@ -45,7 +52,16 @@ function QueuedMessageItem({
 
   const removeMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.removeFromMessageQueue({ conversationId, messageId: message.id })
+      const success = await tipcClient.removeFromMessageQueue({ conversationId, messageId: message.id })
+      if (!success) {
+        throw new Error("This queued message is no longer removable.")
+      }
+    },
+    onError: (error) => {
+      console.error("[MessageQueuePanel] Failed to remove queued message:", error)
+      toast.error(
+        `Failed to remove queued message. ${getActionErrorMessage(error, "Please refresh and try again.")}`,
+      )
     },
   })
 
@@ -58,16 +74,20 @@ function QueuedMessageItem({
       })
       // Throw if backend rejected the update (e.g., message is processing or already added to history)
       if (!success) {
-        throw new Error("Failed to update message")
+        throw new Error("This queued message can no longer be edited.")
       }
       return success
     },
     onSuccess: () => {
       setIsEditing(false)
     },
-    onError: () => {
+    onError: (error) => {
       // Restore original text on failure
       setEditText(message.text)
+      console.error("[MessageQueuePanel] Failed to save queued message:", error)
+      toast.error(
+        `Failed to save queued message. ${getActionErrorMessage(error, "Please refresh and try again.")}`,
+      )
     },
   })
 
@@ -100,10 +120,20 @@ function QueuedMessageItem({
   const retryMutation = useMutation({
     mutationFn: async () => {
       // Retry the failed message - resets status to pending and triggers queue processing if idle
-      await tipcClient.retryQueuedMessage({
+      const success = await tipcClient.retryQueuedMessage({
         conversationId,
         messageId: message.id,
       })
+
+      if (!success) {
+        throw new Error("This queued message is no longer retryable.")
+      }
+    },
+    onError: (error) => {
+      console.error("[MessageQueuePanel] Failed to retry queued message:", error)
+      toast.error(
+        `Failed to retry queued message. ${getActionErrorMessage(error, "Please refresh and try again.")}`,
+      )
     },
   })
 
@@ -277,7 +307,16 @@ export function MessageQueuePanel({
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.clearMessageQueue({ conversationId })
+      const success = await tipcClient.clearMessageQueue({ conversationId })
+      if (!success) {
+        throw new Error("Wait for the current message to finish before clearing queued messages.")
+      }
+    },
+    onError: (error) => {
+      console.error("[MessageQueuePanel] Failed to clear queued messages:", error)
+      toast.error(
+        `Failed to clear queued messages. ${getActionErrorMessage(error, "Please refresh and try again.")}`,
+      )
     },
   })
 
@@ -285,11 +324,19 @@ export function MessageQueuePanel({
     mutationFn: async () => {
       await tipcClient.resumeMessageQueue({ conversationId })
     },
+    onError: (error) => {
+      console.error("[MessageQueuePanel] Failed to resume queue:", error)
+      toast.error(`Failed to resume queue. ${getActionErrorMessage(error, "Please try again.")}`)
+    },
   })
 
   const pauseMutation = useMutation({
     mutationFn: async () => {
       await tipcClient.pauseMessageQueue({ conversationId })
+    },
+    onError: (error) => {
+      console.error("[MessageQueuePanel] Failed to pause queue:", error)
+      toast.error(`Failed to pause queue. ${getActionErrorMessage(error, "Please try again.")}`)
     },
   })
 

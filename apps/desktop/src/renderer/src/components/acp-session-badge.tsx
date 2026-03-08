@@ -21,6 +21,7 @@ interface ACPSessionBadgeProps {
     }>
   }
   className?: string
+  compact?: boolean
 }
 
 function getConfigOptionLabel(option: {
@@ -37,7 +38,7 @@ function getConfigOptionLabel(option: {
  * 
  * Visual example: `[Claude Code v0.12.6] [Sonnet 4.5]`
  */
-export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
+export function ACPSessionBadge({ info, className, compact = false }: ACPSessionBadgeProps) {
   const { agentTitle, agentVersion, currentModel, currentMode, configOptions } = info
 
   // Build agent label (e.g., "Claude Code v0.12.6")
@@ -54,6 +55,11 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
       ? `${modelLabel} • ${currentMode}`
       : modelLabel
     : null
+  const compactBadgeLabel = agentTitle
+    ? `ACP · ${agentTitle}`
+    : modelLabel
+      ? `ACP · ${modelLabel}`
+      : "ACP"
 
   // If nothing to display, return null
   if (!agentLabel && !modelLabel) {
@@ -78,11 +84,19 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex max-w-full min-w-0 flex-wrap items-center gap-1.5 cursor-help",
+              "inline-flex max-w-full min-w-0 flex-wrap items-center cursor-help",
+              compact ? "gap-1" : "gap-1.5",
               className
             )}
           >
-            {agentLabel && (
+            {compact ? (
+              <Badge
+                variant="outline"
+                className="max-w-full min-w-0 rounded-full border-border/50 bg-background/60 px-1.5 py-0 text-[9px] font-medium text-foreground/80"
+              >
+                <span className="truncate">{compactBadgeLabel}</span>
+              </Badge>
+            ) : agentLabel && (
               <Badge
                 variant="secondary"
                 className="max-w-full min-w-0 text-[10px] px-1.5 py-0 font-medium"
@@ -90,7 +104,7 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
                 <span className="truncate">{agentLabel}</span>
               </Badge>
             )}
-            {modelBadgeLabel && (
+            {!compact && modelBadgeLabel && (
               <Badge
                 variant="outline"
                 className="max-w-full min-w-0 text-[10px] px-1.5 py-0 font-mono"

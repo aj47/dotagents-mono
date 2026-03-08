@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
@@ -40,10 +40,14 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
+  const isWebPlatform = Platform.OS === 'web';
   const [draft, setDraft] = useState<AppConfig>(config);
   const [showScanner, setShowScanner] = useState(false);
+  const [showWebLinkModal, setShowWebLinkModal] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [webLinkValue, setWebLinkValue] = useState('');
+  const [webLinkError, setWebLinkError] = useState<string | null>(null);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -61,6 +65,24 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
       setConnectionError(null);
     }
   }, [draft.baseUrl, draft.apiKey]);
+
+  const closeWebLinkModal = useCallback(() => {
+    setShowWebLinkModal(false);
+    setWebLinkValue('');
+    setWebLinkError(null);
+  }, []);
+
+  const applyParsedConfigLink = useCallback((params: { baseUrl?: string; apiKey?: string; model?: string }) => {
+    setDraft(prev => ({
+      ...prev,
+      ...(params.baseUrl && { baseUrl: params.baseUrl }),
+      ...(params.apiKey && { apiKey: params.apiKey }),
+      ...(params.model && { model: params.model }),
+    }));
+    setScanned(false);
+    setShowScanner(false);
+    closeWebLinkModal();
+  }, [closeWebLinkModal]);
 
   const onSave = async () => {
     let normalizedDraft = {
@@ -152,6 +174,14 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
   };
 
   const handleScanQR = async () => {
+    if (isWebPlatform) {
+      setScanned(false);
+      setWebLinkValue('');
+      setWebLinkError(null);
+      setShowWebLinkModal(true);
+      return;
+    }
+
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
@@ -168,17 +198,21 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
     const params = parseQRCode(data);
     if (params) {
-      setDraft(prev => ({
-        ...prev,
-        ...(params.baseUrl && { baseUrl: params.baseUrl }),
-        ...(params.apiKey && { apiKey: params.apiKey }),
-        ...(params.model && { model: params.model }),
-      }));
-      setShowScanner(false);
+      applyParsedConfigLink(params);
     } else {
       // Invalid QR code, allow scanning again
       setTimeout(() => setScanned(false), 2000);
     }
+  };
+
+  const handleApplyWebLink = () => {
+    const params = parseQRCode(webLinkValue.trim());
+    if (params) {
+      applyParsedConfigLink(params);
+      return;
+    }
+
+    setWebLinkError('Paste the full dotagents://config link copied from the desktop app');
   };
 
   const resetBaseUrl = () => {
@@ -217,11 +251,23 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           </View>
         )}
 
-        <TouchableOpacity style={styles.scanButton} onPress={handleScanQR} accessibilityRole="button" accessibilityLabel="Scan QR Code">
-          <Text style={styles.scanButtonText}>📷 Scan QR Code</Text>
+        <TouchableOpacity
+          style={styles.scanButton}
+          onPress={handleScanQR}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel(isWebPlatform ? 'Paste DotAgents Link' : 'Scan QR Code')}
+          accessibilityHint={isWebPlatform
+            ? 'Opens a form where you can paste the DotAgents deep link copied from the desktop app'
+            : 'Opens the camera to scan the DotAgents QR code from the desktop app'
+          }
+        >
+          <Text style={styles.scanButtonText}>{isWebPlatform ? '🔗 Paste DotAgents Link' : '📷 Scan QR Code'}</Text>
         </TouchableOpacity>
         <Text style={styles.helperText}>
-          Scan the QR code from your DotAgents desktop app to connect
+          {isWebPlatform
+            ? 'Expo Web cannot reliably open the camera scanner here yet. Copy the Deep Link from the desktop app and paste it to connect.'
+            : 'Scan the QR code from your DotAgents desktop app to connect'
+          }
         </Text>
 
         <View style={styles.labelRow}>
@@ -308,6 +354,60 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <Modal visible={showWebLinkModal} animationType="slide" onRequestClose={closeWebLinkModal}>
+        <ScrollView
+          style={{ backgroundColor: theme.colors.background }}
+          contentContainerStyle={[styles.webLinkModalContainer, { paddingBottom: insets.bottom + spacing.lg }]}
+        >
+          <Text style={styles.webLinkTitle}>Paste DotAgents Link</Text>
+          <Text style={styles.webLinkDescription}>
+            Copy the Deep Link from the desktop app and paste the full `dotagents://config?...` value here to fill in the server URL and API key.
+          </Text>
+
+          {webLinkError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>⚠️ {webLinkError}</Text>
+            </View>
+          )}
+
+          <TextInput
+            style={styles.webLinkInput}
+            value={webLinkValue}
+            onChangeText={(value) => {
+              setWebLinkValue(value);
+              if (webLinkError) {
+                setWebLinkError(null);
+              }
+            }}
+            placeholder="dotagents://config?baseUrl=...&apiKey=..."
+            placeholderTextColor={theme.colors.mutedForeground}
+            accessibilityLabel={createTextInputAccessibilityLabel('DotAgents link')}
+            accessibilityHint="Paste the full DotAgents deep link copied from the desktop app"
+            autoCapitalize='none'
+            autoCorrect={false}
+            multiline
+          />
+
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleApplyWebLink}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Apply DotAgents link')}
+          >
+            <Text style={styles.primaryButtonText}>Apply Link</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.webLinkCancelButton}
+            onPress={closeWebLinkModal}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Cancel DotAgents link import')}
+          >
+            <Text style={styles.resetText}>Cancel</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Modal>
     </>
   );
 }
@@ -387,6 +487,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     input: {
       ...theme.input,
+    },
+    webLinkInput: {
+      ...theme.input,
+      minHeight: 120,
+      textAlignVertical: 'top',
     },
     scanButton: {
       backgroundColor: theme.colors.secondary,
@@ -471,6 +576,34 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: '#fff',
       fontSize: 16,
       fontWeight: '600',
+    },
+    webLinkModalContainer: {
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    webLinkTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.colors.foreground,
+    },
+    webLinkDescription: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: theme.colors.mutedForeground,
+    },
+    webLinkCancelButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });
 }

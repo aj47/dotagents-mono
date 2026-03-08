@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { normalizeApiBaseUrl } from '@dotagents/shared';
+import { normalizeApiBaseUrl } from '@dotagents/shared/connection-recovery';
 
 export type AppConfig = {
   apiKey: string;

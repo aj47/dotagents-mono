@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Input } from "@renderer/components/ui/input"
@@ -43,6 +43,58 @@ import {
   DEFAULT_MODEL_PRESET_ID,
 } from "@shared/index"
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
+import { toast } from "sonner"
+
+const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
+const OPENAI_TTS_SPEED_DEFAULT = 1.0
+
+type ProviderDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
+
+function parseOpenAiTtsSpeedDraft(value: string) {
+  const parsed = Number.parseFloat(value)
+  if (!Number.isFinite(parsed) || parsed < 0.25 || parsed > 4.0) {
+    return null
+  }
+
+  return parsed
+}
+
+function parseSupertonicSpeedDraft(value: string) {
+  const parsed = Number.parseFloat(value)
+  if (!Number.isFinite(parsed) || parsed < 0.5 || parsed > 2.0) {
+    return null
+  }
+
+  return parsed
+}
+
+function parseSupertonicStepsDraft(value: string) {
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isInteger(parsed) || parsed < 2 || parsed > 10) {
+    return null
+  }
+
+  return parsed
+}
+
+function getProviderActionErrorMessage(action: string, error: unknown) {
+  return error instanceof Error && error.message.trim()
+    ? `${action}: ${error.message}`
+    : action
+}
+
+function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
+  return {
+    groqApiKey: config?.groqApiKey || "",
+    groqBaseUrl: config?.groqBaseUrl || "",
+    geminiApiKey: config?.geminiApiKey || "",
+    geminiBaseUrl: config?.geminiBaseUrl || "",
+  }
+}
+
+function getOpenAiTtsSpeedDraft(config?: Config | null) {
+  return String(config?.openaiTtsSpeed ?? OPENAI_TTS_SPEED_DEFAULT)
+}
 
 // Badge component to show which features are using this provider
 function ActiveProviderBadge({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
@@ -127,6 +179,7 @@ function ParakeetModelDownload() {
       await window.electron.ipcRenderer.invoke("downloadParakeetModel")
     } catch (error) {
       console.error("Failed to download Parakeet model:", error)
+      toast.error(getProviderActionErrorMessage("Failed to download Parakeet model", error))
     } finally {
       setIsDownloading(false)
       // Always invalidate to show final state (success or error)
@@ -311,6 +364,7 @@ function KittenModelDownload() {
       await window.electron.ipcRenderer.invoke("downloadKittenModel")
     } catch (error) {
       console.error("Failed to download Kitten model:", error)
+      toast.error(getProviderActionErrorMessage("Failed to download Kitten model", error))
     } finally {
       setIsDownloading(false)
       // Always invalidate to show final state (success or error)
@@ -411,6 +465,7 @@ function KittenProviderSection({
       await audio.play()
     } catch (error) {
       console.error("Failed to test Kitten voice:", error)
+      toast.error(getProviderActionErrorMessage("Failed to test Kitten voice", error))
     }
   }
 
@@ -540,6 +595,7 @@ function SupertonicModelDownload() {
       await window.electron.ipcRenderer.invoke("downloadSupertonicModel")
     } catch (error) {
       console.error("Failed to download Supertonic model:", error)
+      toast.error(getProviderActionErrorMessage("Failed to download Supertonic model", error))
     } finally {
       setIsDownloading(false)
       queryClient.invalidateQueries({ queryKey: ["supertonicModelStatus"] })
@@ -634,6 +690,95 @@ function SupertonicProviderSection({
     queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
   })
   const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
+  const [speedDraft, setSpeedDraft] = useState(() => String(speed))
+  const [stepsDraft, setStepsDraft] = useState(() => String(steps))
+  const speedSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stepsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setSpeedDraft(String(speed))
+  }, [speed])
+
+  useEffect(() => {
+    setStepsDraft(String(steps))
+  }, [steps])
+
+  const clearPendingSpeedSave = useCallback(() => {
+    if (speedSaveTimeoutRef.current) {
+      clearTimeout(speedSaveTimeoutRef.current)
+      speedSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  const clearPendingStepsSave = useCallback(() => {
+    if (stepsSaveTimeoutRef.current) {
+      clearTimeout(stepsSaveTimeoutRef.current)
+      stepsSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  useEffect(() => () => {
+    clearPendingSpeedSave()
+    clearPendingStepsSave()
+  }, [clearPendingSpeedSave, clearPendingStepsSave])
+
+  const scheduleSpeedSave = useCallback((value: string) => {
+    clearPendingSpeedSave()
+    const parsed = parseSupertonicSpeedDraft(value)
+    if (parsed === null) {
+      return
+    }
+
+    speedSaveTimeoutRef.current = setTimeout(() => {
+      speedSaveTimeoutRef.current = null
+      onSpeedChange(parsed)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingSpeedSave, onSpeedChange])
+
+  const scheduleStepsSave = useCallback((value: string) => {
+    clearPendingStepsSave()
+    const parsed = parseSupertonicStepsDraft(value)
+    if (parsed === null) {
+      return
+    }
+
+    stepsSaveTimeoutRef.current = setTimeout(() => {
+      stepsSaveTimeoutRef.current = null
+      onStepsChange(parsed)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingStepsSave, onStepsChange])
+
+  const updateSpeedDraft = useCallback((value: string) => {
+    setSpeedDraft(value)
+    scheduleSpeedSave(value)
+  }, [scheduleSpeedSave])
+
+  const updateStepsDraft = useCallback((value: string) => {
+    setStepsDraft(value)
+    scheduleStepsSave(value)
+  }, [scheduleStepsSave])
+
+  const flushSpeedSave = useCallback((value: string) => {
+    clearPendingSpeedSave()
+    const parsed = parseSupertonicSpeedDraft(value)
+    if (parsed === null) {
+      setSpeedDraft(String(speed))
+      return
+    }
+
+    onSpeedChange(parsed)
+  }, [clearPendingSpeedSave, onSpeedChange, speed])
+
+  const flushStepsSave = useCallback((value: string) => {
+    clearPendingStepsSave()
+    const parsed = parseSupertonicStepsDraft(value)
+    if (parsed === null) {
+      setStepsDraft(String(steps))
+      return
+    }
+
+    onStepsChange(parsed)
+  }, [clearPendingStepsSave, onStepsChange, steps])
 
   const handleTestVoice = async () => {
     try {
@@ -653,6 +798,7 @@ function SupertonicProviderSection({
       await audio.play()
     } catch (error) {
       console.error("Failed to test Supertonic voice:", error)
+      toast.error(getProviderActionErrorMessage("Failed to test Supertonic voice", error))
     }
   }
 
@@ -778,13 +924,11 @@ function SupertonicProviderSection({
                   max={2.0}
                   step={0.05}
                   className="w-full sm:w-[100px]"
-                  value={speed}
+                  value={speedDraft}
                   onChange={(e) => {
-                    const val = parseFloat(e.currentTarget.value)
-                    if (!isNaN(val) && val >= 0.5 && val <= 2.0) {
-                      onSpeedChange(val)
-                    }
+                    updateSpeedDraft(e.currentTarget.value)
                   }}
+                  onBlur={(e) => flushSpeedSave(e.currentTarget.value)}
                 />
               </Control>
 
@@ -803,13 +947,11 @@ function SupertonicProviderSection({
                   max={10}
                   step={1}
                   className="w-full sm:w-[100px]"
-                  value={steps}
+                  value={stepsDraft}
                   onChange={(e) => {
-                    const val = parseInt(e.currentTarget.value)
-                    if (!isNaN(val) && val >= 2 && val <= 10) {
-                      onStepsChange(val)
-                    }
+                    updateStepsDraft(e.currentTarget.value)
                   }}
+                  onBlur={(e) => flushStepsSave(e.currentTarget.value)}
                 />
               </Control>
 
@@ -840,18 +982,121 @@ export function Component() {
   const configQuery = useConfigQuery()
 
   const saveConfigMutation = useSaveConfigMutation()
+  const cfgRef = useRef(configQuery.data)
+  const providerSaveTimeoutsRef = useRef<Partial<Record<ProviderDraftKey, ReturnType<typeof setTimeout>>>>({})
+  const openAiTtsSpeedSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [providerDrafts, setProviderDrafts] = useState(() => getProviderDrafts(configQuery.data))
+  const [openAiTtsSpeedDraft, setOpenAiTtsSpeedDraft] = useState(() => getOpenAiTtsSpeedDraft(configQuery.data))
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
+      const currentConfig = cfgRef.current
+      if (!currentConfig) return
+
       saveConfigMutation.mutate({
         config: {
-          ...configQuery.data,
+          ...currentConfig,
           ...config,
         },
       })
     },
-    [saveConfigMutation, configQuery.data],
+    [saveConfigMutation],
   )
+
+  useEffect(() => {
+    cfgRef.current = configQuery.data
+  }, [configQuery.data])
+
+  useEffect(() => {
+    setProviderDrafts(getProviderDrafts(configQuery.data))
+  }, [
+    configQuery.data?.groqApiKey,
+    configQuery.data?.groqBaseUrl,
+    configQuery.data?.geminiApiKey,
+    configQuery.data?.geminiBaseUrl,
+  ])
+
+  useEffect(() => {
+    setOpenAiTtsSpeedDraft(getOpenAiTtsSpeedDraft(configQuery.data))
+  }, [configQuery.data?.openaiTtsSpeed])
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of Object.values(providerSaveTimeoutsRef.current)) {
+        if (timeout) clearTimeout(timeout as ReturnType<typeof setTimeout>)
+      }
+
+      if (openAiTtsSpeedSaveTimeoutRef.current) {
+        clearTimeout(openAiTtsSpeedSaveTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const flushProviderSave = useCallback((key: ProviderDraftKey, value: string) => {
+    const pendingSave = providerSaveTimeoutsRef.current[key]
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+      delete providerSaveTimeoutsRef.current[key]
+    }
+
+    saveConfig({ [key]: value } as Partial<Config>)
+  }, [saveConfig])
+
+  const scheduleProviderSave = useCallback((key: ProviderDraftKey, value: string) => {
+    const pendingSave = providerSaveTimeoutsRef.current[key]
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+    }
+
+    providerSaveTimeoutsRef.current[key] = setTimeout(() => {
+      delete providerSaveTimeoutsRef.current[key]
+      saveConfig({ [key]: value } as Partial<Config>)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateProviderDraft = useCallback((key: ProviderDraftKey, value: string) => {
+    setProviderDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [key]: value,
+    }))
+    scheduleProviderSave(key, value)
+  }, [scheduleProviderSave])
+
+  const clearPendingOpenAiTtsSpeedSave = useCallback(() => {
+    if (openAiTtsSpeedSaveTimeoutRef.current) {
+      clearTimeout(openAiTtsSpeedSaveTimeoutRef.current)
+      openAiTtsSpeedSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  const flushOpenAiTtsSpeedSave = useCallback((value: string) => {
+    clearPendingOpenAiTtsSpeedSave()
+    const parsed = parseOpenAiTtsSpeedDraft(value)
+    if (parsed === null) {
+      setOpenAiTtsSpeedDraft(getOpenAiTtsSpeedDraft(cfgRef.current))
+      return
+    }
+
+    saveConfig({ openaiTtsSpeed: parsed })
+  }, [clearPendingOpenAiTtsSpeedSave, saveConfig])
+
+  const scheduleOpenAiTtsSpeedSave = useCallback((value: string) => {
+    clearPendingOpenAiTtsSpeedSave()
+    const parsed = parseOpenAiTtsSpeedDraft(value)
+    if (parsed === null) {
+      return
+    }
+
+    openAiTtsSpeedSaveTimeoutRef.current = setTimeout(() => {
+      openAiTtsSpeedSaveTimeoutRef.current = null
+      saveConfig({ openaiTtsSpeed: parsed })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingOpenAiTtsSpeedSave, saveConfig])
+
+  const updateOpenAiTtsSpeedDraft = useCallback((value: string) => {
+    setOpenAiTtsSpeedDraft(value)
+    scheduleOpenAiTtsSpeedSave(value)
+  }, [scheduleOpenAiTtsSpeedSave])
 
   // Compute which providers are actively being used for each function
   const activeProviders = useMemo(() => {
@@ -946,6 +1191,33 @@ export function Component() {
   const weakPresetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
   const strongPreset = getPresetById(strongPresetId)
   const weakPreset = getPresetById(weakPresetId)
+
+  const renderProviderDraftInput = (
+    key: ProviderDraftKey,
+    {
+      label,
+      type,
+      placeholder,
+    }: {
+      label: string
+      type: "password" | "url"
+      placeholder?: string
+    },
+  ) => (
+    <Control label={label} className="px-3">
+      <Input
+        type={type}
+        placeholder={placeholder}
+        value={providerDrafts[key]}
+        onChange={(e) => {
+          updateProviderDraft(key, e.currentTarget.value)
+        }}
+        onBlur={(e) => {
+          flushProviderSave(key, e.currentTarget.value)
+        }}
+      />
+    </Control>
+  )
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
@@ -1107,12 +1379,12 @@ export function Component() {
                     max="4.0"
                     step="0.25"
                     placeholder="1.0"
-                    defaultValue={configQuery.data.openaiTtsSpeed?.toString()}
+                    value={openAiTtsSpeedDraft}
                     onChange={(e) => {
-                      const speed = parseFloat(e.currentTarget.value)
-                      if (!isNaN(speed) && speed >= 0.25 && speed <= 4.0) {
-                        saveConfig({ openaiTtsSpeed: speed })
-                      }
+                      updateOpenAiTtsSpeedDraft(e.currentTarget.value)
+                    }}
+                    onBlur={(e) => {
+                      flushOpenAiTtsSpeedSave(e.currentTarget.value)
                     }}
                   />
                 </Control>
@@ -1148,30 +1420,16 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedGroq && (
               <div id="groq-provider-content" className="divide-y border-t">
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.groqApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("groqApiKey", {
+                  label: "API Key",
+                  type: "password",
+                })}
 
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://api.groq.com/openai/v1"
-                    defaultValue={configQuery.data.groqBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("groqBaseUrl", {
+                  label: "API Base URL",
+                  type: "url",
+                  placeholder: "https://api.groq.com/openai/v1",
+                })}
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
@@ -1265,30 +1523,16 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedGemini && (
               <div id="gemini-provider-content" className="divide-y border-t">
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.geminiApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("geminiApiKey", {
+                  label: "API Key",
+                  type: "password",
+                })}
 
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://generativelanguage.googleapis.com"
-                    defaultValue={configQuery.data.geminiBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("geminiBaseUrl", {
+                  label: "API Base URL",
+                  type: "url",
+                  placeholder: "https://generativelanguage.googleapis.com",
+                })}
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
@@ -1417,30 +1661,16 @@ export function Component() {
                   </p>
                 </div>
 
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.groqApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("groqApiKey", {
+                  label: "API Key",
+                  type: "password",
+                })}
 
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://api.groq.com/openai/v1"
-                    defaultValue={configQuery.data.groqBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        groqBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("groqBaseUrl", {
+                  label: "API Base URL",
+                  type: "url",
+                  placeholder: "https://api.groq.com/openai/v1",
+                })}
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector
@@ -1534,30 +1764,16 @@ export function Component() {
                   </p>
                 </div>
 
-                <Control label="API Key" className="px-3">
-                  <Input
-                    type="password"
-                    defaultValue={configQuery.data.geminiApiKey}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiApiKey: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("geminiApiKey", {
+                  label: "API Key",
+                  type: "password",
+                })}
 
-                <Control label="API Base URL" className="px-3">
-                  <Input
-                    type="url"
-                    placeholder="https://generativelanguage.googleapis.com"
-                    defaultValue={configQuery.data.geminiBaseUrl}
-                    onChange={(e) => {
-                      saveConfig({
-                        geminiBaseUrl: e.currentTarget.value,
-                      })
-                    }}
-                  />
-                </Control>
+                {renderProviderDraftInput("geminiBaseUrl", {
+                  label: "API Base URL",
+                  type: "url",
+                  placeholder: "https://generativelanguage.googleapis.com",
+                })}
 
                 <div className="px-3 py-2">
                   <ProviderModelSelector

@@ -32,7 +32,7 @@ export type {
   Loop,
   LoopsResponse,
 } from '@dotagents/shared';
-import { normalizeApiBaseUrl } from '@dotagents/shared';
+import { normalizeApiBaseUrl } from '@dotagents/shared/connection-recovery';
 
 // Re-export agent profile types with backward-compatible names
 // The shared package uses Api* prefix to avoid conflicts with desktop's AgentProfile

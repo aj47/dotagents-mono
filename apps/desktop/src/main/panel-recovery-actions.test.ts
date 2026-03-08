@@ -9,6 +9,7 @@ const read = (relativePath: string) =>
   readFileSync(path.resolve(__dirname, relativePath), "utf8")
 
 const windowSource = read("./window.ts")
+const rendererHandlersSource = read("./renderer-handlers.ts")
 const traySource = read("./tray.ts")
 const tipcSource = read("./tipc.ts")
 const settingsSource = read("../renderer/src/pages/settings-general.tsx")
@@ -17,14 +18,24 @@ describe("floating panel recovery affordances", () => {
   it("adds centralized recovery helpers in the main window layer", () => {
     expect(windowSource).toContain("export function hideFloatingPanelWindow()")
     expect(windowSource).toContain("export function resetFloatingPanelPositionAndSize(showAfterReset = true)")
+    expect(windowSource).toContain("function notifyFloatingPanelLayoutStateChanged()")
+    expect(windowSource).toContain("notifyFloatingPanelLayoutStateChanged()")
     expect(windowSource).toContain('panelPosition: "top-right"')
     expect(windowSource).toContain('panelCustomSize: undefined')
     expect(windowSource).toContain('panelTextInputSize: undefined')
     expect(windowSource).toContain('panelProgressSize: undefined')
   })
 
+  it("exposes a renderer event so tiled sessions can react to panel visibility and mode changes", () => {
+    expect(rendererHandlersSource).toContain("onFloatingPanelLayoutStateChanged: () => void")
+    expect(windowSource).toContain("onFloatingPanelLayoutStateChanged.send()")
+  })
+
   it("exposes recovery actions through TIPC and tray controls", () => {
     expect(tipcSource).toContain("resetFloatingPanel: t.procedure.action(async () => {")
+    expect(tipcSource).toContain("getFloatingPanelLayoutState: t.procedure.action(async () => {")
+    expect(tipcSource).toContain("isVisible: panel.isVisible()")
+    expect(tipcSource).toContain("minWidth,")
     expect(tipcSource).toContain("hideFloatingPanelWindow()")
     expect(traySource).toContain('label: "Show Floating Panel"')
     expect(traySource).toContain('label: "Hide Floating Panel"')
