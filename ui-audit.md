@@ -1,5 +1,60 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 88: Desktop local model download errors could explode the providers value lane and under-signal recovery under stressed width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-providers.tsx` (`Settings → Models` → local provider `Model Status` error states for Parakeet / Kitten / Supertonic)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched WhatsApp, agent-editor, bundle-import, and repeat-task surfaces unless a real follow-up justified it.
+  - The desktop providers page family had prior shell/header passes, but the local model download error branch itself was still unreviewed even though it is a classic visually neglected recovery state.
+  - A live Electron renderer was already available on `:9333`, making this a better next target than another source-only sweep.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo’s desktop/mobile guidance before choosing the area
+  - used `agent-browser --cdp 9333` against the live Electron renderer on `http://localhost:5173/settings/providers`
+  - stress-tested the mounted providers page around `760×920` and `620×900` with `24px` root text, expanded the local provider sections, and captured live screenshots in `tmp/ui-audit/settings-providers-local-models-initial-760x920-root24.png`, `tmp/ui-audit/settings-providers-local-models-expanded-760x920-root24.png`, and `tmp/ui-audit/settings-providers-local-models-expanded-620x900-root24.png`
+  - cross-checked current source in `settings-providers.tsx` and confirmed all three local model download components still rendered `status?.error` as a plain `flex flex-col gap-1.5` block with `text-xs text-destructive` plus a retry button
+  - injected a source-matching long-token download error into the mounted Parakeet `Model Status` row to measure the current failure treatment and captured `tmp/ui-audit/settings-providers-local-model-error-overflow-current-prototype-620x900-root24.png`
+  - prototyped the intended bordered alert treatment directly in the same mounted row and captured `tmp/ui-audit/settings-providers-local-model-error-alert-prototype-620x900-root24.png`
+  - cross-checked mobile scope and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` only shows helper text telling users to configure Kitten/Supertonic in desktop settings, not a parallel local-model download/error UI
+
+#### Findings
+
+- Before the fix, the desktop local model `Model Status` error treatment had one concrete recovery-state issue with clear user impact:
+  - all three local providers rendered failures as loose red copy plus a separate retry button, with no explicit alert semantics, no full-width container, and no wrap-safe overflow handling for long hashes / paths / model IDs
+  - in a live source-matching DOM prototype at about `620×900` with `24px` root text, injecting a realistic long checksum-style token made the Parakeet error host expand to about `1853px` wide inside a lane that had previously been about `507px`
+  - the same prototype showed the error text and retry button both stretching to that `~1853px` width while the text kept `overflow-wrap: normal`, proving the current branch could blow the settings row far outside its intended lane
+  - practical impact: when a local model download fails, the recovery UI is both visually understated and fragile exactly when users most need a deliberate, contained error + retry treatment
+
+#### Changes made
+
+- Hardened only the local model download error branch in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`:
+  - added focused shared constants plus a small `LocalModelDownloadError` helper so Parakeet, Kitten, and Supertonic all use the same recovery-state treatment without broader page churn
+  - converted the plain red-text failure branch into a bordered destructive alert card with `role="alert"`
+  - added a top-aligned warning icon and wrap-safe error copy (`min-w-0`, `leading-relaxed`, `break-words`, `[overflow-wrap:anywhere]`) so long model hashes / paths stay inside the value lane
+  - made the retry action full-width on tighter widths and auto-width from `sm` upward via `w-full sm:w-auto`
+- Extended `apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts` with focused source-contract coverage for the local model error-alert treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.layout.test.ts` *(blocked: `vitest` was not found because this worktree still has no local desktop dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the shared alert-card constants, `role="alert"`, wrap-safe error text classes, `w-full sm:w-auto` retry button rule, exactly three helper usages, and the focused regression test coverage ✅
+- Live Electron evidence using a source-matching current-state DOM prototype on `http://localhost:5173/settings/providers`:
+  - screenshot: `tmp/ui-audit/settings-providers-local-model-error-overflow-current-prototype-620x900-root24.png`
+  - with a realistic long checksum-style error token, the current treatment expanded the host and retry button to about `1853px` wide while the lane had previously been about `507px`
+  - the error text reported `overflow-wrap: normal`, confirming the row could spill far beyond the settings card under a long failure token
+- Live DOM prototype verification of the intended fix:
+  - screenshot: `tmp/ui-audit/settings-providers-local-model-error-alert-prototype-620x900-root24.png`
+  - after applying the same alert-card/wrap-safe treatment directly in the mounted DOM, the host stayed at about `507px` wide, the error text measured `clientWidth = scrollWidth ≈ 433px`, and the text reported `overflow-wrap: anywhere`
+  - this kept the long-token failure copy contained inside the same settings lane while preserving a clear retry affordance
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-providers.tsx apps/desktop/src/renderer/src/pages/settings-providers.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is valuable for live inspection and DOM prototyping, but it is not guaranteed to be serving this checkout’s rebuilt bundle. I therefore treated the running renderer as live evidence for the UI issue and used direct source verification for the shipped code.
+- This chunk is desktop-only: mobile settings only surface a note to configure these local TTS providers in desktop settings and do not expose the same local-model download/error row.
+- Tradeoff/rationale: the error state now uses more deliberate card chrome and can consume extra vertical space under stress, but that is a safer product tradeoff than letting a recovery-critical error token expand the row far outside the settings lane.
+- Best next UI audit chunk after this one: move away from the local model error branch unless a literal native download failure can be reproduced in a rebuilt runtime; the next strongest target is another fresh desktop or mobile empty/loading/error surface with current live evidence.
+
 ### 2026-03-08 — Chunk 87: Desktop WhatsApp connection status rows centered icons against long wrapped state copy and understated fetch errors under stressed width + larger text
 
 - Area selected:

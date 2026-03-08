@@ -26,4 +26,19 @@ describe("settings providers page layout", () => {
     expect(titleRowMatches).toHaveLength(9)
     expect(badgeRowMatches).toHaveLength(6)
   })
+
+  it("renders local model download errors as wrap-safe alert cards", () => {
+    expect(settingsProvidersSource).toContain(
+      'const LOCAL_MODEL_DOWNLOAD_ERROR_CARD_CLASS_NAME =',
+    )
+    expect(settingsProvidersSource).toContain('role="alert"')
+    expect(settingsProvidersSource).toContain('[overflow-wrap:anywhere]')
+    expect(settingsProvidersSource).toContain('className="w-full sm:w-auto"')
+
+    const localModelErrorMatches = settingsProvidersSource.match(
+      /return <LocalModelDownloadError error=\{status\.error\} onRetry=\{handleDownload\} \/>/g,
+    )
+
+    expect(localModelErrorMatches).toHaveLength(3)
+  })
 })

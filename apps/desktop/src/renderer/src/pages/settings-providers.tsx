@@ -20,7 +20,7 @@ import { ModelPresetManager } from "@renderer/components/model-preset-manager"
 import { ProviderModelSelector } from "@renderer/components/model-selector"
 import { PresetModelSelector } from "@renderer/components/preset-model-selector"
 
-import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Brain, Zap, BookOpen, Settings2, Cpu, Download, Loader2 } from "lucide-react"
+import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Brain, Zap, BookOpen, Settings2, Cpu, Download, Loader2, AlertTriangle } from "lucide-react"
 
 import {
   STT_PROVIDERS,
@@ -105,6 +105,32 @@ function ProviderSelector({
 }
 
 // Parakeet Model Download Component
+const LOCAL_MODEL_DOWNLOAD_ERROR_CARD_CLASS_NAME =
+  "border-destructive/30 bg-destructive/5 text-destructive flex w-full min-w-0 flex-col gap-3 rounded-md border p-3"
+const LOCAL_MODEL_DOWNLOAD_ERROR_TEXT_CLASS_NAME =
+  "min-w-0 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"
+
+function LocalModelDownloadError({
+  error,
+  onRetry,
+}: {
+  error: string
+  onRetry: () => void
+}) {
+  return (
+    <div className={LOCAL_MODEL_DOWNLOAD_ERROR_CARD_CLASS_NAME} role="alert">
+      <div className="flex min-w-0 items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className={LOCAL_MODEL_DOWNLOAD_ERROR_TEXT_CLASS_NAME}>{error}</p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onRetry} className="w-full sm:w-auto">
+        <Download className="mr-1.5 h-3.5 w-3.5" />
+        Retry Download
+      </Button>
+    </div>
+  )
+}
+
 function ParakeetModelDownload() {
   const queryClient = useQueryClient()
   const [isDownloading, setIsDownloading] = useState(false)
@@ -170,15 +196,7 @@ function ParakeetModelDownload() {
   }
 
   if (status?.error) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-destructive">{status.error}</span>
-        <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
-        </Button>
-      </div>
-    )
+    return <LocalModelDownloadError error={status.error} onRetry={handleDownload} />
   }
 
   return (
@@ -354,15 +372,7 @@ function KittenModelDownload() {
   }
 
   if (status?.error) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-destructive">{status.error}</span>
-        <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
-        </Button>
-      </div>
-    )
+    return <LocalModelDownloadError error={status.error} onRetry={handleDownload} />
   }
 
   return (
@@ -582,15 +592,7 @@ function SupertonicModelDownload() {
   }
 
   if (status?.error) {
-    return (
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-destructive">{status.error}</span>
-        <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
-        </Button>
-      </div>
-    )
+    return <LocalModelDownloadError error={status.error} onRetry={handleDownload} />
   }
 
   return (
