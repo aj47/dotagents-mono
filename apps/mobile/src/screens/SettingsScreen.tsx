@@ -2735,9 +2735,16 @@ export default function SettingsScreen({ navigation }: any) {
                           accessibilityState={{ disabled: isLoopRunPending, busy: isLoopRunPending }}
                           activeOpacity={isLoopRunPending ? 1 : 0.7}
                         >
-                          <Text style={[styles.loopRunText, isLoopRunPending && styles.loopRunTextPending]}>
-                            {isLoopRunPending ? 'Running…' : '▶ Run'}
-                          </Text>
+                          <View style={styles.loopRunActionContent}>
+                            {isLoopRunPending ? (
+                              <ActivityIndicator size="small" color={theme.colors.primary} />
+                            ) : (
+                              <Ionicons name="play-outline" size={14} color={theme.colors.primary} style={styles.loopRunIcon} />
+                            )}
+                            <Text style={[styles.loopRunText, isLoopRunPending && styles.loopRunTextPending]}>
+                              {isLoopRunPending ? 'Running…' : 'Run now'}
+                            </Text>
+                          </View>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.loopActionButton, styles.loopActionButtonDanger]}
@@ -3757,6 +3764,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     loopRunTextPending: {
       color: theme.colors.primary,
+    },
+    loopRunActionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    loopRunIcon: {
+      textAlign: 'center',
     },
     loopDeleteActionContent: {
       flexDirection: 'row',

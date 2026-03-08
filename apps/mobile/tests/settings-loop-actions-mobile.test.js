@@ -41,8 +41,9 @@ test('shows loop Run actions as busy and prevents duplicate taps while a trigger
   assert.match(settingsSource, /accessibilityLabel=\{createButtonAccessibilityLabel\([\s\S]*?isLoopRunPending[\s\S]*?`Running \$\{loop\.name\} loop now`[\s\S]*?: `Run \$\{loop\.name\} loop now`[\s\S]*?\)\}/);
   assert.match(settingsSource, /accessibilityHint=\{isLoopRunPending[\s\S]*?This loop is being triggered now\. Wait for the current request to finish\.[\s\S]*?: 'Triggers this loop immediately\.'\}/);
   assert.match(settingsSource, /accessibilityState=\{\{ disabled: isLoopRunPending, busy: isLoopRunPending \}\}/);
-  assert.match(settingsSource, /\{isLoopRunPending \? 'Running…' : '▶ Run'\}/);
+  assert.match(settingsSource, /<View style=\{styles\.loopRunActionContent\}>[\s\S]*?\{isLoopRunPending \? \([\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?\) : \([\s\S]*?<Ionicons name="play-outline" size=\{14\} color=\{theme\.colors\.primary\} style=\{styles\.loopRunIcon\} \/>[\s\S]*?\)\}[\s\S]*?\{isLoopRunPending \? 'Running…' : 'Run now'\}/);
   assert.match(settingsSource, /loopActionButtonPending:\s*\{[\s\S]*?borderColor: theme\.colors\.primary \+ '2E',[\s\S]*?backgroundColor: theme\.colors\.primary \+ '10',[\s\S]*?opacity: 0\.85,/);
+  assert.match(settingsSource, /loopRunActionContent:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*4,/);
 });
 
 test('makes the create-loop action a full-width mobile button with explicit creation semantics', () => {

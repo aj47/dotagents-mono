@@ -5545,3 +5545,53 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the promoted retry CTA is comfortably tappable and visually balanced within the `Agent Profile` warning notice.
   - Capture screenshot-backed evidence of a failed saved-profile refresh so the new full-width recovery action can be judged in context with the disabled stale chips and the `No profile` fallback.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this retry-action tweak without fresh evidence.
+
+## Iteration 125 - Replace the mobile loop Run glyph with a clearer, stable CTA treatment
+
+- Date: 2026-03-08
+- Summary: Improved `Settings > Agent Loops` action clarity on mobile by replacing the raw `▶ Run` text treatment with a stable play icon plus an explicit `Run now` label, while preserving the existing inline busy state.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recently touched loop retry, queue, and history surfaces without a fresh local issue.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-loop-actions-mobile.test.js` because the loop action rail remained an active mobile sub-agent surface adjacent to the recent delete-affordance cleanup.
+  - Confirmed the ledger had already covered the loop delete icon consistency (Iteration 119) and run pending state (Iteration 77), but had not yet addressed the remaining raw `▶` glyph in the visible run CTA.
+- Live inspection / workflow status:
+  - Reconfirmed the existing mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed action-rail review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Source review showed the loop delete action already used a stable `trash-outline` icon plus visible label.
+  - The neighboring run action still rendered its idle state as raw `▶ Run` text.
+  - On a dense mobile action rail, that left one of the highest-frequency loop controls dependent on platform glyph rendering and visually less consistent than the adjacent delete control.
+- Issue identified:
+  - The mobile loop run CTA still relied on a raw symbol inside button text, weakening action clarity and consistency in the narrow action rail.
+- Decision and rationale:
+  - Keep the current loop action order, existing busy/disabled behavior, and visible run label pattern unchanged.
+  - Do not collapse the run action to icon-only while live validation is blocked, since the visible label still helps discoverability on narrow screens.
+  - Make the smallest local fix instead: replace the raw glyph with stable iconography and slightly more explicit copy so the action reads more intentionally across platforms.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the idle `▶ Run` text with a compact inline `play-outline` icon plus `Run now` label,
+    - keep the existing pending state but render it inside the same inline content row with an `ActivityIndicator` and `Running…` label,
+    - add compact run-action content styles so the CTA stays centered and visually aligned with the delete pill.
+  - Updated `apps/mobile/tests/settings-loop-actions-mobile.test.js` with focused regression coverage for the new icon-plus-label run CTA and shared inline busy-content layout.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed a stable icon plus explicit label is a safer mobile improvement than shortening the action to icon-only before a real narrow-screen pass confirms scanability.
+  - Chose `Run now` instead of only `Run` so the visible copy better matches the immediate-action semantics already present in the accessibility label.
+  - Kept the change scoped to the run CTA instead of retuning the full loop action rail, minimizing layout risk while live evidence remains unavailable.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Settings > Agent Loops` still needs screenshot-backed review overall now that its run busy state, delete affordance, and run CTA presentation have all changed without fresh Expo confirmation in this worktree.
+  - A live pass is still needed to confirm the new play icon plus `Run now` label remains balanced beside the toggle and delete action on narrow screens.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new run CTA is comfortably tappable, aligned, and clearly distinguishable from the delete action on a narrow screen.
+  - Capture screenshot-backed evidence of both idle and pending loop rows so the `play-outline + Run now` treatment can be judged against the `Running…` busy state for width churn.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this run-CTA polish without fresh evidence.
