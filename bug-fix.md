@@ -1,6 +1,10 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Re-reviewed `apps/mobile/src/screens/SettingsScreen.tsx` for a fresh mobile user-facing settings bug and confirmed the Langfuse `Secret Key` field still converts a saved masked value (`••••••••`) into an empty local draft via `getInputDraftsFromSettings(...)`, so the input renders blank even when a secret is already configured remotely.
+- [x] 2026-03-08: Confirmed the same mobile `Secret Key` input only calls `settingsClient.updateSettings({ langfuseSecretKey: value })` when `value !== ''`, which means the visible field has no code path that can intentionally send an empty-string clear request.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/remote-server.ts` that the mobile settings PATCH route already accepts `langfuseSecretKey: ''` as a real clear operation (it only ignores the bullet-mask placeholder), so the bug is the mobile UI affordance/guard rather than the backend contract.
+- [x] 2026-03-08: Assumption accepted: an explicit `Clear saved secret key` action is the smallest safe fix because the masked mobile draft is intentionally blank, making a plain focus/blur of the field indistinguishable from an intentional clear.
 - [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/panel.tsx` for a fresh floating-panel MCP regression and confirmed both the typed `handleTextSubmit(...)` path and the `mcpTranscribeMutation` voice path still wrote user content into conversation history in the renderer before handing off to `tipcClient.createMcpTextInput(...)` / `createMcpRecording(...)`.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` that both `createMcpTextInput` and `createMcpRecording` already own conversation history creation for new and continued MCP submissions, so the panel-side prewrite could duplicate the same user prompt/transcript in saved conversation history.
 - [x] 2026-03-08: Assumption accepted: the smallest safe fix is to keep regular non-MCP dictation unchanged and make the panel MCP flows treat the main-process `createMcp*` routes as the single source of truth for history writes, because those routes already branch correctly for fresh conversations, continued conversations, and queued active sessions.
@@ -326,6 +330,10 @@
 - [x] 2026-03-08: Compared the remaining `showPanelWindow(...)` callers in `apps/desktop/src/renderer/src/pages/panel.tsx`; those invocations only run from the panel renderer after the panel already exists, so leaving them unchanged in this pass is an acceptable minimal-scope assumption rather than another visible false-success bug.
 
 ### Reproduced
+- [x] **Mobile Settings could not clear a saved Langfuse secret key (directly confirmed in source):**
+  - `apps/mobile/src/screens/SettingsScreen.tsx` derives `inputDrafts.langfuseSecretKey` from `getInputDraftsFromSettings(...)`, which intentionally maps the masked remote placeholder (`••••••••`) to `''`, so the mobile field shows as blank even when a secret is already stored.
+  - The same input's `onBlur` handler only persists when `value !== ''`, so leaving the field blank can never send the empty-string update needed to clear the saved secret.
+  - `apps/desktop/src/main/remote-server.ts` already treats `langfuseSecretKey: ''` as a valid clear request, so the user-visible bug was the missing explicit mobile clear path rather than missing backend support.
 - [x] **Desktop floating-panel MCP submit duplicated the user's prompt/transcript in conversation history (directly confirmed in source):**
   - In `apps/desktop/src/renderer/src/pages/panel.tsx`, `handleTextSubmit(...)` previously ran `startNewConversation(text, "user")` or `addMessage(text, "user")` before firing `mcpTextInputMutation.mutate(...)`.
   - The same file's `mcpTranscribeMutation` previously ran `startNewConversation(transcript, "user")` before `tipcClient.createMcpRecording(...)` for fresh MCP recordings.
@@ -710,6 +718,9 @@
   - Because `TTSSettings` is mounted from `apps/mobile/src/screens/SettingsScreen.tsx`, that silent fallback could make a real voice-loading failure look like an honest default-only state in mobile Settings.
 
 ### Fixed
+- [x] Updated `apps/mobile/src/screens/SettingsScreen.tsx` so the Langfuse secret-key field now exposes an explicit `Clear saved secret key` action whenever a masked secret is configured; that action sends `langfuseSecretKey: ''`, updates local remote/draft state immediately, and avoids the unsafe alternative of treating every blank blur as an intentional clear.
+- [x] Tightened the same mobile Langfuse secret save flow so successful replacement saves now immediately reset the local draft back to `''` while keeping `remoteSettings.langfuseSecretKey` masked as `••••••••`, matching the rest of the screen's masked-secret behavior.
+- [x] Added `apps/mobile/tests/settings-langfuse-secret-key.test.js` with focused source-level regression coverage for the new explicit clear action and the post-save re-masking behavior.
 - [x] Updated `apps/desktop/src/renderer/src/pages/panel.tsx` so the floating panel's MCP text submit and MCP recording submit paths no longer pre-create/add the user message in renderer state; they now hand off directly to `createMcpTextInput` / `createMcpRecording`, leaving those main-process routes as the only history writers for MCP submissions.
 - [x] Extended `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` with focused source-level regression coverage that scopes the assertions to `handleTextSubmit(...)` and `mcpTranscribeMutation`, locking in that the panel no longer writes history before the MCP handoff while the main-process routes still do.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-skills.tsx` so the GitHub skill-import dialog now returns early on missing results, only invalidates/reloads/clears/closes on real imports (`result.imported.length > 0`), and keeps the dialog/input intact when the backend returns handled errors or zero imported skills.
@@ -981,6 +992,8 @@
 - [x] Added `apps/mobile/tests/settings-model-loading.test.js` with focused dependency-free regression coverage that locks in the new mobile contract: provider/preset changes must clear stale model options, and model-load failures must surface explicit UI error-state wiring.
 
 ### Verified
+- [x] Manual source verification: `SettingsScreen.tsx` now computes `hasSavedLangfuseSecretKey`, renders a dedicated `Clear saved secret key` button with accessibility copy when a masked secret exists, and uses that button to send `updateSettings({ langfuseSecretKey: '' })` instead of relying on ambiguous blank-input blur behavior.
+- [x] Dependency-free verification passed: `node --test apps/mobile/tests/settings-langfuse-secret-key.test.js` passed, and `git diff --check` completed cleanly after the mobile Langfuse secret-key fix.
 - [x] Manual source verification: `panel.tsx` no longer calls `startNewConversation(text, "user")` / `addMessage(text, "user")` inside `handleTextSubmit(...)`, and the `mcpTranscribeMutation` block now hands recordings straight to `tipcClient.createMcpRecording(...)` without a renderer-side conversation prewrite.
 - [x] Dependency-free verification passed: a plain `node` file-read assertion script checked the narrowed `handleTextSubmit(...)` and `mcpTranscribeMutation` source slices plus the new regression test case in `panel.recording-layout.test.ts`, and `git diff --check` completed cleanly.
 - [x] Manual source verification: `settings-skills.tsx` now short-circuits `importSkillFromGitHubMutation.onSuccess(...)` when `!result`, only closes/resets the GitHub dialog inside the `result.imported.length > 0` branch, returns early after handled `result.errors`, and leaves the zero-import info path open for retry/correction.
@@ -1254,6 +1267,7 @@
 - [x] Repository diff sanity check: `git diff --check -- apps/mobile/src/screens/SettingsScreen.tsx apps/mobile/tests/settings-model-loading.test.js bug-fix.md` completed cleanly after the mobile model-loading feedback fix.
 
 ### Blocked
+- [x] Live mobile repro/validation for this Langfuse clear-flow fix is still blocked in this worktree because repo dependencies are not installed (`node_modules` absent), so Expo/Vitest-based runtime verification remains unavailable even though the source-level regression test passes.
 - [x] Targeted automated verification for this floating-panel MCP duplicate-history fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` in this worktree.
 - [x] Targeted automated verification for this desktop Skills GitHub-import dialog fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` in this worktree.
 - [x] Targeted automated verification for this mobile repeat-task toggle truthfulness fix is blocked by the same missing dependency state in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/main/remote-server.routes.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
@@ -1653,11 +1667,13 @@
 - Assumption: clearing `availableModels` only when the user explicitly switches provider or preset is acceptable because cross-provider stale options are actively misleading, while keeping last-known models during a same-provider refresh failure still leaves the current selection context intact once the new error text explains that the refresh did not succeed.
 
 ### Still uncertain
+- Whether other masked mobile secrets should expose the same explicit-clear affordance once the mobile app can be exercised live, even though this loop only directly confirmed the Langfuse secret-key gap.
 - Whether other desktop agent-profile consumers besides `AgentSelector` should share the same explicit refresh helper pattern or query invalidation once the desktop worktree is runnable again, even though the directly confirmed stale-state bug in this loop was the shared picker.
 - Whether the other Expo Web runtime note from `mobile-app-improvement.md` (`Unexpected text node ... child of a <View>`) is still reproducible after this import-path hardening, or whether the prior runtime state masked a second independent mobile warning that still needs a separate live debugging pass once dependencies are restored.
 - Whether any remaining non-user-driven panel-local launch helpers in `apps/desktop/src/renderer/src/pages/panel.tsx` should ever check the `showPanelWindow(...)` result explicitly for extra defensive logging, even though those calls only execute once the panel renderer is already alive and were not a directly confirmed user-visible false-success path in this loop.
 
 ### Next Leads
+- Once dependencies are installed, live-verify mobile Settings → Langfuse with an already-saved secret key, confirming the new `Clear saved secret key` action removes the saved secret without requiring an unsafe blank-field blur and that typing a replacement key immediately re-masks the field after save.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts` and live-verify desktop Settings → Skills → Import from GitHub with (a) an invalid repo identifier, (b) a repo/path containing no `SKILL.md`, and (c) a successful import, confirming only the successful case now closes and clears the dialog.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/main/remote-server.routes.test.ts` and live-verify the mobile Settings repeat-task switch against a forced read-only/unwritable task layer, confirming the toggle now stays in the prior state with an error instead of reflecting an unsaved enabled-state change.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/main/remote-server.routes.test.ts` and live-verify the mobile `LoopEditScreen` create/update flow against a forced read-only/unwritable task layer, confirming the screen now stays open and shows its inline error instead of navigating back after an unsaved write.

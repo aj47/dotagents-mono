@@ -1023,6 +1023,21 @@ export default function SettingsScreen({ navigation }: any) {
     );
   }, [availableModels, modelSearchQuery]);
 
+  const hasSavedLangfuseSecretKey = remoteSettings?.langfuseSecretKey === '••••••••';
+
+  const handleClearLangfuseSecretKey = useCallback(async () => {
+    if (!settingsClient) return;
+
+    try {
+      await settingsClient.updateSettings({ langfuseSecretKey: '' });
+      setRemoteSettings(prev => prev ? { ...prev, langfuseSecretKey: '' } : null);
+      setInputDrafts(prev => ({ ...prev, langfuseSecretKey: '' }));
+    } catch (error: any) {
+      console.error('[Settings] Failed to clear langfuseSecretKey:', error);
+      setRemoteError(error.message || 'Failed to clear langfuseSecretKey');
+    }
+  }, [settingsClient]);
+
   useEffect(() => {
     setDraft(config);
   }, [ready, config]);
@@ -2147,6 +2162,7 @@ export default function SettingsScreen({ navigation }: any) {
                         if (value !== undefined && value !== '' && settingsClient) {
                           settingsClient.updateSettings({ langfuseSecretKey: value }).then(() => {
                             setRemoteSettings(prev => prev ? { ...prev, langfuseSecretKey: '••••••••' } : null);
+                            setInputDrafts(prev => ({ ...prev, langfuseSecretKey: '' }));
                           }).catch((error: any) => {
                             console.error('[Settings] Failed to update langfuseSecretKey:', error);
                             setRemoteError(error.message || 'Failed to update langfuseSecretKey');
@@ -2158,6 +2174,20 @@ export default function SettingsScreen({ navigation }: any) {
                       autoCapitalize='none'
                       secureTextEntry
                     />
+                    {hasSavedLangfuseSecretKey && (
+                      <TouchableOpacity
+                        style={styles.inlineDangerButton}
+                        onPress={() => {
+                          void handleClearLangfuseSecretKey();
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel('Clear saved Langfuse secret key')}
+                        accessibilityHint="Removes the saved Langfuse secret key from the connected desktop settings."
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.inlineDangerButtonText}>Clear saved secret key</Text>
+                      </TouchableOpacity>
+                    )}
 
                     <Text style={styles.label}>Base URL</Text>
                     <TextInput
@@ -3030,6 +3060,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       fontWeight: '600',
       marginLeft: spacing.sm,
+    },
+    inlineDangerButton: {
+      ...compactActionTouchTarget,
+      alignSelf: 'flex-start',
+      marginTop: spacing.xs,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+    },
+    inlineDangerButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '600',
     },
     profileList: {
       gap: spacing.xs,
