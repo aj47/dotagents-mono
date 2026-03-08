@@ -311,7 +311,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                   </h3>
                 ),
                 p: ({ children }) => (
-                  <p className="mb-3 leading-relaxed text-foreground">
+                  <p className="mb-3 leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
                     {children}
                   </p>
                 ),

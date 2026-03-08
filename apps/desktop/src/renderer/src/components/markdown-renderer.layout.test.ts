@@ -6,6 +6,9 @@ const markdownRendererSource = readFileSync(new URL("./markdown-renderer.tsx", i
 describe("markdown renderer layout", () => {
   it("keeps long links, inline code, and fenced code blocks readable in narrow tiles", () => {
     expect(markdownRendererSource).toContain(
+      'className="mb-3 leading-relaxed text-foreground break-words [overflow-wrap:anywhere]"'
+    )
+    expect(markdownRendererSource).toContain(
       'className="break-words text-primary underline underline-offset-2 hover:text-primary/80 [overflow-wrap:anywhere]"'
     )
     expect(markdownRendererSource).toContain(

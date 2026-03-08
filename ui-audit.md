@@ -1,5 +1,59 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 77: Desktop session markdown paragraphs let long tool payload strings blow past narrow message widths under larger text
+
+- Area selected:
+  - desktop shared markdown content in `apps/desktop/src/renderer/src/components/markdown-renderer.tsx`
+  - surfaced through active session compare/tile content in `apps/desktop/src/renderer/src/components/session-tile.tsx` and `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched copy-button, composer, root-empty, and sidebar follow-ups unless a distinct fresh issue appeared.
+  - A reusable live Electron renderer was already available on `:9333`, and the root Sessions compare view had real message content with long tool-call / command payloads, making this a stronger UI-facing candidate than another source-only pass.
+  - The ledger had recent work on session chrome, but no recent logged pass specifically on markdown paragraph wrapping for long raw tool strings inside session content.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, repo workflow guidance, and the renderer/mobile code-path split before choosing the next area
+  - reused `agent-browser --cdp 9333` against the live Electron renderer on `http://localhost:5173/`, then stress-tested the mounted compare view at `680×900` with `document.documentElement.style.fontSize = '24px'`
+  - captured screenshot-backed evidence in `tmp/ui-audit/current-root.png` and `tmp/ui-audit/session-root-font24-current.png`, then measured mounted markdown paragraphs directly in the DOM before editing source
+  - prototyped the exact wrap-safe paragraph treatment in the live DOM first to verify it solved the visible overflow without broader layout churn
+  - mapped the issue back to the shared desktop `MarkdownRenderer` implementation and kept the change local to the paragraph renderer rather than redesigning message containers broadly
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/ChatScreen.tsx` uses its own React Native `../ui/MarkdownRenderer` path instead of this desktop component, so no parallel mobile patch was needed for this chunk
+
+#### Findings
+
+- Before the fix, the desktop session markdown renderer had one concrete readability issue with clear user impact:
+  - in live inspection at `680×900` with `24px` base text, real session content containing long raw tool payloads (for example `[delegate_to_agent] { ... }` and `[check_agent_status] { ... }`) was still rendered through the paragraph class `mb-3 leading-relaxed text-foreground` with no explicit wrap-safe contract
+  - representative mounted overflow: one visible paragraph was only about `164px` wide but had `scrollWidth = 377px`, so the content exceeded its lane by about `213px`
+  - because these strings appear in dense session history where users inspect what an agent/tool actually did, letting raw payload text push past the intended width makes the content harder to scan and more likely to feel clipped or broken under narrow compare tiles and larger text
+
+#### Changes made
+
+- Hardened only the shared desktop markdown paragraph renderer in `apps/desktop/src/renderer/src/components/markdown-renderer.tsx`:
+  - changed paragraph output from plain `mb-3 leading-relaxed text-foreground` to `mb-3 leading-relaxed text-foreground break-words [overflow-wrap:anywhere]`
+  - kept headings, code blocks, and other markdown chrome untouched so the fix stays minimal and targeted to the real overflow source
+- Extended `apps/desktop/src/renderer/src/components/markdown-renderer.layout.test.ts` with focused source-contract coverage for the wrap-safe paragraph class so this exact regression is tracked alongside the existing link/code/table overflow assertions
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/markdown-renderer.layout.test.ts` *(blocked: `vitest` was not available through the filtered exec path in this worktree)*
+- Targeted desktop script attempt: `pnpm --filter @dotagents/desktop run test:run src/renderer/src/components/markdown-renderer.layout.test.ts` *(blocked in `pretest` because `packages/shared` could not run `tsup`; this worktree is still missing local package dependencies there)*
+- Live Electron evidence before the fix at `http://localhost:5173/` via `agent-browser --cdp 9333`:
+  - screenshots: `tmp/ui-audit/current-root.png`, `tmp/ui-audit/session-root-font24-current.png`
+  - representative mounted paragraph measurement: `clientWidth = 164`, `scrollWidth = 377`
+- Live DOM prototype of the exact paragraph treatment:
+  - the same mounted paragraph dropped from `scrollWidth = 377` to `scrollWidth = 164` immediately after adding `break-words [overflow-wrap:anywhere]` in the live DOM, with no extra container changes needed
+- Post-edit live verification after reload:
+  - screenshot: `tmp/ui-audit/session-root-font24-after-markdown-wrap.png`
+  - `oldClassCount = 0` for the old non-wrapping markdown paragraph selector
+  - `overflowingWrappedParagraphs = 0` for the updated wrap-safe markdown paragraph selector in the mounted renderer
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe paragraph class is present in both `markdown-renderer.tsx` and `markdown-renderer.layout.test.ts`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/markdown-renderer.tsx apps/desktop/src/renderer/src/components/markdown-renderer.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Unlike some earlier chunks, this iteration did get live post-edit confirmation: after reloading the reusable renderer, the mounted DOM no longer exposed the old paragraph class and the overflow probe for the updated selector stayed at zero.
+- Mobile cross-check: no matching mobile code change was needed because mobile chat renders markdown through its own React Native component path rather than this desktop renderer.
+- Tradeoff/rationale: using `break-words [overflow-wrap:anywhere]` can wrap long machine-generated tokens a little more aggressively, but that is a better product tradeoff than letting raw tool payloads or command JSON shove past narrow session lanes under larger text.
+- Best next UI audit chunk after this one: stay on a fresh live-inspectable session sub-surface only if a distinct pending-approval / retry / error-state issue is visible; otherwise pivot to another top-level desktop or mobile screen rather than stacking more speculative tweaks into the same markdown path.
+
 ### 2026-03-08 — Chunk 76: Desktop session message copy controls stayed undersized in live compare view under larger text
 
 - Area selected:
