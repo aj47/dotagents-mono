@@ -3039,8 +3039,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       lastMessageCountRef.current = 0
       lastContentLengthRef.current = 0
       lastDisplayItemsCountRef.current = 0
-      // Also reset auto-scroll state for new sessions
+      // Also reset other session-scoped transient UI state so focused-session changes
+      // cannot leak confirmation/loading affordances onto a different session.
+      setIsUserScrolling(false)
       setShouldAutoScroll(true)
+      setShowKillConfirmation(false)
+      setIsKilling(false)
+      respondingApprovalIdRef.current = null
+      setRespondingApprovalId(null)
     }
   }, [clearPendingInitialScrollAttempts, progress?.sessionId])
 
