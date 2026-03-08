@@ -7,6 +7,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
+import { toast } from "sonner"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import {
   buildMessageWithImages,
@@ -132,6 +133,11 @@ export function OverlayFollowUpInput({
       await sendMutation.mutateAsync(message)
     } catch (error) {
       console.error("Failed to submit overlay follow-up message:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to send follow-up message: ${error.message}`
+          : "Failed to send follow-up message",
+      )
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)

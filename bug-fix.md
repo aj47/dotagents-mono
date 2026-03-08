@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`; both follow-up composers still caught submit failures with `console.error(...)` only and showed no toast/banner/inline feedback to the user.
+- [x] 2026-03-08: Compared desktop follow-up failure handling against mobile `apps/mobile/src/screens/ChatScreen.tsx`; mobile already surfaces send/connectivity failures to the user via `Alert.alert(...)` / retry UI, so the silent desktop path is not an intentional product difference.
+- [x] 2026-03-08: Confirmed desktop already mounts a global `sonner` toaster in `apps/desktop/src/renderer/src/App.tsx`, so adding toast-based error feedback to the follow-up composers is a repo-local, low-risk UI pattern.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-general.tsx` for remaining uncontrolled config-backed inputs and found multiple `defaultChecked` / `defaultValue` bindings still driving persisted desktop settings.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` already uses controlled `value` / `Switch` bindings for analogous remote settings flows, so this state-sync issue is desktop-only.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
@@ -74,6 +77,10 @@
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
+- [x] **Desktop follow-up send failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` both wrapped `await sendMutation.mutateAsync(message)` in `try/catch`, but their `catch` blocks only called `console.error(...)`.
+  - Because neither component raised a toast, banner, or inline error, a failed follow-up send in the overlay or session tile looked like “nothing happened” from the user’s point of view even though the core action had failed.
+  - Mobile already exposes send/connectivity failures in `apps/mobile/src/screens/ChatScreen.tsx`, so this is a real desktop UX bug in an active conversation flow rather than an intentional platform difference.
 - [x] **Desktop general-settings state-sync bug from uncontrolled persisted controls (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` still rendered several persisted desktop settings with uncontrolled props: `defaultChecked` for `Hide Dock Icon`, `Launch at Login`, `Streamer Mode`, `Transcription Preview`, `Post-Processing`, multiple TTS toggles, and `Enable Dragging`, plus `defaultValue` for the `Recording` and `Toggle Voice Dictation` selects.
   - Because those controls were not bound to the latest `configQuery.data`, later saved-config updates, query resyncs, or reverted/failed saves could leave the visible switch/select state stale even when the rest of the page was rendering from newer config.
@@ -133,6 +140,8 @@
   - `apps/mobile/src/screens/LoopEditScreen.tsx` already keeps `intervalMinutes` as a string draft and validates it on save, and `apps/desktop/src/main/loop-service.ts` consumes the saved `intervalMinutes` for live scheduling, so this is a real desktop repeat-task UX bug rather than speculative cleanup.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
+- [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers import `sonner` and expose a visible `Failed to send follow-up message` error path.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the remaining persisted general-settings switches/selects now use controlled `checked` / `value` bindings instead of uncontrolled `defaultChecked` / `defaultValue` props.
 - [x] Covered the affected desktop controls in `apps/desktop/src/renderer/src/pages/settings-general.controlled-controls.test.ts` with focused source-level assertions that lock in controlled bindings for the general/toggle/transcription/TTS/panel settings cluster.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` to use local Langfuse drafts with debounced saves and blur flushes for `langfusePublicKey`, `langfuseSecretKey`, and `langfuseBaseUrl`.
@@ -213,6 +222,8 @@
   - parsing a valid interval draft to a numeric `intervalMinutes` value before save
 
 ### Verified
+- [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the follow-up error-feedback update and regression test changes.
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-general.tsx` no longer contains config-backed `defaultChecked` / `defaultValue` bindings; the affected switches/selects now read from live `configQuery.data` via controlled `checked` / `value` props.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the controlled-settings update and regression test addition.
 - [x] Manual source verification: the desktop Langfuse inputs no longer call `saveConfig(...)` directly from `onChange`; they now update local draft state and use debounce/blur persistence.
@@ -247,6 +258,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this desktop follow-up error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this controlled-settings fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction and automated tests are blocked because this worktree does not have installed dependencies (`tsup` missing in predev, `vitest` missing for targeted tests). Per instructions, I did not install dependencies without separate permission.
 - [x] Additional desktop verification for this Groq STT prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`, and `pnpm --filter @dotagents/desktop exec prettier ...` cannot find `prettier`, which indicates `apps/desktop/node_modules` is absent in this worktree.
@@ -261,6 +273,8 @@
 - [x] Targeted automated verification for this desktop agent system-prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether the desktop primary composer in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` should mirror the same toast-based submit failure feedback, since it still logs submit errors without visible UI feedback.
+- [ ] Whether desktop follow-up stop-session failures (`stopAgentSession` / `emergencyStopAgent`) should also surface a toast instead of remaining console-only once the follow-up send path lands.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
@@ -275,6 +289,9 @@
 - [ ] Whether any other desktop agent-edit fields still mix fallback display text into controlled `value` props once the environment blocker is cleared and the full editor can be exercised live.
 
 ### Diagnosis / Rationale
+- Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
+- Adding `toast.error(...)` in the existing `catch` blocks is the smallest safe fix because it preserves the current async send flow, draft retention, and duplicate-submit guardrails while finally exposing failure state to the user.
+- This is also consistent with current repo patterns: desktop already has a global `sonner` toaster, and mobile already surfaces comparable send/connectivity failures to the user instead of swallowing them.
 - This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
 - Converting these switches/selects to controlled bindings is the smallest safe fix because it preserves the existing layout and save behavior while making the rendered UI follow the same authoritative config state that the rest of the page already uses.
 - This is a clear user-facing editing bug: saving on every keystroke makes settings inputs more brittle, creates unnecessary config churn, and can invalidate/refetch state while the user is mid-edit.
