@@ -25,6 +25,9 @@ const WHATSAPP_CONNECTION_ACTIONS_CLASS_NAME = "flex flex-col gap-2 sm:flex-row 
 const WHATSAPP_CONNECTION_ACTION_BUTTON_CLASS_NAME = "w-full justify-center sm:w-auto"
 const WHATSAPP_QR_FRAME_CLASS_NAME = "w-full max-w-[288px] rounded-lg bg-white p-4 shadow-md"
 const WHATSAPP_QR_PLACEHOLDER_CLASS_NAME = "flex aspect-square w-full max-w-[288px] flex-col items-center justify-center rounded-lg bg-muted/50 p-4 shadow-md"
+const WHATSAPP_STATUS_BANNER_BASE_CLASS_NAME = "mb-4 flex items-start gap-2 rounded-md border p-3"
+const WHATSAPP_STATUS_TEXT_CLASS_NAME = "min-w-0 flex-1 text-sm leading-snug break-words [overflow-wrap:anywhere]"
+const WHATSAPP_STATUS_ERROR_CLASS_NAME = "mb-4 rounded-md border border-red-500/20 bg-red-500/10 p-3 text-sm leading-snug text-red-600 break-words [overflow-wrap:anywhere] dark:text-red-400"
 
 function formatWhatsappAllowFrom(values: string[] | undefined): string {
   return (values || []).join(", ")
@@ -249,32 +252,44 @@ export function Component() {
               )}
 
               {/* Status display */}
-              <div className="flex items-center gap-2 mb-4">
+              <div>
                 {status?.connected ? (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400">
+                  <div
+                    className={`${WHATSAPP_STATUS_BANNER_BASE_CLASS_NAME} border-green-500/20 bg-green-500/5`}
+                    role="status"
+                  >
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-500" />
+                    <span className={`${WHATSAPP_STATUS_TEXT_CLASS_NAME} text-green-600 dark:text-green-400`}>
                       Connected as {streamerMode ? "****" : (status.userName || "Unknown")} ({streamerMode ? maskPhoneNumber(status.phoneNumber) : status.phoneNumber})
                     </span>
-                  </>
+                  </div>
                 ) : status?.available ? (
-                  <>
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Not connected</span>
-                  </>
+                  <div
+                    className={`${WHATSAPP_STATUS_BANNER_BASE_CLASS_NAME} border-border/60 bg-muted/40`}
+                    role="status"
+                  >
+                    <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                    <span className={`${WHATSAPP_STATUS_TEXT_CLASS_NAME} text-muted-foreground`}>Not connected</span>
+                  </div>
                 ) : (
-                  <>
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    <span className="text-sm text-amber-600 dark:text-amber-400">
+                  <div
+                    className={`${WHATSAPP_STATUS_BANNER_BASE_CLASS_NAME} border-amber-500/20 bg-amber-500/10`}
+                    role="status"
+                  >
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                    <span className={`${WHATSAPP_STATUS_TEXT_CLASS_NAME} text-amber-600 dark:text-amber-400`}>
                       {status?.error || "WhatsApp server not available"}
                     </span>
-                  </>
+                  </div>
                 )}
               </div>
 
               {/* Error display */}
               {statusError && (
-                <div className="mb-4 p-2 rounded bg-red-500/10 text-sm text-red-600 dark:text-red-400">
+                <div
+                  className={WHATSAPP_STATUS_ERROR_CLASS_NAME}
+                  role="alert"
+                >
                   {statusError}
                 </div>
               )}

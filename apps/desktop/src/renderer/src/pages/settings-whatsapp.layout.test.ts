@@ -57,4 +57,28 @@ describe("settings whatsapp page layout", () => {
     expect(actionButtonMatches).toHaveLength(4)
     expect(settingsWhatsAppSource).toContain('className="h-auto w-full max-w-full"')
   })
+
+  it("renders connection status and fetch errors as wrap-safe status banners", () => {
+    expect(settingsWhatsAppSource).toContain(
+      'const WHATSAPP_STATUS_BANNER_BASE_CLASS_NAME = "mb-4 flex items-start gap-2 rounded-md border p-3"',
+    )
+    expect(settingsWhatsAppSource).toContain(
+      'const WHATSAPP_STATUS_TEXT_CLASS_NAME = "min-w-0 flex-1 text-sm leading-snug break-words [overflow-wrap:anywhere]"',
+    )
+    expect(settingsWhatsAppSource).toContain(
+      'const WHATSAPP_STATUS_ERROR_CLASS_NAME = "mb-4 rounded-md border border-red-500/20 bg-red-500/10 p-3 text-sm leading-snug text-red-600 break-words [overflow-wrap:anywhere] dark:text-red-400"',
+    )
+    const statusBannerMatches = settingsWhatsAppSource.match(
+      /className=\{`\$\{WHATSAPP_STATUS_BANNER_BASE_CLASS_NAME\} [^`]+`\}\n\s+role="status"/g,
+    )
+    const statusTextMatches = settingsWhatsAppSource.match(
+      /className=\{`\$\{WHATSAPP_STATUS_TEXT_CLASS_NAME\} [^`]+`\}/g,
+    )
+
+    expect(statusBannerMatches).toHaveLength(3)
+    expect(statusTextMatches).toHaveLength(3)
+    expect(settingsWhatsAppSource).toContain('className={WHATSAPP_STATUS_ERROR_CLASS_NAME}')
+    expect(settingsWhatsAppSource).toContain('role="alert"')
+    expect(settingsWhatsAppSource).not.toContain('className="flex items-center gap-2 mb-4"')
+  })
 })

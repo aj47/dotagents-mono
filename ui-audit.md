@@ -1,5 +1,59 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 87: Desktop WhatsApp connection status rows centered icons against long wrapped state copy and understated fetch errors under stressed width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` (`Settings → WhatsApp` → `Connection` status banner + fetch error state)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the most recently touched agent-editor, bundle-import, repeat-task, and sidebar surfaces unless a concrete follow-up justified it.
+  - `Settings → WhatsApp` was still live-inspectable through the reusable Electron renderer, and the prior WhatsApp chunk focused on action-button / QR responsiveness rather than the connection state copy itself.
+  - A fresh live pass exposed a clearer next issue than another source-only sweep: once the status message grows beyond a single short line, the connection row looks visually awkward and under-signals important reconnect / recovery information.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo’s desktop/mobile workflow guidance before choosing the area
+  - used `agent-browser --cdp 9333` against the live Electron renderer on `http://localhost:5173/settings/whatsapp`
+  - stress-tested the mounted `Connection` card at about `620×900` with `24px` root text and captured screenshot-backed evidence in `tmp/ui-audit/settings-whatsapp-live-620x900-root24-before.png`
+  - cross-checked current source in `settings-whatsapp.tsx` and confirmed the status strip still used a plain `flex items-center gap-2 mb-4` row while `statusError` still rendered as a basic red text block
+  - injected a long realistic connected-state message into the mounted DOM to measure the current row behavior, then prototyped the exact top-aligned banner treatment directly in the live DOM and captured `tmp/ui-audit/settings-whatsapp-status-prototype-620x900-root24.png`
+  - cross-checked mobile scope and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` does not expose the same QR onboarding / connection-status card pattern
+
+#### Findings
+
+- Before the fix, the desktop WhatsApp `Connection` state treatment had one concrete readability/polish issue with clear user impact:
+  - the connection state used a plain inline row with `items-center`, which is fine for `Not connected` but degrades once the message becomes a multi-line connected or error status
+  - with realistic long status copy injected into the live row (`Connected as customer-success-emea-primary-sandbox-bot-01 ...`), the text lane grew to about `150px` tall while the icon stayed vertically centered inside the block
+  - the live DOM measurement showed the icon center landing about `75px` below the top of the wrapped text block, so the status icon visually floated in the middle of the paragraph instead of anchoring the first line
+  - the adjacent `statusError` branch also rendered as a lightweight red text box with no explicit alert semantics or wrap-safe emphasis for longer failure text
+  - practical impact: reconnect / QR / server-availability states are exactly where users need the status treatment to feel deliberate and easy to scan, but the old row read more like incidental inline copy once the message wrapped
+
+#### Changes made
+
+- Hardened only the WhatsApp `Connection` state treatment in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`:
+  - added focused class constants for connection status banners, status text, and fetch-error alerts so the wrap/top-alignment contract is explicit
+  - converted the connected / not-connected / unavailable states from a plain inline row into subtle bordered status banners with `role="status"`
+  - made the status icons top-aligned and shrink-safe (`mt-0.5 ... shrink-0`) and gave the status copy a dedicated `min-w-0 flex-1` wrap-safe lane with `leading-snug`, `break-words`, and `[overflow-wrap:anywhere]`
+  - upgraded the `statusError` block into a bordered wrap-safe alert with `role="alert"` so fetch failures read as an intentional recovery state instead of loose red copy
+- Extended `apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts` with focused source-contract coverage for the new connection-status banner and error-alert treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-whatsapp.layout.test.ts` *(blocked: `vitest` was not found because this worktree still has no local desktop dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new status banner constants, three `role="status"` branches, wrap-safe status text classes, the alert treatment, removal of the old inline status-row contract, and the focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5173/settings/whatsapp`:
+  - screenshot: `tmp/ui-audit/settings-whatsapp-live-620x900-root24-before.png`
+  - the mounted source-matching status row used `flex items-center gap-2 mb-4`
+  - with long realistic status copy injected under that contract, the row measured about `333px` wide by `150px` tall and the icon center sat about `75px` below the top of the wrapped text block
+- Live DOM prototype verification of the intended fix:
+  - screenshot: `tmp/ui-audit/settings-whatsapp-status-prototype-620x900-root24.png`
+  - after applying the same banner/text/icon treatment directly in the mounted DOM, the icon center offset dropped from about `75px` to about `18px`, keeping the icon visually anchored near the first line while the text continued to wrap safely inside the same `~333px` lane
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is still valuable for live inspection and DOM prototyping, but it is not guaranteed to be serving this checkout’s rebuilt bundle. I therefore treated the renderer as live evidence for the current UI issue and used direct source verification for the shipped code.
+- This chunk is desktop-only: the mobile app does not expose the same WhatsApp QR onboarding / connection-status card, so no parallel mobile change was needed.
+- Tradeoff/rationale: the connection status now uses slightly more card-like chrome, but that is a safer product tradeoff than letting recovery-critical multi-line state copy read as a loose inline row with a drifting icon.
+- Best next UI audit chunk after this one: move away from the WhatsApp connection card again unless a real QR-present or authenticated connected state is available for literal rebuilt-runtime confirmation; the next strongest target is another fresh desktop or mobile empty/loading/error surface with live evidence.
+
 ### 2026-03-08 — Chunk 86: Desktop agent-editor MCP server rows hid long server identity behind one-line ellipsis under constrained width + larger text
 
 - Area selected:
