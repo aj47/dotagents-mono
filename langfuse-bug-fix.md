@@ -8,11 +8,34 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772942234347_xyec3dx8u | session_1772942234349_piwpgovtd | fix implemented | User asked `What should I do`; the trace contained the right guidance but `output` was raw pseudo-tool text starting with `[respond_to_user] { ... }` instead of the clean user-facing answer. Root repo issue found: final output helpers preserved pseudo-tool wrappers when the model wrote them as plain assistant text instead of making a native tool call. |
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
 | 2026-03-08 | conv_1772944149514_dhmqtdvqt | session_1772944149515_tgt7e6ykh | fix implemented (verification blocked) | Simple user input `Hi` produced trace `output: null`; the only observation was `LLM Call` with error `API key expired. Please renew the API key.` Root repo issue found: provider/API errors could escape before `finalContent` was populated, leaving the run trace blank instead of preserving a terminal error message. |
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
 
 ## Investigations
+
+### 2026-03-08 — Pseudo `respond_to_user` text leaked into final trace output
+
+- Langfuse evidence reviewed:
+  - `conv_1772942234347_xyec3dx8u` / `session_1772942234349_piwpgovtd`
+  - user input: `What should I do`
+  - trace outcome: `output` was the raw string `[respond_to_user] { "text": "Do this now ..." }`
+  - the same trace's `Streaming LLM Call` observation showed `output.content` containing pseudo-tool text for `respond_to_user`, while the actual native `toolCalls` only included `mark_work_complete`
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` already preserves a real stored `respond_to_user` tool result via `preferStoredUserResponse()`.
+  - however, when the model emits pseudo-tool syntax as plain assistant text instead of actually calling `respond_to_user`, there is nothing in `session-user-response-store` to rescue the final output.
+  - `apps/desktop/src/main/agent-run-utils.ts` treated any non-empty `finalContent` / latest assistant message as already good and returned it unchanged.
+- Concrete root cause:
+  - final output selection did not sanitize pseudo-tool wrapper text like `[respond_to_user] { ... }` when it appeared in normal assistant content.
+  - this meant a single run could produce the correct answer semantically, but still fail the user's intent by showing the wrapper instead of the answer itself.
+- Fix implemented:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - added helper logic to parse pseudo `respond_to_user` JSON blocks from assistant text
+    - unwrap the embedded `text` / `images` content into clean user-facing markdown
+    - apply that normalization in both `getPreferredDelegationOutput()` and `preferStoredUserResponse()` so delegated flows and top-level trace finalization both benefit
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
 
 ### 2026-03-08 — Internal delegation ignored `waitForResult=false`
 
@@ -123,6 +146,15 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Manual verification completed:
   - confirmed the `continue` trace successfully executed `respond_to_user` with the completed user-facing message before later speculative GitHub tool calls started
   - confirmed the updated loop now captures a blank `finalContent` from the stored `respond_to_user` message after successful tool batches and again before trace finalization, which should prevent future null trace outputs for this failure pattern even if later work is interrupted
+- Targeted test command attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts`
+- Result:
+  - blocked by missing local desktop dependencies / `node_modules`
+  - exact blocker: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
+- Dependency-free sanity check completed:
+  - used Node's `--experimental-strip-types` loader to import `apps/desktop/src/main/agent-run-utils.ts` directly
+  - verified the new helper path unwraps pseudo `[respond_to_user] { "text": ... }` content into plain final text
+  - verified pseudo `respond_to_user` image payloads are rendered into markdown image links
 
 ## Remaining Leads
 
@@ -130,4 +162,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Prioritize tool/generation errors and incomplete or stalled responses.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
+- Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

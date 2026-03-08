@@ -105,6 +105,17 @@ describe("agent-run-utils", () => {
         ]),
       ).toBe("Real final output")
     })
+
+    it("unwraps pseudo respond_to_user assistant text before returning it", () => {
+      expect(
+        getPreferredDelegationOutput("stale output", [
+          {
+            role: "assistant",
+            content: `[respond_to_user] {\n  "text": "Do this now"\n}`,
+          },
+        ]),
+      ).toBe("Do this now")
+    })
   })
 
   describe("preferStoredUserResponse", () => {
@@ -120,6 +131,24 @@ describe("agent-run-utils", () => {
 
     it("returns the original blank content when no stored user response exists", () => {
       expect(preferStoredUserResponse("", undefined)).toBe("")
+    })
+
+    it("unwraps pseudo respond_to_user final content when no stored response exists", () => {
+      expect(
+        preferStoredUserResponse(
+          `[respond_to_user] {\n  "text": "Do this now (safe, minimal path)"\n}`,
+          undefined,
+        ),
+      ).toBe("Do this now (safe, minimal path)")
+    })
+
+    it("renders pseudo respond_to_user images as markdown", () => {
+      expect(
+        preferStoredUserResponse(
+          `[respond_to_user] {\n  "text": "See screenshot",\n  "images": [{"alt": "Shot", "path": "/tmp/shot.png"}]\n}`,
+          undefined,
+        ),
+      ).toBe("See screenshot\n\n![Shot](/tmp/shot.png)")
     })
   })
 })

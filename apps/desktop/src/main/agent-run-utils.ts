@@ -14,6 +14,12 @@ interface ConversationMessageLike {
   content?: string | null
 }
 
+interface RespondToUserImageLike {
+  alt?: unknown
+  path?: unknown
+  dataUrl?: unknown
+}
+
 type ProfileContextSource = {
   profileName?: string
   displayName?: string
@@ -78,6 +84,102 @@ export function getLatestAssistantMessageContent(
   return undefined
 }
 
+function extractRespondToUserContentFromArgs(args: unknown): string | undefined {
+  if (!args || typeof args !== "object") return undefined
+
+  const parsedArgs = args as { text?: unknown; images?: unknown }
+  const text = typeof parsedArgs.text === "string" ? parsedArgs.text.trim() : ""
+  const images = Array.isArray(parsedArgs.images) ? parsedArgs.images : []
+
+  const imageMarkdown = images
+    .map((image, index) => {
+      if (!image || typeof image !== "object") return ""
+
+      const parsedImage = image as RespondToUserImageLike
+      const alt = typeof parsedImage.alt === "string" && parsedImage.alt.trim().length > 0
+        ? parsedImage.alt.trim()
+        : `Image ${index + 1}`
+      const path = typeof parsedImage.path === "string" ? parsedImage.path.trim() : ""
+      const dataUrl = typeof parsedImage.dataUrl === "string" ? parsedImage.dataUrl.trim() : ""
+      const uri = dataUrl || path
+      if (!uri) return ""
+      return `![${alt}](${uri})`
+    })
+    .filter(Boolean)
+    .join("\n\n")
+
+  const combined = [text, imageMarkdown].filter(Boolean).join("\n\n").trim()
+  return combined.length > 0 ? combined : undefined
+}
+
+function extractLeadingJsonObject(content: string, startIndex: number): string | undefined {
+  let depth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let index = startIndex; index < content.length; index++) {
+    const char = content[index]
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false
+        continue
+      }
+      if (char === "\\") {
+        isEscaped = true
+        continue
+      }
+      if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+
+    if (char === "{") {
+      depth++
+      continue
+    }
+
+    if (char === "}") {
+      depth--
+      if (depth === 0) {
+        return content.slice(startIndex, index + 1)
+      }
+    }
+  }
+
+  return undefined
+}
+
+function unwrapPseudoRespondToUserContent(content: string | undefined | null): string | undefined {
+  if (typeof content !== "string") return undefined
+
+  const trimmed = content.trim()
+  if (!trimmed.match(/^\[respond_to_user\]\s*/i)) return undefined
+
+  const jsonStart = trimmed.indexOf("{")
+  if (jsonStart < 0) return undefined
+
+  const jsonObject = extractLeadingJsonObject(trimmed, jsonStart)
+  if (!jsonObject) return undefined
+
+  try {
+    return extractRespondToUserContentFromArgs(JSON.parse(jsonObject))
+  } catch {
+    return undefined
+  }
+}
+
+function normalizeUserFacingContent(content: string | undefined | null): string {
+  return unwrapPseudoRespondToUserContent(content)
+    ?? (typeof content === "string" ? content : "")
+}
+
 export function buildProfileContext(
   profile: ProfileContextSource | SessionProfileSnapshot | undefined,
   existingContext?: string,
@@ -103,23 +205,30 @@ export function getPreferredDelegationOutput(
   output: string | undefined,
   conversation?: ConversationMessageLike[],
 ): string {
-  return (
-    getLatestAssistantMessageContent(conversation) ??
-    (typeof output === "string" ? output : "")
+  const latestAssistantContent = normalizeUserFacingContent(
+    getLatestAssistantMessageContent(conversation),
   )
+
+  if (latestAssistantContent.trim().length > 0) {
+    return latestAssistantContent
+  }
+
+  return normalizeUserFacingContent(output)
 }
 
 export function preferStoredUserResponse(
   currentFinalContent: string,
   storedUserResponse?: string | null,
 ): string {
-  if (typeof currentFinalContent === "string" && currentFinalContent.trim().length > 0) {
-    return currentFinalContent
+  const normalizedCurrentFinalContent = normalizeUserFacingContent(currentFinalContent)
+
+  if (normalizedCurrentFinalContent.trim().length > 0) {
+    return normalizedCurrentFinalContent
   }
 
   if (typeof storedUserResponse === "string" && storedUserResponse.trim().length > 0) {
     return storedUserResponse
   }
 
-  return typeof currentFinalContent === "string" ? currentFinalContent : ""
+  return normalizedCurrentFinalContent
 }
