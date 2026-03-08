@@ -2484,3 +2484,46 @@
 - Next checks:
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new blocking notices read clearly above the forms and make the disabled save CTA easier to understand.
   - If live validation later shows the notice is still too subtle, consider a smaller icon or accent-color refinement before touching the broader edit layout.
+
+### 2026-03-08 — Iteration 58: make ACP mode’s no-agent state explicit in mobile settings
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused regression coverage in `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `Settings > Agent Settings` already exposed stronger mobile chips for `Main Agent Mode` and `ACP Agent` selection.
+  - But when `Main Agent Mode` was set to `ACP` and there were no enabled ACP agents, the screen still only showed:
+    - `No ACP agents available`
+    - `Select which ACP agent handles requests`
+  - On mobile, that created a contradictory, low-signal state: the required next step was not explicit even though the section was effectively blocked.
+- Issue selected:
+  - ACP mode still handled the zero-enabled-agent state too softly in mobile settings, weakening state clarity exactly when users needed to know how to recover.
+- Decision:
+  - Keep the existing `Agent Settings` layout, mode chips, and ACP agent chip row unchanged.
+  - Do not add new navigation or a broader recovery flow while live validation is blocked.
+  - Make the smallest local hierarchy fix: replace the weak helper-only empty state with an inline notice that explicitly tells users to enable an ACP agent in `Settings → Agents` or switch `Main Agent Mode` back to `API`.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the plain `No ACP agents available` helper with a bordered inline notice block,
+    - explain the recovery path in-place (`Settings → Agents` or switch back to `API`),
+    - hide the generic `Select which ACP agent handles requests` helper when there are no ACP agents to choose from.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused coverage for the new empty-state notice contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new ACP empty-state notice reads as actionable guidance without feeling too heavy inside the section.
+  - If live validation later shows the notice is visually too dense, the next refinement should tighten the copy before introducing any new controls.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that ACP mode clearly explains how to recover when no enabled ACP agents are available.
+  - Compare this notice against other blocking or empty states in sub-agent settings so severity and hierarchy stay consistent on mobile.

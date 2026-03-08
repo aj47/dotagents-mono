@@ -1843,11 +1843,17 @@ export default function SettingsScreen({ navigation }: any) {
                         ))}
                       </View>
                     ) : (
-                      <Text style={styles.helperText}>No ACP agents available</Text>
+                      <View style={styles.agentSettingsNoticeContainer}>
+                        <Text style={styles.agentSettingsNoticeText}>
+                          No enabled ACP agents are available. Enable one in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.
+                        </Text>
+                      </View>
                     )}
-                    <Text style={styles.helperText}>
-                      Select which ACP agent handles requests
-                    </Text>
+                    {availableAcpMainAgents.length > 0 && (
+                      <Text style={styles.helperText}>
+                        Select which ACP agent handles requests
+                      </Text>
+                    )}
 
                     <View style={styles.row}>
                       <Text style={styles.label}>Inject Builtin Tools</Text>
@@ -3103,6 +3109,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderRadius: radius.full,
       backgroundColor: theme.colors.secondary,
       alignSelf: 'center',
+    },
+    agentSettingsNoticeContainer: {
+      marginTop: spacing.xs,
+      marginBottom: spacing.xs,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+    },
+    agentSettingsNoticeText: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.colors.foreground,
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,

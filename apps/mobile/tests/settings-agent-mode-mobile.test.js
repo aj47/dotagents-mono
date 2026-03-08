@@ -24,6 +24,14 @@ test('gives ACP main-agent chips explicit selection semantics and narrow-screen 
   assert.match(settingsSource, /numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{agent\.displayName \|\| agent\.name\}/);
 });
 
+test('turns the ACP no-agent state into explicit, mode-aware guidance', () => {
+  assert.match(settingsSource, /availableAcpMainAgents\.length > 0 \? \(/);
+  assert.match(settingsSource, /No enabled ACP agents are available\. Enable one in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent\./);
+  assert.match(settingsSource, /\{availableAcpMainAgents\.length > 0 && \([\s\S]*?Select which ACP agent handles requests[\s\S]*?\)\}/);
+  assert.match(settingsSource, /agentSettingsNoticeContainer:\s*\{[\s\S]*?padding:\s*spacing\.md[\s\S]*?borderColor:\s*theme\.colors\.border[\s\S]*?backgroundColor:\s*theme\.colors\.secondary/);
+  assert.match(settingsSource, /agentSettingsNoticeText:\s*\{[\s\S]*?fontSize:\s*13,[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.foreground/);
+});
+
 test('wraps Inject Builtin Tools in a named mobile-sized switch control', () => {
   assert.match(settingsSource, /style=\{styles\.agentSettingsSwitchButton\}/);
   assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('acpInjectBuiltinTools', !\(remoteSettings\.acpInjectBuiltinTools \?\? true\)\)\}/);
