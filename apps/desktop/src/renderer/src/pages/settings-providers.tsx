@@ -43,6 +43,7 @@ import {
   DEFAULT_MODEL_PRESET_ID,
 } from "@shared/index"
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
+import { toast } from "sonner"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const OPENAI_TTS_SPEED_DEFAULT = 1.0
@@ -74,6 +75,12 @@ function parseSupertonicStepsDraft(value: string) {
   }
 
   return parsed
+}
+
+function getProviderActionErrorMessage(action: string, error: unknown) {
+  return error instanceof Error && error.message.trim()
+    ? `${action}: ${error.message}`
+    : action
 }
 
 function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
@@ -456,6 +463,7 @@ function KittenProviderSection({
       await audio.play()
     } catch (error) {
       console.error("Failed to test Kitten voice:", error)
+      toast.error(getProviderActionErrorMessage("Failed to test Kitten voice", error))
     }
   }
 
@@ -787,6 +795,7 @@ function SupertonicProviderSection({
       await audio.play()
     } catch (error) {
       console.error("Failed to test Supertonic voice:", error)
+      toast.error(getProviderActionErrorMessage("Failed to test Supertonic voice", error))
     }
   }
 

@@ -113,6 +113,10 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` again after the sidebar stop fix and confirmed the adjacent `Minimize` / `Restore` flow still logs rejected `snoozeAgentSession(...)` / `unsnoozeAgentSession(...)` calls to the console only, while the optimistic `Restore` rollback hardcoded `setFocusedSessionId(null)`.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ChatScreen.tsx` has no equivalent session minimize/restore UI, so this is a desktop-only bug rather than a cross-platform behavior change.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx`, but the worktree still has no installed dependencies; the shared-package pretest failed immediately because `tsup` was unavailable.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-providers.tsx` and confirmed both local TTS `Test Voice` handlers (`synthesizeWithKitten`, `synthesizeWithSupertonic`) still caught rejected IPC/audio startup errors with `console.error(...)` only, so those explicit user actions could fail with no visible feedback.
+- [x] 2026-03-08: Confirmed mobile does not expose equivalent local Kitten/Supertonic voice-test controls; `apps/mobile/src/screens/SettingsScreen.tsx` only shows a desktop-configuration notice for those providers, so this fix is desktop-only rather than a parity regression.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop provider test-voice feedback fix and regression test additions.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -234,6 +238,10 @@
   - `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` optimistically calls `setFocusedSessionId(sessionId)` before `unsnoozeAgentSession(...)`, but on rejection it previously always rolled local focus back to `null` instead of the pre-click `focusedSessionId`.
   - Both rejected `snoozeAgentSession(...)` and `unsnoozeAgentSession(...)` branches previously only called `console.error(...)`, so failed `Minimize` / `Restore` clicks could look like “nothing happened” even when local sidebar state had briefly changed.
   - `ActiveAgentsSidebar` is mounted in the primary desktop layout, and mobile has no equivalent minimize/restore surface, so this is a live desktop state/UI bug rather than dead code or a parity decision.
+- [x] **Desktop local-provider Test Voice failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` wrapped both `synthesizeWithKitten(...)` and `synthesizeWithSupertonic(...)` in `try/catch`, but each `catch` branch only called `console.error(...)`.
+  - Because those handlers back explicit `Test Voice` buttons in the desktop provider settings, a rejected synth request or playback startup failure looked like a dead/no-op button even though the action had failed.
+  - Mobile only tells users to configure Kitten/Supertonic in desktop settings, so there is no equivalent mobile control whose behavior would justify leaving the desktop flow silent.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -347,6 +355,8 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` with regression coverage for:
   - visible `Failed to minimize session. ...` feedback on rejected `snoozeAgentSession(...)`
   - restoring the previous focus plus visible `Failed to restore session. ...` feedback on rejected `unsnoozeAgentSession(...)`
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-providers.tsx` so rejected Kitten and Supertonic `Test Voice` actions now call `toast.error(...)` with provider-specific failure copy instead of failing silently with console logging only.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` with focused regression coverage that mocks the desktop provider page, rejects both local synth IPC calls, and asserts the visible Kitten/Supertonic test-voice error toasts.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -421,6 +431,10 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx` now restores the pre-click `focusedSessionId` when `unsnoozeAgentSession(...)` rejects and surfaces visible `toast.error(...)` feedback for both rejected `Minimize` and `Restore` actions.
 - [x] Low-cost automated sanity check: `node -e "..."` file-read assertions passed for `active-agents-sidebar.tsx` and `active-agents-sidebar.stop-session.test.tsx`, confirming the new minimize/restore toast strings, previous-focus rollback, and added regression-test cases are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the sidebar minimize/restore feedback + rollback fix.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-providers.tsx` now imports `toast` from `sonner` and calls `toast.error(...)` from both local `Test Voice` catch paths, so rejected Kitten/Supertonic test runs no longer fail silently.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` now mocks `sonner`, rejects both local synth IPC paths, and asserts the visible `Failed to test Kitten/Supertonic voice: ...` toast contracts.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions confirmed the provider settings source contains both new `toast.error(...)` test-voice paths and the regression file contains the new Kitten/Supertonic failure-toast test cases.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the provider test-voice feedback update and regression test additions.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -451,6 +465,7 @@
 - [x] Targeted automated verification for this desktop tool-approval feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction for this approval-flow bug remains blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vite --version` fails with `Command "vite" not found`, so the desktop debug/bundler tooling needed to run the renderer is still unavailable in this worktree.
 - [x] Targeted automated verification for this sidebar minimize/restore fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` still fails before Vitest starts because the shared pretest cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
+- [x] Targeted automated verification for this provider test-voice feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -474,6 +489,7 @@
 - [ ] Whether summary cards that currently yield `reason: "no_durable_content"` should eventually disable or explain the `Save` button up front, rather than waiting to tell the user after they click it.
 - [ ] Whether the adjacent desktop tool-approval flows should eventually share a tiny renderer helper for `respondToToolApproval(...)` error copy/state reset once live verification is available, or whether keeping the duplicated local handlers is preferable to avoid a new abstraction.
 - [ ] Whether any other approval-adjacent desktop actions in session cards (for example speech generation or clipboard copy fallbacks) still rely on console-only logging and need the same visible-feedback treatment once the environment blocker is cleared.
+- [ ] Whether the adjacent local-provider model download actions in `settings-providers.tsx` should also surface visible failure feedback, or whether their existing inline `status.error` rendering is already sufficient once live desktop validation is available.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -528,6 +544,8 @@
 - Reusing the same `toast.error(...)` pattern in the existing `catch` blocks is the smallest safe fix because it preserves the current approval flow, optimistic spinner handling, and retry behavior while finally telling the user why their approval action did not go through.
 - The sidebar minimize/restore issue is similarly high-signal because it affects active session management in the main desktop layout: a failed `Minimize` / `Restore` click should not look like a no-op, and a rejected `Restore` should not discard the previously focused session.
 - Restoring the prior `focusedSessionId` on rejected `unsnoozeAgentSession(...)` is the smallest safe state fix because it returns the sidebar to its exact pre-click selection semantics without changing the successful restore/minimize flow.
+- The provider-settings issue is another explicit user-action failure bug: clicking `Test Voice` is a direct request for audible confirmation, so a rejected synth/playback path should not disappear into DevTools-only logging.
+- Reusing the existing desktop `toast.error(...)` pattern in those `catch` blocks is the smallest safe fix because it preserves the current local-provider test flow while finally telling the user why the button produced no sound.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -557,6 +575,7 @@
 - Assumption: using `toast.error(...)` for the summary `no_durable_content` path is acceptable for this pass because the user-initiated save action could not complete, there is no precomputed “saveability” signal on the card yet, and the desktop app already uses toasts for comparable action-level failures.
 - Assumption: using the existing desktop toast pattern for tool-approval failures is acceptable because `sonner` is already mounted app-wide, there is no separate inline approval-error state today, and these actions are core workflow gates where silent failure is especially misleading.
 - Assumption: using the existing desktop toast pattern for sidebar `Minimize` / `Restore` failures and restoring the previous focused session on rejected `Restore` is acceptable because the action is user-initiated, the optimistic focus change should revert to the exact pre-click state on failure, and desktop already uses `sonner` to surface comparable action-level errors.
+- Assumption: surfacing toast feedback only for the rejected Kitten/Supertonic `Test Voice` actions is acceptable for this pass because mobile delegates those local-provider controls to desktop, the successful audio path is unchanged, and the concrete bug here is missing user feedback rather than provider/runtime semantics.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.

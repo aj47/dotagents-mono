@@ -64,6 +64,13 @@ function findNode(node: any, predicate: (node: any) => boolean): any {
   return null
 }
 
+function getText(node: any): string {
+  if (node == null) return ""
+  if (typeof node === "string" || typeof node === "number") return String(node)
+  if (Array.isArray(node)) return node.map(getText).join("")
+  return getText(node.props?.children)
+}
+
 function findInputByType(node: any, type: string) {
   return findNode(node, candidate => candidate.type === "Input" && candidate.props?.type === type)
 }
@@ -88,6 +95,8 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
   vi.resetModules()
   const Null = () => null
   const mutate = vi.fn()
+  const invoke = vi.fn()
+  const toast = { error: vi.fn() }
   let currentConfig: any = {
     mainAgentMode: "api",
     sttProviderId: "groq",
@@ -112,7 +121,7 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
   vi.doMock("@tanstack/react-query", () => ({
     useQuery: (options: { queryKey?: string[] }) => {
       const key = options?.queryKey?.[0]
-      if (key === "supertonicModelStatus") {
+      if (key === "supertonicModelStatus" || key === "kittenModelStatus") {
         return { data: { downloaded: true }, isLoading: false }
       }
 
@@ -120,12 +129,13 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
     },
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
   }))
+  vi.doMock("sonner", () => ({ toast }))
   vi.doMock("@renderer/lib/query-client", () => ({ useConfigQuery: () => ({ data: currentConfig }), useSaveConfigMutation: () => ({ mutate }) }))
   vi.doMock("@renderer/components/ui/control", () => ({ Control: (props: any) => ({ type: "Control", props }), ControlGroup: (props: any) => props.children, ControlLabel: (props: any) => props.label }))
   vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
   vi.doMock("@renderer/components/ui/select", () => ({ Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }))
   vi.doMock("@renderer/components/ui/switch", () => ({ Switch: Null }))
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: Null }))
+  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@renderer/components/model-preset-manager", () => ({ ModelPresetManager: Null }))
   vi.doMock("@renderer/components/model-selector", () => ({ ProviderModelSelector: Null }))
   vi.doMock("@renderer/components/preset-model-selector", () => ({ PresetModelSelector: Null }))
@@ -138,12 +148,15 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
     OPENAI_TTS_MODELS: [], OPENAI_TTS_VOICES: [], GROQ_TTS_MODELS: [], GROQ_TTS_VOICES_ENGLISH: [], GROQ_TTS_VOICES_ARABIC: [], GEMINI_TTS_MODELS: [], GEMINI_TTS_VOICES: [], KITTEN_TTS_VOICES: [], SUPERTONIC_TTS_VOICES: [], SUPERTONIC_TTS_LANGUAGES: [],
     getBuiltInModelPresets: () => [], DEFAULT_MODEL_PRESET_ID: "default",
   }))
+  vi.stubGlobal("window", { electron: { ipcRenderer: { invoke } } })
   const mod = await import("./settings-providers")
   return {
     Component: mod.Component,
     mutate,
+    invoke,
     setConfig(nextConfig: any) { currentConfig = nextConfig },
     getCurrentConfig() { return currentConfig },
+    toast,
   }
 }
 
@@ -152,6 +165,7 @@ beforeEach(() => { vi.useFakeTimers() })
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   vi.resetModules()
 })
 
@@ -342,5 +356,73 @@ describe("desktop provider settings draft behavior", () => {
     tree = runtime.render(Component, {} as any)
     speedInput = findNumberInput(tree, 0.25, 4)
     expect(speedInput.props.value).toBe("2.25")
+  })
+
+  it("surfaces a toast when Kitten test voice fails", async () => {
+    const runtime = createHookRuntime()
+    const { Component, invoke, toast } = await loadSettingsProviders(runtime, {
+      ttsProviderId: "kitten",
+      providerSectionCollapsedKitten: false,
+      providerSectionCollapsedSupertonic: true,
+      kittenVoiceId: 3,
+    })
+    const error = new Error("model missing")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    invoke.mockRejectedValueOnce(error)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const testVoiceButton = findNode(
+      tree,
+      (candidate) => candidate.type === "Button" && getText(candidate) === "Test Voice",
+    )
+
+    await testVoiceButton.props.onClick()
+
+    expect(invoke).toHaveBeenCalledWith("synthesizeWithKitten", {
+      text: "Hello! This is a test of the Kitten text to speech voice.",
+      voiceId: 3,
+    })
+    expect(consoleError).toHaveBeenCalledWith("Failed to test Kitten voice:", error)
+    expect(toast.error).toHaveBeenCalledWith("Failed to test Kitten voice: model missing")
+  })
+
+  it("surfaces a toast when Supertonic test voice fails", async () => {
+    const runtime = createHookRuntime()
+    const { Component, invoke, toast } = await loadSettingsProviders(runtime, {
+      ttsProviderId: "supertonic",
+      providerSectionCollapsedKitten: true,
+      providerSectionCollapsedSupertonic: false,
+      supertonicVoice: "M2",
+      supertonicLanguage: "fr",
+      supertonicSpeed: 1.15,
+      supertonicSteps: 7,
+    })
+    const error = new Error("decoder unavailable")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    invoke.mockRejectedValueOnce(error)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const testVoiceButton = findNode(
+      tree,
+      (candidate) => candidate.type === "Button" && getText(candidate) === "Test Voice",
+    )
+
+    await testVoiceButton.props.onClick()
+
+    expect(invoke).toHaveBeenCalledWith("synthesizeWithSupertonic", {
+      text: "Hello! This is a test of the Supertonic text to speech voice.",
+      voice: "M2",
+      lang: "fr",
+      speed: 1.15,
+      steps: 7,
+    })
+    expect(consoleError).toHaveBeenCalledWith("Failed to test Supertonic voice:", error)
+    expect(toast.error).toHaveBeenCalledWith("Failed to test Supertonic voice: decoder unavailable")
   })
 })
