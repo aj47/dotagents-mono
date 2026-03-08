@@ -1550,3 +1550,46 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that ACP selector rows now read as single-line options unless they have real per-agent descriptive text.
   - Once live validation returns, compare populated ACP selector rows against standard profile rows to confirm the sheet still feels balanced and distinguishable.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 36: make the current selector choice explicit in populated rows
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentSelectorSheet`
+  - `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo MOBILE_NODE_MODULES_PRESENT || echo MOBILE_NODE_MODULES_MISSING` → `MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed populated selector rows in `AgentSelectorSheet` still marked the active choice mainly with a tinted background plus a trailing `✓`.
+  - After Iteration 35 removed the repeated ACP placeholder subtitle, populated ACP rows became leaner but also more visually similar to one another.
+  - On mobile, that left the current choice easier to miss at a glance in the main switching surface.
+- Issue selected:
+  - The populated sub-agent selector still relied on a subtle checkmark-only cue for the current choice, weakening state clarity on narrow screens.
+- Decision:
+  - Keep the existing selector-sheet layout, titles, and switching flow unchanged.
+  - Do not add new metadata or redesign the row layout while live validation is blocked.
+  - Make the smallest local fix in `AgentSelectorSheet`: replace the bare selected checkmark with an explicit `Current` badge and add state-aware accessibility copy for selected vs. switchable rows.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive selected vs. unselected row accessibility labels/hints,
+    - expose disabled state while switching,
+    - replace the selected row's lone `✓` with a compact `Current` badge,
+    - add a subtle selected-row border so the active choice reads more clearly as current state.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the explicit selected-state badge and state-aware selector semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new `Current` badge still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - A longer real agent name should still be checked in the populated selector to confirm the new badge does not crowd row truncation.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that populated selector rows now make the active choice immediately obvious without adding crowding.
+  - Smoke-test the selector with a longer configured agent name once live validation returns.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

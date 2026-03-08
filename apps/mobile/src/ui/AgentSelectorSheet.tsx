@@ -143,14 +143,22 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     const secondaryDescription = item.guidelines && item.guidelines !== 'ACP main agent'
       ? item.guidelines
       : null;
+    const selectionAccessibilityLabel = isSelected
+      ? `Current ${item.name} agent`
+      : `Select ${item.name} agent`;
+    const selectionAccessibilityHint = isSelected
+      ? 'Currently selected. Double tap to close this selector and keep this agent.'
+      : 'Switches the current agent to this option.';
+
     return (
       <TouchableOpacity
         style={[styles.profileItem, isSelected && styles.profileItemSelected]}
         onPress={() => handleSelectProfile(item)}
         disabled={isSwitching}
         accessibilityRole="button"
-        accessibilityLabel={`Select ${item.name} agent`}
-        accessibilityState={{ selected: isSelected }}
+        accessibilityLabel={selectionAccessibilityLabel}
+        accessibilityHint={selectionAccessibilityHint}
+        accessibilityState={{ selected: isSelected, disabled: isSwitching }}
       >
         <View style={styles.profileInfo}>
           <Text
@@ -166,7 +174,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </Text>
           )}
         </View>
-        {isSelected && <Text style={styles.checkmark}>✓</Text>}
+        {isSelected && (
+          <View style={styles.profileCurrentBadge}>
+            <Text style={styles.profileCurrentBadgeText}>Current</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -323,6 +335,8 @@ function createStyles(theme: Theme) {
     },
     profileItemSelected: {
       backgroundColor: theme.colors.primary + '20',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '33',
     },
     profileInfo: {
       flex: 1,
@@ -345,10 +359,19 @@ function createStyles(theme: Theme) {
       marginTop: 2,
       flexShrink: 1,
     },
-    checkmark: {
-      fontSize: 18,
+    profileCurrentBadge: {
+      flexShrink: 0,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.primary + '16',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '33',
+    },
+    profileCurrentBadgeText: {
+      fontSize: 11,
       color: theme.colors.primary,
-      fontWeight: '600',
+      fontWeight: '700',
       flexShrink: 0,
     },
     loadingContainer: {

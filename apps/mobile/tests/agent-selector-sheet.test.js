@@ -45,10 +45,19 @@ test('keeps long agent names and descriptions stable inside selector rows on nar
   assert.match(sheetSource, /profileInfo:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?marginRight:/);
   assert.match(sheetSource, /profileName:\s*\{[\s\S]*?flexShrink:\s*1/);
   assert.match(sheetSource, /profileDescription:\s*\{[\s\S]*?flexShrink:\s*1/);
-  assert.match(sheetSource, /checkmark:\s*\{[\s\S]*?flexShrink:\s*0/);
+  assert.match(sheetSource, /profileCurrentBadge:\s*\{[\s\S]*?flexShrink:\s*0/);
 });
 
 test('drops the generic ACP placeholder subtitle while keeping real selector descriptions', () => {
   assert.match(sheetSource, /const secondaryDescription = item\.guidelines && item\.guidelines !== 'ACP main agent'[\s\S]*?\? item\.guidelines[\s\S]*?: null;/);
   assert.match(sheetSource, /\{secondaryDescription && \([\s\S]*?<Text style=\{styles\.profileDescription\}[\s\S]*?\{secondaryDescription\}/);
+});
+
+test('makes the selected agent row read as the current state instead of only a checkmark', () => {
+  assert.match(sheetSource, /const selectionAccessibilityLabel = isSelected[\s\S]*?Current \$\{item\.name\} agent[\s\S]*?Select \$\{item\.name\} agent/);
+  assert.match(sheetSource, /const selectionAccessibilityHint = isSelected[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current agent to this option\./);
+  assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching \}\}/);
+  assert.match(sheetSource, /\{isSelected && \([\s\S]*?<View style=\{styles\.profileCurrentBadge\}>[\s\S]*?<Text style=\{styles\.profileCurrentBadgeText\}>Current<\/Text>/);
+  assert.match(sheetSource, /profileItemSelected:\s*\{[\s\S]*?borderWidth:\s*1,[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '33'/);
+  assert.match(sheetSource, /profileCurrentBadge:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.primary \+ '16'[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '33'/);
 });
