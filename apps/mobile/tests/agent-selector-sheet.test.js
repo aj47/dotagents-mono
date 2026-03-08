@@ -33,6 +33,13 @@ test('turns the missing-config selector error into a direct settings escape hatc
   assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\('Open agent settings'\)[\s\S]*?Returns to Settings so you can add server details and review agent mode\.[\s\S]*?Open Agent Settings/);
 });
 
+test('keeps the current agent visible through selector-sheet errors so the failure feels recoverable', () => {
+  assert.match(sheetSource, /const errorSupportText = isMissingConfigError[\s\S]*?Your current agent stays active\. Open Settings to finish connecting this server and review agent mode\.[\s\S]*?Your current agent stays active while you retry loading the available options\./);
+  assert.match(sheetSource, /\) : error \? \([\s\S]*?<View style=\{styles\.errorContainer\}>[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>Current agent<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<Text style=\{styles\.errorText\}>\{error\}<\/Text>[\s\S]*?<Text style=\{styles\.errorSupportText\}>\{errorSupportText\}<\/Text>/);
+  assert.match(sheetSource, /errorContainer:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\.sm,[\s\S]*?gap:\s*spacing\.sm/);
+  assert.match(sheetSource, /errorSupportText:\s*\{[\s\S]*?textAlign:\s*'center',[\s\S]*?lineHeight:\s*20/);
+});
+
 test('makes the selector loading state read as active progress while keeping the current agent visible', () => {
   assert.match(sheetSource, /\{isLoading \? \([\s\S]*?style=\{styles\.loadingStateCard\}[\s\S]*?accessible[\s\S]*?accessibilityRole="progressbar"[\s\S]*?accessibilityLabel="Loading available agents"[\s\S]*?accessibilityHint="Your current agent stays active while the available agent options load\."[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>Current agent<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<View style=\{styles\.loadingStatusRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.loadingStatusText\}>Loading available agents…<\/Text>[\s\S]*?<Text style=\{styles\.loadingText\}>Your current agent stays active while options load\.<\/Text>/);
   assert.match(sheetSource, /loadingStateCard:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*spacing\.sm/);

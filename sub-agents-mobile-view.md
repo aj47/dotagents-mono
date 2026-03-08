@@ -2872,3 +2872,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector-sheet loading card reads clearly on a narrow screen.
   - Check the selector sheet with a slower profile fetch so the loading state can be visually compared against the existing empty and error states.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 67: keep selector-sheet failures anchored to the current agent
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the selector sheet already kept `Current agent` visible in both the empty state and the new loading card.
+  - The recoverable error state still dropped that context entirely and showed only the error text plus `Retry` or `Open Agent Settings`.
+  - On mobile, that made a transient selector failure feel more disruptive than it really was because the sheet no longer reaffirmed which agent remained active.
+- Issue selected:
+  - Selector-sheet failures were not anchored to the current agent, weakening state clarity at the exact moment users most needed reassurance that nothing had switched yet.
+- Decision:
+  - Keep the existing selector layout, error actions, and recent loading/empty-state improvements unchanged.
+  - Do not redesign the error card while live validation is blocked.
+  - Make the smallest local continuity fix: reuse the existing `Current agent` badge inside the error state and add one short support line clarifying that the current agent stays active while the user retries or opens Settings.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - reuse the existing `Current agent` badge in the error state,
+    - add mode-aware support copy that reassures users the current agent stays active,
+    - give the error container matching horizontal padding/gap so the badge, message, and action stay readable as one stack on narrow screens.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new error-state continuity treatment.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the added support line feels reassuring without making the selector error state too tall.
+  - If live validation later shows the new support copy feels too verbose for quick retry scenarios, the next refinement should tighten wording before adding any new UI.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector-sheet error state now reads as a recoverable interruption rather than a context reset.
+  - Check both the missing-config and retryable-load error paths on a narrow viewport to confirm the reused `Current agent` badge stays balanced with the action button.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

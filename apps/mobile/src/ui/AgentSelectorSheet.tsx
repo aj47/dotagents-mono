@@ -104,6 +104,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const emptyStateMessage = selectorMode === 'acp'
     ? 'No enabled ACP agents are available yet. Add or enable one in Settings → Agents to use it as your main agent.'
     : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
+  const errorSupportText = isMissingConfigError
+    ? 'Your current agent stays active. Open Settings to finish connecting this server and review agent mode.'
+    : 'Your current agent stays active while you retry loading the available options.';
 
   const handleOpenAgentSettings = () => {
     onClose();
@@ -284,7 +287,18 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
+            <View style={styles.currentAgentBadge}>
+              <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+              <Text
+                style={styles.currentAgentBadgeText}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {currentAgentName}
+              </Text>
+            </View>
             <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorSupportText}>{errorSupportText}</Text>
             {isMissingConfigError ? (
               <TouchableOpacity
                 style={styles.manageAgentsButton}
@@ -542,10 +556,16 @@ function createStyles(theme: Theme) {
     errorContainer: {
       alignItems: 'center',
       paddingVertical: spacing.lg,
+      paddingHorizontal: spacing.sm,
+      gap: spacing.sm,
     },
     errorText: {
       color: theme.colors.destructive,
-      marginBottom: spacing.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    errorSupportText: {
+      color: theme.colors.mutedForeground,
       textAlign: 'center',
       lineHeight: 20,
     },
