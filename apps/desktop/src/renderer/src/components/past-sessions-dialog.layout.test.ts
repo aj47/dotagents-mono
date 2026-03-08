@@ -18,11 +18,16 @@ describe("past sessions dialog layout", () => {
       'className="flex flex-wrap items-start gap-2"',
     )
     expect(pastSessionsDialogSource).toContain(
-      'className="min-w-0 flex-1 truncate font-medium"',
+      'className="min-w-0 flex-1 text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"',
     )
     expect(pastSessionsDialogSource).toContain(
       'className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"',
     )
+  })
+
+  it("includes the full session title in the row tooltip when long titles are visually clamped", () => {
+    expect(pastSessionsDialogSource).toContain("session.title\\n${session.preview}")
+    expect(pastSessionsDialogSource).toContain('`${session.title}\\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`')
   })
 
   it("wraps delete-all confirmation actions instead of clipping them under zoom", () => {

@@ -210,12 +210,14 @@ export function PastSessionsDialog({
                       "group flex w-full cursor-pointer items-start gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
                       "hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     )}
-                    title={`${session.preview}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`}
+                    title={session.preview
+                      ? `${session.title}\n${session.preview}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`
+                      : `${session.title}\n${dayjs(session.updatedAt).format("MMM D, h:mm A")}`}
                   >
                     <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <div className="flex flex-wrap items-start gap-2">
-                        <span className="min-w-0 flex-1 truncate font-medium">
+                        <span className="min-w-0 flex-1 text-sm font-medium leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]">
                           {session.title}
                         </span>
                         <div className="ml-auto grid shrink-0 place-items-center self-start">

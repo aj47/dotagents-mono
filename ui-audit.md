@@ -1,5 +1,56 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 64: Desktop Past Sessions dialog hid too much session identity under narrow dialog widths and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided repeating the just-touched Hub publish, mobile session-list, settings, and memories work without a concrete follow-up reason.
+  - The ledger still listed `past-sessions-dialog.tsx` as an open candidate for long-title and narrow-dialog auditing, and a live Electron renderer was available on `:9333`, so this was a better fresh target than another source-only sweep.
+  - I deliberately avoided `model-preset-manager.tsx` because this worktree already had unrelated uncommitted changes there.
+- Audit method:
+  - re-read `ui-audit.md`, `visible-ui.md`, `apps/desktop/DEBUGGING.md`, and the focused `past-sessions-dialog.layout.test.ts` contract before editing
+  - reused the live Electron renderer target on `http://localhost:5174/memories` via CDP (`REMOTE_DEBUGGING_PORT=9333`), opened the global `Past Sessions` dialog, and captured screenshot-backed evidence in `tmp/ui-audit/past-sessions-dialog-live.png`
+  - stressed the live dialog at `420×670` with larger root text (`24px`) and captured `tmp/ui-audit/past-sessions-dialog-420w-root24.png`
+  - measured mounted session-row widths and title truncation directly in the DOM before editing source, then prototyped the exact two-line title treatment in the mounted DOM and captured `tmp/ui-audit/past-sessions-dialog-420w-root24-title-prototype.png`
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SessionListScreen.tsx` has no direct `Past Sessions` dialog equivalent, so no mobile code change was needed
+
+#### Findings
+
+- Before the fix, the desktop `Past Sessions` dialog had one concrete narrow-width readability issue with clear user impact:
+  - each session row kept the title on a rigid single line (`truncate`) while also reserving space for the relative timestamp / delete affordance in the same top row
+  - under live stress at `420×670` with `24px` root text, the dialog shrank to about `372px`, each visible session row was about `292px` wide, and long titles only received about `181px` of visible width
+  - representative titles such as `Write 200 numbered bullet points. Each item should...` needed about `500px` of scroll width, and `What should I do next. I lost the last convo` needed about `392px`, so a large part of the distinguishing title content was hidden behind ellipsis
+  - the row tooltip also prioritized preview text and timestamp, not the full session title, which made hover recovery weaker exactly when the visible title was most truncated
+  - this matters because the dialog’s primary job is helping users reopen the correct past conversation quickly; hiding most of the session identity increases the chance of reopening or deleting the wrong session
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` with the smallest effective identity fix:
+  - replaced the one-line `truncate` session title with a compact two-line fallback using `line-clamp-2`, `leading-snug`, `break-words`, and `[overflow-wrap:anywhere]`
+  - updated the row tooltip to include the full session title before the preview/timestamp so hover inspection now exposes the missing identity instead of only the preview
+- Extended `apps/desktop/src/renderer/src/components/past-sessions-dialog.layout.test.ts` with focused coverage for the multiline title treatment and full-title tooltip contract
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/past-sessions-dialog.layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the multiline title classes, tooltip inclusion of full session title, and focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5174/memories` → `Past Sessions`:
+  - screenshots: `tmp/ui-audit/past-sessions-dialog-live.png`, `tmp/ui-audit/past-sessions-dialog-420w-root24.png`
+  - at `420×670` with `24px` root text, the dialog measured about `372px` wide, representative rows measured about `292px`, and long titles had only about `181px` of visible width against `375–500px` of scroll width
+- Live DOM prototype verification of the intended fix:
+  - after applying the same two-line title treatment directly in the mounted DOM, representative long titles kept the same `181px` lane but eliminated the internal horizontal clipping pressure (`scrollWidth` dropped from as high as `500px` to `181px`)
+  - representative row height increased from about `115.5px` to about `138px`, which was a deliberate and acceptable tradeoff for materially better session identification
+  - screenshot: `tmp/ui-audit/past-sessions-dialog-420w-root24-title-prototype.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx apps/desktop/src/renderer/src/components/past-sessions-dialog.layout.test.ts` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. I paired live pre-fix evidence with a DOM prototype of the exact title treatment and direct source verification of the patch instead.
+- This chunk is desktop-only: mobile `SessionListScreen` has no matching `Past Sessions` dialog component or hover-based management row that needed a parallel change.
+- Tradeoff/rationale: under tighter widths or larger text, some past-session rows now grow modestly taller because the title can use a second line, but that is a safer tradeoff than obscuring most of the session identity in a recovery-focused dialog.
+- Best next UI audit chunk after this one: move away from `Past Sessions` unless a rebuilt renderer for this checkout becomes available for literal post-edit confirmation; the next strongest fresh target is the font-scale audit on `agent-progress.tsx` message content / tool-output `pre` blocks or another live-inspectable desktop/mobile surface with real data.
+
 ### 2026-03-08 — Chunk 63: Desktop Hub publish metadata form depended on rigid multi-column rows inside a narrow modal
 
 - Area selected:
