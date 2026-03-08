@@ -53,6 +53,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const fetchProfiles = useCallback(async () => {
     if (!hasApiConfig) {
       setIsLoading(false);
+      setSelectorMode('profile');
       setProfiles([]);
       setError(missingConfigError);
       return;
@@ -101,10 +102,16 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const emptyStateMessage = selectorMode === 'acp'
     ? 'No enabled ACP agents are available yet. Add or enable one in Settings → Agents to use it as your main agent.'
     : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
+  const isMissingConfigError = error === missingConfigError;
 
   const handleOpenAgentSettings = () => {
     onClose();
     navigation.navigate('Settings');
+  };
+
+  const handleOpenConnectionSettings = () => {
+    onClose();
+    navigation.navigate('ConnectionSettings');
   };
 
   const handleSelectProfile = async (profile: SelectableProfile) => {
@@ -190,9 +197,21 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ) : error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchProfiles}>
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
+            {isMissingConfigError ? (
+              <TouchableOpacity
+                style={styles.errorActionButton}
+                onPress={handleOpenConnectionSettings}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Open connection settings')}
+                accessibilityHint="Opens the connection screen so you can scan a QR code or enter your server URL and API key."
+              >
+                <Text style={styles.errorActionButtonText}>Open Connection Settings</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.retryButton} onPress={fetchProfiles}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : profiles.length === 0 ? (
           <View style={styles.emptyStateCard}>
@@ -320,6 +339,21 @@ function createStyles(theme: Theme) {
     errorText: {
       color: theme.colors.destructive,
       marginBottom: spacing.sm,
+    },
+    errorActionButton: {
+      minHeight: 44,
+      minWidth: 220,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.lg,
+      backgroundColor: theme.colors.primary + '14',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    errorActionButtonText: {
+      color: theme.colors.primary,
+      fontSize: 15,
+      fontWeight: '600',
     },
     retryButton: {
       paddingHorizontal: spacing.lg,

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile agent-switcher missing-config recovery in `apps/mobile/src/ui/AgentSelectorSheet.tsx`, with agent sheet usage reviewed in `apps/mobile/src/screens/ChatScreen.tsx` / `apps/mobile/src/screens/SessionListScreen.tsx`, navigation targets rechecked in `apps/mobile/App.tsx` and `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, ACP/profile option shaping cross-checked in `apps/mobile/src/lib/mainAgentOptions.ts`, focused source-level coverage extended in `apps/mobile/tests/agent-selector-sheet.test.js`, targeted verification run locally via `node --test apps/mobile/tests/agent-selector-sheet.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked because `expo` is unavailable in this dependency-less worktree)*.
 - 2026-03-08: Mobile session-list blank-title readability in `packages/shared/src/session.ts` plus `apps/mobile/src/screens/SessionListScreen.tsx`, with session-row / accessibility / delete-copy usage reviewed in the screen, local list conversion rechecked in `apps/mobile/src/store/sessions.ts`, blank-title server-stub paths confirmed in `apps/mobile/src/lib/syncService.ts`, desktop fallback patterns cross-checked in `apps/desktop/src/renderer/src/lib/conversation-history-display.ts`, focused dependency-light runtime coverage added in new `tests/shared-session-list-title-fallback.test.js`, adjacent mobile session-list guardrails re-run in `apps/mobile/tests/session-list-delete-guardrails.test.js`, targeted verification run locally via `node --experimental-strip-types --test tests/shared-session-list-title-fallback.test.js apps/mobile/tests/session-list-delete-guardrails.test.js`, `pnpm --filter @dotagents/shared typecheck`, plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked because `expo` is unavailable in this dependency-less worktree)*.
 - 2026-03-08: Desktop session-history title fallback readability in `apps/desktop/src/renderer/src/pages/sessions.tsx` and `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, with title/preview generation reviewed in `apps/desktop/src/main/conversation-service.ts`, display-type shape rechecked in `apps/desktop/src/shared/types.ts`, mobile parity cross-checked in `apps/mobile/src/screens/SessionListScreen.tsx`, a small renderer helper added in new `apps/desktop/src/renderer/src/lib/conversation-history-display.ts`, focused coverage added in new `tests/desktop-conversation-history-title-fallback.test.js` plus existing `tests/desktop-sessions-empty-state-feedback.test.js` and `tests/desktop-past-sessions-dialog-guardrails.test.js`, targeted verification run locally via `node --experimental-strip-types --test tests/desktop-conversation-history-title-fallback.test.js tests/desktop-sessions-empty-state-feedback.test.js tests/desktop-past-sessions-dialog-guardrails.test.js`, `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`, plus `git diff --check`, and live desktop inspection attempted via `electron_execute` *(blocked because no Electron renderer/CDP target is available in this environment)*.
 - 2026-03-08: Mobile memory deletion success-handling / pending-state guardrails in `apps/mobile/src/screens/SettingsScreen.tsx`, with the memory action rail and delete handler reviewed there, `deleteMemory()` response semantics rechecked in `apps/mobile/src/lib/settingsApi.ts` to confirm the backend can return `{ success: false }`, focused source-level coverage extended in `apps/mobile/tests/settings-memory-actions-mobile.test.js`, targeted verification run locally via `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/memory-edit-discard-guardrails.test.js` plus `git diff --check`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked because `expo` is unavailable in this dependency-less worktree)*.
@@ -226,6 +227,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop skills create/edit dialogs now show explicit unsaved-change guidance, prevent accidental backdrop / escape / close-button dismissal during pending saves, and confirm before discarding dirty drafts from any dialog close path.
 - 2026-03-08: Desktop Groq STT prompt editing now keeps a local draft, debounces config writes, flushes on blur, and merges delayed saves against the latest config snapshot instead of saving on every textarea keystroke.
 - 2026-03-08: Desktop follow-up composers now show an inline send-failure banner with preserved-draft guidance and a `Retry` action instead of silently failing via `console.error` only.
+- 2026-03-08: Mobile agent switching now turns the missing-config dead end in `AgentSelectorSheet` into a direct recovery path to `ConnectionSettings`, and resets stale ACP-specific sheet state when config is missing so recovery copy stays contextually correct.
 - 2026-03-08: Mobile ChatScreen composer now blocks the rapid double-submit race during send startup, so fast repeat taps / modifier-enter submits no longer slip duplicate sends through before `responding` catches up.
 - 2026-03-08: Mobile memories rows now show a visible inline `Edit` affordance, expose explicit edit/delete accessibility semantics, use a mobile-sized delete tap target, and name the memory being deleted in the confirmation prompt.
 - 2026-03-08: Mobile connection surfaces now reflect actual tunnel connection state (checking, reconnecting, failed, disconnected) instead of showing a misleading generic “Connected” whenever credentials are merely saved.
@@ -238,6 +240,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/agent-selector-sheet.test.js` after the mobile agent-switcher missing-config recovery pass
+- 2026-03-08: `git diff --check` after the mobile agent-switcher missing-config recovery pass
+- 2026-03-08: `pnpm --filter @dotagents/mobile exec expo --version` after the mobile agent-switcher missing-config recovery pass *(blocked: `Command "expo" not found`)*
 - 2026-03-08: `node --experimental-strip-types --test tests/shared-session-list-title-fallback.test.js apps/mobile/tests/session-list-delete-guardrails.test.js` after the mobile session-list title fallback readability pass
 - 2026-03-08: `pnpm --filter @dotagents/shared typecheck` after the mobile session-list title fallback readability pass
 - 2026-03-08: `git diff --check` after the mobile session-list title fallback readability pass
@@ -464,6 +469,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this agent-switcher missing-config recovery pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this session-list title-fallback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted runtime/source verification.
 - 2026-03-08: Live desktop UI inspection for this session-history title fallback readability pass was blocked because `electron_execute` could not inspect any Electron renderer/CDP target in this environment, so this iteration relied on source inspection plus targeted runtime/source verification instead of live UI checks.
 - 2026-03-08: Live desktop UI inspection for this follow-up composer action-failure feedback pass was blocked because `electron_execute` failed to list a renderer target (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -548,6 +554,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
+- Mobile agent-switcher missing-config recovery live validation / navigation feel (`apps/mobile/src/ui/AgentSelectorSheet.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`)
 - Mobile session-list blank-title / destructive-copy readability parity (`apps/mobile/src/screens/SessionListScreen.tsx`)
 - Mobile `AgentEditScreen` discard-confirm cadence / save-CTA density live validation (`apps/mobile/src/screens/AgentEditScreen.tsx`)
 - Mobile `LoopEditScreen` discard-confirm cadence / save-CTA density live validation (`apps/mobile/src/screens/LoopEditScreen.tsx`)
@@ -563,6 +570,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Mobile `AgentSelectorSheet` now has a direct recovery path when connection config is missing, so the freshest adjacent follow-up is live Expo/native validation of the new `Open Connection Settings` CTA, sheet-close timing, and post-save return flow once Expo is available.
 - Mobile `SessionListScreen` now has source/runtime blank-title fallback guardrails, so the freshest adjacent follow-up is live Expo/native or Expo-web validation of synced empty-title chats, preview-derived labels, delete-confirmation copy, and accessibility reading order once the mobile toolchain is available.
 - Desktop follow-up composers now have source-level voice-start / stop-failure guardrails, but live Electron validation of the new inline banners is the freshest adjacent follow-up because the user value depends on the retry button, warning density, and compact tile/panel layout feeling calm in the real product instead of only existing in source.
 - Mobile `LoopEditScreen` now has source-level dirty-draft guardrails, so the freshest adjacent follow-up is live Expo/native validation of header-back, gesture-back, and Android hardware-back discard flows plus small-screen layout density around the new inline warning/save CTA.
@@ -3433,6 +3441,35 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - live-validate the new history-title fallback in a real Electron renderer once a CDP target is available, especially around preview-length density and keyboard-focused delete/reopen affordances
   - investigate whether mobile `SessionListScreen` should adopt a similar title fallback once its local session-title generation path is reviewed in more detail
+
+### 2026-03-08 — Mobile agent-switcher missing-config recovery
+- Area / screen / subsystem:
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - `apps/mobile/tests/agent-selector-sheet.test.js`
+- Why it was chosen:
+  - after reviewing `improve-app.md`, the mobile agent-switcher flow had not been explicitly investigated yet even though it sits on a core setup / agent-selection path
+  - source review found a concrete usability dead end: when connection details were missing, the sheet explained that the user needed a server URL and API key but only offered `Retry`, which could never succeed without leaving the screen first
+- What was inspected:
+  - ledger history in `improve-app.md` to avoid repeating a just-touched mobile settings/editor seam
+  - agent-switcher loading/error/empty-state flow in `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - sheet usage in `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx`
+  - navigation targets in `apps/mobile/App.tsx` plus the destination setup flow in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - ACP/profile option shaping in `apps/mobile/src/lib/mainAgentOptions.ts`
+  - existing source-level coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `expo` command not found in this dependency-less worktree)*
+- Improvement made:
+  - replaced the missing-config error state's dead-end retry with a direct `Open Connection Settings` action that closes the sheet and routes users straight to the connection setup screen
+  - reset the selector mode back to the generic profile state when config is missing so stale ACP-specific titles/subtitles do not linger across reopen attempts
+  - extended the existing dependency-light source guardrails to lock in the recovery CTA, navigation target, and state reset behavior
+  - assumptions / tradeoffs: this pass intentionally keeps the fix local to the sheet instead of introducing a broader navigation helper, preserves the existing generic `Retry` path for real transient failures, and stops short of auto-reopening the sheet after connection save because that behavior needs live mobile evidence before adding more flow complexity
+- Tests / verification:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js`
+  - `git diff --check`
+  - attempted `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `expo` command not found in this worktree)*
+- Follow-up checks:
+  - live-validate the new recovery CTA, sheet-dismiss timing, and post-connection return path once Expo/native tooling is available again
+  - inspect adjacent mobile connection/setup touchpoints for other dead-end retry states that should route directly to the most relevant settings screen
 
 ### Iteration Template
 - Date:
