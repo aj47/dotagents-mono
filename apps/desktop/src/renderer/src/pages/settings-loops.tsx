@@ -18,7 +18,7 @@ interface EditingLoop {
   id?: string
   name: string
   prompt: string
-  intervalMinutes: number
+  intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
 }
@@ -33,7 +33,7 @@ interface LoopRuntimeStatus {
 const emptyLoop: EditingLoop = {
   name: "",
   prompt: "",
-  intervalMinutes: 15,
+  intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
 }
@@ -69,6 +69,24 @@ function formatInterval(minutes: number): string {
   if (hours === 0) return `${days}d ${mins}m`
   if (mins === 0) return `${days}d ${hours}h`
   return `${days}d ${hours}h ${mins}m`
+}
+
+function formatLoopIntervalDraft(minutes?: number): string {
+  const normalizedMinutes = typeof minutes === "number" && Number.isFinite(minutes)
+    ? Math.floor(minutes)
+    : 0
+
+  return normalizedMinutes >= 1 ? String(normalizedMinutes) : "1"
+}
+
+function parseLoopIntervalDraft(draft: string): number | null {
+  const trimmedDraft = draft.trim()
+  if (!/^[0-9]+$/.test(trimmedDraft)) return null
+
+  const parsed = Number(trimmedDraft)
+  if (!Number.isInteger(parsed) || parsed < 1) return null
+
+  return parsed
 }
 
 export function SettingsLoops() {
@@ -108,7 +126,7 @@ export function SettingsLoops() {
       id: loop.id,
       name: loop.name,
       prompt: loop.prompt,
-      intervalMinutes: loop.intervalMinutes,
+      intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
     })
@@ -132,15 +150,18 @@ export function SettingsLoops() {
       return
     }
 
-    const sanitizedIntervalMinutes = Number.isFinite(editing.intervalMinutes) && editing.intervalMinutes >= 1
-      ? Math.floor(editing.intervalMinutes)
-      : 1
+    const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)
+    if (parsedIntervalMinutes === null) {
+      toast.error("Interval must be a positive whole number of minutes")
+      return
+    }
+
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
-      intervalMinutes: sanitizedIntervalMinutes,
+      intervalMinutes: parsedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
     }
@@ -343,8 +364,8 @@ export function SettingsLoops() {
                   id="interval"
                   type="number"
                   min={1}
-                  value={editing.intervalMinutes}
-                  onChange={(e) => setEditing({ ...editing, intervalMinutes: parseInt(e.target.value) || 15 })}
+                  value={editing.intervalMinutesDraft}
+                  onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
                   className="w-24"
                 />
                 <span className="text-sm text-muted-foreground self-center">minutes</span>
@@ -353,9 +374,9 @@ export function SettingsLoops() {
                 {INTERVAL_PRESETS.map((preset) => (
                   <Button
                     key={preset.value}
-                    variant={editing.intervalMinutes === preset.value ? "secondary" : "ghost"}
+                    variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
                     size="sm"
-                    onClick={() => setEditing({ ...editing, intervalMinutes: preset.value })}
+                    onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
                   >
                     {preset.label}
                   </Button>
