@@ -1,5 +1,47 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 41: Desktop General settings shortcut rows under zoom/scaling pressure
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-general.tsx` (`Shortcuts` section: `Toggle Voice Dictation`, `Text Input`, `Show Main Window`)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the just-touched mobile surfaces and followed the desktop general-settings follow-up that had not been investigated recently: shortcut control rows that combine switches and fixed-width selects inside the shared `Control` value lane.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `apps/mobile/README.md`, `visible-ui.md`, and repo guidance to confirm the intended desktop/mobile inspection workflow
+  - checked runtime readiness and confirmed this worktree still lacks local `node_modules`, but a reusable Electron renderer session was available on CDP `:9333`, making live desktop inspection practical even though local launch/test commands remain partially blocked
+  - live-inspected `http://localhost:5173/settings/general`, opened `Shortcuts`, and stress-tested the rows at the existing ~`900×670` window with simulated larger text (`document.body.style.zoom = 1.5`)
+  - cross-checked mobile surfaces and found no direct mobile equivalent of these desktop-only shortcut rows, so this pass remained desktop-only
+
+#### Findings
+
+- Before the fix, the `Shortcuts` section still had one concrete desktop layout issue with clear user impact:
+  - `Text Input` and `Show Main Window` paired a switch with a fixed `w-40` select inside the shared value lane
+  - at ~`900×670` with `150%` simulated text zoom, the live value lane shrank to roughly `157px`, while the switch + select cluster still needed about `204px`
+  - that meant the shortcut controls had no graceful reflow path under font scaling / narrow settings widths, exactly where users need shortcut editing to remain legible
+  - the adjacent `Toggle Voice Dictation` helper row also relied on a tighter single-row alignment than necessary once its explanatory copy wrapped to multiple lines
+
+#### Changes made
+
+- Hardened the shortcut rows in `apps/desktop/src/renderer/src/pages/settings-general.tsx` with a small, local layout fix:
+  - made the `Toggle Voice Dictation`, `Text Input`, and `Show Main Window` control rows `flex-wrap` + `items-start` safe so controls can drop cleanly instead of overrunning the value lane
+  - upgraded the `Toggle Voice Dictation` helper copy to a shrink-safe `min-w-0 flex-1` text lane with better multiline leading
+  - changed the shortcut selects in this subsection from rigid `w-40` triggers to `w-full max-w-40`, preserving the intended max width while allowing them to shrink within tighter containers
+- Extended `apps/desktop/src/renderer/src/pages/settings-general.layout.test.ts` with focused source-contract coverage for the new wrap-safe shortcut-row treatment.
+
+#### Verification
+
+- Live desktop evidence before the fix: reusable Electron renderer at `http://localhost:5173/settings/general` showed the shortcut value lane at roughly `157px` under `150%` zoom while the switch + fixed-width select cluster still measured about `204px`
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the three wrap-safe shortcut rows, three shrink-safe select triggers, and multiline helper class fragment are present in `settings-general.tsx`
+- Live DOM prototype verification in the renderer session: applying the same class/width adjustments directly in the inspected `Shortcuts` DOM eliminated the overflow (`scrollWidth === clientWidth`) and let the `Text Input` / `Show Main Window` selects wrap beneath their switches within the ~`157px` lane
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-general.tsx apps/desktop/src/renderer/src/pages/settings-general.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer session is not serving this worktree's edited bundle, so a literal post-edit end-to-end re-check of the modified source was not possible from this checkout. I recorded live pre-fix measurements plus a DOM prototype of the exact layout adjustment instead of pretending the running app had refreshed to the new source.
+- This chunk is desktop-only: mobile does not expose the same shared `Control` shortcut rows, so no parallel mobile code change was needed.
+- Tradeoff/rationale: kept the `Shortcuts` information architecture intact and only gave the existing switch/select clusters a safe fallback path under scaling pressure.
+- Best next UI audit chunk after this one: either return to `settings-whatsapp.tsx` for the connection-status / QR block with true live data, or inspect another fresh desktop settings surface once a renderer session that tracks this worktree is available.
+
 ### 2026-03-08 — Chunk 40: Desktop WhatsApp settings helper/status rows under narrow settings widths and zoom
 
 - Area selected:

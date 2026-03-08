@@ -595,7 +595,7 @@ export function Component() {
 
           <Control label="Toggle Voice Dictation" className="px-3">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-start gap-2">
                 <Switch
                   checked={configQuery.data?.toggleVoiceDictationEnabled || false}
                   onCheckedChange={(checked) => {
@@ -604,7 +604,7 @@ export function Component() {
                     })
                   }}
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="min-w-0 flex-1 text-sm leading-5 text-muted-foreground">
                   Enable toggle mode (press once to start, press again to stop)
                 </span>
               </div>
@@ -619,7 +619,7 @@ export function Component() {
                       })
                     }}
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full max-w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -658,7 +658,7 @@ export function Component() {
 
           <Control label="Text Input" className="px-3">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-start gap-2">
                 <Switch
                   checked={configQuery.data?.textInputEnabled ?? true}
                   onCheckedChange={(checked) => {
@@ -677,7 +677,7 @@ export function Component() {
                   }}
                   disabled={!configQuery.data?.textInputEnabled}
                 >
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full max-w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -706,7 +706,7 @@ export function Component() {
 
           <Control label="Show Main Window" className="px-3">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-start gap-2">
                 <Switch
                   checked={configQuery.data?.settingsHotkeyEnabled ?? true}
                   onCheckedChange={(checked) => {
@@ -725,7 +725,7 @@ export function Component() {
                   }}
                   disabled={!configQuery.data?.settingsHotkeyEnabled}
                 >
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full max-w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
