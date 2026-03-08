@@ -176,6 +176,8 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/audio-player.tsx` again and confirmed the shared desktop `AudioPlayer` still routed media-element `error` events plus rejected autoplay/manual `ttsManager.playExclusive(...)` calls to `console.error(...)` only.
 - [x] 2026-03-08: Confirmed the same shared `AudioPlayer` is mounted by the live desktop overlay/tile/history TTS flows in `apps/desktop/src/renderer/src/components/agent-progress.tsx` and by the sessions-page last-response TTS card in `apps/desktop/src/renderer/src/components/session-tile.tsx`, so this invisible playback-failure bug affects multiple active desktop surfaces rather than dead UI.
 - [x] 2026-03-08: Confirmed mobile has no equivalent shared `AudioPlayer` component in `apps/mobile`, so this playback-feedback fix can stay desktop-local.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and confirmed the visible `Server Logs` panel still relied on `serverLogs[name]?.length > 0` only, with no separate loading/error state for the on-demand `getMcpServerLogs(...)` fetch.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` exposes MCP-server toggles/settings but no equivalent per-server log viewer, so this diagnostic-state fix can stay desktop-local.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -374,6 +376,11 @@
    - Because `AudioPlayer` is reused by the active overlay/tile/history TTS flows in `agent-progress.tsx` and the sessions-page `session-tile.tsx`, that invisible failure path affected multiple visible desktop playback controls instead of one isolated screen.
    - Mobile has no equivalent shared renderer `AudioPlayer`, so this is a concrete desktop-only feedback bug rather than a cross-platform behavior mismatch.
 
+- [x] **Desktop MCP server-log fetch failures were misreported as empty logs (directly confirmed in source):**
+   - `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` expands `Server Logs` immediately and fetches logs asynchronously with `getMcpServerLogs({ serverName })`, but the panel previously rendered only two states: `serverLogs[name]?.length > 0` or the fallback copy `No logs available`.
+   - That meant the first load showed the same empty-state copy while logs were still loading, and an actual fetch failure also fell through to the exact same visible `No logs available` message even though the app had no successful log result.
+   - The bug affects an active desktop diagnostics surface and mobile has no equivalent per-server log viewer, so this is a concrete desktop-only UI correctness bug rather than a parity-only question.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/resize-handle.tsx` so rejected or invalid drag-start size reads now keep console logging but also surface a visible `toast.error(...)` instead of making the resize handle appear dead.
 - [x] Updated `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` so a fully failed final size-persistence path now raises a visible toast explaining that the floating panel resize may not persist.
@@ -530,6 +537,8 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/agent-progress.stop-session.test.ts` with focused source-level assertions that lock in the new close-target tracking and visible `Failed to close ${closeTarget}. ...` feedback contract.
 - [x] Updated `apps/desktop/src/renderer/src/components/audio-player.tsx` so shared desktop playback failures now set a local `playbackError`, clear stale playback errors on retry/new audio, and render visible inline feedback for media-load, autoplay, and manual-play failures instead of logging them only to the console.
 - [x] Added `apps/desktop/src/renderer/src/components/audio-player.feedback.test.ts` with focused source-level assertions that lock in the new shared-player playback-error state, visible compact/full inline feedback, and retry/reset behavior.
+- [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so per-server log panels now track explicit loading/error state, show `Loading logs...` during the first fetch, show `Couldn't load logs.` when the fetch fails, and keep the last successful snapshot visible with a `Couldn't refresh logs.` warning instead of mislabeling failures as empty logs.
+- [x] Added `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new log-status state plus the visible loading/error/stale-snapshot copy.
 
 ### Verified
 - [x] Ran a low-cost Node file-read sanity check for `resize-handle.tsx`, `panel-resize-wrapper.tsx`, and `panel-resize.feedback.test.ts`; the assertions passed for the new floating-panel resize toast wiring and regression test coverage.
@@ -660,6 +669,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/audio-player.tsx` now keeps a local `playbackError` state, clears it when audio changes or playback retries start, and renders visible inline failure copy in both compact and full layouts instead of leaving shared playback failures console-only.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `audio-player.tsx` and `audio-player.feedback.test.ts`, confirming the new playback-error strings, inline error blocks, and regression file are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the shared `AudioPlayer` playback-feedback fix and regression test addition.
+- [x] Manual source verification: the desktop MCP `Server Logs` panel in `mcp-config-manager.tsx` now distinguishes four states instead of collapsing everything into `No logs available`: initial loading, first-load failure, successful logs, and successful-empty logs; later refresh failures keep previously loaded logs visible with a warning banner.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `mcp-config-manager.tsx` and `mcp-config-manager.server-diagnostics-feedback.test.ts`, confirming the new log-status state plus the visible loading/error/stale-snapshot copy.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the MCP server-log state fix and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -709,6 +721,7 @@
 - [x] Targeted automated verification for this broader desktop queue-action feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this `AgentProgress` close-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails before Vitest starts because the shared pretest cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this shared `AudioPlayer` playback-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.feedback.test.ts src/renderer/src/components/audio-player.layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this MCP server-log state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the throttled mid-drag `updatePanelSize(...)` failure path in `panel-resize-wrapper.tsx` should also surface limited user feedback, or remain console-only to avoid toast spam once live desktop verification is available.
@@ -741,6 +754,7 @@
 - [ ] Whether the sampling dialog should eventually expose a clearer in-flight approval state (for example button text/spinner) while an approved request is executing, rather than only disabling the buttons during submission.
 - [ ] Whether the mobile `MessageQueuePanel` / `ChatScreen` queue-action callbacks should also surface visible failure feedback for local-store `remove`, `update`, `retry`, and `clear` failures once the mobile queue flow can be exercised in a runnable environment.
 - [ ] Whether the completed-session `AgentProgress` close button should also gain a tiny in-flight disabled/busy guard to prevent double-click close races once the desktop app can be exercised live.
+- [ ] Whether the adjacent `refreshOAuthStatus(...)` failure path in `mcp-config-manager.tsx` should also surface explicit inline status instead of staying console-only once desktop settings can be exercised live.
 
 ### Diagnosis / Rationale
 - The floating panel resize issue is a concrete visible-UI bug: when the user grabs a resize handle and the initial size read fails, the gesture simply does nothing; when final persistence fails, the resize looks successful until the next reopen resets it. Both states are misleading without explicit feedback.
@@ -823,6 +837,8 @@
 
 - The queued-message retry issue blocks a core recovery path: failed messages sit at the head of the queue and prevent later queued work from progressing, so a silent retry no-op leaves the user stuck without understanding why the queue is still blocked.
 - Treating `retryQueuedMessage(...) === false` as a visible action failure is the smallest safe fix because the main-process contract already distinguishes that state, the desktop app already mounts a global `sonner` toaster, and no queue-processing behavior needs to change.
+- The MCP server-log issue is a concrete diagnostics-flow correctness bug: when a user expands `Server Logs`, the app should not claim the server has no logs while the request is still loading or after the fetch outright failed.
+- Tracking per-server log loading/error state is the smallest safe fix because the component already owns per-server expanded/polled state, and inline status avoids toast spam from repeated background refresh failures while preserving the existing successful log rendering.
 
 ### Assumptions
 - Assumption: surfacing only drag-start and final-persistence resize failures with `toast.error(...)` is acceptable because those are the user-meaningful breakpoints in the floating-panel resize flow, while the high-frequency throttled `updatePanelSize(...)` path would risk noisy toast spam during normal drags.
@@ -839,6 +855,7 @@
 - Assumption: keeping the desktop OpenAI `TTS Speed` UI as a number field (instead of redesigning it into a slider this pass) is acceptable because the mobile slider already establishes the intended range/commit timing, and this draft-backed fix removes the broken persistence/state-sync behavior without a larger UI change.
 - Assumption: a `?tab=` query-param contract is acceptable for desktop capabilities because the page is already a tabbed combined surface, the default bare route can remain `Skills`, and no equivalent mobile route needs to stay in sync.
 - Assumption: preserving the existing `remoteServerCorsOrigins: ["*"]` fallback on blur/save is acceptable for this pass because the current main-process remote-server startup already treats that as the default permissive mode, and the concrete bug being fixed is the editor fighting temporary user input rather than the semantics of the saved fallback value.
+- Assumption: keeping MCP log-fetch feedback inline (instead of showing toast errors on every failed refresh) is acceptable because expanded server logs are already polled periodically, and repeated toasts would be noisy in a diagnostics surface where the user is already looking directly at the log panel.
 - Assumption: keeping remote-server `Port` on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it removes restart-on-every-keystroke churn with the smallest code change while preserving the existing autosave behavior for a final valid port.
 - Assumption: keeping named-tunnel text fields on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it preserves the current autosave UX while removing the broken per-keystroke persistence behavior.
 - Assumption: letting `Start Tunnel` use the current drafts immediately is acceptable because the same click now flushes those drafts back into saved config, and the main-process starter already expects plain string values for these fields.
@@ -932,3 +949,5 @@
 - After that, inspect whether the other Sessions page panel-launch actions (`Start typing`, `Start voice`, predefined prompts) still need the same visible failure treatment for full sessions-page consistency.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` and live-verify the desktop queue `Retry`, `Remove`, `Save`, `Clear All`, `Pause`, and `Resume` actions by forcing both stale queue state and rejected IPC calls to confirm each now surfaces the new toast instead of silently no-oping.
 - After that, inspect whether the mobile queue-management callbacks in `apps/mobile/src/screens/ChatScreen.tsx` should gain matching visible failure feedback for local-store false-return paths.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` and live-verify the desktop `Server Logs` panel with one delayed-success fetch and one forced failure to confirm it now distinguishes loading, fetch failure, stale-snapshot warning, and genuinely empty logs.
+- After that, inspect adjacent MCP settings diagnostics (especially OAuth-status refresh in `mcp-config-manager.tsx`) for any remaining console-only state failures.

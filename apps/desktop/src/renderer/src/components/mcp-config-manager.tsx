@@ -76,6 +76,18 @@ interface DetailedTool {
   inputSchema: any
 }
 
+function getLogFetchErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please try again."
+}
+
 
 
 interface MCPConfigManagerProps {
@@ -907,6 +919,7 @@ export function MCPConfigManager({
   }>({ isInitializing: false, progress: { current: 0, total: 0 } })
   const [oauthStatus, setOAuthStatus] = useState<Record<string, { configured: boolean; authenticated: boolean; tokenExpiry?: number; error?: string }>>({})
   const [serverLogs, setServerLogs] = useState<Record<string, ServerLogEntry[]>>({})
+  const [serverLogStatus, setServerLogStatus] = useState<Record<string, { isLoading: boolean; error: string | null }>>({})
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
   // Initialize expandedServers from persisted expanded state
   // All servers are collapsed by default - only expand those explicitly persisted as expanded
@@ -1085,11 +1098,25 @@ export function MCPConfigManager({
 
   // Fetch logs for expanded servers
   const fetchLogsForServer = async (serverName: string) => {
+    setServerLogStatus(prev => ({
+      ...prev,
+      [serverName]: { isLoading: true, error: null },
+    }))
+
     try {
       const logs = await tipcClient.getMcpServerLogs({ serverName })
       setServerLogs(prev => ({ ...prev, [serverName]: logs as ServerLogEntry[] }))
+      setServerLogStatus(prev => ({
+        ...prev,
+        [serverName]: { isLoading: false, error: null },
+      }))
     } catch (error) {
       console.error(`Failed to fetch logs for ${serverName}:`, error)
+      const details = getLogFetchErrorMessage(error)
+      setServerLogStatus(prev => ({
+        ...prev,
+        [serverName]: { isLoading: false, error: details },
+      }))
     }
   }
 
@@ -1696,6 +1723,10 @@ export function MCPConfigManager({
     try {
       await tipcClient.clearMcpServerLogs({ serverName })
       setServerLogs(prev => ({ ...prev, [serverName]: [] }))
+      setServerLogStatus(prev => ({
+        ...prev,
+        [serverName]: { isLoading: false, error: null },
+      }))
       toast.success(`Logs cleared for ${serverName}`)
     } catch (error) {
       toast.error(`Failed to clear logs: ${error instanceof Error ? error.message : String(error)}`)
@@ -2132,6 +2163,8 @@ export function MCPConfigManager({
                 const status = serverStatus[name]
                 const serverTools = toolsByServer[name] || []
                 const enabledToolCount = serverTools.filter((t) => t.enabled).length
+                const logEntries = serverLogs[name] ?? []
+                const logStatus = serverLogStatus[name]
 
                 return (
                   <Card key={name} className="overflow-hidden">
@@ -2403,9 +2436,28 @@ export function MCPConfigManager({
 
                               {expandedLogs.has(name) && (
                                 <div className="bg-black/90 rounded-md p-3 max-h-64 overflow-y-auto font-mono text-xs">
-                                  {serverLogs[name]?.length > 0 ? (
+                                  {logStatus?.isLoading && logEntries.length === 0 ? (
+                                    <div className="flex items-center justify-center gap-2 py-4 text-gray-400">
+                                      <Spinner className="h-3.5 w-3.5" />
+                                      <span>Loading logs...</span>
+                                    </div>
+                                  ) : logStatus?.error && logEntries.length === 0 ? (
+                                    <div className="space-y-1 py-4 text-center text-red-300">
+                                      <div className="font-medium">Couldn't load logs.</div>
+                                      <div className="text-[11px] leading-relaxed text-red-200/80 break-words [overflow-wrap:anywhere]">
+                                        {logStatus.error}
+                                      </div>
+                                    </div>
+                                  ) : logEntries.length > 0 ? (
                                     <div className="space-y-1">
-                                      {serverLogs[name].map((log, idx) => (
+                                      {logStatus?.error && (
+                                        <div className="mb-2 space-y-1 rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-200 break-words [overflow-wrap:anywhere]">
+                                          <div className="font-medium text-amber-100">Couldn't refresh logs.</div>
+                                          <div>{logStatus.error}</div>
+                                          <div className="text-amber-200/80">Showing the last successful log snapshot.</div>
+                                        </div>
+                                      )}
+                                      {logEntries.map((log, idx) => (
                                         <div key={idx} className="text-green-400">
                                           <span className="text-gray-500">
                                             [{new Date(log.timestamp).toLocaleTimeString()}]
