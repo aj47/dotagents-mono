@@ -4,9 +4,47 @@ import fs from 'node:fs'
 
 const remoteServerSource = fs.readFileSync(new URL('./remote-server.ts', import.meta.url), 'utf8')
 
+function getSection(startMarker, endMarker) {
+  const startIndex = remoteServerSource.indexOf(startMarker)
+  const endIndex = remoteServerSource.indexOf(endMarker)
+
+  assert.notEqual(startIndex, -1, `Missing start marker: ${startMarker}`)
+  assert.notEqual(endIndex, -1, `Missing end marker: ${endMarker}`)
+  assert.ok(endIndex > startIndex, `Expected ${endMarker} after ${startMarker}`)
+
+  return remoteServerSource.slice(startIndex, endIndex)
+}
+
 test('conversation recovery route preserves summary metadata and stored raw history fields', () => {
   assert.match(remoteServerSource, /isSummary: msg\.isSummary/)
   assert.match(remoteServerSource, /summarizedMessageCount: msg\.summarizedMessageCount/)
   assert.match(remoteServerSource, /rawMessages: conversation\.rawMessages\?\.map/)
   assert.match(remoteServerSource, /compaction: conversation\.compaction/)
+})
+
+test('conversation create and update routes preserve summary metadata on write and response payloads', () => {
+  const createSection = getSection('fastify.post("/v1/conversations"', '// PUT /v1/conversations/:id - Update an existing conversation')
+  const updateSection = getSection('// PUT /v1/conversations/:id - Update an existing conversation', '// Kill switch endpoint - emergency stop all agent sessions')
+
+  assert.match(
+    createSection,
+    /const messages = body\.messages\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
+  assert.match(
+    createSection,
+    /messages: conversation\.messages\.map\(msg => \([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
+
+  assert.match(
+    updateSection,
+    /const messages = body\.messages\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
+  assert.match(
+    updateSection,
+    /conversation\.messages = body\.messages\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
+  assert.match(
+    updateSection,
+    /messages: conversation\.messages\.map\(msg => \([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
 })

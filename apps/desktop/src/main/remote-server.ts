@@ -1827,6 +1827,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           timestamp?: number
           toolCalls?: Array<{ name: string; arguments: any }>
           toolResults?: Array<{ success: boolean; content: string; error?: string }>
+          isSummary?: boolean
+          summarizedMessageCount?: number
         }>
         createdAt?: number
         updatedAt?: number
@@ -1859,6 +1861,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         timestamp: msg.timestamp ?? now,
         toolCalls: msg.toolCalls,
         toolResults: msg.toolResults,
+        isSummary: msg.isSummary,
+        summarizedMessageCount: msg.summarizedMessageCount,
       }))
 
       const conversation = {
@@ -1887,6 +1891,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           timestamp: msg.timestamp,
           toolCalls: msg.toolCalls,
           toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
         })),
       })
     } catch (error: any) {
@@ -1924,6 +1930,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           timestamp?: number
           toolCalls?: Array<{ name: string; arguments: any }>
           toolResults?: Array<{ success: boolean; content: string; error?: string }>
+          isSummary?: boolean
+          summarizedMessageCount?: number
         }>
         updatedAt?: number
       }
@@ -1955,6 +1963,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           timestamp: msg.timestamp ?? now,
           toolCalls: msg.toolCalls,
           toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
         }))
 
         conversation = {
@@ -1991,6 +2001,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             timestamp: msg.timestamp ?? now,
             toolCalls: msg.toolCalls,
             toolResults: msg.toolResults,
+            isSummary: msg.isSummary,
+            summarizedMessageCount: msg.summarizedMessageCount,
           }))
         }
 
@@ -2015,6 +2027,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           timestamp: msg.timestamp,
           toolCalls: msg.toolCalls,
           toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
         })),
       })
     } catch (error: any) {

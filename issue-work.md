@@ -2719,3 +2719,38 @@
   - Continue keeping the inspector trust-focused rather than turning it into a full browser-side bundle manager/editor.
 
 - Next recommended issue work item: refresh the open issues again and prefer either a fresh desktop bug/reliability slice or another equally small website trust improvement; keep `#54` blocked until provider/auth feasibility materially changes.
+
+##### Issue #58 — Remote conversation writes preserve compaction summary metadata
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest recommendation to prefer a fresh desktop reliability slice rather than immediately forcing another `#57`/`#56` micro-follow-up.
+  - Refreshed the open issues and chose `#58` because it still maps directly to trust/auditability, and the current source exposed one narrow unaddressed metadata-loss path in the remote conversation API.
+  - This was a small, reviewable main-process change with direct value: summarized conversation markers should survive remote/mobile conversation saves instead of being silently stripped.
+- Investigation:
+  - Re-read issue `#58` and confirmed its scope still explicitly includes preserving summarized/full-history provenance rather than only adding UI affordances.
+  - Inspected `apps/desktop/src/main/remote-server.ts` and confirmed the remote `POST /v1/conversations` and `PUT /v1/conversations/:id` handlers rebuilt incoming messages with only `role`, `content`, `timestamp`, `toolCalls`, and `toolResults`.
+  - Confirmed the same routes also omitted `isSummary` / `summarizedMessageCount` from their response payloads, even though the `GET /v1/conversations/:id` recovery route already preserves those fields.
+  - Cross-checked `apps/mobile/src/lib/syncService.ts` and verified mobile already preserves summary metadata in `toServerMessage(...)`, so the server-side stripping was a real contract mismatch rather than dead code.
+  - Reused the existing dependency-light source assertions in `apps/desktop/src/main/remote-server.conversation-history-response.test.js` and `conversation-storage-integrity.test.js` as the fastest reliable regression guard for this path.
+- Important assumptions:
+  - Assumption: this iteration should preserve per-message summary metadata on the existing remote create/update contract, not broaden the API to accept full `rawMessages` / `compaction` payloads yet.
+  - Why acceptable: the source-confirmed loss today is the stripping of `isSummary` / `summarizedMessageCount` from normal message writes, and fixing that closes the immediate provenance bug without widening the sync payload surface in the same pass.
+  - Assumption: source-level regression tests plus a focused desktop TypeScript check are sufficient verification for this change.
+  - Why acceptable: the patch is isolated to `remote-server.ts` request/response mapping with no runtime behavior outside the typed Fastify handlers, and the targeted checks passed locally.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/remote-server.ts` so remote conversation create/update request bodies now accept `isSummary` and `summarizedMessageCount` on incoming messages.
+  - Preserved those summary fields when mapping incoming POST and PUT payloads into stored conversation messages, including both the PUT-create and PUT-update branches.
+  - Returned the same summary metadata in the POST and PUT response payloads so clients immediately receive the persisted provenance markers back, matching the existing GET recovery route.
+  - Extended `apps/desktop/src/main/remote-server.conversation-history-response.test.js` with route-specific source assertions that the create/update handlers preserve summary metadata on both write and response paths.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/remote-server.conversation-history-response.test.js apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If mobile/server sync later needs true preserved full-history round-tripping, extend the shared create/update conversation request types to optionally carry `rawMessages` / `compaction` and plumb that through the sync client explicitly.
+  - If a live repro still shows metadata loss, inspect any remaining non-remote save/update paths that rebuild `Conversation.messages` without copying summary fields.
+  - When a fuller desktop/mobile environment is available, add runtime request/response coverage for these remote conversation routes rather than relying only on source assertions.
+- Next recommended issue work item: refresh the open issues again and prefer either a fresh direct-value desktop bug/reliability slice or another equally concrete `#58` storage-contract follow-up only if a new source-confirmed metadata-loss path appears.
