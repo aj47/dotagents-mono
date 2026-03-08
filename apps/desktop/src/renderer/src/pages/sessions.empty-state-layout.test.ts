@@ -16,4 +16,15 @@ describe("sessions empty-state layout", () => {
     expectSourceToContain('className="bg-muted mb-2 rounded-full p-3"')
     expectSourceToContain('className="mt-4 w-full max-w-lg text-left"')
   })
+
+  it("lets recent-session rows show more session identity under narrow empty-state widths", () => {
+    expectSourceToContain(
+      'const RECENT_SESSION_ROW_CLASS_NAME = "hover:bg-accent/50 group flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors"',
+    )
+    expectSourceToContain(
+      'const RECENT_SESSION_TITLE_CLASS_NAME = "min-w-0 flex-1 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"',
+    )
+    expectSourceToContain('title={session.title}')
+    expectSourceToContain('className="text-muted-foreground shrink-0 pt-0.5 text-[10px] tabular-nums"')
+  })
 })

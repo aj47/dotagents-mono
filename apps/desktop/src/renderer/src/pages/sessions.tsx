@@ -72,6 +72,10 @@ function formatTimestamp(timestamp: number): string {
 
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
+const RECENT_SESSION_ROW_CLASS_NAME =
+  "hover:bg-accent/50 group flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors"
+const RECENT_SESSION_TITLE_CLASS_NAME =
+  "min-w-0 flex-1 leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
 
 const TILE_LAYOUT_OPTIONS = [
   {
@@ -469,11 +473,12 @@ function EmptyState({
               <button
                 key={session.id}
                 onClick={() => onPastSessionClick(session.id)}
-                className="hover:bg-accent/50 group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors"
+                title={session.title}
+                className={RECENT_SESSION_ROW_CLASS_NAME}
               >
                 <CheckCircle2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{session.title}</span>
-                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                <span className={RECENT_SESSION_TITLE_CLASS_NAME}>{session.title}</span>
+                <span className="text-muted-foreground shrink-0 pt-0.5 text-[10px] tabular-nums">
                   {formatTimestamp(session.updatedAt)}
                 </span>
               </button>

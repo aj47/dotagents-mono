@@ -1,5 +1,59 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 71: Desktop root empty-state recent sessions hid too much session identity under narrow width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/sessions.tsx` (`/` root sessions page → empty state → `Recent Sessions` recovery list)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched providers, WhatsApp, General accordion, sidebar sessions, Past Sessions dialog, and recent `agent-progress` sub-surfaces.
+  - Chunk 70 explicitly suggested moving to a fresh root-state area, and the empty-state recovery list was still unaddressed even though it is a high-frequency way to reopen recent work.
+  - A reusable browser-inspectable root target was available at `http://localhost:5174/`, making a screenshot-backed narrow-width pass more practical than another source-only sweep.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `visible-ui.md`, and the mobile workflow notes before choosing the next area
+  - used live inspection of the reusable root page at `http://localhost:5174/` and stress-tested the empty-state sessions recovery area at `620×670` with larger root text (`24px`)
+  - captured screenshot-backed evidence in `tmp/ui-audit/root-recent-sessions-620x670-root24.png` and `tmp/ui-audit/root-full-620x670-root24.png`
+  - measured the representative empty-state recent-session rows/titles before editing source and identified the active one-line `truncate` contract in `sessions.tsx`
+  - prototyped the intended compact two-line title treatment plus hover-title fallback against the live page CSS and captured `artifacts/recent-sessions-empty-state-prototype-620x670.png`
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SessionListScreen.tsx` is a separate full-screen chat list pattern with explicit row accessibility labels, not this desktop empty-state recovery list
+
+#### Findings
+
+- Before the fix, the desktop root empty-state `Recent Sessions` list had one concrete session-discovery issue with clear user impact:
+  - each recent-session row still rendered the title as a rigid single-line `truncate` while also reserving fixed space for the relative timestamp on the right
+  - in live inspection at `620×670` with `24px` root text, the `Recent Sessions` section measured about `372px` wide and representative title lanes only had about `291px` of visible width
+  - representative titles needed materially more width than that lane (`Write 200 numbered bullet points...` about `487px`, `What should I do next. I lost the last convo` about `382px`, `can you see the active terminal sessions` about `365px`), so a meaningful chunk of session identity disappeared behind ellipsis
+  - the row also had no `title` fallback, so hover inspection could not recover the hidden session title before clicking
+  - practical impact: when users return to the root empty state to reopen recent work, narrow desktop windows or larger text make multiple sessions harder to distinguish, increasing the chance of reopening the wrong conversation
+
+#### Changes made
+
+- Hardened only the desktop root empty-state recovery rows in `apps/desktop/src/renderer/src/pages/sessions.tsx` with the smallest effective identity fix:
+  - introduced a shared `RECENT_SESSION_ROW_CLASS_NAME` that top-aligns the row content and trims vertical padding slightly so multi-line rows stay compact
+  - replaced the one-line `truncate` title with a shared `RECENT_SESSION_TITLE_CLASS_NAME` using `min-w-0`, `leading-snug`, `line-clamp-2`, `break-words`, and `[overflow-wrap:anywhere]`
+  - added `title={session.title}` on each recent-session row so the full conversation name is recoverable on hover
+  - nudged the timestamp with `pt-0.5` so it stays visually aligned with the taller wrapped title treatment
+- Extended `apps/desktop/src/renderer/src/pages/sessions.empty-state-layout.test.ts` with focused source-contract coverage for the new recent-session row/title treatment and hover disclosure
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.empty-state-layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new recent-row class constant, multiline title class constant, row `title={session.title}` disclosure, timestamp offset, and focused regression test coverage ✅
+- Live desktop evidence before the fix at `http://localhost:5174/`:
+  - screenshots: `tmp/ui-audit/root-recent-sessions-620x670-root24.png`, `tmp/ui-audit/root-full-620x670-root24.png`
+  - at `620×670` with `24px` root text, the representative recent-session title lane measured about `291px` while long titles still needed about `365–487px`
+- Live DOM/CSS prototype verification of the intended fix:
+  - after applying the same compact two-line treatment against the live page CSS, representative long-title rows moved from a single clipped line to a visible two-line treatment while keeping the timestamp visible
+  - representative row height stayed compact enough for a recovery list after tightening the row padding (`~48px` → `~60px` for long rows instead of `~70px` in the looser first prototype)
+  - screenshot: `artifacts/recent-sessions-empty-state-prototype-620x670.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/sessions.tsx apps/desktop/src/renderer/src/pages/sessions.empty-state-layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable `http://localhost:5174/` target is useful for visual evidence and CSS/DOM prototyping, but it is not guaranteed to be a rebuilt Electron renderer from this checkout; I treated it as pre-fix evidence plus live styling prototype rather than claiming a literal post-edit product rebuild.
+- Mobile cross-check: no parallel mobile code change was needed because the mobile app does not expose this desktop empty-state `Recent Sessions` recovery row pattern; its `SessionListScreen` is a separate full-page list with its own row labeling behavior.
+- Tradeoff/rationale: long recent-session rows can now grow to two lines and spend a little more vertical space, but that is a safer tradeoff than obscuring most of the session identity in a recovery-focused list.
+- Best next UI audit chunk after this one: stay away from root recent-session titles unless a rebuilt renderer is available for literal post-edit confirmation; the strongest fresh candidates remain an unreviewed root loading/pending-approval state or a mobile screen once a live Expo path is practical.
+
 ### 2026-03-08 — Chunk 70: Desktop providers page let its top-level settings cards expand off the right edge under narrow widths + larger text
 
 - Area selected:
