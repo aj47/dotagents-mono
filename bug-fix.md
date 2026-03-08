@@ -18,6 +18,10 @@
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` has no equivalent Groq/Gemini provider credential editor, so this providers-page fix is desktop-only.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the providers-page draft-save fix and regression test additions.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-agents.tsx` for fresh user-facing editing bugs and confirmed the desktop agent editor still rendered the system-prompt textarea with `value={editing.systemPrompt || defaultSystemPrompt}`.
+- [x] 2026-03-08: Compared the desktop agent editor against `apps/mobile/src/screens/AgentEditScreen.tsx`; mobile keeps `systemPrompt` as a plain local draft with no default-prompt fallback injected into the live `TextInput` value.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop agent system-prompt editor fix and regression test addition.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-general.tsx` for remaining immediate-save long-form settings inputs and found the Groq STT prompt textarea still using direct `saveConfig(...)` on every keystroke.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` has no equivalent Groq STT prompt editor, so this transcription-prompt fix is desktop-only.
 - [x] 2026-03-08: Attempted verification with `pnpm --filter @dotagents/desktop typecheck:web`, but the worktree still has no installed desktop dependencies (`node_modules` missing; `@electron-toolkit/tsconfig/tsconfig.web.json` not found).
@@ -90,6 +94,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` rendered the Groq STT `Prompt` textarea with `defaultValue={configQuery.data.groqSttPrompt || ""}` and called `saveConfig({ groqSttPrompt: ... })` directly from `onChange`.
   - That meant every typed or pasted character in a transcription prompt triggered a config mutation + invalidation round-trip while the user was still editing long-form guidance text.
   - The prompt is consumed in desktop transcription requests via `form.append("prompt", config.groqSttPrompt.trim())` in `apps/desktop/src/main/tipc.ts`, so this was a real user-facing STT configuration flow rather than dead settings code.
+- [x] **Desktop agent system-prompt clearing bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` rendered the advanced `Base System Prompt` textarea with `value={editing.systemPrompt || defaultSystemPrompt}` while the same editor also uses `editing.systemPrompt === ""` to mean “use the default prompt”.
+  - As soon as the draft became an empty string—either by clearing the field or pressing `Reset to Default`—the controlled textarea value snapped back to the full default prompt text, so the editor could not stay truly empty while the user prepared a replacement prompt or intentionally reverted to default behavior.
+  - The mobile agent editor keeps `systemPrompt` as a plain draft string, so this desktop behavior is a real UI regression rather than an intentional cross-platform product difference.
 - [x] **Desktop `Max Iterations` numeric editing bug (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` bound the `Max Iterations` number input straight to `configQuery.data?.mcpMaxIterations ?? 10` and called `saveConfig({ mcpMaxIterations: parseInt(e.target.value) || 1 })` from each `onChange`.
   - That meant every keystroke triggered a config mutation + invalidation round-trip, and temporary input states like an empty field were immediately coerced to `1` while the user was still editing.
@@ -145,6 +153,8 @@
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` for:
   - debounced Groq API-key saving with latest-config merge behavior
   - blur flushing plus config-resync behavior for the inactive Gemini base-URL editor
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the advanced `Base System Prompt` textarea now keeps the live draft in `value={editing.systemPrompt}` and shows the default prompt via `placeholder={defaultSystemPrompt}` instead of reinserting it into the controlled value when the draft is empty.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` to lock in the empty-draft + default-placeholder rendering contract.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the Groq STT `Prompt` textarea uses a local draft with debounced saves and blur flushes instead of saving on every keystroke.
 - [x] Kept the Groq STT prompt save path on the existing latest-config merge helper so delayed prompt saves cannot overwrite newer unrelated settings.
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` with focused regression coverage for:
@@ -212,6 +222,8 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the settings-providers / test updates.
 - [x] Manual source verification: the desktop Groq STT prompt textarea no longer calls `saveConfig(...)` directly from `onChange`; it now uses a controlled local draft with debounce/blur persistence.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the Groq STT prompt / regression test updates.
+- [x] Manual source verification: the desktop agent editor no longer uses `value={editing.systemPrompt || defaultSystemPrompt}`; the textarea now keeps an actually empty draft and exposes the default prompt through `placeholder={defaultSystemPrompt}` instead.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop agent system-prompt editor update.
 - [x] Manual source verification: the desktop `Max Iterations` input no longer calls `saveConfig(...)` directly from `onChange`; it now keeps a local draft, only schedules saves for valid values, and resets invalid blur states to the saved config.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the `Max Iterations` / regression test updates.
 - [x] Manual source verification: the desktop Supertonic `Speed` / `Quality Steps` inputs no longer reject intermediate keyboard edits immediately; they now keep local drafts, debounce valid saves, and reset invalid blur states to the saved config.
@@ -246,6 +258,7 @@
 - [x] Targeted automated verification for this remote-server port draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server named-tunnel draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this repeat-task interval fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this desktop agent system-prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
@@ -259,6 +272,7 @@
 - [ ] Whether the remote-server `CORS Origins` field should eventually move from debounce+blur autosave to an explicit save/apply action if users frequently paste larger allowlists.
 - [ ] Whether the named-tunnel `Tunnel ID` / `Hostname` fields should eventually trim whitespace or add stricter UUID/hostname validation once the environment blocker is cleared and the live setup flow can be exercised.
 - [ ] Whether the desktop repeat-task editor should eventually reset invalid interval drafts on blur, or whether save-time validation alone is the better UX once live desktop testing is possible.
+- [ ] Whether any other desktop agent-edit fields still mix fallback display text into controlled `value` props once the environment blocker is cleared and the full editor can be exercised live.
 
 ### Diagnosis / Rationale
 - This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
@@ -288,6 +302,8 @@
 - Making the action button read the current drafts is part of the minimal safe fix here, because otherwise switching the inputs to local drafts would leave `Start Tunnel` disabled or stale until the debounced save/refetch completed.
 - The repeat-task `Interval` field is the standalone numeric version of the same editing bug: coercing the raw input to a number on every keystroke makes the empty/intermediate states needed for normal replacement edits impossible, so the field snaps back to `15` while the user is still typing.
 - Matching the existing mobile `LoopEditScreen` pattern is the smallest safe fix here because it preserves the saved `LoopConfig.intervalMinutes` type and all existing scheduling/runtime behavior while removing the broken desktop editing interaction.
+- The agent editor issue is a controlled-textarea value bug rather than a persistence bug: using `|| defaultSystemPrompt` makes the empty-string draft state unrepresentable even though the editor relies on that exact empty state to mean “use the default”.
+- Moving the default prompt into `placeholder` is the smallest safe fix because it preserves the helpful visibility of the default text without forcing that text back into the live editable draft.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -305,6 +321,7 @@
 - Assumption: keeping named-tunnel text fields on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it preserves the current autosave UX while removing the broken per-keystroke persistence behavior.
 - Assumption: letting `Start Tunnel` use the current drafts immediately is acceptable because the same click now flushes those drafts back into saved config, and the main-process starter already expects plain string values for these fields.
 - Assumption: leaving temporary invalid repeat-task interval drafts local until save is acceptable because the mobile `LoopEditScreen` already validates this field on save, and desktop `loop-service` still defensively clamps any persisted invalid interval at runtime.
+- Assumption: showing the default system prompt as a textarea placeholder is acceptable because the existing note already tells users to leave the field empty to use the default, and placeholder text preserves that visibility without corrupting the editable draft state.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -329,3 +346,4 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new named-tunnel draft coverage alongside the existing CORS/port cases.
 - After that, live-verify the desktop named-tunnel setup flow (`Tunnel ID`, `Hostname`, `Credentials Path`, and `Start Tunnel`) to confirm the fields no longer fight typing and the action enables immediately from the current drafts.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` and live-verify that editing a repeat-task interval by backspacing/retyping no longer snaps the field back to `15` mid-edit.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify that clearing or resetting an agent system prompt leaves the textarea empty while still showing the default prompt as placeholder guidance.

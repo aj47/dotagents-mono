@@ -622,8 +622,9 @@ export function SettingsAgents() {
                         </div>
                         <Textarea
                           id="systemPrompt"
-                          value={editing.systemPrompt || defaultSystemPrompt}
+                          value={editing.systemPrompt}
                           onChange={e => setEditing({ ...editing, systemPrompt: e.target.value })}
+                          placeholder={defaultSystemPrompt}
                           rows={8}
                           className={`font-mono text-xs resize-y min-h-[120px] max-h-[400px] ${!editing.systemPrompt ? "text-muted-foreground" : ""}`}
                         />
