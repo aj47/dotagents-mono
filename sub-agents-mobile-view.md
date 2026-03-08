@@ -4938,3 +4938,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that a currently speaking newest response row now reads cleanly with one less badge.
   - Capture screenshot-backed evidence for both a speaking-latest row and a non-speaking latest row to confirm the distinction is still easy to scan.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this response-history badge tweak without fresh evidence.
+
+## Iteration 112 - Keep response-history controls usable while the mobile keyboard is open
+
+- Date: 2026-03-08
+- Summary: Added the same keyboard-friendly scroll behavior already used in other mobile sub-agent surfaces so the expanded `ResponseHistoryPanel` keeps its playback controls responsive while the chat composer keyboard is open.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recent queue/history badge and queue-row clarifications without new evidence.
+  - Re-checked `apps/mobile/src/ui/ResponseHistoryPanel.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, and the focused response-history mobile test before editing.
+  - Compared the response-history list against nearby mobile sub-agent surfaces that already use `keyboardShouldPersistTaps="handled"` and `keyboardDismissMode="on-drag"`, especially `MessageQueuePanel` and the long edit forms.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed interaction review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ChatScreen` renders `ResponseHistoryPanel` above the chat transcript while the composer can still keep the software keyboard open below it.
+  - The expanded response-history list already exposed tappable speak / stop controls, but its `ScrollView` did not opt into the keyboard-friendly props already used by nearby mobile queue and edit surfaces.
+  - On mobile, that mismatch risks first taps going to keyboard dismissal instead of the intended response-history control, and it removes the drag-to-dismiss escape hatch those other sub-agent surfaces already support.
+- Issue identified:
+  - The mobile response-history panel was less reliable to control one-handed while composing, weakening activity transparency and playback control at the exact moment users are likely to compare agent output with what they are typing.
+- Decision and rationale:
+  - Keep the response-history layout, disclosure behavior, badges, and playback UI unchanged.
+  - Reuse the same small keyboard-interaction guardrail already established elsewhere in the mobile sub-agent experience instead of introducing a new interaction pattern.
+  - Make the smallest local fix: add `keyboardShouldPersistTaps="handled"` and `keyboardDismissMode="on-drag"` to the response-history list only.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to apply `keyboardShouldPersistTaps="handled"` and `keyboardDismissMode="on-drag"` on the expanded history `ScrollView`.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new keyboard-friendly scroll behavior.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed the response-history panel should match the queue and edit-form keyboard behavior because all three are interactive mobile sub-agent surfaces layered near the composer.
+  - Chose not to broaden this into any response-history layout or hierarchy change while live validation is blocked.
+  - This is a low-risk interaction fix, but it still needs live confirmation that tapping speak / stop while the keyboard is open now feels immediate on a narrow screen.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The response-history panel still needs screenshot-backed review overall now that its badges, header summary, and keyboard behavior have all evolved without fresh Expo confirmation in this worktree.
+  - The relationship between the response-history panel and the nearby queue panel still deserves live one-handed hierarchy review once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that tapping a response-history speak / stop control works on the first tap while the composer keyboard is open.
+  - Capture screenshot-backed evidence for the expanded response-history panel both before and after dragging to dismiss the keyboard.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this keyboard-interaction tweak without fresh evidence.

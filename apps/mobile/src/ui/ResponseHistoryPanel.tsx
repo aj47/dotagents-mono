@@ -373,7 +373,11 @@ export function ResponseHistoryPanel({
         />
       </TouchableOpacity>
       {!isCollapsed && (
-        <ScrollView style={styles.list}>
+        <ScrollView
+          style={styles.list}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
           {/* Show newest first */}
           {[...responses].reverse().map((response, index) => {
             const originalIndex = responses.length - 1 - index;

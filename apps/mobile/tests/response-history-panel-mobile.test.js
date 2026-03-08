@@ -60,3 +60,7 @@ test('adds an inline speaking badge so the active playback row is obvious on nar
   assert.match(responseHistorySource, /speakingBadgeText:\s*\{[\s\S]*?fontWeight:\s*'700',[\s\S]*?color:\s*theme\.colors\.primary/);
   assert.match(responseHistorySource, /\{isSpeaking \? \([\s\S]*?<Text style=\{styles\.speakingBadgeText\}>Speaking<\/Text>[\s\S]*?\) : null\}/);
 });
+
+test('keeps response-history controls usable while the chat keyboard is open', () => {
+  assert.match(responseHistorySource, /<ScrollView[\s\S]*?style=\{styles\.list\}[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"/);
+});
