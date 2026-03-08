@@ -406,7 +406,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                   accessibilityHint={currentSelectionNoticeActionHint}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.currentSelectionNoticeButtonText}>Review in Settings</Text>
+                  <Text style={styles.currentSelectionNoticeButtonText}>{currentSelectionNoticeActionLabel}</Text>
                 </TouchableOpacity>
               </View>
             )}

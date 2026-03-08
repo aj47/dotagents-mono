@@ -1,5 +1,44 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 148 - Make the missing-selection selector CTA explicit about what it reviews
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-touched `Tool Execution`, `Agents` summary, or `Summarization` work without fresh evidence.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector sheet still had a small, local mobile recovery-clarity issue available after the recent subtitle and button-width passes.
+  - Tried to restore live-validation confidence again, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `AgentSelectorSheet` already showed a mode-aware missing-selection notice such as `Current main agent unavailable in this list` and already used mode-aware accessibility labels for its recovery action.
+  - But the visible button text inside that notice still said only `Review in Settings`.
+  - On a narrow mobile screen, that generic CTA made the recovery path less self-explanatory than the surrounding notice copy, especially in ACP mode where the user specifically needs to understand that the action is about the current main agent.
+- Issue identified:
+  - The selector-sheet missing-selection notice exposed the right recovery action, but its visible CTA text was more generic than the state it was asking the user to review.
+- Decision and rationale:
+  - Keep the notice layout, full-width outlined secondary button, and overall selector hierarchy unchanged.
+  - Avoid expanding this into another selector-sheet layout pass while live validation is blocked.
+  - Make the smallest useful state-clarity fix instead: reuse the existing mode-aware action label for the visible button text so the CTA says exactly what it reviews.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` so the missing-selection notice button now renders `currentSelectionNoticeActionLabel` instead of the generic `Review in Settings` copy.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the explicit button-text contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the small increase in button-text length is worth it because the button already stretches to the card width and the selector notice appears only in an exception state where clarity matters more than terseness.
+  - Reused the existing mode-aware label instead of introducing a second visible-copy variable so the spoken and visible action language stay aligned.
+  - This remains a source-backed improvement and still needs live confirmation that the longer CTA wraps cleanly without overpowering the available-options list beneath it.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the missing-selection notice now reads as a clear recovery path in both ACP and saved-profile modes.
+  - Capture screenshot-backed evidence for `Current main agent unavailable in this list` and `Current agent unavailable in this list` states so the longer CTA can be judged on a real narrow viewport.
+  - If live validation shows the explicit CTA wraps too heavily, prefer a shorter mode-aware label before revisiting the broader selector layout.
+
 ## Iteration 147 - Bring Tool Execution in line with adjacent mobile sub-agent controls
 
 - Date: 2026-03-08
