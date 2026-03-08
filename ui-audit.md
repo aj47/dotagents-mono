@@ -1,5 +1,62 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 68: Desktop settings accordions looked like full-width rows but only exposed text-width click targets
+
+- Area selected:
+  - desktop shared settings accordion chrome in `apps/desktop/src/renderer/src/components/ui/control.tsx`
+  - live impact confirmed on `Settings → General` collapsible sections including `Cloudflare Tunnel`, `Modular config (.agents)`, `Shortcuts`, `Speech-to-Text`, `Text to Speech`, and `Panel Position`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and deliberately avoided the recently touched sidebar, `agent-progress`, `Past Sessions`, `Memories`, Langfuse rows, and other fresh settings sub-areas unless a new live issue justified a revisit.
+  - `model-preset-manager.tsx` still has unrelated dirty work in this checkout, so I explicitly stayed away from that file family.
+  - A live renderer was available at `http://localhost:5174/settings/general`, and the General page exposed a fresh, repeatable accordion-heavy desktop surface with visible hierarchy and hit-target behavior instead of requiring another source-only pass.
+- Audit method:
+  - re-read `ui-audit.md`, `visible-ui.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/mobile/README.md` before choosing the next area
+  - used live browser inspection against the running desktop renderer at `http://localhost:5174/settings/general`
+  - compared the page at comfortable and tighter widths (`~1100×900` and `~760×900` with approximate `125%` zoom), using screenshot-backed evidence from `tmp/ui-audit/settings-general-wide-expanded.png` and `tmp/ui-audit/settings-general-tight-expanded.png`
+  - measured the mounted accordion header row width versus the real button width directly in the DOM, using `Shortcuts` as the representative section and cross-checking `Cloudflare Tunnel`, `Speech-to-Text`, and `Panel Position`
+  - prototyped the intended full-width clickable-row treatment directly in the mounted DOM, verified hit-testing at the same probe point before/after, and captured `tmp/ui-audit/settings-general-shortcuts-live-after.png`
+  - cross-checked mobile and confirmed `ControlGroup` is not used anywhere under `apps/mobile/src/`, so this issue is specific to the desktop renderer shared settings chrome rather than a cross-app component
+
+#### Findings
+
+- Before the fix, the desktop settings accordions had one concrete affordance/polish issue with clear user impact:
+  - the collapsible section headers visually read like full-width rows in the settings stack, but the actual interactive element was only the tiny text-width button on the left
+  - in live inspection at about `1100px` wide, the visible `Shortcuts` row measured about `874px`, while the real clickable button measured only about `86.45px`, so only about `9.9%` of the row was interactive and about `787.6px` of the apparent row width was dead space
+  - the same pattern affected neighboring fresh sections: `Cloudflare Tunnel` was about `139.1 / 874px`, `Speech-to-Text` about `125 / 874px`, and `Panel Position` about `115.1 / 874px`
+  - under a tighter `~760px` pass with approximate `125%` zoom, the visible row still measured about `382.4px` while the `Shortcuts` button stayed about `86.4px`, so most of the row still looked wider than it really was
+  - the button itself used a pointer cursor, but the surrounding row area did not, which made the accordions feel less discoverable and less polished than the surrounding cards/controls
+  - this matters because these headers are the primary entry points into dense settings groups; when a row looks clickable but only a small sliver really is, users need more precision than the UI visually promises
+
+#### Changes made
+
+- Hardened the shared desktop settings accordion header in `apps/desktop/src/renderer/src/components/ui/control.tsx` with the smallest effective affordance fix:
+  - changed collapsible `ControlGroup` headers from text-width buttons to full-width rows (`w-full`) so the visible row and the real hit target finally match
+  - added compact row padding, rounded corners, hover background, and keyboard focus-ring treatment so the accordion header now reads like an intentional interactive row instead of loose text
+  - added `aria-expanded={!collapsed}` so assistive technology and automated checks can observe the current expansion state directly
+  - allowed long section titles to wrap safely with `break-words` instead of assuming a single short label forever
+- Added `apps/desktop/src/renderer/src/components/ui/control.layout.test.ts` with focused source-contract coverage for the full-width clickable-row treatment and expansion-state contract
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/ui/control.layout.test.ts src/renderer/src/components/ui/control.test.tsx` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new full-width header class string, `aria-expanded={!collapsed}`, wrapped title class, and focused regression test coverage ✅
+- Live desktop evidence before the fix at `http://localhost:5174/settings/general`:
+  - screenshots: `tmp/ui-audit/settings-general-wide-expanded.png`, `tmp/ui-audit/settings-general-tight-expanded.png`
+  - at `1100px` width, the representative `Shortcuts` row measured about `874px` while the real button measured only about `86.45px`, leaving about `787.6px` of non-button space in the same visible row
+  - a hit-test probe inside that dead row area landed on a parent `div`, and clicking there did not expand the section
+- Live DOM prototype verification of the intended fix:
+  - after applying the same local full-width-row treatment directly in the mounted DOM, the `Shortcuts` button expanded from about `86.45px` wide to the full `874px` row width, and the row height increased from about `20px` to about `36px`
+  - the same probe region that previously hit a parent `div` now hit the `button` itself, and clicking there successfully expanded the section
+  - screenshot: `tmp/ui-audit/settings-general-shortcuts-live-after.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/ui/control.tsx apps/desktop/src/renderer/src/components/ui/control.layout.test.ts` ✅
+
+#### Notes
+
+- Important blocker/rationale: the currently running `localhost:5174` renderer is a reusable live app instance and is not guaranteed to be serving this checkout’s edited bundle, so I treated the live renderer as pre-fix evidence plus DOM prototyping rather than claiming a rebuilt post-edit product confirmation from this worktree.
+- Mobile cross-check: no parallel mobile change was needed because the mobile app does not use this `ControlGroup` desktop accordion component or this settings-row chrome.
+- Tradeoff/rationale: the accordion headers now spend a little more vertical space because the button is padded and wraps safely, but that is a safer tradeoff than leaving most of the apparent row width non-interactive in a recognition-heavy settings stack.
+- Best next UI audit chunk after this one: stay on a fresh live-inspectable desktop or mobile surface rather than reworking General again immediately; likely candidates are another unreviewed empty/loading/error state or a separate settings page whose row hierarchy can be inspected with real runtime data.
+
 ### 2026-03-08 — Chunk 67: Desktop sidebar sessions list made distinct conversations look identical under cramped width + larger zoom
 
 - Area selected:

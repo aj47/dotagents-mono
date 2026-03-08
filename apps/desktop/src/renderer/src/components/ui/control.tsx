@@ -87,7 +87,8 @@ export const ControlGroup = ({
         collapsible ? (
           <button
             type="button"
-            className="flex items-center gap-1.5 mb-3 group cursor-pointer"
+            className="group mb-3 flex w-full items-center gap-1.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-expanded={!collapsed}
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
@@ -95,7 +96,7 @@ export const ControlGroup = ({
             ) : (
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
             )}
-            <span className="text-sm font-semibold">{title}</span>
+            <span className="text-sm font-semibold break-words">{title}</span>
           </button>
         ) : (
           <div className="mb-3">
