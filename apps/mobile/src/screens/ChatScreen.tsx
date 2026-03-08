@@ -3540,13 +3540,18 @@ export default function ChatScreen({ route, navigation }: any) {
 		          {slashCommandState?.shouldShowSuggestions && (
 		            <View style={styles.slashSuggestionsPanel}>
 		              <Text style={styles.slashSuggestionsLabel}>Slash Commands</Text>
+			              {availableSkills.length > 0 && (
+			                <Text style={styles.slashSuggestionsHelp}>
+			                  Tap a slash command to insert it, then keep typing your request.
+			                </Text>
+			              )}
 		              {isLoadingSkills ? (
 		                <Text style={styles.slashSuggestionsEmpty}>Loading skills…</Text>
 		              ) : slashCommandState.suggestions.length === 0 ? (
 			                <Text style={styles.slashSuggestionsEmpty}>
 			                  {availableSkills.length === 0
-			                    ? 'No enabled skills found for this agent yet.'
-			                    : `No skills match \`/${slashCommandState.query}\` for this agent.`}
+			                    ? 'No enabled skills found for this agent yet. Keep typing to send a normal message, or switch agents to try other skills.'
+			                    : `No skills match \`/${slashCommandState.query}\` for this agent. Try another slash command or keep typing to send a normal message.`}
 			                </Text>
 		              ) : (
 		                <ScrollView
@@ -4014,6 +4019,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       textTransform: 'uppercase',
       letterSpacing: 0.4,
     },
+	    slashSuggestionsHelp: {
+	      fontSize: 12,
+	      color: theme.colors.mutedForeground,
+	    },
     slashSuggestionsRow: {
       gap: spacing.xs,
       paddingBottom: 2,

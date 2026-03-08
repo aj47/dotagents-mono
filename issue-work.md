@@ -3776,3 +3776,36 @@
   - Once the mobile dependency baseline is restored, add a real component/runtime assertion around the empty-state branch instead of relying only on source checks.
 
 - Next recommended issue work item: if `#55` is still not directly reproducible in Electron here, continue with similarly small, truthful UX/reliability fixes that have narrow validation paths instead of reopening larger history/restore refactors.
+
+##### Issue #53 — Mobile slash-command panel now explains insertion and fallback behavior more clearly
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and intentionally followed the latest `#53` recommendation instead of reopening the heavier history/restore tracks again.
+  - Refreshed the still-open repo issues and confirmed `#54` remains externally blocked, while this `#53` follow-up had a concrete, source-confirmable UX gap with lightweight mobile test coverage.
+  - Chose a copy-only/mobile-local slice because it improves slash-command discoverability and honesty without changing command semantics or requiring the missing Expo dependency baseline.
+- Investigation:
+  - Revisited issue `#53` and re-inspected `apps/mobile/src/screens/ChatScreen.tsx` plus the existing mobile slash-command source test.
+  - Confirmed the mobile slash panel already supported suggestions, tap-to-insert, exact-match expansion, and an active `Skill:` chip.
+  - Confirmed the remaining UX gap was explanatory copy: unlike desktop, the mobile panel did not explicitly tell users what happens after they tap a slash suggestion, and the empty states stopped at “no skills” / “no matches” without explaining the fallback behavior.
+- Important assumptions:
+  - Assumption: a helper line plus more instructive empty-state copy is a worthwhile `#53` follow-up even though the underlying mobile slash mechanics already work.
+  - Why acceptable: the issue is about faster, more intuitive inline skill invocation, and discoverability/next-step clarity are part of that UX value.
+  - Assumption: keeping this slice mobile-only is acceptable.
+  - Why acceptable: this pass specifically addressed the latest mobile-specific follow-up documented in the ledger, and desktop already had stronger slash discoverability cues.
+- Changes implemented:
+  - Added a mobile slash-panel helper line in `apps/mobile/src/screens/ChatScreen.tsx`: `Tap a slash command to insert it, then keep typing your request.`
+  - Updated the no-skills empty state to explain that the user can still send a normal message or switch agents to try other skills.
+  - Updated the no-match empty state to explain that the user can try another slash command or keep typing to send a normal message.
+  - Added regression assertions in `apps/mobile/tests/chat-skill-slash-command.test.js` covering the new helper and both expanded empty-state messages.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/chat-skill-slash-command.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Did not re-run broader mobile TypeScript/Expo validation in this iteration because the immediately prior ledger entry already established this worktree is missing the mobile dependency baseline (`expo/tsconfig.base` and related types), and this source-only copy slice was fully covered by the targeted regression test.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - If slash-command UX continues on mobile, consider matching desktop discoverability even more closely with a compact inline `/` hint near the composer without interfering with the current voice-first placeholder.
+  - Once the mobile dependency baseline is restored, add a real component/runtime assertion around the slash help and empty-state branches instead of relying only on source checks.
+
+- Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` is still not directly reproducible in this worktree, keep choosing similarly narrow, source-confirmed UX/reliability slices rather than speculative provider work.

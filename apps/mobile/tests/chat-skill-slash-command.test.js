@@ -24,10 +24,11 @@ test('chat screen loads skills, shows slash suggestions, and expands exact slash
   assert.match(chatScreenSource, /const skillsResponse = await client\.getSkills\(\);/);
   assert.match(chatScreenSource, /const detail = await client\.getSkill\(skillId\);/);
   assert.match(chatScreenSource, /Slash Commands/);
+	  assert.match(chatScreenSource, /Tap a slash command to insert it, then keep typing your request\./);
   assert.match(chatScreenSource, /Skill: \{matchedSlashSkill\.name\}/);
   assert.match(chatScreenSource, /availableSkills\.length === 0/);
-  assert.match(chatScreenSource, /No enabled skills found for this agent yet\./);
-  assert.match(chatScreenSource, /No skills match \\\`\/\$\{slashCommandState\.query\}\\\` for this agent\./);
+	  assert.match(chatScreenSource, /No enabled skills found for this agent yet\. Keep typing to send a normal message, or switch agents to try other skills\./);
+	  assert.match(chatScreenSource, /No skills match \\\`\/\$\{slashCommandState\.query\}\\\` for this agent\. Try another slash command or keep typing to send a normal message\./);
   assert.match(chatScreenSource, /expandSlashCommandText\(input, skillDetail\)/);
 });
 
