@@ -86,10 +86,27 @@ function getLoopQueryErrorMessage(error: unknown): string {
   return /[.!?]$/.test(message) ? message : `${message}.`
 }
 
+function getLoopMutationErrorMessage(error: unknown, fallback: string): string {
+  const message = error instanceof Error
+    ? error.message.trim()
+    : typeof error === "string"
+      ? error.trim()
+      : ""
+
+  if (!message) {
+    return fallback
+  }
+
+  return /[.!?]$/.test(message) ? message : `${message}.`
+}
+
 export function SettingsLoops() {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<EditingLoop | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [deleteErrorById, setDeleteErrorById] = useState<Record<string, string>>({})
 
   const loopsQuery = useQuery({
     queryKey: ["loops"],
@@ -111,17 +128,33 @@ export function SettingsLoops() {
   const hasLoopStatusLoadError = loopStatusesQuery.isError && loops.length > 0
   const hasCachedLoopStatuses = Array.isArray(loopStatusesQuery.data) && loopStatusesQuery.data.length > 0
 
+  const clearDeleteError = (loopId: string) => {
+    setDeleteErrorById((prev) => {
+      if (!(loopId in prev)) return prev
+
+      const next = { ...prev }
+      delete next[loopId]
+      return next
+    })
+  }
+
   const handleCreate = () => {
+    setDeleteConfirmId(null)
+    setDeleteErrorById({})
     setIsCreating(true)
     setEditing({ ...emptyLoop })
   }
 
   const handleCancel = () => {
+    setDeleteConfirmId(null)
+    setDeleteErrorById({})
     setEditing(null)
     setIsCreating(false)
   }
 
   const handleEdit = (loop: LoopConfig) => {
+    setDeleteConfirmId(null)
+    setDeleteErrorById({})
     setIsCreating(false)
     setEditing({
       id: loop.id,
@@ -133,15 +166,38 @@ export function SettingsLoops() {
     })
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this repeat task?")) return
+  const handleDelete = async (loop: LoopConfig) => {
+    setPendingDeleteId(loop.id)
+    clearDeleteError(loop.id)
+
     try {
-      await tipcClient.deleteLoop({ loopId: id })
+      const result = await tipcClient.deleteLoop({ loopId: loop.id })
+
+      if (!result?.success) {
+        setDeleteConfirmId(loop.id)
+        setDeleteErrorById((prev) => ({
+          ...prev,
+          [loop.id]: `Couldn't delete "${loop.name}" right now. The task is still shown below until deletion succeeds.`,
+        }))
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+      setDeleteConfirmId((current) => (current === loop.id ? null : current))
+      clearDeleteError(loop.id)
       toast.success("Task deleted")
-    } catch {
-      toast.error("Failed to delete task")
+    } catch (error) {
+      setDeleteConfirmId(loop.id)
+      setDeleteErrorById((prev) => ({
+        ...prev,
+        [loop.id]: getLoopMutationErrorMessage(
+          error,
+          `Couldn't delete "${loop.name}" right now. The task is still shown below until deletion succeeds.`,
+        ),
+      }))
+    } finally {
+      setPendingDeleteId((current) => (current === loop.id ? null : current))
     }
   }
 
@@ -313,6 +369,9 @@ export function SettingsLoops() {
             const isRunning = runtime?.isRunning ?? false
             const nextRunAt = runtime?.nextRunAt
             const lastRunAt = runtime?.lastRunAt ?? loop.lastRunAt
+            const isDeleting = pendingDeleteId === loop.id
+            const deleteErrorMessage = deleteErrorById[loop.id]
+            const isDeleteConfirming = deleteConfirmId === loop.id
             return (
               <div
                 key={loop.id}
@@ -342,6 +401,7 @@ export function SettingsLoops() {
                       variant="outline"
                       size="sm"
                       className="h-7 gap-1.5 px-2"
+                      disabled={isDeleting}
                       onClick={() => handleRunNow(loop)}
                     >
                       <Play className="h-3.5 w-3.5" />Run
@@ -350,6 +410,7 @@ export function SettingsLoops() {
                       variant="outline"
                       size="sm"
                       className="h-7 gap-1.5 px-2"
+                      disabled={isDeleting}
                       onClick={() => handleOpenTaskFile(loop)}
                     >
                       <FileText className="h-3.5 w-3.5" />File
@@ -358,6 +419,7 @@ export function SettingsLoops() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
+                      disabled={isDeleting}
                       title="Edit task"
                       onClick={() => handleEdit(loop)}
                     >
@@ -367,10 +429,14 @@ export function SettingsLoops() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      title="Delete task"
-                      onClick={() => handleDelete(loop.id)}
+                      disabled={isDeleting}
+                      title={isDeleting ? "Deleting task" : "Delete task"}
+                      onClick={() => {
+                        setDeleteConfirmId(loop.id)
+                        clearDeleteError(loop.id)
+                      }}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
                 </div>
@@ -390,10 +456,57 @@ export function SettingsLoops() {
                 <div className="mt-2 flex items-center gap-2">
                   <Switch
                     checked={loop.enabled}
+                    disabled={isDeleting}
                     onCheckedChange={() => handleToggleEnabled(loop)}
                   />
                   <Label className="text-xs">{loop.enabled ? "Enabled" : "Disabled"}</Label>
                 </div>
+
+                {(isDeleteConfirming || deleteErrorMessage) && (
+                  <div
+                    className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-3"
+                    role={deleteErrorMessage ? "alert" : undefined}
+                  >
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-foreground">Delete &quot;{loop.name}&quot;?</p>
+                          <p className="text-xs text-muted-foreground">
+                            This removes the saved schedule and its task file. The task is still shown below until deletion succeeds.
+                          </p>
+                          {deleteErrorMessage && (
+                            <p className="break-words text-xs text-destructive">{deleteErrorMessage}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isDeleting}
+                            onClick={() => {
+                              setDeleteConfirmId((current) => (current === loop.id ? null : current))
+                              clearDeleteError(loop.id)
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            disabled={isDeleting}
+                            onClick={() => handleDelete(loop)}
+                          >
+                            {isDeleting && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                            {isDeleting ? "Deleting..." : deleteErrorMessage ? "Retry delete" : "Delete"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}

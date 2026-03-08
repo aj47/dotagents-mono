@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task delete guardrails in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `deleteLoop` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/loop-service.ts`, nearby inline destructive-action patterns reviewed in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change in this pass because mobile already uses the shared native destructive-confirmation pattern for loop deletion and this iteration focused on the desktop browser-`confirm(...)` path), focused source-level coverage added in `tests/desktop-settings-loops-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (renderer target available but only an unhydrated blank `#root` shell at `http://localhost:5174/`, so no meaningful product UI could be inspected).
 - 2026-03-08: Desktop composer image-attachment failure UX in `apps/desktop/src/renderer/src/components/text-input-panel.tsx`, `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`, with shared attachment-reading/error copy reviewed in `apps/desktop/src/renderer/src/lib/message-image-utils.ts`, mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change in this pass because mobile uses a separate React Native image-picker + native `Alert.alert(...)` path rather than the desktop browser-`window.alert` attachment flow), focused source-level coverage added in `tests/desktop-composer-image-attachment-feedback.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
 - 2026-03-08: Desktop past-sessions dialog loading / refresh-failure / search-empty-state polish in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, with adjacent retry/stale-data patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, session handoff/navigation context reviewed in `apps/desktop/src/renderer/src/pages/sessions.tsx`, mobile parity checked in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent change needed because mobile shows a local session list rather than a query-backed desktop history dialog), focused source-level coverage extended in `tests/desktop-past-sessions-dialog-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
 - 2026-03-08: Desktop `AgentProgress` session-scoped transcript/tab view-state handling in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, with focused-session reuse rechecked in `apps/desktop/src/renderer/src/pages/panel.tsx`, existing session-cleanup coverage extended in `tests/desktop-agent-progress-session-cleanup.test.js`, mobile parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile chat surface is screen-scoped rather than a reused overlay), and live desktop inspection still blocked by the missing Electron/CDP target.
@@ -71,6 +72,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop repeat-task inline delete confirmation / retry UI still needs live Electron validation once the renderer mounts real product content, especially to confirm the row-level confirm card does not overcrowd compact task rows and the destructive-action hierarchy feels obvious beside Run/File/Edit controls.
 - 2026-03-08: Desktop text / overlay / tile composer image-attachment warnings still need live Electron validation once a runnable target is available, especially to confirm the new inline warning banner, `Choose again` / `Add more` recovery action, partial-success copy, and cramped-layout behavior feel clear without pushing primary send controls around.
 - 2026-03-08: Desktop past-sessions dialog loading/search recovery still needs live Electron validation once a runnable target is available, especially to confirm the blocking-load card, cached-list refresh-warning banner, `Retry loading` affordance, and `Clear search` empty state feel clear without crowding the compact dialog.
 - 2026-03-08: Desktop `AgentProgress` per-session tab/expansion restore still needs live Electron validation once a runnable target is available, especially to confirm that switching A → B → A restores each run's prior chat/summary selection and expanded transcript/tool rows without feeling sticky or surprising when a brand-new run starts.
@@ -83,6 +85,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop `Repeat Tasks` deletion now replaces the blocking browser `confirm(...)` flow with an inline row-level confirmation card, disables row controls while a delete is in flight, handles false `deleteLoop(...)` results explicitly instead of treating them like success, and keeps failed deletions recoverable with local error copy plus `Retry delete`, so removing a task no longer depends on brittle modal confirms or misleading success feedback; tradeoff: this pass intentionally stays scoped to deletion and leaves `Run` / enable-toggle mutation pending-state polish for a follow-up.
 - 2026-03-08: Desktop text, overlay, and tile composers now keep image-attachment read/validation failures inline with the draft instead of interrupting the flow with blocking browser alerts, normalize partial-success copy so users know any successfully added images remain attached, and offer a local `Choose again` / `Add more` recovery action beside the warning so a bad file selection no longer feels like a dead-end; tradeoff: this pass stays desktop-only because mobile image attachment uses a separate React Native picker + native alert stack and needs its own dedicated UX follow-up.
 - 2026-03-08: Desktop `Past Sessions` now keeps previously loaded history visible when a background refresh fails, distinguishes a blocking load failure from a stale-data refresh warning, offers a local `Retry loading` action in both cases, and explains when a search returned no matches with a one-click `Clear search` affordance, so transient history-query failures no longer make all past sessions look deleted or make a filtered-empty result read like the user has no history at all; tradeoff: this pass intentionally stops short of deeper focus-restoration/navigation changes because the highest-value gap was misleading state feedback inside the existing dialog.
 - 2026-03-08: Desktop `AgentProgress` now keeps chat-vs-summary tab choice and transcript/tool expansion state scoped to the active `sessionId` + `runId`, so switching the focused overlay from session A to session B no longer leaks A's open tab/expanded rows into B, while switching back to A in the same overlay lifecycle restores the view the user last had there; tradeoff: this pass keeps the state cache local to the component instead of promoting it into a shared store because the reuse bug is isolated to the existing overlay instance and the smallest fix is the safest one.
@@ -145,6 +148,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-loops-delete-guardrails.test.js tests/desktop-settings-loops-feedback.test.js`
+- 2026-03-08: `git diff --check` after the desktop repeat-task delete-guardrails pass
 - 2026-03-08: `node --test tests/desktop-composer-image-attachment-feedback.test.js`
 - 2026-03-08: `git diff --check` after the desktop composer image-attachment feedback pass
 - 2026-03-08: `node --test tests/desktop-past-sessions-dialog-guardrails.test.js`
@@ -302,6 +307,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for the repeat-task delete-guardrails pass is still effectively blocked because the available `electron_execute` target only exposed a blank `#root` shell at `http://localhost:5174/` instead of a mounted app view, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this composer image-attachment feedback pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this past-sessions loading/search recovery pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this `AgentProgress` session-scoped view-state pass was blocked because no Electron renderer/CDP target is available in this environment (`electron_execute` returns `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -366,10 +372,11 @@ Track small, shippable product improvements. Review this file before each iterat
 
 ### Not Yet Checked Recently
 - Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
-- Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
+- Desktop repeat-task `Run` / enable-toggle mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
-- Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity remains the freshest non-attachment desktop reliability seam that has not been investigated recently, now that the composer image-attachment path no longer drops users into blocking alerts.
+- Desktop repeat-task `Run` / enable-toggle mutation pending-state and partial-success feedback is now the freshest adjacent loops follow-up, because deletion no longer depends on blocking confirms but the remaining action buttons still rely mostly on toast-only feedback.
+- Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is the freshest non-loops desktop UX follow-up if the next pass should avoid staying on the same `Repeat Tasks` surface twice in a row.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest adjacent history follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
 - Once a runnable Electron target is available, live-check desktop `Settings → WhatsApp` across first load, QR-required connect, reconnect with cached credentials, disconnect, logout, and background-status refresh overlap to confirm the new loading/pending hierarchy feels trustworthy in the real UI
 - Once a runnable Electron target is available, live-check desktop agent deletion in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` across confirm, cancel, failed-delete retry, and successful removal to validate the new inline guardrails in a dense agent grid.
@@ -408,6 +415,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the desktop overlay follow-up composer across session switching plus late success/failure/image-read completions to confirm stale drafts/errors no longer leak across focused sessions in the actual UI
+
+### 2026-03-08 — Desktop repeat-task delete guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task management in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - main-process loop deletion semantics in `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/main/loop-service.ts`
+  - nearby destructive-action patterns reviewed in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`
+  - focused source-level guardrail coverage added in `tests/desktop-settings-loops-delete-guardrails.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed no equivalent change was needed in this pass because mobile loop deletion already uses the shared native destructive-confirmation pattern and this iteration was specifically about the desktop browser `confirm(...)` path
+- Why it was chosen:
+  - after the earlier loops fetch/runtime-status passes, the ledger still pointed to `run` / `toggle` / `delete` mutation feedback as the freshest unresolved reliability seam on the page
+  - investigation found a concrete, user-visible issue: desktop repeat-task deletion still relied on blocking `confirm(...)`, provided no row-level deleting state, and treated a false `deleteLoop(...)` result as if deletion had succeeded
+  - the fix had clear user value, stayed localized to one renderer page, and could reuse destructive-action patterns already established elsewhere in the app
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx` to trace delete interaction flow, row actions, and existing mutation feedback
+  - `apps/desktop/src/main/tipc.ts` plus `apps/desktop/src/main/loop-service.ts` to confirm `deleteLoop(...)` returns `{ success: boolean }` and can legitimately fail without throwing
+  - `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx` for nearby inline delete/retry patterns already used in desktop surfaces
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to confirm mobile loop deletion already routes through a different native destructive-confirmation pattern
+  - attempted live desktop inspection via `electron_execute`; a renderer target was available, but it only exposed a blank `#root` shell at `http://localhost:5174/`, so there was no meaningful mounted product UI to inspect
+- Improvement made:
+  - replaced the blocking desktop repeat-task delete `confirm(...)` flow with an inline row-level confirmation card that stays anchored to the affected task
+  - added row-level deleting state so Run/File/Edit/Enable controls are disabled while that task is being removed and the delete affordance switches to a spinner / `Deleting...` label
+  - handled false `deleteLoop(...)` results explicitly instead of treating them like success, keeping the confirmation UI open with actionable inline error copy and `Retry delete`
+  - kept the existing list visible until deletion actually succeeds so failed destructive actions no longer look like the row disappeared and then reappeared unpredictably
+- Assumptions / tradeoffs / rationale:
+  - reused the app’s existing inline destructive-action pattern rather than introducing a new dialog or toast abstraction because the highest-value fix was localized confidence near the affected row
+  - kept this pass scoped to deletion because it carried the highest risk of misleading success feedback; `Run` and enable-toggle mutations still need their own pending/partial-success polish follow-up
+  - accepted source inspection plus targeted source-level verification because the available Electron renderer target still did not expose a mounted app UI in this workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-loops-delete-guardrails.test.js tests/desktop-settings-loops-feedback.test.js`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked in practice because the available renderer target only exposed a blank shell)
+- Follow-up checks:
+  - once a real Electron renderer is mounted, live-check the repeat-task list with delete confirm, successful delete, false-result failure, thrown delete failure, keyboard navigation, and narrow-width layouts to confirm the row-level destructive affordance feels clear
+  - inspect desktop repeat-task `Run` and enable-toggle actions next, because they still rely mostly on toast-only mutation feedback and do not yet explain pending or partial-success states inline
 
 ### 2026-03-08 — Desktop composer image-attachment inline recovery
 - Date:
