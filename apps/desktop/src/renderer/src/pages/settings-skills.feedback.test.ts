@@ -12,4 +12,13 @@ describe("desktop skills page failure feedback", () => {
     expect(settingsSkillsSource).toContain("toast.error(getDeleteSkillFailureMessage())")
     expect(settingsSkillsSource).toContain('toast.success("Skill deleted successfully")')
   })
+
+  it("keeps scan-folder feedback truthful now that scanSkillsFolder reloads canonical skills and returns no import count", () => {
+    expect(settingsSkillsSource).toContain("await tipcClient.scanSkillsFolder()")
+    expect(settingsSkillsSource).toContain("onSuccess: () => {")
+    expect(settingsSkillsSource).toContain('toast.success("Skills folder refreshed")')
+    expect(settingsSkillsSource).toContain("Refresh Folder")
+    expect(settingsSkillsSource).not.toContain('toast.info("No new skills found in folder")')
+    expect(settingsSkillsSource).not.toContain("Auto-imported")
+  })
 })
