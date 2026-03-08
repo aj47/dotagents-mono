@@ -3831,3 +3831,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Agent Settings` summary stays readable at narrow widths in both API and ACP states.
   - Check the `ACP • No enabled agent` state live to ensure the warning-like summary is helpful without overpowering the rest of the header.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of broadening header summaries without new evidence.
+
+### 2026-03-08 — Iteration 88: keep loop activity visible while Agent Loops is collapsed
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused loop metadata coverage in `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 87 added a collapsed-header summary for `Agent Settings`, but `Settings > Agent Loops` still used a title-only collapsible header.
+  - On a long mobile settings stack, collapsing `Agent Loops` hid whether any loops existed and whether they were running or paused, so users had to reopen the full section just to re-check basic loop state.
+- Issue selected:
+  - The collapsed `Agent Loops` header hid core loop activity state, weakening sub-agent activity transparency and state clarity on mobile.
+- Decision:
+  - Keep the existing loop rows, action rail, and section body unchanged.
+  - Do not broaden the summary pattern to unrelated sections without new live evidence.
+  - Make the smallest local fix: derive a compact `Agent Loops` summary for loading, empty, active, running, and paused states, and surface it through the existing collapsible header summary line.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - derive `agentLoopsSectionSummary` from the existing `loops` / `isLoadingLoops` state,
+    - summarize collapsed loop state as `Loading loops…`, `No loops`, or count-based status like `3 loops • 1 running • 1 paused`,
+    - pass that summary into the existing `Agent Loops` `CollapsibleSection` so the header and its accessibility label stay informative while collapsed.
+  - Updated `apps/mobile/tests/settings-loop-metadata-mobile.test.js` with focused regression coverage for the new collapsed-header summary contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new `Agent Loops` summary still needs a real narrow-screen pass to confirm it stays balanced beside the chevron and does not feel redundant once the section is expanded.
+  - Idle vs running vs paused loop mixes still need live confirmation to make sure the count-based wording feels intuitive in each state.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed `Agent Loops` summary stays legible at narrow widths in loading, empty, and populated states.
+  - Compare all-active, mixed running/paused, and fully paused loop states live to confirm the summary wording helps more than it competes with the section title.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of adding more collapsed summaries without new evidence.

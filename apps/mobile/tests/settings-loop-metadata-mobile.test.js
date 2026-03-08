@@ -45,6 +45,18 @@ test('surfaces loop runtime state with a compact status badge on mobile', () => 
   assert.match(settingsSource, /loopStateBadgePaused:\s*\{[\s\S]*?backgroundColor: theme\.colors\.secondary,/);
 });
 
+test('keeps loop activity context visible in the collapsed Agent Loops header on mobile', () => {
+  assert.match(settingsSource, /const agentLoopsSectionSummary = useMemo\(\(\) => \{/);
+  assert.match(settingsSource, /if \(isLoadingLoops\) return 'Loading loops…';/);
+  assert.match(settingsSource, /if \(loops\.length === 0\) return 'No loops';/);
+  assert.match(settingsSource, /const runningLoopCount = loops\.filter\(\(loop\) => loop\.isRunning\)\.length;/);
+  assert.match(settingsSource, /const pausedLoopCount = loops\.filter\(\(loop\) => !loop\.enabled\)\.length;/);
+  assert.match(settingsSource, /if \(runningLoopCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{runningLoopCount\} running`\);/);
+  assert.match(settingsSource, /if \(pausedLoopCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{pausedLoopCount\} paused`\);/);
+  assert.match(settingsSource, /if \(runningLoopCount === 0 && pausedLoopCount === 0\) \{[\s\S]*?summaryParts\.push\(`\$\{activeLoopCount\} active`\);/);
+  assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="agentLoops"[\s\S]*?summary=\{agentLoopsSectionSummary\}/);
+});
+
 test('keeps long loop names stable when the runtime badge is present', () => {
   assert.match(settingsSource, /<Text[\s\S]*?style=\{\[styles\.serverName, styles\.loopRowName\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{loop\.name\}/);
   assert.match(settingsSource, /loopRowName:\s*\{[\s\S]*?flexGrow:\s*1,[\s\S]*?minWidth:\s*0/);

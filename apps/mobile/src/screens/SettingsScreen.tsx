@@ -287,6 +287,29 @@ export default function SettingsScreen({ navigation }: any) {
 
     return 'API • Direct model';
   }, [remoteSettings, selectedAcpMainAgentOption]);
+  const agentLoopsSectionSummary = useMemo(() => {
+    if (isLoadingLoops) return 'Loading loops…';
+    if (loops.length === 0) return 'No loops';
+
+    const runningLoopCount = loops.filter((loop) => loop.isRunning).length;
+    const pausedLoopCount = loops.filter((loop) => !loop.enabled).length;
+    const activeLoopCount = loops.length - pausedLoopCount;
+    const summaryParts = [`${loops.length} ${loops.length === 1 ? 'loop' : 'loops'}`];
+
+    if (runningLoopCount > 0) {
+      summaryParts.push(`${runningLoopCount} running`);
+    }
+
+    if (pausedLoopCount > 0) {
+      summaryParts.push(`${pausedLoopCount} paused`);
+    }
+
+    if (runningLoopCount === 0 && pausedLoopCount === 0) {
+      summaryParts.push(`${activeLoopCount} active`);
+    }
+
+    return summaryParts.join(' • ');
+  }, [isLoadingLoops, loops]);
 
   // Profile import/export state
   const [isExportingProfile, setIsExportingProfile] = useState(false);
@@ -2483,7 +2506,11 @@ export default function SettingsScreen({ navigation }: any) {
 
             {/* 4n. Agent Loops */}
             {isDotAgentsServer && (
-              <CollapsibleSection id="agentLoops" title="Agent Loops">
+              <CollapsibleSection
+                id="agentLoops"
+                title="Agent Loops"
+                summary={agentLoopsSectionSummary}
+              >
                 {isLoadingLoops ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : loops.length === 0 ? (
