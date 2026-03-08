@@ -5991,3 +5991,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that mixed collapsed loop summaries remain readable across running-only, active-only, paused-only, and mixed states.
   - Capture screenshot-backed evidence for the collapsed `Agents`, `Agent Settings`, and `Agent Loops` headers together so the three summary patterns can be compared side by side with real narrow-screen constraints.
   - After that live pass, continue with the next highest-signal local improvement instead of revisiting this loop-summary fix without fresh evidence.
+
+## Iteration 134 - Stretch the missing-selection selector notice action to a real mobile button width
+
+- Date: 2026-03-08
+- Summary: Improved the `AgentSelectorSheet` missing-selection notice on mobile by widening its outlined `Review in Settings` action to the full notice-card width while keeping it visually secondary.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the just-touched response-history and loop-summary surfaces without new evidence.
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector sheet still has no fresh live validation in this worktree.
+  - Confirmed the sheet's empty, missing-config, retry, and cancel actions already use wider mobile CTA sizing, while the missing-selection notice action still relied on a content-width `minWidth: 180` style.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `test -d node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the `Current agent unavailable in this list` notice already preserved current-agent context and explained the recovery path.
+  - Its `Review in Settings` action was still narrower than the card, because `currentSelectionNoticeButton` used `minWidth: 180` rather than the wider stretch treatment already adopted by the sheet's other mobile actions.
+  - On narrow screens, that made the main notice escape hatch easier to miss and less consistent with the rest of the selector's mobile button affordances.
+- Issue identified:
+  - The selector-sheet missing-selection notice still used a content-width secondary action, weakening tap confidence and visual consistency on mobile.
+- Decision and rationale:
+  - Keep the missing-selection notice, its outlined secondary styling, and the `Available agents` handoff from Iteration 95.
+  - Do not promote this notice action into a filled primary CTA, because actual switchable options should remain visually primary when they exist.
+  - Make the smallest local fix instead: stretch the outlined action across the notice card so it matches the mobile button baseline for width and tap area without increasing its visual weight.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to replace the notice action's `minWidth: 180` styling with `alignSelf: 'stretch'`.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the widened notice-button styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both repository and `apps/mobile` `node_modules` are missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed the notice action should be as easy to tap as the sheet's other actions, even while remaining secondary in hierarchy.
+  - Kept the outlined styling and existing copy unchanged so the available selector rows still read as the primary next step when alternatives exist.
+  - This remains a source-backed improvement and still needs live confirmation that the widened outlined action feels balanced inside the notice card on a narrow viewport.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The selector sheet still lacks a fresh screenshot-backed pass after several targeted state-clarity and action-width refinements.
+  - The missing-selection notice still needs live comparison against the empty and recoverable-error selector states so action hierarchy stays consistent across all three paths.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the stretched `Review in Settings` action feels easy to tap without overpowering the available-agent list below it.
+  - Compare the missing-selection notice against the empty and recoverable-error selector states on a narrow viewport so all selector recovery paths feel consistent but appropriately weighted.
+  - After that live pass, continue with the next highest-signal local improvement instead of revisiting this notice-action width tweak without fresh evidence.

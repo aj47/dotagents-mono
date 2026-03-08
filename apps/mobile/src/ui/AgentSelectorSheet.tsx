@@ -710,7 +710,7 @@ function createStyles(theme: Theme) {
     },
     currentSelectionNoticeButton: {
       ...actionButtonTouchTarget,
-      minWidth: 180,
+      alignSelf: 'stretch',
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.primary + '26',
