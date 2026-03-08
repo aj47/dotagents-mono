@@ -2153,3 +2153,39 @@
   - If Hub install/import trust UX keeps expanding, align the website inspector, desktop import dialog, and any future install-history surface on one shared vocabulary for “requires setup”.
 
 - Next recommended issue work item: refresh open issues again and prefer either a fresh bug with a concrete repro or another equally narrow trust/reliability slice from `#58`, while continuing to keep `#54` blocked on external feasibility evidence.
+
+##### Issue #53 — Feature: Inline skill invocation via slash commands
+
+- Selection rationale:
+  - Re-opened `#53` because the issue remains open, it has clear UX value, and the ledger's earlier slash-command work left room for a small reliability follow-up instead of a broad new feature push.
+  - Avoided repeating recent `#55`/`#56`/`#57` work and chose a slice directly tied to the issue's acceptance criterion that slash invocation should work correctly across agent profiles.
+- Investigation:
+  - Re-read issue `#53` and its acceptance criteria, especially the requirement that skills come from the enabled registry and work across agent profiles.
+  - Inspected the current desktop slash-command surfaces in `apps/desktop/src/renderer/src/components/text-input-panel.tsx`, `overlay-follow-up-input.tsx`, and `tile-follow-up-input.tsx`.
+  - Confirmed a concrete desktop gap from source: all three components queried `tipcClient.getSkills()` and used that raw list for slash suggestions and exact `/skill` expansion, with no per-profile filtering.
+  - Cross-checked the mobile implementation in `apps/mobile/src/screens/ChatScreen.tsx` and confirmed mobile already filters available slash skills with `skill.enabledForProfile && skill.enabled`, which made the desktop inconsistency clear.
+  - Confirmed the desktop main process already exposes enough profile-aware data to fix this without backend changes: `getCurrentAgentProfile`, `getSessionProfileSnapshot`, and `getEnabledSkillIdsForProfile` already exist in `apps/desktop/src/main/tipc.ts`.
+- Important assumptions:
+  - Assumption: this iteration should focus on restricting slash-command skill availability, not the broader non-slash "Skills" prompt menu.
+  - Why acceptable: the issue is specifically about inline slash invocation, and filtering the slash-command path removes the most direct profile-bypass bug in the smallest reviewable patch.
+  - Assumption: when the relevant profile context is still loading, temporarily hiding slash skills is preferable to showing the global skill list.
+  - Why acceptable: it avoids exposing disabled skills during query races and is safer than briefly allowing an exact `/skill` expansion against the wrong profile.
+  - Assumption: follow-up composers should use the session snapshot profile when available, not the current global agent selection.
+  - Why acceptable: active sessions are already isolated to a captured profile snapshot, so slash-command availability should match the session's own profile rather than any later global selector change.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/text-input-panel.tsx` to resolve the effective agent profile for the main composer (`selectedAgentId` or current/default agent profile), then filter slash-command skills via `getEnabledSkillIdsForProfile(...)` before autocomplete or exact command expansion runs.
+  - Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `tile-follow-up-input.tsx` to resolve the session profile via `getSessionProfileSnapshot(...)`, fall back to the current agent only when no session snapshot is available, and filter slash-command skills against that profile's enabled skill IDs.
+  - Extended `apps/desktop/src/renderer/src/components/text-input-panel.slash-command.test.js` and `follow-up-input.slash-command.test.js` with source-level assertions locking in the new profile-aware query wiring.
+  - Updated `apps/desktop/src/renderer/src/components/text-input-panel.submit.test.tsx` mocks so the submit-behavior regression coverage still exercises the main composer with the extra profile-aware queries present.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/text-input-panel.slash-command.test.js apps/desktop/src/renderer/src/components/follow-up-input.slash-command.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/text-input-panel.slash-command.test.js src/renderer/src/components/follow-up-input.slash-command.test.js src/renderer/src/components/text-input-panel.submit.test.tsx` ⚠️ blocked locally because the workspace does not currently have installed package dependencies (`packages/shared` pretest failed with `tsup: command not found`, and pnpm warned that local `node_modules` are missing).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - Once dependencies are available, run the desktop Vitest pass for `text-input-panel.submit.test.tsx` (and ideally a focused renderer typecheck) to catch any TS/runtime issues beyond the source-level slash-command assertions.
+  - Consider applying the same per-profile filtering to `PredefinedPromptsMenu` if skill prompt insertion is also meant to honor profile-level skill gating, but keep that as a separate follow-up since this slice intentionally focused on slash invocation.
+
+- Next recommended issue work item: if the workspace dependencies become available, finish the blocked desktop verification for this `#53` slice first; otherwise refresh open issues again and prefer either a new well-scoped bug or a narrow follow-up from `#58` rather than re-opening the broader blocked `#54` work.

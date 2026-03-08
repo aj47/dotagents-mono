@@ -7,7 +7,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
-import type { AgentSkill } from "@shared/types"
+import type { AgentProfile, AgentSkill, SessionProfileSnapshot } from "@shared/types"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import {
   expandSlashCommandText,
@@ -62,7 +62,56 @@ export function TileFollowUpInput({
     queryFn: () => tipcClient.getSkills(),
     staleTime: 60_000,
   })
-  const availableSkills = skillsQuery.data ?? []
+  const sessionProfileQuery = useQuery<SessionProfileSnapshot | null>({
+    queryKey: ["session-profile-snapshot", sessionId],
+    queryFn: () => tipcClient.getSessionProfileSnapshot({ sessionId }),
+    enabled: !!sessionId,
+    staleTime: 60_000,
+  })
+  const currentAgentProfileQuery = useQuery<AgentProfile | null>({
+    queryKey: ["current-agent-profile"],
+    queryFn: () => tipcClient.getCurrentAgentProfile(),
+    enabled: !sessionId || (!sessionProfileQuery.isLoading && !sessionProfileQuery.data?.profileId),
+    staleTime: 60_000,
+  })
+  const effectiveSlashSkillProfileId = sessionProfileQuery.data?.profileId ?? currentAgentProfileQuery.data?.id ?? null
+  const enabledSkillIdsQuery = useQuery<string[]>({
+    queryKey: ["profile-enabled-skill-ids", effectiveSlashSkillProfileId],
+    queryFn: () => tipcClient.getEnabledSkillIdsForProfile({ profileId: effectiveSlashSkillProfileId }),
+    enabled: !!effectiveSlashSkillProfileId,
+    staleTime: 60_000,
+  })
+  const availableSkills = React.useMemo(() => {
+    const skills = skillsQuery.data ?? []
+    const needsCurrentProfileFallback = !sessionId || !sessionProfileQuery.data?.profileId
+
+    if (sessionId && sessionProfileQuery.isLoading) {
+      return []
+    }
+
+    if (needsCurrentProfileFallback && currentAgentProfileQuery.isLoading) {
+      return []
+    }
+
+    if (!effectiveSlashSkillProfileId) {
+      return skills
+    }
+
+    if (!enabledSkillIdsQuery.data) {
+      return []
+    }
+
+    const enabledSkillIdSet = new Set(enabledSkillIdsQuery.data)
+    return skills.filter((skill) => enabledSkillIdSet.has(skill.id))
+  }, [
+    currentAgentProfileQuery.isLoading,
+    effectiveSlashSkillProfileId,
+    enabledSkillIdsQuery.data,
+    sessionId,
+    sessionProfileQuery.data?.profileId,
+    sessionProfileQuery.isLoading,
+    skillsQuery.data,
+  ])
   const slashCommandState = React.useMemo(
     () => getSlashCommandState(text, availableSkills),
     [availableSkills, text],

@@ -3,7 +3,7 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
 import { AgentProcessingView } from "./agent-processing-view"
-import { AgentProgressUpdate, AgentSkill } from "../../../shared/types"
+import { AgentProfile, AgentProgressUpdate, AgentSkill } from "../../../shared/types"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { AgentSelector } from "./agent-selector"
@@ -62,7 +62,42 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
     queryFn: () => tipcClient.getSkills(),
     staleTime: 60_000,
   })
-  const availableSkills = skillsQuery.data ?? []
+  const currentAgentProfileQuery = useQuery<AgentProfile | null>({
+    queryKey: ["current-agent-profile"],
+    queryFn: () => tipcClient.getCurrentAgentProfile(),
+    enabled: selectedAgentId === null,
+    staleTime: 60_000,
+  })
+  const effectiveSlashSkillProfileId = selectedAgentId ?? currentAgentProfileQuery.data?.id ?? null
+  const enabledSkillIdsQuery = useQuery<string[]>({
+    queryKey: ["profile-enabled-skill-ids", effectiveSlashSkillProfileId],
+    queryFn: () => tipcClient.getEnabledSkillIdsForProfile({ profileId: effectiveSlashSkillProfileId }),
+    enabled: !!effectiveSlashSkillProfileId,
+    staleTime: 60_000,
+  })
+  const availableSkills = React.useMemo(() => {
+    const skills = skillsQuery.data ?? []
+    if (selectedAgentId === null && currentAgentProfileQuery.isLoading) {
+      return []
+    }
+
+    if (!effectiveSlashSkillProfileId) {
+      return skills
+    }
+
+    if (!enabledSkillIdsQuery.data) {
+      return []
+    }
+
+    const enabledSkillIdSet = new Set(enabledSkillIdsQuery.data)
+    return skills.filter((skill) => enabledSkillIdSet.has(skill.id))
+  }, [
+    currentAgentProfileQuery.isLoading,
+    effectiveSlashSkillProfileId,
+    enabledSkillIdsQuery.data,
+    selectedAgentId,
+    skillsQuery.data,
+  ])
   const slashCommandState = React.useMemo(
     () => getSlashCommandState(text, availableSkills),
     [availableSkills, text],

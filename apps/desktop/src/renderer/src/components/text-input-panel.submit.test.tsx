@@ -112,12 +112,29 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
   vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: () => ({ data: mockSkills, isLoading: false })
+    useQuery: ({ queryKey, enabled = true }: any) => {
+      if (!enabled) {
+        return { data: undefined, isLoading: false }
+      }
+
+      switch (queryKey?.[0]) {
+        case "skills":
+          return { data: mockSkills, isLoading: false }
+        case "current-agent-profile":
+          return { data: { id: "default-agent" }, isLoading: false }
+        case "profile-enabled-skill-ids":
+          return { data: mockSkills.map((skill) => skill.id), isLoading: false }
+        default:
+          return { data: undefined, isLoading: false }
+      }
+    }
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ") }))
   vi.doMock("@renderer/lib/tipc-client", () => ({
     tipcClient: {
       getSkills: vi.fn(async () => mockSkills),
+      getCurrentAgentProfile: vi.fn(async () => ({ id: "default-agent" })),
+      getEnabledSkillIdsForProfile: vi.fn(async () => mockSkills.map((skill) => skill.id)),
     },
   }))
   vi.doMock("./agent-processing-view", () => ({ AgentProcessingView: Null }))

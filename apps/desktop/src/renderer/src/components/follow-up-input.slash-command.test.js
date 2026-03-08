@@ -15,6 +15,10 @@ test('shares slash-command expansion helpers for follow-up composers', () => {
 
 test('wires overlay follow-up input to skill slash suggestions and inline expansion', () => {
   assert.match(overlaySource, /const skillsQuery = useQuery<AgentSkill\[]>\(/);
+  assert.match(overlaySource, /const sessionProfileQuery = useQuery<SessionProfileSnapshot \| null>\(/);
+  assert.match(overlaySource, /tipcClient\.getSessionProfileSnapshot\(\{ sessionId \}\)/);
+  assert.match(overlaySource, /tipcClient\.getCurrentAgentProfile\(\)/);
+  assert.match(overlaySource, /tipcClient\.getEnabledSkillIdsForProfile\(\{ profileId: effectiveSlashSkillProfileId \}\)/);
   assert.match(overlaySource, /const matchedSlashSkill = slashCommandState\?\.exactSkill \?\? null/);
   assert.match(overlaySource, /const selectedSlashSkill = slashCommandState\?\.suggestions\[selectedSlashSkillIndex\] \?\? null/);
   assert.match(overlaySource, /const expandedText = expandSlashCommandText\(text, matchedSlashSkill\)/);
@@ -29,6 +33,10 @@ test('wires overlay follow-up input to skill slash suggestions and inline expans
 
 test('wires tile follow-up input to the same slash-command UX', () => {
   assert.match(tileSource, /const skillsQuery = useQuery<AgentSkill\[]>\(/);
+  assert.match(tileSource, /const sessionProfileQuery = useQuery<SessionProfileSnapshot \| null>\(/);
+  assert.match(tileSource, /tipcClient\.getSessionProfileSnapshot\(\{ sessionId \}\)/);
+  assert.match(tileSource, /tipcClient\.getCurrentAgentProfile\(\)/);
+  assert.match(tileSource, /tipcClient\.getEnabledSkillIdsForProfile\(\{ profileId: effectiveSlashSkillProfileId \}\)/);
   assert.match(tileSource, /const matchedSlashSkill = slashCommandState\?\.exactSkill \?\? null/);
   assert.match(tileSource, /const selectedSlashSkill = slashCommandState\?\.suggestions\[selectedSlashSkillIndex\] \?\? null/);
   assert.match(tileSource, /const expandedText = expandSlashCommandText\(text, matchedSlashSkill\)/);

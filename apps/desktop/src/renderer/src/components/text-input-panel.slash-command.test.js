@@ -18,6 +18,11 @@ test('wires desktop composer slash commands to skills query and inline expansion
   assert.match(source, /const skillsQuery = useQuery<AgentSkill\[]>\(/);
   assert.match(source, /queryKey: \["skills"\]/);
   assert.match(source, /queryFn: \(\) => tipcClient\.getSkills\(\)/);
+  assert.match(source, /const currentAgentProfileQuery = useQuery<AgentProfile \| null>\(/);
+  assert.match(source, /queryKey: \["current-agent-profile"\]/);
+  assert.match(source, /tipcClient\.getCurrentAgentProfile\(\)/);
+  assert.match(source, /tipcClient\.getEnabledSkillIdsForProfile\(\{ profileId: effectiveSlashSkillProfileId \}\)/);
+  assert.match(source, /return skills\.filter\(\(skill\) => enabledSkillIdSet\.has\(skill\.id\)\)/);
   assert.match(source, /Type `\/` for skills/);
   assert.match(source, /const matchedSlashSkill = slashCommandState\?\.exactSkill \?\? null/);
   assert.match(source, /const expandedText = expandSlashCommandText\(text, matchedSlashSkill\)/);
