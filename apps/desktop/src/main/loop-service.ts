@@ -7,13 +7,12 @@
  * migrated on first load.
  */
 
-import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import { configStore, getRuntimeAgentsLayers } from "./config"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
   loadTasksLayer,
   writeTaskFile,
@@ -57,21 +56,17 @@ class LoopService {
 
   /** Load tasks from .agents/tasks/ (global + workspace), migrating from config.json if needed. */
   private loadFromDisk(): void {
-    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-    const globalResult = loadTasksLayer(globalLayer)
+    const { globalLayer, orderedLayers } = getRuntimeAgentsLayers()
+    const loadedLayers = orderedLayers.map(({ paths }) => loadTasksLayer(paths))
 
-    const workspaceDir = resolveWorkspaceAgentsFolder()
-    let workspaceTasks: LoopConfig[] = []
-    if (workspaceDir) {
-      const workspaceLayer = getAgentsLayerPaths(workspaceDir)
-      workspaceTasks = loadTasksLayer(workspaceLayer).tasks
-    }
-
-    if (globalResult.tasks.length > 0 || workspaceTasks.length > 0) {
-      // Merge: workspace overrides global by ID
+    if (loadedLayers.some(({ tasks }) => tasks.length > 0)) {
+      // Merge using the current runtime layer order so later layers override earlier ones.
       const mergedById = new Map<string, LoopConfig>()
-      for (const t of globalResult.tasks) mergedById.set(t.id, t)
-      for (const t of workspaceTasks) mergedById.set(t.id, t) // workspace wins
+      for (const loadedLayer of loadedLayers) {
+        for (const task of loadedLayer.tasks) {
+          mergedById.set(task.id, task)
+        }
+      }
       this.loops = Array.from(mergedById.values())
       logApp(`[LoopService] Loaded ${this.loops.length} task(s) from .agents/tasks/`)
       return
@@ -82,7 +77,7 @@ class LoopService {
     if (legacyLoops.length > 0) {
       this.loops = [...legacyLoops]
       try {
-        writeAllTaskFiles(globalLayer, legacyLoops, { onlyIfMissing: true, maxBackups: 10 })
+        writeAllTaskFiles(globalLayer.paths, legacyLoops, { onlyIfMissing: true, maxBackups: 10 })
         logApp(`[LoopService] Migrated ${legacyLoops.length} task(s) from config.json to .agents/tasks/`)
       } catch (error) {
         logApp("[LoopService] Error migrating tasks to modular files:", error)
@@ -96,8 +91,8 @@ class LoopService {
   /** Persist a single task to the global .agents/tasks/ layer. */
   private saveTask(task: LoopConfig): void {
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      writeTaskFile(globalLayer, task, { maxBackups: 10 })
+      const { globalLayer } = getRuntimeAgentsLayers()
+      writeTaskFile(globalLayer.paths, task, { maxBackups: 10 })
     } catch (error) {
       logApp("[LoopService] Error saving task file:", error)
     }
@@ -108,8 +103,8 @@ class LoopService {
   /** Remove a task's files from the global .agents/tasks/ layer. */
   private removeTaskFiles(taskId: string): void {
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      deleteTaskFiles(globalLayer, taskId)
+      const { globalLayer } = getRuntimeAgentsLayers()
+      deleteTaskFiles(globalLayer.paths, taskId)
     } catch (error) {
       logApp("[LoopService] Error deleting task files:", error)
     }

@@ -23,13 +23,13 @@ import {
 } from "@shared/types"
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
-import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import { configStore, getRuntimeAgentsLayers } from "./config"
 import { getBuiltinToolNames } from "./builtin-tool-definitions"
 import { acpRegistry } from "./acp/acp-registry"
 import type { ACPAgentDefinition } from "./acp/types"
-import { getAgentsLayerPaths, writeAgentsPrompts, loadAgentsPrompts } from "./agents-files/modular-config"
+import { writeAgentsPrompts, loadAgentsPrompts } from "./agents-files/modular-config"
 import {
-  loadAgentProfilesLayer,
+  loadMergedAgentProfiles,
   writeAgentsProfileFiles,
   writeAllAgentsProfileFiles,
   deleteAgentProfileFiles,
@@ -242,8 +242,8 @@ class AgentProfileService {
   }
 
   private syncPromptsFromLayer(data: AgentProfilesData) {
-    const layerPath = resolveWorkspaceAgentsFolder() || globalAgentsFolder
-    const agentsLayerPaths = getAgentsLayerPaths(layerPath)
+    const { writableLayer } = getRuntimeAgentsLayers()
+    const agentsLayerPaths = writableLayer.paths
 
     const { systemPrompt, agentsGuidelines } = loadAgentsPrompts(agentsLayerPaths)
 
@@ -267,8 +267,8 @@ class AgentProfileService {
     const mainAgent = this.profilesData.profiles.find((p) => p.name === "main-agent")
     if (!mainAgent) return
 
-    const layerPath = resolveWorkspaceAgentsFolder() || globalAgentsFolder
-    const agentsLayerPaths = getAgentsLayerPaths(layerPath)
+    const { writableLayer } = getRuntimeAgentsLayers()
+    const agentsLayerPaths = writableLayer.paths
 
     writeAgentsPrompts(
       agentsLayerPaths,
@@ -289,22 +289,13 @@ class AgentProfileService {
    */
   private loadProfiles(): AgentProfilesData {
     // 1. Try loading from modular .agents/agents/ directory
-    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-    const globalResult = loadAgentProfilesLayer(globalLayer)
+    const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
+    const mergedProfiles = loadMergedAgentProfiles({
+      globalAgentsDir: globalLayer.paths.agentsDir,
+      workspaceAgentsDir: workspaceLayer?.paths.agentsDir ?? null,
+    })
 
-    const workspaceDir = resolveWorkspaceAgentsFolder()
-    let workspaceProfiles: AgentProfile[] = []
-    if (workspaceDir) {
-      const workspaceLayer = getAgentsLayerPaths(workspaceDir)
-      const workspaceResult = loadAgentProfilesLayer(workspaceLayer)
-      workspaceProfiles = workspaceResult.profiles
-    }
-
-    if (globalResult.profiles.length > 0 || workspaceProfiles.length > 0) {
-      // Merge: workspace overrides global by ID
-      const mergedById = new Map<string, AgentProfile>()
-      for (const p of globalResult.profiles) mergedById.set(p.id, p)
-      for (const p of workspaceProfiles) mergedById.set(p.id, p) // workspace wins
+    if (mergedProfiles.profiles.length > 0) {
 
       // Also load currentProfileId from legacy JSON if available
       let currentProfileId: string | undefined
@@ -316,7 +307,7 @@ class AgentProfileService {
       } catch { /* best-effort */ }
 
       this.profilesData = {
-        profiles: Array.from(mergedById.values()),
+        profiles: mergedProfiles.profiles,
         currentProfileId,
       }
       this.syncPromptsFromLayer(this.profilesData)
@@ -367,8 +358,8 @@ class AgentProfileService {
    */
   private migrateToModularFiles(profiles: AgentProfile[]): void {
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      writeAllAgentsProfileFiles(globalLayer, profiles, { onlyIfMissing: true, maxBackups: 10 })
+      const { globalLayer } = getRuntimeAgentsLayers()
+      writeAllAgentsProfileFiles(globalLayer.paths, profiles, { onlyIfMissing: true, maxBackups: 10 })
       logApp(`Migrated ${profiles.length} agent profile(s) to .agents/agents/`)
     } catch (error) {
       logApp("Error migrating agent profiles to modular files:", error)
@@ -447,8 +438,8 @@ class AgentProfileService {
       this.syncPromptsToLayer()
 
       // Canonical: write modular .agents/agents/ files
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      writeAllAgentsProfileFiles(globalLayer, this.profilesData.profiles, { maxBackups: 10 })
+      const { globalLayer } = getRuntimeAgentsLayers()
+      writeAllAgentsProfileFiles(globalLayer.paths, this.profilesData.profiles, { maxBackups: 10 })
 
       // Shadow: keep legacy agent-profiles.json for backward compatibility
       fs.writeFileSync(agentProfilesPath, JSON.stringify(this.profilesData, null, 2))
@@ -462,8 +453,8 @@ class AgentProfileService {
    */
   private saveSingleProfile(profile: AgentProfile): void {
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      writeAgentsProfileFiles(globalLayer, profile, { maxBackups: 10 })
+      const { globalLayer } = getRuntimeAgentsLayers()
+      writeAgentsProfileFiles(globalLayer.paths, profile, { maxBackups: 10 })
     } catch (error) {
       logApp("Error saving agent profile to modular files:", error)
     }
@@ -587,8 +578,8 @@ class AgentProfileService {
 
     // Delete modular files from .agents/agents/
     try {
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      deleteAgentProfileFiles(globalLayer, id)
+      const { globalLayer } = getRuntimeAgentsLayers()
+      deleteAgentProfileFiles(globalLayer.paths, id)
     } catch (error) {
       logApp("Error deleting agent profile files:", error)
     }

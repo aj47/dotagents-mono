@@ -10,8 +10,8 @@ import * as fs from "fs"
 import * as path from "path"
 import type { AgentMemory, AgentStepSummary } from "@shared/types"
 import { logLLM, isDebugLLM } from "./debug"
-import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { getRuntimeAgentsLayers } from "./config"
+import type { AgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getAgentsMemoriesBackupDir,
   loadAgentsMemoriesLayer,
@@ -87,10 +87,11 @@ class MemoryService {
   private initialized = false
 
   private getLayers(): { globalLayer: AgentsLayerPaths; workspaceLayer: AgentsLayerPaths | null } {
-    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
-    return { globalLayer, workspaceLayer }
+    const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
+    return {
+      globalLayer: globalLayer.paths,
+      workspaceLayer: workspaceLayer?.paths ?? null,
+    }
   }
 
   private coerceLegacyMemory(item: unknown): AgentMemory | null {

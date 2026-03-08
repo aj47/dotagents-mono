@@ -2244,30 +2244,23 @@ export const router = {
   // ============================================================================
 
   getAgentsFolders: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getRuntimeAgentsLayers } = await import("./config")
     const { getAgentsSkillsDir } = await import("./agents-files/skills")
     const { getAgentsMemoriesDir } = await import("./agents-files/memories")
 
-    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
-
-    const workspaceSource = workspaceLayer
-      ? (process.env.DOTAGENTS_WORKSPACE_DIR && process.env.DOTAGENTS_WORKSPACE_DIR.trim() ? "env" : "upward")
-      : null
+    const { globalLayer, workspaceLayer, workspaceSource } = getRuntimeAgentsLayers()
 
     return {
       global: {
-        agentsDir: globalLayer.agentsDir,
-        skillsDir: getAgentsSkillsDir(globalLayer),
-        memoriesDir: getAgentsMemoriesDir(globalLayer),
+        agentsDir: globalLayer.paths.agentsDir,
+        skillsDir: getAgentsSkillsDir(globalLayer.paths),
+        memoriesDir: getAgentsMemoriesDir(globalLayer.paths),
       },
       workspace: workspaceLayer
         ? {
-            agentsDir: workspaceLayer.agentsDir,
-            skillsDir: getAgentsSkillsDir(workspaceLayer),
-            memoriesDir: getAgentsMemoriesDir(workspaceLayer),
+            agentsDir: workspaceLayer.paths.agentsDir,
+            skillsDir: getAgentsSkillsDir(workspaceLayer.paths),
+            memoriesDir: getAgentsMemoriesDir(workspaceLayer.paths),
           }
         : null,
       workspaceSource,
@@ -2292,14 +2285,12 @@ export const router = {
   }),
 
   openSystemPromptFile: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { getRuntimeAgentsLayers } = await import("./config")
+    const { writeAgentsPrompts } = await import("./agents-files/modular-config")
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
 
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const targetLayer = workspaceAgentsFolder
-      ? getAgentsLayerPaths(workspaceAgentsFolder)
-      : getAgentsLayerPaths(globalAgentsFolder)
+    const { writableLayer } = getRuntimeAgentsLayers()
+    const targetLayer = writableLayer.paths
 
     fs.mkdirSync(targetLayer.agentsDir, { recursive: true })
 
@@ -2316,14 +2307,12 @@ export const router = {
   }),
 
   openAgentsGuidelinesFile: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { getRuntimeAgentsLayers } = await import("./config")
+    const { writeAgentsPrompts } = await import("./agents-files/modular-config")
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
 
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const targetLayer = workspaceAgentsFolder
-      ? getAgentsLayerPaths(workspaceAgentsFolder)
-      : getAgentsLayerPaths(globalAgentsFolder)
+    const { writableLayer } = getRuntimeAgentsLayers()
+    const targetLayer = writableLayer.paths
 
     fs.mkdirSync(targetLayer.agentsDir, { recursive: true })
 
@@ -2374,14 +2363,11 @@ export const router = {
       configStore.save(merged)
 
       try {
-        const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-        const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+        const { getRuntimeAgentsLayers } = await import("./config")
         const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
 
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
+        const { orderedLayers } = getRuntimeAgentsLayers()
+        const layers = orderedLayers.map(({ paths }) => paths)
 
         const validServerNames = Object.keys(merged.mcpConfig?.mcpServers || {})
         const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
@@ -4185,14 +4171,11 @@ export const router = {
       const success = skillsService.deleteSkill(input.id)
       if (!success) return false
 
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const layers = workspaceAgentsFolder
-        ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-        : [getAgentsLayerPaths(globalAgentsFolder)]
+      const { orderedLayers } = getRuntimeAgentsLayers()
+      const layers = orderedLayers.map(({ paths }) => paths)
 
       cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
       agentProfileService.reload()
@@ -4210,14 +4193,11 @@ export const router = {
       }
 
       if (results.some(result => result.success)) {
-        const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-        const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+        const { getRuntimeAgentsLayers } = await import("./config")
         const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
+        const { orderedLayers } = getRuntimeAgentsLayers()
+        const layers = orderedLayers.map(({ paths }) => paths)
 
         cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
         agentProfileService.reload()
@@ -4228,14 +4208,11 @@ export const router = {
 
   cleanupStaleSkillReferences: t.procedure.action(async () => {
     const { skillsService } = await import("./skills-service")
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getRuntimeAgentsLayers } = await import("./config")
     const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
+    const { orderedLayers } = getRuntimeAgentsLayers()
+    const layers = orderedLayers.map(({ paths }) => paths)
 
     const result = cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
     if (result.updatedProfileIds.length > 0) {
@@ -4245,14 +4222,11 @@ export const router = {
   }),
 
   cleanupStaleMcpServerReferences: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getRuntimeAgentsLayers } = await import("./config")
     const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
 
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
+    const { orderedLayers } = getRuntimeAgentsLayers()
+    const layers = orderedLayers.map(({ paths }) => paths)
 
     const validServerNames = Object.keys(configStore.get().mcpConfig?.mcpServers || {})
     const result = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
@@ -4514,15 +4488,11 @@ export const router = {
   // ============================================================================
 
   getBundleExportableItems: t.procedure.action(async () => {
-    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const { getRuntimeAgentsLayers } = await import("./config")
     const { getBundleExportableItemsFromLayers } = await import("./bundle-service")
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    const { orderedLayers } = getRuntimeAgentsLayers()
 
-    return getBundleExportableItemsFromLayers(
-      workspaceAgentsFolder
-        ? [globalAgentsFolder, workspaceAgentsFolder]
-        : [globalAgentsFolder]
-    )
+    return getBundleExportableItemsFromLayers(orderedLayers.map(({ paths }) => paths.agentsDir))
   }),
 
   exportBundle: t.procedure
@@ -4556,9 +4526,10 @@ export const router = {
       }
     } | undefined>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { exportBundleToFile, exportBundleToFileFromLayers } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+      const { globalLayer, orderedLayers, workspaceLayer } = getRuntimeAgentsLayers()
+      const layerDirs = orderedLayers.map(({ paths }) => paths.agentsDir)
       const exportOptions = {
         name: input?.name,
         description: input?.description,
@@ -4572,11 +4543,11 @@ export const router = {
       }
 
       // Export from merged layers when a workspace overlay exists (workspace wins on conflicts).
-      if (workspaceAgentsFolder) {
-        return exportBundleToFileFromLayers([globalAgentsFolder, workspaceAgentsFolder], exportOptions)
+      if (workspaceLayer) {
+        return exportBundleToFileFromLayers(layerDirs, exportOptions)
       }
 
-      return exportBundleToFile(globalAgentsFolder, exportOptions)
+      return exportBundleToFile(globalLayer.paths.agentsDir, exportOptions)
     }),
 
   generatePublishPayload: t.procedure
@@ -4612,12 +4583,10 @@ export const router = {
       memoryIds?: string[]
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { generatePublishPayload } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const dirs = workspaceAgentsFolder
-        ? [globalAgentsFolder, workspaceAgentsFolder]
-        : [globalAgentsFolder]
+      const { orderedLayers } = getRuntimeAgentsLayers()
+      const dirs = orderedLayers.map(({ paths }) => paths.agentsDir)
       return generatePublishPayload(dirs, {
         name: input.name,
         catalogId: input.catalogId,
@@ -4710,19 +4679,19 @@ export const router = {
   previewBundleWithConflicts: t.procedure
     .input<{ filePath: string }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { previewBundleWithConflicts } = await import("./bundle-service")
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const targetDir = workspaceAgentsFolder || globalAgentsFolder
+      const { globalLayer, workspaceLayer, writableLayer } = getRuntimeAgentsLayers()
+      const targetDir = writableLayer.paths.agentsDir
       const targetPreview = previewBundleWithConflicts(input.filePath, targetDir)
 
       // With workspace overlays, merge conflicts from global + workspace so preview
       // matches the merged UI view and catches shadowing collisions.
-      if (!workspaceAgentsFolder || !targetPreview.success) {
+      if (!workspaceLayer || !targetPreview.success) {
         return targetPreview
       }
 
-      const globalPreview = previewBundleWithConflicts(input.filePath, globalAgentsFolder)
+      const globalPreview = previewBundleWithConflicts(input.filePath, globalLayer.paths.agentsDir)
       if (!globalPreview.success) {
         return targetPreview
       }
@@ -4764,10 +4733,10 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { importBundle } = await import("./bundle-service")
-      // Use workspace layer if present, otherwise global
-      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
+      const { writableLayer } = getRuntimeAgentsLayers()
+      const targetDir = writableLayer.paths.agentsDir
       const result = await importBundle(input.filePath, targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
@@ -4803,10 +4772,10 @@ export const router = {
       }
     }>()
     .action(async ({ input }) => {
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { importBundleFromDialog } = await import("./bundle-service")
-      // Use workspace layer if present, otherwise global
-      const targetDir = resolveWorkspaceAgentsFolder() || globalAgentsFolder
+      const { writableLayer } = getRuntimeAgentsLayers()
+      const targetDir = writableLayer.paths.agentsDir
       const result = await importBundleFromDialog(targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
@@ -4931,29 +4900,28 @@ export const router = {
         return { success: false, error: `Task with id ${input.loopId} not found` }
       }
 
-      const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+      const { getRuntimeAgentsLayers } = await import("./config")
       const { loadTasksLayer, taskIdToFilePath, writeTaskFile } = await import("./agents-files/tasks")
 
-      const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-      const workspaceDir = resolveWorkspaceAgentsFolder()
-      const workspaceLayer = workspaceDir ? getAgentsLayerPaths(workspaceDir) : null
+      const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
+      const globalTaskLayer = globalLayer.paths
+      const workspaceTaskLayer = workspaceLayer?.paths ?? null
 
       let filePath: string | undefined
 
-      if (workspaceLayer) {
-        const workspaceLoaded = loadTasksLayer(workspaceLayer)
+      if (workspaceTaskLayer) {
+        const workspaceLoaded = loadTasksLayer(workspaceTaskLayer)
         filePath = workspaceLoaded.originById.get(input.loopId)?.filePath
       }
 
       if (!filePath) {
-        const globalLoaded = loadTasksLayer(globalLayer)
+        const globalLoaded = loadTasksLayer(globalTaskLayer)
         filePath = globalLoaded.originById.get(input.loopId)?.filePath
       }
 
       if (!filePath) {
-        writeTaskFile(globalLayer, loop, { maxBackups: 10 })
-        filePath = taskIdToFilePath(globalLayer, input.loopId)
+        writeTaskFile(globalTaskLayer, loop, { maxBackups: 10 })
+        filePath = taskIdToFilePath(globalTaskLayer, input.loopId)
       }
 
       return revealFileInFolder(filePath)

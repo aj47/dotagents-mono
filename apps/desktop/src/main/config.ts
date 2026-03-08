@@ -9,6 +9,7 @@ import { DEFAULT_SYSTEM_PROMPT } from "./system-prompts-default"
 import {
   findAgentsDirUpward,
   getAgentsLayerPaths,
+  type AgentsLayerPaths,
   loadMergedAgentsConfig,
   writeAgentsLayerFromConfig,
 } from "./agents-files/modular-config"
@@ -96,6 +97,55 @@ export function resolveWorkspaceAgentsFolder(): string | null {
   // Don't return the same directory as the global layer
   if (path.resolve(found) === globalResolved) return null
   return found
+}
+
+export type RuntimeAgentsLayerName = "global" | "workspace"
+
+export type RuntimeAgentsLayer = {
+  name: RuntimeAgentsLayerName
+  paths: AgentsLayerPaths
+}
+
+export type RuntimeAgentsLayers = {
+  globalLayer: RuntimeAgentsLayer
+  workspaceLayer: RuntimeAgentsLayer | null
+  orderedLayers: RuntimeAgentsLayer[]
+  writableLayer: RuntimeAgentsLayer
+  workspaceSource: "env" | "upward" | null
+}
+
+/**
+ * Resolves the current ordered `.agents` layers for the desktop runtime.
+ *
+ * Today this is the existing global base layer plus an optional workspace overlay.
+ * Centralizing the contract here keeps current behavior explicit and gives future
+ * bundle-slot work one place to extend layer resolution safely.
+ */
+export function getRuntimeAgentsLayers(): RuntimeAgentsLayers {
+  const globalLayer: RuntimeAgentsLayer = {
+    name: "global",
+    paths: getAgentsLayerPaths(globalAgentsFolder),
+  }
+
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  const workspaceLayer: RuntimeAgentsLayer | null = workspaceAgentsFolder
+    ? {
+        name: "workspace",
+        paths: getAgentsLayerPaths(workspaceAgentsFolder),
+      }
+    : null
+
+  const workspaceSource = workspaceLayer
+    ? (process.env.DOTAGENTS_WORKSPACE_DIR && process.env.DOTAGENTS_WORKSPACE_DIR.trim() ? "env" : "upward")
+    : null
+
+  return {
+    globalLayer,
+    workspaceLayer,
+    orderedLayers: workspaceLayer ? [globalLayer, workspaceLayer] : [globalLayer],
+    writableLayer: workspaceLayer ?? globalLayer,
+    workspaceSource,
+  }
 }
 
 /**
@@ -317,9 +367,12 @@ const getConfig = (): LoadedConfig => {
   }
 
   // 1) Preferred: modular `.agents` format (global + optional workspace overlay)
-  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
   const { merged: mergedAgents, hasAnyAgentsFiles } = loadMergedAgentsConfig(
-    { globalAgentsDir: globalAgentsFolder, workspaceAgentsDir: workspaceAgentsFolder }
+    {
+      globalAgentsDir: globalLayer.paths.agentsDir,
+      workspaceAgentsDir: workspaceLayer?.paths.agentsDir ?? null,
+    }
   )
 
   // 2) Always load legacy config.json as the base layer (it holds API keys, preferences, etc.)

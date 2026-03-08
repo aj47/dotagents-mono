@@ -1945,3 +1945,36 @@
   - PR: not created in this iteration.
 
 - Next recommended issue work item: for actual code, prefer the `#57` slot-foundation helper as the next safe trust-track slice; otherwise refresh again and pick a fresh bug or similarly concrete non-slot issue rather than forcing a partial slot UI.
+
+##### Issue #57 — Bundle presets / slots: shared runtime layer-resolution foundation
+
+- Selection rationale:
+  - The previous `#57` triage entry identified one safe next slice before any slot UI/import-target work: centralize runtime `.agents` layer resolution so future slot layers can be added without every service re-implementing precedence rules.
+  - This was small, shippable, and high leverage across config loading, bundle flows, tasks, memories, skills, and agent profiles.
+- Investigation:
+  - Re-read issue `#57` plus the new owner slots comment and confirmed the requested model is an ordered runtime layer stack, not another destructive merge path.
+  - Re-inspected `apps/desktop/src/main/config.ts`, `tipc.ts`, `loop-service.ts`, `memory-service.ts`, `skills-service.ts`, and `agent-profile-service.ts` and confirmed each still resolved `global + optional workspace` layers independently.
+  - Confirmed bundle preview/import/export/cleanup code in `tipc.ts` was also hand-assembling layer arrays and writable targets, making it an especially important place to stop duplicating the current precedence contract before slots are introduced.
+- Important assumptions:
+  - Assumption: the correct slot-foundation slice is to centralize the **current** runtime contract (`global`, then optional `workspace` override) without implementing slot precedence yet.
+  - Why acceptable: the issue comment makes slots the next direction, but changing precedence before the active-slot model exists would be speculative and risk user-visible behavior drift.
+  - Assumption: source-level regression coverage plus desktop TypeScript validation is sufficient for this refactor slice.
+  - Why acceptable: the change is primarily a shared-contract refactor with no new package installs required, and this worktree can now run `pnpm --filter @dotagents/desktop exec tsc --noEmit` successfully.
+- Changes implemented:
+  - Added `getRuntimeAgentsLayers()` in `apps/desktop/src/main/config.ts`, returning the ordered current runtime layers, writable layer, and workspace-source metadata in one place.
+  - Updated `config.ts` itself to load merged config through that shared helper instead of re-resolving workspace state inline.
+  - Migrated `apps/desktop/src/main/agent-profile-service.ts`, `memory-service.ts`, `skills-service.ts`, and `loop-service.ts` to use the shared runtime layer contract instead of each rebuilding `global/workspace` paths ad hoc.
+  - Updated `apps/desktop/src/main/tipc.ts` bundle/export/import/preview target selection, cleanup helpers, prompt/guidelines file actions, and `getAgentsFolders` to consume the same shared runtime layer helper.
+  - Added `apps/desktop/src/main/agents-layer-resolution.foundation.test.js`, a dependency-free regression test asserting the new central helper exists and that the key desktop services/TIPC bundle flows route through it.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Decide and document the exact future slot precedence relative to workspace `.agents` before adding `active-slot.json` or writable slot targeting.
+  - Add slot metadata/helpers (`bundle-slots/{slotId}`, `active-slot.json`) on top of the new shared runtime layer contract.
+  - Once slot state exists, extend the same shared helper to include the active slot and then add a minimal Settings/UI surface for active-slot visibility and switching.
+
+- Next recommended issue work item: stay on `#57` for slot metadata/preference groundwork only if slot-vs-workspace precedence can be made explicit in code/comments first; otherwise refresh the backlog again and choose a fresh bug or similarly concrete trust/UX slice.

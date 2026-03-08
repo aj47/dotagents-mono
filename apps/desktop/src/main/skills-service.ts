@@ -10,8 +10,8 @@ import { promisify } from "util"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
-import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { getRuntimeAgentsLayers } from "./config"
+import type { AgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getAgentsSkillsBackupDir,
   getAgentsSkillsDir,
@@ -389,8 +389,8 @@ export function initializeBundledSkills(): { copied: string[]; skipped: string[]
   const result = { copied: [] as string[], skipped: [] as string[], errors: [] as string[] }
 
   // Canonical destination: global .agents/skills/
-  const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-  const destSkillsDir = getAgentsSkillsDir(globalLayer)
+  const { globalLayer } = getRuntimeAgentsLayers()
+  const destSkillsDir = getAgentsSkillsDir(globalLayer.paths)
 
   logApp(`Initializing bundled skills from: ${bundledPath}`)
   logApp(`Canonical skills destination: ${destSkillsDir}`)
@@ -526,10 +526,11 @@ class SkillsService {
   }
 
   private getLayers(): { globalLayer: AgentsLayerPaths; workspaceLayer: AgentsLayerPaths | null } {
-    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const workspaceLayer = workspaceAgentsFolder ? getAgentsLayerPaths(workspaceAgentsFolder) : null
-    return { globalLayer, workspaceLayer }
+    const { globalLayer, workspaceLayer } = getRuntimeAgentsLayers()
+    return {
+      globalLayer: globalLayer.paths,
+      workspaceLayer: workspaceLayer?.paths ?? null,
+    }
   }
 
   private sortSkillsStable(skillsArr: AgentSkill[]): AgentSkill[] {
@@ -1399,18 +1400,8 @@ function setupWatcher(dirPath: string): fs.FSWatcher | null {
  * Returns the canonical .agents/skills directories to watch (global + workspace if present).
  */
 function getCanonicalSkillsDirs(): string[] {
-  const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
-  const globalSkillsDir = getAgentsSkillsDir(globalLayer)
-  const dirs = [globalSkillsDir]
-
-  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-  if (workspaceAgentsFolder) {
-    const workspaceLayer = getAgentsLayerPaths(workspaceAgentsFolder)
-    const workspaceSkillsDir = getAgentsSkillsDir(workspaceLayer)
-    dirs.push(workspaceSkillsDir)
-  }
-
-  return dirs
+  const { orderedLayers } = getRuntimeAgentsLayers()
+  return orderedLayers.map(({ paths }) => getAgentsSkillsDir(paths))
 }
 
 /**
