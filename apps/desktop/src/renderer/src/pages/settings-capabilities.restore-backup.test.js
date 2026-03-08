@@ -15,11 +15,15 @@ const bundleServiceSource = fs.readFileSync(path.join(__dirname, '..', '..', '..
 test('settings capabilities exposes a restore-backup entrypoint that reuses the bundle import dialog', () => {
   assert.match(settingsSource, /Restore Backup/)
   assert.match(settingsSource, /tipcClient\.selectBundleBackupFile\(\)/)
+  assert.match(settingsSource, /tipcClient\.listBundleBackups\(\{ limit: 4 \}\)/)
+  assert.match(settingsSource, /Recent backups/)
+  assert.match(settingsSource, /openRestoreDialogForFile\(backup\.filePath\)/)
   assert.match(settingsSource, /<BundleImportDialog[\s\S]*title="Restore Backup"/)
   assert.match(settingsSource, /confirmLabel="Restore"/)
   assert.match(settingsSource, /successVerb="restored"/)
   assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["skills"\] \}\)/)
   assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["config"\] \}\)/)
+  assert.match(settingsSource, /queryClient\.invalidateQueries\(\{ queryKey: \["bundle-import-backups"\] \}\)/)
 })
 
 test('bundle import dialog supports restore-specific labels without forking the import flow', () => {
@@ -34,8 +38,13 @@ test('bundle import dialog supports restore-specific labels without forking the 
 test('main process offers a backup-file picker rooted in the default backup directory', () => {
   assert.match(bundleServiceSource, /export function getDefaultImportBackupDirectory\(\): string/)
   assert.match(bundleServiceSource, /export async function selectImportBackupBundleFromDialog\(\): Promise<string \| null>/)
+  assert.match(bundleServiceSource, /export function listImportBackups\(options\?: \{ limit\?: number \}\): ImportBackupSummary\[]/)
+  assert.match(bundleServiceSource, /manifestName: bundle\.manifest\.name/)
+  assert.match(bundleServiceSource, /\.sort\(\(a, b\) => b\.modifiedAt - a\.modifiedAt\)/)
   assert.match(bundleServiceSource, /title: "Restore Backup Bundle"/)
   assert.match(bundleServiceSource, /defaultPath: backupDir/)
   assert.match(tipcSource, /selectBundleBackupFile: t\.procedure\.action\(async \(\) =>/)
+  assert.match(tipcSource, /listBundleBackups: t\.procedure/)
+  assert.match(tipcSource, /listImportBackups\(\{ limit: input\?\.limit \}\)/)
   assert.match(tipcSource, /selectImportBackupBundleFromDialog/)
 })

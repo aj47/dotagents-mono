@@ -4664,6 +4664,13 @@ export const router = {
     return filePath ? { filePath } : null
   }),
 
+  listBundleBackups: t.procedure
+    .input<{ limit?: number } | undefined>()
+    .action(async ({ input }) => {
+      const { listImportBackups } = await import("./bundle-service")
+      return listImportBackups({ limit: input?.limit })
+    }),
+
   previewBundleWithConflicts: t.procedure
     .input<{ filePath: string }>()
     .action(async ({ input }) => {

@@ -284,6 +284,16 @@ export interface BundlePreviewResult {
   error?: string
 }
 
+export interface ImportBackupSummary {
+  filePath: string
+  fileName: string
+  manifestName: string
+  manifestDescription?: string
+  createdAt: string
+  modifiedAt: number
+  components: BundleManifest["components"]
+}
+
 // ============================================================================
 // Secret stripping
 // ============================================================================
@@ -1427,6 +1437,42 @@ export async function selectImportBackupBundleFromDialog(): Promise<string | nul
   }
 
   return result.filePaths[0]
+}
+
+export function listImportBackups(options?: { limit?: number }): ImportBackupSummary[] {
+  const backupDir = getDefaultImportBackupDirectory()
+  const limit = Math.max(1, options?.limit ?? 5)
+
+  if (!fs.existsSync(backupDir)) {
+    return []
+  }
+
+  return fs.readdirSync(backupDir)
+    .map(fileName => {
+      const filePath = path.join(backupDir, fileName)
+      const stats = fs.statSync(filePath)
+      if (!stats.isFile() || !isSupportedBundleFile(filePath)) {
+        return null
+      }
+
+      const bundle = previewBundle(filePath)
+      if (!bundle) {
+        return null
+      }
+
+      return {
+        filePath,
+        fileName,
+        manifestName: bundle.manifest.name,
+        manifestDescription: bundle.manifest.description,
+        createdAt: bundle.manifest.createdAt,
+        modifiedAt: stats.mtimeMs,
+        components: bundle.manifest.components,
+      } satisfies ImportBackupSummary
+    })
+    .filter((backup): backup is ImportBackupSummary => Boolean(backup))
+    .sort((a, b) => b.modifiedAt - a.modifiedAt)
+    .slice(0, limit)
 }
 
 // ============================================================================
