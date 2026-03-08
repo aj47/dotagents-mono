@@ -509,7 +509,7 @@ export function ResponseHistoryPanel({
             const isNewestEntry =
               shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
             return (
-              <React.Fragment key={`${response.timestamp}-${index}`}>
+              <React.Fragment key={responseKey}>
                 {index > 0 && <View style={styles.separator} />}
                 <AnimatedResponseItem isNewest={isNewestEntry}>
                   <View style={styles.responseItem}>

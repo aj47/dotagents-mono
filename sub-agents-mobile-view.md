@@ -7440,3 +7440,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new blocked-queue notice is easy to scan and does not crowd the queue header or first failed row on a narrow screen.
   - Capture screenshot-backed evidence for both `1 failed` and `1 failed + 1 processing` queue states so the warning + info notice stack can be judged with real spacing and row content.
   - After that live pass, continue with the next highest-signal local improvement instead of revisiting this blocked-queue notice without fresh evidence.
+
+## Iteration 137 - Stabilize mobile response-history rows when new agent replies arrive
+
+- Date: 2026-03-08
+- Summary: Improved `ResponseHistoryPanel` rendering stability on mobile by switching each response row to the already-derived stable `responseKey`, so older rows do not remount just because a newer delegated reply is prepended to the list.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the just-updated queue warning notice or recently touched response-history header/preview work without fresh evidence.
+  - Re-checked `apps/mobile/src/ui/ResponseHistoryPanel.tsx` and `apps/mobile/tests/response-history-panel-mobile.test.js` for a still-local issue inside the active sub-agent activity stack.
+  - Confirmed the panel already derived `responseKey = \`${response.timestamp}-${originalIndex}\`` for expansion state, but the rendered `React.Fragment` key still used the reversed render index instead.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `ResponseHistoryPanel` renders newest responses first by reversing the array.
+  - Source review showed each rendered row still used `key={\`${response.timestamp}-${index}\`}`, where `index` is the reversed render position.
+  - On mobile, that means prepending one new response can shift the key for every older row, creating avoidable remount churn in a compact activity surface where users may already have older rows expanded or be tracking speech state.
+- Issue identified:
+  - Response-history rows used unstable render-index keys, weakening state continuity and risking unnecessary visual churn in the mobile delegated-response stack.
+- Decision and rationale:
+  - Keep the response-history layout, ordering, badges, playback controls, and preview-collapse behavior unchanged.
+  - Do not broaden this into a larger response-history refactor while live validation is blocked.
+  - Make the smallest effective fix instead: reuse the stable `responseKey` the component already computes for expansion state so row identity stays anchored when newer responses appear above older ones.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to render each `React.Fragment` with `key={responseKey}` instead of a reversed render-index key.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage that asserts the stable `responseKey` derivation and rendered fragment key usage.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+- Assumptions and tradeoffs:
+  - Assumed preserving row identity during prepends is worth a small source-only change because this panel updates incrementally while users are reading the latest delegated output.
+  - Reused the component's existing `responseKey` instead of inventing new identity logic, which keeps the fix low risk and aligned with the panel's current expansion-state contract.
+  - This remains a source-backed improvement and still needs live confirmation that older expanded rows no longer feel visually reset when a new response arrives.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `ResponseHistoryPanel` still lacks fresh screenshot-backed validation after multiple recent header, preview, playback, and now row-identity improvements.
+  - A live pass is still needed to confirm prepended responses do not create noticeable visual jumpiness when an older row is expanded or currently speaking on a narrow screen.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that expanding an older response and then receiving a new agent reply no longer causes the older row to visually reset.
+  - Capture screenshot-backed or video-backed evidence of the response-history panel before/after a new reply is prepended so the continuity improvement can be judged on a real narrow viewport.
+  - After that live pass, continue with the next highest-signal local improvement instead of revisiting this row-identity tweak without fresh evidence.

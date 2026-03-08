@@ -98,7 +98,9 @@ test('collapses older long response rows to previews while leaving the latest re
   assert.match(responseHistorySource, /function shouldCollapseResponseByDefault\(responseText: string\): boolean \{[\s\S]*?normalizedResponse\.length > COLLAPSED_RESPONSE_PREVIEW_LIMIT[\s\S]*?nonEmptyLines\.length > COLLAPSED_RESPONSE_PREVIEW_LINE_THRESHOLD;/);
   assert.match(responseHistorySource, /const responsePreview = buildCollapsedResponsePreview\(response\.text\);/);
   assert.match(responseHistorySource, /const shouldCollapseResponse = shouldCollapseResponseByDefault\(response\.text\);/);
+  assert.match(responseHistorySource, /const responseKey = `\$\{response\.timestamp\}-\$\{originalIndex\}`;/);
   assert.match(responseHistorySource, /const isResponseExpanded = shouldCollapseResponse[\s\S]*?\(expandedResponses\[responseKey\] \?\? isLatest\)[\s\S]*?: true;/);
+  assert.match(responseHistorySource, /<React\.Fragment key=\{responseKey\}>/);
   assert.match(responseHistorySource, /\{isResponseExpanded \? \([\s\S]*?<MarkdownRenderer content=\{response\.text\} \/>[\s\S]*?\) : \([\s\S]*?<Text style=\{styles\.responsePreview\} numberOfLines=\{3\} ellipsizeMode="tail">[\s\S]*?\{responsePreview\}[\s\S]*?<\/Text>/);
 });
 
