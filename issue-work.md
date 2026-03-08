@@ -2294,3 +2294,37 @@
   - Only resume broader Phase 2/Phase 3 hub work when there is another similarly concrete local slice (for example, installed/update status or registry-caching behavior), not by reopening the full umbrella spec at once.
 
 - Next recommended issue work item: refresh the open issues again and prefer a fresh, well-scoped bug or reliability slice next; if `#25` is revisited, keep it to another concrete docs/trust-sync step rather than speculative roadmap prose.
+
+##### Issue #57 — Bundle-slot groundwork: make future slot precedence explicit in code/comments
+
+- Selection rationale:
+  - After the `#25` docs/spec sync commit, refreshed the open issues again and re-read the latest tail of `issue-work.md` before choosing the next slice.
+  - `#57` remained the best narrow follow-up because the ledger had already identified one prerequisite blocker for any active-slot metadata/UI work: slot precedence relative to workspace `.agents` still was not explicit in code, even though slot support had become the next requested direction.
+  - This was small, reviewable, and directly useful: it settles the contract future slot work should extend without speculating on broader slot UI or import-target behavior yet.
+- Investigation:
+  - Re-read issue `#57` and its follow-up comments, especially the newest slot comment requiring the runtime loader to mount an `active slot` as a higher-priority layer.
+  - Re-inspected `apps/desktop/src/main/config.ts` and confirmed `getRuntimeAgentsLayers()` already centralizes the current runtime order but only documents the present `global + optional workspace overlay` behavior.
+  - Re-inspected `apps/desktop/src/main/agents-layer-resolution.foundation.test.js` and confirmed the existing no-dependency guard locked the helper shape/usages, making it the best place to freeze the new precedence note too.
+  - Re-checked repo guidance and nearby merge comments (`workspace wins on conflicts`) to avoid documenting a slot order that would silently contradict the project’s current conflict semantics.
+- Important assumptions:
+  - Assumption: the slot comment's "higher-priority layer" requirement should be interpreted as `higher priority than global`, not `higher priority than workspace`.
+  - Why acceptable: repo guidance and existing merge comments already establish that workspace overrides win on conflicts, so the least surprising future order is `global -> active slot -> workspace`.
+  - Assumption: a code-comment plus regression-test slice is enough progress for this iteration even without adding `active-slot.json` metadata yet.
+  - Why acceptable: the explicit blocker was ambiguity in the contract itself; documenting and locking that contract removes the ambiguity without shipping misleading partially wired slot UI.
+- Changes implemented:
+  - Added an explicit future-precedence comment above `RuntimeAgentsLayerName` in `apps/desktop/src/main/config.ts` documenting that bundle-slot work must preserve `global -> active slot -> workspace` ordering.
+  - Expanded the `getRuntimeAgentsLayers()` docblock to say the centralized helper should be extended with the same slot-in-the-middle ordering once slot support is introduced.
+  - Updated `apps/desktop/src/main/agents-layer-resolution.foundation.test.js` so the existing no-dependency guard now asserts both the future `global -> active slot -> workspace` contract and the `workspace wins on conflicts` note.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Add actual slot metadata/helpers (`bundle-slots/{slotId}`, `active-slot.json`) on top of the now-explicit precedence contract.
+  - Once slot state exists, extend `getRuntimeAgentsLayers()` to include the active slot between global and workspace, then add a minimal read-only UI/TIPC surface showing the active slot and last-switched metadata.
+  - Keep import-target and restore semantics aligned with this precedence when slot-aware bundle import is introduced.
+
+- Next recommended issue work item: refresh the open issues again and prefer the next smallest direct-value bug/reliability slice; if `#57` is revisited, the clean next step is real slot metadata/state on top of the now-documented layer order, not more abstract slot planning.

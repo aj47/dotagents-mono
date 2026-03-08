@@ -99,6 +99,16 @@ export function resolveWorkspaceAgentsFolder(): string | null {
   return found
 }
 
+/**
+ * Current runtime layers are the global base plus an optional workspace overlay.
+ *
+ * Future bundle-slot work must keep workspace as the highest-priority override:
+ * `global -> active slot -> workspace`.
+ *
+ * That preserves the repo-wide "workspace wins on conflicts" rule while still
+ * letting an active slot override the global baseline without destructively
+ * rewriting it.
+ */
 export type RuntimeAgentsLayerName = "global" | "workspace"
 
 export type RuntimeAgentsLayer = {
@@ -119,7 +129,9 @@ export type RuntimeAgentsLayers = {
  *
  * Today this is the existing global base layer plus an optional workspace overlay.
  * Centralizing the contract here keeps current behavior explicit and gives future
- * bundle-slot work one place to extend layer resolution safely.
+ * bundle-slot work one place to extend layer resolution safely. When slot support
+ * is introduced, extend the ordered contract to `global -> active slot -> workspace`
+ * so workspace remains the top override layer.
  */
 export function getRuntimeAgentsLayers(): RuntimeAgentsLayers {
   const globalLayer: RuntimeAgentsLayer = {
