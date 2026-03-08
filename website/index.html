@@ -1496,6 +1496,8 @@
         const modalContent = document.querySelector('#modal-content')
         const modalError = document.querySelector('#modal-error')
         let lastFocusedElement = null
+        let activeBundleRequestId = 0
+        let activeBundleAbortController = null
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -1987,6 +1989,28 @@
             modalFooterMeta.innerHTML = ''
         }
 
+        function cancelBundleRequest() {
+            activeBundleRequestId += 1
+            if (activeBundleAbortController) {
+                activeBundleAbortController.abort()
+                activeBundleAbortController = null
+            }
+        }
+
+        function beginBundleRequest() {
+            cancelBundleRequest()
+            const requestId = activeBundleRequestId
+            const abortController = typeof AbortController === 'function' ? new AbortController() : null
+            activeBundleAbortController = abortController
+            return { requestId, abortController }
+        }
+
+        function finishBundleRequest(requestId, abortController) {
+            if (requestId === activeBundleRequestId && activeBundleAbortController === abortController) {
+                activeBundleAbortController = null
+            }
+        }
+
         function openModal() {
             lastFocusedElement = document.activeElement
             modal.hidden = false
@@ -1996,6 +2020,7 @@
 
         function closeModal() {
             if (modal.hidden) return
+            cancelBundleRequest()
             modal.hidden = true
             document.body.style.overflow = ''
             if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
@@ -2024,9 +2049,10 @@
                 modalInstallBtn.href = `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
                 resetModalState()
                 openModal()
+                const { requestId, abortController } = beginBundleRequest()
 
                 try {
-                    const response = await fetch(bundleUrl)
+                    const response = await fetch(bundleUrl, abortController ? { signal: abortController.signal } : undefined)
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`)
                     }
@@ -2039,6 +2065,8 @@
                     const author = bundle.manifest?.publicMetadata?.author || {}
                     const authorLabel = author.displayName || author.handle || 'community author'
                     const warningBadges = buildWarningBadges(bundle)
+
+                    if (requestId !== activeBundleRequestId || modal.hidden) return
 
                     modalBundleMeta.innerHTML = `
                         <span>v${escapeHtml(bundle.manifest?.version ?? 1)}</span>
@@ -2065,10 +2093,13 @@
                     modalContent.innerHTML = renderBundle(bundle)
                     modalLoading.hidden = true
                     modalContent.hidden = false
+                    finishBundleRequest(requestId, abortController)
                 } catch (error) {
+                    if (requestId !== activeBundleRequestId || error?.name === 'AbortError') return
                     modalLoading.hidden = true
                     modalError.hidden = false
                     modalError.textContent = `Could not load bundle: ${error.message}`
+                    finishBundleRequest(requestId, abortController)
                 }
             })
         })

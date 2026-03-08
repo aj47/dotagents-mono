@@ -3489,3 +3489,40 @@
   - Once this worktree has a full dependency install again, revisit `#55` with a real desktop package run or direct UI smoke validation so the remaining open bug has stronger runtime evidence than the current dependency-free checks.
 
 - Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` still cannot be validated more directly because dependencies remain unavailable, prefer another fresh source-confirmed UX/reliability slice outside the recent `#57`/`#58` threads rather than churning on the blocked package runner.
+
+##### Issue #56 — Bundle inspector ignores stale fetch results after rapid card switching
+
+- Selection rationale:
+  - Re-read `issue-work.md` first, refreshed the still-open repo issues, and avoided immediately returning to the heavily-worked `#57` / `#58` threads.
+  - Re-read issue `#56` plus its owner comment and confirmed the website inspector is still an active trust surface where small reliability gaps are worth fixing.
+  - In `website/index.html`, the inspector click handler launched a fresh `fetch()` for every card but had no request cancellation or stale-response guard, which made rapid card switching a concrete, local trust bug.
+- Investigation:
+  - Reviewed issue `#56`, its v1 comment, and the current website inspector source/tests in `website/index.html` and `website/website-hub-inspector.test.js`.
+  - Confirmed by source inspection that clicking `Inspect` on bundle A and then quickly on bundle B could let A's slower response overwrite the modal body after B had already updated the modal title/install target.
+  - Verified this is user-visible reliability risk rather than a theoretical cleanup item because the modal is explicitly meant to help users trust what they are about to install.
+- Important assumptions:
+  - Assumption: fixing stale inspector responses is a valid `#56` slice even though the original issue focused more on modal content/features than on async reliability.
+  - Why acceptable: the modal's core promise is trustworthy preview-before-install, and mixed/stale content directly undermines that promise.
+  - Assumption: using `AbortController` when available, plus a request-id fallback guard, is the safest narrow implementation.
+  - Why acceptable: it avoids broader state-management changes, works in modern browsers, and still protects against stale writes if abort support is unavailable.
+- Changes implemented:
+  - Added `activeBundleRequestId` and `activeBundleAbortController` tracking in `website/index.html` for the inspector modal.
+  - Added `cancelBundleRequest()`, `beginBundleRequest()`, and `finishBundleRequest()` helpers so a new inspect action invalidates/aborts any previous request and modal close also cancels in-flight work.
+  - Updated the inspector fetch path to pass an abort signal when available and ignore any success/error result that no longer matches the current active request or a still-open modal.
+  - Extended `website/website-hub-inspector.test.js` with dependency-free source assertions covering the new request lifecycle, abort-signal wiring, stale-response guards, and close-time cancellation.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Completed: local browser smoke via `python3 -m http.server 4312 -d website` + browser automation against `http://127.0.0.1:4312` with mocked slow/fast bundle fetches ✅
+    - Clicked the first featured bundle's `Inspect` and immediately clicked the second featured bundle's `Inspect`.
+    - Confirmed the modal finished on the second/faster request and kept the fast-bundle sentinel content.
+    - Confirmed the stale slow-bundle content did not overwrite the modal after it resolved later.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - Consider whether the inspector should visually disable or de-emphasize the install button while content is still loading, so users do not act on a partially-loaded preview state.
+  - If the landing page eventually mirrors more of the live hub catalog, keep the same stale-response protection anywhere bundle preview can be re-triggered quickly.
+  - If future trust cues are added, prefer lightweight provenance/dependency badges over widening the modal into a full bundle manager.
+
+- Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` still lacks stronger direct validation, prefer another fresh source-confirmed UX/reliability slice outside the recent `#57` / `#58` threads rather than reworking already-advanced bundle/history flows.
