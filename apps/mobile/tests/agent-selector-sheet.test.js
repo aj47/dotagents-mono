@@ -49,7 +49,8 @@ test('keeps the current agent visible through selector-sheet errors so the failu
 test('describes ACP-mode main-agent choices as command-based instead of ACP-only', () => {
   assert.match(sheetSource, /const emptyStateMessage = selectorMode === 'acp'[\s\S]*?No enabled command-based agents are available yet\. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent\./);
   assert.match(sheetSource, /const selectorSubtitle = selectorMode === 'acp'[\s\S]*?Pick which enabled command-based agent handles new chats\.[\s\S]*?Switch between saved chat profiles\. Delegation agents stay in Settings → Agents\./);
-  assert.match(sheetSource, /<Text style=\{styles\.subtitle\} numberOfLines=\{2\} ellipsizeMode="tail">[\s\S]*?\{selectorSubtitle\}[\s\S]*?<\/Text>/);
+  assert.match(sheetSource, /<Text style=\{styles\.subtitle\}>[\s\S]*?\{selectorSubtitle\}[\s\S]*?<\/Text>/);
+  assert.doesNotMatch(sheetSource, /<Text style=\{styles\.subtitle\} numberOfLines=\{2\} ellipsizeMode="tail">/);
   assert.match(sheetSource, /const selectorTitle = selectorMode === 'acp' \? 'Select Main Agent' : 'Select Profile';/);
   assert.match(sheetSource, /const emptyStateTitle = selectorMode === 'acp' \? 'No main agents ready yet' : 'No saved profiles yet';/);
 });

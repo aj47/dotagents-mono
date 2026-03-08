@@ -1,5 +1,43 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 158 - Let the mobile selector subtitle fully explain the current switching mode
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not immediately revisit the just-shipped new-chat routing copy or stale-mode fallback work without new evidence.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector still owns the most explicit mobile explanation of whether users are switching a saved profile or a command-based main agent.
+  - Tried again to recover live validation in this worktree before editing.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the selector subtitle is the first visible explanation of whether mobile users are switching `main agents` or saved `profiles`.
+  - That subtitle was still rendered with `numberOfLines={2}` and `ellipsizeMode="tail"`.
+  - On narrow screens or larger text settings, that meant important routing guidance could be truncated even though it is key to understanding what this sheet controls.
+- Issue identified:
+  - The mobile selector clamped its mode-defining subtitle to two lines, which could hide the end of the sentence that explains the current switching context.
+- Decision and rationale:
+  - Keep the selector layout, copy, and overall hierarchy unchanged.
+  - Avoid a broader sheet redesign while live validation remains blocked.
+  - Make the smallest useful readability fix instead: let the existing subtitle wrap naturally so the full saved-profile vs main-agent guidance stays visible.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` so the selector subtitle no longer forces a two-line tail ellipsis.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` to assert the subtitle still renders the same guidance without the old truncation contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that preserving full routing guidance in the selector header is more valuable than keeping the header to a strict two-line height.
+  - Kept the change to one text node only, so sheet sizing and interaction behavior stay otherwise unchanged.
+  - This remains a source-backed improvement and still needs live confirmation that the wrapped subtitle feels balanced and not too tall on narrow screens.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector subtitle now shows the full sentence in both ACP mode and saved-profile mode.
+  - Capture screenshot-backed evidence around ~320px width and with higher browser zoom or larger text settings to confirm the subtitle remains readable without crowding the options list.
+  - If live validation shows the wrapped subtitle feels too tall, prefer trimming the wording before changing the selector layout.
+
 ## Iteration 157 - Clarify which routing context mobile new chats will use
 
 - Date: 2026-03-08

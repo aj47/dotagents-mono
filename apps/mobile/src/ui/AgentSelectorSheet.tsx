@@ -317,7 +317,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.handle} />
         <Text style={styles.title}>{selectorTitle}</Text>
-        <Text style={styles.subtitle} numberOfLines={2} ellipsizeMode="tail">
+        <Text style={styles.subtitle}>
           {selectorSubtitle}
         </Text>
 
