@@ -3655,3 +3655,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed queue header now communicates `sending`, `waiting`, and `failed` state clearly at narrow widths.
   - Compare idle, processing, and failed queue states to confirm the new summary text and tinting feel proportional in each case.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting the queue header again without new evidence.
+
+### 2026-03-08 — Iteration 84: keep current-agent context visible when selector options no longer include it
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before documenting the fix:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the selector already moved the active agent to the top when it existed in the fetched list.
+  - If the active agent no longer appeared in the loaded options (for example after mode/profile changes or a disabled/missing agent), the sheet fell straight into the available-options list with no mention of the still-active current agent.
+  - On mobile, that made the selector feel contradictory because the header could still show one current agent while the sheet showed only different choices.
+- Issue selected:
+  - When the active agent was missing from the fetched selector options, the mobile selector hid the current state instead of explaining it, weakening trust and state clarity in a key sub-agent control.
+- Decision:
+  - Keep the existing option ordering and selection flow unchanged.
+  - Do not inject a fake selectable row for the missing current agent.
+  - Make the smallest local fix: show a compact notice above the list that preserves current-agent context and explains why the user may not see that agent among the available options.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - detect when the current agent is absent from the fetched selector options,
+    - render a mode-aware notice title and explanatory text above the list,
+    - reuse the existing current-agent badge inside that notice so the active state stays visible on narrow screens.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the missing-current-selection notice and styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - This new notice still needs a real narrow-screen pass to confirm it reads clearly without pushing the list too far down when many agents are available.
+  - The selector overall still lacks fresh live validation after several source-backed improvements, so broader hierarchy changes should wait for screenshot-backed evidence.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new missing-current-selection notice is clear, compact, and visually subordinate to the actual option list.
+  - Recheck the selector in both profile and ACP modes to confirm the mode-aware notice copy feels accurate in each case.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting selector context handling again without new evidence.

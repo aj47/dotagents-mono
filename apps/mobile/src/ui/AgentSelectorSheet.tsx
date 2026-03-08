@@ -170,6 +170,17 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
     return currentProfileOption ? [currentProfileOption, ...reorderedProfiles] : profiles;
   }, [profiles, currentProfile?.id]);
+  const isCurrentSelectionMissingFromList = Boolean(
+    currentProfile?.id
+    && orderedProfiles.length > 0
+    && !orderedProfiles.some((profile) => profile.id === currentProfile.id)
+  );
+  const currentSelectionNoticeTitle = selectorMode === 'acp'
+    ? 'Current main agent unavailable in this list'
+    : 'Current agent unavailable in this list';
+  const currentSelectionNoticeText = selectorMode === 'acp'
+    ? 'This agent stays active until you switch. Choose one of the enabled agents below, then review Settings → Agents if this main agent should be available again.'
+    : 'This agent stays active until you switch. Choose one of the available options below, then review Settings → Agents if this profile should still be switchable.';
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
@@ -351,13 +362,31 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </TouchableOpacity>
           </View>
         ) : (
-          <FlatList
-            data={orderedProfiles}
-            renderItem={renderProfile}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-            showsVerticalScrollIndicator={false}
-          />
+          <>
+            {isCurrentSelectionMissingFromList && (
+              <View style={styles.currentSelectionNoticeCard}>
+                <Text style={styles.currentSelectionNoticeTitle}>{currentSelectionNoticeTitle}</Text>
+                <View style={styles.currentAgentBadge}>
+                  <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+                  <Text
+                    style={styles.currentAgentBadgeText}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {currentAgentName}
+                  </Text>
+                </View>
+                <Text style={styles.currentSelectionNoticeText}>{currentSelectionNoticeText}</Text>
+              </View>
+            )}
+            <FlatList
+              data={orderedProfiles}
+              renderItem={renderProfile}
+              keyExtractor={(item) => item.id}
+              style={styles.list}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
         )}
 
         <TouchableOpacity
@@ -594,6 +623,22 @@ function createStyles(theme: Theme) {
       color: theme.colors.foreground,
       textAlign: 'center',
     },
+    currentSelectionNoticeCard: {
+      marginBottom: spacing.sm,
+      padding: spacing.md,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    currentSelectionNoticeTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+      textAlign: 'center',
+    },
     currentAgentBadge: {
       backgroundColor: theme.colors.primary + '18',
       paddingHorizontal: spacing.md,
@@ -617,6 +662,11 @@ function createStyles(theme: Theme) {
       textAlign: 'center',
       maxWidth: '100%',
       flexShrink: 1,
+    },
+    currentSelectionNoticeText: {
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 20,
     },
     manageAgentsButton: {
       ...actionButtonTouchTarget,
