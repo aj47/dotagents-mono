@@ -194,7 +194,12 @@
 - [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
 
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
+
 ### Reproduced
+- [x] **Desktop MCP Tool Management could misreport a load failure as “No tools available” (directly confirmed in source):**
+  - In `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx`, the initial/polled `fetchTools()` path previously wrapped `tipcClient.getMcpDetailedToolList({})` in an empty `catch`, so a rejected IPC request left the component at its default `tools = []` state without any visible error.
+  - The render path only distinguished `filteredToolsByServer.length === 0`, so a real loading failure on the visible desktop MCP Tool Management page fell through to the same empty-state card copy used for a legitimate zero-tools configuration, which hides the failure cause and gives the user no retry affordance.
 - [x] **Desktop Memories page could show false success for failed edit/delete actions (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/memories.tsx` previously ran the `deleteMemory` and `updateMemory` success toasts/UI cleanup from React Query `onSuccess(...)` without checking whether the returned boolean was actually `true`.
   - `apps/desktop/src/main/memory-service.ts` explicitly returns `false` from `updateMemory(...)` when the memory no longer exists and from `deleteMemory(...)` when the id is missing or file deletion/persistence fails, so the desktop UI could claim success even when nothing changed.
@@ -396,6 +401,8 @@
    - The card actions were gated directly by `oauthStatus[name]?.authenticated` / `.configured`, and revoke/auth-completion paths refreshed all servers instead of the active one, so an unrelated server failure could block the current card's visible auth controls.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` so the desktop MCP Tool Management page now tracks explicit initial loading and fetch-error state, logs rejected tool-list loads, shows a retryable inline error card for failed first loads, and reserves the “No tools available” empty state for genuine zero-tool results.
+- [x] Added `apps/desktop/src/renderer/src/components/mcp-tool-manager.feedback.test.ts` with focused source-level regression coverage locking in the new loading/error/retry contract for the MCP Tool Management page.
 - [x] Updated `apps/desktop/src/renderer/src/pages/memories.tsx` so `deleteMemory` / `updateMemory` only invalidate queries, close dialogs, and show success toasts when the backend result is actually `true`; `false` results now surface a visible failure toast instead of pretending the action worked.
 - [x] Added `apps/desktop/src/renderer/src/pages/memories.feedback.test.ts` with narrow regression coverage locking in the new false-result handling for the desktop Memories page.
 - [x] Updated `apps/desktop/src/renderer/src/components/resize-handle.tsx` so rejected or invalid drag-start size reads now keep console logging but also surface a visible `toast.error(...)` instead of making the resize handle appear dead.
@@ -560,6 +567,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new OAuth fallback/normalization contract and targeted per-server refresh behavior.
 
 ### Verified
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` now contains explicit `isLoadingTools` / `toolsLoadError` state, preserves the real empty-state card for genuine zero-tool results, and shows `Loading MCP tools...` / `Failed to load MCP tools` plus a `Retry` button when the initial fetch rejects.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` and `apps/desktop/src/renderer/src/components/mcp-tool-manager.feedback.test.ts`, confirming the new loading/error/retry strings and regression assertions are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the MCP Tool Management load-state fix.
 - [x] Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.feedback.test.ts`, but this worktree still has no installed desktop test tooling (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL: Command "vitest" not found`).
 - [x] Ran a low-cost Node file-read sanity check for `apps/desktop/src/renderer/src/pages/memories.tsx` and `apps/desktop/src/renderer/src/pages/memories.feedback.test.ts`; the assertions passed for the new false-result guards and regression coverage.
 - [x] `git diff --check` completed cleanly after the desktop Memories false-success fix.
@@ -701,6 +711,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this MCP Tool Management load-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-tool-manager.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-resize.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] Targeted automated verification for this follow-up voice-start feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` fails before Vitest starts because the shared `pretest` cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this desktop follow-up error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -751,6 +762,7 @@
 - [x] Targeted automated verification for this MCP OAuth status resilience fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails in `pretest` because `packages/shared` cannot find `tsup` (`sh: tsup: command not found`), which confirms `node_modules` is still absent in this worktree.
 
 ### Still Uncertain
+- [ ] Whether later background polling failures in `mcp-tool-manager.tsx` should eventually surface a non-blocking stale-data banner/toast once live desktop verification is available, or whether keeping the last successful tool list visible without extra noise is the better UX.
 - [ ] Whether the throttled mid-drag `updatePanelSize(...)` failure path in `panel-resize-wrapper.tsx` should also surface limited user feedback, or remain console-only to avoid toast spam once live desktop verification is available.
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the post-success `AgentProgress` `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -918,8 +930,10 @@
 
 - Assumption: surfacing `This queued message is no longer retryable.` when `retryQueuedMessage(...)` returns `false` is acceptable because the underlying service only returns `false` when the message is missing or no longer in `failed` state, and both cases mean the visible `Retry` action cannot actually proceed.
 - Assumption: keeping this pass desktop-only is acceptable because the confirmed bug and fixed contracts depend on the desktop `MessageQueuePanel`'s TIPC/main-process failure semantics, while mobile uses a separate local-store queue flow that should be validated as its own follow-up rather than widened speculatively.
+- Assumption: using an inline loading/error/retry card for the initial MCP tool-list fetch is acceptable because this failure happens while the settings page itself is loading, the error is page-scoped rather than action-scoped, and an inline retry affordance is less noisy and more informative than a toast for first-render failures.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-tool-manager.feedback.test.ts` and live-verify the desktop MCP Tool Management page by forcing one initial `getMcpDetailedToolList(...)` rejection plus one later poll failure to confirm first-load errors now show the retry card while later transient failures keep the last good tool list visible.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.feedback.test.ts` and live-verify the desktop Memories page by forcing one stale/missing memory id plus one persistence failure to confirm it now keeps the editor/delete dialog open and shows the new failure toast instead of a false success message.
 - After that, inspect the analogous mobile memory edit/delete flows in `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx`, which appear to have the same `{ success: false }` contract gap but were intentionally left out of this single-bug desktop fix.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-resize.feedback.test.ts` and live-verify one forced `getPanelSize()` failure plus one forced final size-persistence failure to confirm the new floating-panel resize toasts appear without spamming during normal drag updates.
