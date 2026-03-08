@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772912335273_fi5tznrfx | session_1772912334717_md47yr0ht | fix implemented (verification blocked) | User asked for `.agent protocol hub` context plus starter-pack recommendations and follow-up questions. Langfuse showed multiple successful `github:get_file_contents` / `execute_command` context-gathering batches, then the run ended with `output: null` and no user-facing synthesis or questions. Later traces in the same session continued the same hub / starter-pack topic. Root repo issue found: repeated successful non-communication tool batches kept resetting the no-op safeguards, so the loop never nudged the model to stop gathering and synthesize or ask the focused questions it had promised. |
 | 2026-03-08 | conv_1772916005809_qqlggnsj6 | session_1772916005810_0a4il8g4j | fix implemented (verification blocked) | User asked to create a GitHub issue about preserving full conversation data. Langfuse showed `github:create_issue` succeeded, then `respond_to_user` succeeded with the finished issue link/summary, but the run still ended with `output: null` after one extra empty `Streaming LLM Call`. Root repo issue found: the tool-driven completion path only treated `mark_work_complete` or repeated `respond_to_user` loops as completion signals, so a deliverable `respond_to_user` after real work could still trigger another LLM turn and lose the already-delivered answer. |
 | 2026-03-08 | conv_1772927920519_2lnwf0iww | session_1772927920521_cdsbzo6kx, session_1772928514587_t5m8i3m15 | fix implemented (verification blocked) | User asked `can you extract it into its own md`; the first run created `tiling-ux-iteration-20.md` directly in repo root with a simplistic iteration-based name, then the follow-up complaint (`why did you do that`) triggered a second run to audit and reorganize the notes. Root repo issue found: agent-mode file-creation guidance had no instruction to inspect nearby organization patterns, avoid ad-hoc repo-root exports, or choose collision-safe filenames for extracted docs. |
 | 2026-03-08 | conv_1772915850389_hzuikwa8l | session_1772915850391_hzuikwa8l | fix implemented (verification blocked) | User asked `can you check my Claude usage stats`; the run correctly told them manual Google login was required, but verification kept treating the request as unfinished, so the loop continued through more browser/login attempts and Langfuse still ended with `output: null`. Root repo issue found: verification had no terminal handoff path for deliverable responses that were explicitly waiting on user action. |
@@ -19,6 +20,31 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
 
 ## Investigations
+
+### 2026-03-08 — Repeated context-gathering tool passes needed a synthesis / follow-up-question nudge
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1772912335273_fi5tznrfx`
+  - failing trace: `session_1772912334717_md47yr0ht`
+    - user input: `Can you gather access on the .agent protocol hub? ... what kind of starter packs should I make? Gather a lot of context and ask me questions for further context so we can decide.`
+    - trace outcome: `output: null`
+    - observations showed seven `Streaming LLM Call` generations, all on-topic but still in research mode (`Let me dig deeper...`, `Let me grab a couple more key files...`, `Now I have deep context...`), followed by successful `github:get_file_contents` / `execute_command` spans reading hub bundles, repo docs, and local notes
+    - there was no `respond_to_user`, no `mark_work_complete`, no verification step, and no final user-facing synthesis/questions before the trace closed
+  - later traces in the same session stayed on the same hub / starter-pack planning topic (`why did we make /hub`, then bundle/starter-pack follow-ups), which is consistent with the first run failing to deliver the intended planning handoff in a single turn
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` only nudged the model when it produced a no-tool iteration or communication-only loops.
+  - every successful non-communication tool batch reset `noOpCount`, `totalNudgeCount`, and `completionSignalHintCount`.
+  - that meant an exploration-heavy run could keep gathering more context indefinitely (or until timeout/max-iteration) without ever getting an internal push to synthesize the findings or ask the user the promised focused questions.
+- Concrete root cause:
+  - the loop had no guardrail for consecutive successful real-tool context-gathering iterations that produced neither a deliverable answer nor an explicit completion signal.
+  - in this failure mode, the agent kept making progress mechanically, so the ordinary no-op safeguards never fired, but the user's intent still failed because no planning recommendation or follow-up questions were delivered.
+- Fix implemented:
+  - `apps/desktop/src/main/llm.ts`
+    - track consecutive successful non-communication tool batches that still do not yield a deliverable assistant response or stored `respond_to_user` output
+    - after 3 such passes, inject an internal ephemeral nudge telling the model to stop gathering more context unless strictly necessary and instead provide its best current answer or ask only the focused follow-up questions still required
+  - tests added/updated:
+    - `apps/desktop/src/main/llm.test.ts`
+      - added a regression test that simulates repeated tool-only context gathering and verifies the next LLM turn receives the synthesis/follow-up-question nudge and returns a user-facing question instead of continuing to stall
 
 ### 2026-03-08 — Max-iteration timeout could preserve stale progress text as final output
 
@@ -305,6 +331,23 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/system-prompts.ts apps/desktop/src/main/system-prompts.test.ts langfuse-bug-fix.md`
   - result: passed with exit code `0`
   - confirmed the agent-mode prompt now contains explicit guidance to inspect nearby directories, avoid repo-root note dumps by default, and choose collision-safe filenames for extracted content
+
+- Targeted test command attempted:
+  - `npx -y -p vitest -p @electron-toolkit/tsconfig vitest run apps/desktop/src/main/llm.test.ts`
+  - `npx -y -p vitest vitest run --config /tmp/langfuse-bug-fix-vitest.config.mjs apps/desktop/src/main/llm.test.ts`
+- Result:
+  - blocked by desktop tsconfig resolution in this worktree before tests executed
+  - exact blocker from Vite/esbuild: `failed to resolve "extends":"@electron-toolkit/tsconfig/tsconfig.node.json" in apps/desktop/tsconfig.node.json`
+  - even the temp-config fallback still resolved the desktop tsconfig and failed before running any test cases
+- Dependency-free sanity check completed:
+  - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts`
+  - result: passed with exit code `0`
+  - confirmed the new loop guard only applies after repeated successful non-communication tool batches without a deliverable answer, so normal completion paths (`respond_to_user`, `mark_work_complete`, or direct deliverable text) are unaffected
+- Additional syntax-level check completed:
+  - `npx -y esbuild apps/desktop/src/main/llm.ts --format=esm --platform=node --outfile=/tmp/llm.js --tsconfig-raw='{"compilerOptions":{"target":"es2022","module":"esnext"}}'`
+  - `npx -y esbuild apps/desktop/src/main/llm.test.ts --format=esm --platform=node --outfile=/tmp/llm.test.js --tsconfig-raw='{"compilerOptions":{"target":"es2022","module":"esnext"}}'`
+  - result: passed with exit code `0`
+  - confirmed both edited TypeScript files still transpile successfully even though full Vitest execution is blocked by the workspace tsconfig inheritance issue
 
 ### 2026-03-08 — Deliverable `respond_to_user` after real tool work could still fall through to a blank trace
 

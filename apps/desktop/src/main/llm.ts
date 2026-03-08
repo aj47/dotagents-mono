@@ -1539,7 +1539,11 @@ Return ONLY JSON per schema.`,
   let noOpCount = 0 // Track iterations without meaningful progress
   let totalNudgeCount = 0 // Track total nudges to prevent infinite nudge loops
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
+  let consecutiveToolOnlyExplorationCount = 0
   const MAX_COMPLETION_SIGNAL_HINTS = 2
+  const TOOL_ONLY_SYNTHESIS_NUDGE_THRESHOLD = 3
+  const TOOL_ONLY_SYNTHESIS_NUDGE_TEXT =
+    "You've already gathered substantial context. Unless another tool call is strictly necessary, stop gathering more context and either provide your best current answer or ask only the focused follow-up questions you still need from the user."
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
   const toolFailureCount = new Map<string, number>() // Track failures per tool name
   const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
@@ -2637,6 +2641,9 @@ Return ONLY JSON per schema.`,
     // Deferred completion signal: only treat mark_work_complete as a completion signal
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
+    const hasDeliverableAssistantTextAfterTools = isDeliverableResponse(llmResponse.content || "")
+    const hasDeliverableStoredUserResponse =
+      typeof storedUserResponse === "string" && isDeliverableResponse(storedUserResponse)
     const communicationOnlyCompletionSignal =
       allToolsSuccessful &&
       onlyCommunicationTools &&
@@ -2645,6 +2652,22 @@ Return ONLY JSON per schema.`,
       isDeliverableResponse(storedUserResponse)
     const completionSignalConfirmed =
       allToolsSuccessful && (completionToolCalled || communicationOnlyCompletionSignal)
+
+    if (
+      allToolsSuccessful &&
+      !completionSignalConfirmed &&
+      !onlyCommunicationTools &&
+      !hasDeliverableAssistantTextAfterTools &&
+      !hasDeliverableStoredUserResponse
+    ) {
+      consecutiveToolOnlyExplorationCount++
+      if (consecutiveToolOnlyExplorationCount >= TOOL_ONLY_SYNTHESIS_NUDGE_THRESHOLD) {
+        addEphemeralMessage("user", TOOL_ONLY_SYNTHESIS_NUDGE_TEXT)
+        consecutiveToolOnlyExplorationCount = 0
+      }
+    } else {
+      consecutiveToolOnlyExplorationCount = 0
+    }
 
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions

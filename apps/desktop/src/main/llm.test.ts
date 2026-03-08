@@ -254,4 +254,57 @@ describe("processTranscriptWithAgentMode", () => {
       expect.objectContaining({ output: blockerText }),
     )
   })
+
+  it("nudges repeated tool-only exploration to synthesize or ask focused follow-up questions", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-tool-only-synthesis")
+
+    let llmCallCount = 0
+    mockStreamingCall.mockImplementation(async (messages: Array<{ role: string; content: string }>) => {
+      llmCallCount += 1
+      const hasSynthesisNudge = messages.some((message) =>
+        message.role === "user" && message.content.includes("You've already gathered substantial context."),
+      )
+
+      if (hasSynthesisNudge) {
+        return {
+          content:
+            "I reviewed the hub bundles and notes. Before we decide the first starter packs, should we optimize for founders, personal productivity, or AI engineers?",
+          toolCalls: [],
+        }
+      }
+
+      return {
+        content: "Let me gather a bit more context before I answer.",
+        toolCalls: [
+          {
+            name: "execute_command",
+            arguments: { command: `echo context-pass-${llmCallCount}` },
+          },
+        ],
+      }
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Can you gather context on starter packs and ask me follow-up questions?",
+      [{ name: "execute_command", description: "Run command", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      4,
+      [],
+      "conv-tool-only-synthesis",
+      "session-tool-only-synthesis",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("should we optimize for founders, personal productivity, or AI engineers")
+    expect(llmCallCount).toBe(4)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-tool-only-synthesis",
+      expect.objectContaining({ output: result.content }),
+    )
+  })
 })
