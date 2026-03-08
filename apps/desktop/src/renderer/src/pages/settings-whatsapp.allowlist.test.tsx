@@ -101,6 +101,24 @@ function findInput(node: any) {
   return findNode(node, (candidate) => candidate.type === "Input")
 }
 
+function getNodeText(node: any): string {
+  return collectText(node).join(" ").replace(/\s+/g, " ").trim()
+}
+
+function findButtonByText(node: any, text: string) {
+  return findNode(node, (candidate) => candidate.type === "Button" && getNodeText(candidate.props?.children).includes(text))
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 function collectText(node: any, results: string[] = []): string[] {
   if (typeof node === "string") {
     results.push(node)
@@ -121,12 +139,24 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadSettingsWhatsApp(
+  runtime: ReturnType<typeof createHookRuntime>,
+  options?: {
+    initialConfig?: Record<string, any>
+    whatsappGetStatus?: ReturnType<typeof vi.fn>
+    whatsappConnect?: ReturnType<typeof vi.fn>
+    whatsappDisconnect?: ReturnType<typeof vi.fn>
+    whatsappLogout?: ReturnType<typeof vi.fn>
+  },
+) {
   vi.resetModules()
 
   const Null = () => null
   const mutate = vi.fn()
-  const whatsappGetStatus = vi.fn(async () => ({ available: true, connected: false }))
+  const whatsappGetStatus = options?.whatsappGetStatus ?? vi.fn(async () => ({ available: true, connected: false }))
+  const whatsappConnect = options?.whatsappConnect ?? vi.fn(async () => ({ success: true }))
+  const whatsappDisconnect = options?.whatsappDisconnect ?? vi.fn(async () => ({ success: true }))
+  const whatsappLogout = options?.whatsappLogout ?? vi.fn(async () => ({ success: true }))
   let currentConfig: any = {
     whatsappEnabled: true,
     whatsappAllowFrom: ["14155551234"],
@@ -135,6 +165,7 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
     remoteServerEnabled: false,
     remoteServerApiKey: "",
     streamerModeEnabled: false,
+    ...options?.initialConfig,
   }
 
   vi.doMock("react", () => runtime.reactMock)
@@ -175,17 +206,17 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
   vi.doMock("@renderer/lib/tipc-client", () => ({
     tipcClient: {
       whatsappGetStatus,
-      whatsappConnect: vi.fn(async () => ({ success: true })),
-      whatsappDisconnect: vi.fn(async () => ({ success: true })),
-      whatsappLogout: vi.fn(async () => ({ success: true })),
+      whatsappConnect,
+      whatsappDisconnect,
+      whatsappLogout,
     },
   }))
   vi.doMock("../lib/tipc-client", () => ({
     tipcClient: {
       whatsappGetStatus,
-      whatsappConnect: vi.fn(async () => ({ success: true })),
-      whatsappDisconnect: vi.fn(async () => ({ success: true })),
-      whatsappLogout: vi.fn(async () => ({ success: true })),
+      whatsappConnect,
+      whatsappDisconnect,
+      whatsappLogout,
     },
   }))
   vi.doMock("lucide-react", () => {
@@ -214,6 +245,9 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
       return currentConfig
     },
     whatsappGetStatus,
+    whatsappConnect,
+    whatsappDisconnect,
+    whatsappLogout,
   }
 }
 
@@ -228,6 +262,30 @@ afterEach(() => {
 })
 
 describe("desktop WhatsApp settings allowlist", () => {
+  it("shows a loading state before the first WhatsApp status check resolves", async () => {
+    const runtime = createHookRuntime()
+    const statusDeferred = createDeferred<{ available: boolean; connected: boolean }>()
+    const { Component } = await loadSettingsWhatsApp(runtime, {
+      whatsappGetStatus: vi.fn(() => statusDeferred.promise),
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    tree = runtime.render(Component, {} as any)
+
+    expect(collectText(tree)).toContain("Checking WhatsApp status...")
+    expect(collectText(tree)).not.toContain("WhatsApp server not available")
+
+    const refreshButton = findButtonByText(tree, "Checking...")
+    expect(refreshButton.props.disabled).toBe(true)
+
+    statusDeferred.resolve({ available: true, connected: false })
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    expect(collectText(tree)).toContain("Not connected")
+  })
+
   it("shows guidance that formatted phone numbers are accepted", async () => {
     const runtime = createHookRuntime()
     const { Component } = await loadSettingsWhatsApp(runtime)
@@ -327,5 +385,39 @@ describe("desktop WhatsApp settings allowlist", () => {
         whatsappAllowFrom: ["14155551234", "+442071838750"],
       },
     })
+  })
+
+  it("disables conflicting connection actions while disconnect is pending", async () => {
+    const runtime = createHookRuntime()
+    const disconnectDeferred = createDeferred<{ success: boolean }>()
+    let statusCallCount = 0
+    const { Component } = await loadSettingsWhatsApp(runtime, {
+      whatsappGetStatus: vi.fn(async () => {
+        statusCallCount += 1
+        return statusCallCount === 1
+          ? { available: true, connected: true, hasCredentials: true, userName: "AJ", phoneNumber: "+14155551234" }
+          : { available: true, connected: false, hasCredentials: true }
+      }),
+      whatsappDisconnect: vi.fn(() => disconnectDeferred.promise),
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    findButtonByText(tree, "Disconnect").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    expect(findButtonByText(tree, "Disconnecting...").props.disabled).toBe(true)
+    expect(findButtonByText(tree, "Refresh").props.disabled).toBe(true)
+    expect(findButtonByText(tree, "Logout").props.disabled).toBe(true)
+
+    disconnectDeferred.resolve({ success: true })
+    await flushPromises()
+
+    tree = runtime.render(Component, {} as any)
+    expect(collectText(tree)).toContain("Not connected")
+    expect(findButtonByText(tree, "Refresh").props.disabled).toBe(false)
   })
 })

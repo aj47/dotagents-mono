@@ -45,16 +45,22 @@ interface WhatsAppStatus {
   error?: string
 }
 
+type ConnectionAction = "connect" | "disconnect" | "logout" | "refresh"
+
 export function Component() {
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
 
   const cfg = configQuery.data as Config | undefined
   const cfgRef = useRef<Config | undefined>(cfg)
+  const enabled = cfg?.whatsappEnabled ?? false
 
   // WhatsApp connection state
   const [status, setStatus] = useState<WhatsAppStatus | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [pendingConnectionAction, setPendingConnectionAction] = useState<ConnectionAction | null>(null)
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false)
+  const [hasFetchedStatus, setHasFetchedStatus] = useState(false)
   const [qrCodeData, setQrCodeData] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [allowFromDraft, setAllowFromDraft] = useState(() => formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
@@ -106,7 +112,12 @@ export function Component() {
   }, [])
 
   // Fetch WhatsApp status periodically
-  const fetchStatus = useCallback(async (): Promise<void> => {
+  const fetchStatus = useCallback(async (options?: { silent?: boolean }): Promise<void> => {
+    const silent = options?.silent ?? false
+    if (!silent) {
+      setIsRefreshingStatus(true)
+    }
+
     try {
       const result = await tipcClient.whatsappGetStatus()
       setStatus(result as WhatsAppStatus)
@@ -120,71 +131,108 @@ export function Component() {
       }
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setHasFetchedStatus(true)
+      if (!silent) {
+        setIsRefreshingStatus(false)
+      }
+    }
+  }, [])
+
+  const runConnectionAction = useCallback(async (action: ConnectionAction, work: () => Promise<void>) => {
+    setPendingConnectionAction(action)
+    setStatusError(null)
+
+    try {
+      await work()
+    } finally {
+      setPendingConnectionAction(current => current === action ? null : current)
     }
   }, [])
 
   // Poll for status when enabled
   useEffect(() => {
-    if (!cfg?.whatsappEnabled) {
+    if (!enabled) {
+      setStatus(null)
+      setQrCodeData(null)
+      setStatusError(null)
+      setHasFetchedStatus(false)
+      setIsRefreshingStatus(false)
+      setPendingConnectionAction(null)
       return undefined
     }
 
-    fetchStatus()
-    const interval = setInterval(fetchStatus, 3000) // Poll every 3 seconds
+    void fetchStatus()
+    const interval = setInterval(() => {
+      void fetchStatus({ silent: true })
+    }, 3000) // Poll every 3 seconds
     return () => clearInterval(interval)
-  }, [cfg?.whatsappEnabled, fetchStatus])
+  }, [enabled, fetchStatus])
 
   const handleConnect = async () => {
-    setIsConnecting(true)
-    setStatusError(null)
-    try {
-      const result = await tipcClient.whatsappConnect()
-      if (!result.success) {
-        setStatusError(result.error || "Failed to connect")
-      } else if (result.qrCode) {
-        setQrCodeData(result.qrCode)
+    await runConnectionAction("connect", async () => {
+      setIsConnecting(true)
+      try {
+        const result = await tipcClient.whatsappConnect()
+        if (!result.success) {
+          setStatusError(result.error || "Failed to connect")
+        } else if (result.qrCode) {
+          setQrCodeData(result.qrCode)
+        }
+
+        // Refresh status
+        await fetchStatus()
+      } catch (error) {
+        setStatusError(error instanceof Error ? error.message : String(error))
+      } finally {
+        setIsConnecting(false)
       }
-      // Refresh status
-      await fetchStatus()
-    } catch (error) {
-      setStatusError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setIsConnecting(false)
-    }
+    })
   }
 
   const handleDisconnect = async () => {
-    try {
-      const result = await tipcClient.whatsappDisconnect()
-      if (!result.success) {
-        setStatusError(result.error || "Failed to disconnect")
+    await runConnectionAction("disconnect", async () => {
+      try {
+        const result = await tipcClient.whatsappDisconnect()
+        if (!result.success) {
+          setStatusError(result.error || "Failed to disconnect")
+        }
+        await fetchStatus()
+      } catch (error) {
+        setStatusError(error instanceof Error ? error.message : String(error))
       }
-      await fetchStatus()
-    } catch (error) {
-      setStatusError(error instanceof Error ? error.message : String(error))
-    }
+    })
   }
 
   const handleLogout = async () => {
-    try {
-      const result = await tipcClient.whatsappLogout()
-      if (!result.success) {
-        setStatusError(result.error || "Failed to logout")
-      } else {
-        setQrCodeData(null)
+    await runConnectionAction("logout", async () => {
+      try {
+        const result = await tipcClient.whatsappLogout()
+        if (!result.success) {
+          setStatusError(result.error || "Failed to logout")
+        } else {
+          setQrCodeData(null)
+        }
+        await fetchStatus()
+      } catch (error) {
+        setStatusError(error instanceof Error ? error.message : String(error))
       }
+    })
+  }
+
+  const handleRefresh = async () => {
+    await runConnectionAction("refresh", async () => {
       await fetchStatus()
-    } catch (error) {
-      setStatusError(error instanceof Error ? error.message : String(error))
-    }
+    })
   }
 
   if (!cfg) return null
 
-  const enabled = cfg.whatsappEnabled ?? false
   const remoteServerEnabled = cfg.remoteServerEnabled ?? false
   const hasApiKey = !!cfg.remoteServerApiKey
   const streamerMode = cfg.streamerModeEnabled ?? false
+  const hasPendingConnectionAction = pendingConnectionAction !== null
+  const isInitialStatusLoading = enabled && !hasFetchedStatus
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
@@ -246,7 +294,12 @@ export function Component() {
 
               {/* Status display */}
               <div className="flex items-center gap-2 mb-4">
-                {status?.connected ? (
+                {isInitialStatusLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Checking WhatsApp status...</span>
+                  </>
+                ) : status?.connected ? (
                   <>
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                     <span className="text-sm text-green-600 dark:text-green-400">
@@ -299,7 +352,7 @@ export function Component() {
                 {!status?.connected ? (
                   <Button
                     onClick={handleConnect}
-                    disabled={isConnecting || !status?.available}
+                    disabled={isConnecting || hasPendingConnectionAction || isRefreshingStatus || !status?.available}
                     variant="default"
                     size="sm"
                   >
@@ -316,21 +369,69 @@ export function Component() {
                     )}
                   </Button>
                 ) : (
-                  <Button onClick={handleDisconnect} variant="outline" size="sm">
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Disconnect
+                  <Button
+                    onClick={handleDisconnect}
+                    variant="outline"
+                    size="sm"
+                    disabled={hasPendingConnectionAction || isRefreshingStatus}
+                  >
+                    {pendingConnectionAction === "disconnect" ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Disconnecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Disconnect
+                      </>
+                    )}
                   </Button>
                 )}
 
-                <Button onClick={fetchStatus} variant="ghost" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
+                <Button
+                  onClick={handleRefresh}
+                  variant="ghost"
+                  size="sm"
+                  disabled={hasPendingConnectionAction || isRefreshingStatus}
+                >
+                  {isInitialStatusLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Checking...
+                    </>
+                  ) : pendingConnectionAction === "refresh" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </>
+                  )}
                 </Button>
 
                 {(status?.connected || status?.hasCredentials) && (
-                  <Button onClick={handleLogout} variant="ghost" size="sm" className="text-red-600">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600"
+                    disabled={hasPendingConnectionAction || isRefreshingStatus}
+                  >
+                    {pendingConnectionAction === "logout" ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Logging out...
+                      </>
+                    ) : (
+                      <>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
