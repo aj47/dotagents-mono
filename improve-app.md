@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop Memories edit-save resilience in `apps/desktop/src/renderer/src/pages/memories.tsx`, with edit-dialog state and `updateMemory(...)` return semantics reviewed in that file plus `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/memory-service.ts`, adjacent unsaved-draft dialog patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, mobile parity reviewed in `apps/mobile/src/screens/MemoryEditScreen.tsx` (no equivalent change needed because mobile memory editing lives on a dedicated screen rather than a backdrop-dismissible desktop dialog), focused source-level coverage added in `tests/desktop-memories-edit-guardrails.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
 - 2026-03-08: Mobile config-persistence guardrails in `apps/mobile/src/store/config.ts`, with `AppConfig` consumers reviewed in `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, and `apps/mobile/src/ui/TTSSettings.tsx` to confirm malformed stored booleans/numbers/strings could leak into real UI behavior, existing mobile connection guardrail patterns rechecked in `apps/mobile/tests/connection-settings-validation.test.js`, focused source-level coverage added in `apps/mobile/tests/config-storage-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop onboarding save resilience in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, with onboarding step transitions and config-save wiring reviewed in that file, shared save-error helpers cross-checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, lightweight regression-test patterns reviewed in `tests/desktop-settings-providers-credentials-feedback.test.js` and other `tests/desktop-*.test.js` files, mobile parity checked in `apps/mobile/src/` (no equivalent first-run desktop onboarding flow exists there), focused source-level coverage added in `tests/desktop-onboarding-save-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available), and desktop renderer typecheck attempted via `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this dependency-light worktree is missing the shared tsconfig package / `node_modules`).
 - 2026-03-08: Desktop remote-server settings draft-save resilience in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server field wiring reviewed in that file, shared config-save mutation/error behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts` and `apps/desktop/src/renderer/src/lib/config-save-error.ts`, local-draft test patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`, mobile parity reviewed in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile surface exists because mobile connects to a desktop-hosted server rather than authoring desktop remote-server or Cloudflare tunnel settings), targeted source-level coverage extended in `tests/desktop-remote-server-settings-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
@@ -89,6 +90,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop Memories edit dialog in `apps/desktop/src/renderer/src/pages/memories.tsx` still needs live Electron validation once a runnable renderer target is available, especially to confirm the dirty-draft warning cadence feels right on backdrop/Escape close, the inline save-failure guidance reads clearly above the notes/tags fields, and disabling no-op saves is unsurprising when a user reopens a memory without changes.
 - 2026-03-08: Mobile config corruption recovery in `apps/mobile/src/store/config.ts` still needs behavior-level validation in a runnable Expo/native environment, especially to confirm sanitized AsyncStorage rewrite/removal does not cause startup flicker and that malformed persisted TTS values recover cleanly before the settings sliders and speech controls render.
 - 2026-03-08: Desktop onboarding first-run save feedback still needs live Electron validation once a runnable renderer target is available, especially to confirm `Skipping...` / `Saving...` / `Starting...` states feel calm, the inline error banner hierarchy reads clearly on welcome/API-key/agent steps, and onboarding completion really persists when config query data is still cold on first launch.
 - 2026-03-08: Desktop remote-server settings draft-save flow still needs live Electron validation once a runnable target is available, especially to confirm port/CORS edits feel calm while typing, blank-port blur normalization is unsurprising, and named-tunnel `Start Tunnel` correctly reflects the visible draft fields without waiting for a config refetch.
@@ -117,6 +119,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop Memories edit dialog in `apps/desktop/src/renderer/src/pages/memories.tsx` now treats false `updateMemory(...)` results as real failures, keeps save failures inline with preserved draft state plus `Retry save`, warns before dismissing dirty notes/tags edits, and disables no-op saves, so memory edits no longer look successfully saved when persistence actually failed or disappear on accidental dismiss; tradeoff: this pass intentionally stays scoped to desktop edit reliability rather than redesigning the broader memories page or mirroring the same draft-loss policy onto the separate mobile edit screen.
 - 2026-03-08: Mobile config loading/saving in `apps/mobile/src/store/config.ts` now sanitizes malformed persisted values instead of blindly spreading parsed AsyncStorage JSON, clamps persisted TTS rate/pitch values to the safe UI ranges, rewrites outdated-but-parseable config into a clean shape, and clears corrupt JSON after logging a warning, so bad local storage data no longer risks breaking settings/chat surfaces that expect booleans, strings, and numbers with valid ranges; tradeoff: this pass intentionally stays inside the shared mobile config store instead of widening into every AsyncStorage-backed mobile store in one go.
 - 2026-03-08: Desktop onboarding in `apps/desktop/src/renderer/src/pages/onboarding.tsx` now loads the latest config before saving when the cached query data is still empty, adds local pending labels plus inline retry guidance for API-key save / skip / completion actions, and keeps users on the same step with their draft intact when first-run persistence fails, so onboarding no longer risks silently advancing without actually saving or failing with only background console/toast clues; tradeoff: this pass intentionally stays scoped to the existing onboarding step actions instead of redesigning the broader first-run flow or the separate Exa-install subflow.
 - 2026-03-08: Desktop remote-server settings now keep local drafts for port, CORS origins, and named Cloudflare tunnel fields, debounce config writes, flush on blur, merge delayed saves against the latest config snapshot, and let `Start Tunnel` use the visible named-tunnel draft immediately instead of waiting for persisted config.
@@ -197,6 +200,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-memories-edit-guardrails.test.js tests/desktop-memories-delete-guardrails.test.js` after the desktop Memories edit-save resilience pass
+- 2026-03-08: `git diff --check` after the desktop Memories edit-save resilience pass
 - 2026-03-08: `node --test apps/mobile/tests/config-storage-guardrails.test.js apps/mobile/tests/connection-settings-validation.test.js` after the mobile config-persistence guardrails pass
 - 2026-03-08: `git diff --check` after the mobile config-persistence guardrails pass
 - 2026-03-08: `node --test tests/desktop-onboarding-save-feedback.test.js` after the desktop onboarding save-resilience pass
@@ -394,6 +399,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this Memories edit-save resilience pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this onboarding save-resilience pass was blocked because `electron_execute` could not inspect a renderer target in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop renderer typecheck for this onboarding save-resilience pass is blocked in this worktree because `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve dependency-provided tsconfig files (`@electron-toolkit/tsconfig/tsconfig.web.json`) while local `node_modules` is missing.
 - 2026-03-08: Live desktop UI inspection for this remote-server draft-save resilience pass was blocked because `electron_execute` failed to list CDP targets (`Make sure Electron is running with --inspect flag`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -469,6 +475,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
+- Desktop Memories edit dialog live validation / save-failure cadence check (`apps/desktop/src/renderer/src/pages/memories.tsx`)
 - Desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
 - Desktop app `before-quit` cleanup execution-path validation (`apps/desktop/src/main/index.ts`)
 - Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
@@ -479,6 +486,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop Memories now has source-level edit-save guardrails, but live Electron validation of the dirty-dismiss confirmation, inline failure hierarchy, and save-disabled behavior is the freshest adjacent UX follow-up once a runnable renderer target is available.
 - Mobile config persistence now has source-level guardrails, but behavior-level validation with a runnable Expo/native target and intentionally malformed stored values is the freshest adjacent reliability follow-up because the user value depends on startup recovery feeling invisible, not just source sanitization existing on disk.
 - Desktop remote-server settings now have source-level draft/save guardrails, but live Electron validation of the edited-field pacing, blur normalization, and named-tunnel start affordance is the freshest adjacent UX follow-up once a runnable renderer target is available.
 - Desktop headless shutdown now has source-level guardrails, but mocked execution-path validation for `SIGTERM`, CLI-initiated exit, remote-server start failure, and slow shutdown collaborators is the freshest adjacent reliability follow-up because the key user value is graceful termination under real timing and re-entry conditions, not just structural parity with GUI quit.
@@ -2914,6 +2922,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Expo/native target is available, validate startup with intentionally malformed stored config to confirm the rewrite/remove path is invisible to users and does not cause settings flicker
   - inspect another unreviewed shared mobile persistence layer rather than revisiting recently touched connection-status UI immediately
+
+### 2026-03-08 — Desktop Memories edit-save resilience
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop memories management in `apps/desktop/src/renderer/src/pages/memories.tsx`
+  - reviewed mobile parity in `apps/mobile/src/screens/MemoryEditScreen.tsx`
+- Why it was chosen:
+  - the ledger already covered desktop Memories search and delete guardrails, but the edit path had not been hardened recently and still sat on a high-value user action
+  - the renderer was treating any resolved `updateMemory(...)` call as success even though the IPC contract returns a bare boolean, which risked showing a success toast and closing the dialog after a failed persistence attempt
+  - the edit dialog could also discard dirty notes/tag drafts on backdrop or Escape dismissal with no warning, which is especially risky in a compact modal workflow
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/memories.tsx`
+  - `apps/desktop/src/main/tipc.ts`
+  - `apps/desktop/src/main/memory-service.ts`
+  - adjacent unsaved-draft dialog patterns in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`
+  - mobile parity in `apps/mobile/src/screens/MemoryEditScreen.tsx` to confirm the same fix was not needed there because mobile editing uses a dedicated screen rather than a backdrop-dismissible dialog
+  - attempted live desktop inspection via `electron_execute` *(blocked: Electron is not exposing a CDP target in this environment)*
+- Improvement made:
+  - added shared tag parsing for the edit draft so dirty-state detection and save payloads use the same normalized tags
+  - changed the edit mutation to treat a false `updateMemory(...)` result as a real failure instead of silent success
+  - kept failed saves inline with preserved draft state, explicit retry copy, and a `Retry save` action label
+  - added dirty-draft dismiss confirmation plus an unsaved-changes notice inside the dialog, and disabled no-op saves when nothing changed
+- Assumptions / tradeoffs / rationale:
+  - kept the change intentionally local to the desktop edit dialog because it fixes a concrete reliability bug and a concrete draft-loss risk without broadening into a larger memories-page refactor
+  - did not mirror the same pattern onto mobile in this pass because the mobile edit flow is screen-based and does not share the same backdrop-dismiss risk surface
+  - accepted source-level verification because live Electron inspection is currently blocked in this dependency-light worktree
+- Tests / verification:
+  - `node --test tests/desktop-memories-edit-guardrails.test.js tests/desktop-memories-delete-guardrails.test.js`
+  - `git diff --check`
+  - `electron_execute` live inspection attempt *(blocked: failed to list CDP targets; Electron is not running with `--inspect` in this environment)*
+- Follow-up checks:
+  - once a runnable Electron target is available, live-check backdrop/Escape dismissal, failed-save retry clarity, and the disabled-save affordance with unchanged memory data
+  - if another memories pass becomes worthwhile later, inspect whether adjacent memory-management actions still rely too heavily on toast-only success/error feedback
 
 ### Iteration Template
 - Date:

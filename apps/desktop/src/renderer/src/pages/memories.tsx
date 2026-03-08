@@ -39,6 +39,10 @@ import { cn } from "@renderer/lib/utils"
 
 const MEMORY_SEARCH_DEBOUNCE_MS = 250
 
+function parseMemoryTags(value: string): string[] {
+  return value.split(",").map((tag) => tag.trim()).filter(Boolean)
+}
+
 function DestructiveActionError({ message }: { message: string | null }) {
   if (!message) return null
 
@@ -227,6 +231,7 @@ export function Component() {
   const [editingMemory, setEditingMemory] = useState<AgentMemory | null>(null)
   const [editNotes, setEditNotes] = useState("")
   const [editTags, setEditTags] = useState("")
+  const [editErrorMessage, setEditErrorMessage] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -299,15 +304,16 @@ export function Component() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<AgentMemory> }) => {
-      return await tipcClient.updateMemory({ id, updates })
+      const updated = await tipcClient.updateMemory({ id, updates })
+      if (!updated) {
+        throw new Error(`Failed to update memory ${id}`)
+      }
+      return updated
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["memories"] })
       toast.success("Memory updated")
-      setEditingMemory(null)
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update: ${error.message}`)
+      closeEditDialog()
     },
   })
 
@@ -375,6 +381,13 @@ export function Component() {
   const filteredMemories = importanceFilter === "all"
     ? displayMemories
     : displayMemories.filter(m => m.importance === importanceFilter)
+  const parsedEditTags = parseMemoryTags(editTags)
+  const editingMemoryLabel = editingMemory?.title ? `"${editingMemory.title}"` : "this memory"
+  const isEditDirty = editingMemory
+    ? (editingMemory.userNotes || "") !== editNotes ||
+      editingMemory.tags.length !== parsedEditTags.length ||
+      editingMemory.tags.some((tag, index) => tag !== parsedEditTags[index])
+    : false
   const memoryPendingDelete = deleteConfirmId
     ? memories.find((memory) => memory.id === deleteConfirmId) ?? null
     : null
@@ -388,18 +401,46 @@ export function Component() {
     setEditingMemory(memory)
     setEditNotes(memory.userNotes || "")
     setEditTags(memory.tags.join(", "))
+    setEditErrorMessage(null)
   }
 
-  const handleSaveEdit = () => {
+  const closeEditDialog = () => {
+    setEditingMemory(null)
+    setEditNotes("")
+    setEditTags("")
+    setEditErrorMessage(null)
+  }
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    if (open) return
+    if (updateMutation.isPending) return
+    if (isEditDirty && !confirm(`Discard your changes to ${editingMemoryLabel}? Your unsaved edits will be lost.`)) {
+      return
+    }
+
+    closeEditDialog()
+  }
+
+  const handleSaveEdit = async () => {
     if (!editingMemory) return
-    updateMutation.mutate({
-      id: editingMemory.id,
-      updates: {
-        userNotes: editNotes || undefined,
-        tags: editTags.split(",").map(t => t.trim()).filter(Boolean),
-        updatedAt: Date.now(),
-      },
-    })
+
+    setEditErrorMessage(null)
+
+    try {
+      await updateMutation.mutateAsync({
+        id: editingMemory.id,
+        updates: {
+          userNotes: editNotes || undefined,
+          tags: parsedEditTags,
+          updatedAt: Date.now(),
+        },
+      })
+    } catch (error) {
+      console.error("Failed to update memory:", error)
+      setEditErrorMessage(
+        `Couldn't save changes to ${editingMemoryLabel} yet. Your draft is still here, so you can review it and try again.`,
+      )
+    }
   }
 
   const handleDeleteMemory = async () => {
@@ -723,7 +764,7 @@ Optional notes go here (saved as userNotes).
       </div>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingMemory} onOpenChange={() => setEditingMemory(null)}>
+      <Dialog open={!!editingMemory} onOpenChange={handleEditDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Memory</DialogTitle>
@@ -731,6 +772,12 @@ Optional notes go here (saved as userNotes).
               Add notes or update tags for this memory.
             </DialogDescription>
           </DialogHeader>
+          {isEditDirty && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              You have unsaved changes. Save before closing to keep this draft.
+            </div>
+          )}
+          <DestructiveActionError message={editErrorMessage} />
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Notes</Label>
@@ -751,12 +798,12 @@ Optional notes go here (saved as userNotes).
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingMemory(null)}>
+            <Button variant="outline" onClick={() => handleEditDialogOpenChange(false)} disabled={updateMutation.isPending}>
               Cancel
             </Button>
-            <Button className="gap-2" onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+            <Button className="gap-2" onClick={() => void handleSaveEdit()} disabled={updateMutation.isPending || !isEditDirty}>
               {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save
+              {editErrorMessage ? "Retry save" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
