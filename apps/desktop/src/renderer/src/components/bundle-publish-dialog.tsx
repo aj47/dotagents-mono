@@ -268,12 +268,12 @@ function Fields({ form, set }: { form: PublishForm; set: (f: PublishForm) => voi
         <Label htmlFor="pub-name" className="text-sm font-medium">Bundle Name <span className="text-destructive">*</span></Label>
         <Input id="pub-name" value={form.name} onChange={e => set({ ...form, name: e.target.value })} placeholder="My Agent Setup" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
+      <div className="grid grid-cols-1 gap-3">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="pub-id">Listing ID (optional)</Label>
           <Input id="pub-id" value={form.catalogId} onChange={e => set({ ...form, catalogId: e.target.value })} placeholder={derivedCatalogId} />
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="pub-artifact-url">Artifact URL (optional)</Label>
           <Input id="pub-artifact-url" value={form.artifactUrl} onChange={e => set({ ...form, artifactUrl: e.target.value })} placeholder={derivedArtifactUrl} />
         </div>
@@ -288,10 +288,10 @@ function Fields({ form, set }: { form: PublishForm; set: (f: PublishForm) => voi
       </div>
       <div className="border-t pt-3 space-y-3">
         <Label className="flex items-center gap-1.5 text-sm font-medium"><User className="h-3.5 w-3.5" /> Author</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="space-y-1"><Label htmlFor="pub-author" className="text-xs">Name <span className="text-destructive">*</span></Label><Input id="pub-author" value={form.authorName} onChange={e => set({ ...form, authorName: e.target.value })} placeholder="Your Name" className="h-8 text-sm" /></div>
-          <div className="space-y-1"><Label htmlFor="pub-handle" className="text-xs">Handle</Label><Input id="pub-handle" value={form.authorHandle} onChange={e => set({ ...form, authorHandle: e.target.value })} placeholder="@handle" className="h-8 text-sm" /></div>
-          <div className="space-y-1"><Label htmlFor="pub-url" className="text-xs">URL</Label><Input id="pub-url" value={form.authorUrl} onChange={e => set({ ...form, authorUrl: e.target.value })} placeholder="https://..." className="h-8 text-sm" /></div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="min-w-0 space-y-1"><Label htmlFor="pub-author" className="text-xs">Name <span className="text-destructive">*</span></Label><Input id="pub-author" value={form.authorName} onChange={e => set({ ...form, authorName: e.target.value })} placeholder="Your Name" className="h-8 text-sm" /></div>
+          <div className="min-w-0 space-y-1"><Label htmlFor="pub-handle" className="text-xs">Handle</Label><Input id="pub-handle" value={form.authorHandle} onChange={e => set({ ...form, authorHandle: e.target.value })} placeholder="@handle" className="h-8 text-sm" /></div>
+          <div className="min-w-0 space-y-1 sm:col-span-2"><Label htmlFor="pub-url" className="text-xs">URL</Label><Input id="pub-url" value={form.authorUrl} onChange={e => set({ ...form, authorUrl: e.target.value })} placeholder="https://..." className="h-8 text-sm" /></div>
         </div>
       </div>
       <div className="space-y-1.5">

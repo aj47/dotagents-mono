@@ -1,5 +1,48 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 63: Desktop Hub publish metadata form depended on rigid multi-column rows inside a narrow modal
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx` (`Export for Hub` → metadata step)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided repeating the just-touched mobile session list and recent desktop settings/memories passes.
+  - Older chunk 42 explicitly left the Hub publish dialog’s metadata rows (`Listing ID` / `Artifact URL` and `Author`) as the best follow-up inside this dialog family, so this was a justified follow-up rather than a random revisit.
+  - Live inspection would normally be preferred here, but this worktree currently has no `node_modules`, so the desktop app cannot be launched without installing dependencies; the right move was a small, defensible modal-layout fix instead of thrashing on runtime setup.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid re-investigating a recently reviewed area without a concrete follow-up reason
+  - reviewed `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `apps/mobile/README.md`, and the existing bundle dialog layout test to stay aligned with the repo’s desktop/mobile workflow and prior dialog audit history
+  - confirmed live inspection was currently blocked in this checkout because root, desktop, and mobile `node_modules` are all missing
+  - inspected `bundle-publish-dialog.tsx` directly, focusing on the metadata-step form rows that chunk 42 had left as the next likely narrow-width follow-up
+
+#### Findings
+
+- Before the fix, the desktop Hub publish metadata form still had one concrete narrow-width resilience issue with clear user impact:
+  - the `Listing ID` / `Artifact URL` row used a rigid `grid-cols-2` layout even though `Artifact URL` is a long-value field inside a dialog capped at `max-w-2xl`
+  - the `Author` section used a rigid `grid-cols-3` layout for `Name`, `Handle`, and `URL`, which depended on unusually generous modal width for a form that can also be viewed under zoom or smaller windows
+  - because these are recognition/editing-heavy fields, squeezing them into fixed equal columns makes long values harder to review and increases the chance that users miss or misread important publish metadata before generating the Hub payload
+
+#### Changes made
+
+- Hardened the Hub publish metadata step in `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx` with the smallest effective layout fallback:
+  - changed the `Listing ID` / `Artifact URL` metadata row from a rigid two-column grid to a single-column stack so the long URL field always gets full row width
+  - changed the `Author` fields from a rigid three-column grid to a `1 → 2` responsive layout instead of ever forcing three narrow equal columns
+  - made the `Author URL` field span the full second row on `sm+` widths so the longest field gets deliberate width instead of competing with `Name` and `Handle`
+  - added `min-w-0` to the wrapped metadata field containers so the modal has an explicit shrink-safe contract
+- Extended `apps/desktop/src/renderer/src/components/bundle-dialog.layout.test.ts` with focused source-contract coverage for the new Hub publish metadata fallback
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/bundle-dialog.layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the stacked metadata row, the responsive author grid, the full-row author URL field, removal of the old rigid grid classes, and the focused regression test coverage ✅
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx apps/desktop/src/renderer/src/components/bundle-dialog.layout.test.ts` ✅
+
+#### Notes
+
+- Important blocker/rationale: live desktop inspection was not practical in this checkout because the worktree currently has no installed dependencies, so I could not launch or rebuild Electron and claim a literal screenshot-backed post-edit pass.
+- This chunk is desktop-only: there is no direct mobile equivalent of the Hub publish modal flow in `apps/mobile/src/`, so no parallel mobile code change was needed.
+- Tradeoff/rationale: the metadata step now spends a little more vertical space on form rows, but that is a deliberate and safer tradeoff than compressing long publish fields into narrow equal-width columns inside an already constrained modal.
+- Best next UI audit chunk after this one: once dependencies are available again, do a literal live desktop pass on `Export for Hub` at tighter dialog widths / larger zoom to confirm the metadata step and preview-step link rows visually, or move to another fresh surface with runtime evidence.
+
 ### 2026-03-08 — Chunk 62: Mobile session-list empty state looked inert because the first-run action lived only in distant header chrome
 
 - Area selected:

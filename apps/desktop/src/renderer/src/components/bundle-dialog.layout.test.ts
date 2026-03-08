@@ -29,4 +29,13 @@ describe("bundle dialog layout", () => {
       'className="gap-2 border-t pt-4 sm:flex-wrap sm:justify-end sm:space-x-0"',
     )
   })
+
+  it("lets hub publish metadata fields stack before the modal gets cramped", () => {
+    expect(bundlePublishDialogSource).toContain('className="grid grid-cols-1 gap-3"')
+    expect(bundlePublishDialogSource).toContain('className="min-w-0 space-y-1.5"')
+    expect(bundlePublishDialogSource).toContain('className="grid grid-cols-1 gap-2 sm:grid-cols-2"')
+    expect(bundlePublishDialogSource).toContain('className="min-w-0 space-y-1 sm:col-span-2"')
+    expect(bundlePublishDialogSource).not.toContain('className="grid grid-cols-2 gap-3"')
+    expect(bundlePublishDialogSource).not.toContain('className="grid grid-cols-3 gap-2"')
+  })
 })
