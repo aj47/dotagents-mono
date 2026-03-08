@@ -5030,3 +5030,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `ACP • <agent> disabled` / `unavailable` reads clearly in the collapsed `Agent Settings` header.
   - Capture screenshot-backed evidence for both a disabled-current-main-agent case and a stale-unavailable-main-agent case to confirm the warning notice stays balanced above the selector chips on a narrow screen.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this blocked-main-agent warning without fresh evidence.
+
+## Iteration 114 - Make the mobile queue header count more compact and consistent
+
+- Date: 2026-03-08
+- Summary: Reduced narrow-screen header pressure in the mobile queued-messages panel by replacing `Queued Messages (N)` with a compact count badge that matches the nearby response-history panel pattern.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recently touched queue/history/settings work without fresh evidence.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/src/ui/ResponseHistoryPanel.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, and the focused queue/history mobile test files to find a still-local hierarchy issue in the current chat sub-agent surfaces.
+  - Confirmed from `ChatScreen.tsx` that `ResponseHistoryPanel` and `MessageQueuePanel` are stacked in the same mobile chat flow, making consistency between their collapsed headers especially important on narrow screens.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed hierarchy review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ResponseHistoryPanel` already displayed its count in a compact badge beside `Agent Responses`, which keeps the title short while preserving quick scan value.
+  - `MessageQueuePanel` still rendered `Queued Messages (N)` inline in the title row while also sharing horizontal space with the disclosure chevron and `Clear All` action.
+  - Source review suggested that the queue header consumed more width than necessary on narrow screens and looked visually inconsistent next to the response-history panel even though both summarize sub-agent activity above or around the chat transcript.
+- Issue identified:
+  - The mobile queue header used a wider, less consistent count treatment than the adjacent response-history panel, increasing title-row squeeze and weakening hierarchy consistency in a high-frequency sub-agent activity surface.
+- Decision and rationale:
+  - Keep the existing queue header structure, disclosure semantics, status summary, and clear action unchanged.
+  - Do not broaden this into a larger queue-panel redesign or other row-level changes while live validation is blocked.
+  - Make the smallest local fix instead: move the visible queue count into a compact badge beside `Queued Messages`, reusing the established response-history pattern so the count stays obvious while the title consumes less width.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add a compact `headerTitleRow`, `badge`, and `badgeText` style set,
+    - replace `Queued Messages ({messages.length})` with `Queued Messages` plus a numeric badge,
+    - preserve the existing accessibility label, collapsed summary, status line, and `Clear All` behavior.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new title-row badge structure and styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `rg -n "Queued Messages \(|headerTitleRow|styles\.badgeText\}>\{messages\.length\}" apps/mobile` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed the response-history header is the strongest existing mobile pattern for adjacent sub-agent activity cards, so matching it improves consistency without inventing a new visual treatment.
+  - Chose not to alter compact queue mode or the queue status text in the same pass because the current issue was specifically title-row width pressure and consistency.
+  - This is a low-risk hierarchy tweak, but it still needs live confirmation that the badge plus `Clear All` spacing feels balanced on a narrow device width.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that its disclosure semantics, processing notice, history-lock copy, and header hierarchy have all evolved without fresh Expo confirmation in this worktree.
+  - The stacked relationship between the response-history header and the queue header still deserves a live one-handed scanability pass once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the queue header badge remains legible and balanced next to `Clear All` on narrow screens.
+  - Capture screenshot-backed evidence of the chat screen with both response-history and queued-messages panels visible so header consistency can be judged with real width constraints.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this queue-header tweak without fresh evidence.

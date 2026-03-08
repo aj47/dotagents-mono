@@ -574,12 +574,33 @@ export function MessageQueuePanel({
       flex: 1,
       minWidth: 0,
     },
+    headerTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
+    },
     headerTitle: {
       fontSize: 14,
       fontWeight: '500',
       color: theme.colors.foreground,
       flexShrink: 1,
       minWidth: 0,
+    },
+    badge: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 6,
+      flexShrink: 0,
+    },
+    badgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.colors.primaryForeground,
     },
     headerStatusText: {
       marginTop: 2,
@@ -685,9 +706,14 @@ export function MessageQueuePanel({
           <View style={styles.headerLeft}>
             <Ionicons name="time-outline" size={16} color={theme.colors.mutedForeground} />
             <View style={styles.headerTitleGroup}>
-              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                Queued Messages ({messages.length})
-              </Text>
+              <View style={styles.headerTitleRow}>
+                <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+                  Queued Messages
+                </Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{messages.length}</Text>
+                </View>
+              </View>
               <Text
                 style={[
                   styles.headerStatusText,
