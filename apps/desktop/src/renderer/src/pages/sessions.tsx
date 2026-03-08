@@ -383,7 +383,7 @@ function EmptyState({
   onVoiceClick: () => void
   onSelectPrompt: (content: string) => void
   onPastSessionClick: (conversationId: string) => void
-  onOpenPastSessionsDialog: () => void
+  onOpenPastSessionsDialog?: () => void
   textInputShortcut: string
   voiceInputShortcut: string
   dictationShortcut: string
@@ -396,6 +396,9 @@ function EmptyState({
     [conversationHistoryQuery.data],
   )
   const totalCount = conversationHistoryQuery.data?.length ?? 0
+  const isRecentSessionsLoading =
+    (conversationHistoryQuery.isLoading || conversationHistoryQuery.isFetching) &&
+    !conversationHistoryQuery.data
 
   return (
     <div className="flex flex-col items-center justify-center px-6 py-8 text-center">
@@ -421,6 +424,16 @@ function EmptyState({
             <Mic className="h-4 w-4" />
             Start with Voice
           </Button>
+          {onOpenPastSessionsDialog && (
+            <Button
+              variant="outline"
+              onClick={onOpenPastSessionsDialog}
+              className="gap-2"
+            >
+              <Clock className="h-4 w-4" />
+              Past Sessions
+            </Button>
+          )}
           <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} />
         </div>
         {/* Keybind hints - visible on all screens, wraps on narrow */}
@@ -447,6 +460,21 @@ function EmptyState({
         </div>
       </div>
 
+      {isRecentSessionsLoading ? (
+        <div className="text-muted-foreground mt-6 flex w-full max-w-lg items-center justify-center gap-2 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading recent sessions...</span>
+        </div>
+      ) : conversationHistoryQuery.isError ? (
+        <div className="text-muted-foreground mt-6 flex w-full max-w-lg items-center justify-center gap-2 text-sm">
+          <AlertTriangle className="text-destructive h-4 w-4 shrink-0" />
+          <span>
+            Recent sessions couldn&apos;t load right now.
+            {onOpenPastSessionsDialog ? " You can still open Past Sessions." : ""}
+          </span>
+        </div>
+      ) : null}
+
       {/* Recent past sessions */}
       {recentSessions.length > 0 && (
         <div className="mt-8 w-full max-w-lg text-left">
@@ -455,7 +483,7 @@ function EmptyState({
               <Clock className="h-3.5 w-3.5" />
               Recent Sessions
             </h4>
-            {totalCount > RECENT_SESSIONS_LIMIT && (
+            {onOpenPastSessionsDialog && totalCount > RECENT_SESSIONS_LIMIT && (
               <button
                 onClick={onOpenPastSessionsDialog}
                 className="text-muted-foreground hover:text-foreground text-xs transition-colors"
@@ -1665,7 +1693,7 @@ export function Component() {
             onVoiceClick={handleVoiceStart}
             onSelectPrompt={handleSelectPrompt}
             onPastSessionClick={handleContinueConversation}
-            onOpenPastSessionsDialog={onOpenPastSessionsDialog ?? (() => {})}
+            onOpenPastSessionsDialog={onOpenPastSessionsDialog}
             textInputShortcut={textInputShortcut}
             voiceInputShortcut={voiceInputShortcut}
             dictationShortcut={dictationShortcut}
