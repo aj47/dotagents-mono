@@ -1650,6 +1650,35 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ✅ passed
   - debugging-guided live verification from `apps/desktop/DEBUGGING.md` was not required for this helper-only correction after trace reconstruction plus focused unit coverage
 
+## Investigation 2026-03-08 (emergency-stop finalization after `respond_to_user`)
+
+- Langfuse evidence:
+  - conversation: `conv_1771900317548_gnb9gyecq`
+  - failing trace: `session_1771900317549_sio1g2w47`
+    - user input: `continue`
+    - trace outcome: `output: Let me scroll down to see the tweets on the profile.`
+    - metadata showed `wasAborted: true`
+    - observations showed the run had already produced a real user-facing completion via `respond_to_user` (`Posted! I posted the optimized tweet: ...`) and then `mark_work_complete`, but the final surfaced content still collapsed to the stale progress opener
+- Repo reconstruction:
+  - in `apps/desktop/src/main/llm.ts`, `finalizeEmergencyStop(...)` runs immediately when a stop is detected during/just after tool execution
+  - that path previously chose `getPreferredDelegationOutput(...)` + `appendAgentStopNote(...)` without first preferring the stored `respond_to_user` text for the completion update/history
+  - the later `finally` block already protected Langfuse trace output in some cases, but the immediate completion update/history path could still carry stale progress text
+- Concrete root cause:
+  - emergency-stop finalization did not immediately preserve the stored user-facing response when a run had already delivered one through `respond_to_user`
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm.ts`
+    - make `finalizeEmergencyStop(...)` prefer the stored `respond_to_user` content before deciding the final user-visible completion text
+    - skip wrapping that stored deliverable with the stop note when it already represents the completed answer
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression for `stop after tool execution` where a progress opener plus successful `respond_to_user` previously risked surfacing stale text
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - ✅ passed (`15 passed`)
+  - `pnpm --filter @dotagents/desktop test:run -- src/main/llm.test.ts`
+  - ⚠️ the package script ignored the file filter and ran the wider desktop suite; our new `llm.test.ts` slice passed, but two unrelated existing renderer tests failed: `src/renderer/src/components/agent-progress.tile-layout.test.ts` and `src/renderer/src/components/agent-progress.performance.test.ts`
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted `llm.test.ts` command exits successfully
+  - debugging-guided live verification from `apps/desktop/DEBUGGING.md` was not required for this loop because the failing flow was reconstructable from Langfuse and directly covered by the new focused regression
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.

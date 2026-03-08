@@ -204,6 +204,68 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("preserves a stored respond_to_user answer when the session is stopped after tool execution", async () => {
+    const { emitAgentProgress } = await import("./emit-agent-progress")
+    const { AGENT_STOP_NOTE } = await import("./agent-run-utils")
+    const { setSessionUserResponse, clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-stop-after-respond-tool")
+
+    const finalReply = "Posted! I shared the tweet and saved the notes."
+    let shouldStopAfterTools = false
+
+    mockShouldStopSession.mockImplementation(() => shouldStopAfterTools)
+    mockStreamingCall.mockResolvedValueOnce({
+      content: "Let me scroll down to see the tweets on the profile.",
+      toolCalls: [
+        { name: "list_memories", arguments: {} },
+        { name: "respond_to_user", arguments: { text: finalReply } },
+      ],
+    })
+
+    const executeToolCall = vi.fn(async (toolCall: any) => {
+      if (toolCall.name === "respond_to_user") {
+        setSessionUserResponse("session-stop-after-respond-tool", toolCall.arguments.text)
+        shouldStopAfterTools = true
+      }
+
+      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "continue",
+      [
+        { name: "list_memories", description: "List memories", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } },
+      ] as any,
+      executeToolCall,
+      3,
+      [],
+      "conv-stop-after-respond-tool",
+      "session-stop-after-respond-tool",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(finalReply)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-stop-after-respond-tool",
+      expect.objectContaining({ output: finalReply }),
+    )
+
+    const completionUpdate = vi.mocked(emitAgentProgress).mock.calls.at(-1)?.[0]
+    const lastAssistantMessage = [...(completionUpdate?.conversationHistory ?? [])]
+      .reverse()
+      .find(message => message.role === "assistant")
+
+    expect(completionUpdate?.isComplete).toBe(true)
+    expect(completionUpdate?.finalContent).toBe(finalReply)
+    expect(completionUpdate?.finalContent).not.toContain(AGENT_STOP_NOTE)
+    expect(lastAssistantMessage?.content).toBe(finalReply)
+  })
+
   it("prefers a stored respond_to_user message over stale progress text when a later iteration errors", async () => {
     const { setSessionUserResponse, clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")

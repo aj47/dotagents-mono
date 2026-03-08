@@ -1042,9 +1042,17 @@ export async function processTranscriptWithAgentMode(
     steps: AgentProgressStep[],
     candidateOutput?: string,
   ) => {
-    finalContent = appendAgentStopNote(
+    const storedUserResponse = getSessionUserResponse(currentSessionId)
+    const preferredStoredUserResponse = preferStoredUserResponse("", storedUserResponse)
+    const preferredOutput = preferStoredUserResponse(
       getPreferredDelegationOutput(candidateOutput ?? finalContent, conversationHistory),
+      storedUserResponse,
     )
+
+    finalContent =
+      preferredStoredUserResponse && preferredOutput === preferredStoredUserResponse
+        ? preferredOutput
+        : appendAgentStopNote(preferredOutput)
 
     const lastMessage = conversationHistory[conversationHistory.length - 1]
     if (
