@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 78: Desktop MCP tool-group headers forced server identity and ON/OFF controls into an off-screen single row under stressed width
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`
+  - desktop `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (`Capabilities → MCP Servers` → `Tools` section → per-server tool-group header rows)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched session markdown/copy-control/sidebar follow-ups unless a distinct fresh issue appeared.
+  - A reusable live Electron renderer was available on `:9333`, and `Capabilities → MCP Servers` exposed a dense, real-data settings surface that had not been investigated recently in the ledger.
+  - The live renderer is serving an older bundle, so I only kept findings whose problematic source contract still exists in this checkout; the per-server tools header remained a valid current-code target.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, and the repo workflow/design guidance before choosing the next area
+  - reused `agent-browser --cdp 9333` against the live Electron renderer, switched to the `Capabilities → MCP Servers` tools surface, and stress-tested it at `620×900` with `document.documentElement.style.fontSize = '24px'`
+  - captured screenshot-backed evidence in `tmp/ui-audit/capabilities-mcp-620x900-root24-current.png` and measured the mounted per-server tool header directly in the DOM before editing source
+  - compared the live DOM against current source to avoid stale-bundle traps; the top search controls and individual tool rows had already moved on in source, but the per-server header still matched the active rigid single-line contract in `mcp-config-manager.tsx`
+  - prototyped the exact wrap-safe class treatment against the mounted header in the live DOM before editing source
+  - cross-checked platform scope and confirmed `MCPConfigManager` is used by the desktop `settings-mcp-tools.tsx` page only; mobile `apps/mobile/src/screens/SettingsScreen.tsx` is a separate native settings flow and does not share this component
+
+#### Findings
+
+- Before the fix, the desktop MCP tools section had one concrete layout issue with clear user impact:
+  - each per-server tool-group header kept the server name/badge cluster and the `ON` / `OFF` controls in one rigid `flex items-center justify-between` row
+  - in live inspection at `620×900` with `24px` base text, a visible header had only about `296px` of width but needed about `424px` of scroll width
+  - the mounted `OFF` action reached about `right = 674` inside a `620px` viewport, so the control lane pushed off-screen instead of dropping cleanly to a second line
+  - practical impact: users scanning tool groups can lose the per-server bulk toggle controls or the server identity/badge exactly when the settings shell is narrow or text is larger
+
+#### Changes made
+
+- Hardened only the per-server MCP tool-group header row in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`:
+  - changed the header container from a rigid single-line row to a wrap-safe `flex flex-wrap items-start justify-between gap-x-3 gap-y-2 ...` layout
+  - made the left identity lane `min-w-0` and wrap-capable so long server names can break instead of starving the action controls
+  - gave the server name an explicit `break-words [overflow-wrap:anywhere]` contract and kept the badge shrink-safe
+  - moved the `ON` / `OFF` controls into a wrap-safe trailing action lane with `ml-auto flex max-w-full shrink-0 flex-wrap ...` and explicit `shrink-0` button sizing
+- Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts` with focused source-contract coverage for the new per-server tools-header layout contract
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Dependency-free source-contract verification: a Node script confirmed the new wrap-safe MCP tool-header classes are present in `mcp-config-manager.tsx`, the old rigid single-line header class is absent, and the focused regression test coverage is present ✅
+- Live Electron evidence before the fix at `http://localhost:5174/settings/capabilities` via `agent-browser --cdp 9333`:
+  - screenshot: `tmp/ui-audit/capabilities-mcp-620x900-root24-current.png`
+  - representative mounted header measurement: `clientWidth = 296`, `scrollWidth = 424`; the `OFF` button extended to about `right = 674` in a `620px` viewport
+- Live DOM prototype verification of the intended fix:
+  - screenshot: `tmp/ui-audit/capabilities-mcp-tools-header-dom-prototype-620x900-root24.png`
+  - after applying the same wrap-safe treatment to the mounted header, the same row dropped to `scrollWidth = 296` with the action lane preserved inside the header bounds
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/mcp-config-manager.tsx apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is still useful for screenshot-backed evidence and DOM prototyping, but it is not guaranteed to be serving this checkout’s latest bundle. I therefore only shipped a fix where the problematic contract still existed in current source.
+- Mobile cross-check: no matching mobile change was needed because the mobile app does not render `MCPConfigManager` or this desktop MCP tools settings surface.
+- Tradeoff/rationale: the tool-group header can now spend a little more vertical space under stress, but that is a better product tradeoff than letting per-server bulk toggle controls disappear off the right edge.
+- Best next UI audit chunk after this one: stay off the just-touched MCP tool headers unless a rebuilt renderer from this checkout becomes available; the next strongest target is another fresh top-level desktop or mobile surface with a real neglected state.
+
 ### 2026-03-08 — Chunk 77: Desktop session markdown paragraphs let long tool payload strings blow past narrow message widths under larger text
 
 - Area selected:

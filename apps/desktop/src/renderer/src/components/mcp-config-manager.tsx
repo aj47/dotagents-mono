@@ -1950,7 +1950,7 @@ export function MCPConfigManager({
                       tabIndex={0}
                       aria-expanded={isExpanded}
                       aria-label={`Toggle ${serverName} tools`}
-                      className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/70 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                      className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-lg bg-muted/50 px-3 py-2 cursor-pointer hover:bg-muted/70 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
                       onClick={() => toggleToolsExpansion(serverName)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -1959,25 +1959,31 @@ export function MCPConfigManager({
                         }
                       }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-start gap-x-2 gap-y-1">
                         {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
                         )}
-                        <Server className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">{serverName}</span>
-                        <Badge variant="secondary" className="text-xs">
+                        <Server className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-[1_1_10rem] break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]">
+                          {serverName}
+                        </span>
+                        <Badge variant="secondary" className="shrink-0 text-xs">
                           {serverTools.filter(t => t.enabled).length}/{serverTools.length} enabled
                         </Badge>
 
                       </div>
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <div
+                        className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleToggleAllToolsForServer(serverName, true)}
-                          className="h-6 gap-1 px-2 text-xs"
+                          className="h-6 shrink-0 gap-1 px-2 text-xs"
                         >
                           <Power className="h-3 w-3" />
                           ON
@@ -1986,7 +1992,7 @@ export function MCPConfigManager({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleToggleAllToolsForServer(serverName, false)}
-                          className="h-6 gap-1 px-2 text-xs"
+                          className="h-6 shrink-0 gap-1 px-2 text-xs"
                         >
                           <PowerOff className="h-3 w-3" />
                           OFF

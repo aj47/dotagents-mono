@@ -56,4 +56,20 @@ describe("mcp config manager layout", () => {
     expect(mcpConfigManagerSource).not.toContain('className="flex items-center justify-between rounded-lg border p-3"')
     expect(mcpConfigManagerSource).not.toContain('className="truncate text-sm font-medium"')
   })
+
+  it("keeps MCP tool server headers readable when per-server ON/OFF controls share a narrow row", () => {
+    expect(mcpConfigManagerSource).toContain(
+      'className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-lg bg-muted/50 px-3 py-2 cursor-pointer hover:bg-muted/70 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"',
+    )
+    expect(mcpConfigManagerSource).toContain('className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-start gap-x-2 gap-y-1"')
+    expect(mcpConfigManagerSource).toContain(
+      'className="min-w-0 flex-[1_1_10rem] break-words text-sm font-medium leading-tight [overflow-wrap:anywhere]"',
+    )
+    expect(mcpConfigManagerSource).toContain('className="shrink-0 text-xs"')
+    expect(mcpConfigManagerSource).toContain('className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1"')
+    expect(mcpConfigManagerSource).toContain('className="h-6 shrink-0 gap-1 px-2 text-xs"')
+    expect(mcpConfigManagerSource).not.toContain(
+      'className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/70 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"',
+    )
+  })
 })
