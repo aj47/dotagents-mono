@@ -4,6 +4,7 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query"
+import { useConversationStore } from "@renderer/stores"
 import { reportConfigSaveError } from "./config-save-error"
 import { tipcClient } from "./tipc-client"
 
@@ -22,6 +23,13 @@ export const queryClient = new QueryClient({
     },
   },
 })
+
+const clearDeletedConversationSelection = (conversationId?: string) => {
+  const { currentConversationId, endConversation } = useConversationStore.getState()
+  if (!currentConversationId) return
+  if (conversationId && currentConversationId !== conversationId) return
+  endConversation()
+}
 
 // ============================================================================
 // Query Hooks
@@ -162,6 +170,7 @@ export const useDeleteConversationMutation = () =>
       return tipcClient.deleteConversation({ conversationId })
     },
     onSuccess: (_, conversationId) => {
+      clearDeletedConversationSelection(conversationId)
       queryClient.setQueryData(["conversation", conversationId], null)
       queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
     },
@@ -173,6 +182,7 @@ export const useDeleteAllConversationsMutation = () =>
       return tipcClient.deleteAllConversations()
     },
     onSuccess: () => {
+      clearDeletedConversationSelection()
       queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
       queryClient.invalidateQueries({ queryKey: ["conversation"] })
     },
