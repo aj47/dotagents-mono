@@ -673,6 +673,11 @@ type BundleConflictMap = {
 
 type BundleConflictPreview = {
   success: boolean
+  importTarget?: {
+    layer: "global" | "workspace" | "custom"
+    agentsDir: string
+    backupDir: string
+  }
   conflicts?: BundleConflictMap
 }
 

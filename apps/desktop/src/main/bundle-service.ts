@@ -313,6 +313,11 @@ export interface BundlePreviewResult {
   success: boolean
   filePath?: string
   bundle?: DotAgentsBundle
+  importTarget?: {
+    layer: BundleBackupTargetLayer
+    agentsDir: string
+    backupDir: string
+  }
   conflicts?: {
     agentProfiles: PreviewConflict[]
     mcpServers: PreviewConflict[]
@@ -1143,6 +1148,14 @@ function createImportBackupMetadata(targetAgentsDir: string): BundleBackupMetada
   }
 }
 
+function createBundleImportTargetPreview(targetAgentsDir: string): NonNullable<BundlePreviewResult["importTarget"]> {
+  return {
+    layer: getImportBackupTargetLayer(targetAgentsDir),
+    agentsDir: path.resolve(targetAgentsDir),
+    backupDir: path.resolve(getDefaultImportBackupDirectory()),
+  }
+}
+
 export function getDefaultImportBackupDirectory(): string {
   return path.join(os.homedir(), AGENTS_DIR_NAME, IMPORT_BACKUP_DIRECTORY_NAME)
 }
@@ -1608,7 +1621,13 @@ export function previewBundleWithConflicts(
       .filter((conflict): conflict is PreviewConflict => Boolean(conflict)),
   }
 
-  return { success: true, filePath, bundle, conflicts }
+  return {
+    success: true,
+    filePath,
+    bundle,
+    importTarget: createBundleImportTargetPreview(targetAgentsDir),
+    conflicts,
+  }
 }
 
 export async function previewBundleFromDialog(): Promise<{

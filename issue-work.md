@@ -1710,3 +1710,38 @@
   - Re-run any fuller desktop component/Vitest coverage for bundle-import flows if/when the worktree regains that test entrypoint.
 
 - Next recommended issue work item: stay on `#57` / `#25` for another narrow trust/preview polish slice only if it is similarly local, otherwise pivot back to `#58` for a comparably self-contained history/reliability improvement.
+
+##### Issue #57 / #25 — Bundle import trust UX: show target layer + backup location before confirm
+
+- Selection rationale:
+  - The shared bundle import dialog already promised an automatic safety backup, but it still hid two trust-critical details users often want before clicking confirm: which layer will actually be mutated and where the recovery snapshot will be written.
+  - This was a narrow, reusable improvement in the existing shared dialog, so one change covers local bundle imports, restore flows, and Hub-driven imports that reuse the same preview contract.
+- Investigation:
+  - Re-read open issues `#57` and `#25` plus the trust-track comments to confirm the intent is not just “backup exists,” but that bundle writes stay auditable and reversible by default.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog only showed a generic backup promise with no target-layer or backup-folder metadata.
+  - Inspected `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/main/bundle-service.ts` and confirmed the main process already knew the chosen import target directory plus the canonical backup directory, but that metadata was not carried through `previewBundleWithConflicts(...)` to the renderer.
+  - Checked for a mobile equivalent and confirmed there is no corresponding mobile bundle-import dialog surface in this repo, so no mobile parity update was needed for this desktop trust slice.
+- Important assumptions:
+  - Assumption: source-level confirmation of the missing target/backup metadata is sufficient reproduction for this slice.
+  - Why acceptable: the gap is a directly observable omission in a known shared dialog, and the necessary metadata already existed in the import pipeline.
+  - Assumption: surfacing the target layer and backup folder in the existing pre-confirm notice is a better first step than inventing a richer new backup-management surface.
+  - Why acceptable: it lands immediate trust value with minimal scope and builds directly on already-shipped backup/restore affordances.
+- Changes implemented:
+  - Extended `apps/desktop/src/main/bundle-service.ts` so `previewBundleWithConflicts(...)` now returns `importTarget` metadata containing the resolved import layer, target agents directory, and canonical backup directory.
+  - Extended the corresponding preview shape in `apps/desktop/src/main/tipc.ts` so the renderer can safely consume that metadata without losing it during the workspace/global conflict-merge path.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so the `Automatic safety backup` notice now tells the user which layer the import will update, where the backup will be stored, and which concrete agents directory is the write target.
+  - Added an `Open Backups Folder` action directly inside the import dialog’s backup notice, reusing the existing TIPC folder-opening affordance.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to lock in the new preview-contract metadata and the new dialog trust copy/action.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57 / #25:
+  - Consider whether the dialog should also surface richer restore metadata (for example, target layer labels in post-import success toasts or a one-click reveal of the exact created backup file).
+  - Decide whether Hub catalog/install surfaces should additionally summarize the resolved target layer before the shared import dialog opens, or continue delegating that detail entirely to the dialog.
+  - Re-run any broader renderer/component test coverage for bundle-import flows if/when the worktree regains the full Vitest entrypoint.
+
+- Next recommended issue work item: stay on `#57` / `#25` only for another equally local trust-polish slice (for example, exact backup-file reveal from the success path), otherwise pivot to `#58` or another open issue with a similarly self-contained repro.

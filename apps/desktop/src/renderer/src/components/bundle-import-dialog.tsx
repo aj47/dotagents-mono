@@ -13,13 +13,14 @@ import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { Badge } from "@renderer/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
-import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain, ExternalLink } from "lucide-react"
+import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain, ExternalLink, FolderOpen } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 
 type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type ConflictStrategyOverrideKey = Exclude<BundleComponentKey, "memories">
+type BundleImportTargetLayer = "global" | "workspace" | "custom"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 type BundleItemSelectionKey = "agentProfileIds" | "mcpServerNames" | "skillIds" | "repeatTaskIds" | "memoryIds"
 type BundleItemSelectionState = Record<BundleItemSelectionKey, string[]>
@@ -103,6 +104,11 @@ interface PreviewConflict {
 interface BundlePreview {
   success: boolean
   filePath?: string
+  importTarget?: {
+    layer: BundleImportTargetLayer
+    agentsDir: string
+    backupDir: string
+  }
   bundle?: {
     manifest: BundleManifest
     agentProfiles?: Array<{ id: string; name: string; displayName?: string }>
@@ -195,6 +201,19 @@ function getConflictStrategyOverride(
 
 function formatRedactedSecretFields(fields: string[]): string {
   return fields.join(", ")
+}
+
+function formatImportTargetLayerLabel(layer?: BundleImportTargetLayer): string {
+  switch (layer) {
+    case "global":
+      return "Global layer"
+    case "workspace":
+      return "Workspace layer"
+    case "custom":
+      return "Custom layer"
+    default:
+      return "Current layer"
+  }
 }
 
 function getSelectedMcpServersRequiringConfiguration(
@@ -477,6 +496,7 @@ export function BundleImportDialog({
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [isOpeningBackupFolder, setIsOpeningBackupFolder] = useState(false)
   const [preview, setPreview] = useState<BundlePreview | null>(null)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
   const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
@@ -631,6 +651,7 @@ export function BundleImportDialog({
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
+  const importTarget = preview?.importTarget
   const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
   const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
@@ -652,6 +673,21 @@ export function BundleImportDialog({
     normalizedComponents,
     selectedItems,
   )
+
+  const handleOpenBackupsFolderClick = async () => {
+    setIsOpeningBackupFolder(true)
+    try {
+      const result = await tipcClient.openBundleBackupFolder()
+      if (!result?.success) {
+        throw new Error(result?.error || "Unknown error")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to open backups folder: ${errorMessage}`)
+    } finally {
+      setIsOpeningBackupFolder(false)
+    }
+  }
 
   const toggleComponent = (key: keyof typeof components) => {
     setComponents(prev => ({ ...prev, [key]: !prev[key] }))
@@ -766,11 +802,34 @@ export function BundleImportDialog({
             </div>
 
             <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-3">
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Automatic safety backup</Label>
                 <p className="text-xs text-muted-foreground">
-                  Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup. You can restore it later from Settings → Capabilities → Restore Backup.
+                  Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup. This import will update the {formatImportTargetLayerLabel(importTarget?.layer)} and store the backup in <span className="font-mono">{importTarget?.backupDir ?? "~/.agents/backups"}</span>. You can restore it later from Settings → Capabilities → Restore Backup.
                 </p>
+                {importTarget && (
+                  <div className="rounded-md border border-emerald-200 bg-background/70 px-2 py-2 text-[11px] text-muted-foreground">
+                    <p>
+                      Import target: <span className="font-medium text-foreground">{formatImportTargetLayerLabel(importTarget.layer)}</span>
+                    </p>
+                    <p className="mt-1 break-all font-mono">{importTarget.agentsDir}</p>
+                  </div>
+                )}
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-fit gap-1 text-xs"
+                    onClick={handleOpenBackupsFolderClick}
+                    disabled={isOpeningBackupFolder}
+                  >
+                    {isOpeningBackupFolder
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <FolderOpen className="h-3.5 w-3.5" />}
+                    Open Backups Folder
+                  </Button>
+                </div>
               </div>
             </div>
 

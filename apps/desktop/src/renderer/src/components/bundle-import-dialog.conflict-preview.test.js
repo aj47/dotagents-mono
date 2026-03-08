@@ -10,6 +10,10 @@ test('bundle preview conflicts include default skip policy and deterministic ren
   assert.match(bundleServiceSource, /export interface PreviewConflict \{[\s\S]*defaultStrategy: ImportConflictStrategy[\s\S]*renameTargetId\?: string/);
   assert.match(bundleServiceSource, /function createPreviewConflict\([\s\S]*defaultStrategy: "skip"[\s\S]*renameTargetId: generateUniqueId\(id, existingIds\)/);
   assert.match(tipcSource, /type BundleConflictItem = \{[\s\S]*defaultStrategy: "skip"[\s\S]*renameTargetId\?: string/);
+  assert.match(bundleServiceSource, /export interface BundlePreviewResult \{[\s\S]*importTarget\?: \{[\s\S]*layer: BundleBackupTargetLayer[\s\S]*agentsDir: string[\s\S]*backupDir: string/);
+  assert.match(bundleServiceSource, /function createBundleImportTargetPreview\(targetAgentsDir: string\): NonNullable<BundlePreviewResult\["importTarget"\]> \{[\s\S]*backupDir: path\.resolve\(getDefaultImportBackupDirectory\(\)\)/);
+  assert.match(bundleServiceSource, /return \{[\s\S]*importTarget: createBundleImportTargetPreview\(targetAgentsDir\),[\s\S]*conflicts,[\s\S]*\}/);
+  assert.match(tipcSource, /type BundleConflictPreview = \{[\s\S]*importTarget\?: \{[\s\S]*layer: "global" \| "workspace" \| "custom"[\s\S]*backupDir: string/);
 });
 
 test('bundle import dialog renders an import plan with add and rename outcome details', () => {
@@ -28,7 +32,12 @@ test('bundle import dialog renders an import plan with add and rename outcome de
 test('bundle import dialog shows the automatic safety backup guarantee before confirmation', () => {
   assert.match(dialogSource, /<Label>Automatic safety backup<\/Label>/);
   assert.match(dialogSource, /Before DotAgents writes anything from this bundle, it will create a fresh pre-import backup of your current setup\./);
+  assert.match(dialogSource, /This import will update the \{formatImportTargetLayerLabel\(importTarget\?\.layer\)\} and store the backup in/);
   assert.match(dialogSource, /You can restore it later from Settings → Capabilities → Restore Backup\./);
+  assert.match(dialogSource, /Import target: <span className="font-medium text-foreground">\{formatImportTargetLayerLabel\(importTarget\.layer\)\}<\/span>/);
+  assert.match(dialogSource, /const handleOpenBackupsFolderClick = async \(\) => \{/);
+  assert.match(dialogSource, /tipcClient\.openBundleBackupFolder\(\)/);
+  assert.match(dialogSource, /Open Backups Folder/);
   assert.match(dialogSource, /const backupMessage = result\.backupFilePath/);
 });
 
