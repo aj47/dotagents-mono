@@ -3222,3 +3222,53 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queue edit `Cancel` / `Save` respond on the first tap with the keyboard open.
   - Compare empty, unchanged, and changed drafts while the keyboard is visible to confirm the inline helper and disabled/enabled `Save` states still feel clear.
   - If keyboard handling still feels awkward in live use, evaluate a small `keyboardDismissMode` pass before attempting broader queue-panel changes.
+
+### 2026-03-08 — Iteration 75: stop ACP-mode copy from hiding Stdio main-agent options
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/src/lib/mainAgentOptions.ts`
+  - focused mobile tests in `apps/mobile/tests/settings-agent-mode-mobile.test.js` and `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `pnpm --filter @dotagents/mobile web` → failed with `sh: expo: command not found`
+    - the same run reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because `apps/mobile/node_modules` is still missing in this worktree, fresh Expo Web / simulator validation was not practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed ACP-mode selector and settings copy repeatedly said `ACP agent` / `No enabled ACP agents`.
+  - `apps/mobile/src/lib/mainAgentOptions.ts` currently builds ACP-mode main-agent options from both enabled `acp` and `stdio` agents.
+  - That meant the visible mobile copy under-described the actual option set, especially in empty states and guidance text.
+- Issue selected:
+  - ACP-mode mobile copy made the main-agent flow sound ACP-only even though Stdio agents are valid selectable main-agent options, weakening state clarity and configuration confidence.
+- Decision:
+  - Keep the existing ACP mode name and current layouts.
+  - Do not redesign the selector or settings flow while live validation is blocked.
+  - Make the smallest copy-only fix: describe ACP mode as routing through a command-based agent, rename the in-section label to `Main Agent`, and explicitly mention `ACP or Stdio` where guidance needs precision.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - describe ACP mode as using a selected command-based agent,
+    - rename the ACP-only sublabel to `Main Agent`,
+    - clarify the empty-state and helper copy to mention enabled `ACP or Stdio` agents,
+    - update accessibility labels/hints so the selected option is described as the main agent in ACP mode rather than an ACP-only agent.
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - describe ACP-mode choices as enabled command-based agents,
+    - rename the empty-state title from `No ACP agents ready yet` to `No main agents ready yet`,
+    - clarify the empty-state guidance to mention enabling an `ACP or Stdio` agent in Settings.
+  - Updated focused regression coverage in:
+    - `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+    - `apps/mobile/tests/agent-selector-sheet.test.js`
+- Validation evidence:
+  - `pnpm --filter @dotagents/mobile exec node --test tests/settings-agent-mode-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec node --test tests/agent-selector-sheet.test.js` ✅
+  - Expo Web re-validation ⚠️ blocked by missing mobile install / missing local `expo` in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The refreshed copy still needs a real narrow-screen pass to confirm the longer `command-based` / `ACP or Stdio` phrasing wraps cleanly in the selector sheet and settings chips.
+  - A future broader terminology cleanup may still be warranted on desktop and shared config copy, but this iteration intentionally stayed mobile-local.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the updated ACP-mode copy stays readable on a narrow screen.
+  - If the longer guidance text feels too dense live, tighten the copy while keeping `Stdio` support explicit.
+  - Continue with the next highest-signal local mobile issue only after a fresh live pass re-establishes which sub-agent surface now has the most friction.

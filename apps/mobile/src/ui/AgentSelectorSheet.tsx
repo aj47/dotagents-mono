@@ -102,7 +102,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const currentAgentName = currentProfile?.name || (selectorMode === 'acp' ? 'Main Agent' : 'Default Agent');
   const isMissingConfigError = error === missingConfigError;
   const emptyStateMessage = selectorMode === 'acp'
-    ? 'No enabled ACP agents are available yet. Add or enable one in Settings → Agents to use it as your main agent.'
+    ? 'No enabled command-based agents are available yet. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent.'
     : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
   const errorSupportText = isMissingConfigError
     ? 'Your current agent stays active. Open Settings to finish connecting this server and review agent mode.'
@@ -249,7 +249,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         <Text style={styles.title}>{selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}</Text>
         <Text style={styles.subtitle}>
           {selectorMode === 'acp'
-            ? 'Choose which enabled ACP agent should act as the main agent for new chats.'
+            ? 'Choose which enabled command-based agent should act as the main agent for new chats.'
             : 'Switch between saved chat profiles. Delegation agents stay available from Settings → Agents.'}
         </Text>
 
@@ -336,7 +336,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               </Text>
             </View>
             <Text style={styles.emptyStateTitle}>
-              {selectorMode === 'acp' ? 'No ACP agents ready yet' : 'No switchable agents yet'}
+              {selectorMode === 'acp' ? 'No main agents ready yet' : 'No switchable agents yet'}
             </Text>
             <Text style={styles.emptyText}>{emptyStateMessage}</Text>
             <TouchableOpacity

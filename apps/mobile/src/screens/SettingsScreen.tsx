@@ -1788,7 +1788,7 @@ export default function SettingsScreen({ navigation }: any) {
                       accessibilityLabel={createButtonAccessibilityLabel(`Use ${mode.toUpperCase()} main agent mode`)}
                       accessibilityHint={
                         mode === 'acp'
-                          ? 'Routes new chats through a selected ACP agent as the main agent.'
+                          ? 'Routes new chats through a selected command-based agent as the main agent.'
                           : 'Uses the configured API model directly as the main agent for new chats.'
                       }
                       accessibilityState={{ selected: remoteSettings.mainAgentMode === mode }}
@@ -1807,13 +1807,13 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
                 <Text style={styles.helperText}>
-                  API uses external LLMs, ACP routes to an ACP agent
+                  API uses external LLMs, ACP routes to an enabled ACP or Stdio agent
                 </Text>
 
                 {/* ACP-specific settings - only show when ACP mode selected */}
                 {remoteSettings.mainAgentMode === 'acp' && (
                   <>
-                    <Text style={styles.label}>ACP Agent</Text>
+                    <Text style={styles.label}>Main Agent</Text>
                     {availableAcpMainAgents.length > 0 ? (
                       <View style={styles.providerSelector}>
                         {availableAcpMainAgents.map((agent) => (
@@ -1825,8 +1825,8 @@ export default function SettingsScreen({ navigation }: any) {
                             ]}
                             onPress={() => handleRemoteSettingUpdate('mainAgentName', agent.name)}
                             accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Use ${agent.displayName || agent.name} as ACP main agent`)}
-                            accessibilityHint="Routes main-agent requests through this ACP agent."
+                            accessibilityLabel={createButtonAccessibilityLabel(`Use ${agent.displayName || agent.name} as the main agent in ACP mode`)}
+                            accessibilityHint="Routes main-agent requests through this command-based agent."
                             accessibilityState={{ selected: remoteSettings.mainAgentName === agent.name }}
                           >
                             <Text
@@ -1845,13 +1845,13 @@ export default function SettingsScreen({ navigation }: any) {
                     ) : (
                       <View style={styles.agentSettingsNoticeContainer}>
                         <Text style={styles.agentSettingsNoticeText}>
-                          No enabled ACP agents are available. Enable one in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.
+                          No enabled command-based agents are available. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent.
                         </Text>
                       </View>
                     )}
                     {availableAcpMainAgents.length > 0 && (
                       <Text style={styles.helperText}>
-                        Select which ACP agent handles requests
+                        Select which enabled ACP or Stdio agent handles requests
                       </Text>
                     )}
 

@@ -40,6 +40,12 @@ test('keeps the current agent visible through selector-sheet errors so the failu
   assert.match(sheetSource, /errorSupportText:\s*\{[\s\S]*?textAlign:\s*'center',[\s\S]*?lineHeight:\s*20/);
 });
 
+test('describes ACP-mode main-agent choices as command-based instead of ACP-only', () => {
+  assert.match(sheetSource, /const emptyStateMessage = selectorMode === 'acp'[\s\S]*?No enabled command-based agents are available yet\. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent\./);
+  assert.match(sheetSource, /selectorMode === 'acp'[\s\S]*?Choose which enabled command-based agent should act as the main agent for new chats\./);
+  assert.match(sheetSource, /selectorMode === 'acp' \? 'No main agents ready yet' : 'No switchable agents yet'/);
+});
+
 test('makes the selector loading state read as active progress while keeping the current agent visible', () => {
   assert.match(sheetSource, /\{isLoading \? \([\s\S]*?style=\{styles\.loadingStateCard\}[\s\S]*?accessible[\s\S]*?accessibilityRole="progressbar"[\s\S]*?accessibilityLabel="Loading available agents"[\s\S]*?accessibilityHint="Your current agent stays active while the available agent options load\."[\s\S]*?<View style=\{styles\.currentAgentBadge\}>[\s\S]*?<Text style=\{styles\.currentAgentBadgeLabel\}>Current agent<\/Text>[\s\S]*?\{currentAgentName\}[\s\S]*?<View style=\{styles\.loadingStatusRow\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.loadingStatusText\}>Loading available agents…<\/Text>[\s\S]*?<Text style=\{styles\.loadingText\}>Your current agent stays active while options load\.<\/Text>/);
   assert.match(sheetSource, /loadingStateCard:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*spacing\.sm/);

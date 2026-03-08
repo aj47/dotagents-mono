@@ -11,14 +11,15 @@ const settingsSource = fs.readFileSync(
 test('uses mobile-sized selectable chips for main agent mode', () => {
   assert.match(settingsSource, /agentSettingsOption:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget[\s\S]*?minWidth:\s*84[\s\S]*?maxWidth:\s*'100%'/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Use \$\{mode\.toUpperCase\(\)\} main agent mode`\)/);
-  assert.match(settingsSource, /accessibilityHint=\{[\s\S]*?Routes new chats through a selected ACP agent as the main agent\.[\s\S]*?Uses the configured API model directly as the main agent for new chats\./);
+  assert.match(settingsSource, /accessibilityHint=\{[\s\S]*?Routes new chats through a selected command-based agent as the main agent\.[\s\S]*?Uses the configured API model directly as the main agent for new chats\./);
   assert.match(settingsSource, /accessibilityState=\{\{ selected: remoteSettings\.mainAgentMode === mode \}\}/);
   assert.match(settingsSource, /numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{mode\.toUpperCase\(\)\}/);
 });
 
-test('gives ACP main-agent chips explicit selection semantics and narrow-screen truncation', () => {
-  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Use \$\{agent\.displayName \|\| agent\.name\} as ACP main agent`\)/);
-  assert.match(settingsSource, /accessibilityHint="Routes main-agent requests through this ACP agent\."/);
+test('gives ACP-mode main-agent chips explicit command-based selection semantics and narrow-screen truncation', () => {
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Main Agent<\/Text>/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Use \$\{agent\.displayName \|\| agent\.name\} as the main agent in ACP mode`\)/);
+  assert.match(settingsSource, /accessibilityHint="Routes main-agent requests through this command-based agent\."/);
   assert.match(settingsSource, /accessibilityState=\{\{ selected: remoteSettings\.mainAgentName === agent\.name \}\}/);
   assert.match(settingsSource, /agentSettingsOptionText:\s*\{[\s\S]*?maxWidth:\s*'100%'[\s\S]*?flexShrink:\s*1[\s\S]*?textAlign:\s*'center'/);
   assert.match(settingsSource, /numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{agent\.displayName \|\| agent\.name\}/);
@@ -26,8 +27,9 @@ test('gives ACP main-agent chips explicit selection semantics and narrow-screen 
 
 test('turns the ACP no-agent state into explicit, mode-aware guidance', () => {
   assert.match(settingsSource, /availableAcpMainAgents\.length > 0 \? \(/);
-  assert.match(settingsSource, /No enabled ACP agents are available\. Enable one in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent\./);
-  assert.match(settingsSource, /\{availableAcpMainAgents\.length > 0 && \([\s\S]*?Select which ACP agent handles requests[\s\S]*?\)\}/);
+  assert.match(settingsSource, /API uses external LLMs, ACP routes to an enabled ACP or Stdio agent/);
+  assert.match(settingsSource, /No enabled command-based agents are available\. Enable an ACP or Stdio agent in Settings → Agents, or switch Main Agent Mode back to API so new chats still have a ready main agent\./);
+  assert.match(settingsSource, /\{availableAcpMainAgents\.length > 0 && \([\s\S]*?Select which enabled ACP or Stdio agent handles requests[\s\S]*?\)\}/);
   assert.match(settingsSource, /agentSettingsNoticeContainer:\s*\{[\s\S]*?padding:\s*spacing\.md[\s\S]*?borderColor:\s*theme\.colors\.border[\s\S]*?backgroundColor:\s*theme\.colors\.secondary/);
   assert.match(settingsSource, /agentSettingsNoticeText:\s*\{[\s\S]*?fontSize:\s*13,[\s\S]*?lineHeight:\s*18,[\s\S]*?color:\s*theme\.colors\.foreground/);
 });
