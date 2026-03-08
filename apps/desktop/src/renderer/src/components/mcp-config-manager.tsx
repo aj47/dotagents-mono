@@ -1871,9 +1871,9 @@ export function MCPConfigManager({
         {toolsSectionExpanded && (
           <CardContent className="border-t pt-4">
             {/* Tool Search and Filter Controls */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div className="flex flex-1 items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
+            <div className="mb-4 flex flex-wrap items-start gap-3">
+              <div className="flex min-w-0 flex-[1_1_14rem] flex-wrap items-center gap-3">
+                <div className="relative min-w-[min(100%,14rem)] flex-[1_1_14rem] max-w-sm">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search tools..."
@@ -1896,7 +1896,7 @@ export function MCPConfigManager({
                   {showDisabledTools ? "Hide Disabled" : "Show All"}
                 </Button>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
                 <Button
                   variant="outline"
                   size="sm"

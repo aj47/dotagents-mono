@@ -34,4 +34,14 @@ describe("mcp config manager layout", () => {
       'className="block w-full max-w-full rounded bg-muted px-2 py-1 text-xs font-mono leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-wrap"',
     )
   })
+
+  it("keeps the tools search and bulk-action controls wrap-safe within narrow settings columns", () => {
+    expect(mcpConfigManagerSource).toContain('className="mb-4 flex flex-wrap items-start gap-3"')
+    expect(mcpConfigManagerSource).toContain('className="flex min-w-0 flex-[1_1_14rem] flex-wrap items-center gap-3"')
+    expect(mcpConfigManagerSource).toContain('className="relative min-w-[min(100%,14rem)] flex-[1_1_14rem] max-w-sm"')
+    expect(mcpConfigManagerSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
+    expect(mcpConfigManagerSource).not.toContain(
+      'className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4"',
+    )
+  })
 })

@@ -1,5 +1,59 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 56: Desktop MCP tools search/bulk-action controls overflow out of the card under tighter settings widths and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (`Settings` → `Capabilities` → `MCP Servers` → `Tools` section controls row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided revisiting the just-fixed transport/command detail rows without a fresh follow-up reason.
+  - Chunk 55 explicitly left the `mcp-config-manager.tsx` tools area as a worthwhile next live follow-up, especially dense controls under zoom.
+  - A real Electron renderer session was still available on `:9333` at `http://localhost:5174/settings/capabilities`, making screenshot-backed inspection practical instead of relying on source review alone.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a clear follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer on `http://localhost:5174/settings/capabilities`
+  - kept the live page at `760×670` with simulated `150%` zoom, captured screenshot-backed evidence in `tmp/ui-audit/settings-capabilities-current-760x670-zoom150.png`, and measured the mounted `Tools` controls row directly in the DOM before editing source
+  - prototyped the smallest container-aware wrap treatment directly in the mounted DOM and captured `tmp/ui-audit/settings-capabilities-tools-controls-prototype-wrap.png`
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/SettingsScreen.tsx` exposes MCP server toggles, but not this desktop-only tools search/filter/bulk-action header row
+
+#### Findings
+
+- Before the fix, the desktop `MCP Servers` → `Tools` controls had one concrete user-impacting layout issue:
+  - the controls row switched to a horizontal `sm:` layout based on viewport width even though the real settings-column container was much narrower
+  - in live inspection at `760×670` with simulated `150%` zoom, the controls row only had about `231px` of visible width but needed about `527px` of scroll width
+  - the search/filter cluster stretched to about `x=575` while the row ended around `x=456.7`, and the `All ON` / `All OFF` cluster extended even farther to about `x=752.5`
+  - this is materially risky because the top tools controls are where users search the tool list and do global bulk enable/disable actions; letting those controls spill outside the card makes them harder to discover, read, and click exactly where users are trying to manage MCP tools quickly
+
+#### Changes made
+
+- Hardened the tools controls row in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` with the smallest effective container-aware reflow fix verified live:
+  - changed the outer controls row from a viewport-breakpoint `sm:flex-row` pattern to a wrap-safe `flex-wrap` container
+  - gave the search cluster a real flexible basis and `min-w-0` so it can use the available row width without forcing the bulk actions off-card
+  - gave the search input its own wrap-safe minimum/flex basis so the input can stay readable while the `Hide Disabled` button drops below when needed
+  - changed the bulk-action cluster to a wrap-safe right-aligned group so `All ON` / `All OFF` can move to the next line instead of overflowing horizontally
+- Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts` with focused source-contract coverage for the new wrap-safe tools controls row
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe tools-controls classes, removal of the old `sm:flex-row` row, and the focused regression test are present
+- Live Electron evidence before the fix at `http://localhost:5174/settings/capabilities`:
+  - screenshot: `tmp/ui-audit/settings-capabilities-current-760x670-zoom150.png`
+  - the controls row measured about `clientWidth = 231px` and `scrollWidth = 527px`
+  - the search/filter cluster extended to about `x=575.3` while the row ended around `x=456.7`, and the bulk-action cluster extended to about `x=752.5`
+- Live DOM prototype verification of the intended fix:
+  - after applying the same wrap-safe treatment directly in the mounted DOM, the row measured `scrollWidth = clientWidth = 231px`, eliminating horizontal overflow
+  - the controls reflowed into a taller but fully contained stack (`height ≈ 116px`) while keeping the search field and both bulk actions visible inside the card
+  - screenshot: `tmp/ui-audit/settings-capabilities-tools-controls-prototype-wrap.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/mcp-config-manager.tsx apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired real pre-fix renderer evidence with a live DOM prototype of the exact wrap treatment and direct source verification of the patch.
+- This chunk is desktop-only: mobile `SettingsScreen` does not expose the same desktop tools search/filter/bulk-action header, so no matching mobile change was needed.
+- Tradeoff/rationale: under tighter settings widths or larger text, this controls row may now become two or more lines tall sooner than before, but that is a deliberate and safer tradeoff than hiding global search and bulk actions outside the visible card.
+- Best next UI audit chunk after this one: stay in `mcp-config-manager.tsx` only for another fresh live follow-up like the per-server `Tools` subsection headers or individual tool-row title/action pressure under zoom, or move to another fresh live-inspectable desktop/mobile surface.
+
 ### 2026-03-08 — Chunk 55: Desktop MCP server transport/command details spill out of the card under tighter settings widths and larger text
 
 - Area selected:
