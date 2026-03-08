@@ -48,6 +48,24 @@ const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
 type ProviderDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
 
+function parseSupertonicSpeedDraft(value: string) {
+  const parsed = Number.parseFloat(value)
+  if (!Number.isFinite(parsed) || parsed < 0.5 || parsed > 2.0) {
+    return null
+  }
+
+  return parsed
+}
+
+function parseSupertonicStepsDraft(value: string) {
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isInteger(parsed) || parsed < 2 || parsed > 10) {
+    return null
+  }
+
+  return parsed
+}
+
 function getProviderDrafts(config?: Config | null): Record<ProviderDraftKey, string> {
   return {
     groqApiKey: config?.groqApiKey || "",
@@ -647,6 +665,95 @@ function SupertonicProviderSection({
     queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
   })
   const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
+  const [speedDraft, setSpeedDraft] = useState(() => String(speed))
+  const [stepsDraft, setStepsDraft] = useState(() => String(steps))
+  const speedSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stepsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setSpeedDraft(String(speed))
+  }, [speed])
+
+  useEffect(() => {
+    setStepsDraft(String(steps))
+  }, [steps])
+
+  const clearPendingSpeedSave = useCallback(() => {
+    if (speedSaveTimeoutRef.current) {
+      clearTimeout(speedSaveTimeoutRef.current)
+      speedSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  const clearPendingStepsSave = useCallback(() => {
+    if (stepsSaveTimeoutRef.current) {
+      clearTimeout(stepsSaveTimeoutRef.current)
+      stepsSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  useEffect(() => () => {
+    clearPendingSpeedSave()
+    clearPendingStepsSave()
+  }, [clearPendingSpeedSave, clearPendingStepsSave])
+
+  const scheduleSpeedSave = useCallback((value: string) => {
+    clearPendingSpeedSave()
+    const parsed = parseSupertonicSpeedDraft(value)
+    if (parsed === null) {
+      return
+    }
+
+    speedSaveTimeoutRef.current = setTimeout(() => {
+      speedSaveTimeoutRef.current = null
+      onSpeedChange(parsed)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingSpeedSave, onSpeedChange])
+
+  const scheduleStepsSave = useCallback((value: string) => {
+    clearPendingStepsSave()
+    const parsed = parseSupertonicStepsDraft(value)
+    if (parsed === null) {
+      return
+    }
+
+    stepsSaveTimeoutRef.current = setTimeout(() => {
+      stepsSaveTimeoutRef.current = null
+      onStepsChange(parsed)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingStepsSave, onStepsChange])
+
+  const updateSpeedDraft = useCallback((value: string) => {
+    setSpeedDraft(value)
+    scheduleSpeedSave(value)
+  }, [scheduleSpeedSave])
+
+  const updateStepsDraft = useCallback((value: string) => {
+    setStepsDraft(value)
+    scheduleStepsSave(value)
+  }, [scheduleStepsSave])
+
+  const flushSpeedSave = useCallback((value: string) => {
+    clearPendingSpeedSave()
+    const parsed = parseSupertonicSpeedDraft(value)
+    if (parsed === null) {
+      setSpeedDraft(String(speed))
+      return
+    }
+
+    onSpeedChange(parsed)
+  }, [clearPendingSpeedSave, onSpeedChange, speed])
+
+  const flushStepsSave = useCallback((value: string) => {
+    clearPendingStepsSave()
+    const parsed = parseSupertonicStepsDraft(value)
+    if (parsed === null) {
+      setStepsDraft(String(steps))
+      return
+    }
+
+    onStepsChange(parsed)
+  }, [clearPendingStepsSave, onStepsChange, steps])
 
   const handleTestVoice = async () => {
     try {
@@ -791,13 +898,11 @@ function SupertonicProviderSection({
                   max={2.0}
                   step={0.05}
                   className="w-full sm:w-[100px]"
-                  value={speed}
+                  value={speedDraft}
                   onChange={(e) => {
-                    const val = parseFloat(e.currentTarget.value)
-                    if (!isNaN(val) && val >= 0.5 && val <= 2.0) {
-                      onSpeedChange(val)
-                    }
+                    updateSpeedDraft(e.currentTarget.value)
                   }}
+                  onBlur={(e) => flushSpeedSave(e.currentTarget.value)}
                 />
               </Control>
 
@@ -816,13 +921,11 @@ function SupertonicProviderSection({
                   max={10}
                   step={1}
                   className="w-full sm:w-[100px]"
-                  value={steps}
+                  value={stepsDraft}
                   onChange={(e) => {
-                    const val = parseInt(e.currentTarget.value)
-                    if (!isNaN(val) && val >= 2 && val <= 10) {
-                      onStepsChange(val)
-                    }
+                    updateStepsDraft(e.currentTarget.value)
                   }}
+                  onBlur={(e) => flushStepsSave(e.currentTarget.value)}
                 />
               </Control>
 

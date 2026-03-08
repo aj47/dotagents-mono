@@ -72,6 +72,16 @@ function findInputByPlaceholder(node: any, placeholder: string) {
   return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === placeholder)
 }
 
+function findNumberInput(node: any, min: string | number, max: string | number) {
+  return findNode(
+    node,
+    candidate => candidate.type === "Input"
+      && candidate.props?.type === "number"
+      && String(candidate.props?.min) === String(min)
+      && String(candidate.props?.max) === String(max),
+  )
+}
+
 async function flushPromises() { await Promise.resolve(); await Promise.resolve() }
 
 async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntime>, overrides: Record<string, any> = {}) {
@@ -99,7 +109,17 @@ async function loadSettingsProviders(runtime: ReturnType<typeof createHookRuntim
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@tanstack/react-query", () => ({ useQuery: () => ({ data: undefined, isLoading: false }), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }))
+  vi.doMock("@tanstack/react-query", () => ({
+    useQuery: (options: { queryKey?: string[] }) => {
+      const key = options?.queryKey?.[0]
+      if (key === "supertonicModelStatus") {
+        return { data: { downloaded: true }, isLoading: false }
+      }
+
+      return { data: undefined, isLoading: false }
+    },
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  }))
   vi.doMock("@renderer/lib/query-client", () => ({ useConfigQuery: () => ({ data: currentConfig }), useSaveConfigMutation: () => ({ mutate }) }))
   vi.doMock("@renderer/components/ui/control", () => ({ Control: (props: any) => ({ type: "Control", props }), ControlGroup: (props: any) => props.children, ControlLabel: (props: any) => props.label }))
   vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
@@ -185,5 +205,68 @@ describe("desktop provider settings draft behavior", () => {
     tree = runtime.render(Component, {} as any)
     baseUrlInput = findInputByPlaceholder(tree, "https://generativelanguage.googleapis.com")
     expect(baseUrlInput.props.value).toBe("https://saved.example.test")
+  })
+
+  it("lets Supertonic quality steps keep an intermediate keyboard draft before saving a valid final value", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsProviders(runtime, {
+      ttsProviderId: "supertonic",
+      providerSectionCollapsedSupertonic: false,
+      supertonicSteps: 5,
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let stepsInput = findNumberInput(tree, 2, 10)
+    expect(stepsInput.props.value).toBe("5")
+
+    stepsInput.props.onChange({ currentTarget: { value: "1" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    stepsInput = findNumberInput(tree, 2, 10)
+    expect(stepsInput.props.value).toBe("1")
+    expect(mutate).not.toHaveBeenCalled()
+
+    stepsInput.props.onChange({ currentTarget: { value: "10" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    stepsInput = findNumberInput(tree, 2, 10)
+    expect(stepsInput.props.value).toBe("10")
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledWith({ config: { ...getCurrentConfig(), supertonicSteps: 10 } })
+  })
+
+  it("lets Supertonic speed keep an out-of-range prefix locally and resets invalid blur states", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate } = await loadSettingsProviders(runtime, {
+      ttsProviderId: "supertonic",
+      providerSectionCollapsedSupertonic: false,
+      supertonicSpeed: 1.05,
+    })
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let speedInput = findNumberInput(tree, 0.5, 2)
+    expect(speedInput.props.value).toBe("1.05")
+
+    speedInput.props.onChange({ currentTarget: { value: "0" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    speedInput = findNumberInput(tree, 0.5, 2)
+    expect(speedInput.props.value).toBe("0")
+    expect(mutate).not.toHaveBeenCalled()
+
+    speedInput.props.onBlur({ currentTarget: { value: "0" } })
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    speedInput = findNumberInput(tree, 0.5, 2)
+    expect(speedInput.props.value).toBe("1.05")
   })
 })
