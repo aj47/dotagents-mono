@@ -3198,6 +3198,12 @@ export const router = {
   }),
 
   // Conversation Management
+  openConversationHistoryFolder: t.procedure.action(async () => {
+    fs.mkdirSync(conversationsFolder, { recursive: true })
+    const error = await shell.openPath(conversationsFolder)
+    return { success: !error, error: error || undefined }
+  }),
+
   getConversationHistory: t.procedure.action(async () => {
     logApp("[tipc] getConversationHistory called")
     const result = await conversationService.getConversationHistory()

@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import dayjs from "dayjs"
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Search, Trash2 } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Clock, FolderOpen, Loader2, Search, Trash2 } from "lucide-react"
 
 import { cn } from "@renderer/lib/utils"
 import { useConversationHistoryQuery, useDeleteConversationMutation, useDeleteAllConversationsMutation } from "@renderer/lib/queries"
+import { tipcClient } from "@renderer/lib/tipc-client"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@renderer/components/ui/dialog"
@@ -54,6 +54,7 @@ export function PastSessionsDialog({
     INITIAL_PAST_SESSIONS,
   )
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
+  const [isOpeningHistoryFolder, setIsOpeningHistoryFolder] = useState(false)
 
   useEffect(() => {
     if (!open) {
@@ -110,6 +111,21 @@ export function PastSessionsDialog({
     }
   }
 
+  const handleOpenHistoryFolder = async () => {
+    try {
+      setIsOpeningHistoryFolder(true)
+      const result = await tipcClient.openConversationHistoryFolder()
+      if (!result?.success) {
+        toast.error(result?.error || "Failed to open history folder")
+      }
+    } catch (error) {
+      console.error("Failed to open history folder:", error)
+      toast.error("Failed to open history folder")
+    } finally {
+      setIsOpeningHistoryFolder(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm w-[calc(100%-2rem)] overflow-hidden grid-cols-1">
@@ -134,6 +150,17 @@ export function PastSessionsDialog({
                 className="pl-7 text-xs w-full"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenHistoryFolder}
+              disabled={isOpeningHistoryFolder}
+              className="h-8 shrink-0 text-xs"
+              title="Open history folder"
+            >
+              <FolderOpen className="h-3 w-3 mr-1" />
+              {isOpeningHistoryFolder ? "Opening..." : "Open History Folder"}
+            </Button>
             <Button
               variant="outline"
               size="sm"

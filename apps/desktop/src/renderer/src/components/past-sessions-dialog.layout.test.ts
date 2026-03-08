@@ -31,6 +31,13 @@ describe("past sessions dialog layout", () => {
     )
   })
 
+  it("adds a direct open-history-folder affordance next to history management controls", () => {
+    expect(pastSessionsDialogSource).toContain("tipcClient.openConversationHistoryFolder()")
+    expect(pastSessionsDialogSource).toContain('title="Open history folder"')
+    expect(pastSessionsDialogSource).toContain('Open History Folder')
+    expect(pastSessionsDialogSource).toContain('Failed to open history folder')
+  })
+
   it("keeps per-session delete affordances keyboard-accessible", () => {
     expect(pastSessionsDialogSource).toContain(
       'focus-visible:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
