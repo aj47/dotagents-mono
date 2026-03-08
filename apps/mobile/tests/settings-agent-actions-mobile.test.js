@@ -22,7 +22,9 @@ test('wraps each agent toggle in a named minimum touch target', () => {
 
 test('gives agent delete actions explicit button semantics and a mobile-sized target', () => {
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete \$\{profile\.displayName\} agent`\)/);
-  assert.match(settingsSource, /accessibilityHint="Removes this agent after confirmation\."/);
+  assert.match(settingsSource, /const agentDeleteHint = isSelectedMainAgentProfile[\s\S]*?Removes this agent after confirmation\.[\s\S]*?This agent is currently selected as the main agent for new chats in ACP mode\./);
+  assert.match(settingsSource, /accessibilityHint=\{agentDeleteHint\}/);
+  assert.match(settingsSource, /const deleteMessage = isSelectedMainAgentProfile[\s\S]*?Are you sure you want to delete "\$\{profile\.displayName\}"\?[\s\S]*?This agent is currently selected as the main agent for new chats in ACP mode\./);
   assert.match(settingsSource, /agentDeleteButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget/);
 });
 

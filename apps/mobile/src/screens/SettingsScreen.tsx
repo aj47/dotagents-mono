@@ -780,7 +780,13 @@ export default function SettingsScreen({ navigation }: any) {
       return;
     }
 
-    confirmDestructiveAction('Delete Agent', `Are you sure you want to delete "${profile.displayName}"?`, async () => {
+    const isSelectedMainAgentProfile = selectedMainAgentLookupName.length > 0
+      && normalizeAgentLookupName(profile.name) === selectedMainAgentLookupName;
+    const deleteMessage = isSelectedMainAgentProfile
+      ? `Are you sure you want to delete "${profile.displayName}"? This agent is currently selected as the main agent for new chats in ACP mode.`
+      : `Are you sure you want to delete "${profile.displayName}"?`;
+
+    confirmDestructiveAction('Delete Agent', deleteMessage, async () => {
       try {
         await settingsClient.deleteAgentProfile(profile.id);
         setAgentProfiles(prev => prev.filter(p => p.id !== profile.id));
@@ -789,7 +795,7 @@ export default function SettingsScreen({ navigation }: any) {
         Alert.alert('Error', error.message || 'Failed to delete agent profile');
       }
     });
-  }, [settingsClient, confirmDestructiveAction]);
+  }, [settingsClient, confirmDestructiveAction, selectedMainAgentLookupName]);
 
   // Navigate to agent edit screen
   const handleAgentProfileEdit = useCallback((agentId?: string) => {
@@ -2425,6 +2431,9 @@ export default function SettingsScreen({ navigation }: any) {
                     const agentToggleHint = isSelectedMainAgentProfile
                       ? 'Enables or disables this agent for delegation. This agent is currently selected as the main agent for new chats in ACP mode.'
                       : 'Enables or disables this agent for delegation.';
+                    const agentDeleteHint = isSelectedMainAgentProfile
+                      ? 'Removes this agent after confirmation. This agent is currently selected as the main agent for new chats in ACP mode.'
+                      : 'Removes this agent after confirmation.';
 
                     return (
                     <View
@@ -2501,7 +2510,7 @@ export default function SettingsScreen({ navigation }: any) {
                             onPress={() => handleAgentProfileDelete(profile)}
                             accessibilityRole="button"
                             accessibilityLabel={createButtonAccessibilityLabel(`Delete ${profile.displayName} agent`)}
-                            accessibilityHint="Removes this agent after confirmation."
+                            accessibilityHint={agentDeleteHint}
                             activeOpacity={0.7}
                           >
                             <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>

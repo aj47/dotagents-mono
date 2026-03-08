@@ -4323,3 +4323,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the `Main agent` badge remains readable and tappable-adjacent rows still feel balanced on narrow screens.
   - Live-test a conflicting state where the current ACP main agent row is disabled or built-in to confirm the combined badges remain understandable instead of visually noisy.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this agent-row state marker without fresh evidence.
+
+### 2026-03-08 — Iteration 99: make deleting the current main agent feel explicitly high-consequence
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iteration 98 to avoid reworking the same row-state surface without a new issue
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused agent-row regression coverage in `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+  - current mobile workflow / install state before attempting any broader validation
+- Live inspection / workflow status:
+  - Reconfirmed the local mobile-install blocker instead of retrying the same Expo Web launch path again:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+  - Focused TypeScript validation remains blocked in this worktree:
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → failed with missing install symptoms including `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules
+  - Because Expo is still unavailable here, this iteration relied on source-backed action-state review plus focused regression coverage rather than screenshot-backed mobile inspection.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 98 already marked the current ACP main agent row with a visible `Main agent` badge and state-aware edit/toggle hints.
+  - The same row still used the same generic delete-button hint and delete confirmation copy as every other deletable agent.
+  - On mobile, that meant the highest-consequence row action did not tell users they were removing the agent currently steering new chats in ACP mode.
+- Issue selected:
+  - Deleting the current ACP main agent lacked explicit consequence framing in the row action and confirmation step, weakening user control and state clarity on a dense mobile action rail.
+- Decision:
+  - Keep the existing row layout, badges, edit affordance, and action rail unchanged.
+  - Do not add another visible warning banner or badge without fresh live evidence.
+  - Make the smallest local fix: reuse the existing current-main-agent detection to make the delete action and confirmation copy state-aware only for that row.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - detect when the tapped deletable row is the currently selected ACP main agent,
+    - expand that row's delete-button accessibility hint to explain it is the current main agent for new chats in ACP mode,
+    - expand that row's delete confirmation message with the same consequence warning while leaving other agent deletions unchanged.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new state-aware delete hint and confirmation copy.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked in this worktree by the missing mobile install (`expo/tsconfig.base` missing; Expo / React Native modules unresolved)
+- Remaining nearby issues noted, not addressed this iteration:
+  - This higher-consequence delete copy still needs a real narrow-screen pass once Expo is restored to confirm the unchanged row layout still feels balanced beside the `Main agent` badge.
+  - A live conflicting-state pass is still needed where the current ACP main agent is disabled, since badges plus action hints may still be insufficient without screenshot-backed evidence.
+  - The `Settings > Agents` list still lacks fresh screenshot-backed validation after several recent state-clarity iterations.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the current-main-agent delete affordance still feels discoverable but appropriately cautious on narrow screens.
+  - Live-test a disabled current-main-agent state to decide whether badge-only row signaling is enough or whether a compact inline warning is justified.
+  - After live validation is restored, continue with the next highest-signal mobile sub-agent issue instead of revisiting this delete-warning tweak without fresh evidence.
