@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772237314285_vmw9q84l4 | session_1772237314287_0o7pppwnt | fix implemented (desktop smoke blocked) | User asked `check my youtube studio analytics`; the run immediately delegated to `Web Browser` with `waitForResult: true`, the `delegate_to_agent` span never finished (`endTime: null`), and the parent trace still ended `output: null`. Root repo issue found: synchronous internal delegation had no fail-fast timeout/cancellation path, so a hung internal specialist could stall the parent run indefinitely. |
 | 2026-03-08 | conv_1772726771670_hevmdkekt | session_1772726771671_nebuhg26t | fix implemented | User asked to add guidance about reading agent notes before answering context-heavy questions. Langfuse showed the run immediately doing broad note dumping (`cat` across note trees) plus unrelated `github:list_issues`, then ending via emergency kill switch without making the requested update. Root repo issue found: agent-mode prompts did not explicitly tell the model that requests to update its own guidelines / `.agents` files / notes should go straight to the likely durable target instead of starting with broad repo-status checks or dumping whole note trees. |
 | 2026-03-08 | conv_1772260442055_9xjtqdock | session_1772260441759_qlnn5jvxv | fix implemented | Fresh recovery-path evidence from a previously logged `ask Augustus what folder he's in` failure: after `delegate_to_agent` said `Agent "augustus" not found in configuration`, the same trace showed `list_available_agents` and `list_agent_profiles` exposing Augustus plus profile ID `286c6b41-28ed-4a57-9728-0bab9846ebe6`, but later `spawn_agent` / `delegate_to_agent` retries still rejected that valid profile ID. Root repo issue found: ACP routing/spawn paths only resolved agent profiles by name/displayName, not by profile ID, so error recovery could dead-end even after the tools surfaced the exact profile identifier. |
 | 2026-03-08 | conv_1772236244285_xzqrrynd8 | session_1772236244288_jbyzrkt1b, session_1772239900929_r2gu4lvnr | fix implemented | User asked `How did they get cut off before` twice. The first run incorrectly claimed the iTerm tools were not surfaced in the system prompt header even though they were listed in `AVAILABLE MCP SERVERS`; the later identical follow-up explicitly corrected that mistake. Root repo issue found: agent-mode prompt guidance taught tool discovery, but did not explicitly tell the model to inspect live tool/agent state before answering meta questions about current capabilities or why something was unavailable/cut off. |
@@ -1257,6 +1258,39 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
   - ✅ passed (`8 passed`)
   - note: the test runner still emits the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test file exits successfully
+
+## 2026-03-08 — Synchronous internal delegation now fails closed when a specialist hangs
+
+- Reviewed `langfuse-bug-fix.md` first and avoided already-logged delegation timeout cases that were ACP-specific.
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772237314285_vmw9q84l4` / `session_1772237314287_0o7pppwnt`
+    - user input: `check my youtube studio analytics`
+    - trace outcome: `output: null`
+    - observations showed the parent immediately calling `delegate_to_agent(agentName: "Web Browser", waitForResult: true)`
+    - that delegated tool span never recorded an end time, so the run produced no user-facing result before collapsing
+  - adjacent delegated evidence: `subsession_1772237319347_11f5457a`
+    - same YouTube Studio task was running underneath, which supports the diagnosis that the parent was blocked waiting on an internal specialist that never returned cleanly in time
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` already had a 120s watchdog for synchronous ACP/stdio delegation via `executeACPAgentSync(...)`.
+  - the synchronous internal path in `executeInternalAgent(...)` still did a bare `await runInternalSubSession(...)` when `waitForResult !== false`.
+  - unlike the ACP path, that meant there was no timeout, no fail-fast error, and no cancellation request if the delegated internal specialist stalled.
+- Concrete root cause:
+  - synchronous internal delegation had no watchdog/cancellation path.
+  - a hung `Web Browser`/internal specialist could therefore block the parent run until it was externally stopped, yielding the same `endTime: null` / `output: null` shape seen in the trace.
+- Minimal fix applied:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - reused the existing 120s synchronous delegation timeout for internal specialists too
+    - wrapped `runInternalSubSession(...)` in a `Promise.race(...)` watchdog for `waitForResult: true`
+    - call `cancelSubSession(...)` on timeout so the in-flight internal sub-session is asked to stop instead of continuing orphaned
+  - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+    - added a regression that simulates a never-resolving internal delegated run and verifies the call now fails within 120s and cancels the generated sub-session ID
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts`
+  - ✅ passed (`9 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop ACP test file exits successfully
+- Debugging-guided live verification attempt:
+  - followed `apps/desktop/DEBUGGING.md` and tried `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dapp`
+  - ❌ blocked before Electron launch by the pre-existing desktop `predev` failure: `Cannot find module .../tsx/dist/cli.mjs` while running `npx tsx scripts/ensure-rust-binary.ts`
 
 ## Remaining Leads
 

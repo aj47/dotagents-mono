@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { acpService } from '../acp-service'
 
-const { mockRunInternalSubSession } = vi.hoisted(() => ({
+const { mockRunInternalSubSession, mockCancelSubSession } = vi.hoisted(() => ({
   mockRunInternalSubSession: vi.fn(),
+  mockCancelSubSession: vi.fn(),
 }))
 
 const { mockGetByName, mockGetById } = vi.hoisted(() => ({
@@ -53,7 +54,7 @@ vi.mock('../agent-run-utils', () => ({
 
 vi.mock('./internal-agent', () => ({
   runInternalSubSession: mockRunInternalSubSession,
-  cancelSubSession: vi.fn(),
+  cancelSubSession: mockCancelSubSession,
   getInternalAgentInfo: vi.fn(() => ({
     name: 'internal',
     displayName: 'Internal Agent',
@@ -74,6 +75,7 @@ import {
 describe('handleDelegateToAgent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCancelSubSession.mockReset()
     mockGetByName.mockReset()
     mockGetByName.mockReturnValue(undefined)
     mockGetById.mockReset()
@@ -139,6 +141,29 @@ describe('handleDelegateToAgent', () => {
         output: 'Final delegated answer',
       })
     })
+  })
+
+  it('fails stalled synchronous internal delegations instead of waiting indefinitely', async () => {
+    vi.useFakeTimers()
+    try {
+      mockRunInternalSubSession.mockImplementation(() => new Promise(() => {}))
+
+      const resultPromise = handleDelegateToAgent(
+        { agentName: 'internal', task: 'Check YouTube Studio analytics' },
+        'parent-session-internal-timeout',
+      )
+
+      await vi.advanceTimersByTimeAsync(120_000)
+
+      await expect(resultPromise).resolves.toMatchObject({
+        success: false,
+        status: 'failed',
+        error: expect.stringContaining('did not complete within 120s'),
+      })
+      expect(mockCancelSubSession).toHaveBeenCalledWith('subsession-1')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('fails delegated runs that only return an in-progress update instead of a final result', async () => {

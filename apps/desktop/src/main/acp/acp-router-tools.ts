@@ -356,7 +356,7 @@ const MAX_MESSAGE_CONTENT_SIZE = 10000;
 /** Maximum total conversation size to send to UI (characters) */
 const MAX_CONVERSATION_SIZE_FOR_UI = 50000;
 
-/** Maximum time to wait for a synchronous delegated ACP run before failing fast. */
+/** Maximum time to wait for a synchronous delegated run before failing fast. */
 const SYNC_DELEGATION_TIMEOUT_MS = 120_000;
 
 function buildSyncDelegationTimeoutMessage(agentName: string, timeoutMs: number): string {
@@ -974,12 +974,34 @@ async function executeInternalAgent(
     return createRunningResult(subAgentState);
   }
 
+  const timeoutMessage = buildSyncDelegationTimeoutMessage(agentName, SYNC_DELEGATION_TIMEOUT_MS);
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
   try {
-    const result = await runSubSession();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        cancelSubSession(preGeneratedSubSessionId);
+        reject(new Error(timeoutMessage));
+      }, SYNC_DELEGATION_TIMEOUT_MS);
+    });
+
+    const result = await Promise.race([
+      runSubSession(),
+      timeoutPromise,
+    ]);
+
     return finalizeInternalDelegationResult(subAgentState, result);
   } catch (error) {
+    if (error instanceof Error && error.message === timeoutMessage) {
+      return createFailedResult(subAgentState, timeoutMessage);
+    }
+
     finalizeAsyncRunWithError(subAgentState, agentName, error);
     return createFailedResult(subAgentState, error instanceof Error ? error.message : String(error));
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
   }
 }
 
