@@ -421,6 +421,7 @@ function ParakeetModelDownload() {
   const queryClient = useQueryClient()
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const modelStatusQuery = useQuery({
     queryKey: ["parakeetModelStatus"],
@@ -435,9 +436,11 @@ function ParakeetModelDownload() {
   const handleDownload = async () => {
     setIsDownloading(true)
     setDownloadProgress(0)
+    setDownloadError(null)
     try {
       await window.electron.ipcRenderer.invoke("downloadParakeetModel")
     } catch (error) {
+      setDownloadError(getActionErrorMessage(error, "Parakeet model download failed"))
       console.error("Failed to download Parakeet model:", error)
     } finally {
       setIsDownloading(false)
@@ -449,6 +452,9 @@ function ParakeetModelDownload() {
   const status = modelStatusQuery.data as ParakeetModelStatus | undefined
   const runtimeUnavailable = status?.runtimeAvailable === false
   const runtimeError = status?.runtimeError?.trim()
+  const downloadFailureMessage = status?.error
+    ? getActionErrorMessage(status.error, "Parakeet model download failed")
+    : downloadError
   const runtimeWarning = runtimeUnavailable ? (
     <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
       <div className="flex items-start gap-2">
@@ -520,14 +526,15 @@ function ParakeetModelDownload() {
     )
   }
 
-  if (status?.error) {
+  if (downloadFailureMessage) {
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-destructive">{status.error}</span>
-        <Button size="sm" variant="outline" onClick={handleDownload}>
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
-        </Button>
+        <LocalTtsActionError
+          message={downloadFailureMessage}
+          recoveryHint="The model is still unavailable, so you can retry here after fixing the issue."
+          onRetry={handleDownload}
+          retryLabel="Retry download"
+        />
         {runtimeWarning}
       </div>
     )

@@ -18,10 +18,14 @@ const tipcSource = fs.readFileSync(
   'utf8'
 );
 
-test('desktop Parakeet settings explain runtime readiness and preview limitations inline', () => {
+test('desktop Parakeet settings explain runtime readiness, download failures, and preview limitations inline', () => {
   assert.match(providersSource, /runtimeAvailable\?: boolean/);
   assert.match(providersSource, /Local runtime unavailable/);
   assert.match(providersSource, /Downloading the model alone will not make Parakeet usable until the local transcription runtime can load on this device\./);
+  assert.match(providersSource, /const \[downloadError, setDownloadError\] = useState<string \| null>\(null\)/);
+  assert.match(providersSource, /setDownloadError\(getActionErrorMessage\(error, "Parakeet model download failed"\)\)/);
+  assert.match(providersSource, /const downloadFailureMessage = status\?\.error[\s\S]*: downloadError/);
+  assert.match(providersSource, /<LocalTtsActionError[\s\S]*message=\{downloadFailureMessage\}[\s\S]*retryLabel="Retry download"/);
   assert.match(providersSource, /No live preview during recording/);
   assert.match(providersSource, /Live preview is currently enabled in <a href="\/settings\/general" className="underline">Recording settings<\/a>, but Parakeet still waits until you stop recording before showing text\./);
   assert.match(providersSource, /Parakeet waits until you stop recording before showing text\./);
