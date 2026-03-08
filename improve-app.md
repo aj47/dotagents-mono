@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop general settings primary recording shortcut hold/toggle completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with onboarding dictation-step parity reviewed in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, sessions shortcut hint usage updated in `apps/desktop/src/renderer/src/pages/sessions.tsx`, runtime recording behavior checked in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers updated in `apps/desktop/src/shared/key-utils.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings toggle-voice-dictation shortcut completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime toggle behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers updated in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings text-input shortcut completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime text-input trigger behavior reviewed in `apps/desktop/src/main/keyboard.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, sessions shortcut pill usage checked in `apps/desktop/src/renderer/src/pages/sessions.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop general settings show-main-window custom hotkey completion / saved-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with runtime trigger gating reviewed in `apps/desktop/src/main/keyboard.ts`, main-window behavior checked in `apps/desktop/src/main/window.ts`, shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -43,6 +44,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop primary voice-dictation shortcut settings and onboarding now explain the active hold-vs-toggle behavior in plain language, keep the shortcut summary aligned with the actual saved custom mode, warn when a custom recording shortcut is still incomplete, and stop sessions/onboarding from silently falling back to `Hold Ctrl` when custom setup is unfinished.
 - 2026-03-08: Desktop Toggle Voice Dictation settings now keep the selected hotkey visible even while the feature is off, explain whether keyboard toggle dictation is currently active or still incomplete, show the active Fn/F-key/custom shortcut in plain language, and warn explicitly when a custom toggle shortcut has not been fully recorded yet.
 - 2026-03-08: Desktop Text Input shortcut settings now explain whether the shortcut is enabled, show the active shortcut in plain language, spell out when Shift can continue the most recent conversation, warn when a custom shortcut has not been fully recorded yet, and stop other surfaces from implying `Ctrl+T` is active when custom text-input setup is still incomplete.
 - 2026-03-08: Desktop Show Main Window shortcut settings now explain whether the shortcut is enabled, show the active shortcut in plain language, warn when a custom shortcut has not been fully recorded yet, clarify that the shortcut pauses during recording so it will not interrupt capture, and label the custom recorder more explicitly.
@@ -77,6 +79,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-general-recording-shortcut-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/shared/key-utils.ts`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-general-toggle-voice-dictation-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx` and `apps/desktop/src/shared/key-utils.ts`
 - 2026-03-08: `git diff --check`
@@ -149,6 +154,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this primary recording-shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this toggle-voice-dictation shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this text-input shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this show-main-window shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -182,10 +188,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop general settings primary recording shortcut hold/toggle completion / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`, with onboarding parity in `apps/desktop/src/renderer/src/pages/onboarding.tsx` worth checking if the desktop copy changes)
+- Desktop general settings transcription preview cost / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop general settings primary recording shortcut hold/custom-mode completion / saved-state feedback next so the main dictation entry path gets the same inline confidence cues now added to the adjacent shortcut controls
+- Inspect desktop general settings transcription preview cost / saved-state clarity next so the nearby STT billing-sensitive toggle communicates current behavior and cost implications with the same confidence as the shortcut controls
+- Once a runnable Electron target is available, live-check the desktop primary recording shortcut settings plus onboarding dictation step to confirm the new hold/toggle summaries, incomplete-custom warning, and shortcut hints feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop toggle-voice-dictation shortcut settings to confirm the new off/active/incomplete-custom guidance feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop text-input shortcut settings to confirm the enabled/disabled summary, continue-conversation guidance, and incomplete-custom warning feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop show-main-window shortcut settings to confirm the enabled/disabled summary, recording-pause guidance, and incomplete-custom warning feel right in the actual UI
@@ -203,6 +210,43 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop primary recording shortcut hold/toggle completion and saved-state clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop shortcut settings in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - onboarding dictation-step shortcut setup in `apps/desktop/src/renderer/src/pages/onboarding.tsx`
+  - sessions shortcut hint usage in `apps/desktop/src/renderer/src/pages/sessions.tsx`
+  - main-process recording shortcut behavior in `apps/desktop/src/main/keyboard.ts`
+  - shared dictation shortcut display helper updated in `apps/desktop/src/shared/key-utils.ts`
+  - focused source-level regression coverage added in `tests/desktop-settings-general-recording-shortcut-feedback.test.js`
+- Why it was chosen:
+  - after the toggle-dictation pass, the ledger marked the primary recording shortcut as the next nearby high-value surface still relying on dropdown memory instead of explicit confidence cues
+  - investigation found a concrete UX gap: the settings group header only described `Hold Ctrl` vs `Ctrl+/`, custom recording setup gave no incomplete-state warning, onboarding repeated the same fallback behavior, and the shared dictation shortcut helper silently fell back to `Hold Ctrl` even when custom setup was unfinished
+  - this was high leverage because voice dictation is a core entry path and incomplete custom setup could leave keyboard recording unavailable while multiple UI surfaces still implied a working default shortcut
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` to confirm the recording shortcut control lacked inline status copy, accurate group-header guidance for custom modes, and incomplete-custom feedback
+  - `apps/desktop/src/renderer/src/pages/onboarding.tsx` to confirm the dictation step had its own local fallback display logic and no incomplete-custom warning
+  - `apps/desktop/src/renderer/src/pages/sessions.tsx` and `apps/desktop/src/shared/key-utils.ts` to confirm the shared dictation shortcut display helper still defaulted to `Hold Ctrl` when custom recording setup was incomplete
+  - `apps/desktop/src/main/keyboard.ts` to confirm the actual runtime behavior: `Hold Ctrl` uses hold-to-record, `Ctrl+/` uses toggle-to-start/stop, and custom shortcuts support both hold and toggle modes depending on `customShortcutMode`
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - the desktop `Recording` shortcut settings now explain the currently active hold-vs-toggle behavior, keep the group header aligned with the real saved shortcut state, and warn explicitly when a custom voice-dictation shortcut still has not been fully recorded
+  - the onboarding dictation step now reuses the shared shortcut-display semantics, shows the same hold/toggle summary, and warns when custom shortcut setup is incomplete instead of falling back to a misleading default hint
+  - `getDictationShortcutDisplay` now respects custom hold vs toggle mode and returns `Set custom shortcut` when custom setup is incomplete, so dependent UI like the sessions shortcut hint stops implying that `Hold Ctrl` is still active
+- Assumptions / tradeoffs / rationale:
+  - kept runtime keyboard behavior unchanged and improved only the guidance/state-visibility layer, because the main issue was misleading feedback rather than broken shortcut execution
+  - reused shared helper logic instead of adding more one-off local formatting so settings, onboarding, and sessions stay aligned with one another going forward
+  - accepted source-level verification for this pass because live Electron inspection remains unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-general-recording-shortcut-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/shared/key-utils.ts`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check the recording shortcut summaries and onboarding hint hierarchy to confirm the hold vs toggle copy feels natural in the actual UI
+  - inspect desktop general settings transcription preview cost / saved-state clarity next so the nearby STT billing-sensitive toggle gets the same confidence treatment
 
 ### 2026-03-08 — Desktop toggle-voice-dictation shortcut completion and saved-state clarity
 - Date:

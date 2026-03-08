@@ -42,6 +42,7 @@ import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
 import {
   getAgentKillSwitchShortcutDisplay,
+  getDictationShortcutDisplay,
   getMcpToolsShortcutDisplay,
   getSettingsHotkeyDisplay,
   getTextInputShortcutDisplay,
@@ -296,6 +297,36 @@ export function Component() {
   const sttProviderId: STT_PROVIDER_ID =
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
+  const customRecordingShortcutMode = configQuery.data?.customShortcutMode || "hold"
+  const hasCustomRecordingShortcut = Boolean(configQuery.data?.customShortcut?.trim())
+  const recordingShortcutDisplay = getDictationShortcutDisplay(
+    shortcut,
+    configQuery.data?.customShortcut,
+    customRecordingShortcutMode,
+  )
+  const isHoldRecordingShortcut =
+    shortcut === "hold-ctrl" ||
+    (shortcut === "custom" && customRecordingShortcutMode === "hold")
+  const recordingShortcutSummary =
+    shortcut === "custom" && !hasCustomRecordingShortcut
+      ? "Record a custom shortcut to finish setup. Until then, keyboard voice dictation won't start. Changes save immediately."
+      : isHoldRecordingShortcut
+        ? `${recordingShortcutDisplay} to start voice dictation, then release to stop and transcribe. Changes save immediately.`
+        : `${recordingShortcutDisplay} once to start voice dictation, then use the same shortcut again to stop and transcribe. Changes save immediately.`
+  const recordingShortcutEndDescription =
+    shortcut === "custom" && !hasCustomRecordingShortcut
+      ? "Finish recording a custom shortcut to enable voice dictation"
+      : isHoldRecordingShortcut
+        ? `${recordingShortcutDisplay} to record, release to finish`
+        : `${recordingShortcutDisplay} to start and finish recording`
+  const recordingShortcutTooltip =
+    shortcut === "custom" && !hasCustomRecordingShortcut
+      ? "Custom recording hotkey stays off until one is saved"
+      : isHoldRecordingShortcut
+        ? "Press any other key to cancel before recording starts"
+        : shortcut === "ctrl-slash"
+          ? "Press Esc to cancel"
+          : "Press the same shortcut again to stop"
   const toggleVoiceDictationEnabled =
     configQuery.data?.toggleVoiceDictationEnabled ?? false
   const toggleVoiceDictationHotkey = configQuery.data?.toggleVoiceDictationHotkey || "fn"
@@ -696,20 +727,14 @@ export function Component() {
           title="Shortcuts"
           endDescription={
             <div className="flex items-center gap-1">
-              <div>
-                {shortcut === "hold-ctrl"
-                  ? "Hold Ctrl key to record, release it to finish recording"
-                  : "Press Ctrl+/ to start and finish recording"}
-              </div>
+              <div>{recordingShortcutEndDescription}</div>
               <TooltipProvider disableHoverableContent delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger className="inline-flex items-center justify-center">
                     <span className="i-mingcute-information-fill text-base"></span>
                   </TooltipTrigger>
                   <TooltipContent collisionPadding={5}>
-                    {shortcut === "hold-ctrl"
-                      ? "Press any key to cancel"
-                      : "Press Esc to cancel"}
+                    {recordingShortcutTooltip}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -719,7 +744,7 @@ export function Component() {
           <Control label="Recording" className="px-3">
             <div className="space-y-2">
               <Select
-                defaultValue={shortcut}
+                value={shortcut}
                 onValueChange={(value) => {
                   saveConfig({
                     shortcut: value as typeof configQuery.data.shortcut,
@@ -736,12 +761,14 @@ export function Component() {
                 </SelectContent>
               </Select>
 
+              <div className="text-xs text-muted-foreground">{recordingShortcutSummary}</div>
+
               {shortcut === "custom" && (
                 <>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Mode</label>
                     <Select
-                      value={configQuery.data?.customShortcutMode || "hold"}
+                      value={customRecordingShortcutMode}
                       onValueChange={(value: "hold" | "toggle") => {
                         saveConfig({
                           customShortcutMode: value,
@@ -764,8 +791,13 @@ export function Component() {
                         customShortcut: keyCombo,
                       })
                     }}
-                    placeholder="Click to record custom shortcut"
+                    placeholder="Click to record custom voice dictation shortcut"
                   />
+                  {!hasCustomRecordingShortcut && (
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      Record a custom shortcut to finish setup. Voice dictation won't start from the keyboard until one is saved.
+                    </div>
+                  )}
                 </>
               )}
             </div>

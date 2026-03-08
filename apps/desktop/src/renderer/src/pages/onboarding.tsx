@@ -17,7 +17,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { Recorder } from "@renderer/lib/recorder"
 import { useMutation } from "@tanstack/react-query"
 import { KeyRecorder } from "@renderer/components/key-recorder"
-import { getMcpToolsShortcutDisplay } from "@shared/key-utils"
+import { getDictationShortcutDisplay, getMcpToolsShortcutDisplay } from "@shared/key-utils"
 
 type OnboardingStep = "welcome" | "api-key" | "dictation" | "agent" | "complete"
 
@@ -335,18 +335,21 @@ function DictationStep({
   micError: string | null
 }) {
   const shortcut = config?.shortcut || "hold-ctrl"
-
-  const getShortcutDisplay = () => {
-    if (shortcut === "hold-ctrl") {
-      return "Hold Ctrl"
-    } else if (shortcut === "ctrl-slash") {
-      return "Press Ctrl+/"
-    } else if (shortcut === "custom" && config?.customShortcut) {
-      const mode = config.customShortcutMode || "hold"
-      return mode === "hold" ? `Hold ${config.customShortcut}` : `Press ${config.customShortcut}`
-    }
-    return "Hold Ctrl"
-  }
+  const customShortcutMode = config?.customShortcutMode || "hold"
+  const hasCustomRecordingShortcut = Boolean(config?.customShortcut?.trim())
+  const recordingShortcutDisplay = getDictationShortcutDisplay(
+    shortcut,
+    config?.customShortcut,
+    customShortcutMode,
+  )
+  const isHoldRecordingShortcut =
+    shortcut === "hold-ctrl" || (shortcut === "custom" && customShortcutMode === "hold")
+  const recordingShortcutSummary =
+    shortcut === "custom" && !hasCustomRecordingShortcut
+      ? "Record a custom shortcut to finish setup. Until then, the keyboard shortcut won't start voice dictation."
+      : isHoldRecordingShortcut
+        ? `${recordingShortcutDisplay} to start voice dictation, then release to stop and transcribe.`
+        : `${recordingShortcutDisplay} once to start voice dictation, then use the same shortcut again to stop and transcribe.`
 
   const getButtonContent = () => {
     if (isTranscribing) {
@@ -393,6 +396,8 @@ function DictationStep({
             </SelectContent>
           </Select>
 
+          <div className="text-xs text-muted-foreground">{recordingShortcutSummary}</div>
+
           {shortcut === "custom" && (
             <>
               <div className="space-y-2">
@@ -421,8 +426,13 @@ function DictationStep({
                     customShortcut: keyCombo,
                   })
                 }}
-                placeholder="Click to record custom shortcut"
+                placeholder="Click to record custom voice dictation shortcut"
               />
+              {!hasCustomRecordingShortcut && (
+                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Record a custom shortcut to finish setup. Voice dictation won't start from the keyboard until one is saved.
+                </div>
+              )}
             </>
           )}
         </div>
@@ -448,7 +458,7 @@ function DictationStep({
           </div>
           <div className="text-sm text-muted-foreground">
             <p className="font-medium">Or use your hotkey:</p>
-            <p className="text-primary font-semibold">{getShortcutDisplay()}</p>
+            <p className="text-primary font-semibold">{recordingShortcutDisplay}</p>
           </div>
         </div>
 

@@ -413,17 +413,21 @@ export function getAgentKillSwitchShortcutDisplay(
 export function getDictationShortcutDisplay(
   shortcut: "hold-ctrl" | "ctrl-slash" | "custom" | undefined,
   customShortcut?: string,
+  customMode: "hold" | "toggle" = "hold",
 ): string {
   switch (shortcut) {
     case "hold-ctrl":
       return "Hold Ctrl"
     case "ctrl-slash":
-      return "Ctrl+/"
+      return "Press Ctrl+/"
     case "custom":
       if (customShortcut) {
-        return formatKeyComboForDisplay(customShortcut)
+        const formattedShortcut = formatKeyComboForDisplay(customShortcut)
+        return customMode === "toggle"
+          ? `Press ${formattedShortcut}`
+          : `Hold ${formattedShortcut}`
       }
-      return "Hold Ctrl"
+      return "Set custom shortcut"
     default:
       return "Hold Ctrl"
   }

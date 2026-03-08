@@ -510,6 +510,7 @@ export function Component() {
   const dictationShortcut = getDictationShortcutDisplay(
     configQuery.data?.shortcut,
     configQuery.data?.customShortcut,
+    configQuery.data?.customShortcutMode,
   )
   const initialTileLayoutPreferenceRef = useRef<ReturnType<
     typeof loadPersistedTileLayoutPreference
