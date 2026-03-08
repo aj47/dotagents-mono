@@ -3085,11 +3085,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       lastDisplayItemsCountRef.current = displayItems.length
 
       // Only auto-scroll if we should (user hasn't manually scrolled up)
-      if (shouldAutoScroll) {
+      if (shouldAutoScrollRef.current) {
         scrollToBottom()
       }
     }
-  }, [messages.length, shouldAutoScroll, messages, progress.streamingContent?.text, displayItems.length, displayItems])
+  }, [messages.length, messages, progress.streamingContent?.text, displayItems.length, displayItems])
 
   // Initial scroll to bottom on mount and when first display item appears
   useEffect(() => {
@@ -3436,7 +3436,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                   {/* ACP Session info for tile variant */}
                   {acpSessionInfo && (
-                    <ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />
+                    <ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />
                   )}
                   {/* Model info - only show for non-ACP sessions */}
                   {!isComplete && modelInfo && !acpSessionInfo && !shouldUseCompactTileFooter && (
@@ -3496,9 +3496,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           sessionId={progress.sessionId}
           isSessionActive={!isComplete}
           isInitializingSession={isFollowUpInputInitializing}
-          preferCompact={!isFocused && !isExpanded}
           className="flex-shrink-0"
-          onRequestFocus={onFocus}
           onMessageSent={onFollowUpSent}
         />
 

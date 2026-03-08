@@ -6,6 +6,30 @@ import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 /** Layout mode for session tiles: "1x2" = 2 columns, "2x2" = 4 tiles (2x2 grid), "1x1" = single maximized */
 export type TileLayoutMode = "1x2" | "2x2" | "1x1"
 
+export interface SessionGridMeasurements {
+  containerWidth: number
+  containerHeight: number
+  gap: number
+}
+
+export function isResponsiveStackedTileLayout(
+  containerWidth: number,
+  gap: number,
+  layoutMode: TileLayoutMode,
+  sessionCount: number,
+): boolean {
+  if (layoutMode === "1x1" || sessionCount <= 1 || containerWidth <= 0) {
+    return false
+  }
+
+  const requestedColumnCount = Math.min(sessionCount, 2)
+  const minimumWidthForRequestedColumns =
+    requestedColumnCount * TILE_DIMENSIONS.width.min +
+    gap * Math.max(0, requestedColumnCount - 1)
+
+  return containerWidth < minimumWidthForRequestedColumns
+}
+
 // Context to share container width, height, gap, reset key, and layout mode with tile wrappers
 interface SessionGridContextValue {
   containerWidth: number
@@ -34,9 +58,10 @@ interface SessionGridProps {
   resetKey?: number
   layoutMode?: TileLayoutMode
   layoutChangeKey?: number
+  onMeasurementsChange?: (measurements: SessionGridMeasurements) => void
 }
 
-export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey }: SessionGridProps) {
+export function SessionGrid({ children, sessionCount, className, resetKey = 0, layoutMode = "1x2", layoutChangeKey, onMeasurementsChange }: SessionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [containerHeight, setContainerHeight] = useState(0)
@@ -116,6 +141,10 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       window.clearTimeout(timeoutId)
     }
   }, [layoutChangeKey, updateMeasurements])
+
+  useEffect(() => {
+    onMeasurementsChange?.({ containerWidth, containerHeight, gap })
+  }, [containerHeight, containerWidth, gap, onMeasurementsChange])
 
   return (
     <SessionGridContext.Provider value={{ containerWidth, containerHeight, gap, resetKey, layoutMode }}>

@@ -50,6 +50,7 @@
 - [x] Checked long-history focused-session DOM/layout cost in the visible main sessions window by seeding one focused session with `120` user/assistant pairs (`240` history items) and measuring chunk→next-frame delay during synthetic streaming.
 - [x] A/B-tested the focused transcript with offscreen transcript-item `content-visibility` forced off vs on in the live renderer; keeping a recent bottom buffer fully rendered preserved `maxBottomGapPx=0` while older offscreen blocks were deferred.
 - [x] Ruled out one tempting but secondary fix path in this loop: memoizing transcript data/render arrays inside `AgentProgress` alone did not materially change the live focused-session timings until browser-side offscreen rendering work was reduced.
+- [x] Reproduced a fresh shared-session scroll-interruption race in the visible panel target (`/panel`) by seeding a long synthetic transcript into the live focused session store, manually scrolling `~400px` above bottom, and pushing the next streamed chunk in the same task as the scroll event.
 
 ## Not Yet Checked
 
@@ -129,6 +130,13 @@
   - `~360ms`: `650`
   - `~520ms`: `659`
 - **Diagnosis:** `apps/desktop/src/renderer/src/pages/sessions.tsx` still used three separate `setTimeout(..., 100)` + `scrollIntoView({ behavior: 'smooth', block: 'center' })` paths for route deep-links, sidebar scroll requests, and continue-conversation focus. That delayed smooth-scroll request could survive manual user scrolling and then animate the *outer* sessions page later, creating a stale scroll-jump / delayed-yank bug while long session tiles were mounted.
+- **Scenario:** visible panel session view (`/panel`), focused shared transcript with long synthetic history, pinned at bottom; dispatch a manual upward scroll and then deliver the very next streamed chunk in the same task.
+- **Evidence:** before the fix, the user could scroll `~400px` upward and still get snapped back to bottom by the next chunk even though `handleScroll` had already fired. Exact live renderer-store samples from the overflowing shared transcript scroller showed:
+  - before manual scroll: `scrollTop=11109.5`, `maxTop=11110`
+  - immediately after manual upward scroll: `distanceFromBottom=400px`
+  - after the next streamed chunk: `distanceFromBottom=0.5px`
+  - `snappedBackToBottom=true`
+- **Diagnosis:** the shared `AgentProgress` scroll handler already flipped `shouldAutoScrollRef.current = false` synchronously, but the streaming `useLayoutEffect` still gated `scrollToBottom()` on React state (`shouldAutoScroll`). When a user scroll event and the next streamed chunk landed in the same task/batch, the layout effect could still observe stale `shouldAutoScroll=true` and yank the viewport back to bottom before the state update committed.
 
 ## Fixed
 
@@ -152,6 +160,9 @@
 - **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.performance.test.ts` with a regression assertion locking in the offscreen transcript buffer and `content-visibility` guardrail.
 - **Renderer change:** replaced the sessions-page delayed smooth tile-navigation path in `apps/desktop/src/renderer/src/pages/sessions.tsx` with a shared cancellable `requestAnimationFrame` helper that retries briefly until the tile ref exists and then uses immediate `scrollIntoView({ behavior: "auto", block: "center" })` for route deep-links, sidebar `scrollToSessionId`, and continue-conversation focus.
 - **Test coverage:** added `apps/desktop/src/renderer/src/pages/sessions.scroll-navigation.test.ts` to lock in the cancellable `requestAnimationFrame` navigation helper and the removal of the delayed smooth-scroll path.
+- **Renderer change:** updated the shared session streaming `useLayoutEffect` in `apps/desktop/src/renderer/src/components/agent-progress.tsx` to consult `shouldAutoScrollRef.current` instead of the lagging `shouldAutoScroll` state, so a manual scroll interruption takes effect immediately even if the next streamed chunk arrives in the same task.
+- **Test coverage:** extended `apps/desktop/src/renderer/src/components/agent-progress.scroll-behavior.test.ts` with a regression assertion that the pinned streaming path uses the live ref and no longer reads `if (shouldAutoScroll) { scrollToBottom() }`.
+- **Renderer compatibility cleanup:** restored the missing `SessionGrid` exports / measurement callback contract in `apps/desktop/src/renderer/src/components/session-grid.tsx` and added `src/renderer/src/components/session-grid.layout.test.ts`, because the main sessions route was crashing before streaming repro work could proceed.
 
 ## Verified
 
@@ -220,6 +231,14 @@
   - `~360ms`: `0`
   - `~520ms`: `0`
 - **Interpretation:** the sessions-page navigation path no longer leaves a delayed outer smooth-scroll animation alive after the user scrolls elsewhere. Once the user interrupts, the page stays where they left it instead of getting yanked later by stale tile-navigation work.
+- **Targeted tests:** `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.scroll-behavior.test.ts src/renderer/src/components/agent-progress.tile-layout.test.ts src/renderer/src/components/session-grid.layout.test.ts src/renderer/src/pages/sessions.layout-controls.test.ts` ✅
+- **Renderer typecheck:** `pnpm --filter @dotagents/desktop typecheck:web` ✅
+- **Same panel scroll-interruption repro after fix (same focused panel session, same `~400px` upward manual scroll, same next-task streamed chunk):**
+  - before manual scroll: `scrollTop=10770.5`, `maxTop=10771`
+  - immediately after manual upward scroll: `distanceFromBottom=400px`
+  - after the next streamed chunk: `distanceFromBottom=736px`
+  - `snappedBackToBottom=false`
+- **Interpretation:** the shared session view now respects immediate user scroll interruption in the measured panel repro. The next streamed chunk no longer yanks the transcript back to bottom; instead the viewport stays where the user left it while new content accumulates below.
 
 ## Still Uncertain
 
@@ -230,6 +249,7 @@
 - Whether the remaining focused-session long-history cost after this fix is now dominated by the live streaming bubble / markdown subtree, bottom-area layout invalidation, or another hot path unrelated to older offscreen transcript items.
 - Whether wheel / trackpad / keyboard input in a live long-running session exhibits any additional shared-session recovery quirks beyond the scripted renderer-store repro that is now fixed.
 - Whether rapid *repeated* session-selection changes or route swaps during active streaming still produce a separate page-level jank trace now that the delayed smooth-scroll timer is gone.
+- Whether a live end-to-end normal-agent or ACP-agent session in a stable overflowing focused main-session view still shows any interruption pattern beyond this now-fixed shared renderer race.
 
 ## Notes
 

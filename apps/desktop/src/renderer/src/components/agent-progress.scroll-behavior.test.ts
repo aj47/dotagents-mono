@@ -7,7 +7,13 @@ describe("agent progress scroll behavior", () => {
   it("pins the active session scroller in the same commit while streaming content grows", () => {
     expect(agentProgressSource).toContain("useLayoutEffect(() => {")
     expect(agentProgressSource).toContain("avoids a one-frame lag where new content renders above")
-    expect(agentProgressSource).toContain("if (shouldAutoScroll) {\n        scrollToBottom()\n      }")
+    expect(agentProgressSource).toContain("if (shouldAutoScrollRef.current) {\n        scrollToBottom()\n      }")
+  })
+
+  it("honors the immediate auto-scroll ref when a user scroll event races the next streamed chunk", () => {
+    expect(agentProgressSource).toContain("shouldAutoScrollRef.current = false")
+    expect(agentProgressSource).toContain("if (shouldAutoScrollRef.current) {\n        scrollToBottom()\n      }")
+    expect(agentProgressSource).not.toContain("if (shouldAutoScroll) {\n        scrollToBottom()\n      }")
   })
 
   it("cancels delayed initial auto-scroll retries once the user scrolls away from bottom", () => {
