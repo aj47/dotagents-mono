@@ -96,3 +96,45 @@
   - Preserve the full raw message/event stream on disk even after summarization rather than rewriting older messages into a summary-only conversation file.
   - Add a `Show Full History` viewer/toggle that can surface summarized/partial sections inside the UI.
   - Design a migration/backfill strategy for already-compacted sessions, including an explicit partial-history marker when recovery is impossible.
+
+##### Issue #56 — Feature: Hub website — bundle inspector modal (landing-page first slice)
+
+- Selection rationale:
+  - Concrete user-facing value, strong repro path in a single static file, and a clean way to land a reviewable first slice without taking on a full hub-site architecture rewrite.
+- Investigation:
+  - Re-read the issue body/comments and confirmed the desired behavior: bundle cards expose an `Inspect` action that opens a modal, fetches the real `.dotagents` JSON, renders major sections, and keeps install as a separate action.
+  - Re-inspected `website/index.html` and confirmed the repo still only had a marketing landing-page hub section with no bundle-card surface or inspector modal.
+  - Checked the live public hub (`https://hub.dotagentsprotocol.com`) and confirmed it already uses real public bundle URLs from `aj47/dotagents-hub`, which provided a concrete artifact shape for the repo-side slice.
+  - Confirmed example bundle JSON structure directly from the public raw bundle files so the modal renderer matched real fields (`manifest`, `agentProfiles`, `mcpServers`, `skills`, `repeatTasks`, `memories`) instead of guessing.
+- Important assumptions:
+  - Assumption: because the repo website is a landing page rather than the full hub app, the right first slice is to add a featured-bundles surface plus inspector modal inside the existing `#hub` section rather than rebuild the whole catalog.
+  - Why acceptable: the issue explicitly targeted `website/index.html`, and this lands the core “peek inside before installing” value in the current repo surface with minimal scope.
+  - Assumption: using the same public raw bundle URLs the live hub already references is acceptable for this slice.
+  - Why acceptable: it keeps the inspector bound to real installable artifacts and avoids inventing a fake or duplicated bundle registry inside the landing page.
+- Changes implemented:
+  - Added a featured bundle card grid to the landing page hub section for three real public bundles: `Dev Powerpack`, `Research Analyst`, and `TechFren Daily Driver`.
+  - Added per-card `Inspect ↗` actions alongside install links so preview and install are clearly separate actions.
+  - Added an inspector modal that fetches the selected `.dotagents` bundle JSON, shows bundle metadata, and renders collapsible sections for agent profiles, MCP servers, skills, repeat tasks, and memories.
+  - Added lightweight markdown formatting for bundle instruction/prompt content, including frontmatter stripping, headings, lists, inline code, and fenced-code rendering.
+  - Added quick warning badges for bundles that contain MCP commands, memories, or especially large prompt/instruction payloads.
+  - Added modal dismissal support via close button, Escape, and click-outside behavior, plus focus restoration after close.
+  - Added `website/website-hub-inspector.test.js`, a dependency-free source-level regression test that asserts the new featured cards, inspector modal wiring, fetch/install flow, and markdown-rendering helpers exist.
+  - After a browser smoke test exposed a stale loading indicator, added explicit `[hidden]` display overrides for modal state rows so loading/error/warning/content states hide reliably even when component classes declare `display`.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Completed: local browser smoke via `python3 -m http.server 4312 -d website` + browser automation against `http://127.0.0.1:4312` ✅
+    - Confirmed three featured bundle cards render in the hub section.
+    - Confirmed the first `Inspect ↗` action opens the modal and loads real content for `Dev Powerpack`.
+    - Confirmed visible sections for `Agent Profiles`, `MCP Servers`, `Skills`, and `Repeat Tasks`.
+    - Confirmed the stale loading indicator bug was fixed after the `[hidden]` CSS follow-up.
+    - Confirmed close behavior works via modal controls.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - Decide whether the landing page should stay a curated featured-bundles slice or eventually share more code/content with the live hub catalog.
+  - If the full hub moves into this repo surface, add catalog search/filtering and reuse the inspector modal for all bundle cards rather than only featured entries.
+  - Consider richer per-section summarization (for example, MCP env requirements or repeat-task schedule details) if preview depth becomes a frequent user need.
+
+- Next recommended issue work item: inspect `#53` for a similarly narrow slash-command discoverability/help slice, or take a small reliability slice from `#57` only if it can be landed without broad bundle-import refactoring.

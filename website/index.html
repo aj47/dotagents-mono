@@ -515,8 +515,322 @@
         .final-cta:hover {
             border-color: #47425a;
         }
+        .hub-feature-grid {
+            display: grid;
+            gap: 24px;
+            margin-top: 32px;
+        }
+        .hub-feature-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .hub-feature-header p {
+            margin: 0;
+            max-width: 640px;
+            color: var(--color-fg-muted);
+            font-family: var(--font-sans);
+        }
+        .hub-bundle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 24px;
+        }
+        .hub-bundle-card {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100%;
+        }
+        .hub-bundle-top {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 14px;
+        }
+        .hub-bundle-date {
+            color: var(--color-accent-teal);
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .hub-bundle-stats,
+        .hub-bundle-substats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 10px;
+            font-size: 12px;
+        }
+        .hub-bundle-stats { color: var(--color-fg-muted); }
+        .hub-bundle-substats { color: var(--color-fg-dim); }
+        .hub-bundle-sep { color: var(--color-border-light); }
+        .hub-bundle-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--color-border);
+        }
+        .hub-meta-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            padding: 5px 9px;
+            color: var(--color-fg-dim);
+            font-size: 10px;
+        }
+        .inspect-btn {
+            cursor: pointer;
+            font-family: var(--font-mono);
+        }
+        .hub-inline-link {
+            color: var(--color-accent-cyan);
+        }
+        .hub-inline-link:hover { color: #fff; }
+        .hub-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(14px);
+        }
+        .hub-modal[hidden] { display: none; }
+        .hub-modal-panel {
+            width: min(960px, 100%);
+            max-height: min(88vh, 920px);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #34323f;
+            border-radius: 18px;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(179,146,240,0.12), transparent 36%),
+                linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%),
+                #121212;
+            box-shadow: 0 36px 120px rgba(0, 0, 0, 0.55);
+        }
+        .hub-modal-header,
+        .hub-modal-footer {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px 24px;
+            border-color: var(--color-border);
+        }
+        .hub-modal-header {
+            align-items: start;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .hub-modal-title {
+            margin: 0;
+            color: #fff;
+            font-family: var(--font-sans);
+            font-size: 24px;
+            line-height: 1.15;
+        }
+        .hub-modal-title-wrap p,
+        .hub-modal-title-wrap .hub-modal-meta {
+            margin-top: 8px;
+        }
+        .hub-modal-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--color-fg-muted);
+            font: inherit;
+            font-size: 18px;
+        }
+        .hub-modal-close:hover {
+            color: #fff;
+            border-color: var(--color-border-light);
+        }
+        .hub-modal-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 20px 24px 24px;
+            display: grid;
+            gap: 16px;
+        }
+        .hub-modal-meta,
+        .hub-modal-footer-meta,
+        .hub-warning-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .hub-modal-meta,
+        .hub-modal-footer-meta {
+            color: var(--color-fg-dim);
+            font-size: 11px;
+        }
+        .hub-modal-state[hidden],
+        .hub-warning-row[hidden],
+        .hub-modal-content[hidden] {
+            display: none;
+        }
+        .hub-warning-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            border: 1px solid rgba(206, 145, 120, 0.45);
+            background: rgba(206, 145, 120, 0.08);
+            color: #f4c9bb;
+            font-size: 11px;
+        }
+        .hub-modal-state {
+            min-height: 180px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            color: var(--color-fg-dim);
+            padding: 0 12px;
+        }
+        .hub-modal-state.is-error {
+            color: #ffb1b1;
+        }
+        .hub-modal-content {
+            display: grid;
+            gap: 16px;
+        }
+        .bundle-section {
+            margin: 0;
+            padding: 0 18px;
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.018);
+        }
+        .bundle-section:last-child {
+            border-bottom: 1px solid var(--color-border);
+        }
+        .bundle-section[open] {
+            background: rgba(255,255,255,0.03);
+        }
+        .bundle-section summary {
+            padding: 16px 0;
+            font-size: 14px;
+        }
+        .bundle-section-body {
+            display: grid;
+            gap: 12px;
+            padding: 0 0 18px;
+        }
+        .bundle-entry {
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.18);
+        }
+        .bundle-entry h4 {
+            margin: 0;
+            color: #fff;
+            font-family: var(--font-sans);
+            font-size: 15px;
+            line-height: 1.35;
+        }
+        .bundle-entry-subtitle {
+            margin: 6px 0 0;
+            color: var(--color-fg-muted);
+            font-size: 13px;
+        }
+        .bundle-command {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--color-border);
+            background: #0d0d0d;
+            color: var(--color-fg);
+            font-size: 12px;
+            line-height: 1.65;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .bundle-markdown {
+            margin-top: 12px;
+            display: grid;
+            gap: 10px;
+        }
+        .bundle-markdown > * { margin: 0; }
+        .bundle-markdown p,
+        .bundle-markdown ul,
+        .bundle-markdown ol {
+            color: var(--color-fg-muted);
+            font-family: var(--font-sans);
+            line-height: 1.7;
+        }
+        .bundle-markdown ul,
+        .bundle-markdown ol {
+            padding-left: 18px;
+        }
+        .bundle-markdown-heading {
+            color: #fff;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .bundle-markdown code {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: rgba(156,220,254,0.08);
+            color: var(--color-accent-cyan);
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+        .bundle-code-block {
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--color-border);
+            background: #0d0d0d;
+            color: var(--color-fg);
+            font-size: 12px;
+            line-height: 1.65;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .bundle-memory-warning {
+            margin-top: 10px;
+            color: var(--color-accent-amber);
+            font-size: 12px;
+        }
+        .hub-modal-footer {
+            border-top: 1px solid var(--color-border);
+            flex-wrap: wrap;
+        }
+        .hub-modal-footer-meta { margin-left: auto; }
+        .hub-modal-spinner {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            border: 2px solid rgba(156,220,254,0.14);
+            border-top-color: var(--color-accent-cyan);
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         @media (max-width: 980px) {
             .hero-grid, .two-col, .three-col { grid-template-columns: 1fr; }
+            .hub-bundle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 760px) {
             .container { padding: 0 16px; }
@@ -594,6 +908,31 @@
                 gap: 10px;
                 justify-content: start;
             }
+            .hub-bundle-grid {
+                grid-template-columns: 1fr;
+            }
+            .hub-modal {
+                padding: 0;
+            }
+            .hub-modal-panel {
+                width: 100%;
+                max-width: none;
+                max-height: 100vh;
+                height: 100vh;
+                border-radius: 0;
+            }
+            .hub-modal-header,
+            .hub-modal-body,
+            .hub-modal-footer {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+            .hub-modal-title {
+                font-size: 21px;
+            }
+            .hub-modal-footer-meta {
+                margin-left: 0;
+            }
         }
         @media (max-width: 420px) {
             .eyebrow {
@@ -608,6 +947,12 @@
             .metric-pill,
             .component-pill {
                 justify-content: center;
+            }
+            .hub-bundle-actions {
+                align-items: stretch;
+            }
+            .hub-bundle-actions .btn {
+                width: 100%;
             }
         }
     </style>
@@ -828,6 +1173,119 @@
 └── open .dotagents → preview contents → resolve conflicts → install</code></pre>
                     </div>
                 </div>
+
+                <div class="hub-feature-grid">
+                    <div class="hub-feature-header">
+                        <div>
+                            <p class="card-kicker">Inspect before you install</p>
+                            <h3 style="margin:0;">Featured bundles you can inspect right now.</h3>
+                        </div>
+                        <p>First landing-page slice: real public hub bundles rendered as compact cards so visitors can preview agents, skills, MCP commands, and repeat tasks before jumping into a full install flow.</p>
+                    </div>
+
+                    <div class="hub-bundle-grid">
+                        <article class="spec-card card-body hub-bundle-card" data-bundle-card data-bundle-name="Dev Powerpack" data-bundle-url="https://raw.githubusercontent.com/aj47/dotagents-hub/main/bundles/dev-powerpack.dotagents">
+                            <div class="hub-bundle-top">
+                                <div>
+                                    <p class="card-kicker" style="color:var(--color-accent-teal);">bundle · v1</p>
+                                    <h3 style="margin:0;">Dev Powerpack</h3>
+                                </div>
+                                <span class="hub-bundle-date">Mar 6, 2026</span>
+                            </div>
+                            <p class="muted" style="margin:0;">Full developer setup: coding agent, web research agent, GitHub MCP, filesystem MCP, and a daily standup task.</p>
+                            <div class="hub-bundle-stats">
+                                <span>TechFriend AJ</span>
+                                <span class="hub-bundle-sep">│</span>
+                                <span>2 agents</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>2 MCP</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>1 skill</span>
+                            </div>
+                            <div class="hub-bundle-substats">
+                                <span>1 task</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>0 memories</span>
+                                <span class="hub-bundle-sep">│</span>
+                                <span class="hub-meta-pill">developer</span>
+                                <span class="hub-meta-pill">github</span>
+                                <span class="hub-meta-pill">coding</span>
+                            </div>
+                            <div class="hub-bundle-actions">
+                                <button class="btn btn-secondary inspect-btn" type="button">Inspect ↗</button>
+                                <a class="btn btn-secondary" href="dotagents://install?bundle=https%3A%2F%2Fraw.githubusercontent.com%2Faj47%2Fdotagents-hub%2Fmain%2Fbundles%2Fdev-powerpack.dotagents">Install bundle →</a>
+                            </div>
+                        </article>
+
+                        <article class="spec-card card-body hub-bundle-card" data-bundle-card data-bundle-name="Research Analyst" data-bundle-url="https://raw.githubusercontent.com/aj47/dotagents-hub/main/bundles/research-analyst.dotagents">
+                            <div class="hub-bundle-top">
+                                <div>
+                                    <p class="card-kicker" style="color:var(--color-accent-teal);">bundle · v1</p>
+                                    <h3 style="margin:0;">Research Analyst</h3>
+                                </div>
+                                <span class="hub-bundle-date">Mar 6, 2026</span>
+                            </div>
+                            <p class="muted" style="margin:0;">Deep research setup: research agent, synthesis agent, Exa web search MCP, and a weekly research digest task.</p>
+                            <div class="hub-bundle-stats">
+                                <span>TechFriend AJ</span>
+                                <span class="hub-bundle-sep">│</span>
+                                <span>2 agents</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>1 MCP</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>1 skill</span>
+                            </div>
+                            <div class="hub-bundle-substats">
+                                <span>1 task</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>0 memories</span>
+                                <span class="hub-bundle-sep">│</span>
+                                <span class="hub-meta-pill">research</span>
+                                <span class="hub-meta-pill">analysis</span>
+                                <span class="hub-meta-pill">exa</span>
+                            </div>
+                            <div class="hub-bundle-actions">
+                                <button class="btn btn-secondary inspect-btn" type="button">Inspect ↗</button>
+                                <a class="btn btn-secondary" href="dotagents://install?bundle=https%3A%2F%2Fraw.githubusercontent.com%2Faj47%2Fdotagents-hub%2Fmain%2Fbundles%2Fresearch-analyst.dotagents">Install bundle →</a>
+                            </div>
+                        </article>
+
+                        <article class="spec-card card-body hub-bundle-card" data-bundle-card data-bundle-name="TechFren Daily Driver" data-bundle-url="https://raw.githubusercontent.com/aj47/dotagents-hub/main/bundles/techfrenaj-daily-driver.dotagents">
+                            <div class="hub-bundle-top">
+                                <div>
+                                    <p class="card-kicker" style="color:var(--color-accent-teal);">bundle · v1</p>
+                                    <h3 style="margin:0;">TechFren Daily Driver</h3>
+                                </div>
+                                <span class="hub-bundle-date">Mar 6, 2026</span>
+                            </div>
+                            <p class="muted" style="margin:0;">The actual setup TechFriend AJ runs daily: main agent, browser agent, GitHub + Exa MCPs, rich skills, and automated tasks.</p>
+                            <div class="hub-bundle-stats">
+                                <span>TechFriend AJ</span>
+                                <span class="hub-bundle-sep">│</span>
+                                <span>2 agents</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>2 MCP</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>14 skills</span>
+                            </div>
+                            <div class="hub-bundle-substats">
+                                <span>6 tasks</span>
+                                <span class="hub-bundle-sep">·</span>
+                                <span>0 memories</span>
+                                <span class="hub-bundle-sep">│</span>
+                                <span class="hub-meta-pill">power-user</span>
+                                <span class="hub-meta-pill">daily-driver</span>
+                                <span class="hub-meta-pill">self-improvement</span>
+                            </div>
+                            <div class="hub-bundle-actions">
+                                <button class="btn btn-secondary inspect-btn" type="button">Inspect ↗</button>
+                                <a class="btn btn-secondary" href="dotagents://install?bundle=https%3A%2F%2Fraw.githubusercontent.com%2Faj47%2Fdotagents-hub%2Fmain%2Fbundles%2Ftechfrenaj-daily-driver.dotagents">Install bundle →</a>
+                            </div>
+                        </article>
+                    </div>
+
+                    <p class="muted" style="margin:0;">Want the full catalog? <a class="hub-inline-link" href="https://hub.dotagentsprotocol.com" target="_blank" rel="noopener">Browse the live hub ↗</a></p>
+                </div>
             </div>
         </section>
 
@@ -971,5 +1429,356 @@
             </div>
         </div>
     </footer>
+
+    <div id="inspect-modal" class="hub-modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-bundle-name">
+        <div class="hub-modal-panel">
+            <div class="hub-modal-header">
+                <div class="hub-modal-title-wrap">
+                    <p class="card-kicker" style="margin:0 0 6px; color:var(--color-accent-cyan);">bundle inspector</p>
+                    <h3 id="modal-bundle-name" class="hub-modal-title">Bundle preview</h3>
+                    <div id="modal-bundle-meta" class="hub-modal-meta"></div>
+                </div>
+                <button id="modal-close" class="hub-modal-close" type="button" aria-label="Close bundle inspector">✕</button>
+            </div>
+
+            <div class="hub-modal-body">
+                <div id="modal-loading" class="hub-modal-state">
+                    <div>
+                        <div class="hub-modal-spinner" aria-hidden="true"></div>
+                        <div>Fetching bundle…</div>
+                    </div>
+                </div>
+                <div id="modal-error" class="hub-modal-state is-error" hidden></div>
+                <div id="modal-warnings" class="hub-warning-row" hidden></div>
+                <div id="modal-content" class="hub-modal-content" hidden></div>
+            </div>
+
+            <div class="hub-modal-footer">
+                <a id="modal-install-btn" class="btn btn-primary" href="#">Install bundle →</a>
+                <a class="btn btn-secondary" href="https://hub.dotagentsprotocol.com" target="_blank" rel="noopener">Open full hub ↗</a>
+                <div id="modal-footer-meta" class="hub-modal-footer-meta"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const bundleCards = Array.from(document.querySelectorAll('[data-bundle-card]'))
+        const modal = document.querySelector('#inspect-modal')
+        const modalClose = document.querySelector('#modal-close')
+        const modalBundleName = document.querySelector('#modal-bundle-name')
+        const modalBundleMeta = document.querySelector('#modal-bundle-meta')
+        const modalFooterMeta = document.querySelector('#modal-footer-meta')
+        const modalInstallBtn = document.querySelector('#modal-install-btn')
+        const modalLoading = document.querySelector('#modal-loading')
+        const modalWarnings = document.querySelector('#modal-warnings')
+        const modalContent = document.querySelector('#modal-content')
+        const modalError = document.querySelector('#modal-error')
+        let lastFocusedElement = null
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+        }
+
+        function renderInlineMarkdown(value) {
+            return escapeHtml(value).replace(/`([^`]+)`/g, '<code>$1</code>')
+        }
+
+        function stripFrontmatter(value) {
+            const normalized = String(value ?? '').replace(/\r\n/g, '\n').trim()
+            if (!normalized.startsWith('---\n')) return normalized
+            const closingIndex = normalized.indexOf('\n---\n', 4)
+            return closingIndex === -1 ? normalized : normalized.slice(closingIndex + 5).trim()
+        }
+
+        function renderMarkdown(value) {
+            const source = stripFrontmatter(value)
+            if (!source) {
+                return '<p class="muted">No additional content included.</p>'
+            }
+
+            const lines = source.split('\n')
+            const html = []
+            let paragraphLines = []
+            let listItems = []
+            let listType = null
+            let inCodeBlock = false
+            let codeLines = []
+
+            function flushParagraph() {
+                if (!paragraphLines.length) return
+                html.push(`<p>${renderInlineMarkdown(paragraphLines.join(' '))}</p>`)
+                paragraphLines = []
+            }
+
+            function flushList() {
+                if (!listItems.length || !listType) return
+                html.push(`<${listType}>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')}</${listType}>`)
+                listItems = []
+                listType = null
+            }
+
+            function flushCode() {
+                if (!codeLines.length) return
+                html.push(`<pre class="bundle-code-block"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+                codeLines = []
+            }
+
+            lines.forEach((line) => {
+                if (/^```/.test(line.trim())) {
+                    flushParagraph()
+                    flushList()
+                    if (inCodeBlock) {
+                        flushCode()
+                    }
+                    inCodeBlock = !inCodeBlock
+                    return
+                }
+
+                if (inCodeBlock) {
+                    codeLines.push(line)
+                    return
+                }
+
+                const headingMatch = line.match(/^(#{1,6})\s+(.*)$/)
+                if (headingMatch) {
+                    flushParagraph()
+                    flushList()
+                    const level = Math.min(6, headingMatch[1].length + 3)
+                    html.push(`<h${level} class="bundle-markdown-heading">${renderInlineMarkdown(headingMatch[2].trim())}</h${level}>`)
+                    return
+                }
+
+                const unorderedMatch = line.match(/^[-*]\s+(.*)$/)
+                if (unorderedMatch) {
+                    flushParagraph()
+                    if (listType && listType !== 'ul') flushList()
+                    listType = 'ul'
+                    listItems.push(unorderedMatch[1].trim())
+                    return
+                }
+
+                const orderedMatch = line.match(/^[0-9]+\.\s+(.*)$/)
+                if (orderedMatch) {
+                    flushParagraph()
+                    if (listType && listType !== 'ol') flushList()
+                    listType = 'ol'
+                    listItems.push(orderedMatch[1].trim())
+                    return
+                }
+
+                if (!line.trim()) {
+                    flushParagraph()
+                    flushList()
+                    return
+                }
+
+                paragraphLines.push(line.trim())
+            })
+
+            flushParagraph()
+            flushList()
+            flushCode()
+
+            return `<div class="bundle-markdown">${html.join('')}</div>`
+        }
+
+        function formatIntervalLabel(intervalMinutes) {
+            if (!Number.isFinite(intervalMinutes)) return 'custom schedule'
+            if (intervalMinutes % 10080 === 0) return intervalMinutes === 10080 ? 'weekly' : `every ${intervalMinutes / 10080} weeks`
+            if (intervalMinutes % 1440 === 0) return intervalMinutes === 1440 ? 'daily' : `every ${intervalMinutes / 1440} days`
+            if (intervalMinutes % 60 === 0) return intervalMinutes === 60 ? 'hourly' : `every ${intervalMinutes / 60} hours`
+            return `every ${intervalMinutes} minutes`
+        }
+
+        function renderSection(title, content) {
+            return `
+                <details class="bundle-section" open>
+                    <summary>${title}</summary>
+                    <div class="bundle-section-body">${content}</div>
+                </details>
+            `
+        }
+
+        function buildWarningBadges(bundle) {
+            const warnings = []
+            const promptWeight = [
+                ...(bundle.agentProfiles || []).map((profile) => `${profile.systemPrompt || ''}\n${profile.guidelines || ''}`),
+                ...(bundle.skills || []).map((skill) => skill.instructions || ''),
+                ...(bundle.repeatTasks || []).map((task) => task.prompt || ''),
+            ].join('\n').length
+
+            if ((bundle.mcpServers || []).length) warnings.push('Contains MCP commands')
+            if ((bundle.memories || []).length) warnings.push('Contains memories')
+            if (promptWeight > 2800) warnings.push('Large prompt content')
+
+            return warnings
+        }
+
+        function renderBundle(bundle) {
+            const sections = []
+
+            if (bundle.agentProfiles?.length) {
+                const agentHtml = bundle.agentProfiles.map((profile) => `
+                    <article class="bundle-entry">
+                        <h4>🤖 ${escapeHtml(profile.displayName || profile.name)}</h4>
+                        ${profile.description ? `<p class="bundle-entry-subtitle">${escapeHtml(profile.description)}</p>` : ''}
+                        ${profile.systemPrompt ? `<div class="bundle-command">${escapeHtml(profile.systemPrompt)}</div>` : ''}
+                        ${profile.guidelines ? renderMarkdown(`## Guidelines\n${profile.guidelines}`) : ''}
+                    </article>
+                `).join('')
+                sections.push(renderSection(`🤖 Agent Profiles (${bundle.agentProfiles.length})`, agentHtml))
+            }
+
+            if (bundle.mcpServers?.length) {
+                const mcpHtml = bundle.mcpServers.map((server) => {
+                    const args = Array.isArray(server.args) && server.args.length ? ` ${server.args.join(' ')}` : ''
+                    return `
+                        <article class="bundle-entry">
+                            <h4>🔧 ${escapeHtml(server.name)}</h4>
+                            <p class="bundle-entry-subtitle">${escapeHtml(server.transport || 'stdio')} transport${server.enabled === false ? ' · disabled' : ''}</p>
+                            <div class="bundle-command">${escapeHtml(`${server.command || 'configured via provider'}${args}`)}</div>
+                        </article>
+                    `
+                }).join('')
+                sections.push(renderSection(`🔧 MCP Servers (${bundle.mcpServers.length})`, mcpHtml))
+            }
+
+            if (bundle.skills?.length) {
+                const skillHtml = bundle.skills.map((skill) => `
+                    <article class="bundle-entry">
+                        <h4>🧠 ${escapeHtml(skill.name)}</h4>
+                        ${skill.description ? `<p class="bundle-entry-subtitle">${escapeHtml(skill.description)}</p>` : ''}
+                        ${renderMarkdown(skill.instructions)}
+                    </article>
+                `).join('')
+                sections.push(renderSection(`🧠 Skills (${bundle.skills.length})`, skillHtml))
+            }
+
+            if (bundle.repeatTasks?.length) {
+                const taskHtml = bundle.repeatTasks.map((task) => `
+                    <article class="bundle-entry">
+                        <h4>⏰ ${escapeHtml(task.name)}</h4>
+                        <p class="bundle-entry-subtitle">${escapeHtml(formatIntervalLabel(task.intervalMinutes))} · ${task.enabled ? 'enabled' : 'disabled by default'}</p>
+                        ${renderMarkdown(task.prompt)}
+                    </article>
+                `).join('')
+                sections.push(renderSection(`⏰ Repeat Tasks (${bundle.repeatTasks.length})`, taskHtml))
+            }
+
+            if (bundle.memories?.length) {
+                const memoryHtml = `
+                    <article class="bundle-entry">
+                        <h4>🧾 ${bundle.memories.length} bundled memories</h4>
+                        <p class="bundle-memory-warning">Review memories carefully before installing publicly shared bundles — they can contain personal context, preferences, or semi-sensitive notes.</p>
+                    </article>
+                `
+                sections.push(renderSection(`🧾 Memories (${bundle.memories.length})`, memoryHtml))
+            }
+
+            return sections.join('') || '<div class="hub-modal-state">This bundle has no inspectable sections yet.</div>'
+        }
+
+        function resetModalState() {
+            modalLoading.hidden = false
+            modalError.hidden = true
+            modalWarnings.hidden = true
+            modalWarnings.innerHTML = ''
+            modalContent.hidden = true
+            modalContent.innerHTML = ''
+            modalBundleMeta.innerHTML = ''
+            modalFooterMeta.innerHTML = ''
+        }
+
+        function openModal() {
+            lastFocusedElement = document.activeElement
+            modal.hidden = false
+            document.body.style.overflow = 'hidden'
+            requestAnimationFrame(() => modalClose?.focus())
+        }
+
+        function closeModal() {
+            if (modal.hidden) return
+            modal.hidden = true
+            document.body.style.overflow = ''
+            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+                lastFocusedElement.focus()
+            }
+        }
+
+        modalClose?.addEventListener('click', closeModal)
+        modal?.addEventListener('click', (event) => {
+            if (event.target === modal) closeModal()
+        })
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeModal()
+        })
+
+        bundleCards.forEach((card) => {
+            const inspectButton = card.querySelector('.inspect-btn')
+            if (!inspectButton) return
+
+            inspectButton.addEventListener('click', async () => {
+                const bundleUrl = card.getAttribute('data-bundle-url')
+                const bundleName = card.getAttribute('data-bundle-name') || 'Bundle preview'
+                if (!bundleUrl) return
+
+                modalBundleName.textContent = bundleName
+                modalInstallBtn.href = `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
+                resetModalState()
+                openModal()
+
+                try {
+                    const response = await fetch(bundleUrl)
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`)
+                    }
+
+                    const sizeFromHeader = Number(response.headers.get('content-length') || '0')
+                    const responseClone = sizeFromHeader ? null : response.clone()
+                    const bundle = await response.json()
+                    const sizeBytes = sizeFromHeader || (await responseClone.blob()).size
+                    const sizeLabel = sizeBytes ? `${Math.max(1, Math.round(sizeBytes / 1024))} KB` : 'bundle JSON'
+                    const author = bundle.manifest?.publicMetadata?.author || {}
+                    const authorLabel = author.displayName || author.handle || 'community author'
+                    const warningBadges = buildWarningBadges(bundle)
+
+                    modalBundleMeta.innerHTML = `
+                        <span>v${escapeHtml(bundle.manifest?.version ?? 1)}</span>
+                        <span>·</span>
+                        <span>${escapeHtml(sizeLabel)}</span>
+                        <span>·</span>
+                        <span>${escapeHtml(authorLabel)}</span>
+                    `
+                    modalFooterMeta.innerHTML = `
+                        <span>${escapeHtml((bundle.agentProfiles || []).length)} agents</span>
+                        <span>·</span>
+                        <span>${escapeHtml((bundle.mcpServers || []).length)} MCP</span>
+                        <span>·</span>
+                        <span>${escapeHtml((bundle.skills || []).length)} skills</span>
+                        <span>·</span>
+                        <span>${escapeHtml((bundle.repeatTasks || []).length)} tasks</span>
+                    `
+
+                    if (warningBadges.length) {
+                        modalWarnings.hidden = false
+                        modalWarnings.innerHTML = warningBadges.map((warning) => `<span class="hub-warning-badge">${escapeHtml(warning)}</span>`).join('')
+                    }
+
+                    modalContent.innerHTML = renderBundle(bundle)
+                    modalLoading.hidden = true
+                    modalContent.hidden = false
+                } catch (error) {
+                    modalLoading.hidden = true
+                    modalError.hidden = false
+                    modalError.textContent = `Could not load bundle: ${error.message}`
+                }
+            })
+        })
+    </script>
 </body>
 </html>
