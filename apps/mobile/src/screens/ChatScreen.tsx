@@ -3567,6 +3567,18 @@ function createStyles(theme: Theme, screenHeight: number) {
     verticalPadding: 6,
     horizontalMargin: 0,
   });
+  const toolCallCompactTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.xs,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+  const toolCallHeaderTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.xs,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     headerActionsRow: {
       flexDirection: 'row',
@@ -3979,12 +3991,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
     },
     toolCallCompactRow: {
+      ...toolCallCompactTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 2,
-      paddingHorizontal: 3,
+      justifyContent: 'flex-start',
+      minWidth: 0,
       borderRadius: radius.sm,
-      gap: 3,
+      gap: spacing.xs,
     },
     toolCallCompactPending: {
       backgroundColor: hexToRgba(theme.colors.info, 0.05),
@@ -3999,7 +4012,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       opacity: 0.7,
     },
     toolCallCompactIcon: {
-      fontSize: 8,
+      fontSize: 11,
     },
     toolCallCompactIconPending: {
       // uses default
@@ -4012,9 +4025,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     toolCallCompactName: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
+      fontSize: 12,
+      lineHeight: 16,
       fontWeight: '500',
       flexShrink: 1,
+      minWidth: 0,
     },
     toolCallCompactNamePending: {
       color: theme.colors.info,
@@ -4026,7 +4041,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
     },
     toolCallCompactStatus: {
-      fontSize: 9,
+      fontSize: 11,
       marginLeft: 1,
     },
     toolCallCompactStatusPending: {
@@ -4039,16 +4054,19 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
     },
     toolCallCompactChevron: {
-      fontSize: 8,
+      fontSize: 10,
       color: theme.colors.mutedForeground,
       opacity: 0.4,
       marginLeft: 'auto',
     },
     toolCallCompactPreview: {
-      fontSize: 9,
+      fontSize: 11,
+      lineHeight: 15,
       color: theme.colors.mutedForeground,
       opacity: 0.6,
       flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
       marginLeft: 2,
     },
     toolParamsSection: {
@@ -4078,21 +4096,25 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontWeight: '600',
       color: theme.colors.primary,
-      fontSize: 10,
+      fontSize: 12,
+      lineHeight: 16,
       flex: 1,
     },
     toolCallHeader: {
+      ...toolCallHeaderTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.xs,
+      minWidth: 0,
+      gap: spacing.xs,
       marginBottom: spacing.xs,
     },
     toolCallHeaderPressed: {
       opacity: 0.7,
     },
     toolCallExpandHint: {
-      fontSize: 9,
+      fontSize: 11,
+      lineHeight: 16,
       color: theme.colors.mutedForeground,
       fontWeight: '500',
     },

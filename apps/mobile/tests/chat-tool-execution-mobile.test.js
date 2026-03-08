@@ -1,0 +1,29 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const chatScreenSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
+  'utf8'
+);
+
+test('gives the collapsed tool execution summary a minimum mobile touch target', () => {
+  assert.match(chatScreenSource, /const toolCallCompactTouchTarget = createMinimumTouchTargetStyle\([\s\S]*?minSize: 44,[\s\S]*?horizontalMargin: 0[\s\S]*?\);/);
+  assert.match(chatScreenSource, /toolCallCompactRow:\s*\{[\s\S]*?\.\.\.toolCallCompactTouchTarget,[\s\S]*?justifyContent: 'flex-start',[\s\S]*?minWidth: 0,[\s\S]*?gap: spacing\.xs/);
+});
+
+test('keeps collapsed tool execution labels legible on narrow mobile screens', () => {
+  assert.match(chatScreenSource, /toolCallCompactIcon:\s*\{[\s\S]*?fontSize: 11/);
+  assert.match(chatScreenSource, /toolCallCompactName:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 16,[\s\S]*?flexShrink: 1,[\s\S]*?minWidth: 0/);
+  assert.match(chatScreenSource, /toolCallCompactStatus:\s*\{[\s\S]*?fontSize: 11/);
+  assert.match(chatScreenSource, /toolCallCompactPreview:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 15,[\s\S]*?flex: 1,[\s\S]*?minWidth: 0,[\s\S]*?flexShrink: 1/);
+  assert.match(chatScreenSource, /toolCallCompactChevron:\s*\{[\s\S]*?fontSize: 10/);
+});
+
+test('gives each expanded tool disclosure header a mobile-sized tap target and clearer text sizing', () => {
+  assert.match(chatScreenSource, /const toolCallHeaderTouchTarget = createMinimumTouchTargetStyle\([\s\S]*?minSize: 44,[\s\S]*?horizontalMargin: 0[\s\S]*?\);/);
+  assert.match(chatScreenSource, /toolCallHeader:\s*\{[\s\S]*?\.\.\.toolCallHeaderTouchTarget,[\s\S]*?justifyContent: 'space-between',[\s\S]*?minWidth: 0,[\s\S]*?gap: spacing\.xs/);
+  assert.match(chatScreenSource, /toolName:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 16,[\s\S]*?flex: 1/);
+  assert.match(chatScreenSource, /toolCallExpandHint:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 16,[\s\S]*?fontWeight: '500'/);
+});

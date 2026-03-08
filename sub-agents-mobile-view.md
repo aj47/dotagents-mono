@@ -1,5 +1,48 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 155 - Make mobile tool-execution rows easier to read and tap
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-shipped settings and selector recovery states without a new issue.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx` and nearby mobile tests, focusing on the live chat tool-execution surface because it still carries delegated-agent activity details on narrow screens.
+  - Tried again to recover live-validation confidence, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `if test -d apps/mobile/node_modules; then echo APPS_MOBILE_NODE_MODULES_PRESENT; else echo APPS_MOBILE_NODE_MODULES_MISSING; fi; pnpm --filter @dotagents/mobile exec expo --version` → `APPS_MOBILE_NODE_MODULES_MISSING` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the collapsed tool-execution summary row in `ChatScreen` still used 8–10px text, 2–3px padding, and no explicit mobile touch-target contract.
+  - The per-tool disclosure header in the expanded state also relied on very small 9–10px labels with no guaranteed 44px tap area.
+  - On narrow mobile screens, that made one of the main delegated-activity affordances feel denser and less tappable than adjacent queue/history controls.
+- Issue identified:
+  - Mobile tool-execution rows under-emphasized delegated activity details by compressing both the summary row and the per-tool disclosure header into text and tap targets that were smaller than nearby mobile interaction patterns.
+- Decision and rationale:
+  - Keep the existing tool-execution structure, result formatting, collapse behavior, and transcript flow unchanged.
+  - Avoid a broader redesign or multi-line layout change while live validation is blocked.
+  - Make the smallest useful fix instead: apply the existing mobile minimum-touch-target pattern to the collapsed summary row and expanded tool headers, then raise the most important label sizes into the same readability range used elsewhere in the mobile UI.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - add dedicated `toolCallCompactTouchTarget` and `toolCallHeaderTouchTarget` styles using `createMinimumTouchTargetStyle({ minSize: 44, ... })`,
+    - give the collapsed summary row explicit start alignment and shrink-safe width handling,
+    - increase the compact tool icon/name/status/preview/chevron text sizes,
+    - increase the expanded tool header label and `Full Details` hint sizing while keeping the existing interaction model.
+  - Added `apps/mobile/tests/chat-tool-execution-mobile.test.js` with focused regression coverage for the new touch-target and text-sizing contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-tool-execution-mobile.test.js` ✅
+  - `node --test apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the tool-execution rows should follow the same 44px-friendly interaction baseline already used by the selector, queue, and response-history surfaces.
+  - Kept the change styling-only so it remains low risk without live screenshots.
+  - This remains a source-backed improvement and still needs live confirmation that the slightly larger tool-execution rows feel clearer without making busy transcripts feel too tall.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that collapsed tool-execution rows feel meaningfully easier to scan and tap with one hand.
+  - Capture screenshot-backed evidence for both collapsed and expanded tool-execution states so the larger labels and tap targets can be judged in-context beside the queue and response-history panels.
+  - If live validation shows the rows now feel too tall in tool-heavy chats, prefer a small spacing trim before changing the structure.
+
 ## Iteration 154 - Make the ACP no-agent warning immediately recoverable on mobile
 
 - Date: 2026-03-08
