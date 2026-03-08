@@ -1737,6 +1737,56 @@
             return 'Configured via provider or local app integration'
         }
 
+        function renderMcpServerDetails(server) {
+            const detailBlocks = []
+            const trimmedUrl = typeof server.url === 'string' ? server.url.trim() : ''
+            const args = Array.isArray(server.args) && server.args.length ? JSON.stringify(server.args, null, 2) : ''
+            const config = isRecord(server.config) && Object.keys(server.config).length ? server.config : null
+            const redactedSecretFields = Array.isArray(server.redactedSecretFields)
+                ? server.redactedSecretFields.map((field) => String(field || '').trim()).filter(Boolean)
+                : []
+
+            if (trimmedUrl) {
+                detailBlocks.push(`
+                    <div>
+                        <p class="bundle-entry-note">Bundled URL</p>
+                        <div class="bundle-command">${escapeHtml(trimmedUrl)}</div>
+                    </div>
+                `)
+            }
+
+            if (args) {
+                detailBlocks.push(`
+                    <div>
+                        <p class="bundle-entry-note">Bundled args</p>
+                        <div class="bundle-command">${escapeHtml(args)}</div>
+                    </div>
+                `)
+            }
+
+            if (config) {
+                detailBlocks.push(`
+                    <div>
+                        <p class="bundle-entry-note">Bundled config</p>
+                        <div class="bundle-command">${escapeHtml(JSON.stringify(server.config, null, 2))}</div>
+                    </div>
+                `)
+            }
+
+            if (redactedSecretFields.length) {
+                detailBlocks.push(`<p class="bundle-entry-note">Hidden secret fields: ${escapeHtml(redactedSecretFields.join(', '))}</p>`)
+            }
+
+            if (!detailBlocks.length) return ''
+
+            return `
+                <details class="bundle-inline-details">
+                    <summary>Show full MCP config</summary>
+                    <div class="bundle-inline-details-body">${detailBlocks.join('')}</div>
+                </details>
+            `
+        }
+
         function renderSection(title, content) {
             return `
                 <details class="bundle-section" open>
@@ -1799,12 +1849,14 @@
                     const transportLabel = formatTransportLabel(server.transport)
                     const connectionPreview = getMcpConnectionPreview(server)
                     const configRequirements = getMcpConfigurationRequirements(server)
+                    const serverDetails = renderMcpServerDetails(server)
                     return `
                         <article class="bundle-entry">
                             <h4>🔧 ${escapeHtml(server.name)}</h4>
                             <p class="bundle-entry-subtitle">${escapeHtml(transportLabel)} transport${server.enabled === false ? ' · disabled' : ''}</p>
                             <div class="bundle-command">${escapeHtml(connectionPreview)}</div>
                             ${configRequirements.length ? `<p class="bundle-entry-note">Requires configuration: ${escapeHtml(configRequirements.join(', '))}</p>` : ''}
+                            ${serverDetails}
                         </article>
                     `
                 }).join('')

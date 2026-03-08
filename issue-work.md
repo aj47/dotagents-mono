@@ -2793,3 +2793,35 @@
   - Add runtime request/response coverage for the remote conversation routes when a fuller Fastify/Vitest environment is available, instead of relying only on source assertions.
   - If a live repro still shows history loss, inspect any remaining non-remote update paths that overwrite conversations after lazy-loading full history.
 - Next recommended issue work item: refresh the open issues again and prefer a fresh direct-value desktop bug/UX slice next; only stay on `#58` if another concrete, source-confirmed full-history persistence gap appears beyond the now-aligned remote/shared write contract.
+
+##### Issue #56 — Bundle inspector: expandable MCP config/details in the website modal
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and avoided immediately mining `#58` again after the remote history-contract work landed.
+  - Refreshed the open issues plus issue details/comments and confirmed `#56` still had a clean trust-focused follow-up inside the existing website inspector: MCP sections showed name + transport + one-line command preview, but fuller bundled config details still stayed opaque unless you installed the bundle.
+  - This was a small, reviewable website-only slice with direct user value and quick verification.
+- Investigation:
+  - Re-read issue `#56` and its owner comment; the trust goal is inspect-before-install, and MCP commands/config are explicitly part of that surface.
+  - Inspected `website/index.html` and confirmed the modal already had preview-first treatment for agent prompts, skills, and repeat tasks, but MCP servers still rendered only `getMcpConnectionPreview(server)` plus the setup-requirements note.
+  - Confirmed there was already nearby website-only source coverage in `website/website-hub-inspector.test.js`, making this a safe place to lock in another small trust affordance without introducing broader frontend tooling.
+- Important assumptions:
+  - Assumption: keeping the existing one-line MCP preview visible and adding an optional inline `Show full MCP config` details block is preferable to dumping structured config inline for every server.
+  - Why acceptable: it preserves the current scan-friendly modal density while still letting cautious users inspect the actual bundled MCP wiring before installing.
+  - Assumption: showing bundled URLs, args, config JSON, and redacted-secret field names is acceptable for public bundle inspection because the bundle format is already public-safe and secret values themselves are not rendered here.
+  - Why acceptable: the issue is specifically about trust-through-inspection, and these fields are precisely what users need to judge MCP safety without exposing hidden secret contents.
+- Changes implemented:
+  - Added `renderMcpServerDetails(server)` to `website/index.html`.
+  - The website inspector now shows an inline `Show full MCP config` affordance whenever a bundle MCP server includes extra inspectable detail such as a bundled URL, args array, config object, or redacted-secret field hints.
+  - The inline details render structured MCP data using the existing `bundle-inline-details` / `bundle-command` styles so the modal stays readable on small screens.
+  - Extended `website/website-hub-inspector.test.js` to lock in the new MCP details helper, the inline details affordance, and the structured JSON/config rendering hooks.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - Consider whether memories should eventually show lightweight item-level previews (for example, ids/titles only) or remain count + warning only as currently suggested by the owner comment.
+  - Consider richer MCP formatting later (for example, grouped env/headers/transport sections) only if the current JSON/details view proves insufficient in practice.
+  - Keep the inspector trust-focused; avoid turning the website into a full browser-side bundle editor/manager.
+- Next recommended issue work item: refresh the open issues again and prefer a concrete desktop bug/reliability slice next; only continue `#56` if another similarly small inspect-before-install clarity gap is directly visible in source.
