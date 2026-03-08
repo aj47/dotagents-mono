@@ -4098,3 +4098,47 @@
   - Restore the mobile install in this worktree, then verify with Expo Web or a simulator that repeated agent replies now remain visible in the response history when they recur later in the same conversation.
   - Live-test several short repeated responses such as `Done.` across separated turns to confirm the new consecutive-only dedupe avoids both false drops and noisy duplicate bursts.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history dedupe again without new evidence.
+
+### 2026-03-08 — Iteration 94: add a direct recovery action when the current selector choice disappears
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Reconfirmed the current worktree blocker before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`; pnpm also warned `Local package.json exists, but node_modules missing, did you mean to install?`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still failed because the mobile install / Expo base config and React Native dependencies are missing in this worktree
+  - Because Expo is still unavailable here, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the selector sheet already surfaced a `Current agent unavailable in this list` notice when the active agent was missing from the fetched options.
+  - That notice explained that users should review `Settings → Agents`, but it stopped at informational copy and did not provide a direct action.
+  - On mobile, that meant the user had to dismiss the sheet and manually navigate elsewhere even though the exact next step was already known.
+- Issue selected:
+  - The selector-sheet missing-current-selection notice still lacked an immediate recovery action, weakening user control in an already constrained mobile state.
+- Decision:
+  - Keep the current notice card, active-agent badge, and available-options list unchanged.
+  - Do not redesign the selector flow while live validation is blocked.
+  - Make the smallest local fix: add a lightweight `Review in Settings` action directly inside the missing-current-selection notice and reuse the existing Settings navigation path.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive mode-aware accessibility copy for the notice action,
+    - render a compact `Review in Settings` button inside the missing-current-selection notice,
+    - reuse `handleOpenAgentSettings` so the notice now offers a direct recovery path without changing the rest of the sheet.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new notice action, accessibility copy, and mobile-sized button styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - This new notice action still needs a real narrow-screen pass to confirm it reads as a secondary recovery path instead of overpowering the available-options list.
+  - The selector sheet still lacks fresh screenshot-backed validation after several local notice and state-clarity improvements.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Review in Settings` action feels easy to tap without making the notice card too dominant.
+  - Compare the missing-current-selection notice against the empty and error selector states so the new recovery action feels consistent but still appropriately secondary.
+  - After live validation is restored, continue with the next highest-signal mobile sub-agent issue instead of revisiting this notice action without fresh evidence.

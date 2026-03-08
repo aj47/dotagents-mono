@@ -181,6 +181,12 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const currentSelectionNoticeText = selectorMode === 'acp'
     ? 'This agent stays active until you switch. Choose one of the enabled agents below, then review Settings → Agents if this main agent should be available again.'
     : 'This agent stays active until you switch. Choose one of the available options below, then review Settings → Agents if this profile should still be switchable.';
+  const currentSelectionNoticeActionLabel = selectorMode === 'acp'
+    ? 'Review main agent in Settings'
+    : 'Review agent in Settings';
+  const currentSelectionNoticeActionHint = selectorMode === 'acp'
+    ? 'Opens Settings so you can review why this main agent is unavailable and manage enabled agents.'
+    : 'Opens Settings so you can review why this agent is unavailable and manage switchable agents.';
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
@@ -377,6 +383,16 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                   </Text>
                 </View>
                 <Text style={styles.currentSelectionNoticeText}>{currentSelectionNoticeText}</Text>
+                <TouchableOpacity
+                  style={styles.currentSelectionNoticeButton}
+                  onPress={handleOpenAgentSettings}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel(currentSelectionNoticeActionLabel)}
+                  accessibilityHint={currentSelectionNoticeActionHint}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.currentSelectionNoticeButtonText}>Review in Settings</Text>
+                </TouchableOpacity>
               </View>
             )}
             <FlatList
@@ -667,6 +683,20 @@ function createStyles(theme: Theme) {
       color: theme.colors.mutedForeground,
       textAlign: 'center',
       lineHeight: 20,
+    },
+    currentSelectionNoticeButton: {
+      ...actionButtonTouchTarget,
+      minWidth: 180,
+      borderRadius: radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.primary + '12',
+    },
+    currentSelectionNoticeButtonText: {
+      color: theme.colors.primary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     manageAgentsButton: {
       ...actionButtonTouchTarget,
