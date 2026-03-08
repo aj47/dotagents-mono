@@ -1,5 +1,47 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 145 - Make mobile Summarization state easier to toggle and re-find
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not immediately revisit the just-touched selector subtitle, agents-list auto-start preview, loop profile notices, or response-history work without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-agent-mode-mobile.test.js` because the nearby sub-agent runtime settings still had a source-backed mobile consistency gap that was not covered in the latest ledger entries.
+  - Tried to restore live-validation confidence again, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d node_modules && echo root_node_modules_present || echo root_node_modules_missing; test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `root_node_modules_missing` / `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile web` → `sh: expo: command not found` plus `WARN Local package.json exists, but node_modules missing, did you mean to install?`
+- Current behavior observed before the fix:
+  - `Settings > Agent Settings` already used wrapped 44px mobile switch controls and a collapsed header summary to keep important sub-agent runtime state visible and easy to toggle.
+  - The nearby `Summarization` section still used a raw native `Switch` and exposed no collapsed summary at all.
+  - On a narrow mobile screen, that meant a setting that affects how delegated agent-step activity is surfaced in the UI had a smaller touch target and became harder to re-find once the section was collapsed.
+- Issue identified:
+  - The mobile `Summarization` control lagged behind neighboring sub-agent runtime controls in touch-target quality and collapsed-state clarity.
+- Decision and rationale:
+  - Keep the section structure, label, helper copy, and setting itself unchanged.
+  - Avoid broad settings-screen cleanup while live validation is blocked.
+  - Make the smallest useful consistency fix instead: reuse the existing action-rail switch pattern and add a concise collapsed summary so the setting stays legible even when the section is closed.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `summarizationSectionSummary`, returning `On • Step summaries` or `Off`,
+    - pass that summary into the `Summarization` `CollapsibleSection`,
+    - replace the raw `Switch` with the same named, minimum-touch-target `agentSettingsSwitchButton` pattern already used by neighboring agent runtime toggles,
+    - add explicit switch accessibility label, hint, checked state, and hide the inner visual from duplicate accessibility output.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new summary contract and the wrapped-switch semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and mobile installs are missing and `pnpm --filter @dotagents/mobile web` currently fails with `expo: command not found`
+- Assumptions and tradeoffs:
+  - Assumed the `Summarization` setting belongs in the same mobile interaction family as the adjacent sub-agent runtime switches because it directly affects how agent-step activity appears in the UI.
+  - Chose a concise `On • Step summaries` summary instead of a longer explanation so the collapsed header stays readable on narrow screens.
+  - Left other raw switches (for example in `Tool Execution`) untouched this iteration to keep the change tightly scoped and avoid reworking multiple sections without live evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the `Summarization` row now feels as tappable as adjacent agent runtime switches and that the collapsed summary reads cleanly on a narrow viewport.
+  - Check the section with larger text / accessibility sizing to confirm `On • Step summaries` stays legible without crowding the disclosure row.
+  - If live validation confirms this pattern works well, consider whether the nearby `Tool Execution` toggles should adopt the same wrapped-switch treatment in a separate, equally small pass.
+
 ## Iteration 144 - Keep the mobile selector subtitle from stealing option space
 
 - Date: 2026-03-08

@@ -400,6 +400,11 @@ export default function SettingsScreen({ navigation }: any) {
 
     return summaryParts.join(' • ');
   }, [isLoadingLoops, loops]);
+  const summarizationSectionSummary = useMemo(() => {
+    if (!remoteSettings) return null;
+
+    return remoteSettings.dualModelEnabled ? 'On • Step summaries' : 'Off';
+  }, [remoteSettings]);
 
   // Profile import/export state
   const [isExportingProfile, setIsExportingProfile] = useState(false);
@@ -2197,15 +2202,30 @@ export default function SettingsScreen({ navigation }: any) {
 
             {/* 4f. Summarization */}
             {remoteSettings && (
-              <CollapsibleSection id="summarization" title="Summarization">
+              <CollapsibleSection
+                id="summarization"
+                title="Summarization"
+                summary={summarizationSectionSummary}
+              >
                 <View style={styles.row}>
                   <Text style={styles.label}>Summarization</Text>
-                  <Switch
-                    value={remoteSettings.dualModelEnabled ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('dualModelEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.dualModelEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('dualModelEnabled', !(remoteSettings.dualModelEnabled ?? false))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Summarization')}
+                    accessibilityHint="Generates summaries of agent steps for the UI."
+                    accessibilityState={{ checked: remoteSettings.dualModelEnabled ?? false }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.dualModelEnabled ?? false)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.helperText}>
                   Generate summaries of agent steps for the UI

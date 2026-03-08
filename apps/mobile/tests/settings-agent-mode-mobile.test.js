@@ -66,6 +66,20 @@ test('renders collapsible section summaries as a truncation-safe secondary line 
   assert.match(settingsSource, /collapsibleSummary:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
 });
 
+test('keeps Summarization state visible in the collapsible header on mobile', () => {
+  assert.match(settingsSource, /const summarizationSectionSummary = useMemo\(\(\) => \{[\s\S]*?return remoteSettings\.dualModelEnabled \? 'On • Step summaries' : 'Off';[\s\S]*?\}, \[remoteSettings\]\);/);
+  assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="summarization"[\s\S]*?summary=\{summarizationSectionSummary\}/);
+});
+
+test('wraps Summarization in the same named mobile-sized switch control', () => {
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Summarization<\/Text>[\s\S]*?style=\{styles\.agentSettingsSwitchButton\}/);
+  assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('dualModelEnabled', !\(remoteSettings\.dualModelEnabled \?\? false\)\)\}/);
+  assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\('Summarization'\)/);
+  assert.match(settingsSource, /accessibilityHint="Generates summaries of agent steps for the UI\."/);
+  assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.dualModelEnabled \?\? false \}\}/);
+  assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.dualModelEnabled \?\? false\)/);
+});
+
 test('wraps Inject Builtin Tools in a named mobile-sized switch control', () => {
   assert.match(settingsSource, /style=\{styles\.agentSettingsSwitchButton\}/);
   assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('acpInjectBuiltinTools', !\(remoteSettings\.acpInjectBuiltinTools \?\? true\)\)\}/);
