@@ -87,16 +87,22 @@ test('bundle import dialog supports section-level bulk selection and blocks empt
   assert.match(dialogSource, /<Button onClick=\{handleImport\} disabled=\{importDisabled\}>/);
 });
 
-test('bundle import preserves MCP placeholder metadata and warns about post-import reconfiguration', () => {
+test('bundle import surfaces MCP setup requirements for both redacted credentials and templated placeholders', () => {
   assert.match(bundleServiceSource, /export interface BundleMCPServer \{[\s\S]*config\?: Record<string, unknown>[\s\S]*redactedSecretFields\?: string\[\]/);
   assert.match(bundleServiceSource, /function getRedactedSecretFieldNames\(config: Record<string, unknown>\): string\[]/);
   assert.match(bundleServiceSource, /function buildImportedMcpServerConfig\(bundleServer: BundleMCPServer\): Record<string, unknown>/);
   assert.match(dialogSource, /import \{ useNavigate \} from "react-router-dom"/);
   assert.match(dialogSource, /const MCP_SERVERS_SETTINGS_ROUTE = "\/settings\/capabilities\?tab=mcp-servers"/);
+  assert.match(dialogSource, /interface BundlePreviewMcpServer \{[\s\S]*command\?: string[\s\S]*args\?: string\[\][\s\S]*config\?: Record<string, unknown>/);
+  assert.match(dialogSource, /function getTemplatePlaceholderTokens\(value: unknown\): string\[]/);
+  assert.match(dialogSource, /function collectPlaceholderRequirements\(/);
+  assert.match(dialogSource, /function getMcpConfigurationRequirements\(server: BundlePreviewMcpServer\): string\[]/);
   assert.match(dialogSource, /function getSelectedMcpServersRequiringConfiguration\(/);
-  assert.match(dialogSource, /Credential reconfiguration required/);
-  assert.match(dialogSource, /<CONFIGURE_YOUR_KEY>/);
+  assert.match(dialogSource, /MCP setup required/);
+  assert.match(dialogSource, /&lt;CONFIGURE_YOUR_KEY&gt;/);
+  assert.match(dialogSource, /&lt;YOUR_USERNAME&gt;/);
   assert.match(dialogSource, /Settings → Capabilities/);
+  assert.match(dialogSource, /placeholder or credential settings/);
   assert.match(dialogSource, /const openMcpServersSettings = \(\) => navigate\(MCP_SERVERS_SETTINGS_ROUTE\)/);
   assert.match(dialogSource, /onClick=\{openMcpServersSettings\}/);
   assert.match(dialogSource, /toast\.warning\(/);

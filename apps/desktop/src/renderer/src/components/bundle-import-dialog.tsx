@@ -101,6 +101,14 @@ interface PreviewConflict {
   renameTargetId?: string
 }
 
+interface BundlePreviewMcpServer {
+  name: string
+  command?: string
+  args?: string[]
+  config?: Record<string, unknown>
+  redactedSecretFields?: string[]
+}
+
 interface BundlePreview {
   success: boolean
   filePath?: string
@@ -112,7 +120,7 @@ interface BundlePreview {
   bundle?: {
     manifest: BundleManifest
     agentProfiles?: Array<{ id: string; name: string; displayName?: string }>
-    mcpServers?: Array<{ name: string; redactedSecretFields?: string[] }>
+    mcpServers?: BundlePreviewMcpServer[]
     skills?: Array<{ id: string; name: string }>
     repeatTasks?: Array<{ id: string; name: string }>
     memories?: Array<{ id: string; title: string }>
@@ -199,7 +207,7 @@ function getConflictStrategyOverride(
   return overrides[key]?.[id] ?? defaultStrategy
 }
 
-function formatRedactedSecretFields(fields: string[]): string {
+function formatConfigurationRequirements(fields: string[]): string {
   return fields.join(", ")
 }
 
@@ -216,19 +224,77 @@ function formatImportTargetLayerLabel(layer?: BundleImportTargetLayer): string {
   }
 }
 
+function getTemplatePlaceholderTokens(value: unknown): string[] {
+  if (typeof value !== "string") return []
+  return Array.from(value.matchAll(/<([A-Z0-9][A-Z0-9_-]*)>/g)).map((match) => match[1])
+}
+
+function collectPlaceholderRequirements(
+  value: unknown,
+  label: string,
+  requirements: Set<string>,
+) {
+  if (typeof value === "string") {
+    getTemplatePlaceholderTokens(value).forEach((token) => requirements.add(`${label} (${token})`))
+    return
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => collectPlaceholderRequirements(entry, `${label}[${index}]`, requirements))
+    return
+  }
+
+  if (value && typeof value === "object") {
+    Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => {
+      collectPlaceholderRequirements(nestedValue, `${label}.${key}`, requirements)
+    })
+  }
+}
+
+function getMcpConfigurationRequirements(server: BundlePreviewMcpServer): string[] {
+  const requirements = new Set<string>()
+
+  ;(server.redactedSecretFields ?? []).forEach((field) => requirements.add(field))
+  collectPlaceholderRequirements(server.command, "command", requirements)
+  collectPlaceholderRequirements(server.args, "args", requirements)
+
+  if (server.config) {
+    const config = { ...server.config }
+    const nestedCommand = typeof config.command === "string" ? config.command : undefined
+    const nestedArgs = Array.isArray(config.args) ? config.args : undefined
+
+    if (!server.command && nestedCommand) {
+      collectPlaceholderRequirements(nestedCommand, "command", requirements)
+    }
+    if (!server.args && nestedArgs) {
+      collectPlaceholderRequirements(nestedArgs, "args", requirements)
+    }
+
+    delete config.command
+    delete config.args
+    collectPlaceholderRequirements(config, "config", requirements)
+  }
+
+  return Array.from(requirements)
+}
+
 function getSelectedMcpServersRequiringConfiguration(
   bundle: BundlePreview["bundle"] | undefined,
   components: BundleComponentsState,
   selectedItems: BundleItemSelectionState,
-): Array<{ name: string; redactedSecretFields: string[] }> {
+): Array<{ name: string; configurationRequirements: string[] }> {
   if (!components.mcpServers) return []
 
   const selectedNames = new Set(selectedItems.mcpServerNames)
   return (bundle?.mcpServers ?? [])
-    .filter((server) => selectedNames.has(server.name) && (server.redactedSecretFields?.length ?? 0) > 0)
     .map((server) => ({
       name: server.name,
-      redactedSecretFields: server.redactedSecretFields ?? [],
+      configurationRequirements: getMcpConfigurationRequirements(server),
+    }))
+    .filter((server) => selectedNames.has(server.name) && server.configurationRequirements.length > 0)
+    .map((server) => ({
+      name: server.name,
+      configurationRequirements: server.configurationRequirements,
     }))
 }
 
@@ -238,7 +304,7 @@ function getImportedMcpServersRequiringConfiguration(
 ): string[] {
   const reconfigurationByServerName = new Map<string, true>(
     (bundle?.mcpServers ?? [])
-      .filter((server) => (server.redactedSecretFields?.length ?? 0) > 0)
+      .filter((server) => getMcpConfigurationRequirements(server).length > 0)
       .map((server) => [server.name, true] as const)
   )
 
@@ -619,7 +685,7 @@ export function BundleImportDialog({
         )
         if (importedMcpServersRequiringConfiguration.length > 0) {
           toast.warning(
-            `Reconfigure ${formatCount("MCP server", importedMcpServersRequiringConfiguration.length)} with <CONFIGURE_YOUR_KEY> placeholders in Settings → Capabilities: ${importedMcpServersRequiringConfiguration.join(", ")}.`,
+            `Reconfigure ${formatCount("MCP server", importedMcpServersRequiringConfiguration.length)} with placeholder or credential settings in Settings → Capabilities: ${importedMcpServersRequiringConfiguration.join(", ")}.`,
             {
               action: {
                 label: "Open MCP Servers",
@@ -931,21 +997,23 @@ export function BundleImportDialog({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
                   <div className="space-y-2">
-                    <Label>Credential reconfiguration required</Label>
+                    <Label>MCP setup required</Label>
                     <p className="text-xs text-muted-foreground">
                       {selectedMcpServersRequiringConfiguration.length === 1
-                        ? "This selected MCP server contains redacted credentials and will import with "
-                        : "These selected MCP servers contain redacted credentials and will import with "}
+                        ? "This selected MCP server includes redacted credentials or templated placeholder values (for example "
+                        : "These selected MCP servers include redacted credentials or templated placeholder values (for example "}
                       <span className="font-mono">&lt;CONFIGURE_YOUR_KEY&gt;</span>
-                      {" placeholders. After import, open Settings → Capabilities and replace those placeholders before using the servers."}
+                      {" or "}
+                      <span className="font-mono">&lt;YOUR_USERNAME&gt;</span>
+                      {`). After import, open Settings → Capabilities and update the listed fields before using the servers.`}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {selectedMcpServersRequiringConfiguration.map((server) => (
                         <Badge key={server.name} variant="outline" className="text-xs">
                           {server.name}
-                          {server.redactedSecretFields.length > 0 && (
+                          {server.configurationRequirements.length > 0 && (
                             <span className="ml-1 text-muted-foreground">
-                              · {formatRedactedSecretFields(server.redactedSecretFields)}
+                              · {formatConfigurationRequirements(server.configurationRequirements)}
                             </span>
                           )}
                         </Badge>

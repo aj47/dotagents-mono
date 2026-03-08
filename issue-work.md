@@ -2120,3 +2120,36 @@
   - If setup disclosure grows beyond a badge + note, consider a small dedicated `Requirements` section rather than overloading the MCP rows.
 
 - Next recommended issue work item: refresh the remaining open issues again and prefer another similarly concrete trust/reliability slice, likely from `#57`/`#58`, while keeping `#54` blocked until auth feasibility evidence exists.
+
+##### Issue #57 — Bundle import dialog: treat templated MCP placeholders as setup requirements too
+
+- Selection rationale:
+  - After the website-side `#56` fix, the cleanest next open-issue follow-up was the same trust gap inside the actual desktop import/restore flow: bundles with non-secret MCP placeholders still looked safer than they were.
+  - This stayed tightly scoped to the shared desktop import dialog used for bundle imports/restores, without reopening broader slot or provider work.
+- Investigation:
+  - Refreshed open issue `#57` and its comments, then re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` plus its regression test.
+  - Confirmed a concrete gap: `getSelectedMcpServersRequiringConfiguration(...)` and `getImportedMcpServersRequiringConfiguration(...)` only treated `redactedSecretFields` as reconfiguration signals.
+  - Confirmed the main-process preview/import contract already carries enough MCP detail (`command`, `args`, `config`) through the bundle payload, so renderer-only logic could detect placeholder values like `/Users/<YOUR_USERNAME>` without adding a new backend API.
+  - Re-checked `apps/desktop/src/renderer/src/AGENTS.md` and confirmed no mobile parity work is needed because this Electron bundle-import dialog has no equivalent mobile surface.
+- Important assumptions:
+  - Assumption: the import dialog should treat templated MCP placeholders and redacted secrets as the same class of post-import setup requirement.
+  - Why acceptable: both represent “not ready to use as imported,” which is exactly the trust/safety signal the issue wants surfaced before and after bundle writes.
+  - Assumption: broadening the warning language from credential-only wording to general MCP setup wording is preferable to adding a second warning card.
+  - Why acceptable: it keeps the UX smaller and clearer while covering both secret and non-secret placeholder cases.
+- Changes implemented:
+  - Expanded the renderer-side bundle preview typing in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so MCP preview items can inspect `command`, `args`, and `config`, not just `redactedSecretFields`.
+  - Added `getTemplatePlaceholderTokens(...)`, `collectPlaceholderRequirements(...)`, and `getMcpConfigurationRequirements(...)` to detect templated values like `<YOUR_USERNAME>` across MCP command args and nested config.
+  - Updated both the pre-import warning card and post-import warning toast to treat any detected placeholder/manual-setup requirement as actionable MCP reconfiguration, not only `<CONFIGURE_YOUR_KEY>` secrets.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` with source-level assertions locking in the broader MCP setup detection and wording.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - If users need even clearer recovery guidance later, consider linking directly to specific imported MCP rows or preserving a lightweight post-import remediation history beyond toasts.
+  - If Hub install/import trust UX keeps expanding, align the website inspector, desktop import dialog, and any future install-history surface on one shared vocabulary for “requires setup”.
+
+- Next recommended issue work item: refresh open issues again and prefer either a fresh bug with a concrete repro or another equally narrow trust/reliability slice from `#58`, while continuing to keep `#54` blocked on external feasibility evidence.
