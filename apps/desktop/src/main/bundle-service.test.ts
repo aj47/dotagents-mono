@@ -407,6 +407,25 @@ describe("bundle-service", () => {
       expect(exportableItems.repeatTasks.map((item) => item.id)).toEqual(["task-deps"])
       expect(exportableItems.memories.map((item) => item.id)).toEqual(["memory-deps"])
     })
+
+    it("flags memories that appear to contain secret-like values", () => {
+      const layer = getAgentsLayerPaths(agentsDir)
+      const memory = createTestMemory("memory-secret", "Potential Secret Memory")
+      memory.content = "Bearer sk-proj-abcdefghijklmnopqrstuvwxyz123456"
+      memory.keyFindings = ["refresh token: ghp_abcdefghijklmnopqrstuvwxyz123456"]
+      memory.userNotes = "authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature"
+      writeAgentsMemoryFile(layer, memory)
+
+      const exportableItems = getBundleExportableItems(agentsDir)
+
+      expect(exportableItems.memories).toEqual([
+        expect.objectContaining({
+          id: "memory-secret",
+          containsPotentialSecret: true,
+          secretWarningFields: ["content", "keyFindings", "userNotes"],
+        }),
+      ])
+    })
   })
 
   describe("previewBundle", () => {

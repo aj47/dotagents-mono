@@ -15,6 +15,7 @@ import {
   DEFAULT_EXPORT_COMPONENTS,
   EMPTY_BUNDLE_SELECTION,
   createDetailedBundleSelection,
+  getBundleMemorySecretWarnings,
   type BundleComponentSelectionState,
   type BundleDetailedSelectionState,
 } from "@renderer/components/bundle-selection"
@@ -23,6 +24,14 @@ interface BundleExportDialogProps { open: boolean; onOpenChange: (open: boolean)
 interface ExportForm { name: string; description: string }
 
 const EMPTY: ExportForm = { name: "", description: "" }
+
+function formatMemoryWarningFields(fields: Array<"content" | "keyFindings" | "userNotes">): string {
+  return fields.map((field) => {
+    if (field === "keyFindings") return "key findings"
+    if (field === "userNotes") return "user notes"
+    return field
+  }).join(", ")
+}
 
 export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogProps) {
   const [form, setForm] = useState<ExportForm>({ ...EMPTY })
@@ -41,6 +50,8 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
     setSelection(createDetailedBundleSelection(exportableItemsQuery.data))
     setSelectionInitialized(true)
   }, [open, exportableItemsQuery.data, selectionInitialized])
+
+  const memorySecretWarnings = getBundleMemorySecretWarnings(exportableItemsQuery.data, components, selection)
 
   const close = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -93,6 +104,25 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>Secrets are stripped automatically, but any included memories, repeat tasks, and other content are saved into the exported bundle file.</p>
           </div>
+          {memorySecretWarnings.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
+              <div className="flex gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="space-y-2">
+                  <p>
+                    Potential secret-like text was detected in {memorySecretWarnings.length} selected memor{memorySecretWarnings.length === 1 ? "y" : "ies"}. Review them before exporting because bundle files include memory text as-is.
+                  </p>
+                  <ul className="list-disc space-y-1 pl-4">
+                    {memorySecretWarnings.map((warning) => (
+                      <li key={warning.id}>
+                        <span className="font-medium">{warning.title}</span> ({formatMemoryWarningFields(warning.fields)})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="export-name">Bundle Name (optional)</Label>

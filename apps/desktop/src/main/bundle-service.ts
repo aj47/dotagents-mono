@@ -203,6 +203,8 @@ export interface ExportableBundleMemory {
   id: string
   title: string
   importance: AgentMemory["importance"]
+  containsPotentialSecret: boolean
+  secretWarningFields: Array<"content" | "keyFindings" | "userNotes">
 }
 
 export interface ExportableBundleItems {
@@ -336,6 +338,15 @@ const SECRET_PATTERNS = [
   /credential/i,
   /auth/i,
   /bearer/i,
+]
+
+const MEMORY_SECRET_VALUE_PATTERNS = [
+  /\bsk-[A-Za-z0-9_-]{16,}\b/,
+  /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/i,
+  /\bAIza[0-9A-Za-z_-]{20,}\b/,
+  /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/,
+  /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|token|secret|password|authorization|bearer)\b[^A-Za-z0-9]{0,12}[A-Za-z0-9._:-]{12,}/i,
 ]
 
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
@@ -628,6 +639,33 @@ function summarizeAgentProfileForExport(profile: AgentProfile): ExportableBundle
   }
 }
 
+function containsPotentialSecretText(value: string | undefined): boolean {
+  if (!isNonEmptyString(value)) return false
+  return MEMORY_SECRET_VALUE_PATTERNS.some((pattern) => pattern.test(value))
+}
+
+function getMemorySecretWarningFields(memory: AgentMemory): Array<"content" | "keyFindings" | "userNotes"> {
+  const warningFields: Array<"content" | "keyFindings" | "userNotes"> = []
+
+  if (containsPotentialSecretText(memory.content)) {
+    warningFields.push("content")
+  }
+
+  if (Array.isArray(memory.keyFindings) && memory.keyFindings.some((value) => containsPotentialSecretText(value))) {
+    warningFields.push("keyFindings")
+  }
+
+  if (containsPotentialSecretText(memory.userNotes)) {
+    warningFields.push("userNotes")
+  }
+
+  return warningFields
+}
+
+function hasPotentialSecretInMemory(memory: AgentMemory): boolean {
+  return getMemorySecretWarningFields(memory).length > 0
+}
+
 function loadAgentProfilesForBundle(
   layer: AgentsLayerPaths,
   options?: BundleItemSelectionOptions
@@ -761,6 +799,8 @@ function listExportableBundleItemsForLayer(layer: AgentsLayerPaths): ExportableB
       id: memory.id,
       title: memory.title,
       importance: memory.importance,
+      containsPotentialSecret: hasPotentialSecretInMemory(memory),
+      secretWarningFields: getMemorySecretWarningFields(memory),
     })),
   }
 }

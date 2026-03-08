@@ -3,6 +3,7 @@ import {
   DEFAULT_EXPORT_COMPONENTS,
   createDetailedBundleSelection,
   getBundleDependencyWarnings,
+  getBundleMemorySecretWarnings,
   type BundleExportableItems,
 } from "./bundle-selection"
 
@@ -21,7 +22,13 @@ function createItems(): BundleExportableItems {
     mcpServers: [{ name: "github", transport: "stdio", enabled: true }],
     skills: [{ id: "skill-1", name: "Skill One", description: "Test" }],
     repeatTasks: [{ id: "task-1", name: "Task One", intervalMinutes: 60, enabled: true }],
-    memories: [{ id: "memory-1", title: "Memory One", importance: "medium" }],
+    memories: [{
+      id: "memory-1",
+      title: "Memory One",
+      importance: "medium",
+      containsPotentialSecret: false,
+      secretWarningFields: [],
+    }],
   }
 }
 
@@ -53,5 +60,39 @@ describe("bundle-selection helpers", () => {
       "Agent One references MCP server “github”, but it is not included.",
       "Agent One references skill “Skill One”, but it is not included.",
     ])
+  })
+
+  it("surfaces selected memory secret warnings only when memories stay included", () => {
+    const items = createItems()
+    items.memories[0] = {
+      ...items.memories[0],
+      containsPotentialSecret: true,
+      secretWarningFields: ["content", "userNotes"],
+    }
+
+    expect(getBundleMemorySecretWarnings(items, DEFAULT_EXPORT_COMPONENTS, {
+      agentProfileIds: ["agent-1"],
+      mcpServerNames: ["github"],
+      skillIds: ["skill-1"],
+      repeatTaskIds: ["task-1"],
+      memoryIds: ["memory-1"],
+    })).toEqual([
+      {
+        id: "memory-1",
+        title: "Memory One",
+        fields: ["content", "userNotes"],
+      },
+    ])
+
+    expect(getBundleMemorySecretWarnings(items, {
+      ...DEFAULT_EXPORT_COMPONENTS,
+      memories: false,
+    }, {
+      agentProfileIds: ["agent-1"],
+      mcpServerNames: ["github"],
+      skillIds: ["skill-1"],
+      repeatTaskIds: ["task-1"],
+      memoryIds: ["memory-1"],
+    })).toEqual([])
   })
 })

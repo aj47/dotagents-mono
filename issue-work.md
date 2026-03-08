@@ -1396,3 +1396,40 @@
   - Re-run the broader desktop slash-command Vitest coverage once the worktree has the missing desktop test runner available.
 
 - Next recommended issue work item: treat `#53` as advanced again; next iteration should either make a deliberate mobile decision for slash commands or pivot to another equally concrete, dependency-light UX/reliability slice from the remaining open issues.
+
+##### Issue #25 — Export dialog now warns when selected memories appear to contain secrets
+
+- Selection rationale:
+  - After reviewing the latest ledger and open issues, `#25` remained the best actionable enhancement slice that had clear user value without reopening larger bundle-format or install-flow work.
+  - The issue acceptance criteria explicitly calls for warning users when exported memories appear to contain secret-like content, and that trust/safety gap was still unaddressed in the export flow.
+- Investigation:
+  - Re-read the current `#25` scope and nearby ledger entries to avoid redoing recent hub install/import work.
+  - Inspected `apps/desktop/src/main/bundle-service.ts`, `apps/desktop/src/renderer/src/components/bundle-selection.tsx`, and `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx`.
+  - Confirmed the export dialog already warns generically that included memories are written into the bundle file, but it did not flag when a selected memory looked like it contained a token, API key, JWT, or other secret-like value.
+  - Confirmed there was no existing secret-pattern helper to reuse, so the narrowest safe path was to compute boolean warning metadata in the main-process exportable-items preview and surface that metadata in the renderer without sending raw secret content around.
+- Important assumptions:
+  - Assumption: heuristic secret detection for export warnings is acceptable even if it is not perfect.
+  - Why acceptable: the requirement is a warning, not blocking or automatic redaction, so a high-signal heuristic materially improves safety while keeping the UX lightweight.
+  - Assumption: warning metadata should stay coarse (`containsPotentialSecret` plus flagged fields) instead of sending matched secret substrings to the renderer.
+  - Why acceptable: it preserves the safety value of the warning while minimizing additional exposure of sensitive memory text.
+  - Assumption: source-level Node tests are an acceptable verification supplement in this worktree because the normal desktop Vitest path still lacks the local dependency baseline.
+  - Why acceptable: the new tests still lock in the contract and UI wiring, and `tsc --noEmit` passed for the touched desktop code.
+- Changes implemented:
+  - Extended `apps/desktop/src/main/bundle-service.ts` exportable memory summaries with `containsPotentialSecret` and `secretWarningFields`, backed by a focused set of secret-like string heuristics for API keys, GitHub tokens, Google API keys, Slack tokens, JWTs, and generic keyword-plus-token patterns.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-selection.tsx` with a `getBundleMemorySecretWarnings(...)` helper so the renderer can derive warnings only for memories that remain selected for export.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx` to render a specific warning panel listing selected memories whose content/key findings/user notes look secret-like, with guidance that bundle files include memory text as-is.
+  - Added targeted tests in `apps/desktop/src/main/bundle-service.test.ts` and `apps/desktop/src/renderer/src/components/bundle-selection.test.ts`, plus dependency-light source-contract coverage in `apps/desktop/src/main/bundle-service.memory-secret-warning.test.js` and `apps/desktop/src/renderer/src/components/bundle-export-dialog.warning.test.js` for this worktree.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/bundle-service.memory-secret-warning.test.js apps/desktop/src/renderer/src/components/bundle-export-dialog.warning.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted but blocked by missing workspace dependencies: `pnpm --filter @dotagents/desktop test -- --run src/main/bundle-service.test.ts src/renderer/src/components/bundle-selection.test.ts` → `tsup: command not found` during `build:shared` pretest because this worktree does not currently have the full desktop/node_modules baseline.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the targeted desktop Vitest tests once the worktree has the normal desktop dependency/tooling baseline restored.
+  - Consider whether bundles should eventually support stronger structured secret review for memories (for example, preview-side opt-out affordances or richer detection explanations) without turning the export flow into a blocker.
+  - Revisit the separate `#25` acceptance items around stripped MCP secrets and import-time reconfiguration only if the bundle format is expanded to carry placeholder metadata instead of today’s coarser safe summaries.
+
+- Next recommended issue work item: prefer another concrete bug-sized UX/reliability slice from the remaining open issues, with `#55` still worth revisiting only if a fresh directly reproducible tile-layout defect is confirmed first.

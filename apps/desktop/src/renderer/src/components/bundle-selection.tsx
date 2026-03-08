@@ -53,6 +53,14 @@ export interface BundleExportableMemory {
   id: string
   title: string
   importance: "low" | "medium" | "high" | "critical"
+  containsPotentialSecret: boolean
+  secretWarningFields: Array<"content" | "keyFindings" | "userNotes">
+}
+
+export interface BundleMemorySecretWarning {
+  id: string
+  title: string
+  fields: Array<"content" | "keyFindings" | "userNotes">
 }
 
 export interface BundleExportableItems {
@@ -122,6 +130,28 @@ export function getBundleDependencyWarnings(
     }
 
     return warnings
+  })
+}
+
+export function getBundleMemorySecretWarnings(
+  items: BundleExportableItems | undefined,
+  components: BundleComponentSelectionState,
+  selection: BundleDetailedSelectionState
+): BundleMemorySecretWarning[] {
+  if (!items || !components.memories) return []
+
+  const selectedMemoryIds = new Set(selection.memoryIds)
+
+  return items.memories.flatMap((memory) => {
+    if (!selectedMemoryIds.has(memory.id) || !memory.containsPotentialSecret) {
+      return []
+    }
+
+    return [{
+      id: memory.id,
+      title: memory.title,
+      fields: memory.secretWarningFields,
+    }]
   })
 }
 
