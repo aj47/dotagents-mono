@@ -393,13 +393,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
       <View style={styles.switchRow}>
         <View style={styles.switchLabelGroup}>
           <Text style={styles.switchLabel}>Enabled</Text>
+          <Text style={styles.switchHelperText}>Show this agent in delegation and ACP main-agent choices</Text>
         </View>
         <TouchableOpacity
           style={styles.switchButton}
           onPress={() => updateField('enabled', !formData.enabled)}
           accessibilityRole="switch"
           accessibilityLabel={createSwitchAccessibilityLabel('Agent enabled')}
-          accessibilityHint="Turns this agent on or off."
+          accessibilityHint="Shows or hides this agent in delegation and ACP main-agent choices."
           accessibilityState={{ checked: formData.enabled }}
           activeOpacity={0.7}
         >

@@ -1593,3 +1593,43 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that populated selector rows now make the active choice immediately obvious without adding crowding.
   - Smoke-test the selector with a longer configured agent name once live validation returns.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 37: explain what the agent Enabled toggle actually controls
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `AgentEditScreen` already gave `Auto Spawn` a short explanatory helper, but the adjacent `Enabled` row still showed only the one-word label plus a switch.
+  - On mobile, that left `Enabled` ambiguous in a sub-agent flow because it did not say whether the toggle affected editing, delegation, ACP main-agent selection, or something broader.
+- Issue selected:
+  - The `Enabled` toggle in `AgentEditScreen` lacked scope, weakening state clarity in a dense mobile edit form.
+- Decision:
+  - Keep the existing row order, switch treatment, and built-in-agent warning unchanged.
+  - Do not add a new section or broader copy pass while live validation is blocked.
+  - Make the smallest local fix in `AgentEditScreen`: add one helper line and align the switch accessibility hint with that same scope.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - add helper copy under `Enabled`: `Show this agent in delegation and ACP main-agent choices`
+    - expand the `Enabled` switch accessibility hint so it matches the visible explanation.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new helper and switch hint.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new `Enabled` helper still needs a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - If live inspection later shows the helper crowds the built-in-agent warning or the nearby `Auto Spawn` row, it may need tighter wording — but only with visual evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that the `Enabled` row now clearly reads as delegation / ACP availability rather than a vague global state.
+  - After live validation returns, compare the updated `Enabled` and `Auto Spawn` rows to confirm the two switches now read as distinct concepts on mobile.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

@@ -96,6 +96,11 @@ test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', 
   assert.match(agentEditSource, /accessibilityState=\{\{ checked: formData\.autoSpawn \}\}/);
 });
 
+test('AgentEditScreen explains what the Enabled switch controls in sub-agent flows', () => {
+  assert.match(agentEditSource, /<Text style=\{styles\.switchLabel\}>Enabled<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Show this agent in delegation and ACP main-agent choices<\/Text>/);
+  assert.match(agentEditSource, /accessibilityHint="Shows or hides this agent in delegation and ACP main-agent choices\."/);
+});
+
 test('AgentEditScreen makes missing server config explicit before the primary save action', () => {
   assert.match(agentEditSource, /if \(!settingsClient\) \{[\s\S]*?setError\('Configure Base URL and API key in Settings before saving'\);[\s\S]*?return;[\s\S]*?\}/);
   assert.match(agentEditSource, /const hasDisplayName = formData\.displayName\.trim\(\)\.length > 0;/);
