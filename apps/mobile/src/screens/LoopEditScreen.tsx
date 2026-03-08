@@ -317,6 +317,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
       : isEditing
         ? 'Saves your changes to this loop.'
         : 'Creates this loop with the current settings.';
+  const handleOpenConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
 
   if (isLoading) {
     return (
@@ -343,6 +346,16 @@ export default function LoopEditScreen({ navigation, route }: any) {
           <Text style={styles.blockingNoticeText}>
             Saving is disabled until Base URL and API key are configured in Settings.
           </Text>
+          <TouchableOpacity
+            style={styles.blockingNoticeActionButton}
+            onPress={handleOpenConnectionSettings}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Open connection settings')}
+            accessibilityHint="Opens Connection settings so you can add Base URL and API key."
+            activeOpacity={0.7}
+          >
+            <Text style={styles.blockingNoticeActionButtonText}>Open Connection Settings</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -576,6 +589,23 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       fontSize: 14,
       lineHeight: 20,
+    },
+    blockingNoticeActionButton: {
+      ...noticeActionTouchTarget,
+      marginTop: spacing.sm,
+      alignSelf: 'stretch',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '26',
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    blockingNoticeActionButtonText: {
+      color: theme.colors.primary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: spacing.xs },

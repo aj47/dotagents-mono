@@ -4367,3 +4367,54 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the current-main-agent delete affordance still feels discoverable but appropriately cautious on narrow screens.
   - Live-test a disabled current-main-agent state to decide whether badge-only row signaling is enough or whether a compact inline warning is justified.
   - After live validation is restored, continue with the next highest-signal mobile sub-agent issue instead of revisiting this delete-warning tweak without fresh evidence.
+
+### 2026-03-08 — Iteration 100: add a direct recovery path from blocked agent and loop saves
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iterations 98–99, to avoid repeating recent agent-row and delete-state polish without a new issue
+  - `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+  - current mobile workflow / install status before attempting broader validation
+- Live inspection / workflow status:
+  - No fresh screenshot-backed or simulator-backed observations were practical in this worktree because the mobile install is still missing.
+  - Reconfirmed the blocker directly:
+    - `test -d node_modules && echo present || echo missing` → `missing`
+    - `test -d apps/mobile/node_modules && echo present || echo missing` → `missing`
+    - `pnpm --filter @dotagents/mobile web -- --help` → failed with `sh: expo: command not found` and `Local package.json exists, but node_modules missing, did you mean to install?`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → failed again with missing-install symptoms including `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules
+  - Because Expo remains unavailable here, this iteration used source-backed mobile flow review plus focused regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - Both edit flows now explain that saving is blocked until Base URL and API key are configured.
+  - On mobile, that warning still ended in a dead-end notice: the save CTA was disabled, but there was no direct in-context recovery action to reach the screen that fixes the blocker.
+  - That forced users to back out manually and remember where the connection fields live, weakening state clarity and user control in a narrow, form-heavy flow.
+- Issue selected:
+  - Missing server configuration was clearly explained but not directly actionable inside the blocked `AgentEditScreen` and `LoopEditScreen` states.
+- Assumptions / tradeoffs:
+  - Assumed the dedicated `ConnectionSettings` route is a better recovery target than the generic settings screen because the blocking state is specifically about Base URL and API key.
+  - Avoided adding more warning copy or larger layout changes without live evidence; the highest-signal fix was a single recovery action inside the existing notice.
+- Decision:
+  - Keep the existing blocking notice copy, form layout, and disabled save behavior.
+  - Add one explicit, full-width, mobile-sized secondary action inside the notice that routes straight to `ConnectionSettings`.
+  - Use the same action label and styling in both edit flows so blocked save states behave consistently.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - add `handleOpenConnectionSettings`,
+    - render an `Open Connection Settings` button inside the missing-config blocking notice,
+    - give that action explicit mobile button semantics and a 44px minimum touch target.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` with the same direct recovery action and button styling inside its blocking notice.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage asserting both screens navigate to `ConnectionSettings` and expose the new recovery action with mobile button styling and accessibility text.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked in this worktree by the missing mobile install / missing Expo base config
+  - `pnpm --filter @dotagents/mobile web -- --help` ⚠️ blocked in this worktree because `expo` is unavailable and `node_modules` is missing
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new in-notice recovery button still needs a live narrow-screen pass once Expo is restored to confirm it sits comfortably above the keyboard and below the warning copy.
+  - The edit flows still lack screenshot-backed confirmation for how the blocking notice, save CTA, and bottom safe-area padding balance on small devices.
+  - Once live validation is available, it is worth checking whether returning from `ConnectionSettings` after fixing credentials should preserve form scroll position more explicitly.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Open Connection Settings` button is easy to tap and does not crowd the blocked-save notice on narrow screens.
+  - Live-test the recovery path end-to-end: open a blocked agent/loop edit form, jump to `ConnectionSettings`, configure credentials, return, and confirm the save CTA becomes understandable without extra backtracking.
+  - After that live pass, continue with the next highest-signal local sub-agent mobile issue rather than revisiting this recovery action without fresh evidence.

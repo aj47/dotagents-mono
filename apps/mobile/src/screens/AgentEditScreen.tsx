@@ -245,6 +245,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
       : isEditing
         ? 'Saves your changes to this agent.'
         : 'Creates this agent with the current settings.';
+  const handleOpenConnectionSettings = useCallback(() => {
+    navigation.navigate('ConnectionSettings');
+  }, [navigation]);
 
   const renderFieldLabel = (label: string, options?: { required?: boolean; readOnly?: boolean }) => (
     <Text style={styles.label}>
@@ -293,6 +296,16 @@ export default function AgentEditScreen({ navigation, route }: any) {
           <Text style={styles.blockingNoticeText}>
             Saving is disabled until Base URL and API key are configured in Settings.
           </Text>
+          <TouchableOpacity
+            style={styles.blockingNoticeActionButton}
+            onPress={handleOpenConnectionSettings}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Open connection settings')}
+            accessibilityHint="Opens Connection settings so you can add Base URL and API key."
+            activeOpacity={0.7}
+          >
+            <Text style={styles.blockingNoticeActionButtonText}>Open Connection Settings</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -537,6 +550,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     horizontalMargin: 0,
   });
 
+  const noticeActionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: {
       padding: spacing.lg,
@@ -593,6 +613,23 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       fontSize: 14,
       lineHeight: 20,
+    },
+    blockingNoticeActionButton: {
+      ...noticeActionTouchTarget,
+      marginTop: spacing.sm,
+      alignSelf: 'stretch',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '26',
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    blockingNoticeActionButtonText: {
+      color: theme.colors.primary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     label: {
       fontSize: 14,
