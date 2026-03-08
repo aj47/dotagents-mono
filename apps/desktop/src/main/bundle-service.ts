@@ -277,6 +277,12 @@ export interface BundlePreviewResult {
   error?: string
 }
 
+export interface PreviewBundleFromDialogResult {
+  canceled: boolean
+  filePath: string | null
+  error?: string
+}
+
 // ============================================================================
 // Secret stripping
 // ============================================================================
@@ -1233,7 +1239,7 @@ export function previewBundleWithConflicts(
 ): BundlePreviewResult {
   const bundle = previewBundle(filePath)
   if (!bundle) {
-    return { success: false, error: "Failed to parse bundle file" }
+    return { success: false, filePath, error: "Failed to parse bundle file" }
   }
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
@@ -1284,10 +1290,7 @@ export function previewBundleWithConflicts(
   return { success: true, filePath, bundle, conflicts }
 }
 
-export async function previewBundleFromDialog(): Promise<{
-  filePath: string
-  bundle: DotAgentsBundle
-} | null> {
+export async function previewBundleFromDialog(): Promise<PreviewBundleFromDialogResult> {
   const openDialogOptions: OpenDialogOptions = {
     title: "Select Agent Configuration Bundle",
     properties: ["openFile"],
@@ -1299,16 +1302,15 @@ export async function previewBundleFromDialog(): Promise<{
     : await dialog.showOpenDialog(openDialogOptions)
 
   if (result.canceled || result.filePaths.length === 0) {
-    return null
+    return { canceled: true, filePath: null }
   }
 
   const selectedPath = result.filePaths[0]
-  const bundle = previewBundle(selectedPath)
-  if (!bundle) {
-    return null
+  if (!previewBundle(selectedPath)) {
+    return { canceled: false, filePath: selectedPath, error: "Failed to parse bundle file" }
   }
 
-  return { filePath: selectedPath, bundle }
+  return { canceled: false, filePath: selectedPath }
 }
 
 // ============================================================================
