@@ -96,10 +96,12 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("list_mcp_servers")
     expect(prompt).toContain("list_running_agents")
     expect(prompt).toContain("list_agent_profiles")
+    expect(prompt).toContain("supports a specific option, parameter, path, cwd, flag, or argument")
 
     expect(minimalPrompt).toContain("instead of guessing")
     expect(minimalPrompt).toContain("list_server_tools")
     expect(minimalPrompt).toContain("get_tool_schema")
+    expect(minimalPrompt).toContain("supports a specific option/path/cwd/flag/parameter")
   })
 
   it("guides guideline and notes update requests to edit the likely target directly", async () => {

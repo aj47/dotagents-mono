@@ -40,6 +40,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh sub-agent evidence) | subsession_1772916424066_82e0fba0, subsession_1772916435166_cb8bb364, subsession_1772916449139_f650fc9f | fix implemented | Fresh Langfuse sub-session traces for the same starter-pack planning conversation showed the delegated internal `Web Browser` specialist repeatedly calling `delegate_to_agent` again instead of doing the browsing/research work itself. That caused recursive delegation failures (`Maximum recursion depth (3) reached`), oversized delegated-request failures (`request body size is too large, must be less than 512000`), blank `output: null` sub-runs, and only delayed recovery after extra turns. Root repo issue found: specialist internal sub-sessions were still built with the generic delegation guidance, so delegated agents could re-delegate the very task they had been chosen to execute. |
 | 2026-03-08 | conv_1771714066742_a3r3bqee6, conv_1771817444023_7v2d8szph | session_1771714066745_wb6k5ig9v, session_1771817444027_h74z83ol9 | fix implemented | Fresh unlogged output-leak class: one trace answering `Did it work` ended with raw pseudo tool-result text starting `Let me check right now. [iterm:list_sessions] { ... }`; corroborating trace `do we need to make more skills to make this easier` ended with `... [Calling tools: speakmcp-settings:execute_command]`. Root repo issue found: final-output helpers only unwrapped pseudo `respond_to_user` text, not generic pseudo tool scaffolding or raw tool-result wrappers, so tool-intent text and structured tool payloads could leak into final user-visible output. |
 | 2026-03-08 | conv_1771906984773_vmb3xu66b | session_1771906984466_gy5dfya2s, session_1771907772476_dae5yojje | fix implemented | Fresh follow-up delegation recovery case around posting a Discord recap. On `post it!`, Langfuse showed `delegate_to_agent` sending `Post the Discord recap tweet...`, but the completed result still returned the earlier recap-prep output (`All files are ready — just say the word to post to @techfren_ai!`). The user had to send `try again` to recover. Root repo issue found: external ACP delegation reused the prior ACP session by default, so a new delegated task could inherit stale session context/output from the previous task instead of starting clean. |
+| 2026-03-08 | conv_1772260783680_aylfzw6kw | session_1772261004959_upq4qo3de | fix implemented | User asked `do u have the opportunity to set path for acp agent`; the run answered `Not directly via spawn_agent / delegate_to_agent — those tools don’t take a cwd/path parameter.` Repo reconstruction showed the live `delegate_to_agent`, `send_to_agent`, and `spawn_agent` schemas already exposed `workingDirectory`. Root repo issue found: capability/tooling guidance covered live availability/runtime-state questions, but not explicit parameter/schema questions like whether a tool supports `path` / `cwd`, so the model could still answer from memory instead of inspecting the schema. |
 | 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
 | 2026-03-08 | conv_1772249976658_045heyp88, conv_1772250042517_yukonvxdj | session_1772249976661_2mliad71c, session_1772250042521_skxsyi7og | fix implemented | User asked twice to make a note of repo changes after checking commit history; both runs ended `output: null` and Langfuse recorded unreadable binary-gzip provider noise in the failing generation/text-completion error path. Repo reconstruction showed the main text-completion path was already normalized, but `verifyCompletionWithFetch(...)` still finalized verification generations with raw `error.message`, leaving the same upstream-noise class reachable in live verification traces. |
 | 2026-03-08 | conv_1772308678249_75xk9uj0t | session_1772308678250_idf1lqh2m | fix implemented | User asked `summarize x and save notes about it make sure to include view count and comment count of the posts if possible`; the run opened with `I'll start by loading the x-feed-summarizer skill instructions...`, then spent 60 iterations doing browser/tool work and still ended without a user-facing summary. Corroborating traces showed the same `let me load the ... skill` opener across Discord/browser specialist runs. Root repo issue found: prompt guidance required `load_skill_instructions(...)` but did not say that skill loading is internal prep that must be followed immediately by concrete execution instead of a narrated user-facing turn. |
@@ -158,6 +159,36 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt tests exit successfully
   - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
   - ✅ passed
+
+### 2026-03-08 — Capability answers also need explicit schema checks for parameter/path/cwd questions
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1772260783680_aylfzw6kw`
+  - failing trace: `session_1772261004959_upq4qo3de`
+    - user input: `do u have the opportunity to set path for acp agent`
+    - final output incorrectly claimed `spawn_agent` / `delegate_to_agent` `don't take a cwd/path parameter`
+  - trace context showed no schema inspection before answering.
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tool-definitions.ts` already exposes `workingDirectory` on `delegate_to_agent`, `send_to_agent`, and `spawn_agent`.
+  - `apps/desktop/src/main/system-prompts.ts` already taught live inspection for tool/server/agent availability questions, but the wording was centered on runtime availability (`available`, `connected`, `running`, `cut off`) rather than parameter-support questions.
+- Concrete root cause:
+  - the prompt rule to inspect live state did not explicitly cover `does this tool support parameter/path/cwd/flag X?` questions.
+  - that left room for the model to answer from memory even when `get_tool_schema(...)` would have shown the correct answer immediately.
+- Fix implemented:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - expanded `CAPABILITY / TOOLING QUESTIONS` to explicitly require schema inspection for option/parameter/path/cwd/flag questions
+    - mirrored the same requirement in `constructMinimalSystemPrompt(...)` so context-shrunk runs keep the rule
+- Tests added/updated:
+  - `apps/desktop/src/main/system-prompts.test.ts`
+    - strengthened the capability-question regression to assert both prompts now mention parameter/path/cwd/schema questions explicitly
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - ✅ passed (`10 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt tests exit successfully
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
+- Remaining promising leads:
+  - recheck the next fresh capability/meta trace where the user asks whether some tool/agent supports a specific argument or flag; that should now be routed through `get_tool_schema(...)` instead of a memory-based answer
 
 ### 2026-03-08 — Repeated context-gathering tool passes needed a synthesis / follow-up-question nudge
 

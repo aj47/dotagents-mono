@@ -54,6 +54,7 @@ RESPONDING TO USER:
 CAPABILITY / TOOLING QUESTIONS:
 - When the user asks what tools, servers, or agents are available/connected/running — or asks why something was unavailable, missing, or "cut off" — do not guess from memory.
 - First inspect the live state with tools like list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema as appropriate.
+- When the user asks whether a tool/agent supports a specific option, parameter, path, cwd, flag, or argument, inspect the live schema (especially with get_tool_schema) before answering.
 - Base your explanation on the actual current tool/runtime state before answering.
 
 INSTRUCTION / NOTES UPDATES:
@@ -380,6 +381,7 @@ export function constructMinimalSystemPrompt(
   if (isAgentMode) {
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up."
     prompt += " For questions about available tools, MCP servers, or agents — or why something was unavailable/cut off — inspect live state with list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema instead of guessing."
+    prompt += " For questions about whether a tool or agent supports a specific option/path/cwd/flag/parameter, inspect the live schema with get_tool_schema before answering."
     prompt += " For requests to update your own guidelines, .agents files, notes, memories, or other local instructions/config, inspect the likely target and edit it directly instead of starting with unrelated repo-status checks or dumping entire notes trees."
     prompt += " For obvious test/probe payloads with no requested transformation, confirm the observable result directly instead of reflexively asking what else to do with the payload."
     prompt += " For fragmentary, truncated, or garbled inputs with no clear requested outcome, ask a brief clarification before loading repo context, memories, notes, GitHub state, or other broad background unless the surrounding conversation already makes the next step obvious."
