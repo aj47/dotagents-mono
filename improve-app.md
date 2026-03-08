@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop bundle import conflict-resolution / overwrite clarity in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, with preview-conflict source review in `apps/desktop/src/main/bundle-service.ts`, Hub install handoff coverage review in `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx`, and mobile parity check confirming no equivalent bundle-import surface under `apps/mobile/src/`.
 - 2026-03-08: Desktop bundle export / Hub publish dialog discard-safety and pending-close guardrails in `apps/desktop/src/renderer/src/components/bundle-export-dialog.tsx` and `apps/desktop/src/renderer/src/components/bundle-publish-dialog.tsx`, with shared selection-state helper review in `apps/desktop/src/renderer/src/components/bundle-selection.tsx`, settings-page launch wiring checked in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop agent editor draft-loss guardrails in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with related discard-safety pattern review in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, mobile parity check in `apps/mobile/src/screens/AgentEditScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop skills create/edit dialog unsaved-change / discard-safety flow in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, with adjacent agent-editor handoff risk reviewed in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/screens/AgentEditScreen.tsx`.
@@ -26,6 +27,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop bundle import dialog now explains the exact consequence of skip / overwrite / rename conflict strategies in-context and previews the affected conflicting items by component, including existing names when they differ, so destructive bundle imports are easier to understand before committing.
 - 2026-03-08: Desktop bundle export and Hub publish dialogs now track dirty drafts, warn before backdrop / Escape / close-button dismissal can discard selected items or metadata, and ignore close attempts while generate/save work is in flight so multi-step export/publish prep is harder to lose accidentally.
 - 2026-03-08: Desktop agent editor now tracks dirty create/edit baselines, warns before canceling a dirty draft, confirms before overwriting an in-progress create draft with Quick Setup or clearing a custom advanced system prompt, and preserves the draft with explicit failure feedback if save fails.
 - 2026-03-08: Desktop skills create/edit dialogs now show explicit unsaved-change guidance, prevent accidental backdrop / escape / close-button dismissal during pending saves, and confirm before discarding dirty drafts from any dialog close path.
@@ -43,6 +45,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-bundle-dialog-guardrails.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-bundle-dialog-guardrails.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-agents-draft-guardrails.test.js tests/desktop-settings-skills-unsaved-changes.test.js`
@@ -70,6 +74,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this bundle import conflict-clarity pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this bundle export / publish pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this agent-editor pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this skills-dialog discard-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
@@ -83,15 +88,51 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop bundle import conflict-resolution and overwrite clarity (`apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, related conflict preview UI, and import completion recovery paths)
+- Desktop predefined prompts add/edit dialog unsaved-change / destructive-edit clarity (`apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop bundle import conflict-resolution flow for the next localized UX/reliability improvement around overwrite clarity, dependency visibility, or recovery after a blocked/failed import
+- Inspect the desktop predefined prompts add/edit dialog for unsaved-change, cancel, and destructive-delete clarity so long-form prompts are harder to lose accidentally
+- Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
 - Once a runnable Electron target is available, live-check the desktop bundle export/publish dialogs to confirm the new discard warning and pending-action guardrails feel right during backdrop click, Escape, titlebar close, preview back, and file-save flows
 - Once a runnable Electron target is available, live-check the desktop agent editor dirty-cancel, Quick Setup overwrite, advanced reset, and pending-save behavior to confirm the confirmation cadence feels right
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop bundle import conflict strategy clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop bundle import flow in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`
+  - reviewed preview conflict generation in `apps/desktop/src/main/bundle-service.ts`
+  - reviewed Hub install handoff coverage in `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx`
+  - checked mobile parity across `apps/mobile/src/`; confirmed there is no equivalent mobile bundle-import surface to update in this pass
+- Why it was chosen:
+  - the ledger explicitly marked desktop bundle import conflict-resolution / overwrite clarity as the next fresh area that had not been investigated recently
+  - the dialog already exposed conflict counts, but destructive choices like `Overwrite existing items` only had a vague one-line explanation, forcing users to import without clearly seeing what would be replaced
+  - the preview pipeline already computed per-item conflict details (including `existingName`), so there was a high-value local UI improvement available without changing import persistence logic
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` import preview, component toggles, and conflict-strategy UI
+  - `apps/desktop/src/main/bundle-service.ts` `previewBundleWithConflicts(...)` output shape to confirm which conflict details were available to surface safely
+  - `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx` to confirm the same dialog is reused for Hub installs and would benefit from clearer conflict messaging there too
+  - attempted live desktop inspection first, but no Electron renderer/CDP target was available in this environment
+- Improvement made:
+  - added strategy-specific copy for `skip`, `overwrite`, and `rename` directly in the conflict section so the consequence of the current choice is explicit before import
+  - the dialog now summarizes how many currently selected items conflict instead of only showing a generic “some items already exist” message
+  - added per-component conflict preview cards that list up to three affected bundle items and, when available, the differing existing name already present in the target configuration
+  - preserved the change as a local renderer-only improvement; no import backend behavior or persistence rules changed in this pass
+  - added focused regression coverage in `tests/desktop-bundle-dialog-guardrails.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the improvement informational rather than adding another confirmation modal for overwrite, because the clearest user problem here was lack of visibility into what the current strategy would do
+  - limited each component preview to a short sample list so the dialog remains readable for large bundles while still surfacing concrete affected items
+  - scoped the change to desktop because mobile does not currently expose a comparable bundle import UI
+- Tests / verification:
+  - `node --test tests/desktop-bundle-dialog-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check skip / overwrite / rename wording and conflict-list hierarchy in the actual desktop dialog
+  - inspect whether the import success toast should better summarize skipped / overwritten / renamed results after the pre-import clarity pass
+  - inspect the desktop predefined prompts dialog next for another small unsaved-work / destructive-action safeguard improvement
 
 ### 2026-03-08 — Desktop skills dialog discard safety and unsaved-change clarity
 - Date:

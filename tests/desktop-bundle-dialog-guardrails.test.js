@@ -13,6 +13,11 @@ const publishDialogSource = fs.readFileSync(
   'utf8'
 );
 
+const importDialogSource = fs.readFileSync(
+  path.join(__dirname, '..', 'apps', 'desktop', 'src', 'renderer', 'src', 'components', 'bundle-import-dialog.tsx'),
+  'utf8'
+);
+
 const bundleSelectionSource = fs.readFileSync(
   path.join(__dirname, '..', 'apps', 'desktop', 'src', 'renderer', 'src', 'components', 'bundle-selection.tsx'),
   'utf8'
@@ -37,6 +42,17 @@ test('bundle publish dialog protects unsaved metadata and generated preview work
   assert.match(publishDialogSource, /You have unsaved publish work\. Save the bundle or Hub package before closing if you still need this generated preview\./);
   assert.match(publishDialogSource, /if \(isBusy\) return/);
   assert.match(publishDialogSource, /<Dialog open=\{open\} onOpenChange=\{handleOpenChange\}>/);
+});
+
+test('bundle import dialog explains conflict consequences and previews affected items before import', () => {
+  assert.match(importDialogSource, /const CONFLICT_STRATEGY_COPY: Record<ConflictStrategy, \{ label: string; summary: string \}> = \{/);
+  assert.match(importDialogSource, /Conflicting items will be skipped and left untouched in your current configuration\./);
+  assert.match(importDialogSource, /Conflicting items in your current configuration will be replaced by the bundle versions\./);
+  assert.match(importDialogSource, /Conflicting items will be imported alongside the existing ones with new IDs where needed\./);
+  assert.match(importDialogSource, /const activeConflictGroups = conflicts/);
+  assert.match(importDialogSource, /group\.items\.slice\(0, 3\)\.map\(item =>/);
+  assert.match(importDialogSource, /Bundle:<\/span> \{item\.name\}/);
+  assert.match(importDialogSource, /Existing:<\/span> \{item\.existingName\}/);
 });
 
 test('shared bundle selection helpers expose reusable dirty-state comparisons', () => {

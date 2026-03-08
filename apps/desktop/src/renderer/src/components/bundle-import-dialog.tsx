@@ -20,6 +20,14 @@ type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
 
+const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
+  agentProfiles: "Agent Profiles",
+  mcpServers: "MCP Servers",
+  skills: "Skills",
+  repeatTasks: "Repeat Tasks",
+  memories: "Memories",
+}
+
 const DEFAULT_COMPONENTS: BundleComponentsState = {
   agentProfiles: true,
   mcpServers: true,
@@ -69,6 +77,21 @@ interface BundlePreview {
     memories: PreviewConflict[]
   }
   error?: string
+}
+
+const CONFLICT_STRATEGY_COPY: Record<ConflictStrategy, { label: string; summary: string }> = {
+  skip: {
+    label: "Skip existing items",
+    summary: "Conflicting items will be skipped and left untouched in your current configuration.",
+  },
+  overwrite: {
+    label: "Overwrite existing items",
+    summary: "Conflicting items in your current configuration will be replaced by the bundle versions.",
+  },
+  rename: {
+    label: "Rename imported items",
+    summary: "Conflicting items will be imported alongside the existing ones with new IDs where needed.",
+  },
 }
 
 interface BundleImportDialogProps {
@@ -227,6 +250,17 @@ export function BundleImportDialog({
   const hasConflicts = conflicts
     ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
     : false
+  const activeConflictGroups = conflicts
+    ? COMPONENT_KEYS
+        .filter(key => normalizedComponents[key] && conflicts[key].length > 0)
+        .map(key => ({
+          key,
+          label: COMPONENT_LABELS[key],
+          items: conflicts[key],
+        }))
+    : []
+  const activeConflictCount = activeConflictGroups.reduce((total, group) => total + group.items.length, 0)
+  const conflictStrategyCopy = CONFLICT_STRATEGY_COPY[conflictStrategy]
 
   const toggleComponent = (key: keyof typeof components) => {
     setComponents(prev => ({ ...prev, [key]: !prev[key] }))
@@ -329,7 +363,7 @@ export function BundleImportDialog({
 
             {/* Conflict strategy */}
             {hasConflicts && (
-              <div className="space-y-2">
+              <div className="space-y-3 rounded-lg border border-amber-300/70 bg-amber-50/50 p-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <Label>Handle conflicts</Label>
@@ -344,9 +378,44 @@ export function BundleImportDialog({
                     <SelectItem value="rename">Rename imported items</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Some items already exist in your configuration.
-                </p>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    {activeConflictCount} conflicting item{activeConflictCount === 1 ? "" : "s"} selected for import.
+                    {" "}
+                    <span className="font-medium text-foreground">{conflictStrategyCopy.label}:</span>{" "}
+                    {conflictStrategyCopy.summary}
+                  </p>
+                  <div className="space-y-2">
+                    {activeConflictGroups.map(group => (
+                      <div key={group.key} className="rounded-md border bg-background/80 p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-foreground">{group.label}</span>
+                          <Badge variant="outline" className="text-xs text-amber-700 border-amber-300">
+                            {group.items.length} conflict{group.items.length === 1 ? "" : "s"}
+                          </Badge>
+                        </div>
+                        <ul className="mt-2 space-y-1">
+                          {group.items.slice(0, 3).map(item => (
+                            <li key={`${group.key}-${item.id}`}>
+                              <span className="font-medium text-foreground">Bundle:</span> {item.name}
+                              {item.existingName && item.existingName !== item.name && (
+                                <>
+                                  {" "}
+                                  <span className="font-medium text-foreground">• Existing:</span> {item.existingName}
+                                </>
+                              )}
+                            </li>
+                          ))}
+                          {group.items.length > 3 && (
+                            <li>
+                              +{group.items.length - 3} more conflicting item{group.items.length - 3 === 1 ? "" : "s"}
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
