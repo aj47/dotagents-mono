@@ -54,6 +54,11 @@
 - [x] 2026-03-08: Confirmed mobile only uses resolved tunnel/base-URL connection state in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` and `apps/mobile/src/lib/tunnelConnectionManager.ts`; it does not expose an equivalent named-tunnel configuration editor, so this fix is desktop-only.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the remote-server named-tunnel draft fix and regression test updates.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-loops.tsx` and confirmed the repeat-task `Interval` input still rendered from numeric state with `parseInt(e.target.value) || 15` inside `onChange`.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/LoopEditScreen.tsx` already keeps `intervalMinutes` as a string draft and validates it on save, so this interval-editing bug is desktop-only.
+- [x] 2026-03-08: Confirmed `apps/desktop/src/main/loop-service.ts` consumes `loop.intervalMinutes` for real scheduling via `getIntervalMs(...)` and `scheduleNextRun(...)`, so the broken interval editor affects an active repeat-task flow.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the repeat-task interval draft fix and regression test addition.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -114,6 +119,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` rendered named-tunnel `Tunnel ID`, `Hostname`, and `Credentials Path` directly from persisted config and called `saveConfig(...)` from each `onChange` event.
   - Because `useSaveConfigMutation` invalidates `config` on every save, each keystroke in those fields triggered a config mutation + query invalidation round-trip while the user was still editing a tunnel UUID, hostname, or credentials path.
   - The same page’s `Start Tunnel` action and app-start auto-tunnel path in `apps/desktop/src/main/index.ts` consume those saved values for real named-tunnel startup, so this was a concrete desktop remote-access setup bug rather than speculative cleanup.
+- [x] **Desktop repeat-task interval keyboard-editing bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx` rendered the repeat-task `Interval` input from numeric state and coerced every `onChange` with `parseInt(e.target.value) || 15`.
+  - That meant temporary editing states like an empty field immediately snapped back to `15`, so normal backspace-based replacement edits (for example changing `15` to `5` or `60`) could fight the user.
+  - `apps/mobile/src/screens/LoopEditScreen.tsx` already keeps `intervalMinutes` as a string draft and validates it on save, and `apps/desktop/src/main/loop-service.ts` consumes the saved `intervalMinutes` for live scheduling, so this is a real desktop repeat-task UX bug rather than speculative cleanup.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the remaining persisted general-settings switches/selects now use controlled `checked` / `value` bindings instead of uncontrolled `defaultChecked` / `defaultValue` props.
@@ -186,6 +195,12 @@
   - keeping an empty named-tunnel ID draft local until blur persistence
   - debounced hostname saving plus config-resync behavior
   - enabling/starting a named tunnel from the latest drafts without waiting for a config round-trip
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-loops.tsx` so the repeat-task `Interval` input now keeps a local string draft instead of coercing numeric state on every keystroke.
+- [x] Updated the desktop loop save path to validate `Interval` as a positive whole number of minutes before persisting, aligning the edit flow with the existing mobile `LoopEditScreen` behavior while preserving the saved numeric type.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` for:
+  - keeping an empty interval draft local while the user replaces the number
+  - blocking invalid saves instead of silently coercing them
+  - parsing a valid interval draft to a numeric `intervalMinutes` value before save
 
 ### Verified
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-general.tsx` no longer contains config-backed `defaultChecked` / `defaultValue` bindings; the affected switches/selects now read from live `configQuery.data` via controlled `checked` / `value` props.
@@ -214,6 +229,9 @@
 - [x] Manual source verification: the named-tunnel `Tunnel ID`, `Hostname`, and `Credentials Path` inputs no longer call `saveConfig(...)` directly from each `onChange`; they now keep local drafts and use debounce/blur persistence.
 - [x] Manual source verification: the named-tunnel `Start Tunnel` action and missing-field helper text now read from the current drafts, so a just-typed valid tunnel ID/hostname can be used immediately without waiting for a config invalidation/refetch cycle.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server named-tunnel draft / regression test updates.
+- [x] Manual source verification: the desktop repeat-task `Interval` input no longer coerces `parseInt(e.target.value) || 15` on each keystroke; it now keeps the user’s raw draft string until save.
+- [x] Manual source verification: the repeat-task save path now parses and validates a positive whole-number interval before persisting `LoopConfig.intervalMinutes`, while preset buttons still compare against the current parsed draft.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the repeat-task interval draft / regression test updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -227,6 +245,7 @@
 - [x] Targeted automated verification for this remote-server CORS draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server port draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server named-tunnel draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this repeat-task interval fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
@@ -239,6 +258,7 @@
 - [ ] Whether any additional settings pages should promote explicit query-param deep links for tabbed sections now that `settings/capabilities` supports them.
 - [ ] Whether the remote-server `CORS Origins` field should eventually move from debounce+blur autosave to an explicit save/apply action if users frequently paste larger allowlists.
 - [ ] Whether the named-tunnel `Tunnel ID` / `Hostname` fields should eventually trim whitespace or add stricter UUID/hostname validation once the environment blocker is cleared and the live setup flow can be exercised.
+- [ ] Whether the desktop repeat-task editor should eventually reset invalid interval drafts on blur, or whether save-time validation alone is the better UX once live desktop testing is possible.
 
 ### Diagnosis / Rationale
 - This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
@@ -266,6 +286,8 @@
 - Keeping the fix local to `settings-remote-server.tsx` is the smallest safe change because it preserves the existing numeric range and restart-on-real-change behavior while preventing accidental restarts during normal typing.
 - The named-tunnel `Tunnel ID` / `Hostname` / `Credentials Path` inputs are the Cloudflare-specific text version of the same bug: per-keystroke persistence creates unnecessary config churn and can cause the editor/validation state to lag behind the user’s in-progress values.
 - Making the action button read the current drafts is part of the minimal safe fix here, because otherwise switching the inputs to local drafts would leave `Start Tunnel` disabled or stale until the debounced save/refetch completed.
+- The repeat-task `Interval` field is the standalone numeric version of the same editing bug: coercing the raw input to a number on every keystroke makes the empty/intermediate states needed for normal replacement edits impossible, so the field snaps back to `15` while the user is still typing.
+- Matching the existing mobile `LoopEditScreen` pattern is the smallest safe fix here because it preserves the saved `LoopConfig.intervalMinutes` type and all existing scheduling/runtime behavior while removing the broken desktop editing interaction.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -282,6 +304,7 @@
 - Assumption: keeping remote-server `Port` on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it removes restart-on-every-keystroke churn with the smallest code change while preserving the existing autosave behavior for a final valid port.
 - Assumption: keeping named-tunnel text fields on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it preserves the current autosave UX while removing the broken per-keystroke persistence behavior.
 - Assumption: letting `Start Tunnel` use the current drafts immediately is acceptable because the same click now flushes those drafts back into saved config, and the main-process starter already expects plain string values for these fields.
+- Assumption: leaving temporary invalid repeat-task interval drafts local until save is acceptable because the mobile `LoopEditScreen` already validates this field on save, and desktop `loop-service` still defensively clamps any persisted invalid interval at runtime.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -305,3 +328,4 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new remote-server port draft coverage alongside the existing CORS cases.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new named-tunnel draft coverage alongside the existing CORS/port cases.
 - After that, live-verify the desktop named-tunnel setup flow (`Tunnel ID`, `Hostname`, `Credentials Path`, and `Start Tunnel`) to confirm the fields no longer fight typing and the action enables immediately from the current drafts.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` and live-verify that editing a repeat-task interval by backspacing/retyping no longer snaps the field back to `15` mid-edit.
