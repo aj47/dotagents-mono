@@ -2024,3 +2024,46 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `Description` now reads as passive UI metadata instead of agent instruction space.
   - Compare the updated `Description`, `Guidelines`, and `System Prompt` cluster on mobile to confirm the helper improves understanding without adding clutter.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 47: surface disabled agents directly in the mobile list
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agents` rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - desktop agent-list parity in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - focused agent-row tests in `apps/mobile/tests/settings-agent-actions-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile agent rows already exposed `Built-in`, connection type, role, description, and the right-side action rail.
+  - Unlike desktop, the mobile row itself did not show a visible disabled state badge.
+  - On a narrow list, that meant a disabled agent could still read like a normal row until the user noticed the action-rail switch.
+- Issue selected:
+  - Mobile `Settings > Agents` did not surface disabled state directly in the row content, weakening at-a-glance state clarity for delegation agents.
+- Decision:
+  - Keep the existing row layout, metadata line, edit affordance, and action rail unchanged.
+  - Do not add another always-on `Enabled` badge that would increase visual noise for every row.
+  - Make the smallest local fix: reuse the name-row badge area and only show a compact `Disabled` badge when an agent is off.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the inline built-in pill with dedicated row-badge styles,
+    - add a compact `Disabled` badge beside the agent name when `profile.enabled` is false,
+    - keep the badge treatment muted so it reads as state, not as a destructive action.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new disabled badge rendering and styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new `Disabled` badge reads clearly beside long agent names and the existing `Built-in` badge.
+  - If live validation later shows disabled state is still easy to miss, the next step may need an accessibility-hint or row-opacity refinement — but only with evidence.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that disabled agents stand out immediately without crowding the row header.
+  - Check a long agent name plus `Built-in` / `Disabled` badge combination to confirm the header still wraps cleanly on mobile.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

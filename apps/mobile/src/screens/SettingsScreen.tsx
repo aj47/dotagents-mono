@@ -2359,8 +2359,13 @@ export default function SettingsScreen({ navigation }: any) {
                           <View style={styles.serverNameRow}>
                             <Text style={styles.serverName}>{profile.displayName}</Text>
                             {profile.isBuiltIn && (
-                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
+                              <View style={styles.agentRowBadge}>
+                                <Text style={styles.agentRowBadgeText}>Built-in</Text>
+                              </View>
+                            )}
+                            {!profile.enabled && (
+                              <View style={[styles.agentRowBadge, styles.agentRowBadgeDisabled]}>
+                                <Text style={[styles.agentRowBadgeText, styles.agentRowBadgeTextDisabled]}>Disabled</Text>
                               </View>
                             )}
                           </View>
@@ -3304,6 +3309,28 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       flexWrap: 'wrap',
       gap: spacing.xs,
+    },
+    agentRowBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    agentRowBadgeDisabled: {
+      backgroundColor: theme.colors.secondary,
+    },
+    agentRowBadgeText: {
+      fontSize: 10,
+      lineHeight: 12,
+      color: theme.colors.foreground,
+    },
+    agentRowBadgeTextDisabled: {
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
     },
     serverName: {
       fontSize: 14,

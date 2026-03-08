@@ -46,3 +46,10 @@ test('formats agent row metadata into human-readable mobile labels', () => {
   assert.match(settingsSource, /\{formatAgentConnectionTypeLabel\(profile\.connectionType\)\} • \{formatAgentRoleLabel\(profile\.role\)\}/);
   assert.doesNotMatch(settingsSource, /\{profile\.connectionType\} • \{profile\.role \|\| 'agent'\}/);
 });
+
+test('surfaces disabled agent state directly in the mobile row header', () => {
+  assert.match(settingsSource, /\{!profile\.enabled && \([\s\S]*?<Text style=\{\[styles\.agentRowBadgeText, styles\.agentRowBadgeTextDisabled\]\}>Disabled<\/Text>[\s\S]*?\)\}/);
+  assert.match(settingsSource, /agentRowBadge:\s*\{[\s\S]*?borderRadius:\s*radius\.full,[\s\S]*?paddingHorizontal:\s*6,[\s\S]*?paddingVertical:\s*2/);
+  assert.match(settingsSource, /agentRowBadgeDisabled:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.secondary/);
+  assert.match(settingsSource, /agentRowBadgeTextDisabled:\s*\{[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?fontWeight:\s*'600'/);
+});
