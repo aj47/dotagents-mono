@@ -24,6 +24,64 @@ interface Props {
   navigation: any;
 }
 
+const SYNC_ALREADY_IN_PROGRESS_ERROR = 'Sync already in progress';
+
+function ensureSentence(text: string): string {
+  const normalizedText = text.trim();
+  if (!normalizedText) {
+    return 'Check your connection and try again.';
+  }
+  return /[.!?]$/.test(normalizedText) ? normalizedText : `${normalizedText}.`;
+}
+
+function getActionableSyncErrors(lastSyncResult: SessionStore['lastSyncResult']): string[] {
+  return (lastSyncResult?.errors || []).filter((error) => error && error !== SYNC_ALREADY_IN_PROGRESS_ERROR);
+}
+
+function formatSessionSyncErrorDetail(error: string): string {
+  const normalizedError = error.trim();
+  if (!normalizedError) {
+    return 'Check your connection and try again.';
+  }
+
+  if (normalizedError.startsWith('Sync failed:')) {
+    return ensureSentence(normalizedError.replace(/^Sync failed:\s*/, ''));
+  }
+
+  if (normalizedError.startsWith('Failed to create on server:')) {
+    return ensureSentence(`Couldn't create a chat on the server: ${normalizedError.replace(/^Failed to create on server:\s*/, '')}`);
+  }
+
+  const syncDirectionMatch = normalizedError.match(/^Failed to (pull|push) [^:]+:\s*(.+)$/i);
+  if (syncDirectionMatch) {
+    const [, direction, detail] = syncDirectionMatch;
+    return direction.toLowerCase() === 'pull'
+      ? ensureSentence(`Couldn't refresh one chat from the server: ${detail}`)
+      : ensureSentence(`Couldn't update one chat on the server: ${detail}`);
+  }
+
+  return ensureSentence(normalizedError);
+}
+
+function getSessionSyncErrorSummary(errors: string[]): { title: string; detail: string } {
+  if (errors.length === 0) {
+    return { title: '', detail: '' };
+  }
+
+  const firstIssue = formatSessionSyncErrorDetail(errors[0]);
+  if (errors.length === 1) {
+    return {
+      title: 'Chat sync needs attention',
+      detail: firstIssue,
+    };
+  }
+
+  return {
+    title: `Chat sync hit ${errors.length} issues`,
+    detail: `First issue: ${firstIssue}`,
+  };
+}
+
 export default function SessionListScreen({ navigation }: Props) {
   const { config } = useConfigContext();
   const { theme, isDark } = useTheme();
@@ -695,6 +753,25 @@ export default function SessionListScreen({ navigation }: Props) {
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;
   const sessions = sessionStore.getSessionList();
+  const actionableSyncErrors = useMemo(
+    () => getActionableSyncErrors(sessionStore.lastSyncResult),
+    [sessionStore.lastSyncResult]
+  );
+  const syncErrorSignature = useMemo(() => actionableSyncErrors.join(' | '), [actionableSyncErrors]);
+  const syncErrorSummary = useMemo(
+    () => getSessionSyncErrorSummary(actionableSyncErrors),
+    [actionableSyncErrors]
+  );
+  const [dismissedSyncErrorSignature, setDismissedSyncErrorSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDismissedSyncErrorSignature((current) => {
+      if (!syncErrorSignature) {
+        return null;
+      }
+      return current === syncErrorSignature ? current : null;
+    });
+  }, [syncErrorSignature]);
 
   if (!sessionStore.ready) {
     return (
@@ -713,6 +790,16 @@ export default function SessionListScreen({ navigation }: Props) {
     sessionStore.createNewSession();
     navigation.navigate('Chat');
   };
+
+  const handleRetrySync = useCallback(async () => {
+    if (!config.baseUrl || !config.apiKey || sessionStore.isSyncing) {
+      return;
+    }
+
+    setDismissedSyncErrorSignature(null);
+    const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
+    await sessionStore.syncWithServer(client);
+  }, [config.apiKey, config.baseUrl, sessionStore]);
 
   const handleSelectSession = async (sessionId: string) => {
     const selectedSession = sessionStore.sessions.find(s => s.id === sessionId) || null;
@@ -871,6 +958,13 @@ export default function SessionListScreen({ navigation }: Props) {
                 ? 'Rapid Fire failed. Try again.'
                 : 'Hold to talk (Rapid Fire)';
 
+  const showSyncErrorBanner = Boolean(
+    config.baseUrl
+    && config.apiKey
+    && syncErrorSignature
+    && dismissedSyncErrorSignature !== syncErrorSignature
+  );
+
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
@@ -904,6 +998,43 @@ export default function SessionListScreen({ navigation }: Props) {
           )}
         </View>
       </View>
+
+      {showSyncErrorBanner && (
+        <View style={styles.syncErrorBanner}>
+          <View style={styles.syncErrorBannerTextBlock}>
+            <Text style={styles.syncErrorBannerTitle}>{syncErrorSummary.title}</Text>
+            <Text style={styles.syncErrorBannerDetail}>{syncErrorSummary.detail}</Text>
+          </View>
+          <View style={styles.syncErrorBannerActions}>
+            <TouchableOpacity
+              style={[
+                styles.syncErrorPrimaryAction,
+                sessionStore.isSyncing && styles.syncErrorPrimaryActionDisabled,
+              ]}
+              onPress={() => { void handleRetrySync(); }}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Retry chat sync')}
+              accessibilityHint="Tries to sync chats with the connected server again."
+              activeOpacity={0.7}
+              disabled={sessionStore.isSyncing}
+            >
+              <Text style={styles.syncErrorPrimaryActionText}>
+                {sessionStore.isSyncing ? 'Retrying...' : 'Retry'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.syncErrorDismissAction}
+              onPress={() => setDismissedSyncErrorSignature(syncErrorSignature)}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Dismiss chat sync warning')}
+              accessibilityHint="Hides this warning until chat sync reports a new issue."
+              activeOpacity={0.7}
+            >
+              <Text style={styles.syncErrorDismissActionText}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <FlatList
         data={sessions}
@@ -1116,6 +1247,67 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
       textAlign: 'center',
+    },
+    syncErrorBanner: {
+      backgroundColor: '#f59e0b14',
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      borderRadius: radius.xl,
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.sm,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    syncErrorBannerTextBlock: {
+      gap: 4,
+    },
+    syncErrorBannerTitle: {
+      ...theme.typography.body,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    syncErrorBannerDetail: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      lineHeight: 18,
+    },
+    syncErrorBannerActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    syncErrorPrimaryAction: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.primary,
+    },
+    syncErrorPrimaryActionDisabled: {
+      opacity: 0.65,
+    },
+    syncErrorPrimaryActionText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    syncErrorDismissAction: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    syncErrorDismissActionText: {
+      color: theme.colors.mutedForeground,
+      fontSize: 13,
+      fontWeight: '600',
     },
     rfContainer: {
       borderTopWidth: theme.hairline,

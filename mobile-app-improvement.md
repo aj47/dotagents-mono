@@ -15,10 +15,11 @@
 - Chat entry flow (`Settings -> Go to Chats -> New Chat`)
 - Chat composer actions (`Send`, `Attach images`, `Edit before send`) and nearby accessibility states
 - Settings remote collection sections in code and load-state handling (`Skills`, `Memories`, `Agents`, `Agent Loops`)
+- Sessions screen loading state and sync-error recovery affordance wiring in `SessionListScreen`
 
 ### Not yet checked or stale
 
-- Session list empty/loading/error states and destructive flows (`Clear All`, delete session)
+- Session list empty state and destructive flows (`Clear All`, delete session`) still need fuller live validation
 - Agent edit, Memory edit, and Loop edit detail forms
 - Onboarding/setup edge cases beyond Connection basics (including QR/web limitations)
 - Modal/sheet states such as model picker, voice picker, confirmations, and keyboard-constrained layouts
@@ -29,12 +30,14 @@
 - Settings remote collections could fail in the background and read like empty sections instead of failed loads
 - Prior connected-state warning `⚠️ Failed to load: settings` remains noted from earlier passes and still needs root-cause isolation
 - Full workspace install currently hits an unrelated native desktop build failure under Node 25; mobile web work is still possible with `pnpm install --frozen-lockfile --ignore-scripts`
+- Session sync failures were captured in `lastSyncResult.errors` but remained invisible on the Sessions screen, so users had no inline recovery path after a failed sync
 
 ### Improved
 
 - Connection first-run save validation, nested back navigation, and inline action touch targets
 - Chat composer send/accessory controls and related web accessibility state exposure
 - Settings remote collection loading/error/retry clarity for `Skills`, `Memories`, `Agents`, and `Agent Loops`
+- Sessions sync failure visibility with an inline warning banner, retry action, and dismiss control
 
 ### Verified
 
@@ -42,17 +45,61 @@
 - `pnpm --filter @dotagents/mobile exec tsc --noEmit -p tsconfig.json`
 - Expo Web bundle on `http://localhost:19011`
 - Headless Chrome mobile-width render of the Settings screen with no obvious red error overlay
+- `node --test apps/mobile/tests/session-sync-error-banner-mobile.test.js`
+- Expo Web bundle on `http://localhost:19012`
+- `pnpm exec playwright screenshot --device="iPhone 13" --wait-for-timeout=5000 --full-page http://127.0.0.1:19012 tmp/mobile-after.png` followed by OCR smoke output confirming the Settings shell still rendered without an obvious error overlay
 
 ### Blocked
 
 - Connected-state live validation for desktop-backed Settings collections was not possible in the current web session because the app rendered in a `Not connected` state
+- Direct live validation of the Sessions sync banner remained blocked in this pass because the Expo Web run booted into disconnected `Settings`, and the lightweight headless tooling available here could not click through navigation to `Chats`
 
 ### Still uncertain
 
 - Whether the top-level reconnect warning `⚠️ Failed to load: settings` shares the same root cause as the collection fetch failures
-- How the session list and edit-form surfaces behave under empty/error/loading states on narrow viewports
+- How the session list empty and destructive flows behave end-to-end on narrow viewports once connected live navigation is available
+- Whether the new sync banner copy needs a richer conflict summary when multiple sync errors happen at once
 
 ## Recent Iterations
+
+### 2026-03-08 — Iteration 7: surface Sessions sync failures with inline retry
+
+- Status: completed
+- Area:
+  - session sync feedback inside `apps/mobile/src/screens/SessionListScreen.tsx`
+  - Expo Web shell confirmed at `http://localhost:19012` on a narrow mobile viewport; direct live `Chats` navigation remained blocked in the current disconnected run
+- Why this area:
+  - the ledger still had stale Sessions error-state coverage, while recent iterations had focused mostly on Connection, Chat composer, and Settings collections.
+  - code review showed a concrete product gap: session sync failures were stored in `lastSyncResult.errors` and logged from `App.tsx`, but the Sessions screen never told the user anything had gone wrong.
+- What was investigated:
+  - Expo Web startup and current reachable mobile shell via OCR-backed headless screenshots
+  - `SessionListScreen.tsx` session states and actions
+  - `apps/mobile/src/store/sessions.ts` sync state (`syncWithServer`, `isSyncing`, `lastSyncResult`)
+  - `apps/mobile/src/lib/syncService.ts` sync error shapes
+- Findings:
+  - sync failures already had structured error strings (`Sync failed: ...`, `Failed to pull ...`, `Failed to push ...`, `Failed to create on server: ...`) but no inline UI on `Chats` used them.
+  - once the header spinner stopped, users had no explanation or retry affordance, so the state could read like a silent failure.
+  - the existing Settings warning pattern provided a small-screen-friendly visual direction that could be reused without a broader redesign.
+- Assumptions / tradeoffs / rationale:
+  - keep the fix local to `SessionListScreen.tsx` rather than changing the sync store contract.
+  - summarize only the first issue when multiple sync errors exist so the banner stays compact on narrow screens.
+  - add a dismiss control so persistent failures do not permanently crowd the Sessions list, but re-show the banner when a new error signature appears.
+- Change made:
+  - added sync-error filtering and summary helpers in `SessionListScreen.tsx`
+  - added an inline `Chats` warning banner with concise title/detail copy, `Retry`, and `Dismiss`
+  - wired retry to `sessionStore.syncWithServer(...)` using the current connection config and kept actions at mobile-sized touch targets
+  - added `apps/mobile/tests/session-sync-error-banner-mobile.test.js` to lock the new banner logic and retry wiring
+- Verification:
+  - `node --test apps/mobile/tests/session-sync-error-banner-mobile.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit -p tsconfig.json`
+  - Expo Web bundle on `http://localhost:19012`
+  - OCR-backed Playwright screenshot smoke of the running Expo Web shell showing the Settings screen still rendered with no obvious red error overlay
+- Blockers encountered:
+  - this Expo Web run started in disconnected `Settings`, and the lightweight headless browser tooling available in this environment could not click through to `Chats`, so the new banner could not be observed live in-browser during this pass.
+- Follow-up checks:
+  - live-validate the Sessions sync banner while connected to a desktop-backed server and confirm retry/dismiss behavior with real sync failures
+  - inspect Sessions empty state and destructive flows (`Clear All`, per-session delete`) next so coverage continues widening across the same surface
+  - decide whether multi-error sync conflicts need richer summary copy than the current first-issue treatment
 
 ### 2026-03-08 — Iteration 6: clarify Settings remote collection failures and add inline retry
 
