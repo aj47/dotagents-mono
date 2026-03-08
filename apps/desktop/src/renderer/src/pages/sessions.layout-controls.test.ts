@@ -40,6 +40,7 @@ describe("sessions layout controls", () => {
     expectSourceToContain(
       "Current layout: ${LAYOUT_LABELS[tileLayoutMode]} — ${activeLayoutDescription}",
     )
+    expectSourceToContain("{currentLayoutChipLabel}")
     expectSourceNotToContain("handleCycleTileLayout")
     expectSourceNotToContain("Next layout:")
   })
@@ -86,23 +87,17 @@ describe("sessions layout controls", () => {
     expectSourceToContain(
       'const RESPONSIVE_STACKED_LAYOUT_SHORT_LABEL = "Stacked"',
     )
+    expectSourceToContain("const currentLayoutChipLabel = isCompactSessionHeader")
     expectSourceToContain(
       "title={`Current layout: ${LAYOUT_LABELS[tileLayoutMode]} — ${activeLayoutDescription}`}",
     )
     expectSourceToContain(
       "onMeasurementsChange={handleSessionGridMeasurementsChange}",
     )
-    expectSourceToContain(
-      "const showLayoutDescriptionSuffix = !isCompactSessionHeader",
-    )
-    expectSourceToContain("const showCompactAdaptiveLayoutDescription =")
-    expectSourceToContain("usesAdaptiveLayoutDescription &&")
-    expectSourceToContain("isCompactSessionHeader &&")
-    expectSourceToContain("!isVeryCompactSessionHeader")
-    expectSourceToContain("showLayoutDescriptionSuffix ? (")
-    expectSourceToContain("showCompactAdaptiveLayoutDescription ? (")
-    expectSourceToContain("{activeLayoutDescription}")
-    expectSourceToContain("{activeLayoutCompactDescription}")
+    expectSourceToContain("? activeLayoutCompactDescription")
+    expectSourceToContain(": activeLayoutDescription")
+    expectSourceNotToContain("const showLayoutDescriptionSuffix =")
+    expectSourceNotToContain("const showCompactAdaptiveLayoutDescription =")
   })
 
   it("adds a direct recovery hint when compare or grid is stacked by width pressure", () => {
@@ -338,9 +333,9 @@ describe("sessions layout controls", () => {
     expectSourceToContain(
       "const activeLayoutCompactDescription = isTemporarySingleVisibleLayout",
     )
-    expectSourceToContain("showLayoutDescriptionSuffix ? (")
-    expectSourceToContain("showCompactAdaptiveLayoutDescription ? (")
-    expectSourceToContain("{activeLayoutCompactDescription}")
-    expectSourceToContain("{activeLayoutDescription}")
+    expectSourceToContain("const currentLayoutChipLabel = isCompactSessionHeader")
+    expectSourceToContain("? activeLayoutCompactDescription")
+    expectSourceToContain(": activeLayoutDescription")
+    expectSourceToContain("{currentLayoutChipLabel}")
   })
 })

@@ -151,3 +151,39 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
   - once dependencies are installed, capture a real after-state screenshot of the empty sessions page and confirm the recent-history block now lands materially higher at common desktop heights
   - if the page still feels top-heavy after this, the next likely improvement is auditing whether the keyboard shortcut hint row is taking more resting-state attention than it deserves
 
+### Iteration 2026-03-08 / 05
+- Status: complete with live before-state evidence and cross-worktree after-state blocker documented
+- Screen / area reviewed: desktop sessions page layout-status row in compare mode, specifically the passive adaptive chip beside `Compare | Grid | Single`
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - confirmed after inspection that the running Electron and Vite processes were serving a different worktree: `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-05.png`
+  - live DOM-backed inspection showed the passive chip text as `Compare view · One visible` while the adjacent segmented control already had `Compare` pressed
+  - measured in the live renderer, the passive chip occupied about `187px` of width (`x=188, y=84.75, width≈187.27`) even though only `One visible` added unique information beyond the selected button state
+- Issues found:
+  - the passive chip still repeated the currently selected layout label, so the row read as duplicated state rather than selected control plus adaptive context
+  - repeating `Compare view` inside the chip spent scarce header width on information the selected button already communicated
+- Assumptions:
+  - the segmented control remains the primary source of truth for compare/grid/single state, so the passive chip should only explain adaptive consequences such as `One visible` or `Stacked to fit`
+  - this is desktop-only; codebase inspection found no equivalent mobile sessions header that shares this compare/grid/single adaptive chip pattern
+- Design rationale:
+  - preserve the adaptive hint, but stop making the passive chip compete with the active control for ownership of the same state
+  - keep the full tooltip intact for hover/focus detail while making the resting UI calmer and more compact
+  - prefer a minimal wording/layout reduction instead of redesigning the whole sessions header again
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so the adaptive chip now renders only the adaptive description label (`activeLayoutDescription` or compact `activeLayoutCompactDescription`) instead of prefixing it with the selected layout label
+  - preserved the existing tooltip text `Current layout: … — …` so detailed context is still available without occupying resting-state width
+  - updated `apps/desktop/src/renderer/src/pages/sessions.layout-controls.test.ts` to lock in the new `currentLayoutChipLabel` behavior and prevent the older duplicated label logic from returning
+- Verification:
+  - live before-state screenshot + DOM measurement via `agent-browser --cdp 9333`
+  - attempted live after-state validation and screenshot capture via `agent-browser --cdp 9333 reload` plus `tmp/visible-ui-after-2026-03-08-05.png`, but the renderer stayed unchanged because it was running from the separate `streaming-lag-loop` worktree rather than this workspace
+  - targeted source-level test passed against this worktree using the sibling worktree's already-installed binary without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/pages/sessions.layout-controls.test.ts`
+- After-state observation:
+  - source-level after-state only for this worktree: the adaptive chip now collapses to the unique context label (`One visible` / `Stacked` / full adaptive text depending on header width) instead of repeating `Compare view` or other selected layout labels in the chip body
+  - expected visible effect once this worktree is launched: the sessions header should read more cleanly as selected control + adaptive hint, with less redundant chrome competing for width on the second row
+- Remaining opportunities:
+  - launch this worktree itself once dependencies are available or linked, then capture a real after-state screenshot to confirm the chip width drops materially and the row scans faster at common desktop widths
+  - after this pass, avoid more sessions-header churn unless live screenshots still show it as the dominant readability problem
+

@@ -1323,11 +1323,9 @@ export function Component() {
   const showSingleViewRestoreLabel =
     showSingleViewRestore && !isVeryCompactSessionHeader
   const showCurrentLayoutChip = usesAdaptiveLayoutDescription
-  const showLayoutDescriptionSuffix = !isCompactSessionHeader
-  const showCompactAdaptiveLayoutDescription =
-    usesAdaptiveLayoutDescription &&
-    isCompactSessionHeader &&
-    !isVeryCompactSessionHeader
+  const currentLayoutChipLabel = isCompactSessionHeader
+    ? activeLayoutCompactDescription
+    : activeLayoutDescription
   const stackedLayoutRecoveryLabel = !showStackedLayoutRecoveryHint
     ? null
     : isVeryCompactSessionHeader
@@ -1470,23 +1468,8 @@ export function Component() {
                 >
                   <activeLayoutOption.Icon className="h-3.5 w-3.5 shrink-0" />
                   <span className="text-foreground/90 whitespace-nowrap font-medium">
-                    {LAYOUT_LABELS[tileLayoutMode]}
+                    {currentLayoutChipLabel}
                   </span>
-                  {showLayoutDescriptionSuffix ? (
-                    <>
-                      <span className="text-muted-foreground/50">·</span>
-                      <span className="whitespace-nowrap">
-                        {activeLayoutDescription}
-                      </span>
-                    </>
-                  ) : showCompactAdaptiveLayoutDescription ? (
-                    <>
-                      <span className="text-muted-foreground/50">·</span>
-                      <span className="whitespace-nowrap">
-                        {activeLayoutCompactDescription}
-                      </span>
-                    </>
-                  ) : null}
                 </div>
               )}
               {showStackedLayoutRecoveryHint &&
