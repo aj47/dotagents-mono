@@ -98,6 +98,90 @@ export const useAvailableModelsQuery = (
     retry: 1,
   })
 
+type PresetModelOption = {
+  id: string
+  name: string
+}
+
+type PresetModelInfo = {
+  id: string
+  name: string
+  tool_call?: boolean
+  reasoning?: boolean
+  modalities?: {
+    input?: string[]
+    output?: string[]
+  }
+  cost?: {
+    input?: number
+    output?: number
+  }
+  limit?: {
+    context?: number
+    output?: number
+  }
+}
+
+function getQueryFingerprint(...parts: string[]) {
+  const combined = parts.join("\u0000")
+  let hash = 0
+
+  for (let index = 0; index < combined.length; index += 1) {
+    hash = (hash * 31 + combined.charCodeAt(index)) >>> 0
+  }
+
+  return hash.toString(36)
+}
+
+export const usePresetAvailableModelsQuery = (
+  presetId: string,
+  baseUrl: string,
+  apiKey: string,
+  enabled: boolean = true,
+) =>
+  useQuery<PresetModelOption[]>({
+    queryKey: [
+      "preset-available-models",
+      presetId,
+      getQueryFingerprint(baseUrl, apiKey),
+    ],
+    queryFn: async () => {
+      return tipcClient.fetchModelsForPreset({ baseUrl, apiKey })
+    },
+    enabled: enabled && !!baseUrl && !!apiKey,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+export const usePresetModelInfoQuery = (
+  modelIds: string[],
+  enabled: boolean = true,
+) =>
+  useQuery<Record<string, PresetModelInfo>>({
+    queryKey: ["preset-model-info", modelIds],
+    queryFn: async () => {
+      const infoEntries = await Promise.all(
+        modelIds.map(async (modelId) => {
+          try {
+            const info = await tipcClient.getModelInfo({ modelId })
+            return info ? ([modelId, info as PresetModelInfo] as const) : null
+          } catch {
+            return null
+          }
+        }),
+      )
+
+      return Object.fromEntries(
+        infoEntries.filter(
+          (entry): entry is readonly [string, PresetModelInfo] => entry !== null,
+        ),
+      )
+    },
+    enabled: enabled && modelIds.length > 0,
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  })
+
 export const useSaveConversationMutation = () =>
   useMutation({
     mutationFn: async ({ conversation }: { conversation: any }) => {

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop preset-model selector loading / error / empty-state clarity plus repeated-fetch performance in `apps/desktop/src/renderer/src/components/preset-model-selector.tsx`, with shared query-hook reuse reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, adjacent model-loading UX pattern checked in `apps/desktop/src/renderer/src/components/model-selector.tsx`, usage sites reviewed in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop model preset manager create/edit dialog draft-loss / failed-save guardrails in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx`, with shared dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`.
 - 2026-03-08: Desktop predefined prompts add/edit dialog draft-loss / destructive-delete guardrails in `apps/desktop/src/renderer/src/components/predefined-prompts-menu.tsx`, with composer usage reviewed in `apps/desktop/src/renderer/src/components/text-input-panel.tsx` / `apps/desktop/src/renderer/src/pages/sessions.tsx`, save-mutation behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts`, dialog close semantics checked in `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and mobile parity checked across `apps/mobile/src/`.
 - 2026-03-08: Desktop bundle import conflict-resolution / overwrite clarity in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, with preview-conflict source review in `apps/desktop/src/main/bundle-service.ts`, Hub install handoff coverage review in `apps/desktop/src/renderer/src/pages/settings-agents.install-handoff.test.tsx`, and mobile parity check confirming no equivalent bundle-import surface under `apps/mobile/src/`.
@@ -29,6 +30,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop preset-model selectors now share cached preset-model and model-info queries across matching selectors, so the create/edit preset dialogs stop refetching the same model list three times, and the control now shows clearer inline guidance for missing credentials, loading, refresh failures, empty results, and available-model counts.
 - 2026-03-08: Desktop model preset create/edit dialogs now track dirty draft baselines, warn before backdrop / Escape / close-button / cancel dismissal would discard unsaved preset edits, and keep the dialog open with inline retry guidance if async config save fails instead of closing immediately.
 - 2026-03-08: Desktop predefined prompts now track dirty draft baselines, warn before dialog dismissal would discard unsaved prompt edits, keep the dialog open with inline failure guidance if config save fails, and confirm before deleting a saved prompt from quick access.
 - 2026-03-08: Desktop bundle import dialog now explains the exact consequence of skip / overwrite / rename conflict strategies in-context and previews the affected conflicting items by component, including existing names when they differ, so destructive bundle imports are easier to understand before committing.
@@ -49,6 +51,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-model-preset-guardrails.test.js tests/desktop-preset-model-selector-feedback.test.js`
+- 2026-03-08: `node --test tests/desktop-preset-model-selector-feedback.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-model-preset-guardrails.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-predefined-prompts-guardrails.test.js`
@@ -82,6 +87,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this preset-model-selector pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this model-preset dialog pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this predefined-prompts draft-safety pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this bundle import conflict-clarity pass was blocked because no Electron renderer/CDP target was available in this environment, so this iteration relied on source inspection plus targeted source-level verification.
@@ -98,10 +104,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop preset-model selector loading / error / empty-state clarity (`apps/desktop/src/renderer/src/components/preset-model-selector.tsx`)
+- Desktop shared provider model selector fallback / empty-state / custom-model handoff clarity (`apps/desktop/src/renderer/src/components/model-selector.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect the desktop preset-model selector loading / error / empty-state UX so users configuring provider presets get clearer feedback when model discovery is unavailable, slow, or returns no compatible models
+- Inspect the desktop shared `model-selector.tsx` fallback / empty-state / custom-model handoff so provider model settings stay understandable when discovery fails, returns nothing useful, or falls back to manual entry
 - Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
 - Once a runnable Electron target is available, live-check the desktop bundle import conflict summary UI to confirm the overwrite / rename / skip explanations and previewed conflict names feel right in the actual dialog
 - Once a runnable Electron target is available, live-check the desktop bundle export/publish dialogs to confirm the new discard warning and pending-action guardrails feel right during backdrop click, Escape, titlebar close, preview back, and file-save flows
@@ -109,6 +115,45 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop preset-model selector query dedupe and state clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop preset-model selector in `apps/desktop/src/renderer/src/components/preset-model-selector.tsx`
+  - shared renderer query hooks in `apps/desktop/src/renderer/src/lib/queries.ts`
+  - adjacent selector UX pattern reviewed in `apps/desktop/src/renderer/src/components/model-selector.tsx`
+  - usage sites reviewed in `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - checked `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile does not currently expose an equivalent preset-model discovery selector to update in this pass
+- Why it was chosen:
+  - the ledger explicitly marked the desktop preset-model selector as the next fresh area that had not been investigated recently
+  - this selector appears three times in each preset create/edit dialog, so any loading/error weakness or redundant fetching is multiplied in a core model-configuration workflow
+  - source inspection found a concrete high-leverage issue: each selector instance fetched the same preset models and per-model enrichment independently, producing repeated network work plus repeated loading/error churn for one user action
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/preset-model-selector.tsx` for credential gating, loading state, empty/error handling, refresh behavior, and enrichment fetches
+  - `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` and `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to confirm how many selector instances mount together and where shared caching would help most
+  - `apps/desktop/src/renderer/src/components/model-selector.tsx` for nearby model-loading helper-text patterns worth matching
+  - `apps/desktop/src/renderer/src/lib/queries.ts` to confirm React Query was already the established local caching pattern in this renderer
+  - attempted live desktop inspection via Electron/CDP first, but `electron_execute` reported `No Electron targets found`
+- Improvement made:
+  - added focused preset-model query hooks so matching selectors now share a cached model-list fetch keyed by preset ID plus a credential fingerprint instead of refetching the same endpoint independently
+  - added a shared enrichment query for per-model metadata so matching selectors reuse model-info lookups instead of repeating the same fuzzy-match calls per selector instance
+  - the selector now shows explicit inline helper text for missing credentials, initial loading, refresh failures with preserved results, empty responses, and available-model counts
+  - updated the dropdown empty/error copy so users get a concrete next step instead of only seeing a vague placeholder like `Failed to load` or `No models available`
+  - added an explicit refresh button label/title for clearer affordance and accessibility
+  - added focused source-level regression coverage in `tests/desktop-preset-model-selector-feedback.test.js`
+- Assumptions / tradeoffs / rationale:
+  - kept the change local to renderer query hooks and the selector component instead of refactoring main-process model-fetch plumbing, because the user-visible problem was repeated client-side fetch churn plus weak UI feedback on this specific surface
+  - used a lightweight credential fingerprint in the React Query key so matching selectors can share cache entries without storing the raw API key string directly in the query key
+  - preserved the existing refresh button and selection UI instead of introducing a broader manual-model entry flow, keeping this pass small and shippable while still improving speed and clarity
+  - accepted source-level verification for this iteration because live Electron inspection remains unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-preset-model-selector-feedback.test.js`
+  - `node --test tests/desktop-model-preset-guardrails.test.js tests/desktop-preset-model-selector-feedback.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check missing-credential, loading, refresh-failure, and empty-result states in the preset dialogs to confirm the helper text hierarchy feels right in the actual UI
+  - inspect `apps/desktop/src/renderer/src/components/model-selector.tsx` next for similar fallback / empty-state / custom-model handoff polish on the shared provider-model selector surface
 
 ### 2026-03-08 — Desktop model preset dialog draft safety and failed-save resilience
 - Date:

@@ -17,7 +17,10 @@ import {
 } from "lucide-react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  usePresetAvailableModelsQuery,
+  usePresetModelInfoQuery,
+} from "@renderer/lib/queries"
 
 /** Local type matching models.dev service response */
 interface ModelsDevModel {
@@ -77,73 +80,41 @@ export function PresetModelSelector({
   placeholder = "Select a model",
   disabled = false,
 }: PresetModelSelectorProps) {
-  const [isLoading, setIsLoading] = useState(false)
-  const [models, setModels] = useState<Array<{ id: string; name: string }>>([])
-  const [error, setError] = useState<string | null>(null)
-  const [modelsDevData, setModelsDevData] = useState<
-    Record<string, ModelsDevModel>
-  >({})
   const [searchQuery, setSearchQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const hasCredentials = !!baseUrl && !!apiKey
+  const modelsQuery = usePresetAvailableModelsQuery(
+    presetId,
+    baseUrl,
+    apiKey,
+    hasCredentials,
+  )
+  const models = modelsQuery.data || []
+  const modelsDevInfoQuery = usePresetModelInfoQuery(
+    models.map((model) => model.id),
+    models.length > 0,
+  )
+  const modelsDevData = (modelsDevInfoQuery.data || {}) as Record<
+    string,
+    ModelsDevModel
+  >
+  const errorMessage =
+    modelsQuery.error instanceof Error
+      ? modelsQuery.error.message
+      : modelsQuery.error
+        ? "Failed to fetch models"
+        : null
+  const isLoading = modelsQuery.isLoading
+  const isRefreshing = modelsQuery.isFetching
 
   const fetchModels = async () => {
-    if (!baseUrl || !apiKey) {
-      setModels([])
-      setError("Base URL and API key required")
+    if (!hasCredentials) {
       return
     }
 
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const result = await tipcClient.fetchModelsForPreset({
-        baseUrl,
-        apiKey,
-      })
-      setModels(result || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch models")
-      setModels([])
-    } finally {
-      setIsLoading(false)
-    }
+    await modelsQuery.refetch()
   }
-
-  // Fetch models.dev data for enriched display using backend fuzzy matching
-  useEffect(() => {
-    const fetchModelsDevInfo = async () => {
-      if (models.length === 0) return
-
-      // Fetch enhanced info for each model using fuzzy matching
-      const enrichedData: Record<string, ModelsDevModel> = {}
-
-      await Promise.all(
-        models.map(async (model) => {
-          try {
-            // Use backend fuzzy matching - no providerId to search across ALL providers
-            const info = await tipcClient.getModelInfo({ modelId: model.id })
-            if (info) {
-              enrichedData[model.id] = info
-            }
-          } catch {
-            // Silently ignore - enrichment is optional
-          }
-        }),
-      )
-
-      setModelsDevData(enrichedData)
-    }
-
-    fetchModelsDevInfo()
-  }, [models])
-
-  useEffect(() => {
-    if (baseUrl && apiKey) {
-      fetchModels()
-    }
-  }, [baseUrl, apiKey, presetId])
 
   useEffect(() => {
     if (!isOpen) {
@@ -170,7 +141,19 @@ export function PresetModelSelector({
     })
   }, [searchQuery, isOpen])
 
-  const hasError = !!error && models.length === 0
+  const isBlockingLoad = isLoading && models.length === 0
+  const hasError = !!errorMessage && models.length === 0
+  const refreshError = !!errorMessage && models.length > 0
+  const missingCredentialsMessage = !baseUrl && !apiKey
+    ? "Add a base URL and API key to load models for this preset."
+    : !baseUrl
+      ? "Add a base URL to load models for this preset."
+      : "Add an API key to load models for this preset."
+  const missingCredentialsPlaceholder = !baseUrl && !apiKey
+    ? "Add base URL and API key first"
+    : !baseUrl
+      ? "Add base URL first"
+      : "Add API key first"
 
   /** Get models.dev info for a specific model */
   const getModelInfo = (modelId: string): ModelsDevModel | undefined => {
@@ -209,6 +192,24 @@ export function PresetModelSelector({
 
     if (metaParts.length === 0) return selectedModel.name
     return `${selectedModel.name} • ${metaParts.join(" • ")}`
+  })()
+
+  const helperText = (() => {
+    if (!hasCredentials) return missingCredentialsMessage
+    if (isBlockingLoad) return "Loading models from this preset..."
+    if (refreshError) {
+      return "Couldn't refresh models. Showing the last successful model list."
+    }
+    if (hasError) {
+      return "Couldn't load models for this preset. Check the base URL and API key, then retry."
+    }
+    if (models.length === 0) {
+      return "No models were returned for this preset. Verify the endpoint supports model discovery, then refresh."
+    }
+    if (searchQuery.trim()) {
+      return `${filteredModels.length} of ${models.length} models match "${searchQuery}"`
+    }
+    return `${models.length} model${models.length !== 1 ? "s" : ""} available for this preset`
   })()
 
   /** Render model item with pricing and capabilities */
@@ -269,11 +270,15 @@ export function PresetModelSelector({
         <Button
           variant="ghost"
           size="sm"
-          onClick={fetchModels}
-          disabled={isLoading || disabled || !baseUrl || !apiKey}
+          onClick={() => {
+            void fetchModels()
+          }}
+          disabled={isRefreshing || disabled || !hasCredentials}
           className="h-6 px-2 text-xs"
+          aria-label="Refresh available models"
+          title={isRefreshing ? "Refreshing available models" : "Refresh available models"}
         >
-          <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
@@ -281,17 +286,19 @@ export function PresetModelSelector({
         value={value || ""}
         onValueChange={onValueChange}
         onOpenChange={setIsOpen}
-        disabled={disabled || isLoading || !baseUrl || !apiKey}
+        disabled={disabled || isBlockingLoad || !hasCredentials}
       >
         <SelectTrigger className="w-full">
           <SelectValue
             placeholder={
-              isLoading
+              isBlockingLoad
                 ? "Loading models..."
-                : !baseUrl || !apiKey
-                  ? "Enter API key first"
+                : !hasCredentials
+                  ? missingCredentialsPlaceholder
                   : hasError
-                    ? "Failed to load"
+                    ? "Couldn't load models"
+                    : models.length === 0
+                      ? "No models returned"
                     : placeholder
             }
           >
@@ -327,6 +334,12 @@ export function PresetModelSelector({
             </div>
           }
         >
+          {isBlockingLoad && (
+            <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-sm">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Loading models...
+            </div>
+          )}
           {filteredModels.map((model) => renderModelItem(model))}
           {models.length > 0 &&
             filteredModels.length === 0 &&
@@ -335,20 +348,39 @@ export function PresetModelSelector({
                 No models match "{searchQuery}"
               </div>
             )}
-          {models.length === 0 && !isLoading && (
-            <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-sm">
+          {models.length === 0 && !isBlockingLoad && (
+            <div className="flex flex-col items-center justify-center gap-1 px-4 py-4 text-center text-sm">
               {hasError ? (
                 <>
-                  <AlertCircle className="h-4 w-4" />
-                  {error}
+                  <div className="flex items-center justify-center gap-2 text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Couldn't load models for this preset.</span>
+                  </div>
+                  <p className="text-xs text-destructive/80">
+                    Check the base URL and API key, then refresh.
+                  </p>
                 </>
               ) : (
-                "No models available"
+                <>
+                  <div className="text-muted-foreground flex items-center justify-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>No models were returned for this preset.</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    Verify the endpoint supports model discovery, then refresh.
+                  </p>
+                </>
               )}
             </div>
           )}
         </SelectContent>
       </Select>
+
+      <p
+        className={`text-xs ${hasError || refreshError ? "text-destructive" : "text-muted-foreground"}`}
+      >
+        {helperText}
+      </p>
     </div>
   )
 }
