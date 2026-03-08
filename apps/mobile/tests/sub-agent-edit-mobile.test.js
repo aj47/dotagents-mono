@@ -78,6 +78,13 @@ test('AgentEditScreen clarifies that Description is UI-only and not agent instru
   assert.match(agentEditSource, /<Text style=\{styles\.helperText\}>Shown only in the UI\. Use Guidelines for instructions the agent should follow\.<\/Text>/);
 });
 
+test('AgentEditScreen explains how Guidelines build on the core system prompt', () => {
+  assert.match(agentEditSource, /<Text style=\{styles\.label\}>Guidelines<\/Text>/);
+  assert.match(agentEditSource, /placeholder="Additional instructions for the agent\.\.\."/);
+  assert.match(agentEditSource, /accessibilityHint="Adds extra instructions for this agent on top of the core tool-calling system prompt\."/);
+  assert.match(agentEditSource, /<Text style=\{styles\.helperText\}>Additional instructions for this agent\. These are appended to the core tool-calling system prompt\.<\/Text>/);
+});
+
 test('LoopEditScreen makes profile chips mobile-sized buttons with selected-state semantics', () => {
   assert.match(loopEditSource, /createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(loopEditSource, /profileOption:\s*\{[\s\S]*?\.\.\.selectionChipTouchTarget/);

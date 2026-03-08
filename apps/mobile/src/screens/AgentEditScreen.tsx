@@ -440,7 +440,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={3}
         textAlignVertical="top"
+        accessibilityHint="Adds extra instructions for this agent on top of the core tool-calling system prompt."
       />
+      <Text style={styles.helperText}>Additional instructions for this agent. These are appended to the core tool-calling system prompt.</Text>
 
       <View style={styles.switchRow}>
         <View style={styles.switchLabelGroup}>
