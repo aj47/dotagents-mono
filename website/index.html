@@ -845,6 +845,19 @@
             border-top: 1px solid var(--color-border);
             flex-wrap: wrap;
         }
+        .hub-install-status {
+            flex: 1 1 240px;
+            min-width: 200px;
+            color: var(--color-fg-dim);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .hub-install-status[data-state="ready"] {
+            color: var(--color-accent-cyan);
+        }
+        .hub-install-status[data-state="error"] {
+            color: var(--color-accent-amber);
+        }
         .hub-modal-footer-meta { margin-left: auto; }
         .hub-modal-spinner {
             width: 26px;
@@ -1486,6 +1499,7 @@
             <div class="hub-modal-footer">
                 <a id="modal-install-btn" class="btn btn-primary" aria-disabled="true" tabindex="-1" title="Wait for the bundle preview to finish loading before installing.">Install bundle →</a>
                 <a class="btn btn-secondary" href="https://hub.dotagentsprotocol.com" target="_blank" rel="noopener">Open full hub ↗</a>
+                <div id="modal-install-status" class="hub-install-status" aria-live="polite">Preview loading — install unlocks after bundle details load.</div>
                 <div id="modal-footer-meta" class="hub-modal-footer-meta"></div>
             </div>
         </div>
@@ -1499,6 +1513,7 @@
         const modalBundleMeta = document.querySelector('#modal-bundle-meta')
         const modalFooterMeta = document.querySelector('#modal-footer-meta')
         const modalInstallBtn = document.querySelector('#modal-install-btn')
+        const modalInstallStatus = document.querySelector('#modal-install-status')
         const modalLoading = document.querySelector('#modal-loading')
         const modalWarnings = document.querySelector('#modal-warnings')
         const modalContent = document.querySelector('#modal-content')
@@ -1995,7 +2010,20 @@
             modalContent.innerHTML = ''
             modalBundleMeta.innerHTML = ''
             modalFooterMeta.innerHTML = ''
+            setModalInstallStatus({ state: 'loading' })
             setModalInstallButtonState({ disabled: true })
+        }
+
+        function setModalInstallStatus({ state = 'loading', message = '' } = {}) {
+            if (!modalInstallStatus) return
+            modalInstallStatus.dataset.state = state
+            modalInstallStatus.textContent = message || (
+                state === 'ready'
+                    ? 'Preview ready — install now opens this exact bundle in DotAgents.'
+                    : state === 'error'
+                        ? 'Preview failed to load — install stays disabled until bundle details can be fetched.'
+                        : 'Preview loading — install unlocks after bundle details load.'
+            )
         }
 
         function setModalInstallButtonState({ disabled = true, bundleUrl = '' } = {}) {
@@ -2117,6 +2145,7 @@
 
                     modalContent.innerHTML = renderBundle(bundle)
                     setModalInstallButtonState({ disabled: false, bundleUrl })
+                    setModalInstallStatus({ state: 'ready' })
                     modalLoading.hidden = true
                     modalContent.hidden = false
                     finishBundleRequest(requestId, abortController)
@@ -2125,6 +2154,7 @@
                     modalLoading.hidden = true
                     modalError.hidden = false
                     modalError.textContent = `Could not load bundle: ${error.message}`
+                    setModalInstallStatus({ state: 'error' })
                     finishBundleRequest(requestId, abortController)
                 }
             })

@@ -3564,3 +3564,39 @@
   - Keep the same loading/disabled semantics if the landing page later reuses this inspector for a broader bundle catalog.
 
 - Next recommended issue work item: refresh the open issues again and stay bug-first; if `#55` still cannot be validated more directly in Electron, prefer another fresh, source-confirmed desktop or website UX/reliability slice over reopening the larger `#57` / `#58` tracks immediately.
+
+##### Issue #56 — Bundle inspector footer explains disabled install state during loading and failure
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and refreshed the still-open repo issues before choosing the next slice.
+  - Investigated `#54` as the least-touched open issue, but the current repo only has generic OAuth/token storage plumbing and no clear verified ChatGPT subscription auth/transport contract yet, so forcing an implementation there would have been speculative rather than shippable.
+  - Stayed with `#56` because the previous iteration had already identified one narrow remaining trust gap with a direct local path: the modal disabled the install CTA correctly, but the footer still relied mostly on styling/tooltip affordances rather than explicit inline status text.
+- Investigation:
+  - Re-read issue `#56`, its owner comment about inspect-before-install trust cues, and the current `website/index.html` / `website/website-hub-inspector.test.js` inspector implementation.
+  - Confirmed by source inspection that the install button was disabled during loading and after preview errors, but the modal footer did not include a persistent inline explanation of *why* it was unavailable or when it would unlock.
+  - Confirmed this was user-facing trust/clarity debt rather than cosmetic polish because the modal's purpose is to let users inspect a bundle *before* acting on install.
+- Important assumptions:
+  - Assumption: adding explicit footer state copy for loading / ready / failure is a valid `#56` follow-up even though the original issue text did not explicitly call for helper text.
+  - Why acceptable: the issue and owner comment both frame the inspector as a trust surface, and clarifying when install is safe to use directly reinforces that goal without widening scope.
+  - Assumption: the footer message should stay concise instead of introducing a larger explanatory panel.
+  - Why acceptable: the modal already has loading/error body states and warning badges; this slice only needed to remove ambiguity around the CTA itself.
+- Changes implemented:
+  - Added a `hub-install-status` footer element in `website/index.html` with `aria-live="polite"` so the modal now states whether preview is loading, ready, or unavailable.
+  - Added compact status styling for default/loading, ready, and error states so the message remains readable without broad layout changes.
+  - Added `setModalInstallStatus(...)` and wired it through modal reset, successful preview load, and preview failure paths.
+  - Extended `website/website-hub-inspector.test.js` with dependency-free regression assertions covering the new footer node, status helper, state-specific copy, and call sites.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Completed: local browser smoke via `python3 -m http.server 4312 -d website` + browser automation against `http://127.0.0.1:4312` ✅
+    - Confirmed loading state shows `Preview loading — install unlocks after bundle details load.` while the install button remains disabled.
+    - Confirmed success state shows `Preview ready — install now opens this exact bundle in DotAgents.` and re-enables the install button only after preview content loads.
+    - Confirmed forced preview failure shows `Preview failed to load — install stays disabled until bundle details can be fetched.` and keeps install disabled.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If users still hesitate before installing, consider adding lightweight footer provenance details (for example, source URL or author handle) alongside the ready state.
+  - If the landing page later exposes a broader catalog, keep the same explicit CTA-status pattern anywhere preview gating is used.
+
+- Next recommended issue work item: refresh open issues again and stay bug-first; if `#54` is reconsidered, start with a feasibility/architecture note tied to concrete auth endpoints or a provider-transport plan, otherwise prefer another small, source-confirmed desktop or website UX/reliability slice over speculative subscription-provider work.

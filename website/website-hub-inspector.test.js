@@ -114,6 +114,21 @@ test('install action stays disabled until preview content has loaded', () => {
     assert.match(source, /modalInstallBtn\.href = `dotagents:\/\/install\?bundle=\$\{encodeURIComponent\(bundleUrl\)\}`/)
 })
 
+test('install footer explains whether preview is loading, ready, or unavailable', () => {
+    assert.match(source, /\.hub-install-status \{/)
+    assert.match(source, /\.hub-install-status\[data-state="ready"\]/)
+    assert.match(source, /\.hub-install-status\[data-state="error"\]/)
+    assert.match(source, /id="modal-install-status" class="hub-install-status" aria-live="polite">Preview loading — install unlocks after bundle details load\./)
+    assert.match(source, /const modalInstallStatus = document\.querySelector\('#modal-install-status'\)/)
+    assert.match(source, /function setModalInstallStatus\(\{ state = 'loading', message = '' \} = \{\}\)/)
+    assert.match(source, /modalInstallStatus\.dataset\.state = state/)
+    assert.match(source, /Preview ready — install now opens this exact bundle in DotAgents\./)
+    assert.match(source, /Preview failed to load — install stays disabled until bundle details can be fetched\./)
+    assert.match(source, /setModalInstallStatus\(\{ state: 'loading' \}\)/)
+    assert.match(source, /setModalInstallStatus\(\{ state: 'ready' \}\)/)
+    assert.match(source, /setModalInstallStatus\(\{ state: 'error' \}\)/)
+})
+
 test('markdown content is formatted before rendering', () => {
     assert.match(source, /function stripFrontmatter\(value\)/)
     assert.match(source, /function renderMarkdown\(value\)/)
