@@ -244,6 +244,8 @@ export interface ImportOptions {
     repeatTasks?: boolean
     memories?: boolean
   }
+  /** Optional per-item selection within enabled components */
+  selectedItems?: BundleItemSelectionOptions
   /** Optional snapshot config for automated pre-import backups */
   backup?: {
     dir?: string
@@ -1563,6 +1565,15 @@ function generateUniqueId(baseId: string, existingIds: Set<string>): string {
   return newId
 }
 
+function createImportSelectionSet(ids?: string[]): Set<string> | null {
+  if (!Array.isArray(ids)) return null
+  return new Set(ids.filter((id): id is string => typeof id === "string" && id.length > 0))
+}
+
+function isImportItemSelected(selectedIds: Set<string> | null, id: string): boolean {
+  return selectedIds === null || selectedIds.has(id)
+}
+
 /**
  * Import a bundle into the target .agents directory.
  * Handles conflicts according to the specified strategy.
@@ -1599,6 +1610,12 @@ export async function importBundle(
     repeatTasks: true,
     memories: true,
   }
+  const selectedItems = options.selectedItems ?? {}
+  const selectedAgentProfileIds = createImportSelectionSet(selectedItems.agentProfileIds)
+  const selectedMcpServerNames = createImportSelectionSet(selectedItems.mcpServerNames)
+  const selectedSkillIds = createImportSelectionSet(selectedItems.skillIds)
+  const selectedRepeatTaskIds = createImportSelectionSet(selectedItems.repeatTaskIds)
+  const selectedMemoryIds = createImportSelectionSet(selectedItems.memoryIds)
 
   try {
     result.backupFilePath = await createPreImportBackup(targetAgentsDir, options.backup)
@@ -1623,6 +1640,15 @@ export async function importBundle(
 
     for (const bundleProfile of bundle.agentProfiles) {
       try {
+        if (!isImportItemSelected(selectedAgentProfileIds, bundleProfile.id)) {
+          result.agentProfiles.push({
+            id: bundleProfile.id,
+            name: bundleProfile.name,
+            action: "skipped",
+          })
+          continue
+        }
+
         const exists = existingIds.has(bundleProfile.id)
 
         if (exists && conflictStrategy === "skip") {
@@ -1710,6 +1736,15 @@ export async function importBundle(
       let modified = false
 
       for (const bundleServer of bundle.mcpServers) {
+        if (!isImportItemSelected(selectedMcpServerNames, bundleServer.name)) {
+          result.mcpServers.push({
+            id: bundleServer.name,
+            name: bundleServer.name,
+            action: "skipped",
+          })
+          continue
+        }
+
         const exists = existingNames.has(bundleServer.name)
 
         if (exists && conflictStrategy === "skip") {
@@ -1771,6 +1806,15 @@ export async function importBundle(
 
     for (const bundleSkill of bundle.skills) {
       try {
+        if (!isImportItemSelected(selectedSkillIds, bundleSkill.id)) {
+          result.skills.push({
+            id: bundleSkill.id,
+            name: bundleSkill.name,
+            action: "skipped",
+          })
+          continue
+        }
+
         const exists = existingIds.has(bundleSkill.id)
 
         if (exists && conflictStrategy === "skip") {
@@ -1835,6 +1879,15 @@ export async function importBundle(
 
     for (const bundleTask of bundle.repeatTasks) {
       try {
+        if (!isImportItemSelected(selectedRepeatTaskIds, bundleTask.id)) {
+          result.repeatTasks.push({
+            id: bundleTask.id,
+            name: bundleTask.name,
+            action: "skipped",
+          })
+          continue
+        }
+
         const exists = existingIds.has(bundleTask.id)
 
         if (exists && conflictStrategy === "skip") {
@@ -1895,6 +1948,15 @@ export async function importBundle(
 
     for (const bundleMemory of bundle.memories) {
       try {
+        if (!isImportItemSelected(selectedMemoryIds, bundleMemory.id)) {
+          result.memories.push({
+            id: bundleMemory.id,
+            name: bundleMemory.title,
+            action: "skipped",
+          })
+          continue
+        }
+
         const exists = existingIds.has(bundleMemory.id)
 
         if (exists && conflictStrategy === "skip") {

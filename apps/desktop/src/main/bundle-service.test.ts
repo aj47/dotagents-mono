@@ -1406,6 +1406,82 @@ describe("bundle-service", () => {
       expect(result.memories.length).toBe(0)
     })
 
+    it("respects per-item selection within enabled components", async () => {
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Per-item Import Selection",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 2, mcpServers: 2, skills: 2, repeatTasks: 2, memories: 2 },
+        },
+        agentProfiles: [
+          { id: "agent-selected", name: "Selected Agent", enabled: true, connection: { type: "internal" } },
+          { id: "agent-skipped", name: "Skipped Agent", enabled: true, connection: { type: "internal" } },
+        ],
+        mcpServers: [
+          { name: "github", command: "npx", args: ["-y", "@modelcontextprotocol/server-github"], transport: "stdio", enabled: true },
+          { name: "filesystem", command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem"], transport: "stdio", enabled: true },
+        ],
+        skills: [
+          { id: "skill-selected", name: "Selected Skill", description: "Keep me", instructions: "# Selected" },
+          { id: "skill-skipped", name: "Skipped Skill", description: "Skip me", instructions: "# Skipped" },
+        ],
+        repeatTasks: [
+          { id: "task-selected", name: "Selected Task", prompt: "Run selected", intervalMinutes: 30, enabled: true },
+          { id: "task-skipped", name: "Skipped Task", prompt: "Run skipped", intervalMinutes: 60, enabled: true },
+        ],
+        memories: [
+          { id: "memory-selected", title: "Selected Memory", content: "Keep me", importance: "medium", tags: [] },
+          { id: "memory-skipped", title: "Skipped Memory", content: "Skip me", importance: "low", tags: [] },
+        ],
+      }
+
+      const bundlePath = path.join(tempDir, "import-per-item-selection.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundleForTest(bundlePath, {
+        conflictStrategy: "skip",
+        selectedItems: {
+          agentProfileIds: ["agent-selected"],
+          mcpServerNames: ["github"],
+          skillIds: ["skill-selected"],
+          repeatTaskIds: ["task-selected"],
+          memoryIds: ["memory-selected"],
+        },
+      })
+      const layer = getAgentsLayerPaths(targetDir)
+      const importedMcpJson = readTestMcpJson(targetDir)
+      const importedMcpServers = Object.keys(((importedMcpJson.mcpConfig as { mcpServers?: Record<string, unknown> } | undefined)?.mcpServers) ?? {})
+
+      expect(result.success).toBe(true)
+      expect(result.agentProfiles).toEqual([
+        { id: "agent-selected", name: "Selected Agent", action: "imported" },
+        { id: "agent-skipped", name: "Skipped Agent", action: "skipped" },
+      ])
+      expect(result.mcpServers).toEqual([
+        { id: "github", name: "github", action: "imported" },
+        { id: "filesystem", name: "filesystem", action: "skipped" },
+      ])
+      expect(result.skills).toEqual([
+        { id: "skill-selected", name: "Selected Skill", action: "imported" },
+        { id: "skill-skipped", name: "Skipped Skill", action: "skipped" },
+      ])
+      expect(result.repeatTasks).toEqual([
+        { id: "task-selected", name: "Selected Task", action: "imported" },
+        { id: "task-skipped", name: "Skipped Task", action: "skipped" },
+      ])
+      expect(result.memories).toEqual([
+        { id: "memory-selected", name: "Selected Memory", action: "imported" },
+        { id: "memory-skipped", name: "Skipped Memory", action: "skipped" },
+      ])
+      expect(loadAgentProfilesLayer(layer).profiles.map((profile) => profile.id)).toEqual(["agent-selected"])
+      expect(importedMcpServers).toEqual(["github"])
+      expect(loadAgentsSkillsLayer(layer).skills.map((skill) => skill.id)).toEqual(["skill-selected"])
+      expect(loadTasksLayer(layer).tasks.map((task) => task.id)).toEqual(["task-selected"])
+      expect(loadAgentsMemoriesLayer(layer).memories.map((memory) => memory.id)).toEqual(["memory-selected"])
+    })
+
     it("skips conflicting MCP servers and preserves canonical mcpConfig shape", async () => {
       writeTestMcpJson(targetDir, {
         mcpConfig: {

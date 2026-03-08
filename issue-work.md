@@ -1070,3 +1070,38 @@
   - Consider richer provenance affordances (for example, tooltip detail or popover summaries) if users need more than the current compact badge labels.
 
 - Next recommended issue work item: stay on `#58` only if there is another narrow provenance surface to align, otherwise pivot to a fresh high-value issue such as `#25` or another clearly local desktop reliability/UX slice.
+
+##### Issue #57 — Bundle import per-item cherry-pick follow-up
+
+- Selection rationale:
+  - `#57` was still open and already had the backup + conflict-preview groundwork landed in this worktree, but one important acceptance gap remained: users could toggle whole component groups, yet they still could not deselect individual bundle items before import.
+  - This made `#57` a strong follow-up candidate even though it had been investigated recently, because the remaining slice was narrow, user-visible, and locally implementable without reopening the broader restore/sandbox scope.
+- Investigation:
+  - Re-read issue `#57` and confirmed the explicit cherry-pick acceptance criterion is “User can deselect individual components before importing,” with the proposal text showing per-item toggles nested under each component group.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the dialog only supported component-level switches plus a single global conflict strategy selector; each import-plan row was read-only.
+  - Inspected `apps/desktop/src/main/bundle-service.ts` and `apps/desktop/src/main/tipc.ts` and confirmed the backend import contract only accepted `components`, so there was no way for the renderer to express per-item inclusion/exclusion even if the dialog grew item toggles.
+  - Reviewed the existing dependency-free regression harness in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and the fuller Vitest coverage in `apps/desktop/src/main/bundle-service.test.ts` to anchor a minimal, reviewable test update.
+- Important assumptions:
+  - Assumption: for this iteration, it is acceptable to add per-item inclusion/exclusion while keeping conflict handling as a single import-wide strategy (`skip` / `overwrite` / `rename`) rather than implementing mixed per-conflict decisions.
+  - Why acceptable: issue `#57` explicitly calls out cherry-pick import as a standalone goal, and adding true per-item selection materially reduces import risk without forcing a much larger UI/state rewrite in the same pass.
+  - Assumption: mobile does not need a parallel update in this slice.
+  - Why acceptable: this bundle import preview surface is desktop-specific Electron UI; there is no equivalent mobile bundle-import dialog in the current codebase that would drift from this change.
+- Changes implemented:
+  - Extended the main-process import contract in `apps/desktop/src/main/bundle-service.ts` so `ImportOptions` can carry `selectedItems`, with per-component selection-set checks that skip deselected bundle items and report them as skipped in the import result.
+  - Extended the TIPC handlers in `apps/desktop/src/main/tipc.ts` so renderer callers can pass the new per-item selection payload through both `importBundle` and `importBundleFromDialog`.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to track selected item IDs per component, initialize them from the previewed bundle contents, and send that selection state when importing.
+  - Upgraded the import-plan UI so each listed item now has its own toggle, shows an `Excluded` outcome when deselected, updates selected conflict counts accordingly, and preserves the existing component-level toggles plus global conflict policy selector.
+  - Added a new Vitest regression in `apps/desktop/src/main/bundle-service.test.ts` covering per-item import selection across all supported component types, and extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` with source-level assertions for the new dialog/TIPC/service wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted but blocked: `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts --testNamePattern 'respects per-item selection within enabled components'` ❌ (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found` in this worktree)
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - If workspace dependencies are restored, run the targeted desktop Vitest coverage for `bundle-service.test.ts` and then the smallest relevant typecheck covering the updated TIPC/dialog surface.
+  - Consider whether `#57` still needs per-conflict mixed decisions (for example, one conflicting item skipped while another is renamed) beyond the current global conflict strategy.
+  - Revisit the restore-from-backup surface if it is not already complete enough to satisfy the remaining acceptance criteria under Settings → Capabilities.
+
+- Next recommended issue work item: either keep pushing `#57` by validating the new cherry-pick backend path under restored desktop dependencies, or pivot back to a fresh issue such as `#25` / another local desktop reliability slice if a cleaner verification path is preferred.

@@ -4744,6 +4744,13 @@ export const router = {
         repeatTasks?: boolean
         memories?: boolean
       }
+      selectedItems?: {
+        agentProfileIds?: string[]
+        mcpServerNames?: string[]
+        skillIds?: string[]
+        repeatTaskIds?: string[]
+        memoryIds?: string[]
+      }
     }>()
     .action(async ({ input }) => {
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
@@ -4753,6 +4760,7 @@ export const router = {
       const result = await importBundle(input.filePath, targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
+        selectedItems: input.selectedItems,
       })
       await refreshRuntimeAfterBundleImport()
       return result
@@ -4768,6 +4776,13 @@ export const router = {
         repeatTasks?: boolean
         memories?: boolean
       }
+      selectedItems?: {
+        agentProfileIds?: string[]
+        mcpServerNames?: string[]
+        skillIds?: string[]
+        repeatTaskIds?: string[]
+        memoryIds?: string[]
+      }
     }>()
     .action(async ({ input }) => {
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
@@ -4777,6 +4792,7 @@ export const router = {
       const result = await importBundleFromDialog(targetDir, {
         conflictStrategy: input.conflictStrategy,
         components: input.components,
+        selectedItems: input.selectedItems,
       })
       if (result) {
         await refreshRuntimeAfterBundleImport()

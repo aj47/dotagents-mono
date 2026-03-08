@@ -19,6 +19,8 @@ import { toast } from "sonner"
 type ConflictStrategy = "skip" | "overwrite" | "rename"
 type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "memories"
 type BundleComponentsState = Record<BundleComponentKey, boolean>
+type BundleItemSelectionKey = "agentProfileIds" | "mcpServerNames" | "skillIds" | "repeatTaskIds" | "memoryIds"
+type BundleItemSelectionState = Record<BundleItemSelectionKey, string[]>
 
 const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
   agentProfiles: "Agent Profiles",
@@ -37,9 +39,33 @@ const DEFAULT_COMPONENTS: BundleComponentsState = {
 }
 
 const COMPONENT_KEYS: BundleComponentKey[] = ["agentProfiles", "mcpServers", "skills", "repeatTasks", "memories"]
+const ITEM_SELECTION_KEYS: Record<BundleComponentKey, BundleItemSelectionKey> = {
+  agentProfiles: "agentProfileIds",
+  mcpServers: "mcpServerNames",
+  skills: "skillIds",
+  repeatTasks: "repeatTaskIds",
+  memories: "memoryIds",
+}
 
 function resolveComponents(initialComponents?: Partial<BundleComponentsState>): BundleComponentsState {
   return { ...DEFAULT_COMPONENTS, ...initialComponents }
+}
+
+function createDefaultItemSelections(bundle?: BundlePreview["bundle"]): BundleItemSelectionState {
+  return {
+    agentProfileIds: (bundle?.agentProfiles ?? []).map((profile) => profile.id),
+    mcpServerNames: (bundle?.mcpServers ?? []).map((server) => server.name),
+    skillIds: (bundle?.skills ?? []).map((skill) => skill.id),
+    repeatTaskIds: (bundle?.repeatTasks ?? []).map((task) => task.id),
+    memoryIds: (bundle?.memories ?? []).map((memory) => memory.id),
+  }
+}
+
+function getSelectedItemIds(
+  selectedItems: BundleItemSelectionState,
+  key: BundleComponentKey,
+): string[] {
+  return selectedItems[ITEM_SELECTION_KEYS[key]]
 }
 
 interface BundleManifest {
@@ -124,12 +150,15 @@ export async function previewProvidedBundleFile(filePath: string): Promise<Bundl
 function getSelectedConflictCount(
   conflicts: BundlePreview["conflicts"] | undefined,
   components: BundleComponentsState,
+  selectedItems: BundleItemSelectionState,
 ): number {
   if (!conflicts) return 0
 
   return COMPONENT_KEYS.reduce((total, key) => {
     if (!components[key]) return total
-    return total + conflicts[key].length
+
+    const selectedIds = new Set(getSelectedItemIds(selectedItems, key))
+    return total + conflicts[key].filter((conflict) => selectedIds.has(conflict.id)).length
   }, 0)
 }
 
@@ -151,13 +180,14 @@ function formatExpectedConflictOutcome(conflictCount: number, strategy: Conflict
   return `${formatCount("existing item", conflictCount)} will be imported with renamed IDs.`
 }
 
-type ImportPlanAction = "add" | ConflictStrategy
+type ImportPlanAction = "add" | ConflictStrategy | "exclude"
 
 interface ImportPlanItem {
   id: string
   name: string
   existingName?: string
   action: ImportPlanAction
+  selected: boolean
   renameTargetId?: string
 }
 
@@ -165,9 +195,11 @@ function buildImportPlanItems(
   preview: BundlePreview | null,
   key: BundleComponentKey,
   strategy: ConflictStrategy,
+  selectedIds: string[],
 ): ImportPlanItem[] {
   const bundle = preview?.bundle
   const conflicts = new Map((preview?.conflicts?.[key] ?? []).map((conflict) => [conflict.id, conflict]))
+  const selectedIdSet = new Set(selectedIds)
   const items = (() => {
     switch (key) {
       case "agentProfiles":
@@ -200,10 +232,23 @@ function buildImportPlanItems(
 
   return items.map((item) => {
     const conflict = conflicts.get(item.id)
+    const selected = selectedIdSet.has(item.id)
+
+    if (!selected) {
+      return {
+        ...item,
+        existingName: conflict?.existingName,
+        action: "exclude",
+        selected: false,
+        renameTargetId: conflict?.renameTargetId,
+      }
+    }
+
     if (!conflict) {
       return {
         ...item,
         action: "add",
+        selected: true,
       }
     }
 
@@ -211,6 +256,7 @@ function buildImportPlanItems(
       ...item,
       existingName: conflict.existingName,
       action: strategy,
+      selected: true,
       renameTargetId: conflict.renameTargetId,
     }
   })
@@ -218,6 +264,7 @@ function buildImportPlanItems(
 
 function getImportPlanActionBadgeLabel(action: ImportPlanAction): string {
   if (action === "add") return "Add new"
+  if (action === "exclude") return "Excluded"
   if (action === "skip") return "Skip"
   if (action === "overwrite") return "Overwrite"
   return "Rename"
@@ -225,12 +272,17 @@ function getImportPlanActionBadgeLabel(action: ImportPlanAction): string {
 
 function getImportPlanActionBadgeClassName(action: ImportPlanAction): string | undefined {
   if (action === "add") return "border-emerald-300 text-emerald-700"
+  if (action === "exclude") return "border-muted text-muted-foreground"
   if (action === "overwrite") return "border-amber-300 text-amber-700"
   if (action === "rename") return "border-sky-300 text-sky-700"
   return undefined
 }
 
 function formatImportPlanOutcome(item: ImportPlanItem): string {
+  if (item.action === "exclude") {
+    return "Will be skipped for this import. Existing items, if any, stay untouched."
+  }
+
   if (item.action === "add") {
     return "Will be added as a new item."
   }
@@ -307,6 +359,7 @@ export function BundleImportDialog({
   const [preview, setPreview] = useState<BundlePreview | null>(null)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
   const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
+  const [selectedItems, setSelectedItems] = useState<BundleItemSelectionState>(() => createDefaultItemSelections())
   const isOpenRef = useRef(open)
   const previewRequestIdRef = useRef(0)
   isOpenRef.current = open
@@ -325,6 +378,7 @@ export function BundleImportDialog({
       setPreview(null)
       setConflictStrategy("skip")
       setComponents(resolveComponents(initialComponents))
+      setSelectedItems(createDefaultItemSelections())
     }
   }, [initialComponents, open])
 
@@ -343,6 +397,7 @@ export function BundleImportDialog({
     const fullResult = await previewProvidedBundleFile(filePath)
     if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
     setPreview(fullResult as BundlePreview)
+    setSelectedItems(createDefaultItemSelections(fullResult.bundle))
   }
 
   const handleSelectFile = async () => {
@@ -395,6 +450,7 @@ export function BundleImportDialog({
         filePath: preview.filePath,
         conflictStrategy,
         components: normalizedComponents,
+        selectedItems,
       }) as BundleImportResult
       const backupMessage = result.backupFilePath
         ? ` Pre-import backup: ${result.backupFilePath}`
@@ -428,25 +484,44 @@ export function BundleImportDialog({
     setPreview(null)
     setConflictStrategy("skip")
     setComponents(resolveComponents(initialComponents))
+    setSelectedItems(createDefaultItemSelections())
     onOpenChange(false)
   }
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
-  const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents)
+  const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
   const expectedConflictOutcome = formatExpectedConflictOutcome(selectedConflictCount, conflictStrategy)
-  const hasConflicts = conflicts
-    ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
-    : false
+  const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
     key,
     label: COMPONENT_LABELS[key],
-    items: normalizedComponents[key] ? buildImportPlanItems(preview, key, conflictStrategy) : [],
+    items: normalizedComponents[key]
+      ? buildImportPlanItems(preview, key, conflictStrategy, getSelectedItemIds(selectedItems, key))
+      : [],
   })).filter((section) => section.items.length > 0)
-  const selectedPlanItemCount = importPlanSections.reduce((total, section) => total + section.items.length, 0)
+  const selectedPlanItemCount = importPlanSections.reduce(
+    (total, section) => total + section.items.filter((item) => item.selected).length,
+    0,
+  )
 
   const toggleComponent = (key: keyof typeof components) => {
     setComponents(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const toggleImportPlanItem = (key: BundleComponentKey, itemId: string) => {
+    setSelectedItems((prev) => {
+      const selectionKey = ITEM_SELECTION_KEYS[key]
+      const currentIds = prev[selectionKey]
+      const nextIds = currentIds.includes(itemId)
+        ? currentIds.filter((id) => id !== itemId)
+        : [...currentIds, itemId]
+
+      return {
+        ...prev,
+        [selectionKey]: nextIds,
+      }
+    })
   }
 
   return (
@@ -593,6 +668,8 @@ export function BundleImportDialog({
                       key={section.key}
                       label={section.label}
                       items={section.items}
+                      selectedCount={section.items.filter((item) => item.selected).length}
+                      onToggleItem={(itemId) => toggleImportPlanItem(section.key, itemId)}
                     />
                   ))}
                 </div>
@@ -646,14 +723,17 @@ function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }
 interface ImportPlanSectionProps {
   label: string
   items: ImportPlanItem[]
+  selectedCount: number
+  onToggleItem: (itemId: string) => void
 }
 
-function ImportPlanSection({ label, items }: ImportPlanSectionProps) {
+function ImportPlanSection({ label, items, selectedCount, onToggleItem }: ImportPlanSectionProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <p className="text-sm font-medium">{label}</p>
         <Badge variant="secondary" className="text-xs">{items.length}</Badge>
+        <Badge variant="outline" className="text-xs">{selectedCount} selected</Badge>
       </div>
 
       <div className="space-y-2">
@@ -662,22 +742,25 @@ function ImportPlanSection({ label, items }: ImportPlanSectionProps) {
 
           return (
             <div key={`${label}:${item.id}`} className="rounded-md border bg-muted/20 p-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 space-y-1">
-                  <p className="truncate text-sm font-medium">{item.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">ID: {item.id}</p>
-                  {showExistingName && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      Existing name: {item.existingName}
-                    </p>
-                  )}
+              <div className="flex items-start gap-3">
+                <Switch checked={item.selected} onCheckedChange={() => onToggleItem(item.id)} />
+                <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">ID: {item.id}</p>
+                    {showExistingName && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        Existing name: {item.existingName}
+                      </p>
+                    )}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`shrink-0 text-xs ${getImportPlanActionBadgeClassName(item.action) || ""}`.trim()}
+                  >
+                    {getImportPlanActionBadgeLabel(item.action)}
+                  </Badge>
                 </div>
-                <Badge
-                  variant="outline"
-                  className={`shrink-0 text-xs ${getImportPlanActionBadgeClassName(item.action) || ""}`.trim()}
-                >
-                  {getImportPlanActionBadgeLabel(item.action)}
-                </Badge>
               </div>
 
               <p className="mt-2 text-xs text-muted-foreground">

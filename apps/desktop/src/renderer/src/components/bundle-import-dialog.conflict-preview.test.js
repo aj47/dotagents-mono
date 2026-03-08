@@ -24,3 +24,19 @@ test('bundle import dialog renders an import plan with add and rename outcome de
   assert.match(dialogSource, /Add new/);
   assert.match(dialogSource, /Renamed ID preview:/);
 });
+
+test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {
+  assert.match(bundleServiceSource, /selectedItems\?: BundleItemSelectionOptions/);
+  assert.match(bundleServiceSource, /function createImportSelectionSet\(ids\?: string\[\]\): Set<string> \| null/);
+  assert.match(bundleServiceSource, /if \(!isImportItemSelected\(selectedAgentProfileIds, bundleProfile\.id\)\) \{/);
+  assert.match(bundleServiceSource, /if \(!isImportItemSelected\(selectedMcpServerNames, bundleServer\.name\)\) \{/);
+  assert.match(bundleServiceSource, /action: "skipped"/);
+  assert.match(tipcSource, /selectedItems\?: \{[\s\S]*agentProfileIds\?: string\[\][\s\S]*memoryIds\?: string\[\][\s\S]*\}/);
+  assert.match(dialogSource, /type BundleItemSelectionKey =/);
+  assert.match(dialogSource, /function createDefaultItemSelections\(bundle\?: BundlePreview\["bundle"\]\)/);
+  assert.match(dialogSource, /const \[selectedItems, setSelectedItems\] = useState<BundleItemSelectionState>/);
+  assert.match(dialogSource, /selectedItems,/);
+  assert.match(dialogSource, /action: "exclude"/);
+  assert.match(dialogSource, /Excluded/);
+  assert.match(dialogSource, /Switch checked=\{item\.selected\} onCheckedChange=\{\(\) => onToggleItem\(item\.id\)\}/);
+});
