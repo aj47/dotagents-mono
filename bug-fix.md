@@ -164,6 +164,9 @@
 - [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` after the retry-only fix and confirmed the visible `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume` actions still lacked user-visible failure handling.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/message-queue-service.ts` that `removeFromQueue(...)`, `updateMessageText(...)`, and `clearQueue(...)` can return `false` for stale/processing/already-added queue states, so those desktop actions could still silently no-op during normal queue races.
 - [x] 2026-03-08: Reviewed the mobile queue path in `apps/mobile/src/ui/MessageQueuePanel.tsx` and `apps/mobile/src/screens/ChatScreen.tsx`; mobile uses direct local-store callbacks rather than the desktop TIPC/main-process contract, so I kept this iteration scoped to the confirmed desktop renderer bug instead of widening to a second platform flow.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-progress.tsx` again and confirmed the visible completed-session `Close` button still routed rejected `clearAgentSessionProgress(...)` / `closeAgentModeAndHidePanelWindow()` calls to `console.error(...)` only.
+- [x] 2026-03-08: Confirmed that `handleClose` is wired to the completed overlay header `X` button in `AgentProgress`, so this is a live desktop close/dismiss workflow rather than dead helper code.
+- [x] 2026-03-08: Assumption accepted: adding a `toast.error(...)` in `handleClose` is the smallest safe fix because `AgentProgress` already imports `toast`, already uses the shared `getActionErrorMessage(...)` helper, and the surrounding desktop action surfaces now follow the same visible-failure pattern.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -344,6 +347,11 @@
    - `apps/desktop/src/main/message-queue-service.ts` returns `false` when `removeFromQueue(...)`, `updateMessageText(...)`, or `clearQueue(...)` lose a race against processing/history changes, so those clicks could visibly do nothing even though the user initiated a core recovery action.
    - `MessageQueuePanel` is mounted in both the desktop overlay and tile `AgentProgress` surfaces, so these silent failures affect the live queue-management workflow rather than dead UI.
 
+- [x] **Desktop completed-session close could fail silently in `AgentProgress` (directly confirmed in source):**
+   - `apps/desktop/src/renderer/src/components/agent-progress.tsx` renders a visible `Close` button for completed overlay sessions, but `handleClose(...)` previously caught rejected `tipcClient.clearAgentSessionProgress(...)` / `tipcClient.closeAgentModeAndHidePanelWindow()` calls with `console.error(...)` only.
+   - Because that handler decides between dismissing just the current session and closing the entire panel, a rejected IPC call made an explicit close action look like a dead/no-op button even though the user had just asked the UI to close.
+   - The control is mounted directly in the live desktop `AgentProgress` overlay header and there is no matching mobile overlay close flow, so this is a concrete desktop renderer bug rather than a shared-product parity question.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
 - [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers import `sonner` and expose a visible `Failed to send follow-up message` error path.
@@ -491,6 +499,8 @@
 - [x] Updated `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` so failed `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume` actions now preserve console logging but also surface visible `toast.error(...)` feedback instead of failing silently.
 - [x] Taught the desktop queue panel to convert `removeFromMessageQueue(...) === false`, `updateQueuedMessageText(...) === false`, and `clearMessageQueue(...) === false` into explicit user-facing errors (`no longer removable`, `can no longer be edited`, `wait for the current message to finish`) rather than silent no-ops.
 - [x] Expanded `apps/desktop/src/renderer/src/components/message-queue-panel.feedback.test.ts` with focused source-level assertions that lock in the broader queue-action feedback contract for `Remove`, queued-message `Save`, `Clear All`, `Pause`, and `Resume`.
+- [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so completed-session close failures now preserve console logging but also surface a visible `toast.error(...)` message, with target-specific copy for `session` versus `panel` close failures.
+- [x] Extended `apps/desktop/src/renderer/src/components/agent-progress.stop-session.test.ts` with focused source-level assertions that lock in the new close-target tracking and visible `Failed to close ${closeTarget}. ...` feedback contract.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -610,6 +620,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now converts stale `Remove` / queued-message `Save` / `Clear All` results into explicit errors, and each visible queue-management action (`Remove`, `Save`, `Clear All`, `Pause`, `Resume`, `Retry`) now has a user-visible `toast.error(...)` failure path instead of staying console-only.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `message-queue-panel.tsx` and `message-queue-panel.feedback.test.ts`, confirming the new remove/save/clear stale-state strings plus pause/resume failure toasts are present in source and covered by the regression file.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the broader desktop queue-action feedback fix and regression test update.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-progress.tsx` now tracks whether the completed-session close action was targeting the current `session` or the whole `panel`, and rejected close IPC calls now surface a visible `toast.error(...)` instead of staying console-only.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `agent-progress.tsx` and `agent-progress.stop-session.test.ts`, confirming the new close-target tracking and failure-feedback strings are present in source and covered by the regression file.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the `AgentProgress` close-feedback fix and regression test update.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -655,6 +668,7 @@
 - [x] Targeted automated verification for this desktop queued-message retry feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 - [x] Targeted automated verification for this broader desktop queue-action feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this `AgentProgress` close-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails before Vitest starts because the shared pretest cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -684,6 +698,7 @@
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
 - [ ] Whether the sampling dialog should eventually expose a clearer in-flight approval state (for example button text/spinner) while an approved request is executing, rather than only disabling the buttons during submission.
 - [ ] Whether the mobile `MessageQueuePanel` / `ChatScreen` queue-action callbacks should also surface visible failure feedback for local-store `remove`, `update`, `retry`, and `clear` failures once the mobile queue flow can be exercised in a runnable environment.
+- [ ] Whether the completed-session `AgentProgress` close button should also gain a tiny in-flight disabled/busy guard to prevent double-click close races once the desktop app can be exercised live.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -728,6 +743,8 @@
 - Reusing the panel’s existing reset behavior but adding a visible `displayError(...)` message is the smallest safe fix because it preserves the current recording-state cleanup and MCP-context handling while finally telling the user why recording did not start.
 - Mirroring the onboarding flow’s microphone-specific messaging is a low-risk repo-local choice because desktop already treats those exact permission/device cases as actionable user-facing errors elsewhere.
 - The loading-state `AgentProcessingView` bug is higher-signal than a cosmetic spinner issue because the UI explicitly offers a destructive stop action at the exact moment when the handler previously lacked any actionable path and could silently do nothing.
+- Silent failure on a completed-session `Close` action is also high-signal user pain: once work is done, the visible close button is the primary way to dismiss the session/panel, so a rejected close request should not look like the UI ignored the click.
+- Reusing `AgentProgress`'s existing `toast` import and shared `getActionErrorMessage(...)` helper is the smallest safe fix because it preserves the current session-versus-panel close logic and simply exposes the already-known failure back to the user.
 - Falling back to `emergencyStopAgent()` is the smallest safe fix because there is no narrower pending-session cancel API yet, and the desktop repo already uses the same fallback when a stop action is invoked before a stable session id exists.
 - Updating the confirmation copy is part of the minimal safe fix here because the fallback can affect more than one running session, so the dialog should no longer promise narrower stop semantics during that pre-session window.
 - The broader `AgentProgress` issue is the same high-signal bug on even more common desktop surfaces: the overlay and sessions-page tile both expose a visible destructive stop action, so a rejected stop request should not disappear into DevTools-only logging.

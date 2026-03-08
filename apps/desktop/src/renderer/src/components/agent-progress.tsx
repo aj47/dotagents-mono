@@ -2517,6 +2517,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Close button handler for completed agent view
   const handleClose = async () => {
+    let closeTarget: "session" | "panel" = "panel"
     try {
       const thisId = progress?.sessionId
       // Avoid subscribing every AgentProgress instance to the full progress map.
@@ -2528,6 +2529,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         ? Array.from(agentProgressById?.values() ?? []).some(p => p && p.sessionId !== thisId && !p.isSnoozed)
         : false
 
+      closeTarget = thisId && hasOtherVisible ? "session" : "panel"
+
       if (thisId && hasOtherVisible) {
         // Session-scoped dismiss: remove only this session's progress and keep panel open
         await tipcClient.clearAgentSessionProgress({ sessionId: thisId })
@@ -2537,6 +2540,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     } catch (error) {
       console.error("Failed to close agent session/panel:", error)
+      toast.error(`Failed to close ${closeTarget}. ${getActionErrorMessage(error, "Please try again.")}`)
     }
   }
 

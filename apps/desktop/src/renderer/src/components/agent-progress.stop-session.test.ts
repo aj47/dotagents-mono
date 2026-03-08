@@ -31,4 +31,13 @@ describe("agent progress stop-session feedback", () => {
       '`Failed to restore session. ${getActionErrorMessage(error, "Please try again.")}`',
     )
   })
+
+  it("surfaces a visible toast when completed-session close actions fail", () => {
+    expect(agentProgressSource).toContain('let closeTarget: "session" | "panel" = "panel"')
+    expect(agentProgressSource).toContain('closeTarget = thisId && hasOtherVisible ? "session" : "panel"')
+    expect(agentProgressSource).toContain('console.error("Failed to close agent session/panel:", error)')
+    expect(agentProgressSource).toContain(
+      '`Failed to close ${closeTarget}. ${getActionErrorMessage(error, "Please try again.")}`',
+    )
+  })
 })
