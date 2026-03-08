@@ -10,6 +10,7 @@ import {
   MemoryImportance,
   MemoryUpdateRequest,
 } from '../lib/settingsApi';
+import { createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
 
 const IMPORTANCE_OPTIONS: { label: string; value: MemoryImportance }[] = [
@@ -178,9 +179,15 @@ export default function MemoryEditScreen({ navigation, route }: any) {
       contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
       keyboardShouldPersistTaps="handled"
     >
-      {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
+        </View>
+      )}
       {!settingsClient && (
-        <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+        <View style={styles.helperContainer}>
+          <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>
+        </View>
       )}
 
       <Text style={styles.label}>Title *</Text>
@@ -212,7 +219,12 @@ export default function MemoryEditScreen({ navigation, route }: any) {
             style={[styles.option, formData.importance === option.value && styles.optionActive]}
             onPress={() => updateField('importance', option.value)}
           >
-            <Text style={[styles.optionText, formData.importance === option.value && styles.optionTextActive]}>{option.label}</Text>
+            <Text
+              style={[styles.optionText, formData.importance === option.value && styles.optionTextActive]}
+              numberOfLines={2}
+            >
+              {option.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -235,19 +247,50 @@ export default function MemoryEditScreen({ navigation, route }: any) {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const importanceOptionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: { padding: spacing.lg },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: spacing.md, color: theme.colors.mutedForeground, fontSize: 14 },
-    errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
-    helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl },
+    loadingText: { marginTop: spacing.md, color: theme.colors.mutedForeground, fontSize: 14, textAlign: 'center' },
+    errorContainer: {
+      backgroundColor: theme.colors.destructive + '14',
+      borderWidth: 1,
+      borderColor: theme.colors.destructive + '33',
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    errorText: { color: theme.colors.destructive, fontSize: 14, lineHeight: 20 },
+    helperContainer: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    helperText: { fontSize: 12, lineHeight: 18, color: theme.colors.mutedForeground },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 120 },
     optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    option: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+    option: {
+      ...importanceOptionTouchTarget,
+      maxWidth: '100%',
+      alignSelf: 'flex-start',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.background,
+    },
     optionActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-    optionText: { color: theme.colors.foreground, fontSize: 13 },
+    optionText: { color: theme.colors.foreground, fontSize: 13, lineHeight: 18, textAlign: 'center', flexShrink: 1 },
     optionTextActive: { color: theme.colors.primaryForeground, fontWeight: '600' },
     saveButton: { marginTop: spacing.xl, backgroundColor: theme.colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
     saveButtonDisabled: { opacity: 0.7 },

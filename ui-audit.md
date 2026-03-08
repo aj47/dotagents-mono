@@ -1,5 +1,82 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 29: Desktop session-tile follow-up composer action rail under narrow tile widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`
+  - cross-checked the already-hardened overlay counterpart `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`
+- Why this chunk: chunk 28 explicitly recommended a fresh desktop surface next, and chunk 22 had already identified the compact follow-up composers as a likely remaining pressure point. Among those, `TileFollowUpInput` still had the clearest unresolved narrow-width risk because session tiles can clamp down to `200px` wide while the tile composer still used older single-row assumptions.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting recently logged mobile editor work
+  - reused `apps/desktop/DEBUGGING.md`, `README.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - attempted the normal desktop verification path, but live Electron inspection and standard test/typecheck commands remain blocked in this worktree because root `node_modules` is missing (`vitest` unavailable and desktop tsconfig dependencies unresolved)
+  - inspected `tile-follow-up-input.tsx` directly, compared it against the already-wrap-safe `overlay-follow-up-input.tsx`, and confirmed the tile-width floor from `use-resizable.ts` (`TILE_DIMENSIONS.width.min = 200`)
+
+#### Findings
+
+- Before the fix, `TileFollowUpInput` still had one concrete desktop responsiveness problem with clear user impact:
+  - the tile composer kept its text field plus trailing prompt/image/send/voice/stop controls on a single rigid row, even though session tiles can compress to `200px` widths
+  - the text input only used `flex-1` with no explicit `min-w-0` or bounded flex basis, so the action cluster could crowd the field into an unusably narrow strip instead of reflowing cleanly
+  - the optional agent-name row also lacked the explicit `min-w-0` contract already used in the overlay variant, making long agent names more fragile in compact tiles
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` with a small, local layout fix:
+  - made the composer row `flex-wrap` with a tighter `gap-1.5` so the input and action rail can reflow under narrow tile widths and zoomed text
+  - upgraded the text input to `min-w-0 flex-[1_1_7rem]` so it keeps a sensible preferred width while still yielding safely when the action cluster needs room
+  - moved the trailing controls into a dedicated `ml-auto flex max-w-full shrink-0 flex-wrap items-center` cluster so the prompt/image/send/voice/stop buttons can drop cleanly instead of crushing the input
+  - added `min-w-0` to the agent indicator row and label so long agent names truncate intentionally instead of relying on parent luck
+- Added `apps/desktop/src/renderer/src/components/tile-follow-up-input.layout.test.ts` so this compact tile-composer layout contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout tests: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tile-follow-up-input.layout.test.ts src/renderer/src/components/overlay-follow-up-input.layout.test.ts src/renderer/src/components/follow-up-input.submit.test.ts` *(blocked: `vitest` not found because this worktree is missing local dependencies / `node_modules`)*
+- Attempted targeted desktop web typecheck: `pnpm --filter @dotagents/desktop typecheck:web` *(blocked: missing `@electron-toolkit/tsconfig` and other local dependencies because `node_modules` is absent)*
+- Dependency-free source-contract verification: `node --input-type=module -e "..."` against `tile-follow-up-input.tsx` to confirm the new wrap-safe class contract is present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx apps/desktop/src/renderer/src/components/tile-follow-up-input.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- This chunk is desktop-only: mobile chat/follow-up UI uses different surfaces and does not share this tile composer implementation.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect a session tile near its `200px` minimum width with a long agent name and an active stop button visible.
+
+### 2026-03-08 — Chunk 28: Mobile Memory editor importance chips and state notices under narrow widths and larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/MemoryEditScreen.tsx`
+- Why this chunk: chunk 27 explicitly called out `MemoryEditScreen` as the next unlogged mobile editor surface. It still had the same older chip-sizing assumptions already fixed in adjacent editors, and its config/error guidance was visually under-emphasized despite being the main blocker state for this flow.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid overlap with recent mobile editor passes
+  - reused `apps/desktop/DEBUGGING.md`, `AGENTS.md`, and `DEVELOPMENT.md` for the repo’s desktop/mobile debugging workflow and design guidance
+  - confirmed live mobile inspection is still blocked in this worktree because local dependencies are missing: root `node_modules` is absent, `pnpm --filter @dotagents/mobile exec expo --version` fails because `expo` is unavailable, and targeted mobile typecheck still fails with missing Expo/mobile dependencies and `expo/tsconfig.base`
+  - inspected `MemoryEditScreen.tsx` directly and compared it against the recently hardened mobile editor patterns already used in `LoopEditScreen` and `AgentEditScreen`
+
+#### Findings
+
+- Before the fix, `MemoryEditScreen` still had two concrete mobile polish gaps:
+  - the `Importance` chips were still padding-sized only, so they fell short of the shared 44px touch-target standard and had no explicit width cap or multiline-label contract for narrow widths / larger text
+  - the primary blocked/error states (`!settingsClient` guidance and load/save errors) rendered as bare inline text, which made the screen’s most important status copy feel visually secondary and easier to miss once the form stacked tightly
+
+#### Changes made
+
+- Hardened `apps/mobile/src/screens/MemoryEditScreen.tsx` with a small, local layout/state fix:
+  - reused `createMinimumTouchTargetStyle(...)` for the importance chips so each option now meets the shared 44px mobile touch-target expectation
+  - capped each chip to `maxWidth: '100%'`, kept it aligned to wrapped rows, and allowed importance labels up to two centered lines with explicit line height and `flexShrink`
+  - promoted the save-blocking helper and error copy into bordered notice cards so configuration and failure states read like intentional UI states instead of stray inline text
+  - centered the loading copy more safely so the loading state stays readable under tighter widths
+- Added `apps/mobile/tests/memory-edit-screen-layout.test.js` so this screen’s chip sizing, multiline-label, and notice-card layout contract now has focused regression coverage.
+
+#### Verification
+
+- Targeted regression test: `node --test apps/mobile/tests/memory-edit-screen-layout.test.js`
+- Attempted targeted mobile typecheck: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(still blocked because this worktree is missing Expo/mobile dependencies and `expo/tsconfig.base`)*
+
+#### Notes
+
+- Live mobile verification remains blocked until dependencies are installed, so this chunk is source-inspection-driven with source-contract tests rather than screenshot-backed runtime evidence.
+- This chunk stays mobile-scoped: there is no direct desktop equivalent for this dedicated memory editor screen that needed the same fix.
+- Best next UI audit chunk after this one: prefer a fresh live-inspected desktop surface, or return to `MemoryEditScreen` for screenshot-backed verification once mobile dependencies are restored.
+
 ### 2026-03-08 — Chunk 27: Mobile Agent editor chips and switch rows under narrow widths and larger text
 
 - Area selected:

@@ -270,9 +270,9 @@ export function TileFollowUpInput({
     >
       {/* Agent indicator - shows which agent is handling this session */}
       {agentName && (
-        <div className="flex items-center gap-1 text-[10px] text-primary/70">
+        <div className="flex min-w-0 items-center gap-1 text-[10px] text-primary/70">
           <Bot className="h-2.5 w-2.5 shrink-0" />
-          <span className="truncate" title={`Agent: ${agentName}`}>{agentName}</span>
+          <span className="min-w-0 truncate" title={`Agent: ${agentName}`}>{agentName}</span>
         </div>
       )}
 
@@ -297,7 +297,7 @@ export function TileFollowUpInput({
         </div>
       )}
 
-      <div className="flex w-full items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-1.5">
         <input
           ref={inputRef}
           type="text"
@@ -306,7 +306,7 @@ export function TileFollowUpInput({
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholder()}
           className={cn(
-            "flex-1 text-sm bg-transparent border-0 outline-none",
+            "min-w-0 flex-[1_1_7rem] text-sm bg-transparent border-0 outline-none",
             "placeholder:text-muted-foreground/60",
             "focus:ring-0"
           )}
@@ -320,76 +320,78 @@ export function TileFollowUpInput({
           className="hidden"
           onChange={handleImageSelection}
         />
-        <PredefinedPromptsMenu
-          onSelectPrompt={(content) => setText(content)}
-          disabled={isDisabled}
-          className="h-6 w-6"
-        />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
-          disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
-          onClick={() => fileInputRef.current?.click()}
-          title="Attach image"
-        >
-          <ImagePlus className="h-3 w-3" />
-        </Button>
-        <Button
-          type="submit"
-          size="icon"
-          variant="ghost"
-          className="h-6 w-6 flex-shrink-0"
-          disabled={!hasMessageContent || isDisabled}
-          title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-          aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
-        >
-          {isInitializingSession ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Send className={cn(
-              "h-3 w-3",
-              sendMutation.isPending && "animate-pulse"
-            )} aria-hidden="true" />
+        <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-1.5">
+          <PredefinedPromptsMenu
+            onSelectPrompt={(content) => setText(content)}
+            disabled={isDisabled}
+            className="h-6 w-6"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 flex-shrink-0"
+            disabled={isDisabled || imageAttachments.length >= MAX_IMAGE_ATTACHMENTS}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach image"
+          >
+            <ImagePlus className="h-3 w-3" />
+          </Button>
+          <Button
+            type="submit"
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 flex-shrink-0"
+            disabled={!hasMessageContent || isDisabled}
+            title={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+            aria-label={isInitializingSession ? "Starting follow-up" : isSessionActive && isQueueEnabled ? "Queue message" : "Send follow-up message"}
+          >
+            {isInitializingSession ? (
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className={cn(
+                "h-3 w-3",
+                sendMutation.isPending && "animate-pulse"
+              )} aria-hidden="true" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "h-6 w-6 flex-shrink-0",
+              "hover:bg-red-100 dark:hover:bg-red-900/30",
+              "hover:text-red-600 dark:hover:text-red-400"
+            )}
+            disabled={isVoiceDisabled}
+            onClick={handleVoiceClick}
+            title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
+          >
+            <Mic className="h-3 w-3" />
+          </Button>
+          {/* Kill switch - stop agent button (only show when session is active) */}
+          {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className={cn(
+                "h-6 w-6 flex-shrink-0",
+                "text-red-500 hover:text-red-600",
+                "hover:bg-red-100 dark:hover:bg-red-950/30"
+              )}
+              disabled={isStoppingSession}
+              onClick={handleStopSession}
+              title="Stop agent execution"
+            >
+              <OctagonX className={cn(
+                "h-3 w-3",
+                isStoppingSession && "animate-pulse"
+              )} />
+            </Button>
           )}
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "h-6 w-6 flex-shrink-0",
-            "hover:bg-red-100 dark:hover:bg-red-900/30",
-            "hover:text-red-600 dark:hover:text-red-400"
-          )}
-          disabled={isVoiceDisabled}
-          onClick={handleVoiceClick}
-          title={isInitializingSession ? "Voice unavailable while session starts" : isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
-        >
-          <Mic className="h-3 w-3" />
-        </Button>
-        {/* Kill switch - stop agent button (only show when session is active) */}
-        {isSessionActive && sessionId && !sessionId.startsWith('pending-') && (
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "h-6 w-6 flex-shrink-0",
-            "text-red-500 hover:text-red-600",
-            "hover:bg-red-100 dark:hover:bg-red-950/30"
-          )}
-          disabled={isStoppingSession}
-          onClick={handleStopSession}
-          title="Stop agent execution"
-        >
-          <OctagonX className={cn(
-            "h-3 w-3",
-            isStoppingSession && "animate-pulse"
-          )} />
-        </Button>
-        )}
+        </div>
       </div>
     </form>
   )
