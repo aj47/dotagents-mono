@@ -1,5 +1,48 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 140 - Let the mobile selector list use the sheet's remaining height
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid revisiting the freshly touched `LoopEditScreen` assignment summary and `Settings > Agents` / `Agent Loops` hierarchy tweaks without new evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector sheet had not been the most recently modified mobile surface.
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed the non-empty selector state still rendered its heading and `FlatList` directly in the sheet while the sheet itself stayed capped at `60%` height.
+  - The list also had its own hard `maxHeight: 300` cap.
+  - On narrow mobile screens, that meant subtitle text, switching status, or the existing `Current ... unavailable in this list` notice could consume vertical space before the actual selector options, forcing extra scrolling sooner than necessary.
+- Issue identified:
+  - The mobile sub-agent selector used a rigid double height cap, which could squeeze the actual options list and weaken scanability when explanatory state content was present.
+- Decision and rationale:
+  - Keep the selector pattern intact: same title, subtitle, notices, row design, and bottom cancel action.
+  - Avoid a broad full-screen redesign; only make the sheet use vertical space more intelligently.
+  - Let the options region flex to the remaining sheet height instead of relying on a hard list cap, while still keeping the interaction feeling like a bottom sheet rather than a full takeover.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - wrap the available-options state in a dedicated flex `optionsSection`,
+    - add a `listContainer` and `listContent` so the `FlatList` uses remaining space cleanly,
+    - replace the fixed `maxHeight: 300` list cap with flex/min-height guardrails,
+    - increase the sheet cap from `60%` to `72%` so state notices and the options list coexist more comfortably on narrow screens.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new adaptive height contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed a `72%` sheet cap is still visually consistent with the current bottom-sheet pattern while giving the options list more useful room.
+  - Chose flex-based layout instead of larger copy reductions or removing the notice card so current-state transparency stays intact.
+  - This remains a source-backed improvement and still needs live confirmation that the selector feels balanced with short lists, long lists, and the missing-current-selection notice present.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector keeps more options visible before scrolling in both normal and `current selection unavailable` states.
+  - Check that the bottom `Cancel` action still remains comfortably reachable when the selector shows a long subtitle plus the unavailable-current notice.
+  - If live validation shows the taller sheet feels too dominant, consider only a small follow-up adjustment to the cap or spacing rather than redesigning the selector flow.
+
 ## Iteration 139 - Surface loop profile assignment state before wrapped chips
 
 - Date: 2026-03-08

@@ -148,6 +148,15 @@ test('keeps current state visible when the active agent is missing from the load
   assert.match(sheetSource, /availableOptionsHeading:\s*\{[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?fontSize:\s*12,[\s\S]*?fontWeight:\s*'700',[\s\S]*?marginBottom:\s*spacing\.xs/);
 });
 
+test('lets selector options use the remaining sheet height instead of a hard list cap on narrow screens', () => {
+  assert.match(sheetSource, /\) : \([\s\S]*?<View style=\{styles\.optionsSection\}>[\s\S]*?<Text style=\{styles\.availableOptionsHeading\}>\{availableOptionsHeading\}<\/Text>[\s\S]*?<View style=\{styles\.listContainer\}>[\s\S]*?<FlatList[\s\S]*?style=\{styles\.list\}[\s\S]*?contentContainerStyle=\{styles\.listContent\}/);
+  assert.match(sheetSource, /sheet:\s*\{[\s\S]*?maxHeight:\s*'72%'/);
+  assert.match(sheetSource, /optionsSection:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minHeight:\s*0/);
+  assert.match(sheetSource, /listContainer:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minHeight:\s*0/);
+  assert.match(sheetSource, /list:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minHeight:\s*0/);
+  assert.match(sheetSource, /listContent:\s*\{[\s\S]*?paddingBottom:\s*spacing\.xs/);
+});
+
 test('uses main-agent terminology consistently across ACP selector status copy', () => {
   assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current agent';/);
   assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'agent';/);

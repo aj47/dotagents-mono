@@ -382,7 +382,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             </TouchableOpacity>
           </View>
         ) : (
-          <>
+          <View style={styles.optionsSection}>
             {isCurrentSelectionMissingFromList && (
               <View style={styles.currentSelectionNoticeCard}>
                 <Text style={styles.currentSelectionNoticeTitle}>{currentSelectionNoticeTitle}</Text>
@@ -410,14 +410,17 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               </View>
             )}
             <Text style={styles.availableOptionsHeading}>{availableOptionsHeading}</Text>
-            <FlatList
-              data={orderedProfiles}
-              renderItem={renderProfile}
-              keyExtractor={(item) => item.id}
-              style={styles.list}
-              showsVerticalScrollIndicator={false}
-            />
-          </>
+            <View style={styles.listContainer}>
+              <FlatList
+                data={orderedProfiles}
+                renderItem={renderProfile}
+                keyExtractor={(item) => item.id}
+                style={styles.list}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+          </View>
         )}
 
         <TouchableOpacity
@@ -467,7 +470,15 @@ function createStyles(theme: Theme) {
       borderTopRightRadius: radius.xl,
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.sm,
-      maxHeight: '60%',
+      maxHeight: '72%',
+    },
+    optionsSection: {
+      flex: 1,
+      minHeight: 0,
+    },
+    listContainer: {
+      flex: 1,
+      minHeight: 0,
     },
     handle: {
       width: 36,
@@ -492,7 +503,11 @@ function createStyles(theme: Theme) {
       marginBottom: spacing.md,
     },
     list: {
-      maxHeight: 300,
+      flex: 1,
+      minHeight: 0,
+    },
+    listContent: {
+      paddingBottom: spacing.xs,
     },
     profileItem: {
       ...profileItemTouchTarget,
