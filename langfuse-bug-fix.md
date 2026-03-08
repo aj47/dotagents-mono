@@ -19,6 +19,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772944149514_dhmqtdvqt | session_1772944149515_tgt7e6ykh | fix implemented (verification blocked) | Simple user input `Hi` produced trace `output: null`; the only observation was `LLM Call` with error `API key expired. Please renew the API key.` Root repo issue found: provider/API errors could escape before `finalContent` was populated, leaving the run trace blank instead of preserving a terminal error message. |
 | 2026-03-08 | conv_1772646724648_5kkw3rvk0 | session_1772646831952_uu14j453h, session_1772647013485_6tkgbaizi | fix implemented (verification blocked) | Follow-up recovery case around opening local PR worktrees in iTerm. First trace stalled after successful tool work and warnings; second trace successfully called `respond_to_user` with the completed result, then continued into unrequested GitHub file lookups and ended `output: null`. Root repo issue found: successful `respond_to_user` output was not preserved as fallback `finalContent`, so later speculative work/interruption could blank the run trace. |
 | 2026-03-08 | conv_1772929409915_6nhw5bvkd | session_1772929409919_659x5kkj1 | fix implemented (verification blocked) | User asked `Can you run it in a new terminal window so it works in dotagents-mono`; Langfuse showed `iterm:create_window` succeeded but there was no terminal write/run step, and the final reply only handed back manual shell commands (`Run it with ...`). Root repo issue found: completion logic could treat manual terminal instructions as done even when the requested terminal execution never happened. |
+| 2026-03-08 | conv_1772760072745_y04jxkisp | session_1772760071840_tx7z5kq1e | fix implemented (verification blocked) | User asked to tile laptop windows neatly. Langfuse showed repeated successful `execute_command` window-management passes, then a completed `delegate_to_agent` call for `Computer Use` whose output was still just a progress update (`I can see the windows are partially arranged... Let me do a more precise tiling pass now.`). The parent run treated that as successful delegated work, re-delegated again with empty content, and still ended with `output: null`. Root repo issue found: delegation plumbing accepted progress-only sub-agent output as a completed result instead of surfacing it as an incomplete/failed delegation for the parent agent to recover from. |
 
 ## Investigations
 
@@ -434,6 +435,46 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - result: passed with exit code `0`
   - confirmed the new guard is scoped to terminal-window execution requests, so normal informational answers and already-completed terminal actions are unaffected
 
+### 2026-03-08 — Progress-only delegated output should not count as a completed delegation
+
+- Langfuse evidence reviewed:
+  - `conv_1772760072745_y04jxkisp` / `session_1772760071840_tx7z5kq1e`
+  - user input: `Can you organize my windows so they nicely are tiled on my laptop?`
+  - trace outcome: `output: null`
+  - observations showed repeated successful `execute_command` AppleScript / Peekaboo verification passes trying to tile iTerm2, Discord, and Electron windows
+  - near the end of the run, `delegate_to_agent` for `Computer Use` returned `success: true`, `status: completed`, but its `output` was still only `I can see the windows are partially arranged but still overlapping. Let me do a more precise tiling pass now.`
+  - the parent run then made one more `Streaming LLM Call` with empty assistant content and another `delegate_to_agent` request, but no final user-facing synthesis or blocker explanation was preserved before the trace closed
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` treated any successful delegated run as `status: completed` and forwarded `getPreferredDelegationOutput(...)` without checking whether that text was actually a final deliverable
+  - the same blind-success behavior existed in the synchronous ACP delegation path, the internal sub-session finalizer, and the async stdio completion path
+  - that meant a sub-agent could finish its own run while still speaking in future-tense progress language, and the parent agent would still receive the delegation tool call as a success instead of a recoverable failure/blocker
+- Concrete root cause:
+  - delegation completion handling validated transport success but not result quality
+  - progress-only delegated output (`Let me ...`, `I'll ...`) was accepted as if the delegated task had been completed, which made the parent loop believe real work had succeeded even though the user still had no final result
+- Fix implemented:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - detect blank or progress-only delegated outputs before marking a delegation as completed
+    - convert those cases into explicit failed delegations with an error explaining that the sub-agent finished without a final deliverable
+    - apply the guard in the synchronous ACP path, the internal sub-session finalizer, and the async stdio completion path
+  - tests added/updated:
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - added a regression test that simulates a delegated run returning only an in-progress update and verifies the delegation result is marked failed instead of completed
+
+- Targeted verification attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts`
+  - `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -d`
+- Result:
+  - targeted Vitest execution is blocked in this worktree because local `node_modules/.bin` tools are missing
+  - exact test blocker: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
+  - live desktop verification is also blocked because desktop `predev` cannot build `@dotagents/shared`
+  - exact dev blocker: `sh: tsup: command not found`, with pnpm warning that local `node_modules` are missing in this worktree
+- Dependency-free sanity check completed:
+  - `git diff --check -- apps/desktop/src/main/acp/acp-router-tools.ts apps/desktop/src/main/acp/acp-router-tools.test.ts`
+  - `npx -y esbuild apps/desktop/src/main/acp/acp-router-tools.ts --format=esm --platform=node --outfile=/tmp/acp-router-tools.js --tsconfig-raw='{"compilerOptions":{"target":"es2022","module":"esnext"}}'`
+  - `npx -y esbuild apps/desktop/src/main/acp/acp-router-tools.test.ts --format=esm --platform=node --outfile=/tmp/acp-router-tools.test.js --tsconfig-raw='{"compilerOptions":{"target":"es2022","module":"esnext"}}'`
+  - result: all passed with exit code `0`
+  - confirmed the new delegation guard compiles cleanly and rejects progress-only delegated outputs before they can be treated as successful completion
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -446,5 +487,6 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
+- Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

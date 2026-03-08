@@ -93,4 +93,28 @@ describe('handleDelegateToAgent', () => {
       output: 'Final delegated answer',
     })
   })
+
+  it('fails delegated runs that only return an in-progress update instead of a final result', async () => {
+    mockRunInternalSubSession.mockResolvedValue({
+      success: true,
+      result: 'Fallback output',
+      conversationHistory: [
+        { role: 'user', content: 'Tile the windows', timestamp: 1 },
+        {
+          role: 'assistant',
+          content: 'I can see the windows are partially arranged but still overlapping. Let me do a more precise tiling pass now.',
+          timestamp: 2,
+        },
+      ],
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: 'internal', task: 'Tile the windows neatly' },
+      'parent-session-2',
+    )).resolves.toMatchObject({
+      success: false,
+      status: 'failed',
+      error: expect.stringContaining('without a final deliverable'),
+    })
+  })
 })

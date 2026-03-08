@@ -132,6 +132,33 @@ interface DelegationResult {
   note?: string;
 }
 
+function isProgressOnlyDelegationOutput(output: string): boolean {
+  const trimmed = output.trim();
+  if (!trimmed) return true;
+
+  const lowerRaw = trimmed.toLowerCase();
+  const hasStructuredDeliverable =
+    /\n[-*]\s|\n\d+\.\s/.test(trimmed)
+    || /\bhere(?:'s| is)\b/.test(lowerRaw);
+  if (hasStructuredDeliverable) return false;
+
+  const normalized = lowerRaw.replace(/\s+/g, ' ');
+  const wordCount = normalized.split(' ').filter(Boolean).length;
+  if (wordCount > 40) return false;
+
+  return /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized);
+}
+
+function buildUndeliverableDelegationError(agentName: string, output: string): string {
+  const trimmed = output.trim();
+  if (!trimmed) {
+    return `Delegated agent "${agentName}" finished without a final deliverable.`;
+  }
+
+  const preview = trimmed.length > 180 ? `${trimmed.slice(0, 177)}...` : trimmed;
+  return `Delegated agent "${agentName}" finished without a final deliverable. Latest output was still an in-progress update: "${preview}"`;
+}
+
 /**
  * Create a completed delegation result.
  */
@@ -140,8 +167,17 @@ function createCompletedResult(
   output: string,
   conversation: ACPSubAgentMessage[]
 ): DelegationResult {
-  subAgentState.status = 'completed';
   const resolvedOutput = getPreferredDelegationOutput(output, conversation);
+
+  if (isProgressOnlyDelegationOutput(resolvedOutput)) {
+    return createFailedResult(
+      subAgentState,
+      buildUndeliverableDelegationError(subAgentState.agentName, resolvedOutput),
+      conversation,
+    );
+  }
+
+  subAgentState.status = 'completed';
   return {
     success: true,
     runId: subAgentState.runId,
@@ -208,6 +244,22 @@ function finalizeInternalDelegationResult(
 
   if (result.success) {
     const preferredOutput = getPreferredDelegationOutput(result.result || '', conversation);
+
+    if (isProgressOnlyDelegationOutput(preferredOutput)) {
+      const error = buildUndeliverableDelegationError(subAgentState.agentName, preferredOutput);
+      subAgentState.result = {
+        runId: subAgentState.runId,
+        agentName: subAgentState.agentName,
+        status: 'failed',
+        startTime: subAgentState.startTime,
+        endTime,
+        metadata: { duration: endTime - subAgentState.startTime },
+        error,
+      };
+
+      return createFailedResult(subAgentState, error, conversation);
+    }
+
     subAgentState.result = {
       runId: subAgentState.runId,
       agentName: subAgentState.agentName,
@@ -1169,6 +1221,22 @@ function executeStdioAgentAsync(
       const endTime = Date.now();
 
       if (result.success) {
+        const preferredOutput = getPreferredDelegationOutput(result.result || '', subAgentState.conversation);
+
+        if (isProgressOnlyDelegationOutput(preferredOutput)) {
+          subAgentState.status = 'failed';
+          subAgentState.result = {
+            runId: subAgentState.runId,
+            agentName: args.agentName,
+            status: 'failed',
+            startTime: subAgentState.startTime,
+            endTime,
+            metadata: { duration: endTime - subAgentState.startTime },
+            error: buildUndeliverableDelegationError(args.agentName, preferredOutput),
+          };
+          return;
+        }
+
         subAgentState.status = 'completed';
         subAgentState.result = {
           runId: subAgentState.runId,
@@ -1177,7 +1245,7 @@ function executeStdioAgentAsync(
           startTime: subAgentState.startTime,
           endTime,
           metadata: { duration: endTime - subAgentState.startTime },
-          output: [{ role: 'assistant', parts: [{ content: result.result || '' }] }],
+          output: [{ role: 'assistant', parts: [{ content: preferredOutput }] }],
         };
       } else {
         subAgentState.status = 'failed';
