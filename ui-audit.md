@@ -1,5 +1,57 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 48: Desktop panel can surface as a blank shell with no body content or status copy
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/panel.tsx` (floating panel idle / waiting state between recording, text input, and agent overlay)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided reworking the just-touched Memories surface and returned to a fresh top-level desktop surface that had specifically been deferred until live inspection was practical. A real Electron `/panel` target was available on CDP, and it immediately exposed a stronger issue than any source-only guess: the panel window could remain visible while rendering only the drag bar spinner and an otherwise empty body.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid duplicating a recently investigated area without a clear follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `README.md`, `DEVELOPMENT.md`, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow
+  - used the actual Electron renderer target via `agent-browser --cdp 9333` instead of relying on the plain browser route, which is preload-dependent and showed a browser-only bootstrap error
+  - inspected the mounted panel at `http://localhost:5173/panel`, captured a live blank-shell screenshot in `tmp/ui-audit/panel-idle-before.png`, and verified via DOM inspection that the panel body had `0` buttons, no readable body text, and an empty `.voice-input-panel .relative.flex.grow.items-center` container
+  - prototyped the intended compact fallback card directly in the mounted DOM and captured `tmp/ui-audit/panel-idle-prototype-100.png` plus `tmp/ui-audit/panel-idle-prototype-125.png` to confirm the copy stayed centered and unclipped inside the real panel container under larger text
+  - cross-checked mobile and kept this desktop-only: mobile does not use this floating Electron panel shell
+
+#### Findings
+
+- Before the fix, the desktop panel had one concrete UI issue with clear user impact:
+  - the live Electron target could show a full panel window with only the drag bar/spinner chrome and a completely blank content region
+  - DOM inspection showed the rendered panel body existed but contained no visible controls, no helper copy, and no progress card, which makes the panel feel broken rather than intentionally idle or waiting
+  - this is especially confusing in the voice flow because the blank shell can plausibly occur right after recording stops or when the panel remains visible without a renderable progress overlay
+  - for a transient surface that appears over users’ workflow, showing an unlabelled blank container is materially worse than a compact explanatory waiting/ready state
+
+#### Changes made
+
+- Hardened the floating panel in `apps/desktop/src/renderer/src/pages/panel.tsx` with the smallest effective state-treatment fix:
+  - added `isVoiceSubmissionPending` so voice transcription/submission is treated as a real in-between state instead of falling through to an empty body
+  - added `hasRenderableProgressOverlay` so the panel only considers agent-overlay content "present" when there is something it can actually render, rather than any raw visibility flag
+  - updated panel mode / auto-close logic to keep the panel open while voice submission is pending but close more reliably when no renderable body content remains
+  - added a compact centered `Processing your recording...` card for voice-submission waiting states
+  - added a compact `Ready when you are` fallback card so any remaining visible idle shell reads as intentional guidance instead of a broken blank window
+- Extended `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` with focused source-contract coverage for the new pending/fallback panel treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Targeted desktop typecheck attempt: `pnpm --filter @dotagents/desktop typecheck:web` *(blocked: local dependencies are missing, so `@electron-toolkit/tsconfig` could not be resolved from this checkout)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the voice-pending flag, renderable-overlay guard, new processing copy, new standby copy, auto-close guard, and regression test case are all present
+- Live Electron evidence before the fix at `http://localhost:5173/panel`:
+  - the mounted panel remained visible at an `800×600` viewport while the body text was empty, button count was `0`, and the root HTML showed an empty `relative flex grow items-center overflow-hidden` content container beneath the drag bar
+  - screenshot: `tmp/ui-audit/panel-idle-before.png`
+- Live DOM prototype verification of the intended fallback treatment:
+  - at `100%` zoom, the centered standby card stayed comfortably within the real panel shell and restored clear intent/copy to the otherwise blank state
+  - at simulated `125%` zoom, the prototype card still fit within the `800×600` panel viewport, with the card measuring about `320×154px` and remaining fully visible/unclipped
+  - screenshots: `tmp/ui-audit/panel-idle-prototype-100.png`, `tmp/ui-audit/panel-idle-prototype-125.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/panel.tsx apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not serving this checkout’s edited bundle, so I did not claim a literal post-edit end-to-end pass of the modified source. I paired real pre-fix product evidence with a live DOM prototype of the intended fallback treatment and direct source verification of the patched logic.
+- This chunk is desktop-only: mobile has no direct equivalent of the Electron floating panel shell.
+- Tradeoff/rationale: in edge cases where the panel remains visible without a renderable body, users may now briefly see a compact standby card instead of an instantly disappearing window; that is a deliberate clarity tradeoff and materially better than a blank shell that looks broken.
+- Best next UI audit chunk after this one: return to the desktop panel once a real active session is mounted so the `AgentProgress` / `MultiAgentProgressView` overlay can be stress-tested under narrow widths and larger text, or switch to a fresh mobile surface with a still-unreviewed empty/loading/error state.
+
 ### 2026-03-08 — Chunk 47: Desktop Memories load failures fall through to a false empty state
 
 - Area selected:

@@ -18,6 +18,7 @@ import { useTheme } from "@renderer/contexts/theme-context"
 import { applySelectedAgentToNextSession } from "@renderer/lib/apply-selected-agent"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { logUI } from "@renderer/lib/debug"
+import { Spinner } from "@renderer/components/ui/spinner"
 import { formatKeyComboForDisplay } from "@shared/key-utils"
 import { Send, Bot } from "lucide-react"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
@@ -415,6 +416,11 @@ export function Component() {
       // The panel needs to stay visible for agent mode progress updates
     },
   })
+
+  const isVoiceSubmissionPending =
+    transcribeMutation.isPending || mcpTranscribeMutation.isPending
+  const hasRenderableProgressOverlay =
+    anyVisibleSessions && (hasMultipleSessions || !!displayProgress)
 
   const recorderRef = useRef<Recorder | null>(null)
 
@@ -933,7 +939,7 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         recorderRef.current?.stopRecording()
       }
-    } else if (isTextSubmissionPending) {
+    } else if (isTextSubmissionPending || isVoiceSubmissionPending) {
       targetMode = null // keep current size briefly to avoid flicker
     } else {
       targetMode = "normal"
@@ -949,7 +955,7 @@ export function Component() {
     return () => {
       if (tid) clearTimeout(tid)
     }
-  }, [anyActiveNonSnoozed, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
+  }, [anyActiveNonSnoozed, textInputMutation.isPending, mcpTextInputMutation.isPending, isVoiceSubmissionPending, showTextInput])
 
   // Note: We don't need to hide text input when agentProgress changes because:
   // 1. handleTextSubmit already hides it immediately on submit (line 375)
@@ -1025,57 +1031,60 @@ export function Component() {
     return unlisten
   }, [isConversationActive, endConversation, transcribeMutation, mcpTranscribeMutation, textInputMutation, mcpTextInputMutation])
 
-	  // Track latest state values in a ref to avoid race conditions with auto-close timeout
-	  const autoCloseStateRef = useRef({
-	    anyVisibleSessions,
-	    showTextInput,
-	    recording,
-	    isTextSubmissionPending: textInputMutation.isPending || mcpTextInputMutation.isPending
-	  })
+  // Track latest state values in a ref to avoid race conditions with auto-close timeout
+  const autoCloseStateRef = useRef({
+    showsAgentOverlay: hasRenderableProgressOverlay,
+    showTextInput,
+    recording,
+    isTextSubmissionPending: textInputMutation.isPending || mcpTextInputMutation.isPending,
+    isVoiceSubmissionPending,
+  })
 
-	  // Keep ref in sync with latest state
-	  useEffect(() => {
-	    autoCloseStateRef.current = {
-	      anyVisibleSessions,
-	      showTextInput,
-	      recording,
-	      isTextSubmissionPending: textInputMutation.isPending || mcpTextInputMutation.isPending
-	    }
-	  }, [anyVisibleSessions, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
+  // Keep ref in sync with latest state
+  useEffect(() => {
+    autoCloseStateRef.current = {
+      showsAgentOverlay: hasRenderableProgressOverlay,
+      showTextInput,
+      recording,
+      isTextSubmissionPending: textInputMutation.isPending || mcpTextInputMutation.isPending,
+      isVoiceSubmissionPending,
+    }
+  }, [hasRenderableProgressOverlay, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending, isVoiceSubmissionPending])
 
-	  // Auto-close the panel when there's nothing to show
-	  useEffect(() => {
-	    // Keep panel open if a text submission is still pending (to avoid flicker)
-	    const isTextSubmissionPending = textInputMutation.isPending || mcpTextInputMutation.isPending
-	    const showsAgentOverlay = anyVisibleSessions
+  // Auto-close the panel when there's nothing to show
+  useEffect(() => {
+    // Keep panel open if a submission is still pending (to avoid flicker)
+    const isTextSubmissionPending = textInputMutation.isPending || mcpTextInputMutation.isPending
+    const showsAgentOverlay = hasRenderableProgressOverlay
 
-	    const shouldAutoClose =
-	      !showsAgentOverlay &&
-	      !showTextInput &&
-	      !recording &&
-	      !isTextSubmissionPending
+    const shouldAutoClose =
+      !showsAgentOverlay &&
+      !showTextInput &&
+      !recording &&
+      !isTextSubmissionPending &&
+      !isVoiceSubmissionPending
 
-	    if (shouldAutoClose) {
-	      const t = setTimeout(() => {
-	        // Re-check latest state before closing to prevent race conditions
-	        // State may have changed during the 200ms delay
-	        const latestState = autoCloseStateRef.current
-	        const stillShouldClose =
-	          !latestState.anyVisibleSessions &&
-	          !latestState.showTextInput &&
-	          !latestState.recording &&
-	          !latestState.isTextSubmissionPending
+    if (shouldAutoClose) {
+      const t = setTimeout(() => {
+        // Re-check latest state before closing to prevent race conditions
+        // State may have changed during the 200ms delay
+        const latestState = autoCloseStateRef.current
+        const stillShouldClose =
+          !latestState.showsAgentOverlay &&
+          !latestState.showTextInput &&
+          !latestState.recording &&
+          !latestState.isTextSubmissionPending &&
+          !latestState.isVoiceSubmissionPending
 
-	        if (stillShouldClose) {
-	          tipcClient.hidePanelWindow({})
-	        }
-	      }, 200)
-	      return () => clearTimeout(t)
-	    }
+        if (stillShouldClose) {
+          tipcClient.hidePanelWindow({})
+        }
+      }, 200)
+      return () => clearTimeout(t)
+    }
 
-      return undefined as void
-
-	  }, [anyVisibleSessions, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
+    return undefined as void
+  }, [hasRenderableProgressOverlay, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending, isVoiceSubmissionPending])
 
   // Use appropriate minimum height based on current mode
   const hasPreviewVisible = recording && isPreviewEnabled && previewText.length > 0
@@ -1116,7 +1125,7 @@ export function Component() {
 
   const waveformHeight = hasPreviewVisible ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
   const minWidth = showTextInput ? TEXT_INPUT_MIN_WIDTH_PX : MIN_WAVEFORM_WIDTH
-  const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight)
+  const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (hasRenderableProgressOverlay && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight)
 
   return (
     <PanelResizeWrapper
@@ -1154,14 +1163,15 @@ export function Component() {
         ) : (
           <div
             className={cn(
-            "voice-input-panel modern-text-strong flex h-full w-full rounded-xl transition-all duration-300",
-            isDark ? "dark" : ""
-          )}>
+              "voice-input-panel modern-text-strong flex h-full w-full rounded-xl transition-all duration-300",
+              isDark ? "dark" : ""
+            )}
+          >
 
             <div className={cn("relative flex grow items-center", !recording && "overflow-hidden")}>
               {/* Agent progress overlay - left-aligned and full coverage */}
               {/* Hide overlay when recording to show waveform instead */}
-              {anyVisibleSessions && !recording && (
+              {hasRenderableProgressOverlay && !recording && (
                 hasMultipleSessions ? (
                   <MultiAgentProgressView
                     variant="overlay"
@@ -1176,6 +1186,36 @@ export function Component() {
                     />
                   )
                 )
+              )}
+
+              {isVoiceSubmissionPending && !recording && !hasRenderableProgressOverlay && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+                  <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-border/60 bg-background/85 px-4 py-5 text-center shadow-sm backdrop-blur-sm">
+                    <Spinner className="h-6 w-6 text-primary" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Processing your recording...</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
+                        The panel will switch back to the active session as soon as the transcript is ready.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!recording && !hasRenderableProgressOverlay && !isVoiceSubmissionPending && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
+                  <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 bg-background/65 px-4 py-5 text-center shadow-sm backdrop-blur-sm">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Ready when you are</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]">
+                        Use your voice shortcut or open text input to start a new session.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Waveform visualization and submit controls - show when recording is active */}

@@ -51,4 +51,16 @@ describe("panel recording layout", () => {
     expect(tipcSource).toContain('state.isTextInputActive = false')
     expect(tipcSource).toContain('hideFloatingPanelWindow()')
   })
+
+  it("shows explicit pending and fallback content instead of a blank shell", () => {
+    expect(panelSource).toContain("const isVoiceSubmissionPending =")
+    expect(panelSource).toContain("const hasRenderableProgressOverlay =")
+    expect(panelSource).toContain("Processing your recording...")
+    expect(panelSource).toContain("Ready when you are")
+    expect(panelSource).toContain(
+      "Use your voice shortcut or open text input to start a new session."
+    )
+    expect(panelSource).toContain("!isVoiceSubmissionPending")
+    expect(panelSource).toContain("showsAgentOverlay: hasRenderableProgressOverlay")
+  })
 })
