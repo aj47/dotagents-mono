@@ -16,6 +16,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { QueuedMessage } from '@dotagents/shared';
+import {
+  createButtonAccessibilityLabel,
+  createExpandCollapseAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+} from '../lib/accessibility';
 import { useTheme } from './ThemeProvider';
 
 interface MessageQueuePanelProps {
@@ -298,12 +303,25 @@ export function MessageQueuePanel({
   }, [conversationId]);
 
   const hasProcessingMessage = messages.some((m) => m.status === 'processing');
+  const queuedMessageLabel = `${messages.length} queued message${messages.length > 1 ? 's' : ''}`;
+  const compactSummaryText = hasProcessingMessage
+    ? `${queuedMessageLabel} • Sending now`
+    : queuedMessageLabel;
+  const clearQueueAccessibilityHint = hasProcessingMessage
+    ? 'Wait for the active queued message to finish before clearing the rest of this queue.'
+    : 'Removes all queued messages for this conversation.';
 
   if (messages.length === 0) {
     return null;
   }
 
   const styles = StyleSheet.create({
+    headerActionTouchTarget: createMinimumTouchTargetStyle({
+      minSize: 44,
+      horizontalPadding: 8,
+      verticalPadding: 6,
+      horizontalMargin: 0,
+    }),
     container: {
       borderRadius: 8,
       borderWidth: 1,
@@ -330,16 +348,35 @@ export function MessageQueuePanel({
       fontSize: 14,
       fontWeight: '500',
       color: theme.colors.foreground,
+      flexShrink: 1,
     },
     clearButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    clearButtonDisabled: {
+      opacity: 0.7,
     },
     clearButtonText: {
       fontSize: 12,
       color: hasProcessingMessage
         ? theme.colors.mutedForeground
         : theme.colors.foreground,
+    },
+    processingNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      backgroundColor: `${theme.colors.primary}10`,
+    },
+    processingNoticeText: {
+      flex: 1,
+      fontSize: 12,
+      lineHeight: 18,
+      color: theme.colors.primary,
     },
     list: {
       maxHeight: 200,
@@ -366,12 +403,17 @@ export function MessageQueuePanel({
     return (
       <View style={styles.compactContainer}>
         <Ionicons name="time-outline" size={12} color={theme.colors.mutedForeground} />
-        <Text style={styles.compactText}>
-          {messages.length} queued message{messages.length > 1 ? 's' : ''}
+        <Text style={styles.compactText} numberOfLines={1} ellipsizeMode="tail">
+          {compactSummaryText}
         </Text>
         <TouchableOpacity
+          style={[styles.headerActionTouchTarget, styles.clearButton, hasProcessingMessage && styles.clearButtonDisabled]}
           onPress={onClear}
           disabled={hasProcessingMessage}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Clear queued messages')}
+          accessibilityHint={clearQueueAccessibilityHint}
+          accessibilityState={{ disabled: hasProcessingMessage }}
         >
           <Ionicons
             name="trash-outline"
@@ -395,18 +437,23 @@ export function MessageQueuePanel({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           {!isListCollapsed && (
             <TouchableOpacity
-              style={styles.clearButton}
+              style={[styles.headerActionTouchTarget, styles.clearButton, hasProcessingMessage && styles.clearButtonDisabled]}
               onPress={onClear}
               disabled={hasProcessingMessage}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Clear queued messages')}
+              accessibilityHint={clearQueueAccessibilityHint}
+              accessibilityState={{ disabled: hasProcessingMessage }}
             >
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={styles.clearButton}
+            style={[styles.headerActionTouchTarget, styles.clearButton]}
             onPress={() => setIsListCollapsed((prev) => !prev)}
             accessibilityRole="button"
-            accessibilityLabel={isListCollapsed ? 'Expand queue' : 'Collapse queue'}
+            accessibilityLabel={createExpandCollapseAccessibilityLabel('queued messages', !isListCollapsed)}
+            accessibilityHint="Shows or hides queued messages for this conversation."
             accessibilityState={{ expanded: !isListCollapsed }}
           >
             <Ionicons
@@ -417,6 +464,14 @@ export function MessageQueuePanel({
           </TouchableOpacity>
         </View>
       </View>
+      {hasProcessingMessage && !isListCollapsed && (
+        <View style={styles.processingNotice}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <Text style={styles.processingNoticeText}>
+            One queued message is sending now. Clear All stays disabled until it finishes.
+          </Text>
+        </View>
+      )}
       {!isListCollapsed && (
         <ScrollView style={styles.list}>
           {messages.map((msg, index) => (

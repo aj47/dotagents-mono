@@ -2915,3 +2915,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the selector-sheet error state now reads as a recoverable interruption rather than a context reset.
   - Check both the missing-config and retryable-load error paths on a narrow viewport to confirm the reused `Current agent` badge stays balanced with the action button.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 68: make busy queued-message state explicit on mobile
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - current mobile workflow notes in `apps/mobile/package.json`
+  - focused mobile tests in `apps/mobile/tests`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before documentation:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `MessageQueuePanel` disabled `Clear All` whenever one queued message was already processing.
+  - The panel header still read like a passive queue list, and the disabled action did not explain why control was unavailable.
+  - On mobile, that made active queue work feel inert or slightly broken at exactly the moment users needed reassurance that the queue was progressing normally.
+- Issue selected:
+  - Busy queue state was not explicit enough on mobile, weakening both state clarity and user control in the sub-agent activity flow.
+- Decision:
+  - Keep the queue list structure, row actions, and overall panel footprint intact.
+  - Avoid broader queue redesign while live validation is blocked.
+  - Make the smallest local fix: add a short processing notice near the header, surface the busy state in compact summaries too, and give the header actions explicit mobile-sized button semantics plus disabled-state explanation.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add a header-level processing notice that explains one queued message is sending now and why `Clear All` is disabled,
+    - surface `Sending now` in the compact queue summary so collapsed/secondary queue views keep active-state visibility,
+    - wrap the queue header actions in 44px minimum touch targets,
+    - add explicit accessibility labels and hints for clearing queued messages and expanding/collapsing the queue.
+  - Added `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new busy-state copy, compact summary treatment, and header action semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new processing notice feels helpful without making the queue panel header too tall.
+  - The per-message edit / retry / remove icon actions in `QueuedMessageItem` still look like likely touch-target follow-up candidates if live inspection shows strain on narrow screens.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the queue notice reads clearly above the list and does not crowd the composer.
+  - Check the busy queue state with one processing message plus multiple pending messages to confirm the new notice and compact summary feel proportional on narrow screens.
+  - If live validation still shows action strain in queue rows, prioritize making the edit / retry / remove controls easier to tap before attempting broader queue UI changes.
