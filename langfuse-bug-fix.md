@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772260442055_9xjtqdock | session_1772260441759_qlnn5jvxv | fix implemented | Fresh recovery-path evidence from a previously logged `ask Augustus what folder he's in` failure: after `delegate_to_agent` said `Agent "augustus" not found in configuration`, the same trace showed `list_available_agents` and `list_agent_profiles` exposing Augustus plus profile ID `286c6b41-28ed-4a57-9728-0bab9846ebe6`, but later `spawn_agent` / `delegate_to_agent` retries still rejected that valid profile ID. Root repo issue found: ACP routing/spawn paths only resolved agent profiles by name/displayName, not by profile ID, so error recovery could dead-end even after the tools surfaced the exact profile identifier. |
 | 2026-03-08 | conv_1772236244285_xzqrrynd8 | session_1772236244288_jbyzrkt1b, session_1772239900929_r2gu4lvnr | fix implemented | User asked `How did they get cut off before` twice. The first run incorrectly claimed the iTerm tools were not surfaced in the system prompt header even though they were listed in `AVAILABLE MCP SERVERS`; the later identical follow-up explicitly corrected that mistake. Root repo issue found: agent-mode prompt guidance taught tool discovery, but did not explicitly tell the model to inspect live tool/agent state before answering meta questions about current capabilities or why something was unavailable/cut off. |
 | 2026-03-08 | conv_1772413081893_0m2fhduf9 | session_1772413081894_y5zkxuyrj | fix implemented | User asked for mobile parity around desktop `respond_to_user`; Langfuse showed the run consuming 60 iterations and finalizing with only future-tense progress text (`Let me examine the current mobile app...`) plus the generic timeout note. Corroborating traces `subsession_1772433101034_b71f5c33`, `subsession_1772413302748_948ec4be`, and `subsession_1772420541552_f1cc42f4` showed the same `I'll help you... Let me first load... (Note: Task may not be fully complete...)` pattern. Root repo issue found: progress/deliverable heuristics counted long progress-only text as deliverable once the appended timeout note pushed it past the short-progress word-count threshold. |
 | 2026-03-08 | conv_1772260442055_0tyysyfq3 | session_1772260441759_qlnn5jvxv | fix implemented | User asked `Can you ask Augustus what folder he's in?`; Langfuse showed `list_running_agents`, a mistaken `send_agent_message` to the current session, then failing `spawn_agent` / `send_to_agent` calls with `Agent "augustus" not found in configuration`, yet the run still ended without a useful blocker answer. Root repo issue found: when a run timed out after tool-only failures, finalization dropped the latest concrete tool error reason instead of surfacing it to the user. |
@@ -1096,6 +1097,42 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `pnpm --filter @dotagents/desktop run typecheck:node`
   - ❌ still blocked by pre-existing unrelated desktop/worktree issues, including unresolved `uuid` in `src/main/acp/internal-agent.ts` and long-standing `llm.test.ts` mock typing mismatches unrelated to this fix
 
+### 2026-03-08 — ACP delegation/spawn should accept agent profile IDs surfaced by recovery tools
+
+- Langfuse evidence reviewed:
+  - `conv_1772260442055_9xjtqdock` / `session_1772260441759_qlnn5jvxv`
+  - user input: `Can you ask Augustus what folder he's in?`
+  - trace outcome: `output: null`
+  - observations first showed `delegate_to_agent` / `send_to_agent` / `spawn_agent` failing with `Agent "augustus" not found in configuration`
+  - the same run then called `list_available_agents` and `list_agent_profiles`, which surfaced both the Augustus name and profile ID `286c6b41-28ed-4a57-9728-0bab9846ebe6`
+  - after seeing that profile ID, the model retried `spawn_agent` and `delegate_to_agent` with the ID itself, but those calls still failed with `Agent "286c6b41-28ed-4a57-9728-0bab9846ebe6" not found in configuration`
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` only resolved AgentProfile-backed delegation targets via `agentProfileService.getByName(...)`
+  - `apps/desktop/src/main/acp-service.ts` also only resolved ACP-backed profiles via `getByName(...)`, and keyed spawned processes by the raw caller-supplied identifier
+  - that meant a model trying to recover from a name-resolution failure could not use the profile ID it had just discovered from `list_agent_profiles`
+- Concrete root cause:
+  - ACP routing/spawn/run flows accepted names/display names but not profile IDs
+  - recovery tools exposed profile IDs, but the execution paths could not consume them, so the recovery branch dead-ended instead of reaching Augustus
+- Change made:
+  - `apps/desktop/src/main/agent-profile-service.ts`
+    - added `getByIdentifier(...)` to resolve profile name, display name, or profile ID through one helper
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - switched delegation lookup to `getByIdentifier(...)`
+    - canonicalized AgentProfile-backed ACP/remote delegation to the profile name before spawning/running
+  - `apps/desktop/src/main/acp-service.ts`
+    - resolved profile IDs to canonical profile names before spawn/run/session setup so ACP processes are keyed consistently
+  - `apps/desktop/src/main/acp/acp-router-tool-definitions.ts`
+    - updated tool schema descriptions so `agentName` explicitly allows name, displayName, or profile ID
+  - tests added/updated:
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - added a regression proving `handleDelegateToAgent(...)` accepts a profile ID and delegates canonically as `augustus`
+    - `apps/desktop/src/main/acp-service.test.ts`
+      - added regressions proving `spawnAgent(...)` and `runTask(...)` accept a valid AgentProfile ID and still start/use the canonical ACP agent
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts src/main/acp-service.test.ts`
+  - ✅ passed (`41 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop ACP tests exit successfully
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1112,7 +1149,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.
-- Recheck a fresh unavailable-agent / delegation-tool-error trace (for example missing `augustus`) after the next desktop smoke run, to confirm the user now sees the concrete blocker (`send_to_agent failed: ... not found`) instead of a blank or generic incomplete result.
+- Recheck a fresh ACP recovery trace where `list_agent_profiles` surfaces a profile ID (for example Augustus) after an initial delegation failure, to confirm the next retry can use that ID successfully instead of dead-ending on `... not found in configuration`.
 - Recheck a fresh async ACP delegation trace with repeated `check_agent_status` polling, to confirm the new running-status guidance nudges the model toward other work or a clear `still running` handoff instead of burning the run on tight polling.
 - Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
 - Recheck a fresh follow-up ACP delegation trace on the same specialist (for example `Recap Discord` followed by `post it!`) to confirm the delegated output now comes from a new session instead of resurfacing stale prior-turn results.

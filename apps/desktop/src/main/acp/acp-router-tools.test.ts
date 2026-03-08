@@ -5,6 +5,11 @@ const { mockRunInternalSubSession } = vi.hoisted(() => ({
   mockRunInternalSubSession: vi.fn(),
 }))
 
+const { mockGetByName, mockGetById } = vi.hoisted(() => ({
+  mockGetByName: vi.fn(() => undefined),
+  mockGetById: vi.fn(() => undefined),
+}))
+
 vi.mock('./acp-client-service', () => ({
   acpClientService: { getRunStatus: vi.fn(), runAgentAsync: vi.fn() },
 }))
@@ -31,7 +36,13 @@ vi.mock('../acp-service', () => ({
 }))
 vi.mock('../emit-agent-progress', () => ({ emitAgentProgress: vi.fn() }))
 vi.mock('../state', () => ({ agentSessionStateManager: { getSessionRunId: vi.fn(() => 7) } }))
-vi.mock('../agent-profile-service', () => ({ agentProfileService: { getByName: vi.fn(() => undefined) } }))
+vi.mock('../agent-profile-service', () => ({
+  agentProfileService: {
+    getByName: mockGetByName,
+    getById: mockGetById,
+    getByIdentifier: vi.fn((identifier: string) => mockGetByName(identifier) ?? mockGetById(identifier)),
+  },
+}))
 vi.mock('../agent-run-utils', () => ({
   buildProfileContext: vi.fn(),
   getPreferredDelegationOutput: vi.fn((output: string, conversation: Array<{ role: string; content: string }>) => {
@@ -63,6 +74,10 @@ import {
 describe('handleDelegateToAgent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetByName.mockReset()
+    mockGetByName.mockReturnValue(undefined)
+    mockGetById.mockReset()
+    mockGetById.mockReturnValue(undefined)
   })
 
   afterEach(() => {
@@ -272,6 +287,43 @@ describe('handleDelegateToAgent', () => {
       input: 'Watch for updates in the background',
       forceNewSession: true,
       mode: 'async',
+    }))
+  })
+
+  it('accepts agent profile IDs and canonicalizes them before ACP delegation', async () => {
+    mockGetById.mockReturnValue({
+      id: '286c6b41-28ed-4a57-9728-0bab9846ebe6',
+      name: 'augustus',
+      displayName: 'augustus',
+      description: 'Augment Code coding agent',
+      enabled: true,
+      connection: {
+        type: 'acp',
+      },
+    })
+    vi.mocked(acpService.runTask).mockResolvedValue({
+      success: true,
+      result: '/Users/ajjoobandi/Development/dotagents-mono',
+    })
+
+    await expect(handleDelegateToAgent(
+      {
+        agentName: '286c6b41-28ed-4a57-9728-0bab9846ebe6',
+        task: 'Run pwd and return exact output',
+      },
+      'parent-session-8',
+    )).resolves.toMatchObject({
+      success: true,
+      status: 'completed',
+      agentName: 'augustus',
+      output: '/Users/ajjoobandi/Development/dotagents-mono',
+    })
+
+    expect(acpService.spawnAgent).toHaveBeenCalledWith('augustus', expect.any(Object))
+    expect(acpService.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      agentName: 'augustus',
+      input: 'Run pwd and return exact output',
+      mode: 'sync',
     }))
   })
 })

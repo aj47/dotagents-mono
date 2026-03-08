@@ -820,7 +820,7 @@ export async function handleDelegateToAgent(
   const waitForResult = args.waitForResult !== false; // Default to true
 
   // Try unified agent profile lookup first
-  const profile = agentProfileService.getByName(normalizedArgs.agentName);
+  const profile = agentProfileService.getByIdentifier(normalizedArgs.agentName);
   if (profile) {
     // Check if agent is enabled
     if (!profile.enabled) {
@@ -874,7 +874,7 @@ async function executeAgentProfileDelegation(
       // Add profile context (system prompt, guidelines) to the task context
       const profileContext = buildProfileContext(profile, args.context);
       return executeACPAgent(
-        { ...args, context: profileContext },
+        { ...args, agentName: profile.name, context: profileContext },
         parentSessionId,
         waitForResult
       );
@@ -883,7 +883,7 @@ async function executeAgentProfileDelegation(
       // Remote HTTP endpoint - add profile context
       const remoteContext = buildProfileContext(profile, args.context);
       return executeACPAgent(
-        { ...args, context: remoteContext },
+        { ...args, agentName: profile.name, context: remoteContext },
         parentSessionId,
         waitForResult
       );
@@ -999,7 +999,7 @@ interface ResolvedAcpAgentConfig {
  * Resolve an ACP-capable agent by name from AgentProfile first, then legacy config.
  */
 function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null {
-  const profile = agentProfileService.getByName(agentName);
+  const profile = agentProfileService.getByIdentifier(agentName);
   if (profile) {
     return {
       source: 'profile',

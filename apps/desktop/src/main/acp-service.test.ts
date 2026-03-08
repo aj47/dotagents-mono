@@ -87,6 +87,7 @@ const mockConfig = {
 }
 
 const mockGetByName: any = vi.fn(() => null)
+const mockGetById: any = vi.fn(() => null)
 
 vi.mock("./config", () => ({
   configStore: {
@@ -106,6 +107,8 @@ vi.mock("./debug", () => ({
 vi.mock("./agent-profile-service", () => ({
   agentProfileService: {
     getByName: mockGetByName,
+    getById: mockGetById,
+    getByIdentifier: (identifier: string) => mockGetByName(identifier) || mockGetById(identifier),
     getExternalAgents: vi.fn(() => []),
   },
 }))
@@ -125,6 +128,8 @@ describe("ACP Service", () => {
     vi.clearAllMocks()
     mockGetByName.mockReset()
     mockGetByName.mockReturnValue(null)
+    mockGetById.mockReset()
+    mockGetById.mockReturnValue(null)
     originalWorkspaceEnv = process.env.DOTAGENTS_WORKSPACE_DIR
     delete process.env.DOTAGENTS_WORKSPACE_DIR
     ;(mockConfig.acpAgents[0].connection as { cwd?: string }).cwd = undefined
@@ -283,6 +288,36 @@ describe("ACP Service", () => {
       const { acpService } = await import("./acp-service")
 
       await acpService.spawnAgent("augustus")
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "auggie",
+        ["--acp"],
+        expect.objectContaining({
+          stdio: ["pipe", "pipe", "pipe"],
+        })
+      )
+      expect(acpService.getAgentStatus("augustus")?.status).toBe("ready")
+    })
+
+    it("should spawn an ACP agent when referenced by profile ID", async () => {
+      mockGetById.mockReturnValue({
+        id: "286c6b41-28ed-4a57-9728-0bab9846ebe6",
+        name: "augustus",
+        displayName: "augustus",
+        description: "Augment Code's AI coding assistant with native ACP support",
+        enabled: true,
+        autoSpawn: false,
+        isBuiltIn: false,
+        connection: {
+          type: "acp",
+          command: "auggie",
+          args: ["--acp"],
+        },
+      })
+
+      const { acpService } = await import("./acp-service")
+
+      await acpService.spawnAgent("286c6b41-28ed-4a57-9728-0bab9846ebe6")
 
       expect(mockSpawn).toHaveBeenCalledWith(
         "auggie",
@@ -488,6 +523,43 @@ describe("ACP Service", () => {
         error: expect.stringContaining('did not complete within 120s'),
       }))
       expect(cancelPromptSpy).toHaveBeenCalledWith("test-agent", "session-timeout")
+    })
+
+    it("runs ACP tasks when the caller provides an agent profile ID", async () => {
+      mockGetById.mockReturnValue({
+        id: "286c6b41-28ed-4a57-9728-0bab9846ebe6",
+        name: "augustus",
+        displayName: "augustus",
+        description: "Augment Code's AI coding assistant with native ACP support",
+        enabled: true,
+        autoSpawn: false,
+        isBuiltIn: false,
+        connection: {
+          type: "acp",
+          command: "auggie",
+          args: ["--acp"],
+        },
+      })
+
+      const { acpService } = await import("./acp-service")
+
+      vi.spyOn(acpService as any, "initializeAgent").mockResolvedValue(undefined)
+      vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-profile-id")
+      vi.spyOn(acpService as any, "sendRequest").mockResolvedValue({
+        content: [{ type: "text", text: "/Users/ajjoobandi/Development/dotagents-mono" }],
+      })
+
+      const result = await acpService.runTask({
+        agentName: "286c6b41-28ed-4a57-9728-0bab9846ebe6",
+        input: "pwd",
+        forceNewSession: true,
+      })
+
+      expect(result).toEqual(expect.objectContaining({
+        success: true,
+        result: "/Users/ajjoobandi/Development/dotagents-mono",
+      }))
+      expect(acpService.getAgentStatus("augustus")?.status).toBe("ready")
     })
   })
 

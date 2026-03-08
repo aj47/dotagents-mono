@@ -740,15 +740,20 @@ class ACPService extends EventEmitter {
     return this.agents.get(agentName)
   }
 
+  private resolveAgentIdentifier(agentIdentifier: string): string {
+    return agentProfileService.getByIdentifier(agentIdentifier)?.name || agentIdentifier
+  }
+
   /**
    * Spawn an ACP agent process
    */
   async spawnAgent(agentName: string, options: ACPSpawnOptions = {}): Promise<ACPSpawnResult> {
     const config = configStore.get()
     const requestedWorkingDirectory = options.workingDirectory?.trim() || undefined
+    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
 
     // First try to find it in the unified AgentProfile system
-    const profile = agentProfileService.getByName(agentName)
+    const profile = agentProfileService.getByIdentifier(agentName)
     let agentConfig: ACPAgentConfig | undefined
 
     if (profile && (profile.connection.type === "acp" || profile.connection.type === "stdio")) {
@@ -770,7 +775,7 @@ class ACPService extends EventEmitter {
       }
     } else {
       // Fallback to legacy config.acpAgents
-      agentConfig = config.acpAgents?.find(a => a.name === agentName)
+      agentConfig = config.acpAgents?.find(a => a.name === resolvedAgentName)
     }
 
     if (!agentConfig) {
@@ -786,19 +791,19 @@ class ACPService extends EventEmitter {
 
     // Check if already running or starting - treat both 'ready' and 'starting' as "already spawning"
     // This prevents spawning duplicate processes when a second call arrives while a spawn is in progress
-    const existing = this.agents.get(agentName)
+    const existing = this.agents.get(resolvedAgentName)
     if (existing) {
       if (existing.status === "starting") {
         // Wait for the existing spawn to complete (poll until ready or error)
-        await this.waitForAgentReady(agentName)
+        await this.waitForAgentReady(resolvedAgentName)
       }
 
-      const finalInstance = this.agents.get(agentName)
+      const finalInstance = this.agents.get(resolvedAgentName)
       if (finalInstance?.status === "error") {
-        throw new Error(finalInstance.error || `Agent ${agentName} failed to start`)
+        throw new Error(finalInstance.error || `Agent ${resolvedAgentName} failed to start`)
       }
       if (finalInstance?.status === "stopped") {
-        throw new Error(`Agent ${agentName} stopped unexpectedly during startup`)
+        throw new Error(`Agent ${resolvedAgentName} stopped unexpectedly during startup`)
       }
 
       if (finalInstance?.status === "ready") {
@@ -815,7 +820,7 @@ class ACPService extends EventEmitter {
 
         // The process is ready but in a different working directory than requested.
         // Restart to guarantee both process cwd and session/new cwd use the override.
-        await this.stopAgent(agentName)
+        await this.stopAgent(resolvedAgentName)
         restartedProcess = true
       }
     }
@@ -827,7 +832,7 @@ class ACPService extends EventEmitter {
     const { command, args = [], env = {} } = agentConfig.connection
 
     if (!command) {
-      throw new Error(`No command specified for agent ${agentName}`)
+      throw new Error(`No command specified for agent ${resolvedAgentName}`)
     }
 
     // Create agent instance
@@ -840,8 +845,8 @@ class ACPService extends EventEmitter {
       buffer: "",
     }
 
-    this.agents.set(agentName, instance)
-    this.emit("agentStatusChanged", { agentName, status: "starting" })
+    this.agents.set(resolvedAgentName, instance)
+    this.emit("agentStatusChanged", { agentName: resolvedAgentName, status: "starting" })
 
     try {
       // Merge environment variables
@@ -912,7 +917,7 @@ class ACPService extends EventEmitter {
       proc.on("error", (error) => {
         instance.status = "error"
         instance.error = error.message
-        this.emit("agentStatusChanged", { agentName, status: "error", error: error.message })
+        this.emit("agentStatusChanged", { agentName: resolvedAgentName, status: "error", error: error.message })
       })
 
       // Wait a moment for the process to start, then mark as ready
@@ -920,7 +925,7 @@ class ACPService extends EventEmitter {
 
       if (instance.status === "starting") {
         instance.status = "ready"
-        this.emit("agentStatusChanged", { agentName, status: "ready" })
+        this.emit("agentStatusChanged", { agentName: resolvedAgentName, status: "ready" })
       }
 
       return {
@@ -933,7 +938,7 @@ class ACPService extends EventEmitter {
       const errorMessage = error instanceof Error ? error.message : String(error)
       instance.status = "error"
       instance.error = errorMessage
-      this.emit("agentStatusChanged", { agentName, status: "error", error: errorMessage })
+      this.emit("agentStatusChanged", { agentName: resolvedAgentName, status: "error", error: errorMessage })
       throw error
     }
   }
@@ -1867,6 +1872,7 @@ class ACPService extends EventEmitter {
    */
   async runTask(request: ACPRunRequest): Promise<ACPRunResponse> {
     const { agentName, input, context, workingDirectory, forceNewSession, signal } = request
+    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
 
     if (signal?.aborted) {
       return {
@@ -1876,10 +1882,10 @@ class ACPService extends EventEmitter {
     }
 
     // Ensure agent is running and reconcile any updated working-directory config.
-    let instance = this.agents.get(agentName)
+    let instance = this.agents.get(resolvedAgentName)
     try {
       await this.spawnAgent(agentName, { workingDirectory })
-      instance = this.agents.get(agentName)
+      instance = this.agents.get(resolvedAgentName)
     } catch (error) {
       return {
         success: false,
@@ -1897,7 +1903,7 @@ class ACPService extends EventEmitter {
     try {
       // Step 1: Initialize if not already done
       if (!instance.initialized) {
-        await this.initializeAgent(agentName)
+        await this.initializeAgent(resolvedAgentName)
       }
 
       if (forceNewSession && instance.sessionId) {
@@ -1906,11 +1912,11 @@ class ACPService extends EventEmitter {
       }
 
       // Step 2: Create session if needed
-      const sessionId = await this.createSession(agentName)
+      const sessionId = await this.createSession(resolvedAgentName)
 
       if (signal?.aborted) {
         if (sessionId) {
-          void this.cancelPrompt(agentName, sessionId).catch(() => {})
+          void this.cancelPrompt(resolvedAgentName, sessionId).catch(() => {})
         }
         return {
           success: false,
@@ -1950,7 +1956,7 @@ class ACPService extends EventEmitter {
         const abortMessage = getAcpRunAbortMessage(request)
         const onAbort = () => {
           if (sessionId) {
-            void this.cancelPrompt(agentName, sessionId).catch(() => {})
+            void this.cancelPrompt(resolvedAgentName, sessionId).catch(() => {})
           }
           reject(new Error(abortMessage))
         }
@@ -1964,7 +1970,7 @@ class ACPService extends EventEmitter {
           signal.addEventListener("abort", onAbort, { once: true })
         }
 
-        this.sendRequest(agentName, "session/prompt", promptParams).then(
+        this.sendRequest(resolvedAgentName, "session/prompt", promptParams).then(
           (result) => {
             if (signal) {
               signal.removeEventListener("abort", onAbort)
@@ -2087,11 +2093,13 @@ class ACPService extends EventEmitter {
     workingDirectory?: string,
     pendingInjectedMcpContext?: { appSessionId: string },
   ): Promise<string> {
+    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
+
     // Ensure agent is spawned, ready, and reconciled with the latest working-directory config.
-    let instance = this.agents.get(agentName)
+    let instance = this.agents.get(resolvedAgentName)
     try {
       await this.spawnAgent(agentName, { workingDirectory })
-      instance = this.agents.get(agentName)
+      instance = this.agents.get(resolvedAgentName)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`Failed to start ACP agent ${agentName}: ${message}`)
@@ -2103,7 +2111,7 @@ class ACPService extends EventEmitter {
 
     // Initialize if not already done
     if (!instance.initialized) {
-      await this.initializeAgent(agentName)
+      await this.initializeAgent(resolvedAgentName)
     }
 
     // If forceNew, clear existing session
@@ -2113,7 +2121,7 @@ class ACPService extends EventEmitter {
     }
 
     // Create or reuse session
-    const sessionId = await this.createSession(agentName, pendingInjectedMcpContext)
+    const sessionId = await this.createSession(resolvedAgentName, pendingInjectedMcpContext)
     if (!sessionId) {
       throw new Error(
         `Failed to create ACP session for agent ${agentName}. ` +

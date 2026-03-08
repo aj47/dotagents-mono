@@ -527,6 +527,15 @@ class AgentProfileService {
   }
 
   /**
+   * Get a profile by any user/tool-facing identifier.
+   * Accepts name, displayName, or profile ID so ACP routing can recover from
+   * agents/tooling that only surfaced the profile ID.
+   */
+  getByIdentifier(identifier: string): AgentProfile | undefined {
+    return this.getByName(identifier) || this.getById(identifier)
+  }
+
+  /**
    * Create a new profile.
    */
   create(profile: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">): AgentProfile {
