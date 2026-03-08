@@ -5794,3 +5794,55 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long queued-message statuses remain readable beside `More` without making the row feel overly tall.
   - Capture screenshot-backed evidence for queued rows in `Queued`, `Processing...`, and `Failed - blocking queue` states on a narrow viewport.
   - After that live pass, re-evaluate whether the next highest-signal local improvement is a queue-control/state-action gap rather than another text-wrapping tweak.
+
+## Iteration 130 - Add a collapsed summary for the mobile Agents section
+
+- Date: 2026-03-08
+- Summary: Improved mobile sub-agent state clarity by adding a concise collapsed `Agents` summary so users can see whether they have no agents, all enabled agents, or disabled agents without reopening the whole section.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recently touched queue/history surfaces without a fresh local issue.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` plus the focused agent settings tests in `apps/mobile/tests/settings-agent-actions-mobile.test.js` and `apps/mobile/tests/settings-agent-mode-mobile.test.js`.
+  - Confirmed `Agent Settings` and `Agent Loops` already exposed collapsed summaries on mobile, while the `Agents` section still did not.
+- Live inspection / workflow status:
+  - Reused the already-confirmed mobile workflow for this worktree:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `undefined`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`, `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still fails immediately because the mobile install / Expo base config and React Native modules are unavailable in this worktree
+  - Because Expo is still unavailable locally, this iteration used source-backed hierarchy review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - The mobile `Agents` section starts collapsed like the other DotAgents-specific settings sections.
+  - Source review showed `Agent Settings` already summarized main-agent mode and `Agent Loops` already summarized loop activity in the collapsed header.
+  - The adjacent `Agents` section still exposed only the title, so users could not tell at a glance whether agents were still loading, missing, all enabled, or partly disabled.
+- Issue identified:
+  - The collapsed mobile `Agents` section hid useful sub-agent availability state, weakening scanability and making users expand the section for routine status checks.
+- Decision and rationale:
+  - Keep the existing agent-row layout, badges, edit affordances, and actions unchanged.
+  - Do not broaden this into a richer multi-stat agent dashboard while live validation is blocked.
+  - Make the smallest local fix instead: add a concise collapsed summary that mirrors the existing collapsible-header pattern and stays short enough for a single-line mobile truncation budget.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - derive `agentsSectionSummary` from loading state plus the current agent count / disabled-agent count,
+    - show `Loading agents…`, `No agents`, `${count} agents • ${disabledCount} disabled`, or `${count} agents • all enabled` as appropriate,
+    - pass that summary into the existing `CollapsibleSection` header for `Agents`.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new collapsed summary logic and wiring.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+  - Mobile typecheck re-validation ⚠️ still blocked by the same missing install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+- Assumptions and tradeoffs:
+  - Assumed the most useful collapsed-state answer in this section is simple availability context, not a denser badge-by-badge breakdown.
+  - Kept the summary intentionally short because the shared collapsible header only budgets one truncation-safe secondary line.
+  - This remains a source-backed improvement and still needs live confirmation that the new summary reads cleanly beside the existing header chevron on a real narrow viewport.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The `Agents` section still lacks fresh screenshot-backed validation after earlier badge/action improvements and this new summary line.
+  - A live pass is still needed to confirm longer summaries like `12 agents • 3 disabled` remain readable without crowding the header.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed `Agents` summary stays readable across empty, loading, all-enabled, and mixed-enabled states.
+  - Capture screenshot-backed evidence for the collapsed `Agents`, `Agent Settings`, and `Agent Loops` headers together so their summary density can be compared side by side.
+  - After that live pass, continue with the next highest-signal local improvement instead of revisiting this header-summary tweak without fresh evidence.

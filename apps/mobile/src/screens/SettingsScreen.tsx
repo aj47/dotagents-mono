@@ -348,6 +348,21 @@ export default function SettingsScreen({ navigation }: any) {
 
     return 'API • Direct model';
   }, [remoteSettings, selectedMainAgentAvailabilityState, selectedMainAgentLabel]);
+  const agentsSectionSummary = useMemo(() => {
+    if (isLoadingAgentProfiles) return 'Loading agents…';
+    if (agentProfiles.length === 0) return 'No agents';
+
+    const disabledAgentCount = agentProfiles.filter((profile) => !profile.enabled).length;
+    const summaryParts = [`${agentProfiles.length} ${agentProfiles.length === 1 ? 'agent' : 'agents'}`];
+
+    if (disabledAgentCount > 0) {
+      summaryParts.push(`${disabledAgentCount} disabled`);
+    } else {
+      summaryParts.push('all enabled');
+    }
+
+    return summaryParts.join(' • ');
+  }, [isLoadingAgentProfiles, agentProfiles]);
   const agentLoopsSectionSummary = useMemo(() => {
     if (isLoadingLoops) return 'Loading loops…';
     if (loops.length === 0) return 'No loops';
@@ -2490,7 +2505,7 @@ export default function SettingsScreen({ navigation }: any) {
 
             {/* 4m. Agents */}
             {isDotAgentsServer && (
-              <CollapsibleSection id="agents" title="Agents">
+              <CollapsibleSection id="agents" title="Agents" summary={agentsSectionSummary}>
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : agentProfiles.length === 0 ? (

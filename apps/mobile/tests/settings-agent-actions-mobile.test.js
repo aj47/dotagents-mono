@@ -83,6 +83,18 @@ test('surfaces the currently selected ACP main agent directly in the mobile agen
   assert.match(settingsSource, /This agent is currently selected as the main agent for new chats in ACP mode\./);
 });
 
+test('keeps agent availability context visible in the collapsed Agents header on mobile', () => {
+  assert.match(settingsSource, /const agentsSectionSummary = useMemo\(\(\) => \{/);
+  assert.match(settingsSource, /if \(isLoadingAgentProfiles\) return 'Loading agents…';/);
+  assert.match(settingsSource, /if \(agentProfiles\.length === 0\) return 'No agents';/);
+  assert.match(settingsSource, /const disabledAgentCount = agentProfiles\.filter\(\(profile\) => !profile\.enabled\)\.length;/);
+  assert.match(settingsSource, /const summaryParts = \[`\$\{agentProfiles\.length\} \$\{agentProfiles\.length === 1 \? 'agent' : 'agents'\}`\];/);
+  assert.match(settingsSource, /if \(disabledAgentCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{disabledAgentCount\} disabled`\);/);
+  assert.match(settingsSource, /else \{[\s\S]*?summaryParts\.push\('all enabled'\);/);
+  assert.match(settingsSource, /return summaryParts\.join\(' • '\);/);
+  assert.match(settingsSource, /<CollapsibleSection id="agents" title="Agents" summary=\{agentsSectionSummary\}>/);
+});
+
 test('keeps long agent names stable when built-in and disabled badges are present', () => {
   assert.match(settingsSource, /<Text[\s\S]*?style=\{\[styles\.serverName, styles\.agentRowName\]\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{profile\.displayName\}/);
   assert.match(settingsSource, /\{\(isSelectedMainAgentProfile \|\| profile\.isBuiltIn \|\| !profile\.enabled\) && \([\s\S]*?<View style=\{styles\.agentRowBadges\}>[\s\S]*?Built-in[\s\S]*?Disabled[\s\S]*?\)\}/);
