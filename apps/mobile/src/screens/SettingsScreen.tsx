@@ -40,6 +40,38 @@ const TTS_PROVIDERS = [
   { label: 'Supertonic', value: 'supertonic' },
 ] as const;
 
+function buildRemoteSettingsInputDrafts(settings: Settings | null): Record<string, string> {
+  if (!settings) {
+    return {
+      sttLanguage: '',
+      transcriptPostProcessingPrompt: '',
+      mcpMaxIterations: '',
+      whatsappAllowFrom: '',
+      langfusePublicKey: '',
+      langfuseSecretKey: '',
+      langfuseBaseUrl: '',
+    };
+  }
+
+  return {
+    sttLanguage: settings.sttLanguage || '',
+    transcriptPostProcessingPrompt: settings.transcriptPostProcessingPrompt || '',
+    mcpMaxIterations: String(settings.mcpMaxIterations ?? 10),
+    whatsappAllowFrom: (settings.whatsappAllowFrom || []).join(', '),
+    langfusePublicKey: settings.langfusePublicKey || '',
+    langfuseSecretKey: settings.langfuseSecretKey === '••••••••' ? '' : (settings.langfuseSecretKey || ''),
+    langfuseBaseUrl: settings.langfuseBaseUrl || '',
+  };
+}
+
+function getSectionLoadErrorMessage(sectionLabel: string, error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return `Couldn't load ${sectionLabel}. ${error.message.trim()}`;
+  }
+
+  return `Couldn't load ${sectionLabel}. Pull to refresh and try again.`;
+}
+
 // OpenAI TTS Voice Options
 const OPENAI_TTS_VOICES = [
   { label: 'Alloy', value: 'alloy' },
@@ -236,6 +268,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [skillsLoadError, setSkillsLoadError] = useState<string | null>(null);
+  const [memoriesLoadError, setMemoriesLoadError] = useState<string | null>(null);
+  const [agentProfilesLoadError, setAgentProfilesLoadError] = useState<string | null>(null);
+  const [loopsLoadError, setLoopsLoadError] = useState<string | null>(null);
   const availableAcpMainAgents = useMemo(
     () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -249,6 +285,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+  const [modelsLoadError, setModelsLoadError] = useState<string | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
@@ -311,8 +348,11 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchRemoteSettings = useCallback(async () => {
     if (!settingsClient) {
       setProfiles([]);
+      setCurrentProfileId(undefined);
       setMcpServers([]);
       setRemoteSettings(null);
+      setRemoteError(null);
+      setInputDrafts(buildRemoteSettingsInputDrafts(null));
       setIsDotAgentsServer(false);
       return;
     }
@@ -334,25 +374,25 @@ export default function SettingsScreen({ navigation }: any) {
         setProfiles(profilesRes.profiles);
         setCurrentProfileId(profilesRes.currentProfileId);
         successCount++;
+      } else {
+        setProfiles([]);
+        setCurrentProfileId(undefined);
       }
       if (serversRes) {
         setMcpServers(serversRes.servers);
         successCount++;
+      } else {
+        setMcpServers([]);
       }
       if (settingsRes) {
         setRemoteSettings(settingsRes);
         // Sync input drafts from fetched settings (only on explicit fetch,
         // not on optimistic local updates, to avoid overwriting user's typing)
-        setInputDrafts({
-          sttLanguage: settingsRes.sttLanguage || '',
-          transcriptPostProcessingPrompt: settingsRes.transcriptPostProcessingPrompt || '',
-          mcpMaxIterations: String(settingsRes.mcpMaxIterations ?? 10),
-          whatsappAllowFrom: (settingsRes.whatsappAllowFrom || []).join(', '),
-          langfusePublicKey: settingsRes.langfusePublicKey || '',
-          langfuseSecretKey: settingsRes.langfuseSecretKey === '••••••••' ? '' : (settingsRes.langfuseSecretKey || ''),
-          langfuseBaseUrl: settingsRes.langfuseBaseUrl || '',
-        });
+        setInputDrafts(buildRemoteSettingsInputDrafts(settingsRes));
         successCount++;
+      } else {
+        setRemoteSettings(null);
+        setInputDrafts(buildRemoteSettingsInputDrafts(null));
       }
 
       // Consider it a DotAgents server if at least one endpoint succeeded
@@ -379,11 +419,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchSkills = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingSkills(true);
+    setSkillsLoadError(null);
     try {
       const res = await settingsClient.getSkills();
       setSkills(res.skills);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch skills:', error);
+      setSkillsLoadError(getSectionLoadErrorMessage('skills', error));
     } finally {
       setIsLoadingSkills(false);
     }
@@ -393,11 +435,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchMemories = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingMemories(true);
+    setMemoriesLoadError(null);
     try {
       const res = await settingsClient.getMemories();
       setMemories(res.memories);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch memories:', error);
+      setMemoriesLoadError(getSectionLoadErrorMessage('memories', error));
     } finally {
       setIsLoadingMemories(false);
     }
@@ -407,11 +451,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchAgentProfiles = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingAgentProfiles(true);
+    setAgentProfilesLoadError(null);
     try {
       const res = await settingsClient.getAgentProfiles();
       setAgentProfiles(res.profiles);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch agent profiles:', error);
+      setAgentProfilesLoadError(getSectionLoadErrorMessage('agents', error));
     } finally {
       setIsLoadingAgentProfiles(false);
     }
@@ -421,11 +467,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchLoops = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingLoops(true);
+    setLoopsLoadError(null);
     try {
       const res = await settingsClient.getLoops();
       setLoops(res.loops);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch loops:', error);
+      setLoopsLoadError(getSectionLoadErrorMessage('agent loops', error));
     } finally {
       setIsLoadingLoops(false);
     }
@@ -800,6 +848,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
 
     setIsLoadingModels(true);
+    setModelsLoadError(null);
     try {
       const response = await settingsClient.getModels(providerId);
       setAvailableModels(response.models);
@@ -811,8 +860,7 @@ export default function SettingsScreen({ navigation }: any) {
       }
     } catch (error: any) {
       console.error('[Settings] Failed to fetch models:', error);
-      // Keep any existing models on error to avoid UI looking empty
-      // Only log the error, don't clear the list
+      setModelsLoadError(getSectionLoadErrorMessage('models', error));
     } finally {
       setIsLoadingModels(false);
     }
@@ -837,6 +885,8 @@ export default function SettingsScreen({ navigation }: any) {
 
     try {
       await settingsClient.updateSettings({ mcpToolsProviderId: provider });
+      setAvailableModels([]);
+      setModelsLoadError(null);
       setRemoteSettings(prev => prev ? { ...prev, mcpToolsProviderId: provider } : null);
       // Reset custom model mode when switching providers
       setUseCustomModel(false);
@@ -863,6 +913,7 @@ export default function SettingsScreen({ navigation }: any) {
       setRemoteSettings(prev => prev ? { ...prev, currentModelPresetId: presetId } : null);
       // Reset models and fetch new ones for the new preset
       setAvailableModels([]);
+      setModelsLoadError(null);
       setUseCustomModel(false);
       // Fetch models for the new preset
       if (remoteSettings.mcpToolsProviderId === 'openai') {
@@ -971,6 +1022,21 @@ export default function SettingsScreen({ navigation }: any) {
       m => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
     );
   }, [availableModels, modelSearchQuery]);
+
+  const hasSavedLangfuseSecretKey = remoteSettings?.langfuseSecretKey === '••••••••';
+
+  const handleClearLangfuseSecretKey = useCallback(async () => {
+    if (!settingsClient) return;
+
+    try {
+      await settingsClient.updateSettings({ langfuseSecretKey: '' });
+      setRemoteSettings(prev => prev ? { ...prev, langfuseSecretKey: '' } : null);
+      setInputDrafts(prev => ({ ...prev, langfuseSecretKey: '' }));
+    } catch (error: any) {
+      console.error('[Settings] Failed to clear langfuseSecretKey:', error);
+      setRemoteError(error.message || 'Failed to clear langfuseSecretKey');
+    }
+  }, [settingsClient]);
 
   useEffect(() => {
     setDraft(config);
@@ -1465,6 +1531,11 @@ export default function SettingsScreen({ navigation }: any) {
                       </View>
                     )}
                   </TouchableOpacity>
+                )}
+                {!useCustomModel && modelsLoadError && (
+                  <Text style={[styles.helperText, styles.errorHelperText, styles.modelLoadErrorText]}>
+                    {modelsLoadError}
+                  </Text>
                 )}
               </CollapsibleSection>
             )}
@@ -2091,6 +2162,7 @@ export default function SettingsScreen({ navigation }: any) {
                         if (value !== undefined && value !== '' && settingsClient) {
                           settingsClient.updateSettings({ langfuseSecretKey: value }).then(() => {
                             setRemoteSettings(prev => prev ? { ...prev, langfuseSecretKey: '••••••••' } : null);
+                            setInputDrafts(prev => ({ ...prev, langfuseSecretKey: '' }));
                           }).catch((error: any) => {
                             console.error('[Settings] Failed to update langfuseSecretKey:', error);
                             setRemoteError(error.message || 'Failed to update langfuseSecretKey');
@@ -2102,6 +2174,20 @@ export default function SettingsScreen({ navigation }: any) {
                       autoCapitalize='none'
                       secureTextEntry
                     />
+                    {hasSavedLangfuseSecretKey && (
+                      <TouchableOpacity
+                        style={styles.inlineDangerButton}
+                        onPress={() => {
+                          void handleClearLangfuseSecretKey();
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel('Clear saved Langfuse secret key')}
+                        accessibilityHint="Removes the saved Langfuse secret key from the connected desktop settings."
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.inlineDangerButtonText}>Clear saved secret key</Text>
+                      </TouchableOpacity>
+                    )}
 
                     <Text style={styles.label}>Base URL</Text>
                     <TextInput
@@ -2126,6 +2212,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="skills" title="Skills">
                 {isLoadingSkills ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : skillsLoadError && skills.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{skillsLoadError}</Text>
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
@@ -2147,6 +2235,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {skillsLoadError && skills.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{skillsLoadError}</Text>
+                )}
                 <Text style={styles.helperText}>
                   Toggle skills for the current profile
                 </Text>
@@ -2158,6 +2249,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="memories" title="Memories">
                 {isLoadingMemories ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : memoriesLoadError && memories.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{memoriesLoadError}</Text>
                 ) : memories.length === 0 ? (
                   <Text style={styles.helperText}>No memories saved</Text>
                 ) : (
@@ -2197,6 +2290,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {memoriesLoadError && memories.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{memoriesLoadError}</Text>
+                )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
                   onPress={() => handleMemoryEdit()}
@@ -2214,6 +2310,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agents" title="Agents">
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : agentProfilesLoadError && agentProfiles.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{agentProfilesLoadError}</Text>
                 ) : agentProfiles.length === 0 ? (
                   <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
@@ -2282,6 +2380,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {agentProfilesLoadError && agentProfiles.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{agentProfilesLoadError}</Text>
+                )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
                   onPress={() => handleAgentProfileEdit()}
@@ -2299,6 +2400,8 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agentLoops" title="Agent Loops">
                 {isLoadingLoops ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : loopsLoadError && loops.length === 0 ? (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{loopsLoadError}</Text>
                 ) : loops.length === 0 ? (
                   <Text style={styles.helperText}>No agent loops configured</Text>
                 ) : (
@@ -2371,6 +2474,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                {loopsLoadError && loops.length > 0 && (
+                  <Text style={[styles.helperText, styles.errorHelperText]}>{loopsLoadError}</Text>
+                )}
                 <TouchableOpacity
                   style={styles.createAgentButton}
                   onPress={() => handleLoopEdit()}
@@ -2428,8 +2534,17 @@ export default function SettingsScreen({ navigation }: any) {
             <ScrollView style={styles.modelList} keyboardShouldPersistTaps="handled">
               {filteredModels.length === 0 ? (
                 <View style={styles.modelListEmpty}>
-                  <Text style={styles.modelListEmptyText}>
-                    {modelSearchQuery ? `No models match "${modelSearchQuery}"` : 'No models available'}
+                  <Text
+                    style={[
+                      styles.modelListEmptyText,
+                      modelsLoadError && availableModels.length === 0 && !modelSearchQuery && styles.errorHelperText,
+                    ]}
+                  >
+                    {modelSearchQuery
+                      ? `No models match "${modelSearchQuery}"`
+                      : modelsLoadError && availableModels.length === 0
+                        ? modelsLoadError
+                        : 'No models available'}
                   </Text>
                 </View>
               ) : (
@@ -2471,6 +2586,9 @@ export default function SettingsScreen({ navigation }: any) {
                   ? `${filteredModels.length} of ${availableModels.length} models`
                   : `${availableModels.length} model${availableModels.length !== 1 ? 's' : ''} available`}
               </Text>
+              {modelsLoadError && availableModels.length > 0 && (
+                <Text style={styles.modelPickerErrorText}>{modelsLoadError}</Text>
+              )}
             </View>
           </View>
         </View>
@@ -2813,6 +2931,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       marginTop: -spacing.xs,
     },
+    errorHelperText: {
+      color: theme.colors.destructive,
+    },
     input: {
       ...theme.input,
     },
@@ -2939,6 +3060,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       fontWeight: '600',
       marginLeft: spacing.sm,
+    },
+    inlineDangerButton: {
+      ...compactActionTouchTarget,
+      alignSelf: 'flex-start',
+      marginTop: spacing.xs,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+    },
+    inlineDangerButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '600',
     },
     profileList: {
       gap: spacing.xs,
@@ -3386,6 +3521,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelPickerFooterText: {
       fontSize: 12,
       color: theme.colors.mutedForeground,
+    },
+    modelLoadErrorText: {
+      marginTop: spacing.xs,
+    },
+    modelPickerErrorText: {
+      fontSize: 12,
+      color: theme.colors.destructive,
+      marginTop: spacing.xs,
+      textAlign: 'center',
     },
     // Collapsible section styles
     collapsibleSection: {

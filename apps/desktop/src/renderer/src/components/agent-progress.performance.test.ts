@@ -13,14 +13,18 @@ describe("agent progress streaming performance guardrails", () => {
   it("limits non-focused tile transcripts to a recent preview during session-grid rendering", () => {
     expect(agentProgressSource).toContain("const TILE_TRANSCRIPT_PREVIEW_ITEMS = 6")
     expect(agentProgressSource).toContain("const shouldLimitTileTranscript = !isFocused && !isExpanded")
-    expect(agentProgressSource).toContain("Showing latest {tileDisplayItems.length} of {displayItems.length} updates")
+    expect(agentProgressSource).toContain("const tileDisplayItems = shouldLimitTileTranscript")
+    expect(agentProgressSource).toContain("displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)")
+    expect(agentProgressSource).toContain("const hiddenTileItemCount = displayItems.length - tileDisplayItems.length")
+    expect(agentProgressSource).toContain('`${hiddenTileItemCount} earlier updates hidden`')
   })
 
   it("memoizes session tiles so unrelated streamed chunks do not re-render the full grid", () => {
     expect(sessionsPageSource).toContain("const SessionProgressTile = React.memo(function SessionProgressTile")
     expect(sessionsPageSource).toContain("<SessionProgressTile")
-    expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(async (sessionId: string) =>")
-    expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(async (sessionId: string) =>")
+    expect(sessionsPageSource).toContain("const handleFocusSession = useCallback(")
+    expect(sessionsPageSource).toContain("async (sessionId: string) => {")
+    expect(sessionsPageSource).toContain("const handleDismissSession = useCallback(")
   })
 
   it("keeps the historical transcript memoized while streamed chunks update only current-state items", () => {

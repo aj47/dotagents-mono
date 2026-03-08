@@ -30,4 +30,14 @@ describe("audio player layout", () => {
     expect(audioPlayerSource).toContain('className="ml-auto flex min-w-0 max-w-full items-center gap-2"')
     expect(audioPlayerSource).toContain('className="min-w-[5rem] max-w-[8rem] flex-1"')
   })
+
+  it("clears stale playback state when parent invalidates cached audio", () => {
+    expect(audioPlayerSource).toContain("if (!audioData) {")
+    expect(audioPlayerSource).toContain('audio.removeAttribute("src")')
+    expect(audioPlayerSource).toContain("audio.load()")
+    expect(audioPlayerSource).toContain("setHasAudio(false)")
+    expect(audioPlayerSource).toContain("setHasAutoPlayed(false)")
+    expect(audioPlayerSource).toContain("setDuration(0)")
+    expect(audioPlayerSource).toContain("onPlayStateChange?.(false)")
+  })
 })

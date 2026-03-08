@@ -91,6 +91,15 @@ const RECENT_SINGLE_VIEW_RETURN_VISUAL_CUE_DURATION_MS = 1_800
 const RECENT_SINGLE_VIEW_RESTORE_ADJUSTMENT_CUE_DURATION_MS = 2_400
 const RECENT_WIDTH_LOCK_HINT_DURATION_MS = 2_400
 
+function getSessionActionErrorMessage(actionLabel: string, error: unknown) {
+  const details = typeof error === "string"
+    ? error.trim()
+    : error instanceof Error
+      ? error.message.trim()
+      : ""
+  return details ? `${actionLabel}. ${details}` : actionLabel
+}
+
 const TILE_LAYOUT_OPTIONS = [
   {
     mode: "1x2",
@@ -1526,37 +1535,94 @@ export function Component() {
   const handleTextClick = async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindowWithTextInput({})
+    try {
+      const showTextInputResult = await tipcClient.showPanelWindowWithTextInput({})
+      if (showTextInputResult && "success" in showTextInputResult && showTextInputResult.success === false) {
+        console.error("Failed to start text session:", showTextInputResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start text session", showTextInputResult.error))
+      }
+    } catch (error) {
+      console.error("Failed to start text session:", error)
+      toast.error(getSessionActionErrorMessage("Failed to start text session", error))
+    }
   }
 
   // Handle voice start - trigger MCP recording
   const handleVoiceStart = async () => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindow({})
-    await tipcClient.triggerMcpRecording({})
+    try {
+      const showPanelResult = await tipcClient.showPanelWindow({})
+      if (showPanelResult && "success" in showPanelResult && showPanelResult.success === false) {
+        console.error("Failed to start voice session:", showPanelResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start voice session", showPanelResult.error))
+        return
+      }
+
+      const recordingResult = await tipcClient.triggerMcpRecording({})
+      if (recordingResult && "success" in recordingResult && recordingResult.success === false) {
+        console.error("Failed to start voice session:", recordingResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start voice session", recordingResult.error))
+      }
+    } catch (error) {
+      console.error("Failed to start voice session:", error)
+      toast.error(getSessionActionErrorMessage("Failed to start voice session", error))
+    }
   }
 
   // Handle predefined prompt selection - open panel with text input pre-filled
   const handleSelectPrompt = async (content: string) => {
     const applied = await applySelectedAgentToNextSession()
     if (!applied) return
-    await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+    try {
+      const showTextInputResult = await tipcClient.showPanelWindowWithTextInput({ initialText: content })
+      if (showTextInputResult && "success" in showTextInputResult && showTextInputResult.success === false) {
+        console.error("Failed to start prompt session:", showTextInputResult.error)
+        toast.error(getSessionActionErrorMessage("Failed to start prompt session", showTextInputResult.error))
+      }
+    } catch (error) {
+      console.error("Failed to start prompt session:", error)
+      toast.error(getSessionActionErrorMessage("Failed to start prompt session", error))
+    }
   }
 
   const handleFocusSession = useCallback(
     async (sessionId: string) => {
+      const previousFocusedSessionId = focusedSessionId
       setFocusedSessionId(sessionId)
+
+      try {
+        const focusResult = await tipcClient.focusAgentSession({ sessionId })
+        if (focusResult && "success" in focusResult && focusResult.success === false) {
+          setFocusedSessionId(previousFocusedSessionId ?? null)
+          const details = typeof focusResult.error === "string"
+            ? focusResult.error.trim()
+            : ""
+          console.error("Failed to focus session:", focusResult.error)
+          toast.error(details ? `Failed to focus session. ${details}` : "Failed to focus session")
+          return
+        }
+      } catch (error) {
+        setFocusedSessionId(previousFocusedSessionId ?? null)
+        console.error("Failed to focus session:", error)
+        toast.error(getSessionActionErrorMessage("Failed to focus session", error))
+        return
+      }
+
       // Also show the panel window with this session focused
       try {
-        await tipcClient.focusAgentSession({ sessionId })
         await tipcClient.setPanelMode({ mode: "agent" })
-        await tipcClient.showPanelWindow({})
+        const showPanelResult = await tipcClient.showPanelWindow({})
+        if (showPanelResult && "success" in showPanelResult && showPanelResult.success === false) {
+          console.error("Failed to show panel window:", showPanelResult.error)
+          toast.error(getSessionActionErrorMessage("Failed to open session", showPanelResult.error))
+        }
       } catch (error) {
         console.error("Failed to show panel window:", error)
+        toast.error(getSessionActionErrorMessage("Failed to open session", error))
       }
     },
-    [setFocusedSessionId],
+    [focusedSessionId, setFocusedSessionId],
   )
 
   const handleDismissSession = useCallback(

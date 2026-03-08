@@ -1188,12 +1188,22 @@ export const router = {
   focusAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
+      const panelRendererHandlers = getWindowRendererHandlers("panel")
+      if (!panelRendererHandlers?.focusAgentSession) {
+        logApp("[tipc] focusAgentSession unavailable: panel renderer handlers missing")
+        return {
+          success: false,
+          error: "Panel window is unavailable.",
+        }
+      }
+
       try {
-        getWindowRendererHandlers("panel")?.focusAgentSession.send(input.sessionId)
+        panelRendererHandlers.focusAgentSession.send(input.sessionId)
+        return { success: true }
       } catch (e) {
         logApp("[tipc] focusAgentSession send failed:", e)
+        return { success: false, error: getErrorMessage(e) }
       }
-      return { success: true }
     }),
 
   writeClipboard: t.procedure
@@ -1291,22 +1301,52 @@ export const router = {
   }),
 
   showPanelWindow: t.procedure.action(async () => {
-    showPanelWindow()
+    const panelWindow = WINDOWS.get("panel")
+    if (!panelWindow || panelWindow.isDestroyed()) {
+      return { success: false, error: "Panel window is unavailable." }
+    }
+
+    try {
+      showPanelWindow()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: getErrorMessage(error) }
+    }
   }),
 
   showPanelWindowWithTextInput: t.procedure
     .input<{ initialText?: string }>()
     .action(async ({ input }) => {
-      await showPanelWindowAndShowTextInput(input.initialText)
+      const panelWindow = WINDOWS.get("panel")
+      if (!panelWindow || panelWindow.isDestroyed()) {
+        return { success: false, error: "Panel window is unavailable." }
+      }
+
+      try {
+        await showPanelWindowAndShowTextInput(input.initialText)
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: getErrorMessage(error) }
+      }
     }),
 
   triggerMcpRecording: t.procedure
     .input<{ conversationId?: string; sessionId?: string; fromTile?: boolean }>()
     .action(async ({ input }) => {
+      const panelWindow = WINDOWS.get("panel")
+      if (!panelWindow || panelWindow.isDestroyed()) {
+        return { success: false, error: "Panel window is unavailable." }
+      }
+
       // Always show the panel during recording for waveform feedback
       // The fromTile flag tells the panel to hide after recording ends
       // fromButtonClick=true indicates this was triggered via UI button (not keyboard shortcut)
-      await showPanelWindowAndStartMcpRecording(input.conversationId, input.sessionId, input.fromTile, true)
+      try {
+        await showPanelWindowAndStartMcpRecording(input.conversationId, input.sessionId, input.fromTile, true)
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: getErrorMessage(error) }
+      }
     }),
 
   showMainWindow: t.procedure
@@ -4924,8 +4964,7 @@ export const router = {
   saveLoop: t.procedure
     .input<{ loop: LoopConfig }>()
     .action(async ({ input }) => {
-      loopService.saveLoop(input.loop)
-      return { success: true }
+      return { success: loopService.saveLoop(input.loop) }
     }),
 
   deleteLoop: t.procedure

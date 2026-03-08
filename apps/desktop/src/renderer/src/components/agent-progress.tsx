@@ -24,6 +24,7 @@ import { AgentSummaryView } from "./agent-summary-view"
 import { hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForSpeech } from "@shared/message-display-utils"
+import { toast } from "sonner"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -47,6 +48,16 @@ interface AgentProgressProps {
   onExpand?: () => void
   /** For tile variant: whether this tile is in expanded/full view mode */
   isExpanded?: boolean
+}
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
+function getCopyErrorMessage(label: string, error: unknown): string {
+  return `Failed to copy ${label}: ${getActionErrorMessage(error, "Please try again.")}`
 }
 
 // Enhanced conversation message component
@@ -263,6 +274,8 @@ const CompactMessage: React.FC<{
       copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000)
     } catch (err) {
       console.error("Failed to copy response:", err)
+      const copyLabel = message.role === "user" ? "prompt" : "response"
+      toast.error(getCopyErrorMessage(copyLabel, err))
     }
   }
 
@@ -2360,6 +2373,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Get current conversation ID for deep-linking and session focus control
   const currentConversationId = useConversationStore((s) => s.currentConversationId)
+  const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
 
@@ -2404,6 +2418,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     } catch (error) {
       const stopPath = progress?.sessionId ? "stopAgentSession" : "emergencyStopAgent"
       console.error(`Failed to stop agent (via ${stopPath}):`, error)
+      toast.error(
+        `Failed to stop agent. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     } finally {
       setIsKilling(false)
     }
@@ -2439,6 +2456,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       setSessionSnoozed(progress.sessionId, false)
       logUI('🔴 [AgentProgress OVERLAY] Failed to snooze, rolled back local state')
       console.error("Failed to snooze session:", error)
+      toast.error(
+        `Failed to minimize session. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       return
     }
 
@@ -2453,11 +2473,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // Log UI errors but don't rollback - the backend state is already updated
       logUI('🔴 [AgentProgress OVERLAY] Session snoozed but UI update failed')
       console.error("Failed to update UI after snooze:", error)
+      toast.error(
+        `Session minimized, but failed to hide the panel. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     }
   }
 
   // Close button handler for completed agent view
   const handleClose = async () => {
+    let closeTarget: "session" | "panel" = "panel"
     try {
       const thisId = progress?.sessionId
       // Avoid subscribing every AgentProgress instance to the full progress map.
@@ -2470,6 +2494,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         : false
 
       if (thisId && hasOtherVisible) {
+        closeTarget = "session"
         // Session-scoped dismiss: remove only this session's progress and keep panel open
         await tipcClient.clearAgentSessionProgress({ sessionId: thisId })
       } else {
@@ -2478,6 +2503,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     } catch (error) {
       console.error("Failed to close agent session/panel:", error)
+      toast.error(
+        `Failed to close ${closeTarget}. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     }
   }
 
@@ -2512,10 +2540,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         approved: true,
       })
       console.log(`[Tool Approval UI] respondToToolApproval returned:`, result)
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
       // Don't reset respondingApprovalId on success - keep showing "Processing..."
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to approve tool call:", error)
+      toast.error(
+        `Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
@@ -2544,10 +2578,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         approved: false,
       })
       console.log(`[Tool Approval UI] respondToToolApproval (deny) returned:`, result)
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
       // Don't reset respondingApprovalId on success - keep showing "Processing..."
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to deny tool call:", error)
+      toast.error(
+        `Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
@@ -3459,6 +3499,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   e.stopPropagation()
                   if (!progress?.sessionId) return
 
+                  const previousFocusedSessionId = focusedSessionId
+
                   // Update local store first so panel shows content immediately
                   setSessionSnoozed(progress.sessionId, false)
                   // Focus this session in state
@@ -3470,18 +3512,30 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   } catch (error) {
                     // Rollback local state only when the API call fails to keep UI and backend in sync
                     setSessionSnoozed(progress.sessionId, true)
-                    setFocusedSessionId(null)
+                    setFocusedSessionId(previousFocusedSessionId ?? null)
                     console.error("Failed to unsnooze session:", error)
+                    toast.error(
+                      `Failed to restore session. ${getActionErrorMessage(error, "Please try again.")}`,
+                    )
                     return
                   }
 
                   // UI updates after successful API call - don't rollback if these fail
                   try {
                     // Keep panel state in sync for the restored session without forcing panel open.
-                    await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+                    const focusResult = await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+                    if (focusResult?.success === false) {
+                      console.error("Failed to sync panel focus after unsnooze:", focusResult.error)
+                      toast.error(
+                        `Session restored, but failed to sync panel focus. ${getActionErrorMessage(focusResult.error, "Please try again.")}`,
+                      )
+                    }
                   } catch (error) {
                     // Log UI errors but don't rollback - the backend state is already updated
                     console.error("Failed to update UI after unsnooze:", error)
+                    toast.error(
+                      `Session restored, but failed to sync panel focus. ${getActionErrorMessage(error, "Please try again.")}`,
+                    )
                   }
                 }} title="Restore session">
                   <Maximize2 className="h-3 w-3" />

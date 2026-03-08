@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { cn } from "@renderer/lib/utils"
 import { Component as McpToolsPage } from "./settings-mcp-tools"
 import { Component as SkillsPage } from "./settings-skills"
@@ -10,8 +10,27 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"]
 
+const DEFAULT_TAB: TabId = "skills"
+
+function getCapabilitiesTab(tabParam: string | null): TabId {
+  return tabs.some((tab) => tab.id === tabParam) ? (tabParam as TabId) : DEFAULT_TAB
+}
+
 export function Component() {
-  const [activeTab, setActiveTab] = useState<TabId>("skills")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = getCapabilitiesTab(searchParams.get("tab"))
+
+  const handleTabChange = (tab: TabId) => {
+    const nextParams = new URLSearchParams(searchParams)
+
+    if (tab === DEFAULT_TAB) {
+      nextParams.delete("tab")
+    } else {
+      nextParams.set("tab", tab)
+    }
+
+    setSearchParams(nextParams)
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -21,7 +40,7 @@ export function Component() {
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               activeTab === tab.id

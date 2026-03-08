@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
@@ -17,6 +17,7 @@ import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
 import { EyeOff, ExternalLink } from "lucide-react"
+import { toast } from "sonner"
 
 /**
  * Mask a URL for streamer mode - masks all alphanumeric content (including the protocol)
@@ -63,6 +64,61 @@ interface RemoteServerSettingsGroupsProps {
   defaultCollapsed?: boolean
 }
 
+const DEFAULT_REMOTE_SERVER_PORT = 3210
+const REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS = 400
+type NamedTunnelDraftKey =
+  | "cloudflareTunnelId"
+  | "cloudflareTunnelHostname"
+  | "cloudflareTunnelCredentialsPath"
+
+function getNamedTunnelDrafts(config: Config | undefined): Record<NamedTunnelDraftKey, string> {
+  return {
+    cloudflareTunnelId: config?.cloudflareTunnelId ?? "",
+    cloudflareTunnelHostname: config?.cloudflareTunnelHostname ?? "",
+    cloudflareTunnelCredentialsPath: config?.cloudflareTunnelCredentialsPath ?? "",
+  }
+}
+
+function formatRemoteServerPortDraft(port: number | undefined): string {
+  return String(port ?? DEFAULT_REMOTE_SERVER_PORT)
+}
+
+function parseRemoteServerPortDraft(value: string): number | null {
+  if (!value) return null
+
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    return null
+  }
+
+  return parsed
+}
+
+function formatCorsOrigins(origins: string[] | undefined): string {
+  return (origins && origins.length > 0 ? origins : ["*"]).join(", ")
+}
+
+function parseCorsOriginsDraft(value: string): string[] {
+  return value
+    .split(",")
+    .map(entry => entry.trim())
+    .filter(Boolean)
+}
+
+function getRemoteServerCopyErrorMessage(label: string, error: unknown): string {
+  const prefix = `Failed to copy ${label}`
+  if (error instanceof Error && error.message.trim()) return `${prefix}: ${error.message.trim()}`
+  if (typeof error === "string" && error.trim()) return `${prefix}: ${error.trim()}`
+  return prefix
+}
+
+function getTunnelActionErrorMessage(action: "start" | "stop", error: unknown): string {
+  const prefix = action === "start" ? "Failed to start tunnel" : "Failed to stop tunnel"
+  if (error instanceof Error && error.message.trim()) return `${prefix}: ${error.message.trim()}`
+  if (typeof error === "string" && error.trim()) return `${prefix}: ${error.trim()}`
+  return prefix
+}
+
 export function RemoteServerSettingsGroups({
   collapsible = false,
   defaultCollapsed = false,
@@ -72,14 +128,151 @@ export function RemoteServerSettingsGroups({
   const queryClient = useQueryClient()
 
   const cfg = configQuery.data as Config | undefined
+  const cfgRef = useRef<Config | undefined>(cfg)
+  const [portDraft, setPortDraft] = useState(() => formatRemoteServerPortDraft(cfg?.remoteServerPort))
+  const portSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [corsOriginsDraft, setCorsOriginsDraft] = useState(() => formatCorsOrigins(cfg?.remoteServerCorsOrigins))
+  const corsOriginsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [namedTunnelDrafts, setNamedTunnelDrafts] = useState(() => getNamedTunnelDrafts(cfg))
+  const namedTunnelSaveTimeoutsRef = useRef<
+    Partial<Record<NamedTunnelDraftKey, ReturnType<typeof setTimeout>>>
+  >({})
+
+  useEffect(() => {
+    cfgRef.current = cfg
+  }, [cfg])
 
   const saveConfig = useCallback(
     (partial: Partial<Config>) => {
-      if (!cfg) return
-      saveConfigMutation.mutate({ config: { ...cfg, ...partial } })
+      const currentConfig = cfgRef.current
+      if (!currentConfig) return
+      saveConfigMutation.mutate({ config: { ...currentConfig, ...partial } })
     },
-    [cfg, saveConfigMutation],
+    [saveConfigMutation],
   )
+
+  const copyRemoteServerValue = useCallback((text: string, label: string) => {
+    void copyTextToClipboard(text).catch((error) => {
+      console.error(`Failed to copy ${label}`, error)
+      toast.error(getRemoteServerCopyErrorMessage(label, error))
+    })
+  }, [])
+
+  const resetPortDraftToSavedValue = useCallback(() => {
+    setPortDraft(formatRemoteServerPortDraft(cfgRef.current?.remoteServerPort))
+  }, [])
+
+  const clearPendingPortSave = useCallback(() => {
+    if (portSaveTimeoutRef.current) {
+      clearTimeout(portSaveTimeoutRef.current)
+      portSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  const flushPortSave = useCallback((draft: string) => {
+    clearPendingPortSave()
+
+    const parsed = parseRemoteServerPortDraft(draft)
+    if (parsed === null) {
+      resetPortDraftToSavedValue()
+      return
+    }
+
+    saveConfig({ remoteServerPort: parsed })
+  }, [clearPendingPortSave, resetPortDraftToSavedValue, saveConfig])
+
+  const schedulePortSave = useCallback((draft: string) => {
+    clearPendingPortSave()
+
+    const parsed = parseRemoteServerPortDraft(draft)
+    if (parsed === null) {
+      return
+    }
+
+    portSaveTimeoutRef.current = setTimeout(() => {
+      portSaveTimeoutRef.current = null
+      saveConfig({ remoteServerPort: parsed })
+    }, REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingPortSave, saveConfig])
+
+  useEffect(() => {
+    setPortDraft(formatRemoteServerPortDraft(cfg?.remoteServerPort))
+  }, [cfg?.remoteServerPort])
+
+  const flushCorsOriginsSave = useCallback((draft: string) => {
+    if (corsOriginsSaveTimeoutRef.current) {
+      clearTimeout(corsOriginsSaveTimeoutRef.current)
+      corsOriginsSaveTimeoutRef.current = null
+    }
+
+    const origins = parseCorsOriginsDraft(draft)
+    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+  }, [saveConfig])
+
+  const scheduleCorsOriginsSave = useCallback((draft: string) => {
+    if (corsOriginsSaveTimeoutRef.current) {
+      clearTimeout(corsOriginsSaveTimeoutRef.current)
+    }
+
+    corsOriginsSaveTimeoutRef.current = setTimeout(() => {
+      corsOriginsSaveTimeoutRef.current = null
+      const origins = parseCorsOriginsDraft(draft)
+      saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+    }, REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  useEffect(() => {
+    setCorsOriginsDraft(formatCorsOrigins(cfg?.remoteServerCorsOrigins))
+  }, [cfg?.remoteServerCorsOrigins])
+
+  const clearPendingNamedTunnelSave = useCallback((key: NamedTunnelDraftKey) => {
+    const pendingSave = namedTunnelSaveTimeoutsRef.current[key]
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+      delete namedTunnelSaveTimeoutsRef.current[key]
+    }
+  }, [])
+
+  const clearPendingNamedTunnelSaves = useCallback(() => {
+    for (const key of Object.keys(namedTunnelSaveTimeoutsRef.current) as NamedTunnelDraftKey[]) {
+      clearPendingNamedTunnelSave(key)
+    }
+  }, [clearPendingNamedTunnelSave])
+
+  const flushNamedTunnelSave = useCallback((key: NamedTunnelDraftKey, value: string) => {
+    clearPendingNamedTunnelSave(key)
+    saveConfig({ [key]: value } as Partial<Config>)
+  }, [clearPendingNamedTunnelSave, saveConfig])
+
+  const scheduleNamedTunnelSave = useCallback((key: NamedTunnelDraftKey, value: string) => {
+    clearPendingNamedTunnelSave(key)
+    namedTunnelSaveTimeoutsRef.current[key] = setTimeout(() => {
+      delete namedTunnelSaveTimeoutsRef.current[key]
+      saveConfig({ [key]: value } as Partial<Config>)
+    }, REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingNamedTunnelSave, saveConfig])
+
+  const updateNamedTunnelDraft = useCallback((key: NamedTunnelDraftKey, value: string) => {
+    setNamedTunnelDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [key]: value,
+    }))
+    scheduleNamedTunnelSave(key, value)
+  }, [scheduleNamedTunnelSave])
+
+  useEffect(() => {
+    setNamedTunnelDrafts(getNamedTunnelDrafts(cfg))
+  }, [cfg?.cloudflareTunnelCredentialsPath, cfg?.cloudflareTunnelHostname, cfg?.cloudflareTunnelId])
+
+  useEffect(() => {
+    return () => {
+      clearPendingPortSave()
+      if (corsOriginsSaveTimeoutRef.current) {
+        clearTimeout(corsOriginsSaveTimeoutRef.current)
+      }
+      clearPendingNamedTunnelSaves()
+    }
+  }, [clearPendingNamedTunnelSaves, clearPendingPortSave])
 
   // Cloudflare Tunnel queries and mutations
   const cloudflaredInstalledQuery = useQuery({
@@ -118,16 +311,30 @@ export function RemoteServerSettingsGroups({
 
   const startTunnelMutation = useMutation({
     mutationFn: () => tipcClient.startCloudflareTunnel(),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
+      if (!result?.success) {
+        toast.error(getTunnelActionErrorMessage("start", result.error))
+      }
+    },
+    onError: (error) => {
+      console.error("[RemoteServerSettings] Failed to start quick tunnel:", error)
+      toast.error(getTunnelActionErrorMessage("start", error))
     },
   })
 
   const startNamedTunnelMutation = useMutation({
     mutationFn: (params: { tunnelId: string; hostname: string; credentialsPath?: string }) =>
       tipcClient.startNamedCloudflareTunnel(params),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
+      if (!result?.success) {
+        toast.error(getTunnelActionErrorMessage("start", result.error))
+      }
+    },
+    onError: (error) => {
+      console.error("[RemoteServerSettings] Failed to start named tunnel:", error)
+      toast.error(getTunnelActionErrorMessage("start", error))
     },
   })
 
@@ -135,6 +342,10 @@ export function RemoteServerSettingsGroups({
     mutationFn: () => tipcClient.stopCloudflareTunnel(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
+    },
+    onError: (error) => {
+      console.error("[RemoteServerSettings] Failed to stop tunnel:", error)
+      toast.error(getTunnelActionErrorMessage("stop", error))
     },
   })
 
@@ -157,6 +368,9 @@ export function RemoteServerSettingsGroups({
 
   const enabled = cfg.remoteServerEnabled ?? false
   const streamerMode = cfg.streamerModeEnabled ?? false
+  const namedTunnelIdDraft = namedTunnelDrafts.cloudflareTunnelId
+  const namedTunnelHostnameDraft = namedTunnelDrafts.cloudflareTunnelHostname
+  const namedTunnelCredentialsPathDraft = namedTunnelDrafts.cloudflareTunnelCredentialsPath
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
@@ -232,10 +446,14 @@ export function RemoteServerSettingsGroups({
                   type="number"
                   min={1}
                   max={65535}
-                  value={cfg.remoteServerPort ?? 3210}
-                  onChange={(e) =>
-                    saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || "3210", 10) })
-                  }
+                  value={portDraft}
+                  onChange={(e) => {
+                    setPortDraft(e.currentTarget.value)
+                    schedulePortSave(e.currentTarget.value)
+                  }}
+                  onBlur={(e) => {
+                    flushPortSave(e.currentTarget.value)
+                  }}
                   className="w-36"
                 />
               </Control>
@@ -275,9 +493,7 @@ export function RemoteServerSettingsGroups({
                     title={streamerMode ? "Disabled in Streamer Mode" : undefined}
                     onClick={() => {
                       if (!cfg.remoteServerApiKey || streamerMode) return
-                      void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
-                        console.error("Failed to copy remote server API key", err)
-                      })
+                      copyRemoteServerValue(cfg.remoteServerApiKey, "remote server API key")
                     }}
                   >
                     {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
@@ -324,14 +540,12 @@ export function RemoteServerSettingsGroups({
               <Control label={<ControlLabel label="CORS Origins" tooltip="Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081" />} className="px-3">
                 <Input
                   type="text"
-                  value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}
+                  value={corsOriginsDraft}
                   onChange={(e) => {
-                    const origins = e.currentTarget.value
-                      .split(",")
-                      .map(s => s.trim())
-                      .filter(Boolean)
-                    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+                    setCorsOriginsDraft(e.currentTarget.value)
+                    scheduleCorsOriginsSave(e.currentTarget.value)
                   }}
+                  onBlur={(e) => flushCorsOriginsSave(e.currentTarget.value)}
                   placeholder="* or http://localhost:8081, http://example.com"
                   className="w-full"
                 />
@@ -396,9 +610,7 @@ export function RemoteServerSettingsGroups({
                             onClick={() => {
                               if (streamerMode) return
                               const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
-                              void copyTextToClipboard(deepLink).catch((err) => {
-                                console.error("Failed to copy deep link", err)
-                              })
+                              copyRemoteServerValue(deepLink, "deep link")
                             }}
                           >
                             {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Deep Link"}
@@ -521,8 +733,9 @@ export function RemoteServerSettingsGroups({
                           <div className="flex flex-col gap-2">
                             <Input
                               type="text"
-                              value={cfg?.cloudflareTunnelId ?? ""}
-                              onChange={(e) => saveConfig({ cloudflareTunnelId: e.currentTarget.value })}
+                              value={namedTunnelIdDraft}
+                              onChange={(e) => updateNamedTunnelDraft("cloudflareTunnelId", e.currentTarget.value)}
+                              onBlur={(e) => flushNamedTunnelSave("cloudflareTunnelId", e.currentTarget.value)}
                               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                               className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                             />
@@ -533,10 +746,17 @@ export function RemoteServerSettingsGroups({
                                     key={t.id}
                                     type="button"
                                     className="underline cursor-pointer ml-1 hover:text-foreground"
-                                    onClick={() => saveConfig({
-                                      cloudflareTunnelId: t.id,
-                                      cloudflareTunnelName: t.name,
-                                    })}
+                                    onClick={() => {
+                                      clearPendingNamedTunnelSave("cloudflareTunnelId")
+                                      setNamedTunnelDrafts((currentDrafts) => ({
+                                        ...currentDrafts,
+                                        cloudflareTunnelId: t.id,
+                                      }))
+                                      saveConfig({
+                                        cloudflareTunnelId: t.id,
+                                        cloudflareTunnelName: t.name,
+                                      })
+                                    }}
                                   >
                                     {t.name}
                                   </button>
@@ -549,8 +769,9 @@ export function RemoteServerSettingsGroups({
                         <Control label={<ControlLabel label="Hostname" tooltip="The public hostname for your tunnel (e.g., myapp.example.com). Must be configured in Cloudflare DNS." />} className="px-3">
                           <Input
                             type="text"
-                            value={cfg?.cloudflareTunnelHostname ?? ""}
-                            onChange={(e) => saveConfig({ cloudflareTunnelHostname: e.currentTarget.value })}
+                            value={namedTunnelHostnameDraft}
+                            onChange={(e) => updateNamedTunnelDraft("cloudflareTunnelHostname", e.currentTarget.value)}
+                            onBlur={(e) => flushNamedTunnelSave("cloudflareTunnelHostname", e.currentTarget.value)}
                             placeholder="myapp.example.com"
                             className="w-full sm:w-[300px] max-w-full min-w-0"
                           />
@@ -559,8 +780,9 @@ export function RemoteServerSettingsGroups({
                         <Control label={<ControlLabel label="Credentials Path" tooltip="Path to credentials JSON file. Leave empty to use default (~/.cloudflared/<tunnel-id>.json)" />} className="px-3">
                           <Input
                             type="text"
-                            value={cfg?.cloudflareTunnelCredentialsPath ?? ""}
-                            onChange={(e) => saveConfig({ cloudflareTunnelCredentialsPath: e.currentTarget.value })}
+                            value={namedTunnelCredentialsPathDraft}
+                            onChange={(e) => updateNamedTunnelDraft("cloudflareTunnelCredentialsPath", e.currentTarget.value)}
+                            onBlur={(e) => flushNamedTunnelSave("cloudflareTunnelCredentialsPath", e.currentTarget.value)}
                             placeholder="~/.cloudflared/<tunnel-id>.json (default)"
                             className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                           />
@@ -601,13 +823,20 @@ export function RemoteServerSettingsGroups({
                         size="sm"
                         onClick={() => {
                           if (tunnelMode === "named") {
-                            if (!cfg?.cloudflareTunnelId || !cfg?.cloudflareTunnelHostname) {
+                            if (!namedTunnelIdDraft || !namedTunnelHostnameDraft) {
                               return // Validation handled in UI
                             }
+
+                            clearPendingNamedTunnelSaves()
+                            saveConfig({
+                              cloudflareTunnelId: namedTunnelIdDraft,
+                              cloudflareTunnelHostname: namedTunnelHostnameDraft,
+                              cloudflareTunnelCredentialsPath: namedTunnelCredentialsPathDraft,
+                            })
                             startNamedTunnelMutation.mutate({
-                              tunnelId: cfg.cloudflareTunnelId,
-                              hostname: cfg.cloudflareTunnelHostname,
-                              credentialsPath: cfg.cloudflareTunnelCredentialsPath || undefined,
+                              tunnelId: namedTunnelIdDraft,
+                              hostname: namedTunnelHostnameDraft,
+                              credentialsPath: namedTunnelCredentialsPathDraft || undefined,
                             })
                           } else {
                             startTunnelMutation.mutate()
@@ -616,7 +845,7 @@ export function RemoteServerSettingsGroups({
                         disabled={
                           startTunnelMutation.isPending ||
                           startNamedTunnelMutation.isPending ||
-                          (tunnelMode === "named" && (!cfg?.cloudflareTunnelId || !cfg?.cloudflareTunnelHostname))
+                          (tunnelMode === "named" && (!namedTunnelIdDraft || !namedTunnelHostnameDraft))
                         }
                       >
                         {startTunnelMutation.isPending || startNamedTunnelMutation.isPending
@@ -633,12 +862,12 @@ export function RemoteServerSettingsGroups({
                         {stopTunnelMutation.isPending ? "Stopping..." : "Stop Tunnel"}
                       </Button>
                     )}
-                    {tunnelMode === "named" && !cfg?.cloudflareTunnelId && (
+                    {tunnelMode === "named" && !namedTunnelIdDraft && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">
                         Enter Tunnel ID to start
                       </span>
                     )}
-                    {tunnelMode === "named" && cfg?.cloudflareTunnelId && !cfg?.cloudflareTunnelHostname && (
+                    {tunnelMode === "named" && namedTunnelIdDraft && !namedTunnelHostnameDraft && (
                       <span className="text-xs text-amber-600 dark:text-amber-400">
                         Enter Hostname to start
                       </span>
@@ -663,9 +892,7 @@ export function RemoteServerSettingsGroups({
                           title={streamerMode ? "Disabled in Streamer Mode" : undefined}
                           onClick={() => {
                             if (streamerMode) return
-                            void copyTextToClipboard(`${tunnelStatus.url}/v1`).catch((err) => {
-                              console.error("Failed to copy tunnel URL", err)
-                            })
+                            copyRemoteServerValue(`${tunnelStatus.url}/v1`, "tunnel URL")
                           }}
                         >
                           {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
@@ -706,9 +933,7 @@ export function RemoteServerSettingsGroups({
                               onClick={() => {
                                 if (streamerMode) return
                                 const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
-                                void copyTextToClipboard(deepLink).catch((err) => {
-                                  console.error("Failed to copy tunnel deep link", err)
-                                })
+                                copyRemoteServerValue(deepLink, "tunnel deep link")
                               }}
                             >
                               {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Deep Link"}

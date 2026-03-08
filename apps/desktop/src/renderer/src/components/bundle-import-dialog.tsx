@@ -71,6 +71,12 @@ interface BundlePreview {
   error?: string
 }
 
+interface BundlePreviewDialogResult {
+  canceled: boolean
+  filePath: string | null
+  error?: string
+}
+
 interface BundleImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -144,11 +150,19 @@ export function BundleImportDialog({
     setLoading(true)
     try {
       // First, open file dialog and get basic preview
-      const dialogResult = await tipcClient.previewBundle()
+      const dialogResult = (await tipcClient.previewBundle()) as BundlePreviewDialogResult
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
-      if (!dialogResult) {
+      if (dialogResult.canceled) {
         // User cancelled file picker
         onOpenChange(false)
+        return
+      }
+      if (dialogResult.error || !dialogResult.filePath) {
+        setPreview({
+          success: false,
+          filePath: dialogResult.filePath ?? undefined,
+          error: dialogResult.error || "Failed to parse bundle file",
+        })
         return
       }
       await loadPreviewForFile(dialogResult.filePath, requestId)
@@ -182,7 +196,7 @@ export function BundleImportDialog({
   }
 
   const handleImport = async () => {
-    if (!preview?.filePath) return
+    if (!preview?.success || !preview.filePath) return
     setImporting(true)
     try {
       const result = await tipcClient.importBundle({
@@ -224,6 +238,7 @@ export function BundleImportDialog({
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
+  const canImport = !!preview?.success && !!preview.filePath
   const hasConflicts = conflicts
     ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
     : false
@@ -356,10 +371,16 @@ export function BundleImportDialog({
           <Button variant="outline" onClick={handleClose} disabled={importing}>
             Cancel
           </Button>
-          <Button onClick={handleImport} disabled={!preview?.filePath || importing || loading}>
-            {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import
-          </Button>
+          {manifest ? (
+            <Button onClick={handleImport} disabled={!canImport || importing || loading}>
+              {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Import
+            </Button>
+          ) : (
+            <Button onClick={() => void handleSelectFile()} disabled={loading || importing}>
+              {preview?.error ? "Choose Another File" : "Choose File"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -34,10 +34,21 @@ import { useConfigQuery } from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { removeTTSKey } from "@renderer/lib/tts-tracking"
 import { isMissingApiKeyErrorMessage } from "@shared/api-key-error-utils"
+import { toast } from "sonner"
 
 const MIN_HEIGHT = 120
 const MAX_HEIGHT = 4000 // Allow tiles to fill large displays - effectively no practical limit
 const DEFAULT_HEIGHT = 280
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
+function getCopyErrorMessage(label: string, error: unknown): string {
+  return `Failed to copy ${label}: ${getActionErrorMessage(error, "Please try again.")}`
+}
 
 interface SessionTileProps {
   session: {
@@ -140,6 +151,7 @@ export function SessionTile({
       copyTimeoutRef.current = setTimeout(() => setCopiedMessageId(null), 2000)
     } catch (err) {
       console.error("Failed to copy message:", err)
+      toast.error(getCopyErrorMessage("prompt", err))
     }
   }
 
@@ -218,9 +230,15 @@ export function SessionTile({
     if (!approvalId) return
     setIsRespondingToApproval(true)
     try {
-      await tipcClient.respondToToolApproval({ approvalId, approved: true })
+      const result = await tipcClient.respondToToolApproval({ approvalId, approved: true })
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
     } catch (error) {
       console.error("Failed to approve tool call:", error)
+      toast.error(
+        `Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       setIsRespondingToApproval(false)
     }
   }
@@ -230,9 +248,15 @@ export function SessionTile({
     if (!approvalId) return
     setIsRespondingToApproval(true)
     try {
-      await tipcClient.respondToToolApproval({ approvalId, approved: false })
+      const result = await tipcClient.respondToToolApproval({ approvalId, approved: false })
+      if (!result.success) {
+        throw new Error("This tool approval is no longer pending.")
+      }
     } catch (error) {
       console.error("Failed to deny tool call:", error)
+      toast.error(
+        `Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       setIsRespondingToApproval(false)
     }
   }

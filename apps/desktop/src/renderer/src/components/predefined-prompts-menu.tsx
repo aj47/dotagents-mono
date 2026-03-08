@@ -87,6 +87,11 @@ export function PredefinedPromptsMenu({
     setIsDialogOpen(true)
   }
 
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open && saveConfig.isPending) return
+    setIsDialogOpen(open)
+  }
+
   const handleDelete = (e: React.MouseEvent | Event, prompt: PredefinedPrompt) => {
     e.preventDefault()
     e.stopPropagation()
@@ -100,7 +105,7 @@ export function PredefinedPromptsMenu({
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!promptName.trim() || !promptContent.trim()) return
     if (!configQuery.data) return
 
@@ -124,13 +129,17 @@ export function PredefinedPromptsMenu({
       updatedPrompts = [...prompts, newPrompt]
     }
 
-    saveConfig.mutate({
-      config: {
-        ...configQuery.data,
-        predefinedPrompts: updatedPrompts,
-      },
-    })
-    setIsDialogOpen(false)
+    try {
+      await saveConfig.mutateAsync({
+        config: {
+          ...configQuery.data,
+          predefinedPrompts: updatedPrompts,
+        },
+      })
+      setIsDialogOpen(false)
+    } catch {
+      return
+    }
   }
 
   return (
@@ -229,7 +238,7 @@ export function PredefinedPromptsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingPrompt ? "Edit Prompt" : "Add New Prompt"}</DialogTitle>
@@ -259,11 +268,20 @@ export function PredefinedPromptsMenu({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleDialogOpenChange(false)}
+              disabled={saveConfig.isPending}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!promptName.trim() || !promptContent.trim()}>
-              {editingPrompt ? "Save Changes" : "Add Prompt"}
+            <Button
+              onClick={() => {
+                void handleSave()
+              }}
+              disabled={saveConfig.isPending || !promptName.trim() || !promptContent.trim()}
+            >
+              {saveConfig.isPending ? "Saving..." : editingPrompt ? "Save Changes" : "Add Prompt"}
             </Button>
           </DialogFooter>
         </DialogContent>

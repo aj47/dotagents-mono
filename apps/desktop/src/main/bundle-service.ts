@@ -1331,7 +1331,7 @@ export function previewBundleWithConflicts(
 ): BundlePreviewResult {
   const bundle = previewBundle(filePath)
   if (!bundle) {
-    return { success: false, dryRun: true, error: "Failed to parse bundle file" }
+    return { success: false, dryRun: true, filePath, error: "Failed to parse bundle file" }
   }
 
   const layer = getAgentsLayerPaths(targetAgentsDir)

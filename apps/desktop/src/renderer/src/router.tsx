@@ -52,11 +52,11 @@ export const router: ReturnType<typeof createBrowserRouter> =
         },
         {
           path: "settings/mcp-tools",
-          loader: legacySettingsRedirect("/settings/capabilities"),
+          loader: legacySettingsRedirect("/settings/capabilities?tab=mcp-servers"),
         },
         {
           path: "settings/skills",
-          loader: legacySettingsRedirect("/settings/capabilities"),
+          loader: legacySettingsRedirect("/settings/capabilities?tab=skills"),
         },
         {
           path: "settings/remote-server",

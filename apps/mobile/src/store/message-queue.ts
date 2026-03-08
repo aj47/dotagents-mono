@@ -28,7 +28,7 @@ export interface MessageQueueStore {
   removeFromQueue: (conversationId: string, messageId: string) => boolean;
   
   /** Clear all messages for a conversation */
-  clearQueue: (conversationId: string) => void;
+  clearQueue: (conversationId: string) => boolean;
   
   /** Update the text of a queued message */
   updateText: (conversationId: string, messageId: string, text: string) => boolean;
@@ -120,19 +120,21 @@ export function useMessageQueue(): MessageQueueStore {
     return true;
   }, [updateQueues]);
 
-  const clearQueue = useCallback((conversationId: string): void => {
+  const clearQueue = useCallback((conversationId: string): boolean => {
+    const queue = queuesRef.current.get(conversationId);
+    if (!queue) return false;
+
+    // Don't clear if there's a processing message
+    if (queue.some(m => m.status === 'processing')) return false;
+
     updateQueues(prev => {
-      const queue = prev.get(conversationId);
-      if (!queue) return prev;
-
-      // Don't clear if there's a processing message
-      if (queue.some(m => m.status === 'processing')) return prev;
-
       const newMap = new Map(prev);
       newMap.delete(conversationId);
       return newMap;
     });
+
     console.log('[MessageQueue] Cleared queue for:', conversationId);
+    return true;
   }, [updateQueues]);
 
   const updateText = useCallback((conversationId: string, messageId: string, text: string): boolean => {

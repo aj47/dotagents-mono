@@ -796,6 +796,20 @@ describe("bundle-service", () => {
       ])
     })
 
+    it("preserves the selected file path when bundle parsing fails", () => {
+      const bundlePath = path.join(tempDir, "invalid.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify({ invalid: true }), "utf-8")
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result).toEqual({
+        success: false,
+        dryRun: true,
+        filePath: bundlePath,
+        error: "Failed to parse bundle file",
+      })
+    })
+
     it("includes MCP server conflicts as structured conflict entries", async () => {
       writeTestMcpJson(agentsDir, {
         mcpConfig: {

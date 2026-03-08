@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
@@ -19,7 +19,6 @@ export function PanelDragBar({
     windowX: number
     windowY: number
   } | null>(null)
-  const dragBarRef = useRef<HTMLDivElement>(null)
   const lastDragUpdateRef = useRef(0)
   const DRAG_THROTTLE_MS = 16
 
@@ -104,7 +103,6 @@ export function PanelDragBar({
 
   return (
     <div
-      ref={dragBarRef}
       className={cn(
         "flex h-6 w-full items-center justify-center transition-colors duration-200",
         disabled
@@ -116,7 +114,9 @@ export function PanelDragBar({
       )}
       onMouseDown={handleMouseDown}
       style={{
-        WebkitAppRegion: disabled ? "no-drag" : "drag",
+        // Electron drag regions ignore pointer events, so this must stay interactive
+        // for the custom mouse-driven drag + position persistence flow to work.
+        WebkitAppRegion: "no-drag",
         userSelect: "none",
       } as any}
     >

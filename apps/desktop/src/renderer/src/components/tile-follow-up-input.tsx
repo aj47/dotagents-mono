@@ -8,6 +8,7 @@ import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
+import { toast } from "sonner"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
@@ -154,6 +155,11 @@ export function TileFollowUpInput({
       await sendMutation.mutateAsync(message)
     } catch (error) {
       console.error("Failed to submit tile follow-up message:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to send follow-up message: ${error.message}`
+          : "Failed to send follow-up message",
+      )
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)
@@ -212,7 +218,23 @@ export function TileFollowUpInput({
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
     // Mark as fromTile so the floating panel doesn't show - session continues in the tile
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
-    await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
+    try {
+      const recordingResult = await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
+      if (recordingResult && "success" in recordingResult && recordingResult.success === false) {
+        const details = typeof recordingResult.error === "string"
+          ? recordingResult.error.trim()
+          : ""
+        console.error("Failed to start tile follow-up voice recording:", recordingResult.error)
+        toast.error(details ? `Failed to start voice follow-up: ${details}` : "Failed to start voice follow-up")
+      }
+    } catch (error) {
+      console.error("Failed to start tile follow-up voice recording:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to start voice follow-up: ${error.message}`
+          : "Failed to start voice follow-up",
+      )
+    }
   }
 
   // Handle stop session - kill switch functionality
@@ -227,6 +249,11 @@ export function TileFollowUpInput({
         await onStopSession()
       } catch (error) {
         console.error("Failed to stop agent session via callback:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? `Failed to stop agent: ${error.message}`
+            : "Failed to stop agent",
+        )
       } finally {
         setIsStoppingSession(false)
       }
@@ -241,6 +268,11 @@ export function TileFollowUpInput({
         await tipcClient.emergencyStopAgent()
       } catch (error) {
         console.error("Failed to emergency stop agent:", error)
+        toast.error(
+          error instanceof Error && error.message.trim()
+            ? `Failed to stop agent: ${error.message}`
+            : "Failed to stop agent",
+        )
       } finally {
         setIsStoppingSession(false)
       }
@@ -252,6 +284,11 @@ export function TileFollowUpInput({
       await tipcClient.stopAgentSession({ sessionId })
     } catch (error) {
       console.error("Failed to stop agent session:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to stop agent: ${error.message}`
+          : "Failed to stop agent",
+      )
     } finally {
       setIsStoppingSession(false)
     }
