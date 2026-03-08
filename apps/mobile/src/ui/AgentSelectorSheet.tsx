@@ -333,6 +333,13 @@ function createStyles(theme: Theme) {
     horizontalMargin: 0,
   });
 
+  const profileItemTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.sm,
+    verticalPadding: spacing.md,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     backdrop: {
       flex: 1,
@@ -372,11 +379,10 @@ function createStyles(theme: Theme) {
       maxHeight: 300,
     },
     profileItem: {
+      ...profileItemTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.sm,
       borderRadius: radius.lg,
       marginBottom: spacing.xs,
     },

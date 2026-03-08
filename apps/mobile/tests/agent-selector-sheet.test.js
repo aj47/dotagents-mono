@@ -48,6 +48,11 @@ test('keeps long agent names and descriptions stable inside selector rows on nar
   assert.match(sheetSource, /profileCurrentBadge:\s*\{[\s\S]*?flexShrink:\s*0/);
 });
 
+test('gives selector rows the shared 44px mobile touch-target baseline', () => {
+  assert.match(sheetSource, /const profileItemTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalPadding:\s*spacing\.sm,[\s\S]*?verticalPadding:\s*spacing\.md,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(sheetSource, /profileItem:\s*\{[\s\S]*?\.\.\.profileItemTouchTarget,[\s\S]*?flexDirection:\s*'row',[\s\S]*?justifyContent:\s*'space-between'/);
+});
+
 test('drops the generic ACP placeholder subtitle while keeping real selector descriptions', () => {
   assert.match(sheetSource, /const secondaryDescription = item\.guidelines && item\.guidelines !== 'ACP main agent'[\s\S]*?\? item\.guidelines[\s\S]*?: null;/);
   assert.match(sheetSource, /\{secondaryDescription && \([\s\S]*?<Text style=\{styles\.profileDescription\}[\s\S]*?\{secondaryDescription\}/);

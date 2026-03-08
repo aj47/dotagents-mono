@@ -2361,3 +2361,43 @@
 - Next checks:
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that blocked selector rows feel clearly unavailable while the pending row still reads as the active transition target.
   - If live validation shows ambiguity between the current row and the pending row during switching, test a smaller copy or badge refinement before touching layout.
+
+### 2026-03-08 — Iteration 55: guarantee mobile-sized tap targets for selector rows
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Fresh screenshot-backed Expo Web or simulator validation was still not practical in this worktree.
+- Current behavior observed before the fix:
+  - Source review showed selector rows in `AgentSelectorSheet` still relied on their own padding instead of the shared `createMinimumTouchTargetStyle(...)` guardrail used across other recently improved sub-agent mobile controls.
+  - On mobile, that meant the main agent options did not have an explicit minimum `44px` height contract even though they are one of the highest-salience tap targets in the flow.
+- Issue selected:
+  - The mobile agent selector rows did not explicitly guarantee the platform touch-target baseline, leaving the core switching affordance weaker than the rest of the recent sub-agent improvements.
+- Decision:
+  - Keep the current selector layout, wording, badges, and switching-state treatments unchanged.
+  - Do not introduce a new abstraction or broader spacing redesign while live validation is blocked.
+  - Make the smallest local fix: apply the same shared `44px` touch-target helper to selector rows while preserving the existing row layout.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - add a dedicated `profileItemTouchTarget` based on `createMinimumTouchTargetStyle(...)`,
+    - apply that shared helper to selector rows,
+    - preserve the existing row spacing and `space-between` layout for name/badge stability.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new selector-row touch-target contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The strengthened selector-row tap target still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - A long agent name beside `Current` or `Switching…` still needs live confirmation now that row sizing is more explicit.
+  - Because live inspection is still blocked, broader selector-sheet spacing or hierarchy changes should wait for real device or Expo Web evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that selector rows still feel proportionate while now clearing the mobile tap-target baseline.
+  - Check a long agent name in both current and pending states to confirm the larger guaranteed target does not crowd the badge treatment.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
