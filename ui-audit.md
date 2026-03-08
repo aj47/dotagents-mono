@@ -1,5 +1,45 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 39: Mobile chat reconnect/retry banners under narrow widths and larger text
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/ChatScreen.tsx` (composer-adjacent reconnect + retry banners)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the recently touched desktop settings surfaces and chose a fresh, high-traffic mobile screen that had not yet been logged here. `ChatScreen` still had visually neglected error/recovery states near the composer, which are especially important to keep readable under narrow widths and larger text.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, `apps/mobile/README.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for the repo’s desktop/mobile workflow and cross-platform guidance
+  - confirmed live Expo inspection is still blocked in this worktree because root and mobile `node_modules` are absent, so this pass used focused source review plus source-contract tests instead of screenshot-backed runtime evidence
+  - inspected the reconnecting and failed-message banners in `ChatScreen.tsx`, with narrow phone widths, larger text, and error-state readability in mind
+  - cross-checked the desktop equivalent history/progress retry UI already covered in earlier `ui-audit.md` chunks; it does not share this React Native banner implementation, so the change remained mobile-only
+
+#### Findings
+
+- Before the fix, the mobile chat screen still had one concrete state-layout issue with clear user impact:
+  - both the reconnect banner and the failed-message retry banner forced their secondary guidance into `numberOfLines={1}` text
+  - the retry banner also relied on a rigid single-row content layout where the warning icon, text column, and `Retry` button all competed for the same horizontal lane
+  - under narrower widths or larger text, the most important recovery context was more likely to truncate just when users needed to understand what failed and how to continue
+
+#### Changes made
+
+- Hardened the reconnect/retry banner area in `apps/mobile/src/screens/ChatScreen.tsx` with a small, local mobile-state fix:
+  - let the reconnect error detail and retry helper copy use up to two lines instead of truncating immediately
+  - made the shared banner content row wrap-safe and top-aligned, with a `minWidth: 0` text lane so the copy yields more gracefully beside the icon and CTA
+  - promoted the `Retry` button to the shared minimum-touch-target helper while keeping the existing visual design and right-aligned fallback
+  - added calmer line-height values so multiline banner copy stays readable rather than cramped
+- Added `apps/mobile/tests/chat-screen-connection-banner-layout.test.js` so this reconnect/retry banner contract now has focused regression coverage.
+
+#### Verification
+
+- Targeted regression tests: `node --test apps/mobile/tests/chat-screen-connection-banner-layout.test.js apps/mobile/tests/chat-composer-accessibility.test.js`
+- Patch hygiene: `git diff --check -- apps/mobile/src/screens/ChatScreen.tsx apps/mobile/tests/chat-screen-connection-banner-layout.test.js`
+
+#### Notes
+
+- This chunk is mobile-only: desktop retry/progress UI was already hardened in earlier audit chunks and does not share this `ChatScreen` banner implementation.
+- Tradeoff/rationale: kept the banners compact and in the same location instead of redesigning chat recovery flows; the fix only gives the existing status copy and CTA a safer narrow-width fallback.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored; the best follow-up is to inspect the mobile chat screen in Expo Web or a device with a reconnecting state and a failed-message retry banner visible at larger text sizes.
+- Best next UI audit chunk after this one: stay in `ChatScreen.tsx` for the pending-image strip/removal affordance or other composer-adjacent neglected states, or move to another fresh mobile/desktop surface once runtime dependencies are available for live confirmation.
+
 ### 2026-03-08 — Chunk 38: Desktop remote-server URL/pairing helper rows under narrow settings widths and zoom
 
 - Area selected:

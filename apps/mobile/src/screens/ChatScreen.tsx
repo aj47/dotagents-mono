@@ -3168,7 +3168,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   Reconnecting... (attempt {connectionState.retryCount})
                 </Text>
                 {connectionState.lastError && (
-                  <Text style={styles.connectionBannerSubtext} numberOfLines={1}>
+                  <Text style={styles.connectionBannerSubtext} numberOfLines={2}>
                     {connectionState.lastError}
                   </Text>
                 )}
@@ -3183,7 +3183,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <Text style={styles.connectionBannerIcon}>⚠️</Text>
               <View style={styles.connectionBannerTextContainer}>
                 <Text style={styles.connectionBannerText}>Message failed to send</Text>
-                <Text style={styles.connectionBannerSubtext} numberOfLines={1}>
+                <Text style={styles.connectionBannerSubtext} numberOfLines={2}>
                   Tap retry to try again
                 </Text>
               </View>
@@ -3528,6 +3528,11 @@ function createStyles(theme: Theme, screenHeight: number) {
     verticalPadding: 6,
     horizontalMargin: 0,
   });
+  const retryBannerButtonTouchTarget = createMinimumTouchTargetStyle({
+    horizontalPadding: spacing.md,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     headerActionsRow: {
       flexDirection: 'row',
@@ -3812,31 +3817,35 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     connectionBannerContent: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
     },
     connectionBannerIcon: {
       fontSize: 16,
-      marginRight: spacing.sm,
+      marginTop: 1,
     },
     connectionBannerTextContainer: {
       flex: 1,
+      minWidth: 0,
     },
     connectionBannerText: {
       fontSize: 13,
       fontWeight: '500',
       color: theme.colors.foreground,
+      lineHeight: 18,
     },
     connectionBannerSubtext: {
       fontSize: 11,
       color: theme.colors.mutedForeground,
       marginTop: 2,
+      lineHeight: 15,
     },
     retryButton: {
+      ...retryBannerButtonTouchTarget,
       backgroundColor: theme.colors.primary,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
       borderRadius: radius.md,
-      marginLeft: spacing.sm,
+      marginLeft: 'auto',
     },
     retryButtonText: {
       color: theme.colors.primaryForeground,
