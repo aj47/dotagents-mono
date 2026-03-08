@@ -22,8 +22,8 @@ test('gives per-response speak controls a mobile touch target and clearer playba
   assert.match(responseHistorySource, /const responseSpeakTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(responseHistorySource, /speakButton:\s*\{[\s\S]*?\.\.\.responseSpeakTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(responseHistorySource, /speakButtonActive:\s*\{[\s\S]*?theme\.colors\.primary/);
-  assert.match(responseHistorySource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\([\s\S]*?Stop speaking this response[\s\S]*?Speak this response aloud[\s\S]*?\)/);
-  assert.match(responseHistorySource, /accessibilityHint=\{isSpeaking[\s\S]*?Stops text to speech for this agent response\.[\s\S]*?Reads this agent response aloud with text to speech\./);
+  assert.match(responseHistorySource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\([\s\S]*?Stop speaking response from \$\{responseTimestampLabel\}[\s\S]*?Speak response from \$\{responseTimestampLabel\} aloud[\s\S]*?\)/);
+  assert.match(responseHistorySource, /accessibilityHint=\{isSpeaking[\s\S]*?Stops text to speech for this agent response\.[\s\S]*?Reads the latest agent response aloud with text to speech\.[\s\S]*?Reads this agent response aloud with text to speech\./);
   assert.match(responseHistorySource, /accessibilityState=\{\{ selected: isSpeaking \}\}/);
 });
 
@@ -38,7 +38,8 @@ test('surfaces response recency and active playback state directly in the histor
 
 test('uses minute-precision timestamps in each response row to reduce narrow-screen noise', () => {
   assert.match(responseHistorySource, /const formatTime = \(timestamp: number, includeSeconds = true\) =>/);
-  assert.match(responseHistorySource, /<Text style=\{\[styles\.timestamp, isLatest && styles\.timestampLatest\]\}>[\s\S]*?\{formatTime\(response\.timestamp, false\)\}[\s\S]*?<\/Text>/);
+  assert.match(responseHistorySource, /const responseTimestampLabel = formatTime\(response\.timestamp, false\);/);
+  assert.match(responseHistorySource, /<Text style=\{\[styles\.timestamp, isLatest && styles\.timestampLatest\]\}>[\s\S]*?\{responseTimestampLabel\}[\s\S]*?<\/Text>/);
 });
 
 test('marks the newest response row with a compact latest badge for same-minute scanning', () => {
@@ -48,4 +49,11 @@ test('marks the newest response row with a compact latest badge for same-minute 
   assert.match(responseHistorySource, /timestampLatest:\s*\{[\s\S]*?color:\s*theme\.colors\.primary,[\s\S]*?fontWeight:\s*'600'/);
   assert.match(responseHistorySource, /latestBadge:\s*\{[\s\S]*?borderRadius:\s*999,[\s\S]*?backgroundColor:\s*`\$\{theme\.colors\.primary\}12`/);
   assert.match(responseHistorySource, /<View style=\{styles\.responseMeta\}>[\s\S]*?<Text style=\{\[styles\.timestamp, isLatest && styles\.timestampLatest\]\}>[\s\S]*?\{isLatest \? \([\s\S]*?<Text style=\{styles\.latestBadgeText\}>Latest<\/Text>/);
+});
+
+test('adds an inline speaking badge so the active playback row is obvious on narrow screens', () => {
+  assert.match(responseHistorySource, /const isSpeaking = speakingIndex === originalIndex;/);
+  assert.match(responseHistorySource, /speakingBadge:\s*\{[\s\S]*?borderRadius:\s*999,[\s\S]*?backgroundColor:\s*`\$\{theme\.colors\.primary\}18`/);
+  assert.match(responseHistorySource, /speakingBadgeText:\s*\{[\s\S]*?fontWeight:\s*'700',[\s\S]*?color:\s*theme\.colors\.primary/);
+  assert.match(responseHistorySource, /\{isSpeaking \? \([\s\S]*?<Text style=\{styles\.speakingBadgeText\}>Speaking<\/Text>[\s\S]*?\) : null\}/);
 });

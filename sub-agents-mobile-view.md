@@ -3874,3 +3874,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed `Agent Loops` summary stays legible at narrow widths in loading, empty, and populated states.
   - Compare all-active, mixed running/paused, and fully paused loop states live to confirm the summary wording helps more than it competes with the section title.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of adding more collapsed summaries without new evidence.
+
+### 2026-03-08 — Iteration 89: make active response playback clearer inside the mobile history list
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - focused response-history coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the response-history header already surfaced `Speaking now`, but the active row itself still relied mostly on the stop icon / button tint to show which response was currently being read aloud.
+  - The per-row playback accessibility label also stayed generic (`Speak this response aloud` / `Stop speaking this response`), so multiple history rows exposed nearly identical controls to assistive technology.
+- Issue selected:
+  - Active playback state inside the mobile response-history list was not explicit enough at the row level, weakening state clarity on narrow screens and for assistive-tech users.
+- Decision:
+  - Keep the existing history layout, row order, and text-to-speech behavior unchanged.
+  - Make the smallest local fix: add a compact inline `Speaking` badge to the active row and identify each playback control by the row timestamp.
+  - Avoid broader playback UI changes until live validation is available again.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - derive a reused minute-precision `responseTimestampLabel` for each row,
+    - surface a compact `Speaking` badge beside the timestamp when that row is the current `speakingIndex`,
+    - upgrade the speak / stop button accessibility label to include the row timestamp and tune the latest-response hint copy.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the inline `Speaking` badge and the timestamp-specific playback labels.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new inline `Speaking` badge still needs a real narrow-screen pass to confirm it stays balanced beside `Latest` without forcing awkward wraps.
+  - The response-history list still needs live validation while playback is starting/stopping quickly to confirm the badge change feels stable rather than flickery.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the active response row remains readable when `Speaking` and `Latest` badges appear together.
+  - Check VoiceOver / TalkBack-style row semantics live or via simulator accessibility inspection to confirm the timestamped playback labels remove ambiguity across multiple rows.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of broadening playback UI beyond this row-level clarity fix.

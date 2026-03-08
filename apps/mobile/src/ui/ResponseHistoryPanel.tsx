@@ -297,6 +297,21 @@ export function ResponseHistoryPanel({
       fontWeight: '600',
       color: theme.colors.primary,
     },
+    speakingBadge: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: `${theme.colors.primary}30`,
+      backgroundColor: `${theme.colors.primary}18`,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      flexShrink: 0,
+    },
+    speakingBadgeText: {
+      fontSize: 10,
+      lineHeight: 12,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
     speakButton: {
       ...responseSpeakTouchTarget,
       borderRadius: 999,
@@ -353,6 +368,7 @@ export function ResponseHistoryPanel({
             const originalIndex = responses.length - 1 - index;
             const isSpeaking = speakingIndex === originalIndex;
             const isLatest = originalIndex === newestOriginalIndex;
+            const responseTimestampLabel = formatTime(response.timestamp, false);
             // Animate newest entry (shown at top after reverse)
             const isNewestEntry =
               shouldAnimateNewest && index === 0 && response.timestamp === newestTimestamp;
@@ -364,8 +380,13 @@ export function ResponseHistoryPanel({
                     <View style={styles.responseHeader}>
                       <View style={styles.responseMeta}>
                         <Text style={[styles.timestamp, isLatest && styles.timestampLatest]}>
-                          {formatTime(response.timestamp, false)}
+                          {responseTimestampLabel}
                         </Text>
+                        {isSpeaking ? (
+                          <View style={styles.speakingBadge}>
+                            <Text style={styles.speakingBadgeText}>Speaking</Text>
+                          </View>
+                        ) : null}
                         {isLatest ? (
                           <View style={styles.latestBadge}>
                             <Text style={styles.latestBadgeText}>Latest</Text>
@@ -377,11 +398,15 @@ export function ResponseHistoryPanel({
                         onPress={() => handleSpeak(response.text, originalIndex)}
                         accessibilityRole="button"
                         accessibilityLabel={createButtonAccessibilityLabel(
-                          isSpeaking ? 'Stop speaking this response' : 'Speak this response aloud'
+                          isSpeaking
+                            ? `Stop speaking response from ${responseTimestampLabel}`
+                            : `Speak response from ${responseTimestampLabel} aloud`
                         )}
                         accessibilityHint={isSpeaking
                           ? 'Stops text to speech for this agent response.'
-                          : 'Reads this agent response aloud with text to speech.'}
+                          : isLatest
+                            ? 'Reads the latest agent response aloud with text to speech.'
+                            : 'Reads this agent response aloud with text to speech.'}
                         accessibilityState={{ selected: isSpeaking }}
                         activeOpacity={0.7}
                       >
