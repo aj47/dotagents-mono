@@ -53,6 +53,20 @@ const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 
+const getSidebarSessionDisplayTitle = (title?: string) =>
+  title?.trim() || "Untitled session"
+
+const handleKeyboardRowActivate = (
+  event: React.KeyboardEvent<HTMLElement>,
+  onActivate: () => void,
+) => {
+  if (event.target !== event.currentTarget) return
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault()
+    onActivate()
+  }
+}
+
 export function ActiveAgentsSidebar({
   onOpenPastSessionsDialog,
 }: {
@@ -359,6 +373,7 @@ export function ActiveAgentsSidebar({
         <div className="hover:bg-accent/50 hover:text-foreground flex items-center gap-2 rounded-md px-0 py-1 transition-all duration-200">
           {hasAnySessions ? (
             <button
+              type="button"
               onClick={handleToggleExpand}
               className="hover:text-foreground focus:ring-ring shrink-0 cursor-pointer rounded focus:outline-none focus:ring-1"
               aria-label={isExpanded ? "Collapse sessions" : "Expand sessions"}
@@ -374,6 +389,7 @@ export function ActiveAgentsSidebar({
             <span className="h-3.5 w-3.5 shrink-0" />
           )}
           <button
+            type="button"
             onClick={handleHeaderClick}
             className="focus:ring-ring flex min-w-0 flex-1 items-center gap-2 rounded focus:outline-none focus:ring-1"
           >
@@ -387,6 +403,7 @@ export function ActiveAgentsSidebar({
           </button>
           {onOpenPastSessionsDialog && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenPastSessionsDialog()
@@ -411,6 +428,9 @@ export function ActiveAgentsSidebar({
             const sessionProgress = agentProgressById.get(session.id)
             const hasPendingApproval =
               !isPast && !!sessionProgress?.pendingToolApproval
+            const sessionDisplayTitle = getSidebarSessionDisplayTitle(
+              session.conversationTitle,
+            )
             // Use store's isSnoozed for active sessions (matches main view), backend for past
             const isSnoozed = isPast
               ? false
@@ -419,8 +439,9 @@ export function ActiveAgentsSidebar({
             if (isPast) {
               // Past agent row — archive icon, no action buttons
               return (
-                <div
+                <button
                   key={key}
+                  type="button"
                   onClick={() => {
                     if (session.conversationId) {
                       logUI(
@@ -430,18 +451,21 @@ export function ActiveAgentsSidebar({
                       navigate(`/${session.conversationId}`)
                     }
                   }}
+                  disabled={!session.conversationId}
                   className={cn(
-                    "text-muted-foreground flex items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                    "text-muted-foreground flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left text-xs transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
                   )}
+                  title={sessionDisplayTitle}
+                  aria-label={`Open past session ${sessionDisplayTitle}`}
                 >
                   {/* Archive icon for past agents */}
                   <Archive className="h-3 w-3 shrink-0 opacity-50" />
                   <p className="flex-1 truncate">
-                    {session.conversationTitle || "Untitled session"}
+                    {sessionDisplayTitle}
                   </p>
-                </div>
+                </button>
               )
             }
 
@@ -459,9 +483,21 @@ export function ActiveAgentsSidebar({
             return (
               <div
                 key={key}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleSessionClick(session.id)}
+                onKeyDown={(event) =>
+                  handleKeyboardRowActivate(event, () =>
+                    handleSessionClick(session.id),
+                  )
+                }
+                aria-label={
+                  hasPendingApproval
+                    ? `Open session requiring approval: ${sessionDisplayTitle}`
+                    : `Open session ${sessionDisplayTitle}`
+                }
                 className={cn(
-                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all",
+                  "group relative flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
                   hasPendingApproval
                     ? "bg-amber-500/10"
                     : isFocused
@@ -489,8 +525,8 @@ export function ActiveAgentsSidebar({
                     )}
                   >
                     {hasPendingApproval
-                      ? `⚠ ${session.conversationTitle}`
-                      : session.conversationTitle}
+                      ? `⚠ ${sessionDisplayTitle}`
+                      : sessionDisplayTitle}
                   </p>
                   {/* Agent name indicator */}
                   {agentName && (
@@ -504,15 +540,21 @@ export function ActiveAgentsSidebar({
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={(e) => handleToggleSnooze(session.id, isSnoozed, e)}
                   className={cn(
-                    "hover:bg-accent hover:text-foreground shrink-0 rounded p-0.5 opacity-0 transition-all group-hover:opacity-100",
-                    isFocused && "opacity-100",
+                    "hover:bg-accent hover:text-foreground focus-visible:ring-ring shrink-0 rounded p-0.5 opacity-0 pointer-events-none transition-all focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-none focus-visible:ring-1 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                    isFocused && "opacity-100 pointer-events-auto",
                   )}
                   title={
                     isSnoozed
                       ? "Restore"
                       : "Minimize - run in background"
+                  }
+                  aria-label={
+                    isSnoozed
+                      ? `Restore ${sessionDisplayTitle}`
+                      : `Minimize ${sessionDisplayTitle} and keep it running in the background`
                   }
                 >
                   {isSnoozed ? (
@@ -522,12 +564,14 @@ export function ActiveAgentsSidebar({
                   )}
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => handleStopSession(session.id, e)}
                   className={cn(
-                    "hover:bg-destructive/20 hover:text-destructive shrink-0 rounded p-0.5 opacity-0 transition-all group-hover:opacity-100",
-                    isFocused && "opacity-100",
+                    "hover:bg-destructive/20 hover:text-destructive focus-visible:ring-ring shrink-0 rounded p-0.5 opacity-0 pointer-events-none transition-all focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-none focus-visible:ring-1 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                    isFocused && "opacity-100 pointer-events-auto",
                   )}
                   title="Stop this agent session"
+                  aria-label={`Stop ${sessionDisplayTitle}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
