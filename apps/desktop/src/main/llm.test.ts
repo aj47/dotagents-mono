@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { MCPToolResult } from "./mcp-service"
 
 const defaultConfig = {
   mcpToolsProviderId: "openai",
@@ -10,6 +11,16 @@ const mockStreamingCall = vi.fn()
 const mockVerifyCompletion = vi.fn()
 const mockEndAgentTrace = vi.fn()
 const mockShouldStopSession = vi.fn(() => false)
+
+const successToolResult = (text = '{"success":true}'): MCPToolResult => ({
+  content: [{ type: "text", text }],
+  isError: false,
+})
+
+const errorToolResult = (text: string): MCPToolResult => ({
+  content: [{ type: "text", text }],
+  isError: true,
+})
 
 vi.mock("./config", () => ({
   configStore: { get: mockConfigGet },
@@ -89,7 +100,7 @@ describe("processTranscriptWithAgentMode", () => {
       if (toolCall.name === "respond_to_user") {
         setSessionUserResponse("session-respond-fallback", toolCall.arguments.text)
       }
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     await expect(processTranscriptWithAgentMode(
@@ -137,7 +148,7 @@ describe("processTranscriptWithAgentMode", () => {
           `${toolCall.arguments.text}\n\n![thread_complete.png](data:image/png;base64,AAAA)`,
         )
       }
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     await expect(processTranscriptWithAgentMode(
@@ -184,7 +195,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "run pwd",
       [] as any,
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       2,
       [],
       "conv-stop-after-stream",
@@ -227,7 +238,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "run pwd",
       [] as any,
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       2,
       [],
       "conv-stop-during-stream",
@@ -273,7 +284,7 @@ describe("processTranscriptWithAgentMode", () => {
         shouldStopAfterTools = true
       }
 
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     const result = await processTranscriptWithAgentMode(
@@ -329,7 +340,7 @@ describe("processTranscriptWithAgentMode", () => {
         setSessionUserResponse("session-progress-overridden-by-respond", toolCall.arguments.text)
       }
 
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     await expect(processTranscriptWithAgentMode(
@@ -394,7 +405,7 @@ describe("processTranscriptWithAgentMode", () => {
       if (toolCall.name === "respond_to_user") {
         setSessionUserResponse("session-issue-respond-finish", toolCall.arguments.text)
       }
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     const result = await processTranscriptWithAgentMode(
@@ -439,7 +450,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "I meant Claude Code by Anthropic.",
       [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       1,
       [],
       "conv-timeout-fallback",
@@ -475,7 +486,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "Post a thread on X using the browser automation workflow.",
       [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{\"success\":true}' }], isError: false })),
+      vi.fn(async () => successToolResult('{\"success\":true}')),
       1,
       [],
       "conv-timeout-long-progress",
@@ -515,10 +526,9 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "Can you ask Augustus what folder he's in?",
       [{ name: "send_to_agent", description: "Send a task to another agent", inputSchema: { type: "object", properties: {}, required: [] } } as any],
-      vi.fn(async () => ({
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: 'Agent "augustus" not found in configuration' }) }],
-        isError: true,
-      })),
+      vi.fn(async () => errorToolResult(
+        JSON.stringify({ success: false, error: 'Agent "augustus" not found in configuration' })
+      )) ,
       1,
       [],
       "conv-tool-error-reason",
@@ -558,7 +568,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "I meant Claude Code by Anthropic.",
       [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       2,
       [],
       "conv-timeout-deliverable",
@@ -598,7 +608,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "can you check my Claude usage stats",
       [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       4,
       [],
       "conv-user-action-blocker",
@@ -678,7 +688,7 @@ describe("processTranscriptWithAgentMode", () => {
         setSessionUserResponse("session-terminal-run-follow-through", toolCall.arguments.text)
       }
 
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     const result = await processTranscriptWithAgentMode(
@@ -750,7 +760,7 @@ describe("processTranscriptWithAgentMode", () => {
         if (toolCall.name === "respond_to_user") {
           setSessionUserResponse("session-verifier-context-constraint", toolCall.arguments.text)
         }
-        return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+        return successToolResult()
       }),
       2,
       [],
@@ -832,7 +842,7 @@ describe("processTranscriptWithAgentMode", () => {
         setSessionUserResponse("session-verifier-contradiction", toolCall.arguments.text)
       }
 
-      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+      return successToolResult()
     })
 
     await processTranscriptWithAgentMode(
@@ -903,7 +913,7 @@ describe("processTranscriptWithAgentMode", () => {
         description: "Read terminal output",
         inputSchema: { type: "object", properties: {}, required: [] },
       } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       4,
       [],
       "conv-pseudo-tool-placeholder",
@@ -957,7 +967,7 @@ describe("processTranscriptWithAgentMode", () => {
         description: "Send a response",
         inputSchema: { type: "object", properties: {}, required: [] },
       } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       3,
       [],
       "conv-pseudo-respond-wrapper",
@@ -1013,7 +1023,7 @@ describe("processTranscriptWithAgentMode", () => {
     const result = await processTranscriptWithAgentMode(
       "Can you gather context on starter packs and ask me follow-up questions?",
       [{ name: "execute_command", description: "Run command", inputSchema: { type: "object", properties: {}, required: [] } } as any],
-      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      vi.fn(async () => successToolResult()),
       4,
       [],
       "conv-tool-only-synthesis",

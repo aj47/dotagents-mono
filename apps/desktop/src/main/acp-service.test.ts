@@ -514,7 +514,8 @@ describe("ACP Service", () => {
 
       vi.spyOn(acpService as any, "initializeAgent").mockResolvedValue(undefined)
       vi.spyOn(acpService as any, "createSession").mockResolvedValue("session-timeout")
-      vi.spyOn(acpService as any, "sendRequest").mockImplementation((_: string, method: string) => {
+      vi.spyOn(acpService as any, "sendRequest").mockImplementation((...args: unknown[]) => {
+        const method = typeof args[1] === "string" ? args[1] : ""
         if (method === "session/prompt") {
           return new Promise(() => {})
         }
