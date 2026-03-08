@@ -663,8 +663,8 @@ export default function SessionListScreen({ navigation }: Props) {
             accessibilityLabel={`Current agent: ${currentAgentLabel}. No switchable agents are available right now.`}
           >
             <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
-            <View style={styles.headerAgentSelectorBadge}>
-              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
+            <View style={[styles.headerAgentSelectorBadge, styles.headerAgentSelectorBadgeStatic]}>
+              <Text style={[styles.headerAgentSelectorBadgeText, styles.headerAgentSelectorBadgeTextStatic]} numberOfLines={1}>
                 {currentAgentLabel}
               </Text>
             </View>
@@ -1055,10 +1055,16 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: theme.colors.primary + '1a',
       maxWidth: 180,
     },
+    headerAgentSelectorBadgeStatic: {
+      backgroundColor: theme.colors.muted,
+    },
     headerAgentSelectorBadgeText: {
       fontSize: 12,
       color: theme.colors.primary,
       fontWeight: '600',
+    },
+    headerAgentSelectorBadgeTextStatic: {
+      color: theme.colors.mutedForeground,
     },
     list: {
       padding: spacing.md,

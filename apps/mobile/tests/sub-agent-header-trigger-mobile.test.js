@@ -36,6 +36,13 @@ for (const [screenName, source] of [
     assert.match(source, /\{`\$\{currentAgentLabel\} ▼`\}/);
   });
 
+  test(`${screenName} styles the no-options header badge as passive status instead of an active selector`, () => {
+    assert.match(source, /style=\{\[styles\.headerAgentSelectorBadge, styles\.headerAgentSelectorBadgeStatic\]\}/);
+    assert.match(source, /style=\{\[styles\.headerAgentSelectorBadgeText, styles\.headerAgentSelectorBadgeTextStatic\]\} numberOfLines=\{1\}/);
+    assert.match(source, /headerAgentSelectorBadgeStatic:\s*\{[\s\S]*?backgroundColor: theme\.colors\.muted/);
+    assert.match(source, /headerAgentSelectorBadgeTextStatic:\s*\{[\s\S]*?color: theme\.colors\.mutedForeground/);
+  });
+
   test(`${screenName} refreshes header selector availability when the screen regains focus`, () => {
     assert.match(source, /navigation\?\.addListener\?\.\('focus', \(\) => \{[\s\S]*?void refreshAgentSelectorAvailability\(\);/);
   });

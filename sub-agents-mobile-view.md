@@ -545,3 +545,45 @@
   - Smoke-test the header selector with a longer configured agent name once switchable options exist again.
   - Revisit `Settings > Agent Loops` only if a fresh mobile pass shows text density has again become the highest-friction issue.
   - Confirm the current no-options header copy and spacing on a native device/simulator when practical.
+
+### 2026-03-08 — Iteration 13: make no-options header badges read as passive status
+
+- Status: shipped locally with validation blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `ChatScreen` header agent selector state
+  - `SessionListScreen` header agent selector state
+  - focused header regression coverage in `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Live inspection / workflow status:
+  - Attempted the usual Expo Web workflow first:
+    - `pnpm --filter @dotagents/mobile exec expo start --web --port 19007`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007`
+  - Both failed in this worktree because `apps/mobile/node_modules` is missing and local `expo` is unavailable (`sh: expo: command not found`).
+  - Because the install is missing, repeatable live inspection and normal mobile type-checking were blocked for this iteration.
+- Current behavior observed before the fix:
+  - Recent iterations already made the `Chats` and `Chat` headers non-interactive when there are no switchable agents.
+  - Code review showed those static states still reused the same primary-colored badge styling as the interactive selector state, only without the chevron.
+- Issue selected:
+  - In the no-options state, the mobile headers still looked visually button-like even though tapping no longer did anything, which weakened state clarity.
+- Decision:
+  - Keep the current agent visible in both headers.
+  - Do not re-open the selector sheet or redesign the header layout.
+  - Make the smallest local fix: restyle only the no-options badge/text to use passive muted colors while leaving the interactive state unchanged.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx` to:
+    - apply `headerAgentSelectorBadgeStatic` for the no-options header badge,
+    - apply `headerAgentSelectorBadgeTextStatic` for the no-options header label,
+    - preserve the existing primary styling for the interactive selector state.
+  - Updated `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` to cover the new passive-status styling contract in both screens.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked by missing install / `expo/tsconfig.base` / mobile dependencies in this worktree
+  - Expo Web re-verification ⚠️ blocked by the same missing local install (`expo: command not found`)
+- Remaining nearby issues noted, not addressed this iteration:
+  - A deliberately long real agent name still needs a live smoke test in the header once switchable options exist again.
+  - The passive no-options badge should still be visually confirmed on Expo Web or device once this worktree has dependencies installed.
+  - `Agent Loops` remains the next likely candidate if a fresh live pass shows text squeeze is again the highest-friction issue.
+- Next checks:
+  - Restore the mobile install in this worktree, then re-run Expo Web and confirm the passive no-options header treatment reads clearly on a narrow screen.
+  - Smoke-test long configured agent names in both header selectors once switchable options exist again.
+  - Revisit `Settings > Agent Loops` only if live inspection shows it has again become the highest-friction sub-agent surface.
