@@ -35,11 +35,34 @@ vi.mock("./context-budget", () => ({ shrinkMessagesForLLM: vi.fn(async ({ messag
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: vi.fn(async () => {}) }))
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: { isSessionSnoozed: vi.fn(() => false), getSession: vi.fn(() => ({ conversationTitle: "Test session", profileSnapshot: { profileName: "Main Agent" } })) } }))
 vi.mock("./conversation-service", () => ({ conversationService: { addMessageToConversation: vi.fn(async () => {}) } }))
+vi.mock("./skills-service", () => ({
+  skillsService: {
+    getSkills: vi.fn(() => []),
+    getEnabledSkillsInstructionsForProfile: vi.fn(() => ""),
+  },
+}))
+vi.mock("./agent-profile-service", () => ({
+  agentProfileService: {
+    getCurrentProfile: vi.fn(() => null),
+    getEnabledSkillIdsForProfile: vi.fn(() => []),
+  },
+}))
 vi.mock("../shared", () => ({ getCurrentPresetName: vi.fn(() => "default") }))
 vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => true), createAgentTrace: vi.fn(), endAgentTrace: mockEndAgentTrace, flushLangfuse: vi.fn(async () => {}) }))
-vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => false), shouldSummarizeStep: vi.fn(() => false), summarizeAgentStep: vi.fn(), summarizationService: { addSummary: vi.fn() } }))
+vi.mock("./summarization-service", () => ({
+  isSummarizationEnabled: vi.fn(() => false),
+  shouldSummarizeStep: vi.fn(() => false),
+  summarizeAgentStep: vi.fn(),
+  summarizationService: {
+    addSummary: vi.fn(),
+    getSummaries: vi.fn(() => []),
+    getLatestSummary: vi.fn(() => null),
+  },
+}))
 vi.mock("./memory-service", () => ({ memoryService: { getAllMemories: vi.fn(async () => []), createMemoryFromSummary: vi.fn(() => undefined), saveMemory: vi.fn(async () => {}) } }))
-vi.mock("./llm-tool-gating", () => ({ filterNamedItemsToAllowedTools: vi.fn((items: any) => items) }))
+vi.mock("./llm-tool-gating", () => ({
+  filterNamedItemsToAllowedTools: vi.fn((items: any) => ({ allowed: items, removed: [] })),
+}))
 
 describe("processTranscriptWithAgentMode", () => {
   beforeEach(() => {
@@ -230,6 +253,51 @@ describe("processTranscriptWithAgentMode", () => {
     expect(result.content).not.toContain("Let me search for the correct URL")
     expect(mockEndAgentTrace).toHaveBeenCalledWith(
       "session-timeout-fallback",
+      expect.objectContaining({ output: result.content }),
+    )
+  })
+
+  it("surfaces the latest concrete tool failure reason when a tool-only run times out", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-tool-error-reason")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall.mockResolvedValue({
+      content: "",
+      toolCalls: [{
+        name: "send_to_agent",
+        arguments: {
+          agentName: "augustus",
+          task: "What folder are you in? Reply with pwd only.",
+          waitForResult: true,
+        },
+      }],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Can you ask Augustus what folder he's in?",
+      [{ name: "send_to_agent", description: "Send a task to another agent", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      vi.fn(async () => ({
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: 'Agent "augustus" not found in configuration' }) }],
+        isError: true,
+      })),
+      1,
+      [],
+      "conv-tool-error-reason",
+      "session-tool-error-reason",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("send_to_agent failed: Agent \"augustus\" not found in configuration")
+    expect(result.content).not.toContain('"success":false')
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-tool-error-reason",
       expect.objectContaining({ output: result.content }),
     )
   })

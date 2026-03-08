@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772260442055_0tyysyfq3 | session_1772260441759_qlnn5jvxv | fix implemented | User asked `Can you ask Augustus what folder he's in?`; Langfuse showed `list_running_agents`, a mistaken `send_agent_message` to the current session, then failing `spawn_agent` / `send_to_agent` calls with `Agent "augustus" not found in configuration`, yet the run still ended without a useful blocker answer. Root repo issue found: when a run timed out after tool-only failures, finalization dropped the latest concrete tool error reason instead of surfacing it to the user. |
 | 2026-03-08 | conv_1772744648565_y8l300gt0 | session_1772744648567_uthjyczt8 | fix implemented | User asked to investigate a broken custom-domain flow and trigger a Codex web agent. Langfuse showed an early async `delegate_to_agent`, then many repeated `check_agent_status` calls that kept returning `status: running`, eventually burning 84 iterations before the run fell back incomplete. Root repo issue found: background delegation/status responses told the model how to poll, but not when to stop polling or what to do instead while the delegated work was still running. |
 | 2026-03-08 | conv_1772762736666_7bj08qdgg | session_1772762736667_04xp96wqz | fix implemented | User sent `hi`; the run ended with `output: null` after a single `Streaming LLM Call` error whose Langfuse status was only `Bad Request`. Fresh corroborating traces `conv_1772915623974_19t5gv3u6` / `session_1772915623977_t1j6if9gz`, `conv_1772905378777_q5hq0r5xs` / `session_1772905378779_d58nx1yvg`, and `conv_1772901755817_jhfxav45q` / `session_1772901755821_xnjfwsv3t` showed the same blank-output failure class with low-signal plain-streaming error statuses like `Cannot connect to API:`. Root repo issue found: the plain streaming LLM catch path still finalized Langfuse generations and rethrew with raw `error.message`, bypassing the repo's normalized nested-cause extraction used elsewhere. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx | session_1772912334717_md47yr0ht | fix implemented (verification blocked) | User asked for `.agent protocol hub` context plus starter-pack recommendations and follow-up questions. Langfuse showed multiple successful `github:get_file_contents` / `execute_command` context-gathering batches, then the run ended with `output: null` and no user-facing synthesis or questions. Later traces in the same session continued the same hub / starter-pack topic. Root repo issue found: repeated successful non-communication tool batches kept resetting the no-op safeguards, so the loop never nudged the model to stop gathering and synthesize or ask the focused questions it had promised. |
@@ -177,6 +178,41 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
   - `pnpm --filter @dotagents/desktop typecheck:node`
   - ❌ still blocked by pre-existing unrelated worktree/typecheck issues, including unresolved `uuid` in `apps/desktop/src/main/acp/internal-agent.ts`, existing `llm.test.ts` mock typing errors, and existing missing `COMMUNICATION_ONLY_TOOLS` / `onlyCommunicationTools` references in `apps/desktop/src/main/llm.ts`
+
+### 2026-03-08 — Tool-only failure runs should preserve the latest concrete blocker
+
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772260442055_0tyysyfq3` / `session_1772260441759_qlnn5jvxv`
+    - user input: `Can you ask Augustus what folder he's in?`
+    - trace outcome: no useful final answer even though the tool steps had already established the real blocker
+    - observations showed:
+      - `list_running_agents` returned only the current session plus `augustus: false`
+      - the run then tried `send_agent_message` to the current session by UUID instead of directly answering the blocker
+      - later `spawn_agent` and `send_to_agent` both failed with `Agent "augustus" not found in configuration`
+      - despite those concrete tool failures, the run still ended without surfacing that blocker cleanly to the user
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` already tracks tool errors for retry/exclusion and pushes an error summary back into conversation history.
+  - however, when a run reached the max-iteration/incomplete fallback path after only tool failures, the finalizer only had a generic repeated-failures reason.
+  - additionally, tool error content that arrived as JSON strings (for example `{"success":false,"error":"..."}`) was only cleaned as plain text, so the user-facing fallback could keep opaque JSON blobs instead of the actual blocker message.
+- Concrete root cause:
+  - tool-failure finalization remembered that something failed, but not the latest concrete reason the user needed to hear.
+  - in delegation / unavailable-agent traces like this one, that made the single-run failure much less actionable than the tool results already were.
+- Fix implemented:
+  - `apps/desktop/src/main/llm.ts`
+    - parse structured tool-error payloads to extract `error` / `message` / `reason` fields before building summaries
+    - remember the latest failed tool + cleaned blocker text during tool execution
+    - when a tool-only run times out/incompletes after recent errors, use that concrete failure reason in the incomplete-task fallback instead of a generic repeated-failures line
+    - hoisted the communication-only tool set so the same helper is available in both pre- and post-tool branches
+    - changed the `mcp-service` import to `import type` so `llm.ts` no longer eagerly loads runtime-only MCP wiring during desktop unit tests
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression where `send_to_agent` returns structured JSON error text for missing `augustus` config and verified the final response now includes `send_to_agent failed: Agent "augustus" not found in configuration`
+    - added lightweight mocks for runtime-only services needed by the narrowed `llm.ts` test harness
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts -t "surfaces the latest concrete tool failure reason when a tool-only run times out"`
+  - ✅ passed (`1 passed`, `9 skipped`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test exits successfully
+  - `cd apps/desktop && pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
 
 ### 2026-03-08 — Internal delegation ignored `waitForResult=false`
 
@@ -913,6 +949,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.
+- Recheck a fresh unavailable-agent / delegation-tool-error trace (for example missing `augustus`) after the next desktop smoke run, to confirm the user now sees the concrete blocker (`send_to_agent failed: ... not found`) instead of a blank or generic incomplete result.
 - Recheck a fresh async ACP delegation trace with repeated `check_agent_status` polling, to confirm the new running-status guidance nudges the model toward other work or a clear `still running` handoff instead of burning the run on tight polling.
 - Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.

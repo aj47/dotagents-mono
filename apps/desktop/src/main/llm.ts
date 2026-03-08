@@ -1,5 +1,5 @@
 import { configStore } from "./config"
-import {
+import type {
   MCPTool,
   MCPToolCall,
   LLMToolCallResponse,
@@ -89,6 +89,30 @@ function cleanErrorMessage(errorText: string): string {
   }
 
   return cleaned
+}
+
+function extractToolErrorMessage(errorText: string): string {
+  const trimmed = errorText.trim()
+  if (!trimmed) return "Unknown error"
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (parsed && typeof parsed === "object") {
+      const candidate = [parsed.error, parsed.message, parsed.reason]
+        .find((value): value is string => typeof value === "string" && value.trim().length > 0)
+      if (candidate) {
+        return cleanErrorMessage(candidate)
+      }
+    }
+  } catch {
+    // Fall back to plain-text cleanup below.
+  }
+
+  return cleanErrorMessage(trimmed)
+}
+
+function buildToolFailureReason(toolName: string, rawErrorText: string): string {
+  return `${toolName} failed: ${extractToolErrorMessage(rawErrorText)}`
 }
 
 /**
@@ -1606,6 +1630,7 @@ Return ONLY JSON per schema.`,
     "You've already gathered substantial context. Unless another tool call is strictly necessary, stop gathering more context and either provide your best current answer or ask only the focused follow-up questions you still need from the user."
   let verificationFailCount = 0 // Count consecutive verification failures to avoid loops
   const toolFailureCount = new Map<string, number>() // Track failures per tool name
+  let latestToolFailureReason: string | undefined
   const MAX_TOOL_FAILURES = 3 // Max times a tool can fail before being excluded
 
   while (iteration < maxIterations) {
@@ -1618,6 +1643,7 @@ Return ONLY JSON per schema.`,
       const failures = toolFailureCount.get(tool.name) || 0
       return failures < MAX_TOOL_FAILURES
     })
+    const COMMUNICATION_ONLY_TOOLS = new Set([RESPOND_TO_USER_TOOL])
 
     // Log when tools have been excluded
     const excludedToolCount = baseAvailableTools.length - activeTools.length
@@ -2023,6 +2049,7 @@ Return ONLY JSON per schema.`,
     // Don't treat mark_work_complete as confirmed completion yet.
     // We defer completion until after tool execution confirms the whole batch succeeded.
     const hasToolCalls = toolCallsArray.length > 0
+    const onlyCommunicationTools = hasToolCalls && toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
 
     // Handle no-op iterations (no tool calls).
     if (!hasToolCalls) {
@@ -2319,9 +2346,6 @@ Return ONLY JSON per schema.`,
       // If respond_to_user is called without mark_work_complete, don't reset the completion
       // counters; otherwise the agent can loop indefinitely: text → nudge → respond_to_user
       // (resets counters) → text → nudge → respond_to_user → … (#respond-to-user-spam)
-      const COMMUNICATION_ONLY_TOOLS = new Set([RESPOND_TO_USER_TOOL])
-      const onlyCommunicationTools = toolCallsArray.every(tc => COMMUNICATION_ONLY_TOOLS.has(tc.name))
-
       if (onlyCommunicationTools) {
         // Communication-only batch: increment noOpCount (no real progress) and preserve
         // nudge/hint counters so the safety valves fire if the agent keeps looping.
@@ -2699,6 +2723,9 @@ Return ONLY JSON per schema.`,
     const storedUserResponse = getSessionUserResponse(currentSessionId)
 
     if (allToolsSuccessful) {
+      if (!onlyCommunicationTools) {
+        latestToolFailureReason = undefined
+      }
       finalContent = preferStoredUserResponse(
         finalContent,
         storedUserResponse,
@@ -2793,11 +2820,24 @@ Return ONLY JSON per schema.`,
         .map((toolName, idx) => {
           const failedResult = toolResults.filter((r) => r.isError)[idx]
           const rawError = failedResult?.content.map((c) => c.text).join(" ") || "Unknown error"
-          const cleanedError = cleanErrorMessage(rawError)
+          const cleanedError = extractToolErrorMessage(rawError)
           const failureCount = toolFailureCount.get(toolName) || 1
           return `TOOL FAILED: ${toolName} (attempt ${failureCount}/${MAX_TOOL_FAILURES})\nError: ${cleanedError}`
         })
         .join("\n\n")
+
+      let latestFailedToolIndex = -1
+      for (let i = toolResults.length - 1; i >= 0; i--) {
+        if (toolResults[i]?.isError) {
+          latestFailedToolIndex = i
+          break
+        }
+      }
+      if (latestFailedToolIndex >= 0) {
+        const toolName = toolCallsArray[latestFailedToolIndex]?.name || "unknown"
+        const rawError = toolResults[latestFailedToolIndex]?.content.map((c) => c.text).join(" ") || "Unknown error"
+        latestToolFailureReason = buildToolFailureReason(toolName, rawError)
+      }
 
       conversationHistory.push({
         role: "tool",
@@ -3120,7 +3160,7 @@ Return ONLY JSON per schema.`,
       } else {
         finalContent = buildIncompleteTaskFallback(finalContent, {
           reason: hasRecentErrors
-            ? "Task stopped due to repeated tool failures before the request was completed."
+            ? latestToolFailureReason || "Task stopped due to repeated tool failures before the request was completed."
             : "Reached maximum iteration limit while the agent was still in progress.",
         })
       }
