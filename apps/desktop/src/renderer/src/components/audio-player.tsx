@@ -1,9 +1,58 @@
 import React, { useState, useRef, useEffect } from "react"
 import { Button } from "@renderer/components/ui/button"
 import { Slider } from "@renderer/components/ui/slider"
-import { Play, Pause, Volume2, VolumeX, Loader2 } from "lucide-react"
+import { Play, Pause, Volume2, VolumeX, Loader2, AlertTriangle } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { ttsManager } from "@renderer/lib/tts-manager"
+
+function getPlaybackErrorMessage(error: unknown, mode: "auto" | "manual") {
+  const name = typeof error === "object" && error && "name" in error
+    ? String((error as { name?: unknown }).name ?? "")
+    : ""
+  const message = error instanceof Error
+    ? error.message.trim()
+    : typeof error === "string"
+      ? error.trim()
+      : ""
+
+  if (
+    name === "NotAllowedError" ||
+    /notallowed/i.test(message) ||
+    /user(?:\s+|-)didn'?t interact/i.test(message)
+  ) {
+    return mode === "auto"
+      ? "Auto-play was blocked by your device or browser. Press play to listen."
+      : "Audio playback was blocked by your device or browser. Press play to try again."
+  }
+
+  if (name === "AbortError" || /abort|interrupted/i.test(message)) {
+    return mode === "auto"
+      ? "Audio playback was interrupted before it could start. Press play to try again."
+      : "Audio playback was interrupted. Press play to try again."
+  }
+
+  if (name === "NotSupportedError" || /not supported|decode|format/i.test(message)) {
+    return "This audio clip could not be played on this device."
+  }
+
+  const nextMessage = message || "Audio playback failed. Press play to try again."
+  return /[.!?]$/.test(nextMessage) ? nextMessage : `${nextMessage}.`
+}
+
+function getMediaElementErrorMessage(audio: HTMLAudioElement | null) {
+  switch (audio?.error?.code) {
+    case 1:
+      return "Audio playback was interrupted. Press play to try again."
+    case 2:
+      return "Audio playback stopped because the audio stream could not load. Check your connection and try again."
+    case 3:
+      return "This audio clip could not be decoded. Generate it again and retry."
+    case 4:
+      return "This audio clip could not be played on this device."
+    default:
+      return "Audio playback failed. Press play to try again."
+  }
+}
 
 interface AudioPlayerProps {
   audioData?: ArrayBuffer
@@ -37,6 +86,7 @@ export function AudioPlayer({
   const [hasAudio, setHasAudio] = useState(!!audioData)
   const [hasAutoPlayed, setHasAutoPlayed] = useState(false)
   const [wasStopped, setWasStopped] = useState(false)
+  const [playbackError, setPlaybackError] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
 
@@ -51,6 +101,7 @@ export function AudioPlayer({
       setHasAudio(true)
       setHasAutoPlayed(false)
       setWasStopped(false)
+      setPlaybackError(null)
 
       if (audioRef.current) {
         audioRef.current.src = audioUrlRef.current
@@ -85,6 +136,7 @@ export function AudioPlayer({
     }
 
     const handlePlay = () => {
+      setPlaybackError(null)
       setIsPlaying(true)
       onPlayStateChange?.(true)
     }
@@ -97,6 +149,8 @@ export function AudioPlayer({
     const handleError = (event: Event) => {
       console.error("[AudioPlayer] Audio error:", event)
       setIsPlaying(false)
+      setPlaybackError(getMediaElementErrorMessage(audio))
+      onPlayStateChange?.(false)
     }
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata)
@@ -154,12 +208,16 @@ export function AudioPlayer({
         textPreview: text.slice(0, 80),
       }).catch((error) => {
         console.error("[AudioPlayer] Auto-play failed:", error)
+        setIsPlaying(false)
+        setPlaybackError(getPlaybackErrorMessage(error, "auto"))
+        onPlayStateChange?.(false)
       })
     }
-  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, text])
+  }, [autoPlay, hasAudio, isPlaying, hasAutoPlayed, wasStopped, text, onPlayStateChange])
 
   const handlePlayPause = async () => {
     if (!hasAudio && onGenerateAudio && !isGenerating && !error) {
+      setPlaybackError(null)
       try {
         await onGenerateAudio()
         return
@@ -173,6 +231,7 @@ export function AudioPlayer({
         if (isPlaying) {
           audioRef.current.pause()
         } else {
+          setPlaybackError(null)
           setWasStopped(false)
           await ttsManager.playExclusive(audioRef.current, {
             source: "audio-player:manual",
@@ -183,6 +242,8 @@ export function AudioPlayer({
       } catch (playError) {
         console.error("[AudioPlayer] Playback failed:", playError)
         setIsPlaying(false)
+        setPlaybackError(getPlaybackErrorMessage(playError, "manual"))
+        onPlayStateChange?.(false)
       }
     }
   }
@@ -223,6 +284,8 @@ export function AudioPlayer({
 
   const playPauseLabel = isGenerating
     ? "Generating audio"
+    : playbackError && hasAudio
+      ? "Retry audio playback"
     : hasAudio
       ? isPlaying
         ? "Pause audio"
@@ -230,7 +293,9 @@ export function AudioPlayer({
       : "Generate audio"
 
   const compactStatusText = hasAudio
-    ? duration > 0
+    ? playbackError
+      ? playbackError
+      : duration > 0
       ? `${formatTime(currentTime)} / ${formatTime(duration)}`
       : "Loading audio…"
     : isGenerating
@@ -240,7 +305,9 @@ export function AudioPlayer({
         : "Generate audio"
 
   const compactStatusLabel = hasAudio
-    ? duration > 0
+    ? playbackError
+      ? "Playback failed"
+      : duration > 0
       ? isPlaying
         ? "Playing audio"
         : "Audio ready"
@@ -252,7 +319,9 @@ export function AudioPlayer({
         : "Generate audio"
 
   const compactStatusDetail = hasAudio
-    ? duration > 0
+    ? playbackError
+      ? "You can retry from this card."
+      : duration > 0
       ? compactStatusText
       : "Preparing playback controls"
     : isGenerating
@@ -260,6 +329,28 @@ export function AudioPlayer({
       : error
         ? "See details below"
         : "Tap play to listen"
+
+  const playbackAlert = playbackError && (
+    <div
+      role="alert"
+      aria-live="polite"
+      className="flex flex-wrap items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-2 text-xs text-amber-700 dark:text-amber-300"
+    >
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{playbackError}</span>
+      <Button
+        type="button"
+        variant="link"
+        size="sm"
+        className="h-auto px-0 py-0 text-xs text-amber-700 dark:text-amber-300"
+        onClick={() => {
+          void handlePlayPause()
+        }}
+      >
+        Retry play
+      </Button>
+    </div>
+  )
 
   if (compact) {
     return (
@@ -272,7 +363,9 @@ export function AudioPlayer({
         <Button
           variant="ghost"
           size="sm"
-          onClick={handlePlayPause}
+          onClick={() => {
+            void handlePlayPause()
+          }}
           disabled={isGenerating}
           className="mt-0.5 h-8 w-8 shrink-0 p-0"
           title={playPauseLabel}
@@ -293,13 +386,14 @@ export function AudioPlayer({
           <div
             className={cn(
               "min-w-0 text-[11px] leading-relaxed text-muted-foreground break-words [overflow-wrap:anywhere]",
-              hasAudio && duration > 0 && "font-mono tabular-nums"
+              hasAudio && duration > 0 && !playbackError && "font-mono tabular-nums"
             )}
             aria-live="polite"
           >
             {compactStatusDetail}
           </div>
         </div>
+        {playbackAlert && <div className="basis-full">{playbackAlert}</div>}
         <audio ref={audioRef} />
       </div>
     )
@@ -311,7 +405,9 @@ export function AudioPlayer({
         <Button
           variant="ghost"
           size="sm"
-          onClick={handlePlayPause}
+          onClick={() => {
+            void handlePlayPause()
+          }}
           disabled={isGenerating}
           className="h-10 w-10 shrink-0 p-0"
           title={playPauseLabel}
@@ -344,7 +440,13 @@ export function AudioPlayer({
             </>
           ) : (
             <div className="text-sm text-muted-foreground break-words" aria-live="polite">
-              {isGenerating ? "Generating audio..." : error ? "Audio unavailable. Check the error above and try again." : "Click play to generate audio"}
+              {isGenerating
+                ? "Generating audio..."
+                : error
+                  ? "Audio unavailable. Check the error above and try again."
+                  : playbackError
+                    ? playbackError
+                    : "Click play to generate audio"}
             </div>
           )}
         </div>
@@ -374,6 +476,8 @@ export function AudioPlayer({
           />
         </div>
       </div>
+
+      {playbackAlert}
 
       <audio ref={audioRef} />
     </div>
