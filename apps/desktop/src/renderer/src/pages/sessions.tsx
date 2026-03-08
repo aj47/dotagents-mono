@@ -398,8 +398,8 @@ function EmptyState({
   const totalCount = conversationHistoryQuery.data?.length ?? 0
 
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-8 text-center">
-      <div className="bg-muted mb-4 rounded-full p-4">
+    <div className="flex flex-col items-center justify-center px-6 py-4 text-center">
+      <div className="bg-muted mb-2 rounded-full p-3">
         <MessageCircle className="text-muted-foreground h-8 w-8" />
       </div>
       <h3 className="mb-2 text-lg font-semibold">No Active Sessions</h3>
@@ -449,7 +449,7 @@ function EmptyState({
 
       {/* Recent past sessions */}
       {recentSessions.length > 0 && (
-        <div className="mt-8 w-full max-w-lg text-left">
+        <div className="mt-4 w-full max-w-lg text-left">
           <div className="mb-2 flex items-center justify-between px-1">
             <h4 className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
               <Clock className="h-3.5 w-3.5" />

@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 53: Desktop sessions empty state can push recent-session recovery below the fold under tighter pane heights and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/sessions.tsx` (`EmptyState` with recent-session recovery list)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched WhatsApp, onboarding, repeat-tasks, panel, and memories surfaces.
+  - A live browser-inspectable desktop route was available at `http://localhost:5174/`, and the sessions empty state was practical to mount with a small mocked preload bridge.
+  - This was a fresh-enough desktop surface with nearby test coverage and a clearer live issue than speculative source-only tweaks elsewhere.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid reworking a recently investigated area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - inspected `http://localhost:5174/` with a minimal mocked preload bridge because the plain browser route otherwise fails on missing Electron `ipcRenderer`
+  - mounted the empty-state sessions view with three recent sessions, then stress-tested it at constrained desktop pane sizes (`800×670` and `720×670`) plus a `20px` root font approximation for modest text enlargement
+  - captured screenshot-backed evidence in `tmp/ui-audit/sessions-empty-before-720x670-root16.png`, `tmp/ui-audit/sessions-empty-before-720x670-root20.png`, and `tmp/ui-audit/sessions-empty-before-720x670-root20-full.png`
+  - prototyped the smallest candidate spacing reductions directly in the mounted DOM before editing source to confirm whether a compact-spacing fix was sufficient without hiding more recent sessions
+
+#### Findings
+
+- Before the fix, the desktop sessions empty state had one concrete user-impacting layout issue:
+  - at `720×670` with a modest larger-text approximation (`20px` root font, about `125%`), the empty-state content grew taller than the visible sessions pane while still trying to show the action stack, keyboard hints, and recent-session recovery list in one vertical column
+  - live measurement showed the main sessions scroller at about `640px` tall while the empty-state content needed about `709px`, leaving about `69px` of vertical overflow
+  - the third recent-session row landed below the visible pane (`bottom ≈ 699` against a viewport bottom of `670`), so part of the recovery path was hidden on first render
+  - this is materially risky because the empty state is supposed to surface both start-new-session actions and the quickest continue-existing-session affordance, but under realistic pane pressure users could miss part of the recovery list unless they manually scroll
+
+#### Changes made
+
+- Hardened the desktop sessions empty state in `apps/desktop/src/renderer/src/pages/sessions.tsx` with the smallest effective compact-spacing fix verified live:
+  - reduced the empty-state shell vertical padding from `py-8` to `py-4`
+  - reduced the decorative icon bubble from `mb-4 p-4` to `mb-2 p-3`
+  - reduced the gap before the recent sessions section from `mt-8` to `mt-4`
+  - kept all three live-inspected recent sessions visible in the layout instead of hiding more history behind a stronger product change like a tighter row cap
+- Added `apps/desktop/src/renderer/src/pages/sessions.empty-state-layout.test.ts` with focused source-contract coverage for the new compact empty-state spacing treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.empty-state-layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the compact empty-state wrapper spacing, icon bubble spacing, recent-section margin, and the new focused regression test file are present
+- Live renderer evidence before the fix at `http://localhost:5174/`:
+  - at `720×670` + `20px` root font, the empty-state content measured about `709px` tall inside a `640px` scroller, leaving about `69px` of vertical overflow
+  - the third recent-session row rendered below the visible pane on first load
+  - screenshots: `tmp/ui-audit/sessions-empty-before-720x670-root16.png`, `tmp/ui-audit/sessions-empty-before-720x670-root20.png`, `tmp/ui-audit/sessions-empty-before-720x670-root20-full.png`
+- Live DOM prototype verification of the intended spacing fix:
+  - after applying the same compact spacing directly in the mounted DOM, the `720×670` + `20px` root-font case dropped to `scrollHeight = clientHeight = 640px`, eliminating the vertical overflow
+  - the third recent-session row then sat about `31px` above the scroller bottom, keeping the recovery path fully visible without removing items
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/sessions.tsx apps/desktop/src/renderer/src/pages/sessions.empty-state-layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the currently running browser/Electron sessions are not guaranteed to be serving this checkout’s edited bundle, and the browser route needs mocked preload APIs to mount, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired live pre-fix evidence with a DOM prototype of the exact spacing changes and direct source verification of the patch.
+- This chunk is desktop-only: mobile `apps/mobile/src/screens/SessionListScreen.tsx` uses a different React Native list/footer layout and does not share this desktop empty-state + recent-session column contract.
+- Tradeoff/rationale: the empty state now uses a little less decorative vertical breathing room, but that is a safer tradeoff than letting recent-session recovery controls slip below the fold under realistic pane constraints and larger text.
+- Best next UI audit chunk after this one: stay on `sessions.tsx` only if a renderer session tied to this checkout becomes available for literal post-edit confirmation or for a real active-session tile follow-up, or move to another fresh live-inspectable desktop/mobile surface.
+
 ### 2026-03-08 — Chunk 52: Desktop WhatsApp allowlist input can collapse into an almost unusable slit under real settings-column pressure
 
 - Area selected:
