@@ -29,3 +29,8 @@ test('prioritizes compact loop schedule metadata over prompt preview on mobile',
   );
   assert.match(settingsSource, /loopPromptPreview:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 15,/);
 });
+
+test('surfaces run-on-startup state directly in compact loop metadata', () => {
+  assert.match(settingsSource, /loop\.runOnStartup \? \([\s\S]*?<Text style=\{styles\.loopStartupMeta\}>Run on startup<\/Text>[\s\S]*?\) : null/);
+  assert.match(settingsSource, /loopStartupMeta:\s*\{[\s\S]*?color: theme\.colors\.primary,[\s\S]*?fontWeight: '600',/);
+});

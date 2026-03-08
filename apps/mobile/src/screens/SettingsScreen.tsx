@@ -2416,6 +2416,12 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.serverMeta} numberOfLines={2}>
                             {formatLoopIntervalLabel(loop.intervalMinutes)}
                             {loop.profileName && ` • ${loop.profileName}`}
+                            {loop.runOnStartup ? (
+                              <>
+                                {' • '}
+                                <Text style={styles.loopStartupMeta}>Run on startup</Text>
+                              </>
+                            ) : null}
                             {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
                           </Text>
                           <Text style={styles.loopPromptPreview} numberOfLines={1}>{loop.prompt}</Text>
@@ -3243,6 +3249,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       marginTop: 2,
       lineHeight: 16,
+    },
+    loopStartupMeta: {
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     loopPromptPreview: {
       fontSize: 11,

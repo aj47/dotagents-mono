@@ -1856,3 +1856,43 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that editing an existing startup loop keeps the switch on and saving preserves it.
   - After live validation returns, decide whether the loop list also needs a compact `Run on startup` indicator for better at-a-glance schedule clarity.
   - Re-run the focused desktop route test once the desktop Vitest runner is available in this worktree.
+
+### 2026-03-08 — Iteration 43: surface startup loops directly in the mobile list
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Loops` rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused loop list tests in `apps/mobile/tests/settings-loop-metadata-mobile.test.js`
+  - desktop loop list parity in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - The prior iteration added `Run on Startup` to the mobile loop edit form and payloads.
+  - The mobile `Settings > Agent Loops` list still only showed cadence, optional profile, and last-run metadata.
+  - Desktop already surfaced `Run on startup` in the loop list, so mobile still lagged on at-a-glance schedule clarity.
+- Issue selected:
+  - Startup-run loops were not distinguishable from normal interval loops in the mobile list, so users had to open each loop editor to confirm whether a loop also fires when DotAgents starts.
+- Decision:
+  - Keep the existing row layout, prompt preview, and two-line metadata budget unchanged.
+  - Use the smallest local fix: surface `Run on startup` inline inside the existing loop metadata, with slightly stronger emphasis, instead of adding a new badge row that would make dense mobile rows taller.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - append `Run on startup` to loop metadata only when `loop.runOnStartup` is true,
+    - emphasize that state with a compact `loopStartupMeta` text style while keeping it inside the existing `serverMeta` block.
+  - Updated `apps/mobile/tests/settings-loop-metadata-mobile.test.js` with focused source assertions for the new inline startup indicator and styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the inline startup label improves scanability without forcing awkward metadata wraps.
+  - If live validation later shows the metadata line getting too dense for loops that also have a profile and recent last-run timestamp, the next step may need a stronger compact-tag treatment rather than more text.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that startup loops read clearly beside cadence, profile, and last-run metadata.
+  - Check whether loops with both `profileName` and `lastRunAt` still keep the most important schedule state visible without truncation pressure.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
