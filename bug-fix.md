@@ -1,6 +1,9 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/resize-handle.tsx` and confirmed the floating-panel resize handles still awaited `tipcClient.getPanelSize()` on drag start, but invalid responses and thrown IPC failures only hit `console.error(...)` before returning.
+- [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` still logged final size-persistence failures (`savePanelModeSize(...)` plus fallback `savePanelCustomSize(...)`) to the console only.
+- [x] 2026-03-08: Confirmed `PanelResizeWrapper` is mounted by the live floating desktop panel in `apps/desktop/src/renderer/src/pages/panel.tsx`, and `apps/mobile` has no equivalent resizable floating panel surface, so this is a desktop-only visible UI bug rather than dead code or a shared mobile flow.
 - [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` after the earlier send/stop fixes and confirmed both visible mic buttons still awaited `tipcClient.triggerMcpRecording(...)` with no local `try/catch` or user-visible failure feedback.
 - [x] 2026-03-08: Confirmed those handlers back the active desktop “continue by voice” surfaces in both the floating overlay and the sessions-page tile composer, so a rejected recording start could make a core follow-up action look like a dead button rather than an edge-case flow.
 - [x] 2026-03-08: Compared the desktop follow-up voice-start path against mobile `apps/mobile/src/screens/ChatScreen.tsx`; mobile voice flows already use visible recovery for notable recorder/startup failures, so silent desktop follow-up failures are not an intentional cross-platform behavior.
@@ -184,6 +187,10 @@
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
+- [x] **Desktop floating-panel resize failures could still be silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/resize-handle.tsx` still treated a rejected/invalid `getPanelSize()` response during `handleMouseDown(...)` as console-only logging plus early return, so dragging a visible resize handle could look like a dead/no-op gesture.
+  - `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` still only logged when both final persistence paths failed after a drag, so a resize could appear to work in the moment but quietly fail to persist for the next panel open.
+  - Because `PanelResizeWrapper` is the live shell around `apps/desktop/src/renderer/src/pages/panel.tsx`, this bug affects the primary desktop floating panel rather than a setup-only or hidden view.
 - [x] **Desktop follow-up voice-start failures were silent (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` both exposed visible mic buttons that awaited `tipcClient.triggerMcpRecording(...)` directly from `handleVoiceClick(...)`.
   - Neither handler had a local `try/catch`, toast, inline error, or stale-result branch, so any rejected IPC call could throw out of the click handler and leave the user with a no-op-looking “continue by voice” action.
@@ -368,6 +375,9 @@
    - Mobile has no equivalent shared renderer `AudioPlayer`, so this is a concrete desktop-only feedback bug rather than a cross-platform behavior mismatch.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/resize-handle.tsx` so rejected or invalid drag-start size reads now keep console logging but also surface a visible `toast.error(...)` instead of making the resize handle appear dead.
+- [x] Updated `apps/desktop/src/renderer/src/components/panel-resize-wrapper.tsx` so a fully failed final size-persistence path now raises a visible toast explaining that the floating panel resize may not persist.
+- [x] Added `apps/desktop/src/renderer/src/components/panel-resize.feedback.test.ts` to lock in the new floating-panel resize feedback contract with narrow source-level regression coverage.
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so rejected `triggerMcpRecording(...)` follow-up voice starts now preserve console logging but also surface a visible `toast.error(...)` message instead of failing silently.
 - [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that lock in the new overlay/tile voice-start error logs plus the shared `Failed to start voice follow-up` user-facing copy.
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -522,6 +532,8 @@
 - [x] Added `apps/desktop/src/renderer/src/components/audio-player.feedback.test.ts` with focused source-level assertions that lock in the new shared-player playback-error state, visible compact/full inline feedback, and retry/reset behavior.
 
 ### Verified
+- [x] Ran a low-cost Node file-read sanity check for `resize-handle.tsx`, `panel-resize-wrapper.tsx`, and `panel-resize.feedback.test.ts`; the assertions passed for the new floating-panel resize toast wiring and regression test coverage.
+- [x] `git diff --check` completed cleanly after the floating-panel resize feedback fix and regression test addition.
 - [x] Manual source verification: both desktop follow-up voice handlers now wrap `tipcClient.triggerMcpRecording(...)` in `try/catch`, log `Failed to start overlay/tile follow-up voice recording:`, and surface `Failed to start voice follow-up...` toasts instead of leaving the mic action silent.
 - [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `overlay-follow-up-input.tsx`, `tile-follow-up-input.tsx`, and `follow-up-input.submit.test.ts`, confirming the new voice-start feedback strings and regression assertions are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the follow-up voice-start feedback fix and regression test update.
@@ -651,6 +663,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-resize.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] Targeted automated verification for this follow-up voice-start feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` fails before Vitest starts because the shared `pretest` cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this desktop follow-up error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this controlled-settings fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -698,6 +711,7 @@
 - [x] Targeted automated verification for this shared `AudioPlayer` playback-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.feedback.test.ts src/renderer/src/components/audio-player.layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether the throttled mid-drag `updatePanelSize(...)` failure path in `panel-resize-wrapper.tsx` should also surface limited user feedback, or remain console-only to avoid toast spam once live desktop verification is available.
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the post-success `AgentProgress` `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
 - [ ] Whether the adjacent `tipcClient.stopAllTts()` failure path in `app-layout.tsx` also needs visible feedback, or whether keeping that secondary best-effort cleanup console-only is preferable once live desktop verification is available.
@@ -729,6 +743,7 @@
 - [ ] Whether the completed-session `AgentProgress` close button should also gain a tiny in-flight disabled/busy guard to prevent double-click close races once the desktop app can be exercised live.
 
 ### Diagnosis / Rationale
+- The floating panel resize issue is a concrete visible-UI bug: when the user grabs a resize handle and the initial size read fails, the gesture simply does nothing; when final persistence fails, the resize looks successful until the next reopen resets it. Both states are misleading without explicit feedback.
 - The desktop follow-up mic buttons are another core conversation action where silent failure is especially misleading: when “continue by voice” fails to start recording, the user gets no transcript, no state change, and previously no visible explanation.
 - Reusing the existing local `toast.error(...)` pattern in those two click handlers is the smallest safe fix because the components already use `sonner` for adjacent send/stop failures, the successful recording flow is unchanged, and no new shared abstraction is needed.
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -810,6 +825,7 @@
 - Treating `retryQueuedMessage(...) === false` as a visible action failure is the smallest safe fix because the main-process contract already distinguishes that state, the desktop app already mounts a global `sonner` toaster, and no queue-processing behavior needs to change.
 
 ### Assumptions
+- Assumption: surfacing only drag-start and final-persistence resize failures with `toast.error(...)` is acceptable because those are the user-meaningful breakpoints in the floating-panel resize flow, while the high-frequency throttled `updatePanelSize(...)` path would risk noisy toast spam during normal drags.
 - Assumption: using the existing desktop toast pattern for rejected follow-up `triggerMcpRecording(...)` calls is acceptable because `sonner` is already mounted app-wide, adjacent follow-up send/stop actions already surface visible errors the same way, and mobile already treats notable voice-start failures as user-visible.
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
 - Assumption: surfacing provider model-download failures with `toast.error(...)` is acceptable because `settings-providers.tsx` already uses the same helper/toast pattern for failed Kitten / Supertonic voice-test actions, and mobile has no equivalent local download UI that would need synchronized copy changes.
@@ -858,6 +874,7 @@
 - Assumption: keeping this pass desktop-only is acceptable because the confirmed bug and fixed contracts depend on the desktop `MessageQueuePanel`'s TIPC/main-process failure semantics, while mobile uses a separate local-store queue flow that should be validated as its own follow-up rather than widened speculatively.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/panel-resize.feedback.test.ts` and live-verify one forced `getPanelSize()` failure plus one forced final size-persistence failure to confirm the new floating-panel resize toasts appear without spamming during normal drag updates.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/follow-up-input.submit.test.ts` and live-verify the overlay/tile mic buttons with one forced `triggerMcpRecording(...)` failure to confirm the new voice-start toast appears without breaking the happy path.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` and click the Parakeet / Kitten / Supertonic `Download Model` actions in desktop settings with one forced failure path to confirm the new toast appears alongside any inline status error.

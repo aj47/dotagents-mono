@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 interface ResizeHandleProps {
   className?: string
@@ -165,6 +172,7 @@ export function ResizeHandle({
       const windowSize = await tipcClient.getPanelSize()
       if (!windowSize || typeof windowSize !== 'object' || !('width' in windowSize) || !('height' in windowSize)) {
         console.error("Invalid window size response:", windowSize)
+        toast.error("Failed to start resizing the floating panel. Please try again.")
         return
       }
 
@@ -179,6 +187,9 @@ export function ResizeHandle({
       onResizeStart?.()
     } catch (error) {
       console.error("Failed to get panel size:", error)
+      toast.error(
+        `Failed to start resizing the floating panel. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
     }
   }
 

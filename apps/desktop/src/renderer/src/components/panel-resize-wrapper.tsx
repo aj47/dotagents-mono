@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react"
 import { ResizeHandle } from "@renderer/components/resize-handle"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
 
 // Minimum height for waveform panel - matches WAVEFORM_MIN_HEIGHT in main/window.ts
 const WAVEFORM_MIN_HEIGHT = 150
@@ -14,6 +15,12 @@ const isPanelSize = (value: unknown): value is { width: number; height: number }
   "height" in value &&
   typeof (value as { width: unknown }).width === "number" &&
   typeof (value as { height: unknown }).height === "number"
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 interface PanelResizeWrapperProps {
   children: React.ReactNode
@@ -128,6 +135,9 @@ export function PanelResizeWrapper({
         setCurrentSize(requestedFinalSize)
       } catch (fallbackError) {
         console.error("Failed to save panel size:", error, fallbackError)
+        toast.error(
+          `Failed to save the floating panel size. ${getActionErrorMessage(fallbackError, "The resize may not persist.")}`,
+        )
       }
     }
   }, [enableResize, minWidth, minHeight])
