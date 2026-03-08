@@ -569,7 +569,7 @@ export function Component() {
           {process.env.IS_MAC && (
             <Control label="Hide Dock Icon" className="px-3">
               <Switch
-                defaultChecked={configQuery.data.hideDockIcon}
+                checked={configQuery.data.hideDockIcon}
                 onCheckedChange={(value) => {
                   saveConfig({
                     hideDockIcon: value,
@@ -580,7 +580,7 @@ export function Component() {
           )}
           <Control label="Launch at Login" className="px-3">
             <Switch
-              defaultChecked={configQuery.data.launchAtLogin ?? false}
+              checked={configQuery.data.launchAtLogin ?? false}
               onCheckedChange={(value) => {
                 saveConfig({
                   launchAtLogin: value,
@@ -591,7 +591,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Streamer Mode" tooltip="Hide sensitive information (phone numbers, QR codes, API keys) when streaming or sharing your screen" />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.streamerModeEnabled ?? false}
+              checked={configQuery.data.streamerModeEnabled ?? false}
               onCheckedChange={(value) => {
                 saveConfig({
                   streamerModeEnabled: value,
@@ -737,7 +737,7 @@ export function Component() {
           <Control label="Recording" className="px-3">
             <div className="space-y-2">
               <Select
-                defaultValue={shortcut}
+                value={shortcut}
                 onValueChange={(value) => {
                   saveConfig({
                     shortcut: value as typeof configQuery.data.shortcut,
@@ -808,7 +808,7 @@ export function Component() {
               {configQuery.data?.toggleVoiceDictationEnabled && (
                 <>
                   <Select
-                    defaultValue={configQuery.data?.toggleVoiceDictationHotkey || "fn"}
+                    value={configQuery.data?.toggleVoiceDictationHotkey || "fn"}
                     onValueChange={(value) => {
                       saveConfig({
                         toggleVoiceDictationHotkey: value as typeof configQuery.data.toggleVoiceDictationHotkey,
@@ -1069,7 +1069,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Transcription Preview" tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider every ~10 seconds to display partial results. Note: this increases API usage — each chunk is billed separately (Groq has a 10-second minimum billing per request)." />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.transcriptionPreviewEnabled}
+              checked={configQuery.data.transcriptionPreviewEnabled}
               onCheckedChange={(value) => {
                 saveConfig({
                   transcriptionPreviewEnabled: value,
@@ -1080,7 +1080,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Post-Processing" tooltip="Enable AI-powered post-processing to clean up and improve transcripts" />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.transcriptPostProcessingEnabled}
+              checked={configQuery.data.transcriptPostProcessingEnabled}
               onCheckedChange={(value) => {
                 saveConfig({
                   transcriptPostProcessingEnabled: value,
@@ -1141,7 +1141,7 @@ export function Component() {
         <ControlGroup collapsible defaultCollapsed title="Text to Speech">
           <Control label="Enabled" className="px-3">
             <Switch
-              defaultChecked={configQuery.data.ttsEnabled ?? false}
+              checked={configQuery.data.ttsEnabled ?? false}
               onCheckedChange={async (value) => {
                 if (!value) {
                   ttsManager.stopAll("settings-global-tts-disabled")
@@ -1162,7 +1162,7 @@ export function Component() {
           {configQuery.data.ttsEnabled && (
             <Control label={<ControlLabel label="Auto-play" tooltip="Automatically play TTS audio when assistant responses complete" />} className="px-3">
               <Switch
-                defaultChecked={configQuery.data.ttsAutoPlay ?? true}
+                checked={configQuery.data.ttsAutoPlay ?? true}
                 onCheckedChange={(value) => {
                   saveConfig({
                     ttsAutoPlay: value,
@@ -1176,7 +1176,7 @@ export function Component() {
             <>
               <Control label={<ControlLabel label="Text Preprocessing" tooltip="Enable preprocessing to make text more speech-friendly by removing code blocks, URLs, and converting markdown" />} className="px-3">
                 <Switch
-                  defaultChecked={configQuery.data.ttsPreprocessingEnabled ?? true}
+                  checked={configQuery.data.ttsPreprocessingEnabled ?? true}
                   onCheckedChange={(value) => {
                     saveConfig({
                       ttsPreprocessingEnabled: value,
@@ -1189,7 +1189,7 @@ export function Component() {
                 <>
                   <Control label={<ControlLabel label="Remove Code Blocks" tooltip="Remove code blocks and replace with descriptive text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsRemoveCodeBlocks ?? true}
+                      checked={configQuery.data.ttsRemoveCodeBlocks ?? true}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsRemoveCodeBlocks: value,
@@ -1200,7 +1200,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Remove URLs" tooltip="Remove URLs and replace with descriptive text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsRemoveUrls ?? true}
+                      checked={configQuery.data.ttsRemoveUrls ?? true}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsRemoveUrls: value,
@@ -1211,7 +1211,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Convert Markdown" tooltip="Convert markdown formatting to speech-friendly text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsConvertMarkdown ?? true}
+                      checked={configQuery.data.ttsConvertMarkdown ?? true}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsConvertMarkdown: value,
@@ -1222,7 +1222,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Use AI for TTS Preprocessing" tooltip="Use an LLM to intelligently convert text to natural speech. More robust handling of abbreviations, acronyms, and context-dependent pronunciation. Adds ~1-2 seconds latency. Falls back to regex if disabled or unavailable." />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsUseLLMPreprocessing ?? false}
+                      checked={configQuery.data.ttsUseLLMPreprocessing ?? false}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsUseLLMPreprocessing: value,
@@ -1275,7 +1275,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Enable Dragging" tooltip="Enable dragging to move the panel by holding the top bar." />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data?.panelDragEnabled ?? true}
+              checked={configQuery.data?.panelDragEnabled ?? true}
               onCheckedChange={(value) => {
                 saveConfig({
                   panelDragEnabled: value,

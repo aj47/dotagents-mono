@@ -1,6 +1,10 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-general.tsx` for remaining uncontrolled config-backed inputs and found multiple `defaultChecked` / `defaultValue` bindings still driving persisted desktop settings.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` already uses controlled `value` / `Switch` bindings for analogous remote settings flows, so this state-sync issue is desktop-only.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop controlled-settings fix and regression test addition.
 - [x] 2026-03-08: `bug-fix.md` did not exist; created this ledger to avoid revisiting the same leads.
 - [x] 2026-03-08: Reviewed `apps/desktop/DEBUGGING.md` for the preferred live-debugging workflow.
 - [x] 2026-03-08: Reviewed repo root/app-level docs inventory for likely bug sources and validation paths.
@@ -44,6 +48,10 @@
 - [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
 
 ### Reproduced
+- [x] **Desktop general-settings state-sync bug from uncontrolled persisted controls (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` still rendered several persisted desktop settings with uncontrolled props: `defaultChecked` for `Hide Dock Icon`, `Launch at Login`, `Streamer Mode`, `Transcription Preview`, `Post-Processing`, multiple TTS toggles, and `Enable Dragging`, plus `defaultValue` for the `Recording` and `Toggle Voice Dictation` selects.
+  - Because those controls were not bound to the latest `configQuery.data`, later saved-config updates, query resyncs, or reverted/failed saves could leave the visible switch/select state stale even when the rest of the page was rendering from newer config.
+  - Mobile already uses controlled state for analogous settings flows, so this was another desktop-only UI correctness bug rather than an intentional product difference.
 - [x] **Desktop Langfuse settings save-on-every-keystroke bug (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` wired the `Public Key`, `Secret Key`, and `Base URL` inputs straight to `saveConfig(...)` from each `onChange` event.
   - That means every keystroke triggered a config mutation + query invalidation round-trip while the user was still typing a credential or URL.
@@ -79,6 +87,8 @@
   - `apps/desktop/src/renderer/src/router.tsx` also redirected the legacy `/settings/mcp-tools` route to bare `/settings/capabilities`, so stale MCP-tools links lost their intended tab context too.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the remaining persisted general-settings switches/selects now use controlled `checked` / `value` bindings instead of uncontrolled `defaultChecked` / `defaultValue` props.
+- [x] Covered the affected desktop controls in `apps/desktop/src/renderer/src/pages/settings-general.controlled-controls.test.ts` with focused source-level assertions that lock in controlled bindings for the general/toggle/transcription/TTS/panel settings cluster.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` to use local Langfuse drafts with debounced saves and blur flushes for `langfusePublicKey`, `langfuseSecretKey`, and `langfuseBaseUrl`.
 - [x] Switched the page-level `saveConfig(...)` helper to merge against a `cfgRef` snapshot of the latest config so delayed Langfuse saves do not overwrite newer unrelated settings.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` for:
@@ -131,6 +141,8 @@
   - `apps/desktop/src/renderer/src/pages/settings-capabilities.tab-routing.test.ts`
 
 ### Verified
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-general.tsx` no longer contains config-backed `defaultChecked` / `defaultValue` bindings; the affected switches/selects now read from live `configQuery.data` via controlled `checked` / `value` props.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the controlled-settings update and regression test addition.
 - [x] Manual source verification: the desktop Langfuse inputs no longer call `saveConfig(...)` directly from `onChange`; they now update local draft state and use debounce/blur persistence.
 - [x] Manual source verification: the desktop transcript post-processing prompt editor is now a controlled local draft and no longer calls `saveConfig(...)` directly from `onChange`.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the settings-general / test updates.
@@ -150,6 +162,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this controlled-settings fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Live desktop reproduction and automated tests are blocked because this worktree does not have installed dependencies (`tsup` missing in predev, `vitest` missing for targeted tests). Per instructions, I did not install dependencies without separate permission.
 - [x] Additional desktop verification for this Groq STT prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`, and `pnpm --filter @dotagents/desktop exec prettier ...` cannot find `prettier`, which indicates `apps/desktop/node_modules` is absent in this worktree.
 - [x] Targeted automated verification for this `Max Iterations` fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -158,6 +171,7 @@
 - [x] Targeted automated verification for this capabilities tab-routing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
 - [ ] Whether the secret-key field should eventually move all the way to blur-only persistence for parity with mobile, rather than debounce + blur flush.
 - [ ] Whether the desktop post-processing prompt editor should eventually gain explicit save/cancel dialog affordances instead of autosaving a local draft.
@@ -167,6 +181,8 @@
 - [ ] Whether any additional settings pages should promote explicit query-param deep links for tabbed sections now that `settings/capabilities` supports them.
 
 ### Diagnosis / Rationale
+- This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
+- Converting these switches/selects to controlled bindings is the smallest safe fix because it preserves the existing layout and save behavior while making the rendered UI follow the same authoritative config state that the rest of the page already uses.
 - This is a clear user-facing editing bug: saving on every keystroke makes settings inputs more brittle, creates unnecessary config churn, and can invalidate/refetch state while the user is mid-edit.
 - The existing WhatsApp desktop fix and the mobile Langfuse settings already establish a safer repo-local pattern: local draft first, then persist after a short pause or blur.
 - Using a latest-config ref is acceptable and safer here because delayed saves must merge with the freshest config snapshot, not whichever render happened to create the timer.
@@ -186,6 +202,7 @@
 - Using a query-param tab contract is the smallest safe fix because it preserves the existing combined capabilities page while making server- and skill-specific entry points land on the correct visible content.
 
 ### Assumptions
+- Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
 - Assumption: keeping the secret key on debounce + blur is acceptable for this pass because it removes the repeated-save bug with the smallest code change while preserving current desktop behavior of showing the in-progress value only in a password field.
 - Assumption: debouncing the desktop transcript post-processing prompt is acceptable because the mobile settings screen already treats the same field as a local draft and prompt editing does not require per-keystroke persistence.
@@ -197,6 +214,8 @@
 - Assumption: a `?tab=` query-param contract is acceptable for desktop capabilities because the page is already a tabbed combined surface, the default bare route can remain `Skills`, and no equivalent mobile route needs to stay in sync.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
+- After that, inspect other desktop settings pages for remaining config-backed uncontrolled inputs outside `settings-general.tsx`.
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` and a focused desktop verification pass for the transcript prompt editor.
 - After that, inspect other desktop settings text inputs in `settings-general.tsx` for remaining immediate-save behavior.
