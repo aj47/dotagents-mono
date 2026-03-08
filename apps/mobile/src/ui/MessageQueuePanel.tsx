@@ -105,6 +105,13 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const isProcessing = message.status === 'processing';
   const isAddedToHistory = message.addedToHistory === true;
   const trimmedEditText = editText.trim();
+  const queueStatusLabel = isFailed ? 'Failed - blocking queue' : isProcessing ? 'Processing...' : 'Queued';
+  const retryAccessibilityHint = isFailed
+    ? 'Moves this failed message back into the queue so it can send again and unblock later queued messages.'
+    : 'Moves this queued message back into the queue so it can send again.';
+  const removeAccessibilityHint = isFailed
+    ? 'Deletes this failed queued message so later queued messages can continue.'
+    : 'Deletes this queued message without sending it.';
   const editContextLabel = `${isFailed ? 'Editing failed queued message' : 'Editing queued message'} • ${formatTime(message.createdAt)}`;
   const editValidationMessage = !trimmedEditText
     ? 'Enter message text to save your queued message changes.'
@@ -357,8 +364,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           )}
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
-              {formatTime(message.createdAt)} •{' '}
-              {isFailed ? 'Failed' : isProcessing ? 'Processing...' : 'Queued'}
+              {formatTime(message.createdAt)} • {queueStatusLabel}
             </Text>
             {isLongMessage && (
               <TouchableOpacity
@@ -390,7 +396,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                 onPress={onRetry}
                 accessibilityRole="button"
                 accessibilityLabel={createButtonAccessibilityLabel('Retry failed queued message')}
-                accessibilityHint="Moves this failed message back into the queue so it can send again."
+                accessibilityHint={retryAccessibilityHint}
                 activeOpacity={0.7}
               >
                 <Ionicons name="refresh" size={16} color={theme.colors.foreground} />
@@ -413,7 +419,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               onPress={onRemove}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Remove queued message')}
-              accessibilityHint="Deletes this queued message without sending it."
+              accessibilityHint={removeAccessibilityHint}
               activeOpacity={0.7}
             >
               <Ionicons name="close" size={16} color={theme.colors.destructive} />

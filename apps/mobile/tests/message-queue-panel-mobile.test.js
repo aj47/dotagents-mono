@@ -49,14 +49,18 @@ test('keeps the full queue header informative when the list is collapsed', () =>
 
 test('gives queued-message row actions mobile-sized targets and explicit labels', () => {
   assert.match(queuePanelSource, /const queueActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(queuePanelSource, /const queueStatusLabel = isFailed \? 'Failed - blocking queue' : isProcessing \? 'Processing\.\.\.' : 'Queued';/);
+  assert.match(queuePanelSource, /\{formatTime\(message\.createdAt\)\} • \{queueStatusLabel\}/);
   assert.match(queuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.queueActionTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(queuePanelSource, /actionButtonDanger:\s*\{[\s\S]*?theme\.colors\.destructive/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Retry failed queued message'\)/);
-  assert.match(queuePanelSource, /accessibilityHint="Moves this failed message back into the queue so it can send again\."/);
+  assert.match(queuePanelSource, /const retryAccessibilityHint = isFailed[\s\S]*?Moves this failed message back into the queue so it can send again and unblock later queued messages\.[\s\S]*?Moves this queued message back into the queue so it can send again\./);
+  assert.match(queuePanelSource, /accessibilityHint=\{retryAccessibilityHint\}/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Edit queued message'\)/);
   assert.match(queuePanelSource, /accessibilityHint="Lets you revise this queued message before it sends\."/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Remove queued message'\)/);
-  assert.match(queuePanelSource, /accessibilityHint="Deletes this queued message without sending it\."/);
+  assert.match(queuePanelSource, /const removeAccessibilityHint = isFailed[\s\S]*?Deletes this failed queued message so later queued messages can continue\.[\s\S]*?Deletes this queued message without sending it\./);
+  assert.match(queuePanelSource, /accessibilityHint=\{removeAccessibilityHint\}/);
 });
 
 test('gives the queued-message expander disclosure semantics with a mobile touch target', () => {

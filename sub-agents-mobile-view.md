@@ -3744,3 +3744,45 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the newest-row badge stays compact and legible at narrow widths.
   - Compare collapsed vs expanded response-history states to confirm the header summary plus row-level `Latest` cue feel complementary rather than redundant.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting response-history ordering again without new evidence.
+
+### 2026-03-08 — Iteration 86: make failed queue rows explain that they block later work
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow status in this worktree
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo PRESENT || echo MISSING` → `MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed failed mobile queue rows still rendered only `Failed` beside the timestamp.
+  - In this FIFO queue, a failed item blocks later queued messages until the user retries or removes it.
+  - Desktop already communicates that consequence (`Failed - blocking queue`), but the mobile row and failed-row action hints did not.
+- Issue selected:
+  - Failed queued messages did not explain their impact on later queued work, weakening transparency and recovery confidence in a narrow mobile activity panel.
+- Decision:
+  - Keep the queue layout, actions, and edit flow unchanged.
+  - Do not redesign the panel or add another helper row while live validation is blocked.
+  - Make the smallest state-clarity fix: update the failed-row status label and failed-row action hints so the blocking consequence is explicit.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - replace the failed row status copy with `Failed - blocking queue`,
+    - make the retry hint explain that retrying can unblock later queued messages,
+    - make the remove hint explain that deleting the failed item lets later queued messages continue.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new failed-row status label and state-aware retry/remove hints.
+- Validation evidence:
+  - `pnpm --filter @dotagents/mobile exec node --test tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the longer failed status copy stays balanced beside long queued-message text and the action rail.
+  - The queue panel still needs screenshot-backed validation overall now that several local mobile clarity improvements have accumulated without live confirmation in this worktree.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Failed - blocking queue` remains legible and clearly subordinate to the main message text on narrow screens.
+  - Compare failed-row retry/remove actions in live use to confirm the stronger hints make the recovery path feel more obvious without adding visual clutter.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this queue copy again without new evidence.
