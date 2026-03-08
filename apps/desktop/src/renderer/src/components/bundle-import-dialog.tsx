@@ -190,6 +190,9 @@ export function BundleImportDialog({
         conflictStrategy,
         components: normalizedComponents,
       })
+      const backupMessage = result.backupFilePath
+        ? ` Pre-import backup: ${result.backupFilePath}`
+        : ""
       if (result.success) {
         const imported = [
           result.agentProfiles.filter(r => r.action !== "skipped").length,
@@ -198,11 +201,11 @@ export function BundleImportDialog({
           result.repeatTasks.filter(r => r.action !== "skipped").length,
           result.memories.filter(r => r.action !== "skipped").length,
         ].reduce((a, b) => a + b, 0)
-        toast.success(`Successfully imported ${imported} item(s)`)
+        toast.success(`Successfully imported ${imported} item(s).${backupMessage}`)
         onImportComplete()
         handleClose()
       } else {
-        toast.error(result.errors.join(", ") || "Import failed")
+        toast.error(`${result.errors.join(", ") || "Import failed"}${backupMessage}`)
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)

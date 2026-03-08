@@ -7,6 +7,7 @@
  */
 
 import fs from "fs"
+import os from "os"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
 import type {
@@ -26,7 +27,7 @@ import {
   type HubCatalogCompatibility,
   type HubPublishPayload,
 } from "@dotagents/shared"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { AGENTS_DIR_NAME, getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
 import { loadAgentsMemoriesLayer, writeAgentsMemoryFile, memoryIdToFilePath } from "./agents-files/memories"
@@ -233,6 +234,11 @@ export interface ImportOptions {
     repeatTasks?: boolean
     memories?: boolean
   }
+  /** Optional snapshot config for automated pre-import backups */
+  backup?: {
+    dir?: string
+    maxBackups?: number
+  }
 }
 
 export interface ImportItemResult {
@@ -245,6 +251,7 @@ export interface ImportItemResult {
 
 export interface ImportBundleResult {
   success: boolean
+  backupFilePath: string | null
   agentProfiles: ImportItemResult[]
   mcpServers: ImportItemResult[]
   skills: ImportItemResult[]
@@ -293,6 +300,8 @@ const SECRET_PATTERNS = [
 
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
 const HUB_BUNDLE_FILE_EXTENSION = ".dotagents"
+const IMPORT_BACKUP_DIRECTORY_NAME = "backups"
+const DEFAULT_IMPORT_BACKUP_MAX = 10
 const TOP_LEVEL_MCP_CONFIG_KEYS = [
   "mcpDisabledTools",
   "mcpRuntimeDisabledServers",
@@ -959,6 +968,88 @@ async function saveBundleToFile(bundle: DotAgentsBundle): Promise<ExportBundleTo
   }
 }
 
+function formatImportBackupTimestamp(value: Date): string {
+  return value.toISOString().replace(/[:.]/g, "-")
+}
+
+function createUniqueImportBackupFilePath(backupDir: string, timestamp: string): string {
+  const baseName = `backup-${timestamp}`
+  let candidate = path.join(backupDir, `${baseName}.dotagents`)
+  let counter = 1
+
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(backupDir, `${baseName}-${counter}.dotagents`)
+    counter++
+  }
+
+  return candidate
+}
+
+function pruneImportBackups(backupDir: string, maxBackups: number): void {
+  if (maxBackups <= 0 || !fs.existsSync(backupDir)) return
+
+  const backupFiles = fs.readdirSync(backupDir)
+    .filter((fileName) => /^backup-.*\.dotagents$/i.test(fileName))
+    .map((fileName) => {
+      const fullPath = path.join(backupDir, fileName)
+      let mtimeMs = 0
+
+      try {
+        mtimeMs = fs.statSync(fullPath).mtimeMs
+      } catch {
+        mtimeMs = 0
+      }
+
+      return { fileName, fullPath, mtimeMs }
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs || b.fileName.localeCompare(a.fileName))
+
+  for (const staleBackup of backupFiles.slice(maxBackups)) {
+    try {
+      fs.rmSync(staleBackup.fullPath, { force: true })
+    } catch (error) {
+      logApp("[bundle-service] Failed to prune stale import backup", {
+        filePath: staleBackup.fullPath,
+        error,
+      })
+    }
+  }
+}
+
+async function createPreImportBackup(
+  targetAgentsDir: string,
+  options?: ImportOptions["backup"],
+): Promise<string> {
+  const timestamp = formatImportBackupTimestamp(new Date())
+  const backupDir = options?.dir
+    ? path.resolve(options.dir)
+    : path.join(os.homedir(), AGENTS_DIR_NAME, IMPORT_BACKUP_DIRECTORY_NAME)
+  const maxBackups = options?.maxBackups ?? DEFAULT_IMPORT_BACKUP_MAX
+  const bundle = await exportBundle(targetAgentsDir, {
+    name: `Backup ${timestamp}`,
+    description: "Automatic pre-import backup created by DotAgents before bundle import.",
+    components: {
+      agentProfiles: true,
+      mcpServers: true,
+      skills: true,
+      repeatTasks: true,
+      memories: false,
+    },
+  })
+
+  fs.mkdirSync(backupDir, { recursive: true })
+  const backupFilePath = createUniqueImportBackupFilePath(backupDir, timestamp)
+  fs.writeFileSync(backupFilePath, JSON.stringify(bundle, null, 2), "utf-8")
+  pruneImportBackups(backupDir, maxBackups)
+
+  logApp("[bundle-service] Created pre-import backup", {
+    targetAgentsDir,
+    backupFilePath,
+  })
+
+  return backupFilePath
+}
+
 export async function exportBundleToFile(
   agentsDir: string,
   options?: ExportBundleOptions
@@ -1340,6 +1431,7 @@ export async function importBundle(
 ): Promise<ImportBundleResult> {
   const result: ImportBundleResult = {
     success: false,
+    backupFilePath: null,
     agentProfiles: [],
     mcpServers: [],
     skills: [],
@@ -1363,6 +1455,19 @@ export async function importBundle(
     skills: true,
     repeatTasks: true,
     memories: true,
+  }
+
+  try {
+    result.backupFilePath = await createPreImportBackup(targetAgentsDir, options.backup)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    result.errors.push(`Pre-import backup failed: ${errorMessage}`)
+    logApp("[bundle-service] Import aborted because pre-import backup failed", {
+      filePath,
+      targetAgentsDir,
+      error,
+    })
+    return result
   }
 
   // Ensure directories exist
@@ -1710,6 +1815,7 @@ export async function importBundle(
 
   logApp("[bundle-service] Import completed", {
     success: result.success,
+    backupFilePath: result.backupFilePath,
     profiles: result.agentProfiles.length,
     mcpServers: result.mcpServers.length,
     skills: result.skills.length,

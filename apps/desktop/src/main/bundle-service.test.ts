@@ -22,8 +22,8 @@ import type { HubPublishPayload } from "@dotagents/shared"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile } from "./agents-files/skills"
-import { writeAgentsMemoryFile } from "./agents-files/memories"
-import { writeTaskFile } from "./agents-files/tasks"
+import { loadAgentsMemoriesLayer, writeAgentsMemoryFile } from "./agents-files/memories"
+import { loadTasksLayer, writeTaskFile } from "./agents-files/tasks"
 import type { AgentProfile, AgentSkill, AgentMemory, LoopConfig } from "@shared/types"
 
 // ============================================================================
@@ -1051,6 +1051,20 @@ describe("bundle-service", () => {
       fs.mkdirSync(targetDir, { recursive: true })
     })
 
+    async function importBundleForTest(
+      bundlePath: string,
+      options: Parameters<typeof importBundle>[2],
+    ) {
+      return importBundle(bundlePath, targetDir, {
+        ...options,
+        backup: {
+          dir: path.join(tempDir, "bundle-backups"),
+          maxBackups: 10,
+          ...options.backup,
+        },
+      })
+    }
+
     function createTestBundle(): DotAgentsBundle {
       return {
         manifest: {
@@ -1098,13 +1112,114 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
 
       expect(result.success).toBe(true)
+      expect(result.backupFilePath).toBeTruthy()
       expect(result.agentProfiles[0].action).toBe("imported")
       expect(result.skills[0].action).toBe("imported")
       expect(result.repeatTasks[0].action).toBe("imported")
       expect(result.memories[0].action).toBe("imported")
+    })
+
+    it("creates a pre-import backup before mutating the target layer", async () => {
+      const layer = getAgentsLayerPaths(targetDir)
+      writeAgentsProfileFiles(layer, createTestProfile("pre-import-agent", "Pre Import Agent"))
+      const skillDir = path.join(targetDir, "skills", "pre-import-skill")
+      fs.mkdirSync(skillDir, { recursive: true })
+      writeAgentsSkillFile(layer, createTestSkill("pre-import-skill", "Pre Import Skill"))
+      writeTaskFile(layer, createTestTask("pre-import-task", "Pre Import Task"))
+      writeAgentsMemoryFile(layer, createTestMemory("pre-import-memory", "Pre Import Memory"))
+      writeTestMcpJson(targetDir, {
+        mcpConfig: {
+          mcpServers: {
+            github: {
+              transport: "stdio",
+              command: "existing-command",
+            },
+          },
+        },
+      })
+
+      const bundle = createTestBundle()
+      const bundlePath = path.join(tempDir, "import-with-backup.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
+
+      expect(result.success).toBe(true)
+      expect(result.backupFilePath).toBeTruthy()
+      expect(fs.existsSync(result.backupFilePath!)).toBe(true)
+
+      const backupBundle = JSON.parse(
+        fs.readFileSync(result.backupFilePath!, "utf-8"),
+      ) as DotAgentsBundle
+
+      expect(backupBundle.agentProfiles.map((profile) => profile.id)).toEqual(["pre-import-agent"])
+      expect(backupBundle.skills.map((skill) => skill.id)).toEqual(["pre-import-skill"])
+      expect(backupBundle.repeatTasks.map((task) => task.id)).toEqual(["pre-import-task"])
+      expect(backupBundle.mcpServers.map((server) => server.name)).toEqual(["github"])
+      expect(backupBundle.memories).toEqual([])
+    })
+
+    it("rotates pre-import backups down to the configured maximum", async () => {
+      const backupDir = path.join(tempDir, "rotating-backups")
+      fs.mkdirSync(backupDir, { recursive: true })
+
+      const existingBackups = [
+        "backup-2026-03-01T00-00-00-000Z.dotagents",
+        "backup-2026-03-02T00-00-00-000Z.dotagents",
+        "backup-2026-03-03T00-00-00-000Z.dotagents",
+      ]
+
+      existingBackups.forEach((fileName, index) => {
+        const fullPath = path.join(backupDir, fileName)
+        fs.writeFileSync(fullPath, JSON.stringify(createTestBundle()), "utf-8")
+        const timestamp = new Date(Date.UTC(2026, 2, index + 1))
+        fs.utimesSync(fullPath, timestamp, timestamp)
+      })
+
+      const bundle = createTestBundle()
+      const bundlePath = path.join(tempDir, "import-with-rotation.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundleForTest(bundlePath, {
+        conflictStrategy: "skip",
+        backup: { dir: backupDir, maxBackups: 2 },
+      })
+
+      const backupFiles = fs.readdirSync(backupDir)
+        .filter((fileName) => fileName.endsWith(".dotagents"))
+        .sort()
+
+      expect(result.success).toBe(true)
+      expect(result.backupFilePath).toBeTruthy()
+      expect(backupFiles).toHaveLength(2)
+      expect(backupFiles).toContain(path.basename(result.backupFilePath!))
+      expect(backupFiles).not.toContain("backup-2026-03-01T00-00-00-000Z.dotagents")
+    })
+
+    it("aborts import if the pre-import backup cannot be created", async () => {
+      const blockedBackupPath = path.join(tempDir, "blocked-backups")
+      fs.writeFileSync(blockedBackupPath, "not-a-directory", "utf-8")
+
+      const bundle = createTestBundle()
+      const bundlePath = path.join(tempDir, "import-backup-failure.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundleForTest(bundlePath, {
+        conflictStrategy: "skip",
+        backup: { dir: blockedBackupPath },
+      })
+      const layer = getAgentsLayerPaths(targetDir)
+
+      expect(result.success).toBe(false)
+      expect(result.backupFilePath).toBeNull()
+      expect(result.errors[0]).toContain("Pre-import backup failed")
+      expect(loadAgentProfilesLayer(layer).profiles).toEqual([])
+      expect(loadAgentsSkillsLayer(layer).skills).toEqual([])
+      expect(loadTasksLayer(layer).tasks).toEqual([])
+      expect(loadAgentsMemoriesLayer(layer).memories).toEqual([])
     })
 
     it("imports legacy metadata-only bundle skills with empty instructions", async () => {
@@ -1124,7 +1239,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-legacy-skill.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const layer = getAgentsLayerPaths(targetDir)
       const importedSkill = loadAgentsSkillsLayer(layer).skills.find((skill) => skill.id === "legacy-skill")
 
@@ -1151,7 +1266,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-public-metadata.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
 
       expect(result.success).toBe(true)
       expect(result.agentProfiles[0].action).toBe("imported")
@@ -1170,7 +1285,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
 
       expect(result.agentProfiles[0].action).toBe("skipped")
     })
@@ -1185,7 +1300,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "rename" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "rename" })
 
       expect(result.agentProfiles[0].action).toBe("renamed")
       expect(result.agentProfiles[0].newId).toBe("import-agent_imported")
@@ -1201,7 +1316,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "overwrite" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "overwrite" })
 
       expect(result.agentProfiles[0].action).toBe("overwritten")
     })
@@ -1239,7 +1354,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-external-agent.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const layer = getAgentsLayerPaths(targetDir)
       const imported = loadAgentProfilesLayer(layer).profiles.find((profile) => profile.id === "external-agent")
 
@@ -1266,7 +1381,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, {
+      const result = await importBundleForTest(bundlePath, {
         conflictStrategy: "skip",
         components: { agentProfiles: true, skills: false, repeatTasks: false, memories: false },
       })
@@ -1295,7 +1410,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-skip.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1332,7 +1447,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-overwrite.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "overwrite" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "overwrite" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1371,7 +1486,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-rename.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "rename" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "rename" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1415,7 +1530,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-legacy.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1453,7 +1568,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-mixed-legacy.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1491,7 +1606,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-unknown-legacy.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "overwrite" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "overwrite" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1521,7 +1636,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-empty-object.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1552,7 +1667,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-preserve-metadata.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1595,7 +1710,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-merged.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1641,7 +1756,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-mixed-known-unknown-legacy.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
@@ -1683,7 +1798,7 @@ describe("bundle-service", () => {
       const bundlePath = path.join(tempDir, "import-mcp-prefixed-legacy.dotagents")
       fs.writeFileSync(bundlePath, JSON.stringify(bundle))
 
-      const result = await importBundle(bundlePath, targetDir, { conflictStrategy: "skip" })
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "skip" })
       const mcpJson = readTestMcpJson(targetDir)
 
       expect(result.success).toBe(true)
