@@ -1,5 +1,58 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 50: Desktop onboarding step transitions can strand the next step off-screen under tighter heights and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/onboarding.tsx` (step transitions into the API key, dictation, and agent steps)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched panel, memories, repeat-tasks, and settings-management surfaces.
+  - This is an intentional follow-up on an older onboarding hardening pass, not a random revisit: live inspection exposed a residual user-facing issue stronger than any source-only guess.
+  - A real browser-inspectable onboarding route was available at `http://localhost:5174/onboarding`, making screenshot-backed verification practical.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid duplicating a recently investigated area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used live product inspection on `http://localhost:5174/onboarding`, driving the real flow (`Get Started` → `Skip for Now` → `Skip Demo`) with minimal Electron API stubs so the route could render in browser automation
+  - stress-tested the flow at `800×700` and `720×700` with a `150%` zoom approximation and captured screenshot-backed evidence in `tmp/ui-audit/onboarding-before-800x700-zoom150.png` and `tmp/ui-audit/onboarding-before-720x700-zoom150.png`
+  - measured the live heading rect plus document/container scroll positions before deciding on a fix
+  - prototyped the intended step-change scroll reset directly in the mounted DOM and captured `tmp/ui-audit/onboarding-after-prototype-800x700-zoom150.png` and `tmp/ui-audit/onboarding-after-prototype-720x700-zoom150.png`
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/` has no matching onboarding wizard route or equivalent multistep first-run desktop setup flow
+
+#### Findings
+
+- Before the fix, the desktop onboarding flow still had one concrete usability issue with clear user impact:
+  - later onboarding steps are taller than the welcome step, but the route could preserve the previous document scroll offset when advancing between steps
+  - in live inspection at `800×700` with `150%` zoom, the `Meet Your AI Agent` heading opened fully above the viewport (`top ≈ -634`, `bottom ≈ -562`) while `window.scrollY` and `document.documentElement.scrollTop` remained at about `823`
+  - the same issue reproduced at `720×700` with `150%` zoom, and earlier intermediate steps could also open already scrolled past their headings
+  - that is materially risky because users can land mid-step without seeing the title/context that explains what changed, making the onboarding flow feel broken or disorienting right when the product is teaching first-run concepts
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/pages/onboarding.tsx` with the smallest effective transition-state fix:
+  - added a `scrollContainerRef` on the onboarding scroll shell
+  - added a `useLayoutEffect` keyed on `step` that resets both the internal scroll container and the document/window scroll position whenever the user advances or goes back
+  - repeated the reset once in `requestAnimationFrame` so the top-of-step position still wins after the next layout pass for taller later steps
+- Added `apps/desktop/src/renderer/src/pages/onboarding.layout.test.ts` with focused source-contract coverage for the new step-transition scroll-reset behavior
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new scroll container ref, step-scoped `useLayoutEffect`, window/document reset logic, `requestAnimationFrame` follow-up reset, and regression test file are present
+- Live renderer evidence before the fix at `http://localhost:5174/onboarding`:
+  - after `Get Started` → `Skip for Now` → `Skip Demo` at `800×700` + `150%` zoom, `Meet Your AI Agent` rendered fully above the viewport (`top ≈ -634`, `bottom ≈ -562`) while `window.scrollY ≈ 823`
+  - the same flow at `720×700` + `150%` zoom still opened the step with the heading off-screen above the viewport
+  - screenshots: `tmp/ui-audit/onboarding-before-800x700-zoom150.png`, `tmp/ui-audit/onboarding-before-720x700-zoom150.png`
+- Live DOM prototype verification of the intended fix:
+  - after applying the same step-change scroll reset in the mounted DOM, the `Meet Your AI Agent` heading became visible at both `800×700` and `720×700` + `150%` zoom, with heading rect `top ≈ 189`, `bottom ≈ 261`, and `window.scrollY = 0`
+  - screenshots: `tmp/ui-audit/onboarding-after-prototype-800x700-zoom150.png`, `tmp/ui-audit/onboarding-after-prototype-720x700-zoom150.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/onboarding.tsx apps/desktop/src/renderer/src/pages/onboarding.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live renderer session is not yet serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired live pre-fix evidence with a DOM prototype of the exact scroll-reset behavior and direct source verification of the patched logic.
+- This chunk is desktop-only: the mobile app has no equivalent onboarding wizard route using the same step-transition and scroll-shell contract.
+- Tradeoff/rationale: every onboarding step transition now intentionally resets to the top, even if the user had manually scrolled within the previous step; that is the safer tradeoff because the next step’s title and primary guidance need to be visible immediately.
+- Best next UI audit chunk after this one: stay on `onboarding.tsx` only if a renderer session tied to this checkout becomes available for literal post-edit confirmation, or switch to a fresh live desktop/mobile surface that still lacks screenshot-backed verification.
+
 ### 2026-03-08 — Chunk 49: Desktop Repeat Tasks titles can still collapse to zero width under real container pressure despite the earlier row-wrap pass
 
 - Area selected:

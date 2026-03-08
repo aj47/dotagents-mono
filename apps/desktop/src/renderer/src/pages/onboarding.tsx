@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react"
 import { Button } from "@renderer/components/ui/button"
 import { Input } from "@renderer/components/ui/input"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -33,6 +33,23 @@ export function Component() {
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const recorderRef = useRef<Recorder | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+
+  useLayoutEffect(() => {
+    const resetStepScrollPosition = () => {
+      scrollContainerRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" })
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
+    resetStepScrollPosition()
+    const frame = requestAnimationFrame(resetStepScrollPosition)
+
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [step])
 
   const saveConfig = useCallback(
     (config: Partial<Config>) => {
@@ -174,7 +191,7 @@ export function Component() {
   }, [saveConfigAsync, navigate])
 
   return (
-    <div className="app-drag-region flex h-dvh overflow-y-auto">
+    <div ref={scrollContainerRef} className="app-drag-region flex h-dvh overflow-y-auto">
       <div className="w-full max-w-2xl mx-auto my-auto px-6 py-10">
         {step === "welcome" && (
           <WelcomeStep onNext={() => setStep("api-key")} onSkip={handleSkipOnboarding} />
