@@ -31,4 +31,14 @@ describe("settings loops page layout", () => {
     expect(settingsLoopsSource).toContain('className="mt-2 flex flex-wrap items-center gap-2"')
     expect(settingsLoopsSource).toContain('className="break-words [overflow-wrap:anywhere]">Last run: {formatLastRun(lastRunAt)}</div>')
   })
+
+  it("wraps repeat-task editor toggles under larger text and tighter widths", () => {
+    expect(settingsLoopsSource).toContain('className="flex flex-wrap items-start gap-x-6 gap-y-3"')
+
+    const editorToggleGroupMatches = settingsLoopsSource.match(
+      /className="flex min-w-\[min\(100%,12rem\)\] flex-\[1_1_12rem\] items-center space-x-2"/g,
+    )
+
+    expect(editorToggleGroupMatches).toHaveLength(2)
+  })
 })

@@ -365,8 +365,8 @@ export function SettingsLoops() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+            <div className="flex min-w-[min(100%,12rem)] flex-[1_1_12rem] items-center space-x-2">
               <Switch
                 id="enabled"
                 checked={editing.enabled}
@@ -374,7 +374,7 @@ export function SettingsLoops() {
               />
               <Label htmlFor="enabled">Enabled</Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex min-w-[min(100%,12rem)] flex-[1_1_12rem] items-center space-x-2">
               <Switch
                 id="runOnStartup"
                 checked={editing.runOnStartup}

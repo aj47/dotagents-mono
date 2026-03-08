@@ -1,5 +1,57 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 81: Desktop repeat-task editor forced its two toggle controls into a clipped single row under stressed width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-loops.tsx` (`Settings → Repeat Tasks` → `Add Repeat Task` / edit form toggle row)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched root sidebar, memories, MCP tools, and other recent desktop surfaces unless a clearly fresh sub-surface appeared.
+  - A reusable live Electron renderer was still reachable on `:9333`, and `Settings → Repeat Tasks` had not been the focus of a recent ledger entry even though it is a dense editor surface with multiple narrow-width controls.
+  - The source still contained a rigid single-line toggle row (`flex items-center gap-6`), which made it a good small follow-up once live evidence confirmed the user-visible failure.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo’s mobile workflow/docs before choosing the next area
+  - reused `agent-browser --cdp 9333` against the live Electron renderer at `http://localhost:5174/settings/repeat-tasks`
+  - stress-tested the mounted page at `620×670` with `document.documentElement.style.fontSize = '24px'`, opened the `Add Task` editor, captured screenshot-backed evidence in `tmp/ui-audit/settings-loops-editor-before-620x670-root24.png`, and measured the mounted toggle row directly in the DOM before editing source
+  - confirmed current source in `settings-loops.tsx` still matched the live issue: the editor kept `Enabled` and `Run on Startup` inside one rigid horizontal row
+  - cross-checked mobile scope and confirmed the mobile app uses its own `apps/mobile/src/screens/LoopEditScreen.tsx` flow rather than this desktop page, so no parallel mobile patch was applied without a dedicated live mobile run
+
+#### Findings
+
+- Before the fix, the desktop repeat-task editor had one concrete accessibility/layout issue with clear user impact:
+  - the `Enabled` and `Run on Startup` switches were locked into a single `flex items-center gap-6` row instead of wrapping intentionally
+  - in live inspection at `620×670` with `24px` base text, that toggle row had only about `298px` of available width but needed about `314px` of scroll width
+  - the mounted row reported `clientWidth = 298` and `scrollWidth = 314`, so the row horizontally overflowed under accessibility-sized text instead of dropping cleanly to two lines
+  - practical impact: one of the editor’s core behavioral switches can clip or crowd exactly when the settings shell is tight or text is larger, making the form feel brittle during creation/editing
+
+#### Changes made
+
+- Hardened only the desktop repeat-task editor toggle row in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`:
+  - changed the toggle container from a rigid single-line row to `flex flex-wrap items-start gap-x-6 gap-y-3`
+  - gave each toggle group a shared `min-w-[min(100%,12rem)] flex-[1_1_12rem]` contract so the controls can keep readable width and wrap onto separate lines when needed
+  - kept the rest of the editor unchanged to avoid unnecessary redesign churn
+- Extended `apps/desktop/src/renderer/src/pages/settings-loops.layout.test.ts` with focused source-contract coverage for the editor toggle row’s wrap-safe layout
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Targeted desktop script attempt: `pnpm --dir apps/desktop test -- --run src/renderer/src/pages/settings-loops.layout.test.ts` *(blocked in `pretest` because shared build tooling is also missing here; `tsup: command not found` and the workspace warns that `node_modules` are missing)*
+- Dependency-free source-contract verification: a Node script confirmed the new wrap-safe toggle-row class, both toggle-group width contracts, removal of the old rigid row markup, and the focused regression test coverage are present ✅
+- Live Electron evidence before the fix at `http://localhost:5174/settings/repeat-tasks` via `agent-browser --cdp 9333`:
+  - screenshot: `tmp/ui-audit/settings-loops-editor-before-620x670-root24.png`
+  - mounted measurement: editor toggle row `clientWidth = 298`, `scrollWidth = 314`
+- Post-edit live verification blocker:
+  - after reload, the attached Electron session still exposed the old `flex items-center gap-6` row and the same `clientWidth = 298`, `scrollWidth = 314` measurement
+  - screenshot: `tmp/ui-audit/settings-loops-editor-after-620x670-root24.png`
+  - I therefore did **not** claim literal post-edit runtime confirmation from this worktree and treated the running Electron target as stale-bundle evidence only for this chunk
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-loops.tsx apps/desktop/src/renderer/src/pages/settings-loops.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is still valuable for screenshot-backed evidence gathering, but it is not guaranteed to be serving this checkout’s edited bundle. For this chunk it continued to show the pre-fix DOM even after reload, so I relied on direct source verification for the shipped code.
+- Mobile cross-check: no matching mobile code change was made because the mobile repeat-task editor lives in `apps/mobile/src/screens/LoopEditScreen.tsx`, not this desktop page.
+- Tradeoff/rationale: the toggle controls can now consume a second line under stress, but that is a better product tradeoff than forcing behavioral settings into a clipped single row.
+- Best next UI audit chunk after this one: stay off the just-touched desktop repeat-task editor unless a renderer from this checkout becomes available; the strongest fresh follow-up is the mobile `apps/mobile/src/screens/LoopEditScreen.tsx` editor surface, especially its own switch rows and narrow-width form states.
+
 ### 2026-03-08 — Chunk 80: Desktop expanded settings sidebar rows sized themselves to content width and clipped core nav labels under stressed width
 
 - Area selected:
