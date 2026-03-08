@@ -267,3 +267,42 @@ Purpose: track desktop UI audits driven by live renderer inspection and screensh
 - Remaining opportunities:
   - once this worktree can launch directly, capture a true after-state screenshot of `/panel` to confirm the new markers remain calm in both light and dark themes
   - if the panel still feels under-explained after this, the next local candidate is clarifying the empty/idle interior state so it communicates readiness rather than looking blank
+
+### Iteration 2026-03-08 / 08
+- Status: complete with live before-state evidence, DOM-simulated after-state evidence, and current-worktree launch blocker documented
+- Screen / area reviewed: desktop compare-mode session tiles, specifically the tile header conversation title in the active progress panels
+- Renderer target used:
+  - attached to the Electron renderer main page at `http://localhost:5173/#/sessions` via CDP on `REMOTE_DEBUGGING_PORT=9333`
+  - confirmed the running Electron/Vite instance belonged to the sibling worktree `/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop`, not this workspace, so true HMR validation of this worktree was not available
+- Before-state screenshot evidence:
+  - `tmp/visible-ui-before-2026-03-08-08-main-narrow.png`
+  - live DOM-backed inspection at a realistic `900x670` renderer size showed a visible compare-mode tile that was about `338px` wide with a header about `336x54px`, while its conversation title text was constrained to a single `172x20px` line inside that header
+  - the representative clipped title was `User message 1: This paragraph is intentionally verbose to simulate long assistant output...`, so the header exposed only one truncated line before dropping to the smaller agent-name row
+- Issues found:
+  - compare-mode tile headers gave up too much identifying information to a single-line ellipsis even though the tile header already had vertical room for a compact second line
+  - this weakened quick side-by-side scanning because adjacent active sessions with similarly long opening prompts became harder to distinguish at a glance
+- Assumptions:
+  - this improvement is desktop-only; the mobile app uses `apps/mobile/src/screens/SessionListScreen.tsx` with a different full-width list item + preview pattern rather than desktop compare/grid progress tiles
+  - keeping action buttons and badges on the same row is still acceptable if the title gets a modest two-line preview and a full-title hover fallback
+  - a slightly taller tile header is a worthwhile tradeoff when it materially improves session recognition in compare mode
+- Design rationale:
+  - spend a small amount of extra header height on recognizability rather than forcing users to infer tile identity from one clipped line
+  - keep the existing tile chrome and control positions intact so the change feels locally coherent instead of redesigning the whole tile
+  - preserve recovery by exposing the full title on hover while improving the resting state first
+- Code changes:
+  - updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so tile headers derive `tileTitle` once, render the title with a compact two-line clamp, and expose the full title through `title={tileTitle}`
+  - updated `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` to lock in the two-line tile-title treatment and refreshed a stale ACP badge expectation that no longer matched the current source
+- Verification:
+  - live before-state screenshot + DOM measurement via CDP against the main `/sessions` renderer target
+  - targeted source-level test passed against this worktree using the sibling worktree's installed tooling without installing dependencies here:
+    - `NODE_PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules PATH=/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/node_modules/.bin:/Users/ajjoobandi/Development/dotagents-mono-worktrees/streaming-lag-loop/apps/desktop/node_modules/.bin:$PATH vitest run apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts`
+  - live after-state approximation by applying an in-memory DOM patch that mirrors the intended title layout, then capturing `tmp/visible-ui-after-2026-03-08-08-main.png`; the sampled tile title grew from about `172x20px` to about `172x35px`, while the tile header grew from about `336x54px` to about `336x69px`
+  - attempted current-worktree Electron launch: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm dev -- -d` → failed before Electron launched because this worktree still lacks runnable local shared-tooling binaries (`packages/shared` build failed with `sh: tsup: command not found` and `node_modules missing` warnings)
+  - `git diff --check`
+- After-state observation:
+  - `tmp/visible-ui-after-2026-03-08-08-main.png`
+  - the DOM-simulated header now exposes a second line of the session title before ellipsis, which lets the first active compare tile read more like a recognizable conversation summary than a generic clipped label
+  - the extra height stayed modest and the action chrome remained top-aligned, so the tile still reads as a compact working panel rather than a bulky card
+- Remaining opportunities:
+  - once this worktree can launch directly, capture a true after-state screenshot of the compare tiles and confirm the two-line header still feels calm when approval badges or extra tile actions are present
+  - if live validation still shows compare tiles feeling hard to distinguish, the next likely local improvement is strengthening the low-contrast agent/model metadata row without adding more top chrome

@@ -16,10 +16,22 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"')
   })
 
+  it("gives tile headers a compact two-line conversation title preview instead of a single clipped line", () => {
+    expect(agentProgressSource).toContain('const tileTitle = getTitle()')
+    expect(agentProgressSource).toContain(
+      'className="min-w-0 font-medium text-sm leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"'
+    )
+    expect(agentProgressSource).toContain('title={tileTitle}')
+    expect(agentProgressSource).toContain('{tileTitle}')
+    expect(agentProgressSource).not.toContain('className="truncate font-medium text-sm"')
+  })
+
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex flex-wrap items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"')
-    expect(agentProgressSource).toContain('<ACPSessionBadge info={acpSessionInfo} className="min-w-0 max-w-full" />')
+    expect(agentProgressSource).toContain(
+      '<ACPSessionBadge info={acpSessionInfo} compact={shouldUseCompactTileFooter} className="min-w-0 max-w-full" />'
+    )
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 

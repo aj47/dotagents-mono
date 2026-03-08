@@ -3197,6 +3197,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return `Session ${progress.sessionId?.substring(0, 8) || "..."}`
   }
 
+  const tileTitle = getTitle()
+
   const containerClasses = cn(
     "progress-panel flex flex-col w-full rounded-xl overflow-hidden",
     variant === "tile"
@@ -3245,8 +3247,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {getStatusIndicator()}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate font-medium text-sm">
-                {getTitle()}
+              <span
+                className="min-w-0 font-medium text-sm leading-snug line-clamp-2 break-words [overflow-wrap:anywhere]"
+                title={tileTitle}
+              >
+                {tileTitle}
               </span>
               {/* Agent name indicator in header */}
               {profileName && (
