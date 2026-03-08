@@ -135,6 +135,9 @@
 - [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/App.tsx` mounts `McpElicitationDialog` and `apps/mobile` has no matching elicitation UI, so this is a live desktop-only MCP workflow bug rather than dead code or a shared mobile flow.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the desktop elicitation-dialog feedback fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/sessions.tsx` and confirmed `handleFocusSession(...)` still optimistically called `setFocusedSessionId(sessionId)` before awaiting the panel-focus/show IPC chain, while its failure path only logged `Failed to show panel window:` to the console.
+- [x] 2026-03-08: Confirmed `apps/desktop/src/main/tipc.ts` still returned `{ success: true }` from `focusAgentSession` even when the panel renderer handler was unavailable or `.send(...)` threw, so the sessions page could not distinguish a real panel-focus failure from success.
+- [x] 2026-03-08: Searched `apps/mobile/src` for `focusAgentSession`, `focusedSessionId`, and `showPanelWindow`; there is no equivalent mobile sessions-tile/panel-focus flow, so this optimistic-focus mismatch is desktop-only.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ChatScreen.tsx` has no equivalent message-copy/chat-transcript copy surface, so this copy-feedback fix is desktop-only rather than a cross-platform parity gap.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `agent-progress.tsx`, `session-tile.tsx`, and `copy-feedback.test.ts`; the assertions passed for the new copy-error helper/toast wiring and regression test coverage.
@@ -148,6 +151,7 @@
 - [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
 - [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
 - [ ] Whether any other desktop Cloudflare Tunnel configuration editors still need draft-first handling once the environment blocker is cleared.
+- [ ] Whether the Sessions page `Start typing`, `Start voice`, or predefined-prompt launch actions also need the same visible error handling pattern once live desktop debugging is available.
 
 ### Reproduced
 - [x] **Desktop follow-up send failures were silent (directly confirmed in source):**
@@ -292,6 +296,10 @@
   - `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` handles visible `Accept`, `Decline`, and `Cancel` actions for MCP form/URL elicitation, but `handleAction(...)` previously awaited `tipcClient.resolveElicitation(...)` without any `try/catch` or visible error UI.
   - The TIPC route in `apps/desktop/src/main/tipc.ts` forwards to `resolveElicitation(...)` in `apps/desktop/src/main/mcp-elicitation.ts`, which returns `false` when the request is already gone; the old renderer still called `setIsOpen(false)` / `setRequest(null)` immediately afterward, so a stale dialog could disappear as if the action worked even though nothing was resolved.
   - `McpElicitationDialog` is lazy-mounted in the desktop app shell and mobile has no equivalent elicitation UI, so this is a live desktop MCP workflow bug rather than dead code or a parity choice.
+- [x] **Desktop Sessions tile focus could drift into a false focused state when the panel focus path failed (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/sessions.tsx` optimistically called `setFocusedSessionId(sessionId)` before awaiting `tipcClient.focusAgentSession(...)`, `tipcClient.setPanelMode(...)`, and `tipcClient.showPanelWindow(...)`.
+  - The same handler only logged `Failed to show panel window:` in its catch path, so a failed tile click could leave the session visually focused with no toast even though the panel did not actually open/focus that session.
+  - `apps/desktop/src/main/tipc.ts` also returned `{ success: true }` from `focusAgentSession` even when the panel renderer handler was missing, so the renderer had no way to roll back that optimistic focus on a real panel-focus failure.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -424,6 +432,9 @@
 - [x] Updated `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` so `handleAction(...)` now tracks `isSubmitting`, catches rejected `resolveElicitation(...)` calls, and surfaces visible `toast.error(...)` feedback instead of failing silently.
 - [x] Taught the dialog to detect `resolveElicitation(...) === false`, close the stale dialog, and tell the user `This request is no longer pending.` rather than silently dismissing an ignored action.
 - [x] Added `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts` with focused source-level assertions that lock in the `sonner` toast import, stale-request feedback, guarded close handler, and failed action toast path.
+- [x] Updated `apps/desktop/src/main/tipc.ts` so `focusAgentSession` now returns `{ success: false, error: ... }` when the panel renderer handler is unavailable or the focus event send throws, instead of always claiming success.
+- [x] Updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so session-tile focus now remembers the previous `focusedSessionId`, rolls back that optimistic local focus when the panel-focus step fails, and surfaces visible `toast.error(...)` feedback for both focus and panel-open failures.
+- [x] Added `apps/desktop/src/renderer/src/pages/sessions.focus-session.test.ts` with focused source-level assertions that lock in the new focus-result contract, previous-focus rollback, and visible sessions-page error feedback.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -524,6 +535,10 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-elicitation-dialog.tsx` now imports `toast` from `sonner`, guards repeated submissions with `isSubmitting`, surfaces visible `Failed to accept/decline/cancel request. ...` feedback on rejected IPC responses, and shows `This request is no longer pending.` when the request has already expired.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `mcp-elicitation-dialog.tsx` and `mcp-elicitation-dialog.feedback.test.ts`, confirming the new toast strings, stale-request branch, guarded close handler, and regression file are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop elicitation-dialog feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/main/tipc.ts` no longer reports unconditional success from `focusAgentSession`; it now returns `{ success: false, error: "Panel window is unavailable." }` when the panel renderer handler is missing and `{ success: false, error: getErrorMessage(e) }` when the focus send throws.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/sessions.tsx` now captures `previousFocusedSessionId`, rolls local focus back on failed `focusAgentSession(...)`, and surfaces visible `Failed to focus session...` / `Failed to open session...` toasts instead of leaving the sessions page silently stuck in the optimistic state.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `sessions.tsx`, `sessions.focus-session.test.ts`, and `tipc.ts`, confirming the new previous-focus rollback, toast strings, and `focusAgentSession` failure contract are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the sessions focus-recovery update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -561,6 +576,7 @@
 - [x] Targeted automated verification for this shared `AudioPlayer` stale-reset fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts` still reports `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this floating-panel live-preview feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server copy-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this sessions focus-recovery fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -588,6 +604,7 @@
 - [ ] Whether the adjacent local-provider model download actions in `settings-providers.tsx` should also surface visible failure feedback, or whether their existing inline `status.error` rendering is already sufficient once live desktop validation is available.
 - [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
+- [ ] Whether the other Sessions page panel-launch actions (`showPanelWindowWithTextInput`, voice start, predefined prompt launch) should also adopt explicit visible failure feedback once the desktop environment blocker is cleared.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -654,6 +671,8 @@
 - Reusing one local `copyRemoteServerValue(...)` helper plus the existing desktop `toast.error(...)` pattern is the smallest safe fix because it keeps the current copy targets and fallback clipboard implementation intact while making the failure visible everywhere this page exposes a copy button.
 - Session history/progress copy buttons are explicit user actions in the primary desktop workflow, so silent clipboard rejections create the same “dead button” failure pattern as the earlier remote-server copy bug.
 - Reusing the existing `getActionErrorMessage(...)` + `toast.error(...)` pattern inside `agent-progress.tsx` and `session-tile.tsx` is the smallest safe fix because it preserves the current optimistic copied-state behavior while finally making clipboard failures visible.
+- The Sessions page focus bug is a state-and-feedback correctness issue: clicking a session tile should not leave the global focused-session state pointing at a new tile if the panel focus handshake never actually succeeded.
+- Teaching `focusAgentSession` to report handler-unavailable/send failures and rolling back to `previousFocusedSessionId` only for that failed focus step is the smallest safe fix because it preserves the existing optimistic tile-selection UX while bringing renderer state back in sync when the panel-focus contract fails.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -693,6 +712,7 @@
 - Assumption: using `toast.error(...)` for `AgentProgress` / `SessionTile` copy failures is acceptable because those desktop surfaces already use toasts for other explicit user-action failures, and the concrete bug here is missing visible feedback rather than clipboard implementation semantics.
 - Assumption: using the existing desktop toast pattern for MCP elicitation `Accept` / `Decline` / `Cancel` failures is acceptable because `sonner` is already mounted app-wide, these are explicit user responses to a live MCP request, and the dialog had no inline error state before.
 - Assumption: closing the dialog only for the `resolveElicitation(...) === false` stale-request case is acceptable because the main-process request is already gone at that point, while keeping the dialog open on thrown IPC failures preserves the user's chance to retry a transient failure.
+- Assumption: keeping the optimistic local tile focus for successful `focusAgentSession(...)` calls but not rolling it back for later `setPanelMode(...)` / `showPanelWindow(...)` failures is acceptable because by that point the main-process session focus has already been updated, so reverting only the earlier failed focus step is the safer sync boundary.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -744,3 +764,5 @@
 - After that, inspect any remaining desktop clipboard-copy actions outside `AgentProgress` / `SessionTile` / remote-server settings for the same silent-failure pattern.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts` and live-verify an MCP form/URL elicitation by forcing both a stale request and a rejected `resolveElicitation(...)` call to confirm the new toasts appear while retry remains possible after transient IPC failure.
 - After that, inspect whether the adjacent desktop `mcp-sampling` dialog needs the same stale-request / rejected-response feedback treatment for parity with elicitation.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` and live-verify that forcing a panel-focus failure from the Sessions page restores the previously focused tile and surfaces the new error toast instead of leaving the wrong tile selected.
+- After that, inspect whether the other Sessions page panel-launch actions (`Start typing`, `Start voice`, predefined prompts) still need the same visible failure treatment for full sessions-page consistency.

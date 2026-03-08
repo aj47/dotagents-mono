@@ -73,6 +73,11 @@ function formatTimestamp(timestamp: number): string {
 const RECENT_SESSIONS_LIMIT = 8
 const PENDING_CONTINUATION_TIMEOUT_MS = 20_000
 
+function getSessionActionErrorMessage(actionLabel: string, error: unknown) {
+  const details = error instanceof Error ? error.message.trim() : ""
+  return details ? `${actionLabel}. ${details}` : actionLabel
+}
+
 const TILE_LAYOUT_OPTIONS = [
   {
     mode: "1x2",
@@ -1038,17 +1043,37 @@ export function Component() {
 
   const handleFocusSession = useCallback(
     async (sessionId: string) => {
+      const previousFocusedSessionId = focusedSessionId
       setFocusedSessionId(sessionId)
+
+      try {
+        const focusResult = await tipcClient.focusAgentSession({ sessionId })
+        if (focusResult && "success" in focusResult && focusResult.success === false) {
+          setFocusedSessionId(previousFocusedSessionId ?? null)
+          const details = typeof focusResult.error === "string"
+            ? focusResult.error.trim()
+            : ""
+          console.error("Failed to focus session:", focusResult.error)
+          toast.error(details ? `Failed to focus session. ${details}` : "Failed to focus session")
+          return
+        }
+      } catch (error) {
+        setFocusedSessionId(previousFocusedSessionId ?? null)
+        console.error("Failed to focus session:", error)
+        toast.error(getSessionActionErrorMessage("Failed to focus session", error))
+        return
+      }
+
       // Also show the panel window with this session focused
       try {
-        await tipcClient.focusAgentSession({ sessionId })
         await tipcClient.setPanelMode({ mode: "agent" })
         await tipcClient.showPanelWindow({})
       } catch (error) {
         console.error("Failed to show panel window:", error)
+        toast.error(getSessionActionErrorMessage("Failed to open session", error))
       }
     },
-    [setFocusedSessionId],
+    [focusedSessionId, setFocusedSessionId],
   )
 
   const handleDismissSession = useCallback(

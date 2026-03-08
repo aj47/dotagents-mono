@@ -1186,12 +1186,22 @@ export const router = {
   focusAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
+      const panelRendererHandlers = getWindowRendererHandlers("panel")
+      if (!panelRendererHandlers?.focusAgentSession) {
+        logApp("[tipc] focusAgentSession unavailable: panel renderer handlers missing")
+        return {
+          success: false,
+          error: "Panel window is unavailable.",
+        }
+      }
+
       try {
-        getWindowRendererHandlers("panel")?.focusAgentSession.send(input.sessionId)
+        panelRendererHandlers.focusAgentSession.send(input.sessionId)
+        return { success: true }
       } catch (e) {
         logApp("[tipc] focusAgentSession send failed:", e)
+        return { success: false, error: getErrorMessage(e) }
       }
-      return { success: true }
     }),
 
   writeClipboard: t.procedure
