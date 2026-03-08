@@ -1811,3 +1811,37 @@
   - Prefer pivoting to a different open issue next unless another equally small, clearly observable bundle-trust gap appears.
 
 - Next recommended issue work item: pivot away from `#57 / #25` for the next pass and prefer either a fresh bug slice from the current open issues or a similarly self-contained `#58` reliability/provenance follow-up.
+
+##### Issue #58 — Mobile full-history viewer now marks where the active context window begins
+
+- Selection rationale:
+  - Re-reviewed the current open issues after the previous `#57 / #25` commit and intentionally did **not** force another `#55` pass once source inspection showed the earlier duplicate-maximize guard (`showTileExpandAction = !!onExpand && !isExpanded && !isSnoozed`) was already in place.
+  - `#58` still had a small, trust-critical provenance gap with a clear local path: mobile could toggle into stored full history, but it still lacked the desktop-style boundary marker that tells users where the active LLM context window starts.
+- Investigation:
+  - Re-read open issue `#58` and its scope-locking comment, focusing on the acceptance criteria around browsing complete history and clearly marking the relationship between stored history and active context.
+  - Inspected `apps/mobile/src/screens/ChatScreen.tsx` and confirmed mobile already hydrated `fullHistoryMessages`, exposed `Show Full History` / `Show Active Window`, and rendered `Context summary` badges, but it never inserted an explicit divider before the active window when full history was expanded.
+  - Cross-checked the already-landed desktop behavior in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, which computes a `fullHistoryBoundaryIndex` and renders `Active context window starts here.` before the active context segment.
+- Important assumptions:
+  - Assumption: mirroring the desktop boundary marker in mobile is an acceptable narrow follow-up without adding a full separate mobile history inspector.
+  - Why acceptable: the issue acceptance is about auditability and provenance clarity, and mobile already has the same stored-history toggle surface where this boundary belongs.
+  - Assumption: using `messages.length` as the active-window length is correct for the current mobile stored-history contract.
+  - Why acceptable: mobile already treats `messages` as the active context window and `fullHistoryMessages` as the preserved on-disk superset for the same conversation.
+- Changes implemented:
+  - Added `summaryBlockCount` and `fullHistoryBoundaryIndex` derivation in `apps/mobile/src/screens/ChatScreen.tsx` so the mobile full-history view can identify where preserved earlier history ends and the active context window begins.
+  - Updated the mobile stored-history banner copy to explicitly describe when earlier stored messages are represented by summary blocks in the active context window.
+  - Inserted an accessible `Active context window starts here.` divider into the mobile full-history transcript and added matching success-colored styles.
+  - Added a new dependency-free regression test at `apps/mobile/tests/conversation-history-full-history.test.js` to lock in the boundary calculation and divider rendering contract.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/conversation-history-full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+  - Result: blocked by the current mobile worktree/tooling state rather than this slice (`expo/tsconfig.base` missing plus broad missing Expo/React Native type dependencies and JSX config errors from the package baseline).
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - If more mobile provenance polish is needed, consider matching the desktop banner phrasing even more closely (for example, explicitly saying when messages above the divider may be summarized out of the current LLM context).
+  - Re-run broader mobile type validation once the package regains its intended Expo/TypeScript toolchain in this worktree.
+  - Prefer a fresh issue or a different small `#58` slice next rather than stacking many more micro-polishes on the same viewer without a stronger user signal.
+
+- Next recommended issue work item: prefer a fresh open issue slice next if one has a clear local repro, otherwise take only another equally self-contained `#58` provenance/reliability increment.

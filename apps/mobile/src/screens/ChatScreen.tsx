@@ -980,12 +980,16 @@ export default function ChatScreen({ route, navigation }: any) {
   const hasLegacyPartialHistoryWarning = messages.some(message => message.isSummary)
     && historyCompaction?.partialReason === 'legacy_summary_without_raw_messages'
     && !hasStoredFullHistory;
+  const summaryBlockCount = messages.filter(message => message.isSummary).length;
   const hiddenEarlierHistoryCount = hasStoredFullHistory
     ? Math.max(0, storedHistoryMessageCount - messages.length)
     : 0;
   const visibleMessages = showFullHistory && hasStoredFullHistory && fullHistoryMessages
     ? fullHistoryMessages
     : messages;
+  const fullHistoryBoundaryIndex = hasStoredFullHistory && messages.length > 0
+    ? visibleMessages.length - messages.length
+    : null;
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -2876,7 +2880,9 @@ export default function ChatScreen({ route, navigation }: any) {
                 </Text>
                 <Text style={styles.fullHistoryBannerBody}>
                   {showFullHistory && hasStoredFullHistory
-                    ? `Loaded ${storedHistoryMessageCount} stored desktop messages for this conversation.`
+                    ? hiddenEarlierHistoryCount > 0 && summaryBlockCount > 0
+                      ? `${hiddenEarlierHistoryCount} earlier stored messages are currently represented by ${summaryBlockCount} summary ${summaryBlockCount === 1 ? 'block' : 'blocks'} in the active context window.`
+                      : 'Messages above the divider may be summarized out of the active context window.'
                     : hasStoredFullHistory
                       ? `${hiddenEarlierHistoryCount} earlier messages are preserved on desktop but omitted from the active context window.`
                       : 'This legacy session was summarized before raw history preservation, so only the compacted window is available.'}
@@ -2916,27 +2922,37 @@ export default function ChatScreen({ route, navigation }: any) {
             const isPending = toolCallCount > 0 && toolCallCount > toolResultCount;
 
             return (
-              <View
-                key={i}
-                style={[
-                  styles.msg,
-                  m.role === 'user' ? styles.user : styles.assistant,
-                  isSummaryMessage && styles.summaryMessage,
-                ]}
-              >
-                {isSummaryMessage && summaryCountLabel && (
+              <React.Fragment key={i}>
+                {showFullHistory && fullHistoryBoundaryIndex !== null && i === fullHistoryBoundaryIndex && (
                   <View
                     accessible
                     accessibilityRole="text"
-                    accessibilityLabel={`Context summary. ${summaryCountLabel}`}
-                    style={styles.summaryBadgeRow}
+                    accessibilityLabel="Active context window starts here"
+                    style={styles.fullHistoryDivider}
                   >
-                    <View style={styles.summaryBadge}>
-                      <Text style={styles.summaryBadgeText}>Context summary</Text>
-                    </View>
-                    <Text style={styles.summaryBadgeHint}>{summaryCountLabel}</Text>
+                    <Text style={styles.fullHistoryDividerText}>Active context window starts here.</Text>
                   </View>
                 )}
+                <View
+                  style={[
+                    styles.msg,
+                    m.role === 'user' ? styles.user : styles.assistant,
+                    isSummaryMessage && styles.summaryMessage,
+                  ]}
+                >
+                  {isSummaryMessage && summaryCountLabel && (
+                    <View
+                      accessible
+                      accessibilityRole="text"
+                      accessibilityLabel={`Context summary. ${summaryCountLabel}`}
+                      style={styles.summaryBadgeRow}
+                    >
+                      <View style={styles.summaryBadge}>
+                        <Text style={styles.summaryBadgeText}>Context summary</Text>
+                      </View>
+                      <Text style={styles.summaryBadgeHint}>{summaryCountLabel}</Text>
+                    </View>
+                  )}
 
                 {/* Compact message header - no role labels, just tap to expand */}
                 {shouldCollapse && (
@@ -3170,7 +3186,8 @@ export default function ChatScreen({ route, navigation }: any) {
                     </Text>
                   </TouchableOpacity>
                 )}
-              </View>
+                </View>
+              </React.Fragment>
             );
           })}
           {connectionState && connectionState.status === 'reconnecting' && (
@@ -3731,6 +3748,20 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 12,
       fontWeight: '700',
       color: theme.colors.primary,
+    },
+    fullHistoryDivider: {
+      marginBottom: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.md,
+      borderWidth: theme.hairline,
+      borderColor: hexToRgba(theme.colors.success, 0.28),
+      backgroundColor: hexToRgba(theme.colors.success, 0.08),
+    },
+    fullHistoryDividerText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.success,
     },
     messageHeader: {
       flexDirection: 'row',
