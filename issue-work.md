@@ -3741,3 +3741,38 @@
   - Keep the modal preview-first and trust-focused; avoid turning this footer into a dense management surface.
 
 - Next recommended issue work item: stay bug-first if `#55` becomes directly verifiable in an Electron-capable worktree; otherwise prefer another fresh, source-confirmed UX/reliability slice with tight validation, likely outside the recently-heavy `#57` / `#58` tracks.
+
+##### Issue #53 — Mobile slash-command empty state now distinguishes “no skills” from “no matches”
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and intentionally looked for a fresh issue outside the recent website/history tracks.
+  - Refreshed issue `#53` plus nearby slash-command code because it still offers concrete UX value and has lightweight source-level mobile tests available.
+  - Chose a small mobile copy/logic fix because it was directly user-facing, locally testable, and avoided broader slash-command refactors that already landed in earlier iterations.
+- Investigation:
+  - Revisited issue `#53` and searched the current desktop/mobile slash-command surfaces.
+  - Confirmed desktop already differentiates match states more honestly, while `apps/mobile/src/screens/ChatScreen.tsx` still showed `No enabled skills found for this agent yet.` any time the mobile suggestions list was empty.
+  - Verified this was misleading when an agent actually had enabled skills but the current slash query matched none of them.
+  - Confirmed `apps/mobile/tests/chat-skill-slash-command.test.js` already covered the mobile slash-command source wiring, so a focused regression update was the smallest safe test change.
+- Important assumptions:
+  - Assumption: the best narrow fix is to keep the existing empty-state location and only make its copy query-aware.
+  - Why acceptable: the issue is user understanding, not layout, and the existing panel already has the right structure.
+  - Assumption: `availableSkills.length === 0` is the correct discriminator between “no skills configured” and “no matches for this query.”
+  - Why acceptable: the mobile slash-command state derives suggestions from `availableSkills`, so an empty suggestions list with non-empty `availableSkills` specifically indicates a query mismatch rather than a missing-skill state.
+- Changes implemented:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` so the mobile slash-command panel now shows:
+    - `No enabled skills found for this agent yet.` only when the agent truly has no enabled skills.
+    - `No skills match \`/query\` for this agent.` when the current slash query filters out all available skills.
+  - Extended `apps/mobile/tests/chat-skill-slash-command.test.js` with assertions for the new query-aware empty-state branch.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/chat-skill-slash-command.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️
+    - Result: failed due existing mobile environment/baseline problems in this worktree (missing Expo/mobile type dependencies and `expo/tsconfig.base`), not because of this targeted slash-command change.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - If slash-command UX continues, consider aligning the mobile empty-state/help copy even more closely with desktop so both surfaces explain query mismatch and command insertion the same way.
+  - Once the mobile dependency baseline is restored, add a real component/runtime assertion around the empty-state branch instead of relying only on source checks.
+
+- Next recommended issue work item: if `#55` is still not directly reproducible in Electron here, continue with similarly small, truthful UX/reliability fixes that have narrow validation paths instead of reopening larger history/restore refactors.

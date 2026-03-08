@@ -3543,7 +3543,11 @@ export default function ChatScreen({ route, navigation }: any) {
 		              {isLoadingSkills ? (
 		                <Text style={styles.slashSuggestionsEmpty}>Loading skills…</Text>
 		              ) : slashCommandState.suggestions.length === 0 ? (
-		                <Text style={styles.slashSuggestionsEmpty}>No enabled skills found for this agent yet.</Text>
+			                <Text style={styles.slashSuggestionsEmpty}>
+			                  {availableSkills.length === 0
+			                    ? 'No enabled skills found for this agent yet.'
+			                    : `No skills match \`/${slashCommandState.query}\` for this agent.`}
+			                </Text>
 		              ) : (
 		                <ScrollView
 		                  horizontal
