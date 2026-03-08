@@ -117,6 +117,11 @@
 - [x] 2026-03-08: Confirmed mobile does not expose equivalent local Kitten/Supertonic voice-test controls; `apps/mobile/src/screens/SettingsScreen.tsx` only shows a desktop-configuration notice for those providers, so this fix is desktop-only rather than a parity regression.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the desktop provider test-voice feedback fix and regression test additions.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/audio-player.tsx` and confirmed its internal playback state still only transitioned to `hasAudio=true` when `audioData` arrived; when parents later cleared `audioData`, the component never cleared `hasAudio`, `duration`, or the `<audio>` element `src`.
+- [x] 2026-03-08: Confirmed the active desktop `AgentProgress` TTS flow in `apps/desktop/src/renderer/src/components/agent-progress.tsx` explicitly calls `setAudioData(null)` when `ttsSource` changes, so stale shared-player state could leave completed assistant-message playback controls pointing at revoked audio instead of regenerating speech for the new text.
+- [x] 2026-03-08: Confirmed mobile has no equivalent shared `AudioPlayer` component; `apps/mobile/src/screens/ChatScreen.tsx` uses a separate TTS/playback path, so this stale-audio reset bug is desktop-only rather than a cross-platform renderer regression.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop shared-audio reset fix and regression test update.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -246,6 +251,10 @@
   - `apps/desktop/src/renderer/src/components/agent-progress.tsx` rendered `AudioPlayer` for `PastResponseItem`, but the local `generatePastAudio()` callback only returned `result.audio` and never stored that audio in component state or passed `audioData` back into `AudioPlayer`.
   - Because `AudioPlayer` expects parent-owned `audioData` after generation, a successful click on a past-response play button could finish the IPC call and still leave the compact player with nothing to play.
   - The same `PastResponseItem` surface also had no `ttsError` state or visible inline error, so rejected `generateSpeech(...)` calls only hit `console.error(...)` and looked like a dead/no-op control.
+- [x] **Desktop shared `AudioPlayer` could get stuck on stale/revoked audio after TTS text changed (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/audio-player.tsx` initialized `hasAudio` from `!!audioData` and only updated playback state inside a truthy `if (audioData) { ... }` branch, so later `audioData={undefined}` updates never reset `hasAudio`, `duration`, or the underlying `<audio>` `src`.
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` intentionally calls `setAudioData(null)` when `ttsSource` changes to avoid replaying stale speech for a later progress merge, but the shared player still believed audio was present after that invalidation.
+  - Because `handlePlayPause()` only regenerates speech when `!hasAudio`, the visible play button could keep trying to play a revoked/stale blob URL instead of requesting fresh audio for the new assistant text, making desktop TTS controls appear broken after content updates.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -363,6 +372,8 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` with focused regression coverage that mocks the desktop provider page, rejects both local synth IPC calls, and asserts the visible Kitten/Supertonic test-voice error toasts.
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so `PastResponseItem` now stores generated TTS audio in local state, passes `audioData` / `isGenerating` / `error` back into `AudioPlayer`, and surfaces a visible inline `Audio generation failed: ...` message when past-response speech generation rejects.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-progress.past-response-tts.test.ts` with source-level assertions that lock in the new past-response audio state, visible failure path, and compact-player wiring.
+- [x] Updated `apps/desktop/src/renderer/src/components/audio-player.tsx` so clearing `audioData` now pauses the element, revokes/removes the blob URL, resets `hasAudio` / timing / autoplay state, and notifies the parent that playback stopped instead of leaving stale audio state behind.
+- [x] Extended `apps/desktop/src/renderer/src/components/audio-player.layout.test.ts` with focused source-level assertions that lock in the new stale-audio reset branch (`audio.removeAttribute("src")`, `audio.load()`, `setHasAudio(false)`, and `onPlayStateChange?.(false)`).
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -444,6 +455,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-progress.tsx` now gives `PastResponseItem` local `audioData` / `isGeneratingAudio` / `ttsError` state, calls `setAudioData(result.audio)` after `generateSpeech(...)`, and passes the resulting state back into the compact `AudioPlayer` so generated past-response audio can actually be replayed.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `agent-progress.tsx` and `agent-progress.past-response-tts.test.ts`, confirming the new past-response audio-state wiring, visible error copy, and regression test case are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the past-response TTS fix and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/audio-player.tsx` now has an explicit `if (!audioData) { ... }` reset branch that pauses playback, clears the `<audio>` `src`, resets `hasAudio` / timing state, and calls `onPlayStateChange?.(false)`, so invalidated TTS caches no longer leave the shared player stuck believing stale audio is still available.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `audio-player.tsx` and `audio-player.layout.test.ts`, confirming the stale-audio reset contract and its regression test coverage are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the shared audio-player stale-reset fix and regression test update.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -476,6 +490,7 @@
 - [x] Targeted automated verification for this sidebar minimize/restore fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` still fails before Vitest starts because the shared pretest cannot find `tsup`, which indicates `node_modules` is still absent in this worktree.
 - [x] Targeted automated verification for this provider test-voice feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this past-response TTS fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.past-response-tts.test.ts` still reports `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this shared `AudioPlayer` stale-reset fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts` still reports `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -500,6 +515,7 @@
 - [ ] Whether the adjacent desktop tool-approval flows should eventually share a tiny renderer helper for `respondToToolApproval(...)` error copy/state reset once live verification is available, or whether keeping the duplicated local handlers is preferable to avoid a new abstraction.
 - [ ] Whether any other approval-adjacent desktop actions in session cards (for example speech generation or clipboard copy fallbacks) still rely on console-only logging and need the same visible-feedback treatment once the environment blocker is cleared.
 - [ ] Whether the adjacent local-provider model download actions in `settings-providers.tsx` should also surface visible failure feedback, or whether their existing inline `status.error` rendering is already sufficient once live desktop validation is available.
+- [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -556,6 +572,8 @@
 - Restoring the prior `focusedSessionId` on rejected `unsnoozeAgentSession(...)` is the smallest safe state fix because it returns the sidebar to its exact pre-click selection semantics without changing the successful restore/minimize flow.
 - The provider-settings issue is another explicit user-action failure bug: clicking `Test Voice` is a direct request for audible confirmation, so a rejected synth/playback path should not disappear into DevTools-only logging.
 - Reusing the existing desktop `toast.error(...)` pattern in those `catch` blocks is the smallest safe fix because it preserves the current local-provider test flow while finally telling the user why the button produced no sound.
+- The shared desktop TTS issue is a concrete playback-state bug: `AudioPlayer` is supposed to reflect parent-owned `audioData`, but its internal `hasAudio` flag could drift out of sync after the parent intentionally invalidated cached speech for newer text.
+- Fixing the reset semantics in `audio-player.tsx` is the smallest safe change because every current desktop TTS surface already flows through that shared component, so one local patch prevents stale/revoked blob playback without redesigning the surrounding agent-progress logic.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -587,6 +605,8 @@
 - Assumption: using the existing desktop toast pattern for sidebar `Minimize` / `Restore` failures and restoring the previous focused session on rejected `Restore` is acceptable because the action is user-initiated, the optimistic focus change should revert to the exact pre-click state on failure, and desktop already uses `sonner` to surface comparable action-level errors.
 - Assumption: surfacing toast feedback only for the rejected Kitten/Supertonic `Test Voice` actions is acceptable for this pass because mobile delegates those local-provider controls to desktop, the successful audio path is unchanged, and the concrete bug here is missing user feedback rather than provider/runtime semantics.
 - Assumption: keeping past-response TTS audio cached only within each mounted `PastResponseItem` is acceptable for this pass because the concrete bug was that generated audio was never handed back to `AudioPlayer` at all, and the desktop response-history UI already treats this compact playback state as ephemeral rather than durable session data.
+- Assumption: resetting `hasAutoPlayed` and `wasStopped` when parent `audioData` is cleared is acceptable because invalidating cached audio represents a new/no-audio source, so the next fresh generation should be allowed to auto-play under the existing desktop TTS rules instead of inheriting stop state from revoked audio.
+- Assumption: calling `audio.removeAttribute("src")` plus `audio.load()` when cached audio is cleared is acceptable because this is the standard browser-side way to flush a revoked blob URL from an `<audio>` element, and the concrete bug here was stale playback state surviving after parent invalidation.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -628,3 +648,5 @@
 - After that, decide whether summary cards should expose an upfront disabled/hint state when there is nothing durable to save, rather than relying only on post-click feedback.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.past-response-tts.test.ts` and live-verify desktop past-response playback by generating audio from a collapsed history item, replaying it, and forcing one rejected TTS request to confirm the new inline error appears.
 - After that, inspect the remaining desktop `AudioPlayer` call sites to confirm each generation path persists returned `audioData` (or otherwise rehydrates the player) instead of relying on a dropped promise result.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts` and live-verify a desktop `AgentProgress` message whose TTS source changes after an earlier playback generation to confirm the shared player returns to `Generate audio`/fresh playback state instead of replaying stale or revoked audio.
+- After that, decide whether the mid-turn `userResponse` TTS flow should add its own explicit `audioData` invalidation on source changes for extra symmetry with the completed-message path, even though the shared player now behaves correctly whenever parents do clear the cache.

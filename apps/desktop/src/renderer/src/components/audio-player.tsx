@@ -41,30 +41,56 @@ export function AudioPlayer({
   const audioUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (audioData) {
+    const audio = audioRef.current
+
+    if (!audioData) {
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current)
+        audioUrlRef.current = null
       }
 
-      const blob = new Blob([audioData], { type: "audio/wav" })
-      audioUrlRef.current = URL.createObjectURL(blob)
-      setHasAudio(true)
+      if (audio) {
+        audio.pause()
+        audio.removeAttribute("src")
+        audio.load()
+      }
+
+      setHasAudio(false)
       setHasAutoPlayed(false)
       setWasStopped(false)
-
-      if (audioRef.current) {
-        audioRef.current.src = audioUrlRef.current
-        setIsPlaying(false)
-        setCurrentTime(0)
-      }
+      setIsPlaying(false)
+      setCurrentTime(0)
+      setDuration(0)
+      onPlayStateChange?.(false)
+      return
     }
 
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current)
+      audioUrlRef.current = null
+    }
+
+    const blob = new Blob([audioData], { type: "audio/wav" })
+    audioUrlRef.current = URL.createObjectURL(blob)
+    setHasAudio(true)
+    setHasAutoPlayed(false)
+    setWasStopped(false)
+    setDuration(0)
+
+    if (audio) {
+      audio.src = audioUrlRef.current
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+  }, [audioData, onPlayStateChange])
+
+  useEffect(() => {
     return () => {
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current)
       }
     }
-  }, [audioData])
+  }, [])
 
   useEffect(() => {
     const audio = audioRef.current
