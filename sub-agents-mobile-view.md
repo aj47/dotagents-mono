@@ -5498,3 +5498,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that longer queue summaries now stay readable without making the header feel disproportionately tall.
   - Capture screenshot-backed evidence of a queue state that includes blocked, sending, and waiting counts so the new two-line summary can be judged on a real narrow viewport.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this header-summary tweak without fresh evidence.
+
+## Iteration 124 - Promote the loop profile retry action into a clearer mobile recovery CTA
+
+- Date: 2026-03-08
+- Summary: Improved `LoopEditScreen` recovery clarity on mobile by turning the saved-profile retry affordance into a full-width secondary CTA with a more explicit label.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recently touched queue/history surfaces without a fresh local issue.
+  - Re-checked `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/tests/sub-agent-edit-mobile.test.js` because the loop profile section still had a source-backed mobile recovery path that had not been revisited recently.
+  - Confirmed the current saved-profile failure notice still used a short, left-aligned `Retry profiles` button even though nearby recovery actions in the edit flows already use full-width notice CTAs.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains unavailable.
+  - Reconfirmed the blocker before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed affordance review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `LoopEditScreen` already surfaced profile refresh failures locally inside the `Agent Profile` section and kept `No profile` available as the safe fallback.
+  - The only in-place recovery action under that warning was still a compact, left-aligned `Retry profiles` button.
+  - On a narrow mobile form, that made the main next step easier to miss beneath the longer warning copy and less consistent with the full-width notice actions already used elsewhere in the sub-agent edit flow.
+- Issue identified:
+  - The loop profile error state explained the problem, but its recovery affordance still looked secondary and easy to overlook on mobile.
+- Decision and rationale:
+  - Keep the existing warning copy, retry behavior, and profile-state rules unchanged.
+  - Do not redesign the `Agent Profile` section or add another notice while live validation is blocked.
+  - Make the smallest local fix instead: promote the retry action into the same full-width, centered mobile CTA pattern already used by adjacent edit-flow notices and clarify the label so the button reads as a profile-specific recovery step.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - rename the visible retry CTA from `Retry profiles` to `Retry Saved Profiles`,
+    - stretch the retry button to the full notice width,
+    - center the button content and give the border a subtle primary tint so it reads more like an intentional recovery action than a small inline chip.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new label and full-width/mobile-centered retry-button styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed the retry path should visually match other mobile notice actions because this failure state is asking the user to take a specific recovery step, not make a low-priority secondary choice.
+  - Kept the change scoped to the retry button instead of altering the surrounding warning copy or chip layout, minimizing layout risk without live screenshots.
+  - This remains a source-backed improvement and still needs live confirmation that the taller full-width CTA feels balanced within the warning notice on narrow devices.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The full loop profile notice stack still needs screenshot-backed review overall now that loading, stale-state, missing-profile, create-agent, and retry recovery paths have all evolved without fresh Expo confirmation in this worktree.
+  - The `Retry Saved Profiles` CTA should be live-checked after a failed return refresh to confirm it remains easy to notice above the keyboard and beside the still-enabled `No profile` chip.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the promoted retry CTA is comfortably tappable and visually balanced within the `Agent Profile` warning notice.
+  - Capture screenshot-backed evidence of a failed saved-profile refresh so the new full-width recovery action can be judged in context with the disabled stale chips and the `No profile` fallback.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this retry-action tweak without fresh evidence.

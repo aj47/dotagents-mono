@@ -586,7 +586,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
             accessibilityHint="Attempts to load saved profiles for this loop again."
             activeOpacity={0.7}
           >
-            <Text style={styles.profileNoticeRetryButtonText}>Retry profiles</Text>
+            <Text style={styles.profileNoticeRetryButtonText}>Retry Saved Profiles</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -743,16 +743,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     profileNoticeRetryButton: {
       ...noticeActionTouchTarget,
-      alignSelf: 'flex-start',
+      alignSelf: 'stretch',
       borderRadius: radius.md,
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: theme.colors.primary + '26',
       backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     profileNoticeRetryButtonText: {
       fontSize: 13,
       fontWeight: '600',
       color: theme.colors.primary,
+      textAlign: 'center',
     },
     profileNoticeActionButton: {
       ...noticeActionTouchTarget,
