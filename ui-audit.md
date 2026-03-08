@@ -1,5 +1,50 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 47: Desktop Memories load failures fall through to a false empty state
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/memories.tsx` (top-level Memories query state handling)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided redoing the just-fixed title truncation work as a generic follow-up and instead focused on a fresh, high-impact nearby state path on the same screen. The currently mounted memories data was sparse for metadata/key-findings follow-ups, but the page-level load/error handling was still unlogged and could mislead users much more severely than a small spacing issue.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid duplicating a recently investigated surface without a clear follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `README.md`, `DEVELOPMENT.md`, and renderer `AGENTS.md` to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check guidance
+  - inspected the live `Memories` surface around `800×670` and confirmed there was no stronger fresh clipping/overflow issue than the missing error-state treatment in the currently reachable data set
+  - traced the mounted page state back to `apps/desktop/src/renderer/src/pages/memories.tsx` and confirmed the list rendering had a loading branch and an empty branch but no dedicated `memoriesQuery.isError` branch
+  - visually prototyped the exact new error panel treatment in a browser session using the source classes/content so the UI treatment could be checked in-context without pretending the other worktree’s running bundle had rebuilt from this checkout; screenshots: `tmp/ui-audit/memories-error-prototype-800x670.png`, `tmp/ui-audit/memories-error-prototype-800x670-zoom125.png`
+  - cross-checked mobile and kept this desktop-only: mobile memory management lives in `apps/mobile/src/screens/SettingsScreen.tsx`, not this React Query-driven desktop `Memories` page
+
+#### Findings
+
+- Before the fix, the desktop `Memories` page had one concrete state-handling issue with clear user impact:
+  - `const memories = memoriesQuery.data || []` plus the existing render branches meant a failed initial load could fall through to the same `No memories yet` empty-state copy shown for a truly empty library
+  - that conflates two very different conditions: `you have no saved memories` vs `DotAgents failed to read them`
+  - for a knowledge-base screen, showing a false empty state is materially misleading because it can make users think memories were lost or deleted when the actual problem is a transient load failure
+
+#### Changes made
+
+- Hardened the page-level list state in `apps/desktop/src/renderer/src/pages/memories.tsx` with the smallest effective fix:
+  - inserted a dedicated `memoriesQuery.isError` branch before the empty-state branch so failed loads no longer masquerade as an empty library
+  - added a compact inline error panel with clear recovery copy (`Couldn't load memories`) and an explicit retry action (`Retry loading memories`)
+  - wired the retry button directly to `memoriesQuery.refetch()` and disabled it while refetching so the recovery path is obvious and avoids double-submits
+- Extended `apps/desktop/src/renderer/src/pages/memories.layout.test.ts` with focused source-contract coverage for the new error-state and retry branch
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Targeted desktop typecheck attempt: `pnpm --filter @dotagents/desktop typecheck:web` *(blocked: local dependencies are missing, so the shared base tsconfig package `@electron-toolkit/tsconfig` could not be resolved)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `memoriesQuery.isError` branch, retry button label, `refetch()` wiring, and loading-disable guard are present in `memories.tsx`
+- Visual verification via DOM prototype of the exact error treatment:
+  - at `800×670`, the panel remained readable and contained with no horizontal overflow
+  - at simulated `125%` zoom, the error panel still remained fully visible and unclipped even though the overall page became vertically scrollable
+  - screenshots: `tmp/ui-audit/memories-error-prototype-800x670.png`, `tmp/ui-audit/memories-error-prototype-800x670-zoom125.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/memories.tsx apps/desktop/src/renderer/src/pages/memories.layout.test.ts`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live renderer session is not guaranteed to be serving this checkout’s edited bundle, and the plain browser route expects Electron preload APIs, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired direct source verification with an in-context DOM prototype of the exact error-state treatment.
+- Tradeoff/rationale: this adds a little more vertical chrome than the prior empty-state fallback, but that is deliberate — when the list fails to load, clarity and recovery are more important than preserving the smaller empty-state footprint.
+- Best next UI audit chunk after this one: return to `memories.tsx` for the remaining collapsed metadata row (`date + conversation title`) once a more representative populated data set is available, or move back to a fresh top-level desktop surface with an unreviewed empty/loading/error state.
+
 ### 2026-03-08 — Chunk 46: Desktop Memories list titles over-truncate under real main-window width and larger text
 
 - Area selected:

@@ -597,6 +597,29 @@ Optional notes go here (saved as userNotes).
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : memoriesQuery.isError ? (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive/80" />
+            <div className="space-y-1">
+              <h3 className="text-lg font-medium">Couldn't load memories</h3>
+              <p className="max-w-md text-sm text-muted-foreground">
+                DotAgents couldn&apos;t read the current profile&apos;s memories. Try again in a moment.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => void memoriesQuery.refetch()}
+              disabled={memoriesQuery.isFetching}
+            >
+              {memoriesQuery.isFetching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              Retry loading memories
+            </Button>
+          </div>
         ) : filteredMemories.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Brain className="h-12 w-12 text-muted-foreground/50 mb-4" />

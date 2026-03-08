@@ -35,4 +35,12 @@ describe("memories page layout", () => {
       'className={cn("shrink-0 text-[10px] px-1.5 py-0", importanceColors[memory.importance])}',
     )
   })
+
+  it("shows a dedicated error state with retry instead of falling through to the empty list copy", () => {
+    expect(memoriesSource).toContain(") : memoriesQuery.isError ? (")
+    expect(memoriesSource).toContain("Couldn't load memories")
+    expect(memoriesSource).toContain("Retry loading memories")
+    expect(memoriesSource).toContain('onClick={() => void memoriesQuery.refetch()}')
+    expect(memoriesSource).toContain('disabled={memoriesQuery.isFetching}')
+  })
 })
