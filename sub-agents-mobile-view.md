@@ -4142,3 +4142,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Review in Settings` action feels easy to tap without making the notice card too dominant.
   - Compare the missing-current-selection notice against the empty and error selector states so the new recovery action feels consistent but still appropriately secondary.
   - After live validation is restored, continue with the next highest-signal mobile sub-agent issue instead of revisiting this notice action without fresh evidence.
+
+### 2026-03-08 — Iteration 95: keep the missing-selection notice secondary once alternatives are available
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iteration 94 and its next checks
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow / install state via `apps/mobile/package.json` and focused `pnpm` commands
+- Live inspection / workflow status:
+  - Reconfirmed the same local blocker before attempting live validation:
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still failed because this worktree is missing the mobile install, `expo/tsconfig.base`, and Expo / React Native dependencies
+  - Because Expo is still unavailable here, this iteration relied on source-backed hierarchy review plus focused regression coverage rather than fresh screenshot-backed observations.
+- Current behavior observed before the fix:
+  - Iteration 94 added a direct `Review in Settings` action to the `Current agent unavailable in this list` notice.
+  - Source review showed that notice action still used a filled primary-tinted treatment similar to the selector empty/error recovery buttons, even though switchable agents were already available below.
+  - The options list also started immediately under the notice without an explicit heading, so on narrow screens the recovery action and the list could compete for attention instead of making the remaining choices feel primary.
+- Issue selected:
+  - When the current selection disappears but alternatives still exist, the notice card was carrying too much visual weight and the available-agent list lacked a clear handoff / heading.
+- Decision:
+  - Keep the new direct recovery path from Iteration 94 because it improves user control.
+  - Do not remove the notice or redesign the overall selector flow while live validation is blocked.
+  - Make the smallest hierarchy fix: downgrade the notice action to a secondary outlined style and add a compact mode-aware heading above the remaining options list.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - derive an `Available agents` / `Available main agents` heading based on selector mode,
+    - render that heading between the missing-selection notice and the `FlatList`,
+    - restyle the missing-selection `Review in Settings` action as an outlined secondary button so the still-available agents stay visually primary.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new heading and the secondary notice-button styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is still missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - This selector state still needs a real narrow-screen pass to confirm the outlined `Review in Settings` action remains discoverable while no longer overpowering the options list.
+  - The selector sheet still lacks fresh screenshot-backed validation after several targeted state-clarity iterations.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Available agents` handoff and outlined notice action improve scanability on narrow screens.
+  - Compare the updated missing-selection notice against the selector empty and error states to make sure the recovery hierarchy now feels consistent: direct help remains available, but actual switchable choices read as primary.
+  - After live validation is restored, continue with the next highest-signal local mobile sub-agent issue instead of revisiting this selector notice without fresh evidence.

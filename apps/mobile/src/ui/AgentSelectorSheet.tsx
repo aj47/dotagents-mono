@@ -181,6 +181,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const currentSelectionNoticeText = selectorMode === 'acp'
     ? 'This agent stays active until you switch. Choose one of the enabled agents below, then review Settings → Agents if this main agent should be available again.'
     : 'This agent stays active until you switch. Choose one of the available options below, then review Settings → Agents if this profile should still be switchable.';
+  const availableOptionsHeading = selectorMode === 'acp'
+    ? 'Available main agents'
+    : 'Available agents';
   const currentSelectionNoticeActionLabel = selectorMode === 'acp'
     ? 'Review main agent in Settings'
     : 'Review agent in Settings';
@@ -395,6 +398,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                 </TouchableOpacity>
               </View>
             )}
+            <Text style={styles.availableOptionsHeading}>{availableOptionsHeading}</Text>
             <FlatList
               data={orderedProfiles}
               renderItem={renderProfile}
@@ -688,15 +692,23 @@ function createStyles(theme: Theme) {
       ...actionButtonTouchTarget,
       minWidth: 180,
       borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '26',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.colors.primary + '12',
+      backgroundColor: 'transparent',
     },
     currentSelectionNoticeButtonText: {
       color: theme.colors.primary,
       fontSize: 14,
       fontWeight: '600',
       textAlign: 'center',
+    },
+    availableOptionsHeading: {
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      fontWeight: '700',
+      marginBottom: spacing.xs,
     },
     manageAgentsButton: {
       ...actionButtonTouchTarget,
