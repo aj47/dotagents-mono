@@ -3,7 +3,12 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createSwitchAccessibilityLabel } from '../lib/accessibility';
+import {
+  createButtonAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+  createSwitchAccessibilityLabel,
+  createTextInputAccessibilityLabel,
+} from '../lib/accessibility';
 import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
 import { useConfigContext } from '../store/config';
 
@@ -221,6 +226,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
     </Text>
   );
 
+  const getReadOnlyInputAccessibilityProps = (fieldName: string) => ({
+    accessibilityLabel: `${createTextInputAccessibilityLabel(fieldName)}, read only`,
+    accessibilityHint: 'Built-in agents keep this field fixed here.',
+  });
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -262,6 +272,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         onChangeText={v => updateField('displayName', v)}
         placeholder="My Agent"
         placeholderTextColor={theme.colors.mutedForeground}
+        {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Display Name') : {})}
         editable={!isBuiltInAgent}
       />
 
@@ -273,6 +284,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         placeholder="What this agent does..."
         placeholderTextColor={theme.colors.mutedForeground}
         multiline
+        {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Description') : {})}
         editable={!isBuiltInAgent}
       />
 
@@ -323,6 +335,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="node"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
+                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Command') : {})}
                 editable={!isBuiltInAgent}
               />
               {renderFieldLabel('Arguments', { readOnly: isBuiltInAgent })}
@@ -333,6 +346,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="agent.js --port 3000"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
+                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Arguments') : {})}
                 editable={!isBuiltInAgent}
               />
               {renderFieldLabel('Working Directory', { readOnly: isBuiltInAgent })}
@@ -343,6 +357,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholder="/path/to/agent"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
+                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Working Directory') : {})}
                 editable={!isBuiltInAgent}
               />
             </>
@@ -358,6 +373,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 keyboardType="url"
+                {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Base URL') : {})}
                 editable={!isBuiltInAgent}
               />
             </>
@@ -375,6 +391,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={4}
         textAlignVertical="top"
+        {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('System Prompt') : {})}
         editable={!isBuiltInAgent}
       />
 

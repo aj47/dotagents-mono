@@ -1673,3 +1673,45 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the `Enabled` row now reads as schedule pause/resume rather than an ambiguous global state.
   - After live validation returns, compare the updated loop `Enabled` row against the interval preview and profile helpers to confirm the section still scans cleanly on mobile.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 39: announce built-in locked agent fields as read-only inputs
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen` built-in read-only field treatment
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the mobile install (`expo/tsconfig.base` plus Expo / React Native packages unresolved)
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iterations 18 and 19 already made built-in fields look read-only and added inline `Read only` label cues in `AgentEditScreen`.
+  - The locked `TextInput` controls themselves still exposed no explicit built-in/read-only accessibility context, so mobile screen-reader users could still encounter them as generic inputs without hearing why editing was unavailable.
+- Issue selected:
+  - Built-in locked agent fields still lacked explicit assistive-tech context, weakening state clarity in the mobile edit flow.
+- Decision:
+  - Keep the existing built-in warning copy, visual read-only styling, and field order unchanged.
+  - Do not broaden the change to editable fields or other screens while live validation is blocked.
+  - Make the smallest local fix in `AgentEditScreen`: add explicit read-only accessibility labels/hints only to the built-in locked text inputs.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - import `createTextInputAccessibilityLabel`,
+    - derive `getReadOnlyInputAccessibilityProps(...)` for built-in locked fields,
+    - apply that read-only accessibility context to `Display Name`, `Description`, `Command`, `Arguments`, `Working Directory`, `Base URL`, and `System Prompt` when the agent is built-in.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new read-only input semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The new read-only input semantics still need a real narrow-screen and screen-reader pass once Expo Web or a simulator is available again.
+  - If live validation later shows the repeated `Read only` cue plus the spoken hint feels redundant, the wording may need tightening — but only with evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that built-in locked fields now announce their read-only state clearly alongside the visible `Read only` cues.
+  - After live validation returns, confirm the added spoken hint helps more than it repeats, especially when scrolling through multiple locked built-in fields.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

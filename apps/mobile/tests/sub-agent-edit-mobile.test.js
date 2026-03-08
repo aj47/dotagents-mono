@@ -36,6 +36,18 @@ test('AgentEditScreen makes built-in read-only fields look passive instead of ed
   assert.match(agentEditSource, /connectionTypeTextReadOnly:\s*\{[\s\S]*?color:\s*theme\.colors\.mutedForeground/);
 });
 
+test('AgentEditScreen gives built-in read-only text inputs explicit accessibility context', () => {
+  assert.match(agentEditSource, /createTextInputAccessibilityLabel/);
+  assert.match(agentEditSource, /const getReadOnlyInputAccessibilityProps = \(fieldName: string\) => \(\{[\s\S]*?accessibilityLabel: `\$\{createTextInputAccessibilityLabel\(fieldName\)\}, read only`[\s\S]*?accessibilityHint: 'Built-in agents keep this field fixed here\.'/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('Display Name'\)/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('Description'\)/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('Command'\)/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('Arguments'\)/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('Working Directory'\)/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('Base URL'\)/);
+  assert.match(agentEditSource, /getReadOnlyInputAccessibilityProps\('System Prompt'\)/);
+});
+
 test('LoopEditScreen makes profile chips mobile-sized buttons with selected-state semantics', () => {
   assert.match(loopEditSource, /createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(loopEditSource, /profileOption:\s*\{[\s\S]*?\.\.\.selectionChipTouchTarget/);
