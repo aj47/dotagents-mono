@@ -161,15 +161,26 @@ export function ResponseHistoryPanel({
     Speech.speak(processedText, speechOptions);
   };
 
-  const formatTime = (timestamp: number) => {
+  const formatTime = (timestamp: number, includeSeconds = true) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      ...(includeSeconds ? { second: '2-digit' } : {}),
+    });
   };
 
   // Track previous responses count to detect newly added entries.
   const prevCountRef = useRef(responses.length);
   const newestTimestamp = responses.length > 0 ? Math.max(...responses.map((r) => r.timestamp)) : null;
   const shouldAnimateNewest = responses.length > prevCountRef.current;
+  const responseCountLabel = responses.length === 1 ? '1 response' : `${responses.length} responses`;
+  const headerStatusText = speakingIndex !== null
+    ? 'Speaking now'
+    : newestTimestamp
+      ? `Latest ${formatTime(newestTimestamp, false)}`
+      : 'No responses yet';
+  const responseHistoryDisclosureLabel = `${createExpandCollapseAccessibilityLabel('agent responses', !isCollapsed)}. ${responseCountLabel}. ${headerStatusText}.`;
 
   useEffect(() => {
     prevCountRef.current = responses.length;
@@ -198,11 +209,25 @@ export function ResponseHistoryPanel({
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+      flex: 1,
+      minWidth: 0,
+    },
+    headerTitleGroup: {
+      flex: 1,
+      minWidth: 0,
+    },
+    headerTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
     },
     headerTitle: {
       fontSize: 14,
       fontWeight: '500',
       color: theme.colors.foreground,
+      flexShrink: 1,
+      minWidth: 0,
     },
     badge: {
       backgroundColor: theme.colors.primary,
@@ -217,6 +242,16 @@ export function ResponseHistoryPanel({
       fontSize: 11,
       fontWeight: '600',
       color: theme.colors.primaryForeground,
+    },
+    headerStatusText: {
+      marginTop: 2,
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      lineHeight: 16,
+    },
+    headerStatusTextActive: {
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     list: {
       maxHeight: 300,
@@ -255,16 +290,27 @@ export function ResponseHistoryPanel({
         style={styles.header}
         onPress={() => setIsCollapsed((prev) => !prev)}
         accessibilityRole="button"
-        accessibilityLabel={createExpandCollapseAccessibilityLabel('agent responses', !isCollapsed)}
+        accessibilityLabel={responseHistoryDisclosureLabel}
         accessibilityHint={responseHistoryDisclosureHint}
         accessibilityState={{ expanded: !isCollapsed }}
         activeOpacity={0.7}
       >
         <View style={styles.headerLeft}>
           <Ionicons name="chatbubbles-outline" size={16} color={theme.colors.mutedForeground} />
-          <Text style={styles.headerTitle}>Agent Responses</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{responses.length}</Text>
+          <View style={styles.headerTitleGroup}>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">Agent Responses</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{responses.length}</Text>
+              </View>
+            </View>
+            <Text
+              style={[styles.headerStatusText, speakingIndex !== null && styles.headerStatusTextActive]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {headerStatusText}
+            </Text>
           </View>
         </View>
         <Ionicons

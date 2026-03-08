@@ -3527,3 +3527,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the response-history disclosure and speak/stop controls are comfortably tappable at narrow widths.
   - Confirm the active playback tint reads clearly without overpowering timestamps or markdown content.
   - If live validation still shows response-history friction, evaluate whether the next smallest improvement is a clearer inline `Speaking` cue or tighter vertical spacing rather than another control-only pass.
+
+### 2026-03-08 — Iteration 81: surface response-history freshness in the collapsed mobile header
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/ResponseHistoryPanel.tsx`
+  - focused mobile coverage in `apps/mobile/tests/response-history-panel-mobile.test.js`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo Web attempt again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the `ResponseHistoryPanel` disclosure header still rendered only `Agent Responses` plus a numeric badge.
+  - In the collapsed state, mobile users could tell that responses existed but not whether they were recent or whether playback was currently active without expanding the panel.
+- Issue selected:
+  - The collapsed response-history header hid the most useful activity signal, weakening state clarity for sub-agent outputs on mobile.
+- Decision:
+  - Keep the panel layout, badge count, and playback behavior unchanged.
+  - Do not redesign the response-history stack while live validation is blocked.
+  - Make the smallest local fix: add a single-line status summary in the header and mirror that summary in the disclosure accessibility label.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - derive a compact header status line (`Latest HH:MM` or `Speaking now`),
+    - render that status under the header title with truncation-safe mobile layout,
+    - include the response count and status summary in the disclosure accessibility label.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new header summary and accessibility contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new header summary reads clearly without crowding the badge or chevron.
+  - The per-response row timestamps still use second-level precision, so they may still feel denser than necessary on narrow screens if live validation shows continued crowding.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed header summary stays legible at narrow widths in both idle and active playback states.
+  - If live validation still shows the response-history rows feeling dense, decide whether compacting the per-response timestamps is the next smallest readability win.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this header summary without new evidence.
