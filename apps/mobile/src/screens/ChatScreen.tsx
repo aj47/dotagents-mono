@@ -298,6 +298,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
+  const [isComposerSubmitPending, setIsComposerSubmitPending] = useState(false);
 
   const refreshAgentSelectorAvailability = useCallback(async () => {
     if (!config.baseUrl || !config.apiKey) {
@@ -339,6 +340,7 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
   const activeRequestIdRef = useRef<number>(0);
+  const composerSubmitInFlightRef = useRef(false);
 
   // Stable ref for current session ID to avoid stale closures in callbacks
   // This fixes the issue where useSessions() returns a new object each render
@@ -2203,12 +2205,34 @@ export default function ChatScreen({ route, navigation }: any) {
 	});
 
   const composerHasContent = input.trim().length > 0 || pendingImages.length > 0;
+  const isComposerSendDisabled = !composerHasContent || isComposerSubmitPending;
+
+  const releaseComposerSubmitGuard = useCallback(() => {
+    composerSubmitInFlightRef.current = false;
+    setIsComposerSubmitPending(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isComposerSubmitPending) return;
+    if (responding || !composerHasContent) {
+      releaseComposerSubmitGuard();
+    }
+  }, [composerHasContent, isComposerSubmitPending, releaseComposerSubmitGuard, responding]);
 
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
-    if (!composedMessage.trim()) return;
+    if (!composedMessage.trim() || composerSubmitInFlightRef.current) return;
+
+    const isQueueingWhileBusy = messageQueueEnabled && responding;
+    if (!isQueueingWhileBusy && !getSessionClient()) {
+      void send(composedMessage, { fromComposer: true });
+      return;
+    }
+
+    composerSubmitInFlightRef.current = true;
+    setIsComposerSubmitPending(true);
     void send(composedMessage, { fromComposer: true });
-  }, [input, pendingImages, send]);
+  }, [getSessionClient, input, messageQueueEnabled, pendingImages, responding, send]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -3424,14 +3448,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	              </Text>
 	            )}
 	            <TouchableOpacity
-	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
+		              style={[styles.sendButton, isComposerSendDisabled && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
-	              disabled={!composerHasContent}
+		              disabled={isComposerSendDisabled}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Send message')}
 	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
-              accessibilityState={{ disabled: !composerHasContent }}
+	              accessibilityState={{ disabled: isComposerSendDisabled }}
 	            >
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>

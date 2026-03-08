@@ -9,9 +9,19 @@ const screenSource = fs.readFileSync(
 );
 
 test('exposes the chat composer send control as an accessible button', () => {
+  assert.match(screenSource, /const isComposerSendDisabled = !composerHasContent \|\| isComposerSubmitPending;/);
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Send message'\)\}/);
   assert.match(screenSource, /accessibilityHint="Sends your typed text and any attached images to the selected agent\."/);
-  assert.match(screenSource, /accessibilityState=\{\{ disabled: !composerHasContent \}\}/);
+  assert.match(screenSource, /accessibilityState=\{\{ disabled: isComposerSendDisabled \}\}/);
+  assert.match(screenSource, /disabled=\{isComposerSendDisabled\}/);
+});
+
+test('guards the composer send flow during startup so rapid repeat submits do not duplicate-send', () => {
+  assert.match(screenSource, /const \[isComposerSubmitPending, setIsComposerSubmitPending\] = useState\(false\);/);
+  assert.match(screenSource, /const composerSubmitInFlightRef = useRef\(false\);/);
+  assert.match(screenSource, /if \(!composedMessage\.trim\(\) \|\| composerSubmitInFlightRef\.current\) return;/);
+  assert.match(screenSource, /composerSubmitInFlightRef\.current = true;[\s\S]*?setIsComposerSubmitPending\(true\);[\s\S]*?void send\(composedMessage, \{ fromComposer: true \}\);/);
+  assert.match(screenSource, /if \(responding \|\| !composerHasContent\) \{[\s\S]*?releaseComposerSubmitGuard\(\);/);
 });
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {

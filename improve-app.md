@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile ChatScreen primary composer submission resilience in `apps/mobile/src/screens/ChatScreen.tsx`, with `apps/mobile/src/store/message-queue.ts` and `apps/mobile/tests/chat-composer-accessibility.test.js` reviewed for queue/startup-guard context.
 - 2026-03-08: Mobile memories action discoverability / accessibility in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/screens/MemoryEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts` reviewed for edit-flow context.
 - 2026-03-08: Mobile connection status / verification UX in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/src/store/tunnelConnection.ts`, and `apps/mobile/src/ui/ConnectionStatusIndicator.tsx`.
 - 2026-03-08: Shared shell-command parsing / formatting reliability for desktop MCP stdio server configuration in `packages/shared/src/shell-parse.ts`, `apps/desktop/src/shared/shell-parse.ts`, and `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`.
@@ -20,6 +21,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Mobile ChatScreen composer now blocks the rapid double-submit race during send startup, so fast repeat taps / modifier-enter submits no longer slip duplicate sends through before `responding` catches up.
 - 2026-03-08: Mobile memories rows now show a visible inline `Edit` affordance, expose explicit edit/delete accessibility semantics, use a mobile-sized delete tap target, and name the memory being deleted in the confirmation prompt.
 - 2026-03-08: Mobile connection surfaces now reflect actual tunnel connection state (checking, reconnecting, failed, disconnected) instead of showing a misleading generic “Connected” whenever credentials are merely saved.
 - 2026-03-08: Desktop MCP stdio server command editing/testing now round-trips quoted paths, escaped spaces, empty args, and Windows-style paths safely via shared shell-command formatting/parsing guardrails.
@@ -31,6 +33,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/chat-composer-accessibility.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test apps/mobile/tests/settings-memory-actions-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test apps/mobile/tests/connection-settings-validation.test.js apps/mobile/tests/settings-connection-card-mobile.test.js`
@@ -53,11 +57,43 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Mobile ChatScreen primary composer submission resilience
+- Desktop follow-up composer send-error feedback / retry clarity
 
 ### Next Highest-Value Targets
-- Inspect mobile ChatScreen primary composer submission resilience for duplicate-send or draft-loss gaps without overlapping the recent settings/memories passes
+- Inspect desktop follow-up composers for clearer send-error feedback / recovery without overlapping the recent mobile ChatScreen send-guard pass
 - Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Mobile ChatScreen composer startup duplicate-submit guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile primary chat composer in `apps/mobile/src/screens/ChatScreen.tsx`
+  - reviewed queue interaction in `apps/mobile/src/store/message-queue.ts`
+  - reviewed focused source-level coverage in `apps/mobile/tests/chat-composer-accessibility.test.js`
+- Why it was chosen:
+  - the ledger explicitly called out mobile ChatScreen primary composer resilience as the next fresh area that had not been investigated recently
+  - this is a core product flow, and the mobile composer can submit from both the Send button and keyboard shortcuts, so accidental duplicate sends have immediate user impact
+  - the source showed the same startup race previously fixed on desktop: rapid repeat submits could call `sendComposerInput()` twice before `responding` re-rendered
+- What was inspected:
+  - `apps/mobile/src/screens/ChatScreen.tsx` send startup path, keyboard-submit handling, and send-button disabled state
+  - `apps/mobile/src/store/message-queue.ts` to confirm intentional follow-up queueing should still work after the first send starts
+  - `apps/mobile/tests/chat-composer-accessibility.test.js` for the existing lightweight mobile source-level regression harness
+  - live product inspection was still not practical in this workspace because earlier checks already established mobile dependencies are missing (`node_modules` absent / Expo unavailable), so this pass relied on source inspection plus targeted regression checks
+- Improvement made:
+  - added a narrow local composer-submit startup guard (`isComposerSubmitPending` + ref) so rapid repeat taps / modifier-enter submits cannot trigger duplicate sends before React updates `responding`
+  - the Send button now disables immediately during startup and exposes that disabled state through accessibility APIs, not just after the later `responding` render arrives
+  - the guard automatically releases once the composer content clears or the request enters the normal responding state, so intentional later queueing while the agent is busy still remains available
+  - added focused regression coverage in `apps/mobile/tests/chat-composer-accessibility.test.js`
+- Assumptions / tradeoffs / rationale:
+  - scoped the fix to the primary composer path rather than changing voice-send callbacks in the same pass, because the concrete duplicate-send window here was the visible touch / keyboard composer path
+  - used a short-lived startup guard instead of disabling the composer for the entire response lifecycle so the existing queued-message behavior is preserved
+  - reused the existing disabled-button styling/accessibility pattern instead of adding a new loading treatment, keeping the change small and low-risk
+- Tests / verification:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once mobile dependencies are available again, live-check rapid send taps and modifier-enter on Expo Web / device to confirm the control disables promptly but still re-enables for intentional queued follow-up messages
+  - inspect desktop follow-up composer send-error feedback / retry clarity for the next non-overlapping improvement
 
 ### 2026-03-08 — Mobile memories action discoverability and accessibility
 - Date:
