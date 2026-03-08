@@ -52,6 +52,7 @@ import {
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "../shared/message-display-utils"
 import { formatTerminalErrorMessage } from "./error-utils"
+import { isWaitingOnUserActionResponse } from "./user-action-blocker"
 
 /**
  * Clean error message by removing stack traces and noise
@@ -1344,6 +1345,8 @@ Return ONLY JSON per schema.`,
     skipPostVerifySummary: boolean
     /** Whether completion was forced due verification limit */
     forcedByLimit: boolean
+    /** Whether the current run should stop because it is waiting on the user's next action */
+    stoppedForUserAction?: boolean
     /** Optional details about missing deliverables when forced incomplete */
     incompleteDetails?: IncompleteTaskDetails
   }
@@ -1467,6 +1470,24 @@ Return ONLY JSON per schema.`,
       typeof verification?.reason === "string" && verification.reason.trim().length > 0
         ? verification.reason.trim()
         : ""
+    const blockerCandidate = getSessionUserResponse(currentSessionId) || finalContent
+
+    if (isWaitingOnUserActionResponse(blockerCandidate)) {
+      verifyStep.status = "error"
+      verifyStep.description = "Waiting on user action - ending current run"
+      return {
+        shouldContinue: false,
+        isComplete: false,
+        newFailCount,
+        skipPostVerifySummary: true,
+        forcedByLimit: false,
+        stoppedForUserAction: true,
+        incompleteDetails: {
+          reason: verificationReason || "Further progress requires user action before the agent can continue.",
+          missingItems,
+        },
+      }
+    }
 
     if (newFailCount >= VERIFICATION_FAIL_LIMIT) {
       verifyStep.status = "error"
@@ -2033,6 +2054,7 @@ Return ONLY JSON per schema.`,
           (config.mcpFinalSummaryEnabled === false) ||
           (noToolsCalledYet && isDeliverableResponse(finalContent))
         let completionForcedByVerificationLimit = false
+        let completionStoppedForUserAction = false
         let completionForcedIncompleteDetails: IncompleteTaskDetails | undefined
 
         if (config.mcpVerifyCompletionEnabled) {
@@ -2062,6 +2084,7 @@ Return ONLY JSON per schema.`,
           )
           verificationFailCount = result.newFailCount
           completionForcedByVerificationLimit = result.forcedByLimit
+          completionStoppedForUserAction = result.stoppedForUserAction === true
           completionForcedIncompleteDetails = result.incompleteDetails
           if (result.skipPostVerifySummary) {
             skipPostVerifySummary = true
@@ -2101,18 +2124,28 @@ Return ONLY JSON per schema.`,
           }
         }
 
-        if (completionForcedByVerificationLimit && !existingUserResponse1?.trim().length) {
+        if (
+          completionForcedByVerificationLimit &&
+          !completionStoppedForUserAction &&
+          !existingUserResponse1?.trim().length
+        ) {
           finalContent = buildIncompleteTaskFallback(finalContent, completionForcedIncompleteDetails)
           addMessage("assistant", finalContent)
         }
 
         const completionStep = createProgressStep(
           "completion",
-          completionForcedByVerificationLimit ? "Task incomplete" : "Task completed",
-          completionForcedByVerificationLimit
+          completionStoppedForUserAction
+            ? "Waiting on user action"
+            : completionForcedByVerificationLimit
+              ? "Task incomplete"
+              : "Task completed",
+          completionStoppedForUserAction
+            ? "Run ended after handing control back to the user"
+            : completionForcedByVerificationLimit
             ? "Verification did not confirm completion before retry limit"
             : "Successfully completed the requested task",
-          completionForcedByVerificationLimit ? "error" : "completed",
+          completionStoppedForUserAction || completionForcedByVerificationLimit ? "error" : "completed",
         )
         progressSteps.push(completionStep)
 
@@ -2804,52 +2837,54 @@ Return ONLY JSON per schema.`,
       }
 
 
-	      // Optional verification before completing after tools
-	      // Track if we should skip post-verify summary (when agent is repeating itself or disabled)
-	      let skipPostVerifySummary2 = config.mcpFinalSummaryEnabled === false
-	      let completionForcedByVerificationLimit2 = false
-	      let completionForcedIncompleteDetails2: IncompleteTaskDetails | undefined
+		      // Optional verification before completing after tools
+		      // Track if we should skip post-verify summary (when agent is repeating itself or disabled)
+		      let skipPostVerifySummary2 = config.mcpFinalSummaryEnabled === false
+		      let completionForcedByVerificationLimit2 = false
+		      let completionStoppedForUserAction2 = false
+		      let completionForcedIncompleteDetails2: IncompleteTaskDetails | undefined
 
-	      if (config.mcpVerifyCompletionEnabled) {
-	        const verifyStep = createProgressStep(
-	          "thinking",
-	          "Verifying completion",
-	          "Checking that the user's request has been achieved",
-	          "in_progress",
-	        )
-	        progressSteps.push(verifyStep)
-	        emit({
-	          currentIteration: iteration,
-	          maxIterations,
-	          steps: progressSteps.slice(-3),
-	          isComplete: false,
-	          conversationHistory: formatConversationForProgress(conversationHistory),
-	        })
+		      if (config.mcpVerifyCompletionEnabled) {
+		        const verifyStep = createProgressStep(
+		          "thinking",
+		          "Verifying completion",
+		          "Checking that the user's request has been achieved",
+		          "in_progress",
+		        )
+		        progressSteps.push(verifyStep)
+		        emit({
+		          currentIteration: iteration,
+		          maxIterations,
+		          steps: progressSteps.slice(-3),
+		          isComplete: false,
+		          conversationHistory: formatConversationForProgress(conversationHistory),
+		        })
 
-	        const result = await runVerificationAndHandleResult(
-	          finalContent,
-	          verifyStep,
-	          verificationFailCount
-	        )
-	        verificationFailCount = result.newFailCount
-	        completionForcedByVerificationLimit2 = result.forcedByLimit
-	        completionForcedIncompleteDetails2 = result.incompleteDetails
-	        if (result.skipPostVerifySummary) {
-	          skipPostVerifySummary2 = true
-	        }
+		        const result = await runVerificationAndHandleResult(
+		          finalContent,
+		          verifyStep,
+		          verificationFailCount,
+		        )
+		        verificationFailCount = result.newFailCount
+		        completionForcedByVerificationLimit2 = result.forcedByLimit
+		        completionStoppedForUserAction2 = result.stoppedForUserAction === true
+		        completionForcedIncompleteDetails2 = result.incompleteDetails
+		        if (result.skipPostVerifySummary) {
+		          skipPostVerifySummary2 = true
+		        }
 
-	        // Check if stop was requested during verification
-	        if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
-	          logLLM(`Agent session ${currentSessionId} stopped during verification`)
-	          finalizeEmergencyStop(progressSteps.slice(-3))
-	          break
-	        }
+		        // Check if stop was requested during verification
+		        if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
+		          logLLM(`Agent session ${currentSessionId} stopped during verification`)
+		          finalizeEmergencyStop(progressSteps.slice(-3))
+		          break
+		        }
 
-	        if (result.shouldContinue) {
-	          noOpCount = 0
-	          continue
-	        }
-	      }
+		        if (result.shouldContinue) {
+		          noOpCount = 0
+		          continue
+		        }
+		      }
 
         // Post-verify: produce a concise final summary for the user
         // Skip when forced incomplete - the fallback message below will be the only assistant message
@@ -2889,7 +2924,12 @@ Return ONLY JSON per schema.`,
 	          }
 	        }
 
-	      if (completionForcedByVerificationLimit2 && !respondToUserAlreadyInHistory && !existingUserResponse2?.trim().length) {
+		      if (
+		        completionForcedByVerificationLimit2 &&
+		        !completionStoppedForUserAction2 &&
+		        !respondToUserAlreadyInHistory &&
+		        !existingUserResponse2?.trim().length
+		      ) {
 	        finalContent = buildIncompleteTaskFallback(finalContent, completionForcedIncompleteDetails2)
 	        conversationHistory.push({ role: "assistant", content: finalContent, timestamp: Date.now() })
 	      }
@@ -2898,11 +2938,17 @@ Return ONLY JSON per schema.`,
 	      // Add completion step
 	      const completionStep = createProgressStep(
 	        "completion",
-	        completionForcedByVerificationLimit2 ? "Task incomplete" : "Task completed",
-	        completionForcedByVerificationLimit2
+		        completionStoppedForUserAction2
+		          ? "Waiting on user action"
+		          : completionForcedByVerificationLimit2
+		            ? "Task incomplete"
+		            : "Task completed",
+		        completionStoppedForUserAction2
+		          ? "Run ended after handing control back to the user"
+		          : completionForcedByVerificationLimit2
 	          ? "Verification did not confirm completion before retry limit"
 	          : "Successfully completed the requested task with summary",
-	        completionForcedByVerificationLimit2 ? "error" : "completed",
+		        completionStoppedForUserAction2 || completionForcedByVerificationLimit2 ? "error" : "completed",
 	      )
       progressSteps.push(completionStep)
 

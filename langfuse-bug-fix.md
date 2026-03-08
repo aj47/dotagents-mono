@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772915850389_hzuikwa8l | session_1772915850391_hzuikwa8l | fix implemented (verification blocked) | User asked `can you check my Claude usage stats`; the run correctly told them manual Google login was required, but verification kept treating the request as unfinished, so the loop continued through more browser/login attempts and Langfuse still ended with `output: null`. Root repo issue found: verification had no terminal handoff path for deliverable responses that were explicitly waiting on user action. |
 | 2026-03-08 | conv_1772432432747_7ibvlw0k0 | session_1772432432218_cdjv7gyla | fix implemented (verification blocked) | User clarified `I meant Claude Code by Anthropic.`; the run hit max iterations and Langfuse `output` ended as stale progress text (`Let me search for the correct URL and browse to it.`) plus a timeout note instead of a real blocker/partial-result summary. Root repo issue found: max-iteration finalization trusted the latest assistant text even when it was only an in-progress status update. |
 | 2026-03-08 | conv_1772942234347_xyec3dx8u | session_1772942234349_piwpgovtd | fix implemented | User asked `What should I do`; the trace contained the right guidance but `output` was raw pseudo-tool text starting with `[respond_to_user] { ... }` instead of the clean user-facing answer. Root repo issue found: final output helpers preserved pseudo-tool wrappers when the model wrote them as plain assistant text instead of making a native tool call. |
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
@@ -192,12 +193,47 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - verified the new helper path unwraps pseudo `[respond_to_user] { "text": ... }` content into plain final text
   - verified pseudo `respond_to_user` image payloads are rendered into markdown image links
 
+### 2026-03-08 — Verification loop should stop when a run is explicitly waiting on user action
+
+- Langfuse evidence reviewed:
+  - `conv_1772915850389_hzuikwa8l` / `session_1772915850391_hzuikwa8l`
+  - user input: `can you check my Claude usage stats`
+  - trace outcome: `output: null` after 73 observations even though the run had already produced deliverable blocker handoff text like `Please log in manually in the debug Chrome window, then let me know and I'll pull up your usage stats.`
+  - the same trace later showed repeated browser/login attempts, a `mark_work_complete` span, multiple `respond_to_user` spans, and verifier outputs saying the task was incomplete because the stats had not been retrieved yet
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` funnels completion candidates through `runVerificationAndHandleResult(...)`
+  - when verification failed, the only terminal branches were `continue iterating` or `force incomplete after retry limit`
+  - there was no branch for a valid user-facing blocker handoff where the current run should end and wait for the user's next action instead of continuing the same loop
+- Concrete root cause:
+  - verification logic treated `waiting on user action` responses the same as ordinary incomplete work
+  - this caused futile extra iterations after a correct handoff (for example manual login / approval / permission steps), which could blank the trace output again even though the user had already been told what to do next
+- Fix implemented:
+  - `apps/desktop/src/main/user-action-blocker.ts`
+    - added `isWaitingOnUserActionResponse()` to detect explicit handoff responses that ask the user to complete a manual step and report back
+  - `apps/desktop/src/main/llm.ts`
+    - extended verification results with a `stoppedForUserAction` path
+    - when verification fails but the current deliverable is clearly waiting on user action, end the run immediately instead of continuing the loop
+    - preserve the blocker handoff text as the final content rather than replacing it with a generic incomplete fallback
+    - label the completion step as `Waiting on user action` so the progress state matches the run outcome
+  - tests added/updated:
+    - `apps/desktop/src/main/llm.test.ts`
+      - added a regression test covering a blocker response that should stop after verification instead of spinning for more iterations
+- Targeted verification attempted:
+  - `pnpm --filter @dotagents/desktop test:run -- src/main/llm.test.ts`
+- Result:
+  - blocked by missing local desktop dependencies / `node_modules`
+  - exact blocker: shared-package pretest failed with `sh: tsup: command not found` and pnpm warned that local `node_modules` are missing in this worktree
+- Dependency-free sanity check completed:
+  - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts apps/desktop/src/main/user-action-blocker.ts langfuse-bug-fix.md`
+  - result: passed with exit code `0`
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
+- Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

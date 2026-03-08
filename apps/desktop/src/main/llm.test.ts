@@ -7,13 +7,14 @@ const defaultConfig = {
 }
 const mockConfigGet = vi.fn(() => ({ ...defaultConfig }))
 const mockStreamingCall = vi.fn()
+const mockVerifyCompletion = vi.fn()
 const mockEndAgentTrace = vi.fn()
 
 vi.mock("./config", () => ({
   configStore: { get: mockConfigGet },
 }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
-vi.mock("./llm-fetch", () => ({ makeLLMCallWithFetch: vi.fn(), makeTextCompletionWithFetch: vi.fn(), verifyCompletionWithFetch: vi.fn(), makeLLMCallWithStreamingAndTools: mockStreamingCall }))
+vi.mock("./llm-fetch", () => ({ makeLLMCallWithFetch: vi.fn(), makeTextCompletionWithFetch: vi.fn(), verifyCompletionWithFetch: mockVerifyCompletion, makeLLMCallWithStreamingAndTools: mockStreamingCall }))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "prompt") }))
 vi.mock("./state", () => ({ state: { shouldStopAgent: false, agentIterationCount: 0 }, agentSessionStateManager: { shouldStopSession: vi.fn(() => false), getSessionProfileSnapshot: vi.fn(() => undefined), createSession: vi.fn(), startSessionRun: vi.fn(() => 1), updateIterationCount: vi.fn(), cleanupSession: vi.fn() } }))
 vi.mock("./debug", () => ({ isDebugLLM: vi.fn(() => false), isDebugTools: vi.fn(() => false), logLLM: vi.fn(), logTools: vi.fn() }))
@@ -32,6 +33,7 @@ describe("processTranscriptWithAgentMode", () => {
     vi.clearAllMocks()
     mockConfigGet.mockReturnValue({ ...defaultConfig })
     mockStreamingCall.mockReset()
+    mockVerifyCompletion.mockReset()
     mockEndAgentTrace.mockReset()
   })
 
@@ -141,5 +143,49 @@ describe("processTranscriptWithAgentMode", () => {
     expect(result.content).toContain("The correct URL is https://claude.ai/code.")
     expect(result.content).toContain("Task may not be fully complete - reached maximum iteration limit")
     expect(result.content).not.toContain("Let me browse to it now")
+  })
+
+  it("stops the run when verification fails but the response is waiting on user action", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    const blockerText = "Please log in manually in the debug Chrome window, then let me know and I'll pull up your usage stats."
+
+    clearSessionUserResponse("session-user-action-blocker")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall.mockResolvedValue({
+      content: blockerText,
+      toolCalls: [],
+    })
+    mockVerifyCompletion.mockResolvedValue({
+      isComplete: false,
+      confidence: 0.9,
+      missingItems: ["Claude usage stats were not retrieved"],
+      reason: "The agent cannot continue until the user completes the required manual login step.",
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "can you check my Claude usage stats",
+      [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      4,
+      [],
+      "conv-user-action-blocker",
+      "session-user-action-blocker",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(blockerText)
+    expect(mockVerifyCompletion).toHaveBeenCalledTimes(1)
+    expect(mockStreamingCall).toHaveBeenCalledTimes(3)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-user-action-blocker",
+      expect.objectContaining({ output: blockerText }),
+    )
   })
 })
