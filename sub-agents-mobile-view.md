@@ -1,5 +1,44 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 152 - Point empty profile-mode recovery toward the actual mobile profile controls
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-touched disabled-agent preview and selector recovery wording without a new issue.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx`, `apps/mobile/src/screens/SettingsScreen.tsx`, and `apps/mobile/tests/agent-selector-sheet.test.js` because the selector still had one small profile-mode recovery inconsistency not covered by the latest entries.
+  - Tried to recover live-validation confidence again, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - In profile mode, the selector empty state already said `No saved profiles yet` and kept the current profile visible.
+  - But the same state still told users `Manage delegation agents in Settings → Agents`, even though saved profile switching/import controls actually live in `Settings → Profile & Model` on mobile.
+  - That made the most important recovery path less actionable right when the selector had no alternative profile to offer.
+- Issue identified:
+  - The profile-mode selector empty state pointed mobile recovery toward the agents section instead of the actual saved-profile controls, weakening state clarity and user control.
+- Decision and rationale:
+  - Keep the selector layout, title, button text, and ACP-mode recovery copy unchanged.
+  - Avoid another broader selector pass while live validation is blocked.
+  - Make the smallest useful fix instead: update only the profile-mode empty-state copy and settings-button hint so they point users toward `Settings → Profile & Model`, while still preserving the note that delegation agents stay in `Settings → Agents`.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` so profile-mode `emptyStateMessage` now directs users to `Settings → Profile & Model` for switching/importing saved profiles and keeps the delegation-agent note as secondary context.
+  - Updated the profile-mode `emptyStateSettingsButtonHint` to reference `Profile & Model` explicitly instead of generic saved-profile wording.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the revised empty-state guidance.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that, in the no-alternative profile state, telling users exactly where mobile profile controls live is more valuable than keeping the older shorter sentence.
+  - Kept the visible button label as `Open Settings` to avoid adding width pressure in the empty-state card; the improved body copy and accessibility hint carry the extra specificity instead.
+  - This remains a source-backed improvement and still needs live confirmation that the longer profile-mode message wraps cleanly on a narrow screen.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the profile-mode empty state now reads as an obvious recovery path and the longer message does not crowd the selector card.
+  - Capture screenshot-backed evidence for the `No saved profiles yet` state so the updated `Profile & Model` guidance can be judged in-context.
+  - If live validation shows the new sentence is too long, prefer a small wording trim before changing the card layout.
+
 ## Iteration 151 - Stop disabled mobile agent rows from advertising auto-start
 
 - Date: 2026-03-08

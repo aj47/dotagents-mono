@@ -114,7 +114,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     : 'Your current profile stays active while options load.';
   const emptyStateMessage = selectorMode === 'acp'
     ? 'No enabled command-based agents are available yet. Add or enable an ACP or Stdio agent in Settings → Agents to use it as your main agent.'
-    : 'No switchable chat profiles were returned for this server. Manage delegation agents in Settings → Agents.';
+    : 'No switchable chat profiles are available right now. Review Settings → Profile & Model to switch or import saved profiles. Delegation agents stay in Settings → Agents.';
   const errorSupportText = isMissingConfigError
     ? selectorMode === 'acp'
       ? 'Your current main agent stays active. Open Settings to finish connecting this server and review main-agent mode.'
@@ -129,7 +129,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     : 'Returns to Settings so you can add server details and review saved profiles.';
   const emptyStateSettingsButtonHint = selectorMode === 'acp'
     ? 'Returns to Settings so you can review agents and main-agent mode.'
-    : 'Returns to Settings so you can review saved profiles and delegation agents.';
+    : 'Returns to Settings so you can review Profile & Model plus delegation agents.';
   const retryLoadingButtonLabel = selectorMode === 'acp' ? 'Retry loading main agents' : 'Retry loading profiles';
   const retryLoadingButtonHint = selectorMode === 'acp'
     ? 'Attempts to load the available main agents again.'
