@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop provider model refresh recovery / stale-results clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with provider-settings credential autosave integration reviewed in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, targeted query invalidation inspected in `apps/desktop/src/renderer/src/lib/queries.ts`, backend credential-sensitive cache behavior checked in `apps/desktop/src/main/models-service.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider settings credential save / retry / error-handling clarity in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with shared save-error messaging reviewed in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, existing source-level coverage checked in `apps/desktop/src/renderer/src/pages/settings-providers.credentials.test.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Mobile provider model picker fallback/manual-entry clarity in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/lib/settingsApi.ts` reviewed, the new desktop fallback metadata flow cross-checked, and focused source-level verification added in `apps/mobile/tests/settings-model-picker-feedback.test.js`.
 - 2026-03-08: Desktop shared provider model selector fallback-vs-live discovery clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, `apps/desktop/src/renderer/src/lib/queries.ts`, `apps/desktop/src/main/models-service.ts`, and `apps/desktop/src/main/remote-server.ts` reviewed, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
@@ -33,6 +34,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop shared provider model selectors now invalidate and refetch when provider discovery credentials/base URLs change, keep the last loaded model list usable while a refresh is running, and show explicit inline stale-results guidance when a refresh fails so settings no longer quietly imply that an old list is still current.
 - 2026-03-08: Desktop provider credential inputs for Groq/Gemini now show inline autosave guidance, pending/saving state, preserved-draft save-failure messaging, and a local `Retry save` action instead of relying on toast-only failure feedback.
 - 2026-03-08: Mobile provider model settings now distinguish fallback suggestions from verified live model lists, keep custom/list handoff aligned with the current provider/model context instead of a stale closure, and give clearer inline/manual-entry guidance plus explicit refresh/custom action labels.
 - 2026-03-08: Desktop shared provider model discovery now reports whether the selector is showing verified provider results or fallback suggestions, and the shared selector surfaces that with clearer missing-key / fallback / empty-state / manual-entry guidance plus explicit custom-model and refresh button labels.
@@ -57,6 +59,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-model-selector-feedback.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-providers-credentials-feedback.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test apps/mobile/tests/settings-model-picker-feedback.test.js`
@@ -101,6 +105,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this provider-model refresh/stale-results pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this provider-credential autosave feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused mobile TypeScript verification for this settings-model-picker pass is blocked in this environment because `pnpm --filter @dotagents/mobile exec tsc --noEmit` cannot resolve `expo/tsconfig.base` and numerous Expo/React Native dependency types, so only source-level regression checks were available locally.
 - 2026-03-08: Live desktop UI inspection for this shared model-selector pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -122,10 +127,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop provider model refresh recovery / stale-results clarity (`apps/desktop/src/renderer/src/components/model-selector.tsx`, `apps/desktop/src/renderer/src/pages/settings-providers.tsx`)
+- Desktop remote-server settings connection/share recovery and status clarity (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop provider model-refresh recovery next so provider settings make stale lists, refresh failures, and last-known fallback results clearer after credentials change or discovery fails
+- Inspect desktop remote-server settings connection/share recovery next so the connection surface makes reconnecting, copying/sharing access details, and tunnel/startup failures clearer without needing to inspect logs
 - Once the mobile workspace can typecheck or run Expo again, live-check the mobile provider picker states for missing credentials, fallback suggestions, empty results, refresh behavior, and custom-model entry to confirm the new guidance feels right on-device
 - Once a runnable Electron target is available, live-check the desktop shared `model-selector.tsx` states for missing API key, fallback suggestions, empty responses, refresh behavior, and custom-model entry to confirm the new helper text hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
@@ -135,6 +140,47 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop provider model refresh recovery and stale-results clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop shared provider model selector in `apps/desktop/src/renderer/src/components/model-selector.tsx`
+  - desktop config-mutation invalidation in `apps/desktop/src/renderer/src/lib/queries.ts`
+  - provider-settings credential autosave integration reviewed in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - backend credential-sensitive model cache behavior reviewed in `apps/desktop/src/main/models-service.ts`
+  - focused source-level regression coverage updated in `tests/desktop-model-selector-feedback.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile already does explicit per-action fetches on this surface instead of keeping a long-lived React Query cache, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger explicitly marked provider-model refresh recovery / stale-results clarity as the next fresh desktop target
+  - investigation found a concrete UX/reliability gap: the backend cache already keys model discovery by provider credentials, but the renderer query was not invalidated when those credentials changed, so the selector could continue showing a React Query-cached list as if it were current for up to the full stale window
+  - source inspection also found a second user-facing issue in the same flow: when the user refreshed models, the selector treated the refetch like a full loading state, hid otherwise-usable results, and gave no clear inline warning if the refresh failed while old results remained cached
+  - this is high leverage because provider model selection is a foundational settings flow; stale or ambiguously refreshed results make credential changes feel ineffective and undermine trust in what model the app will actually use
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/model-selector.tsx` for refresh state handling, loading/error helper copy, select disabling, and dropdown content during refetches
+  - `apps/desktop/src/renderer/src/lib/queries.ts` for `useAvailableModelsQuery()` cache behavior and `useSaveConfigMutation()` invalidation behavior
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to confirm Groq/Gemini credential edits save through the shared config mutation and therefore could trigger a local refetch path without broad page refactors
+  - `apps/desktop/src/main/models-service.ts` to confirm provider discovery already uses credential-sensitive backend cache keys, so the missing freshness step was on the renderer side
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to confirm whether the same stale-cache behavior existed on mobile before broadening scope
+  - attempted live desktop inspection via Electron/CDP, but no renderer target was available in this environment
+- Improvement made:
+  - `useSaveConfigMutation()` now compares the previous vs saved provider discovery credentials/base URLs and invalidates the matching `available-models` queries for OpenAI, Groq, and Gemini when those inputs change
+  - the shared desktop model selector now distinguishes initial loading from background refresh, so a refetch no longer blanks out an otherwise-usable list or disables the selector while prior results are still available
+  - while a refresh is running, the helper copy and dropdown now explicitly say the current list is still usable until the update completes
+  - if a refresh fails while previous results are still present, the selector now shows inline stale-results guidance that the list may be out of date after a credential change instead of silently falling back to reassuring "verified models available" copy
+  - focused source-level regression coverage now checks both the targeted query invalidation path and the new refresh/stale-results guidance strings
+- Assumptions / tradeoffs / rationale:
+  - kept invalidation narrowly scoped to discovery-affecting credential/base-URL fields instead of invalidating all model queries on every config save, because the product problem was stale discovery results after credential changes, not general settings churn
+  - kept last-loaded results selectable during a background refresh instead of blocking the control, because preserving a usable list is better than forcing a dead-end loading state as long as the UI clearly tells the user that a newer fetch is in progress or failed
+  - kept this pass desktop-only because the mobile settings screen already fetches models explicitly and does not currently rely on the same long-lived shared query cache pattern
+  - accepted source-level verification for this iteration because live Electron inspection is still unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-model-selector-feedback.test.js`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check the provider settings flow after saving new credentials/base URLs to confirm the selector keeps the old list visible, auto-refreshes promptly, and makes stale/failure states feel obvious without being noisy
+  - inspect desktop remote-server settings connection/share recovery next so another high-impact settings surface gets clearer recovery guidance instead of forcing log-diving
 
 ### 2026-03-08 — Mobile provider model-picker fallback clarity and current-model handoff
 - Date:

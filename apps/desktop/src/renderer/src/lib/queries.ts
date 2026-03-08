@@ -4,7 +4,7 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query"
-import type { ModelInfo } from "@shared/types"
+import type { Config, ModelInfo } from "@shared/types"
 import { reportConfigSaveError } from "./config-save-error"
 import { tipcClient } from "./tipc-client"
 
@@ -86,6 +86,28 @@ export type AvailableModelsQueryResult = {
   source: "provider" | "fallback"
   fallbackReason?: "missing_api_key" | "provider_error"
   fallbackMessage?: string
+}
+
+const AVAILABLE_MODEL_DISCOVERY_CONFIG_KEYS = {
+  openai: ["openaiApiKey", "openaiBaseUrl"],
+  groq: ["groqApiKey", "groqBaseUrl"],
+  gemini: ["geminiApiKey", "geminiBaseUrl"],
+} satisfies Record<string, Array<keyof Config>>
+
+function getProvidersWithUpdatedModelDiscoveryConfig(
+  previousConfig?: Partial<Config>,
+  nextConfig?: Partial<Config>,
+) {
+  if (!nextConfig) {
+    return [] as Array<keyof typeof AVAILABLE_MODEL_DISCOVERY_CONFIG_KEYS>
+  }
+
+  return (Object.entries(AVAILABLE_MODEL_DISCOVERY_CONFIG_KEYS) as Array<[
+    keyof typeof AVAILABLE_MODEL_DISCOVERY_CONFIG_KEYS,
+    Array<keyof Config>,
+  ]>).flatMap(([providerId, keys]) =>
+    keys.some((key) => previousConfig?.[key] !== nextConfig[key]) ? [providerId] : [],
+  )
 }
 
 export const useAvailableModelsQuery = (
@@ -272,9 +294,21 @@ export const useDeleteAllConversationsMutation = () =>
 export const useSaveConfigMutation = () =>
   useMutation({
     mutationFn: tipcClient.saveConfig,
-    onSuccess() {
+    onSuccess(_, variables) {
+      const previousConfig = queryClient.getQueryData(["config"]) as Partial<Config> | undefined
+      const changedModelProviders = getProvidersWithUpdatedModelDiscoveryConfig(
+        previousConfig,
+        variables.config as Partial<Config> | undefined,
+      )
+
       queryClient.invalidateQueries({
         queryKey: ["config"],
+      })
+
+      changedModelProviders.forEach((providerId) => {
+        queryClient.invalidateQueries({
+          queryKey: ["available-models", providerId],
+        })
       })
     },
     onError: reportConfigSaveError,

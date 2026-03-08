@@ -39,7 +39,6 @@ export function ModelSelector({
   className,
   disabled = false,
 }: ModelSelectorProps) {
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [useCustomInput, setUseCustomInput] = useState(false)
@@ -54,8 +53,11 @@ export function ModelSelector({
 
   const modelsQuery = useAvailableModelsQuery(providerId, !!providerId, currentPresetId)
   const modelsResult = modelsQuery.data
-  const isLoading = modelsQuery.isLoading || isRefreshing
+  const hasModelResults = !!modelsResult
+  const isInitialLoading = modelsQuery.isLoading && !hasModelResults
+  const isRefreshing = modelsQuery.isFetching && hasModelResults
   const hasError = modelsQuery.isError && !modelsResult
+  const hasRefreshError = modelsQuery.isError && hasModelResults
   const usingFallbackModels = modelsResult?.source === "fallback"
   const fallbackReason = modelsResult?.fallbackReason
   const allModels = modelsResult?.models || []
@@ -71,12 +73,7 @@ export function ModelSelector({
   })
 
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await modelsQuery.refetch()
-    } finally {
-      setIsRefreshing(false)
-    }
+    await modelsQuery.refetch()
   }
 
   // Auto-detect if current value is a custom model (not in list)
@@ -163,12 +160,20 @@ export function ModelSelector({
       return `Enter any model name supported by ${providerName}.`
     }
 
-    if (isLoading) {
+    if (isInitialLoading) {
       return `Loading ${providerName} model suggestions...`
+    }
+
+    if (isRefreshing) {
+      return `Refreshing ${providerName} model suggestions. You can keep using the current list while the update finishes.`
     }
 
     if (hasError) {
       return `Couldn't load ${providerName} model suggestions. Retry or switch to a custom model name.`
+    }
+
+    if (hasRefreshError) {
+      return `Couldn't refresh ${providerName} model suggestions, so you're still seeing the last loaded results. If you just changed credentials, this list may be out of date until refresh succeeds.`
     }
 
     if (usingFallbackModels) {
@@ -192,11 +197,11 @@ export function ModelSelector({
 
   const helperTextToneClass = hasError
     ? "text-destructive"
-    : usingFallbackModels
+    : hasRefreshError || usingFallbackModels
       ? "text-amber-600 dark:text-amber-400"
       : "text-muted-foreground"
 
-  const selectPlaceholder = isLoading
+  const selectPlaceholder = isInitialLoading
     ? `Loading ${providerName} models...`
     : hasError
       ? "Couldn't load models"
@@ -235,13 +240,13 @@ export function ModelSelector({
                 variant="ghost"
                 size="sm"
                 onClick={handleRefresh}
-                disabled={isLoading || disabled}
+                disabled={modelsQuery.isFetching || disabled}
                 className="h-6 px-2 text-xs flex-shrink-0"
                 aria-label="Refresh available models"
-                title={isLoading ? "Refreshing available models" : "Refresh available models"}
+                title={modelsQuery.isFetching ? "Refreshing available models" : "Refresh available models"}
               >
                 <RefreshCw
-                  className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`}
+                  className={`h-3 w-3 ${modelsQuery.isFetching ? "animate-spin" : ""}`}
                 />
               </Button>
             )}
@@ -266,7 +271,7 @@ export function ModelSelector({
           logUI('[ModelSelector] Select onValueChange:', newValue)
           onValueChange(newValue)
         }}
-        disabled={disabled || isLoading || allModels.length === 0}
+        disabled={disabled || isInitialLoading || allModels.length === 0}
         open={isOpen}
         onOpenChange={(open) => {
           logUI('[ModelSelector] Select onOpenChange:', open)
@@ -330,7 +335,19 @@ export function ModelSelector({
             </div>
           }
         >
-            {isLoading && (
+            {isRefreshing && (
+              <div className="border-b bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                Refreshing {providerName} model suggestions. You can keep using the current list.
+              </div>
+            )}
+
+            {hasRefreshError && (
+              <div className="border-b bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                Couldn't refresh {providerName} model suggestions. Showing the last loaded results until refresh succeeds.
+              </div>
+            )}
+
+            {isInitialLoading && (
               <div className="flex items-center justify-center py-8">
                 <span className="text-sm text-muted-foreground">
                   Loading {providerName} models...
@@ -350,7 +367,7 @@ export function ModelSelector({
               </div>
             )}
 
-            {!isLoading && !hasError && allModels.length === 0 && (
+            {!isInitialLoading && !hasError && allModels.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-1 px-4 py-8 text-center text-sm">
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
                   <AlertCircle className="h-4 w-4" />
@@ -362,7 +379,7 @@ export function ModelSelector({
               </div>
             )}
 
-            {!isLoading &&
+            {!isInitialLoading &&
               !hasError &&
               filteredModels.length === 0 &&
               searchQuery.trim() && (
