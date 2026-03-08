@@ -70,6 +70,11 @@ interface BundlePreview {
   filePath?: string
   bundle?: {
     manifest: BundleManifest
+    agentProfiles?: Array<{ id: string; name: string; displayName?: string }>
+    mcpServers?: Array<{ name: string }>
+    skills?: Array<{ id: string; name: string }>
+    repeatTasks?: Array<{ id: string; name: string }>
+    memories?: Array<{ id: string; title: string }>
   }
   conflicts?: {
     agentProfiles: PreviewConflict[]
@@ -146,23 +151,100 @@ function formatExpectedConflictOutcome(conflictCount: number, strategy: Conflict
   return `${formatCount("existing item", conflictCount)} will be imported with renamed IDs.`
 }
 
-function getConflictStrategyBadgeLabel(strategy: ConflictStrategy): string {
-  if (strategy === "skip") return "Skip"
-  if (strategy === "overwrite") return "Overwrite"
+type ImportPlanAction = "add" | ConflictStrategy
+
+interface ImportPlanItem {
+  id: string
+  name: string
+  existingName?: string
+  action: ImportPlanAction
+  renameTargetId?: string
+}
+
+function buildImportPlanItems(
+  preview: BundlePreview | null,
+  key: BundleComponentKey,
+  strategy: ConflictStrategy,
+): ImportPlanItem[] {
+  const bundle = preview?.bundle
+  const conflicts = new Map((preview?.conflicts?.[key] ?? []).map((conflict) => [conflict.id, conflict]))
+  const items = (() => {
+    switch (key) {
+      case "agentProfiles":
+        return (bundle?.agentProfiles ?? []).map((profile) => ({
+          id: profile.id,
+          name: profile.displayName || profile.name,
+        }))
+      case "mcpServers":
+        return (bundle?.mcpServers ?? []).map((server) => ({
+          id: server.name,
+          name: server.name,
+        }))
+      case "skills":
+        return (bundle?.skills ?? []).map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+        }))
+      case "repeatTasks":
+        return (bundle?.repeatTasks ?? []).map((task) => ({
+          id: task.id,
+          name: task.name,
+        }))
+      case "memories":
+        return (bundle?.memories ?? []).map((memory) => ({
+          id: memory.id,
+          name: memory.title,
+        }))
+    }
+  })()
+
+  return items.map((item) => {
+    const conflict = conflicts.get(item.id)
+    if (!conflict) {
+      return {
+        ...item,
+        action: "add",
+      }
+    }
+
+    return {
+      ...item,
+      existingName: conflict.existingName,
+      action: strategy,
+      renameTargetId: conflict.renameTargetId,
+    }
+  })
+}
+
+function getImportPlanActionBadgeLabel(action: ImportPlanAction): string {
+  if (action === "add") return "Add new"
+  if (action === "skip") return "Skip"
+  if (action === "overwrite") return "Overwrite"
   return "Rename"
 }
 
-function formatConflictOutcome(conflict: PreviewConflict, strategy: ConflictStrategy): string {
-  if (strategy === "skip") {
+function getImportPlanActionBadgeClassName(action: ImportPlanAction): string | undefined {
+  if (action === "add") return "border-emerald-300 text-emerald-700"
+  if (action === "overwrite") return "border-amber-300 text-amber-700"
+  if (action === "rename") return "border-sky-300 text-sky-700"
+  return undefined
+}
+
+function formatImportPlanOutcome(item: ImportPlanItem): string {
+  if (item.action === "add") {
+    return "Will be added as a new item."
+  }
+
+  if (item.action === "skip") {
     return "Will keep the existing item and skip this bundle copy."
   }
 
-  if (strategy === "overwrite") {
+  if (item.action === "overwrite") {
     return "Will replace the existing item with the version from this bundle."
   }
 
-  if (conflict.renameTargetId) {
-    return `Will import alongside the existing item as ${conflict.renameTargetId}.`
+  if (item.renameTargetId) {
+    return `Will import alongside the existing item as ${item.renameTargetId}.`
   }
 
   return "Will import alongside the existing item with a renamed ID."
@@ -356,6 +438,12 @@ export function BundleImportDialog({
   const hasConflicts = conflicts
     ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
     : false
+  const importPlanSections = COMPONENT_KEYS.map((key) => ({
+    key,
+    label: COMPONENT_LABELS[key],
+    items: normalizedComponents[key] ? buildImportPlanItems(preview, key, conflictStrategy) : [],
+  })).filter((section) => section.items.length > 0)
+  const selectedPlanItemCount = importPlanSections.reduce((total, section) => total + section.items.length, 0)
 
   const toggleComponent = (key: keyof typeof components) => {
     setComponents(prev => ({ ...prev, [key]: !prev[key] }))
@@ -456,31 +544,43 @@ export function BundleImportDialog({
               </div>
             </div>
 
-            {/* Conflict strategy */}
-            {hasConflicts && (
+            {/* Import plan */}
+            {importPlanSections.length > 0 && (
               <div className="space-y-3 rounded-lg border p-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
+                  {hasConflicts ? (
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Package className="mt-0.5 h-4 w-4 text-emerald-600" />
+                  )}
                   <div className="space-y-1">
-                    <Label>Conflict preview</Label>
+                    <Label>Import plan</Label>
                     <p className="text-xs text-muted-foreground">
-                      Review the exact items that already exist before importing anything.
+                      Review the exact items that will be added, skipped, overwritten, or renamed before importing anything.
                     </p>
                   </div>
                 </div>
-                <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as ConflictStrategy)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="skip">Skip existing items</SelectItem>
-                    <SelectItem value="overwrite">Overwrite existing items</SelectItem>
-                    <SelectItem value="rename">Rename imported items</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Default conflict policy is <span className="font-medium">skip</span>; you can change it for this import before any writes occur.
-                </p>
+                {hasConflicts ? (
+                  <>
+                    <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as ConflictStrategy)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="skip">Skip existing items</SelectItem>
+                        <SelectItem value="overwrite">Overwrite existing items</SelectItem>
+                        <SelectItem value="rename">Rename imported items</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Default conflict policy is <span className="font-medium">skip</span>; you can change it for this import before any writes occur.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No existing conflicts detected for the current selection. {formatCount("item", selectedPlanItemCount)} will be added as new items.
+                  </p>
+                )}
                 {expectedConflictOutcome && (
                   <p className="text-xs text-muted-foreground">
                     Current selection: {expectedConflictOutcome}
@@ -488,20 +588,13 @@ export function BundleImportDialog({
                 )}
 
                 <div className="space-y-3">
-                  {COMPONENT_KEYS.map((key) => {
-                    if (!normalizedComponents[key] || !conflicts?.[key]?.length) {
-                      return null
-                    }
-
-                    return (
-                      <ConflictPreviewSection
-                        key={key}
-                        label={COMPONENT_LABELS[key]}
-                        conflicts={conflicts[key]}
-                        strategy={conflictStrategy}
-                      />
-                    )
-                  })}
+                  {importPlanSections.map((section) => (
+                    <ImportPlanSection
+                      key={section.key}
+                      label={section.label}
+                      items={section.items}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -550,48 +643,50 @@ function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }
   )
 }
 
-interface ConflictPreviewSectionProps {
+interface ImportPlanSectionProps {
   label: string
-  conflicts: PreviewConflict[]
-  strategy: ConflictStrategy
+  items: ImportPlanItem[]
 }
 
-function ConflictPreviewSection({ label, conflicts, strategy }: ConflictPreviewSectionProps) {
+function ImportPlanSection({ label, items }: ImportPlanSectionProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <p className="text-sm font-medium">{label}</p>
-        <Badge variant="secondary" className="text-xs">{conflicts.length}</Badge>
+        <Badge variant="secondary" className="text-xs">{items.length}</Badge>
       </div>
 
       <div className="space-y-2">
-        {conflicts.map((conflict) => {
-          const showExistingName = conflict.existingName && conflict.existingName !== conflict.name
+        {items.map((item) => {
+          const showExistingName = item.existingName && item.existingName !== item.name
 
           return (
-            <div key={`${label}:${conflict.id}`} className="rounded-md border bg-muted/20 p-2">
+            <div key={`${label}:${item.id}`} className="rounded-md border bg-muted/20 p-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 space-y-1">
-                  <p className="truncate text-sm font-medium">{conflict.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">ID: {conflict.id}</p>
+                  <p className="truncate text-sm font-medium">{item.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">ID: {item.id}</p>
                   {showExistingName && (
                     <p className="truncate text-xs text-muted-foreground">
-                      Existing name: {conflict.existingName}
+                      Existing name: {item.existingName}
                     </p>
                   )}
                 </div>
-                <Badge variant="outline" className="shrink-0 text-xs">
-                  {getConflictStrategyBadgeLabel(strategy)}
+                <Badge
+                  variant="outline"
+                  className={`shrink-0 text-xs ${getImportPlanActionBadgeClassName(item.action) || ""}`.trim()}
+                >
+                  {getImportPlanActionBadgeLabel(item.action)}
                 </Badge>
               </div>
 
               <p className="mt-2 text-xs text-muted-foreground">
-                {formatConflictOutcome(conflict, strategy)}
+                {formatImportPlanOutcome(item)}
               </p>
 
-              {strategy === "rename" && conflict.renameTargetId && (
+              {item.action === "rename" && item.renameTargetId && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Renamed ID preview: <span className="font-mono">{conflict.renameTargetId}</span>
+                  Renamed ID preview: <span className="font-mono">{item.renameTargetId}</span>
                 </p>
               )}
             </div>

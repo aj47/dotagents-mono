@@ -12,11 +12,15 @@ test('bundle preview conflicts include default skip policy and deterministic ren
   assert.match(tipcSource, /type BundleConflictItem = \{[\s\S]*defaultStrategy: "skip"[\s\S]*renameTargetId\?: string/);
 });
 
-test('bundle import dialog renders a concrete conflict preview with rename outcome details', () => {
-  assert.match(dialogSource, /<Label>Conflict preview<\/Label>/);
-  assert.match(dialogSource, /Review the exact items that already exist before importing anything\./);
-  assert.match(dialogSource, /function formatConflictOutcome\(conflict: PreviewConflict, strategy: ConflictStrategy\)/);
-  assert.match(dialogSource, /Will import alongside the existing item as \$\{conflict\.renameTargetId\}\./);
-  assert.match(dialogSource, /<ConflictPreviewSection/);
+test('bundle import dialog renders an import plan with add and rename outcome details', () => {
+  assert.match(dialogSource, /<Label>Import plan<\/Label>/);
+  assert.match(dialogSource, /Review the exact items that will be added, skipped, overwritten, or renamed before importing anything\./);
+  assert.match(dialogSource, /function buildImportPlanItems\(/);
+  assert.match(dialogSource, /bundle\?\.agentProfiles \?\? \[\]/);
+  assert.match(dialogSource, /function formatImportPlanOutcome\(item: ImportPlanItem\)/);
+  assert.match(dialogSource, /Will be added as a new item\./);
+  assert.match(dialogSource, /Will import alongside the existing item as \$\{item\.renameTargetId\}\./);
+  assert.match(dialogSource, /<ImportPlanSection/);
+  assert.match(dialogSource, /Add new/);
   assert.match(dialogSource, /Renamed ID preview:/);
 });

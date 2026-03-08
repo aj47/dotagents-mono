@@ -969,3 +969,37 @@
   - Consider adding non-conflicting “Add new” rows to the preview if the product wants the dialog to become a fuller diff-style import plan rather than a conflict-focused review.
 
 - Next recommended issue work item: either continue `#57` with inline per-item conflict actions or switch to a fresh `#58` / `#25` trust slice, but avoid broad refactors unless a specific acceptance gap is confirmed first.
+
+##### Issue #57 — Import-plan follow-up: include non-conflicting “Add new” rows in bundle preview
+
+- Selection rationale:
+  - `#57` was still missing the most literal part of its diff-style preview acceptance: after the earlier conflict-preview slice, users could now inspect exact conflicting items, but they still could not see the non-conflicting items that would simply be added.
+  - This was a small, reviewable trust improvement with a strong local implementation path in the existing desktop import dialog.
+- Investigation:
+  - Re-read issue `#57`, especially the sample table showing both `✅ Add new` and conflict actions before import.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the current preview section still rendered only conflict items plus the global strategy selector.
+  - Re-checked the preview contract and confirmed `previewBundleWithConflicts(...)` already returns the full bundle object alongside conflict metadata, so the renderer already had enough item detail to derive a fuller import plan without expanding the main-process API surface.
+  - Confirmed mobile parity is not part of this slice because mobile still has no equivalent bundle import dialog to update.
+- Important assumptions:
+  - Assumption: a renderer-only expansion from “conflict preview” to “import plan” is a valid shippable `#57` slice even without true per-item conflict controls.
+  - Why acceptable: it directly closes more of the issue’s “see exactly what a bundle will change before committing” gap while keeping the current import execution contract intact.
+  - Assumption: using the bundle payload already returned in preview is preferable to adding a second backend-specific “planned items” structure for now.
+  - Why acceptable: it keeps the change narrow, avoids new cross-process abstractions, and still lets the UI show concrete item names/IDs grouped by component.
+- Changes implemented:
+  - Extended the local preview typing in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` to read the already-returned bundle component arrays.
+  - Added `buildImportPlanItems(...)` plus import-plan outcome/badge helpers that derive per-item `Add new`, `Skip`, `Overwrite`, or `Rename` rows from the selected components and current conflict strategy.
+  - Replaced the prior conflict-only preview block with an `Import plan` section that now lists all selected bundle items by component, preserving rename previews for conflicts while also surfacing non-conflicting additions explicitly.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to lock in the new import-plan wording, add-new outcome copy, renderer-side item derivation, and rename preview wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop typecheck:web` ⚠️ failed because this worktree does not currently have installed workspace dependencies / `node_modules`; the desktop tsconfig’s `@electron-toolkit/tsconfig/tsconfig.web.json` base config could not be resolved.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider inline per-item conflict controls if users still need different actions for different conflicting rows in the same import.
+  - Consider nested per-item cherry-pick toggles under each component group if the product wants to match the issue’s sketched item-level checkbox UX rather than only component-level selection.
+  - Re-run targeted desktop typecheck/Vitest once the dependency baseline is restored in this worktree.
+
+- Next recommended issue work item: either finish `#57` with true per-item conflict actions/item-level toggles, or pivot to a fresh issue like `#58`/`#25` if a similarly concrete trust or provenance gap has a tighter repro path.
