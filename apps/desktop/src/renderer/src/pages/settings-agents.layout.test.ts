@@ -44,4 +44,10 @@ describe("settings agents page layout", () => {
   it("lets create-agent quick setup presets wrap under tighter widths and larger text", () => {
     expect(settingsAgentsSource).toContain('className="flex flex-wrap gap-2"')
   })
+
+  it("lets the ACP auto-spawn toggle wrap instead of overflowing narrow settings widths", () => {
+    expect(settingsAgentsSource).toContain('className="flex flex-wrap items-start gap-x-4 gap-y-3 pt-2"')
+    expect(settingsAgentsSource.match(/className="flex items-start gap-2"/g)).toHaveLength(2)
+    expect(settingsAgentsSource).not.toContain('className="flex items-center gap-4 pt-2"')
+  })
 })

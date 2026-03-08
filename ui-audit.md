@@ -1,5 +1,55 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 58: Desktop agent create-form ACP toggle row spills past the settings column under tighter widths and larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-agents.tsx` (`Settings` → `Agents` → `Add Agent` → `General` tab in ACP mode)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and moved away from the just-touched MCP/settings area.
+  - A real Electron renderer session was still available on `:9333`, and `settings-agents` already had an older best-next note for the general-tab toggle rows.
+  - This made it a good live follow-up target: one dense control row with direct user impact instead of another broad speculative sweep.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area without a concrete follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used `agent-browser --cdp 9333` against the real Electron renderer on `http://localhost:5174/settings/agents`
+  - opened the live `Add Agent` form, switched `Connection Type` to `ACP (external agent)`, and narrowed the real viewport to `620×670` with larger root text (`24px`)
+  - captured screenshot-backed evidence in `tmp/ui-audit/settings-agents-acp-620-root24-before.png` and measured the mounted toggle row directly in the DOM before editing source
+  - cross-checked mobile and kept this desktop-only: `apps/mobile/src/screens/AgentEditScreen.tsx` already uses separate React Native switch rows and does not share this combined desktop toggle row implementation
+
+#### Findings
+
+- Before the fix, the desktop create-agent form still had one concrete narrow-width / larger-text issue with direct user impact:
+  - the `Enabled` and `Auto-spawn on startup` controls lived in a single non-wrapping row (`className="flex items-center gap-4 pt-2"`)
+  - in live inspection at `620×670` with `24px` root text, that row only had about `296px` of visible width but needed about `305px` of scroll width
+  - the trailing `Auto-spawn on startup` group extended to about `right = 555.5` while the row itself ended around `right = 546`, so the second toggle spilled past the right edge instead of wrapping intentionally
+  - this matters because the row holds startup behavior controls; once the second toggle starts drifting off-column, users are more likely to miss or misread a setting that changes how agents launch
+
+#### Changes made
+
+- Hardened the general-tab ACP/stdio toggle row in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` with the smallest effective layout fix:
+  - changed the outer toggle strip to a wrap-safe `flex-wrap` row with top alignment and explicit horizontal/vertical gaps
+  - changed both toggle groups to `items-start gap-2` so multiline labels align calmly once the row wraps
+  - kept the existing information architecture intact: both switches and labels stay in the same order, but now the `Auto-spawn on startup` control can drop beneath `Enabled` instead of overflowing the settings column
+- Extended `apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts` with focused source-contract coverage for this wrap-safe ACP/stdio toggle row.
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Targeted desktop script attempt: `pnpm --filter @dotagents/desktop test -- --run src/renderer/src/pages/settings-agents.layout.test.ts` *(blocked in `pretest` because `tsup` is unavailable and this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node -e "..."` confirmed the new wrap-safe toggle-row classes, removal of the old non-wrapping row class, and the focused regression test are present
+- Live Electron evidence before the fix at `http://localhost:5174/settings/agents`:
+  - screenshot: `tmp/ui-audit/settings-agents-acp-620-root24-before.png`
+  - representative row measured about `clientWidth = 296px` and `scrollWidth = 305px`
+  - the mounted row still used the old `flex items-center gap-4 pt-2` class, confirming the visible issue in the running product session
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-agents.tsx apps/desktop/src/renderer/src/pages/settings-agents.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live Electron session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. I used live pre-fix renderer evidence plus direct source verification of the patch instead.
+- This chunk is desktop-only: mobile `AgentEditScreen` already uses separate switch rows and did not need a matching code change here.
+- Tradeoff/rationale: under tighter settings widths or larger text, the ACP/stdio toggles may now stack vertically sooner than before, but that is a deliberate and safer tradeoff than letting the startup control drift off the right edge.
+- Best next UI audit chunk after this one: move away from `settings-agents` unless another concrete live follow-up emerges; the next strongest target is a fresh desktop or mobile surface with runtime evidence rather than another speculative tweak in the same form.
+
 ### 2026-03-08 — Chunk 57: Desktop MCP individual tool rows hide tool identity under tighter settings widths and larger text
 
 - Area selected:

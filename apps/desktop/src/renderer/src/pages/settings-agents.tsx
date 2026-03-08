@@ -666,13 +666,13 @@ export function SettingsAgents() {
                   <Input id="baseUrl" value={editing.connectionBaseUrl ?? ""} onChange={e => setEditing({ ...editing, connectionBaseUrl: e.target.value })} placeholder="e.g., http://localhost:8000" />
                 </div>
               )}
-              <div className="flex items-center gap-4 pt-2">
-                <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-start gap-x-4 gap-y-3 pt-2">
+                <div className="flex items-start gap-2">
                   <Switch id="enabled" checked={editing.enabled} onCheckedChange={v => setEditing({ ...editing, enabled: v })} />
                   <Label htmlFor="enabled">Enabled</Label>
                 </div>
                 {(editing.connectionType === "acp" || editing.connectionType === "stdio") && (
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-start gap-2">
                     <Switch id="autoSpawn" checked={editing.autoSpawn ?? false} onCheckedChange={v => setEditing({ ...editing, autoSpawn: v })} />
                     <Label htmlFor="autoSpawn">Auto-spawn on startup</Label>
                   </div>
