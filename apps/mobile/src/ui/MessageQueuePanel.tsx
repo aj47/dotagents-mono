@@ -57,6 +57,12 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     verticalPadding: 8,
     horizontalMargin: 0,
   });
+  const queueEditActionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 14,
+    verticalPadding: 8,
+    horizontalMargin: 0,
+  });
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -189,26 +195,36 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     editActions: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
+      flexWrap: 'wrap',
+      alignItems: 'center',
       gap: 8,
     },
     editButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 6,
+      ...queueEditActionTouchTarget,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      flexShrink: 0,
     },
     cancelButton: {
-      backgroundColor: 'transparent',
+      backgroundColor: theme.colors.background,
     },
     saveButton: {
       backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
     },
     buttonText: {
       fontSize: 12,
       color: theme.colors.foreground,
+      fontWeight: '600',
     },
     saveButtonText: {
       fontSize: 12,
       color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
   });
 
@@ -227,6 +243,10 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             <TouchableOpacity
               style={[styles.editButton, styles.cancelButton]}
               onPress={handleCancelEdit}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Cancel queued message edit')}
+              accessibilityHint="Restores the original queued message text without saving your changes."
+              activeOpacity={0.7}
             >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
@@ -234,6 +254,13 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               style={[styles.editButton, styles.saveButton]}
               onPress={handleSaveEdit}
               disabled={!editText.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Save queued message edit')}
+              accessibilityHint={!editText.trim()
+                ? 'Enter message text before saving your queued message changes.'
+                : 'Applies your queued message edits before it sends.'}
+              accessibilityState={{ disabled: !editText.trim() }}
+              activeOpacity={0.7}
             >
               <Text style={styles.saveButtonText}>Save</Text>
             </TouchableOpacity>

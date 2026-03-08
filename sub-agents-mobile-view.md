@@ -3005,3 +3005,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that failed queue rows still balance message width and the now-roomier action rail on a narrow screen.
   - Check both a two-action queued row and a three-action failed row to confirm the new destructive styling and larger targets feel clear without making the panel too tall.
   - If live validation shows edit mode now feels like the weakest queue control state, raise the `Cancel` / `Save` buttons to the same mobile control baseline before attempting broader queue changes.
+
+### 2026-03-08 — Iteration 70: bring queued-message edit actions up to the mobile control baseline
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the per-row queue actions now use explicit `44px` mobile touch targets, labels, and hints.
+  - The edit mode for a queued message still dropped back to smaller text buttons for `Cancel` and `Save`.
+  - Those edit actions used only compact padding, exposed no explicit accessibility metadata, and could become the weakest tap targets in the queue flow once a row entered edit mode.
+- Issue selected:
+  - Queue edit mode broke the new mobile control baseline, weakening user control at the exact moment users were trying to safely revise a queued sub-agent message.
+- Decision:
+  - Keep the queue edit layout, text field, and button copy unchanged.
+  - Do not redesign the whole row while live validation is blocked.
+  - Make the smallest local control pass: raise `Cancel` / `Save` to the same `44px` baseline, allow wrapping on narrow rows, and add explicit save/cancel button semantics.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add a dedicated `queueEditActionTouchTarget` based on `createMinimumTouchTargetStyle(...)`,
+    - apply that touch-target guardrail to both `Cancel` and `Save`,
+    - let the edit-action row wrap if space gets tight on narrow screens,
+    - add explicit button labels/hints for canceling or saving queued-message edits,
+    - expose the disabled state for `Save` when the draft is empty,
+    - keep the primary `Save` button visually distinct while giving both actions a clearer pill treatment.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new edit-action touch targets, wrapping, and accessibility semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the roomier `Cancel` / `Save` pills do not make edit-mode rows feel too tall when the keyboard is up.
+  - The edit `TextInput` still deserves a live pass to confirm the field + action stack feels balanced on smaller devices.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queued-message edit mode now keeps `Cancel` / `Save` comfortably tappable on a narrow screen.
+  - Check both an empty edit draft and a changed draft so the new `Save` disabled-state semantics can be visually compared.
+  - If live validation still shows queue edit mode as cramped, tighten the text-field/action spacing before attempting any broader queue redesign.

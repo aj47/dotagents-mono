@@ -49,3 +49,14 @@ test('gives the queued-message expander disclosure semantics with a mobile touch
   assert.match(queuePanelSource, /accessibilityHint="Shows or hides the full queued message text\."/);
   assert.match(queuePanelSource, /accessibilityState=\{\{ expanded: isExpanded \}\}/);
 });
+
+test('gives queued-message edit actions mobile-sized targets and explicit save/cancel semantics', () => {
+  assert.match(queuePanelSource, /const queueEditActionTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalPadding:\s*14,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
+  assert.match(queuePanelSource, /editActions:\s*\{[\s\S]*?justifyContent:\s*'flex-end',[\s\S]*?flexWrap:\s*'wrap',[\s\S]*?alignItems:\s*'center'/);
+  assert.match(queuePanelSource, /editButton:\s*\{[\s\S]*?\.\.\.queueEditActionTouchTarget[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',[\s\S]*?borderRadius:\s*999,[\s\S]*?borderWidth:\s*1/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Cancel queued message edit'\)/);
+  assert.match(queuePanelSource, /accessibilityHint="Restores the original queued message text without saving your changes\."/);
+  assert.match(queuePanelSource, /createButtonAccessibilityLabel\('Save queued message edit'\)/);
+  assert.match(queuePanelSource, /accessibilityHint=\{!editText\.trim\(\)[\s\S]*?Enter message text before saving your queued message changes\.[\s\S]*?Applies your queued message edits before it sends\.[\s\S]*?\}/);
+  assert.match(queuePanelSource, /accessibilityState=\{\{ disabled: !editText\.trim\(\) \}\}/);
+});
