@@ -198,6 +198,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
   const isSaveDisabled = isSaving || !settingsClient;
+  const saveButtonAccessibilityLabel = createButtonAccessibilityLabel(isEditing ? 'Save agent changes' : 'Create agent');
+  const saveButtonAccessibilityHint = !settingsClient
+    ? 'Configure Base URL and API key in Settings before saving this agent.'
+    : isSaving
+      ? 'Saving this agent now.'
+      : isEditing
+        ? 'Saves your changes to this agent.'
+        : 'Creates this agent with the current settings.';
 
   const renderFieldLabel = (label: string, options?: { required?: boolean; readOnly?: boolean }) => (
     <Text style={styles.label}>
@@ -427,6 +435,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
         style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
         disabled={isSaveDisabled}
+        accessibilityRole="button"
+        accessibilityLabel={saveButtonAccessibilityLabel}
+        accessibilityHint={saveButtonAccessibilityHint}
+        accessibilityState={{ disabled: isSaveDisabled, busy: isSaving }}
       >
         {isSaving ? (
           <ActivityIndicator color={theme.colors.primaryForeground} size="small" />

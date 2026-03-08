@@ -277,6 +277,14 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
   const isSaveDisabled = isSaving || !settingsClient;
   const intervalPreview = getLoopIntervalPreview(formData.intervalMinutes);
+  const saveButtonAccessibilityLabel = createButtonAccessibilityLabel(isEditing ? 'Save loop changes' : 'Create loop');
+  const saveButtonAccessibilityHint = !settingsClient
+    ? 'Configure Base URL and API key in Settings before saving this loop.'
+    : isSaving
+      ? 'Saving this loop now.'
+      : isEditing
+        ? 'Saves your changes to this loop.'
+        : 'Creates this loop with the current settings.';
 
   if (isLoading) {
     return (
@@ -395,7 +403,15 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       {isLoadingProfiles && <Text style={styles.helperText}>Loading profiles...</Text>}
 
-      <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
+      <TouchableOpacity
+        style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={isSaveDisabled}
+        accessibilityRole="button"
+        accessibilityLabel={saveButtonAccessibilityLabel}
+        accessibilityHint={saveButtonAccessibilityHint}
+        accessibilityState={{ disabled: isSaveDisabled, busy: isSaving }}
+      >
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
       </TouchableOpacity>
     </ScrollView>
