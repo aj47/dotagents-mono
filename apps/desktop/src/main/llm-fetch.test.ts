@@ -891,4 +891,45 @@ describe('LLM Fetch with AI SDK', () => {
       )
     ).rejects.toThrow('provider returned malformed chunk')
   })
+
+  it('times out a hanging streaming+tools call instead of hanging forever', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { streamText } = await import('ai')
+      const streamTextMock = vi.mocked(streamText)
+      const { configStore } = await import('./config')
+
+      vi.spyOn(configStore, 'get').mockReturnValue({
+        apiRetryCount: 0,
+        apiRetryBaseDelay: 100,
+        apiRetryMaxDelay: 1000,
+        openaiApiKey: 'test-key',
+        openaiBaseUrl: 'https://api.openai.com/v1',
+        mcpToolsOpenaiModel: 'gpt-4o-mini',
+        mcpToolsProviderId: 'openai',
+      } as any)
+
+      streamTextMock.mockReturnValue({
+        fullStream: (async function* () {
+          await new Promise(() => {})
+        })(),
+      } as any)
+
+      const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+
+      const resultPromise = makeLLMCallWithStreamingAndTools(
+        [{ role: 'user', content: 'test' }],
+        vi.fn(),
+      )
+      const expectation = expect(resultPromise).rejects.toThrow('LLM request timed out after 60000ms')
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      await expectation
+      expect(streamTextMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

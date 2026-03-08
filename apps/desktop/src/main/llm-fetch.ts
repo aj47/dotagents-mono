@@ -32,6 +32,8 @@ import {
   isLangfuseEnabled,
 } from "./langfuse-service"
 
+const DEFAULT_LLM_STREAM_TIMEOUT_MS = 60_000
+
 /**
  * Build token usage object for Langfuse, only including it when at least one token field is present.
  * This avoids reporting 0 tokens when the provider doesn't return usage data.
@@ -294,6 +296,44 @@ async function interruptibleDelay(delay: number, sessionId?: string): Promise<vo
     const remaining = delay - (Date.now() - startTime)
     await new Promise(resolve => setTimeout(resolve, Math.min(100, Math.max(0, remaining))))
   }
+}
+
+/**
+ * Guard streaming LLM requests with a hard timeout so half-open provider streams
+ * fail closed instead of hanging forever after tool work has already completed.
+ */
+function withLLMStreamTimeout<T>(
+  work: Promise<T>,
+  abortController: AbortController,
+  timeoutMs: number = DEFAULT_LLM_STREAM_TIMEOUT_MS,
+): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return work
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false
+
+    const finish = (callback: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeoutHandle)
+      callback()
+    }
+
+    const timeoutHandle = setTimeout(() => {
+      abortController.abort()
+      finish(() => reject(new Error(`LLM request timed out after ${timeoutMs}ms`)))
+    }, timeoutMs)
+
+    work.then(
+      (value) => finish(() => resolve(value)),
+      (error) => {
+        if (settled) return
+        finish(() => reject(error))
+      },
+    )
+  })
 }
 
 /**
@@ -903,28 +943,30 @@ export async function makeLLMCallWithStreaming(
       })
     }
 
-    const result = streamText({
-      model,
-      system,
-      messages: convertedMessages,
-      abortSignal: abortController.signal,
-    })
-
     let accumulated = ""
 
-    for await (const chunk of result.textStream) {
-      accumulated += chunk
-      onChunk(chunk, accumulated)
+    await withLLMStreamTimeout((async () => {
+      const result = streamText({
+        model,
+        system,
+        messages: convertedMessages,
+        abortSignal: abortController.signal,
+      })
 
-      // Check for stop signal
-      if (
-        state.shouldStopAgent ||
-        (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
-      ) {
-        abortController.abort()
-        break
+      for await (const chunk of result.textStream) {
+        accumulated += chunk
+        onChunk(chunk, accumulated)
+
+        // Check for stop signal
+        if (
+          state.shouldStopAgent ||
+          (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
+        ) {
+          abortController.abort()
+          break
+        }
       }
-    }
+    })(), abortController)
 
     // End Langfuse generation
     if (generationId) {
@@ -1020,42 +1062,44 @@ export async function makeLLMCallWithStreamingAndTools(
           abortController.abort()
         }
 
-        const streamResult = streamText({
-          model,
-          system,
-          messages: convertedMessages,
-          abortSignal: abortController.signal,
-          tools: convertedTools?.tools,
-          toolChoice: convertedTools?.tools ? "auto" : undefined,
-        })
-
         let accumulated = ""
         const collectedToolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = []
         let finishUsage: { inputTokens?: number; outputTokens?: number } | undefined
 
-        for await (const event of streamResult.fullStream) {
-          if (
-            state.shouldStopAgent ||
-            (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
-          ) {
-            abortController.abort()
-            break
-          }
+        await withLLMStreamTimeout((async () => {
+          const streamResult = streamText({
+            model,
+            system,
+            messages: convertedMessages,
+            abortSignal: abortController.signal,
+            tools: convertedTools?.tools,
+            toolChoice: convertedTools?.tools ? "auto" : undefined,
+          })
 
-          if (event.type === "text-delta") {
-            accumulated += event.text
-            onChunk(event.text, accumulated)
-          } else if (event.type === "tool-call") {
-            collectedToolCalls.push({
-              name: restoreToolName(event.toolName, convertedTools?.nameMap),
-              arguments: event.input as Record<string, unknown>,
-            })
-          } else if (event.type === "finish") {
-            finishUsage = event.totalUsage
-          } else if (event.type === "error") {
-            throw normalizeError(event.error, "Streaming request failed")
+          for await (const event of streamResult.fullStream) {
+            if (
+              state.shouldStopAgent ||
+              (sessionId && agentSessionStateManager.shouldStopSession(sessionId))
+            ) {
+              abortController.abort()
+              break
+            }
+
+            if (event.type === "text-delta") {
+              accumulated += event.text
+              onChunk(event.text, accumulated)
+            } else if (event.type === "tool-call") {
+              collectedToolCalls.push({
+                name: restoreToolName(event.toolName, convertedTools?.nameMap),
+                arguments: event.input as Record<string, unknown>,
+              })
+            } else if (event.type === "finish") {
+              finishUsage = event.totalUsage
+            } else if (event.type === "error") {
+              throw normalizeError(event.error, "Streaming request failed")
+            }
           }
-        }
+        })(), abortController)
 
         if (isDebugLLM()) {
           if (collectedToolCalls.length > 0) {

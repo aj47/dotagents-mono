@@ -515,6 +515,42 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - result: all passed with exit code `0`
   - confirmed the new delegation guard compiles cleanly and rejects progress-only delegated outputs before they can be treated as successful completion
 
+### 2026-03-08 — Final streaming LLM turn could hang forever after successful tool work
+
+- Langfuse evidence reviewed:
+  - `conv_1772521350352_0iczku0iq` / `session_1772521350353_29tglpq86`
+    - user input: `whats next`
+    - only observation was a `Streaming LLM Call` with `endTime: null` and `output: null`
+  - `conv_1772521369099_gsh6bmirb` / `session_1772521369101_45g0ww1hh`
+    - user follow-up: `continue`
+    - the run successfully inspected repo state, created a branch/commit, pushed it, opened PR `#35`, and switched back to `main`
+    - immediately after the final successful `execute_command` (`git checkout main`), Langfuse recorded one more `Streaming LLM Call` with `endTime: null` and empty output, so the run finished with no user-facing completion message
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm-fetch.ts` used retry logic for streaming calls, but both `makeLLMCallWithStreaming(...)` and `makeLLMCallWithStreamingAndTools(...)` awaited the provider stream directly with no hard timeout
+  - if the provider left `textStream` / `fullStream` half-open without emitting a finish event or transport error, the loop never reached success or retry handling
+  - that matches the trace shape exactly: prior tool spans closed cleanly, then the final streaming generation remained open forever and Langfuse trace output stayed `null`
+- Concrete root cause:
+  - half-open streaming LLM requests were not timing out
+  - a provider stall after successful tool work could leave the run hanging indefinitely, which prevented the final synthesis message from ever being delivered or recorded
+- Fix implemented:
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - added a hard 60s timeout wrapper around both streaming LLM paths
+    - when the stream stalls, the wrapper aborts the request and surfaces a retryable `LLM request timed out ...` error instead of hanging forever
+    - kept the change narrowly scoped to streaming requests so non-streaming code paths are untouched
+  - tests added/updated:
+    - `apps/desktop/src/main/llm-fetch.test.ts`
+      - added a regression test that simulates a hanging `fullStream` and verifies the call rejects with the timeout instead of never settling
+
+- Targeted verification attempted:
+  - `apps/desktop/node_modules/.bin/vitest run apps/desktop/src/main/llm-fetch.test.ts`
+  - `packages/shared/node_modules/.bin/tsc --noEmit -p apps/desktop/tsconfig.node.json`
+  - `cd apps/desktop && REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" ./node_modules/.bin/electron-vite dev --watch -- -dapp -dl`
+- Result:
+  - targeted regression test passed: `28 passed`
+  - focused desktop typecheck is still blocked by unrelated pre-existing repo/worktree issues, including missing `uuid` resolution in `apps/desktop/src/main/acp/internal-agent.ts`, stale `llm.test.ts` type errors, and missing `COMMUNICATION_ONLY_TOOLS` references in `apps/desktop/src/main/llm.ts`
+  - live desktop smoke verification following `apps/desktop/DEBUGGING.md` was also blocked by unrelated worktree setup problems: unresolved `expo/tsconfig.base` from `apps/mobile/tsconfig.json`, unresolved `uuid` during Electron build, and missing `apps/desktop/out/main/index.js` startup entry
+  - despite those unrelated blockers, the changed streaming path is covered by the targeted passing regression test and no longer permits an indefinitely pending `fullStream` in unit coverage
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -529,4 +565,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
+- Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.
