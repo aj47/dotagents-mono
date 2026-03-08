@@ -135,7 +135,14 @@ export function SettingsLoops() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this repeat task?")) return
     try {
-      await tipcClient.deleteLoop({ loopId: id })
+      const result = await tipcClient.deleteLoop({ loopId: id })
+      if (!result?.success) {
+        queryClient.invalidateQueries({ queryKey: ["loops"] })
+        queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
+        toast.error("This task no longer exists. Refreshed the task list.")
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
       toast.success("Task deleted")

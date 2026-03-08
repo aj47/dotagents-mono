@@ -71,6 +71,10 @@ function findButtonWithText(node: any, label: string) {
   return findNode(node, (candidate) => candidate.type === "Button" && textContent(candidate.props?.children).includes(label))
 }
 
+function findButtonByTitle(node: any, title: string) {
+  return findNode(node, (candidate) => candidate.type === "Button" && candidate.props?.title === title)
+}
+
 function findInputById(node: any, id: string) {
   return findNode(node, (candidate) => candidate.type === "Input" && candidate.props?.id === id)
 }
@@ -79,12 +83,19 @@ function findTextareaById(node: any, id: string) {
   return findNode(node, (candidate) => candidate.type === "Textarea" && candidate.props?.id === id)
 }
 
-async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadSettingsLoops(
+  runtime: ReturnType<typeof createHookRuntime>,
+  options: {
+    loops?: Array<Record<string, any>>
+    deleteLoopResult?: { success: boolean }
+  } = {},
+) {
   vi.resetModules()
 
   const saveLoop = vi.fn(async () => undefined)
   const startLoop = vi.fn(async () => undefined)
   const stopLoop = vi.fn(async () => undefined)
+  const deleteLoop = vi.fn(async () => options.deleteLoopResult ?? { success: true })
   const success = vi.fn()
   const error = vi.fn()
   const invalidateQueries = vi.fn()
@@ -113,13 +124,13 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
       saveLoop,
       startLoop,
       stopLoop,
-      deleteLoop: vi.fn(async () => undefined),
+      deleteLoop,
       triggerLoop: vi.fn(async () => ({ success: true })),
       openLoopTaskFile: vi.fn(async () => ({ success: true })),
     },
   }))
   vi.doMock("@tanstack/react-query", () => ({
-    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? [] : [] }),
+    useQuery: ({ queryKey }: any) => ({ data: queryKey?.[0] === "loops" ? (options.loops ?? []) : [] }),
     useQueryClient: () => ({ invalidateQueries }),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | undefined | false | null>) => values.filter(Boolean).join(" ") }))
@@ -127,10 +138,11 @@ async function loadSettingsLoops(runtime: ReturnType<typeof createHookRuntime>) 
   vi.doMock("sonner", () => ({ toast: { success, error } }))
 
   const mod = await import("./settings-loops")
-  return { Component: mod.Component, saveLoop, startLoop, success, error }
+  return { Component: mod.Component, saveLoop, startLoop, deleteLoop, success, error, invalidateQueries }
 }
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
   vi.resetModules()
 })
@@ -204,5 +216,31 @@ describe("desktop repeat-task interval editing", () => {
     })
     expect(startLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
     expect(success).toHaveBeenCalledWith("Task created")
+  })
+
+  it("shows an error and refreshes the list when deleting a task that is already gone", async () => {
+    vi.stubGlobal("confirm", vi.fn(() => true))
+
+    const runtime = createHookRuntime()
+    const { Component, deleteLoop, success, error, invalidateQueries } = await loadSettingsLoops(runtime, {
+      loops: [{
+        id: "daily-summary",
+        name: "Daily Summary",
+        prompt: "Summarize recent activity",
+        intervalMinutes: 15,
+        enabled: true,
+        runOnStartup: false,
+      }],
+      deleteLoopResult: { success: false },
+    })
+
+    const tree = runtime.render(Component, {} as any)
+    await findButtonByTitle(tree, "Delete task").props.onClick()
+
+    expect(deleteLoop).toHaveBeenCalledWith({ loopId: "daily-summary" })
+    expect(success).not.toHaveBeenCalledWith("Task deleted")
+    expect(error).toHaveBeenCalledWith("This task no longer exists. Refreshed the task list.")
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["loops"] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["loop-statuses"] })
   })
 })

@@ -187,6 +187,9 @@
 - [x] 2026-03-08: Reviewed the adjacent desktop MCP OAuth status path in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` and confirmed `refreshOAuthStatus(...)` still used one outer `try/catch` while rebuilding the full `oauthStatus` map, so one rejected `getOAuthStatus(...)` call could abort refreshes for every visible streamable-HTTP server card.
 - [x] 2026-03-08: Confirmed the same server cards rendered auth actions from `oauthStatus[name]?.authenticated` / `.configured`, so missing or stale status entries could hide or freeze the visible desktop OAuth controls even though the local MCP config still declared OAuth.
 - [x] 2026-03-08: Assumption accepted: deriving a fallback OAuth `configured` state from the saved desktop server config (`transport === "streamableHttp"`, `url`, and `oauth`) is acceptable because that config is the local source of truth for whether the user should still see an auth button when live status refresh fails.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-loops.tsx` again and confirmed the visible repeat-task `Delete task` action still awaited `tipcClient.deleteLoop({ loopId })` but always invalidated queries and toasted `Task deleted` for any resolved promise.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` plus `apps/desktop/src/main/loop-service.ts` that desktop `deleteLoop` resolves to `{ success: boolean }`, and that `loopService.deleteLoop(...)` returns `false` when the loop id is already missing, so the renderer could claim deletion even when nothing changed.
+- [x] 2026-03-08: Confirmed mobile `apps/mobile/src/screens/SettingsScreen.tsx` deletes loops through `settingsClient.deleteLoop(...)`, which throws on HTTP failure rather than resolving a desktop-style `{ success: false }`, so this false-success bug is desktop-only.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -406,6 +409,11 @@
    - That meant one rejected status lookup for any streamable-HTTP server could abort the entire refresh, leaving unrelated server cards with stale or missing auth state even though the user was looking at visible `Authenticate` / `Revoke` controls.
    - The card actions were gated directly by `oauthStatus[name]?.authenticated` / `.configured`, and revoke/auth-completion paths refreshed all servers instead of the active one, so an unrelated server failure could block the current card's visible auth controls.
 
+- [x] **Desktop repeat-task delete action could show false success for stale/missing tasks (directly confirmed in source):**
+   - In `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, `handleDelete(...)` previously treated any resolved `tipcClient.deleteLoop({ loopId })` call as success, immediately invalidating queries and showing `Task deleted`.
+   - In `apps/desktop/src/main/tipc.ts`, `deleteLoop` forwards the main-process boolean result as `{ success: loopService.deleteLoop(input.loopId) }`, and `apps/desktop/src/main/loop-service.ts` returns `false` when the task no longer exists.
+   - That meant a stale desktop `Delete task` click could claim success even though no repeat task was actually removed, which is misleading on an active settings-management surface.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-selector.tsx` so the desktop selector now keeps a bounded outline button visible while agent profiles are loading and replaces silent initial load failures with a retryable `Retry agents` trigger that exposes the backend error in the button tooltip/title.
 - [x] Added `apps/desktop/src/renderer/src/components/agent-selector.feedback.test.ts` with focused source-level regression coverage locking in the new loading and retry states while the existing layout test continues to cover the normal selector chrome.
@@ -573,6 +581,8 @@
 - [x] Updated `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` so OAuth status refreshes now normalize each server independently, keep config-derived fallback auth availability when a status request fails, and avoid dropping the entire visible auth-state map because one `getOAuthStatus(...)` call rejected.
 - [x] Updated the desktop MCP server-card OAuth actions to refresh only the active server after `Revoke` / auth completion and to stop polling cleanly with a fallback state if an OAuth status poll throws.
 - [x] Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` with focused source-level assertions that lock in the new OAuth fallback/normalization contract and targeted per-server refresh behavior.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-loops.tsx` so the desktop repeat-task `Delete task` flow now checks `deleteLoop(...).success`, refreshes the loop queries on stale/missing-task results, and shows `This task no longer exists. Refreshed the task list.` instead of a false success toast.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` with focused regression coverage for the stale delete-result path, locking in the new false-result guard and query refresh behavior.
 
 ### Verified
 - [x] Manual source verification: `AgentSelector` now distinguishes `isLoading` / `isFetching` / `error` from a genuine success-empty state, rendering `Loading agents...` or `Retry agents` buttons instead of returning `null` whenever the first profile query has no data yet.
@@ -719,6 +729,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` now asserts the new OAuth fallback helper, normalization path, per-server failure isolation, and targeted `refreshOAuthStatus(name)` updates.
 - [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `mcp-config-manager.tsx`, confirming the new OAuth resilience snippets (`getOAuthStatusFallback(...)`, per-server `Promise.all(...)` isolation, targeted refreshes, and poll-failure fallback state) are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the MCP OAuth status resilience fix.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-loops.tsx` now branches on `!result?.success` before showing the delete success toast, refreshes `loops` / `loop-statuses` for stale task ids, and reserves `Task deleted` for true backend deletes only.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `settings-loops.tsx` and `settings-loops.interval-draft.test.tsx`, confirming the new false-result guard, stale-task error toast, and regression assertions are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the repeat-task delete false-success fix.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -772,6 +785,7 @@
 - [x] Targeted automated verification for this shared `AudioPlayer` playback-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.feedback.test.ts src/renderer/src/components/audio-player.layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this MCP server-log state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this MCP OAuth status resilience fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` still fails in `pretest` because `packages/shared` cannot find `tsup` (`sh: tsup: command not found`), which confirms `node_modules` is still absent in this worktree.
+- [x] Targeted automated verification for this desktop repeat-task delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether a successful zero-enabled-agent result on desktop should eventually show an explicit empty-state/manage-agents affordance like mobile, rather than continuing to hide the selector outside of load/error states.
@@ -808,6 +822,7 @@
 - [ ] Whether the mobile `MessageQueuePanel` / `ChatScreen` queue-action callbacks should also surface visible failure feedback for local-store `remove`, `update`, `retry`, and `clear` failures once the mobile queue flow can be exercised in a runnable environment.
 - [ ] Whether the completed-session `AgentProgress` close button should also gain a tiny in-flight disabled/busy guard to prevent double-click close races once the desktop app can be exercised live.
 - [ ] Whether the adjacent `refreshOAuthStatus(...)` failure path in `mcp-config-manager.tsx` should also surface explicit inline status instead of staying console-only once desktop settings can be exercised live.
+- [ ] Whether adjacent desktop repeat-task actions that also depend on boolean TIPC results (`triggerLoop`, `startLoop`, `stopLoop`) should gain the same explicit false-result feedback once loop management can be exercised in a runnable environment.
 
 ### Diagnosis / Rationale
 - The desktop AgentSelector issue is a primary entry-point load-state bug: when profile loading failed, the agent picker vanished from session-start surfaces and looked indistinguishable from “there are no agents to choose from.”
@@ -894,6 +909,8 @@
 - Treating `retryQueuedMessage(...) === false` as a visible action failure is the smallest safe fix because the main-process contract already distinguishes that state, the desktop app already mounts a global `sonner` toaster, and no queue-processing behavior needs to change.
 - The MCP server-log issue is a concrete diagnostics-flow correctness bug: when a user expands `Server Logs`, the app should not claim the server has no logs while the request is still loading or after the fetch outright failed.
 - Tracking per-server log loading/error state is the smallest safe fix because the component already owns per-server expanded/polled state, and inline status avoids toast spam from repeated background refresh failures while preserving the existing successful log rendering.
+- The repeat-task delete issue is a straightforward boolean-contract mismatch: desktop treated any resolved `deleteLoop(...)` promise as success even though the main-process contract explicitly returns `{ success: false }` when the task is already gone.
+- Checking the returned success flag and refreshing the loop queries is the smallest safe fix because it corrects the false-success toast without changing loop-service semantics or widening into unrelated run/toggle behavior.
 
 ### Assumptions
 - Assumption: keeping the successful zero-enabled-agent state hidden for this pass is acceptable because the confirmed bug was load/error misreporting rather than the broader empty-agent UX, and mobile’s richer manage-settings empty state would be a larger product decision for dense desktop headers/composers.
@@ -947,6 +964,7 @@
 - Assumption: surfacing `This queued message is no longer retryable.` when `retryQueuedMessage(...)` returns `false` is acceptable because the underlying service only returns `false` when the message is missing or no longer in `failed` state, and both cases mean the visible `Retry` action cannot actually proceed.
 - Assumption: keeping this pass desktop-only is acceptable because the confirmed bug and fixed contracts depend on the desktop `MessageQueuePanel`'s TIPC/main-process failure semantics, while mobile uses a separate local-store queue flow that should be validated as its own follow-up rather than widened speculatively.
 - Assumption: using an inline loading/error/retry card for the initial MCP tool-list fetch is acceptable because this failure happens while the settings page itself is loading, the error is page-scoped rather than action-scoped, and an inline retry affordance is less noisy and more informative than a toast for first-render failures.
+- Assumption: refreshing `loops` / `loop-statuses` and showing an error toast when `deleteLoop(...)` resolves to `{ success: false }` is acceptable because the current false-return path means the task id is stale or already missing, so syncing the visible list is more honest than pretending the delete succeeded.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-selector.feedback.test.ts src/renderer/src/components/agent-selector.layout.test.ts` and live-verify the desktop sessions empty state/header plus `SessionInput` surfaces by forcing one rejected `getAgentProfiles()` response to confirm the selector now stays visible with `Retry agents` instead of disappearing.
@@ -1013,3 +1031,5 @@
 - After that, inspect whether the mobile queue-management callbacks in `apps/mobile/src/screens/ChatScreen.tsx` should gain matching visible failure feedback for local-store false-return paths.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` and live-verify the desktop `Server Logs` panel with one delayed-success fetch and one forced failure to confirm it now distinguishes loading, fetch failure, stale-snapshot warning, and genuinely empty logs.
 - After that, inspect adjacent MCP settings diagnostics (especially OAuth-status refresh in `mcp-config-manager.tsx`) for any remaining console-only state failures.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` and live-verify deleting a repeat task after it was removed elsewhere to confirm desktop now refreshes the list and shows the new stale-task error instead of `Task deleted`.
+- After that, inspect whether adjacent repeat-task actions (`triggerLoop`, `startLoop`, `stopLoop`) should also treat explicit `{ success: false }` results as user-visible failures for full loop-management consistency.
