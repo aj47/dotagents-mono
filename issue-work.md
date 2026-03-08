@@ -3030,3 +3030,37 @@
   - Once the mobile workspace dependencies are restored, rerun the Expo/mobile typecheck (and any app-level tests) to verify the additive shared-session fields across the full app.
   - If another `#58` slice is needed later, prefer discoverability polish (session-list badges / entry-point hints) over more storage refactors.
 - Next recommended issue work item: refresh open issues again and prefer a fresh bug or concrete desktop/mobile UX gap that is not another persistence-only `#58` follow-up unless list-level compaction discoverability becomes the highest-value next slice.
+
+##### Issue #58 — Mobile session list now flags compacted vs partial history
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest recommendation to prefer a fresh user-visible UX slice rather than another backend-only history change.
+  - `#58` still had one explicit mobile follow-up already documented in the ledger: expose compaction/partial-history status in `SessionListScreen` so users can discover history provenance before opening a chat.
+  - This was a small, shippable pass with strong local verification and no new storage or sync abstraction required.
+- Investigation:
+  - Inspected `apps/mobile/src/screens/SessionListScreen.tsx` and confirmed session rows only showed title, preview, and message count even though `SessionListItem` already carried optional `compaction` metadata.
+  - Re-checked `packages/shared/src/session.ts` and confirmed `sessionToListItem(...)` already forwards `compaction`, so the remaining gap was purely list-level rendering/discoverability.
+  - Re-checked desktop history UI patterns and confirmed desktop already has a similar concept in `apps/desktop/src/renderer/src/lib/conversation-history-badges.ts`, which made a mobile list badge a safe parity-style follow-up rather than a new product concept.
+- Important assumptions:
+  - Assumption: a compact badge row in the mobile session list is enough for this slice; the user does not also need a new filter/sort mode for compacted sessions yet.
+  - Why acceptable: the issue acceptance criteria focus on clear UI access and provenance, and the previously landed chat-level full-history banner already carries the deeper explanation once a conversation is opened.
+  - Assumption: mobile can use the same user-facing labels as desktop (`History compacted`, `History partial`) while keeping the implementation local to `SessionListScreen.tsx`.
+  - Why acceptable: it preserves cross-app wording consistency without widening this pass into shared badge abstractions or cross-build refactors.
+- Changes implemented:
+  - Added a local `getSessionHistoryBadge(...)` helper in `apps/mobile/src/screens/SessionListScreen.tsx` that maps `SessionListItem.compaction` into either `History compacted` or `History partial` badge metadata.
+  - Rendered a compact badge row in each session card when compaction metadata exists, including short hint text (`stored` count or legacy partial warning) so summarized sessions are recognizable from the list.
+  - Expanded the session-row accessibility label so VoiceOver/TalkBack users also hear the history-provenance state without needing a separate hidden control.
+  - Added `apps/mobile/tests/session-list-history-badges.test.js`, a dependency-free regression test covering the compaction/partial badge logic and accessibility wiring.
+- Verification run:
+  - Completed: `node --test apps/mobile/tests/session-list-history-badges.test.js apps/mobile/src/screens/ChatScreen.full-history-banner.test.js apps/mobile/src/store/sessions.full-history-persistence.test.js apps/mobile/tests/conversation-history-full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Blocked by environment: `pnpm exec tsc --noEmit -p apps/mobile/tsconfig.json` ❌ because this worktree still lacks the Expo/mobile TS toolchain inputs (`expo/tsconfig.base`, React Native/Expo module types, and related dependencies), so a full mobile compile could not run here.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Consider a session-list filter or sort for `History partial` sessions if users frequently need to find potentially lossy legacy conversations quickly.
+  - If compaction metadata grows richer, consider surfacing the represented/stored counts more explicitly in the row or in a long-press details sheet.
+  - Re-run the real mobile TypeScript/Expo validation once the worktree has the missing mobile dependencies restored.
+
+- Next recommended issue work item: refresh open issues again and prefer either a fresh bug or a small, source-confirmed UX polish outside `#58`; if `#58` continues, the next honest step is session-list filtering/details rather than more storage work.

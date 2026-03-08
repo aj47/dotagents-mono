@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
 import { useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
-import { spacing, radius, Theme } from '../ui/theme';
+import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { useSessionContext, SessionStore } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -23,6 +23,44 @@ const lightSpinner = require('../../assets/light-spinner.gif');
 interface Props {
   navigation: any;
 }
+
+type SessionHistoryBadgeInfo = {
+  label: 'History compacted' | 'History partial';
+  hint: string;
+  accessibilityLabel: string;
+  tone: 'primary' | 'warning';
+};
+
+const getSessionHistoryBadge = (
+  session: Pick<SessionListItem, 'compaction'>,
+): SessionHistoryBadgeInfo | null => {
+  if (!session.compaction) {
+    return null;
+  }
+
+  if (session.compaction.partialReason === 'legacy_summary_without_raw_messages') {
+    return {
+      label: 'History partial',
+      hint: 'Earlier raw history unavailable',
+      accessibilityLabel: 'History partial. Earlier raw history is unavailable for this legacy summarized session.',
+      tone: 'warning',
+    };
+  }
+
+  const storedCount =
+    session.compaction.storedRawMessageCount ?? session.compaction.representedMessageCount;
+
+  return {
+    label: 'History compacted',
+    hint: storedCount
+      ? `${storedCount.toLocaleString()} stored`
+      : 'Raw history preserved',
+    accessibilityLabel: storedCount
+      ? `History compacted. ${storedCount.toLocaleString()} stored raw messages remain available outside the active context window.`
+      : 'History compacted. Earlier raw history is preserved outside the active context window.',
+    tone: 'primary',
+  };
+};
 
 export default function SessionListScreen({ navigation }: Props) {
   const { config } = useConfigContext();
@@ -815,6 +853,12 @@ export default function SessionListScreen({ navigation }: Props) {
   const renderSession = ({ item }: { item: SessionListItem }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
+    const historyBadge = getSessionHistoryBadge(item);
+    const sessionAccessibilityParts = [
+      `${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`,
+      isStub ? 'from desktop' : null,
+      historyBadge?.accessibilityLabel,
+    ].filter(Boolean);
 
     return (
       <TouchableOpacity
@@ -822,7 +866,7 @@ export default function SessionListScreen({ navigation }: Props) {
         onPress={() => handleSelectSession(item.id)}
         onLongPress={() => handleDeleteSession(item)}
         accessibilityRole="button"
-        accessibilityLabel={`${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
+        accessibilityLabel={`${item.title}, ${sessionAccessibilityParts.join(', ')}`}
       >
         <View style={styles.sessionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
@@ -838,6 +882,32 @@ export default function SessionListScreen({ navigation }: Props) {
         <Text style={styles.sessionPreview} numberOfLines={2}>
           {item.preview || 'No messages yet'}
         </Text>
+        {historyBadge && (
+          <View style={styles.sessionBadgeRow}>
+            <View
+              style={[
+                styles.sessionHistoryBadge,
+                historyBadge.tone === 'warning'
+                  ? styles.sessionHistoryBadgeWarning
+                  : styles.sessionHistoryBadgePrimary,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.sessionHistoryBadgeText,
+                  historyBadge.tone === 'warning'
+                    ? styles.sessionHistoryBadgeTextWarning
+                    : styles.sessionHistoryBadgeTextPrimary,
+                ]}
+              >
+                {historyBadge.label}
+              </Text>
+            </View>
+            <Text style={styles.sessionHistoryHint} numberOfLines={1}>
+              {historyBadge.hint}
+            </Text>
+          </View>
+        )}
         <Text style={styles.sessionMeta}>
           {item.messageCount} message{item.messageCount !== 1 ? 's' : ''}
           {isStub ? ' · from desktop' : ''}
@@ -1099,6 +1169,42 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
       marginBottom: 4,
+    },
+    sessionBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginBottom: 4,
+    },
+    sessionHistoryBadge: {
+      borderRadius: radius.full,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderWidth: theme.hairline,
+    },
+    sessionHistoryBadgePrimary: {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+      borderColor: hexToRgba(theme.colors.primary, 0.28),
+    },
+    sessionHistoryBadgeWarning: {
+      backgroundColor: hexToRgba(theme.colors.warning, 0.14),
+      borderColor: hexToRgba(theme.colors.warning, 0.32),
+    },
+    sessionHistoryBadgeText: {
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    sessionHistoryBadgeTextPrimary: {
+      color: theme.colors.primary,
+    },
+    sessionHistoryBadgeTextWarning: {
+      color: theme.colors.warning,
+    },
+    sessionHistoryHint: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      flexShrink: 1,
     },
     sessionMeta: {
       ...theme.typography.caption,
