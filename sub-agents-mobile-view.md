@@ -1159,3 +1159,49 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that `API` / `ACP` mode chips and ACP agent chips read clearly and truncate gracefully.
   - Compare the `Agent Settings` chip row against the neighboring `Inject Builtin Tools` toggle once live validation returns to decide if that switch is now the next weakest mobile affordance.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 27: wrap the agent-settings builtin-tools toggle in a real mobile control
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/mobile/tests/settings-agent-mode-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed Iteration 26 strengthened the `Main Agent Mode` and `ACP Agent` chips in `Settings > Agent Settings`.
+  - The adjacent `Inject Builtin Tools` control still used a plain native `Switch`:
+    - no explicit switch label or hint in this section,
+    - no wrapped `44px` touch-target guardrail matching nearby sub-agent controls,
+    - weaker web/mobile consistency than the recently improved wrapped switches used elsewhere in sub-agent surfaces.
+- Issue selected:
+  - The ACP-only `Inject Builtin Tools` toggle was now the weakest mobile affordance in `Agent Settings`, so the section mixed stronger stateful chips with a smaller, less explicit switch for an important delegation behavior.
+- Decision:
+  - Keep the existing `Agent Settings` layout and helper copy.
+  - Do not refactor unrelated settings toggles in this iteration.
+  - Make the smallest local fix in `SettingsScreen`: wrap only `Inject Builtin Tools` in the existing named/tappable switch pattern already used elsewhere in sub-agent surfaces.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - replace the plain `Inject Builtin Tools` `Switch` with a `TouchableOpacity` switch wrapper,
+    - apply a dedicated `agentSettingsSwitchButton` based on `createMinimumTouchTargetStyle(...)`,
+    - add explicit switch label/hint/state metadata,
+    - reuse the existing web-safe `renderActionRailSwitchVisual(...)` so the control stays semantically clean on web.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new toggle semantics and touch-target styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved `Inject Builtin Tools` toggle still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - Nearby `Agent Settings` toggles such as `Message Queue`, `Require Tool Approval`, and related rows still use plain native `Switch` controls, but they should only be revisited after live validation confirms this section still feels uneven.
+  - Broader `Agent Settings` polish should continue to wait for fresh visual evidence instead of expanding source-only tweaks too far.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `Inject Builtin Tools` now reads and taps consistently with the surrounding `Agent Settings` controls.
+  - After live validation returns, compare the remaining `Agent Settings` switches against the now-improved chips and builtin-tools toggle to see whether any further mismatch is still noticeable on mobile.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.

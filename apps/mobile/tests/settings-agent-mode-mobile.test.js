@@ -23,3 +23,13 @@ test('gives ACP main-agent chips explicit selection semantics and narrow-screen 
   assert.match(settingsSource, /agentSettingsOptionText:\s*\{[\s\S]*?maxWidth:\s*'100%'[\s\S]*?flexShrink:\s*1[\s\S]*?textAlign:\s*'center'/);
   assert.match(settingsSource, /numberOfLines=\{1\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{agent\.displayName \|\| agent\.name\}/);
 });
+
+test('wraps Inject Builtin Tools in a named mobile-sized switch control', () => {
+  assert.match(settingsSource, /style=\{styles\.agentSettingsSwitchButton\}/);
+  assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('acpInjectBuiltinTools', !\(remoteSettings\.acpInjectBuiltinTools \?\? true\)\)\}/);
+  assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\('Inject Builtin Tools'\)/);
+  assert.match(settingsSource, /accessibilityHint="Adds DotAgents tools like delegation and settings to ACP sessions\."/);
+  assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.acpInjectBuiltinTools \?\? true \}\}/);
+  assert.match(settingsSource, /agentSettingsSwitchButton:\s*\{[\s\S]*?\.\.\.compactActionTouchTarget[\s\S]*?alignSelf:\s*'center'/);
+  assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.acpInjectBuiltinTools \?\? true\)/);
+});

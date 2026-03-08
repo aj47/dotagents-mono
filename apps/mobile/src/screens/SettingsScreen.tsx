@@ -1819,12 +1819,23 @@ export default function SettingsScreen({ navigation }: any) {
 
                     <View style={styles.row}>
                       <Text style={styles.label}>Inject Builtin Tools</Text>
-                      <Switch
-                        value={remoteSettings.acpInjectBuiltinTools ?? true}
-                        onValueChange={(v) => handleRemoteSettingToggle('acpInjectBuiltinTools', v)}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.acpInjectBuiltinTools ? theme.colors.primaryForeground : theme.colors.background}
-                      />
+                      <TouchableOpacity
+                        style={styles.agentSettingsSwitchButton}
+                        onPress={() => handleRemoteSettingToggle('acpInjectBuiltinTools', !(remoteSettings.acpInjectBuiltinTools ?? true))}
+                        accessibilityRole="switch"
+                        accessibilityLabel={createSwitchAccessibilityLabel('Inject Builtin Tools')}
+                        accessibilityHint="Adds DotAgents tools like delegation and settings to ACP sessions."
+                        accessibilityState={{ checked: remoteSettings.acpInjectBuiltinTools ?? true }}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          pointerEvents="none"
+                          accessibilityElementsHidden
+                          importantForAccessibility="no-hide-descendants"
+                        >
+                          {renderActionRailSwitchVisual(remoteSettings.acpInjectBuiltinTools ?? true)}
+                        </View>
+                      </TouchableOpacity>
                     </View>
                     <Text style={styles.helperText}>
                       Add DotAgents tools (delegation, settings) to ACP sessions
@@ -2929,6 +2940,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     agentSettingsOptionTextActive: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    agentSettingsSwitchButton: {
+      ...compactActionTouchTarget,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.secondary,
+      alignSelf: 'center',
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,
