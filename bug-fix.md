@@ -88,6 +88,7 @@
 - [x] 2026-03-08: Assumption accepted: using `toast.error(...)` for a rejected desktop global emergency stop is the smallest safe fix because `apps/desktop/src/renderer/src/App.tsx` already mounts a global `sonner` toaster and nearby desktop stop/send flows now use the same visible feedback pattern.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the app-layout emergency-stop feedback fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/panel.tsx`, `apps/desktop/src/renderer/src/lib/recorder.ts`, and the desktop onboarding mic-permission flow. Confirmed the floating panel has four `startRecording()` failure paths that only reset state + `console.error(...)`, while onboarding already treats microphone permission/device failures as visible user-facing errors.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -181,6 +182,10 @@
   - `apps/desktop/src/renderer/src/components/app-layout.tsx` renders the visible `Emergency stop all agent sessions` button in both expanded and collapsed sidebar chrome, but `handleEmergencyStopAll(...)` previously caught `tipcClient.emergencyStopAgent()` failures with `console.error(...)` only.
   - That meant a failed global kill-switch request could look like “nothing happened” from the user’s point of view even though they had just invoked the desktop-wide emergency stop action.
   - Mobile already surfaces kill-switch success/failure in `apps/mobile/src/screens/ChatScreen.tsx`, so this silent desktop path was a concrete UX bug rather than an intentional platform difference.
+- [x] **Desktop panel microphone startup failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/lib/recorder.ts` can reject `startRecording()` straight from `navigator.mediaDevices.getUserMedia(...)`, including realistic permission/device startup failures.
+  - `apps/desktop/src/renderer/src/pages/panel.tsx` had four `startRecording()?.catch(...)` handlers (`startRecording`, `startOrFinishRecording`, `startMcpRecording`, `startOrFinishMcpRecording`) that only called `console.error(...)`, reset the waveform state, and sometimes cleared MCP refs.
+  - From the user’s point of view, pressing the main voice shortcut/button could briefly show recording UI and then silently fall back with no explanation when the microphone was denied, missing, or unavailable.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -274,6 +279,9 @@
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` to assert that the visible sidebar stop button still calls `stopAgentSession(...)` and surfaces `Failed to stop session. ...` feedback when the IPC stop request rejects.
 - [x] Updated `apps/desktop/src/renderer/src/components/app-layout.tsx` so a rejected global `emergencyStopAgent()` call now surfaces `toast.error(...)` feedback with the underlying error message instead of failing silently with console logging only.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/app-layout.emergency-stop.test.tsx` to assert that the visible global emergency-stop button still calls `stopAllTts()` / `emergencyStopAgent()`, clears its busy state after a rejection, and surfaces `Failed to stop all agent sessions. ...` feedback.
+- [x] Updated `apps/desktop/src/renderer/src/pages/panel.tsx` so all four floating-panel `startRecording()` failure paths now go through one helper that resets panel state and surfaces a visible `tipcClient.displayError(...)` dialog instead of failing silently.
+- [x] Added microphone startup error mapping in `panel.tsx` for the highest-signal cases already implied by desktop Electron/Web media APIs and the existing onboarding flow: permission denied, no microphone found, microphone unavailable/busy, and a generic fallback.
+- [x] Extended `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` with focused source-level assertions that lock in the new recording-start error helper, the visible `displayError(...)` path, and coverage of all four panel recording entry points.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -326,6 +334,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/app-layout.tsx` now imports `toast` from `sonner` and calls `toast.error(...)` when the visible global emergency-stop action’s `emergencyStopAgent()` request rejects, so the desktop-wide kill switch no longer fails silently.
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/app-layout.emergency-stop.test.tsx` now mocks `sonner` and asserts that a rejected global emergency stop still calls `stopAllTts()` / `emergencyStopAgent()`, clears the busy state, and surfaces `Failed to stop all agent sessions. backend offline` feedback.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the app-layout emergency-stop feedback update.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/panel.tsx` now centralizes microphone startup failures in `handleRecordingStartFailure(...)`, preserves the existing state reset, and calls `tipcClient.displayError(...)` with a user-visible title/message instead of only logging.
+- [x] Low-cost automated sanity check: a `node` file-read assertion confirmed the panel source contains the new recording-start error helper, the visible `displayError(...)` call, and all four `handleRecordingStartFailure(err...)` call sites.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the floating-panel microphone error-feedback update.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -347,6 +358,8 @@
 - [x] Targeted automated verification for this follow-up kill-switch error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/follow-up-input.submit.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this active-sessions sidebar stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this app-layout emergency-stop feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Live desktop reproduction for the floating-panel microphone failure was attempted with `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm dev -- -dui -dapp`, but predev failed immediately because `packages/shared` could not find `tsup` (`node_modules` is absent in this worktree).
+- [x] Targeted automated verification for this floating-panel microphone error-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether other desktop stop-session surfaces outside the now-covered follow-up composers and `ActiveAgentsSidebar` (for example `AgentProgress` or `AgentProcessingView`) should also surface a toast instead of remaining console-only once live verification is available.
@@ -365,6 +378,7 @@
 - [ ] Whether the desktop repeat-task editor should eventually reset invalid interval drafts on blur, or whether save-time validation alone is the better UX once live desktop testing is possible.
 - [ ] Whether any other desktop agent-edit fields still mix fallback display text into controlled `value` props once the environment blocker is cleared and the full editor can be exercised live.
 - [ ] Whether any other desktop tabbed editors or dialogs still rely on uncontrolled `defaultValue` tab state even when some tabs are conditional on current draft/runtime state.
+- [ ] Whether the floating panel should eventually offer a richer microphone recovery affordance (for example a system-settings deep link or inline banner) instead of the current minimal visible error dialog once live Electron validation is available.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -403,6 +417,9 @@
 - Adding `toast.error(...)` in the existing follow-up kill-switch `catch` blocks is the smallest safe fix because it preserves the current stop behavior, loading state, and callback/direct-stop branching while finally exposing the failure to the user.
 - The agent-editor bug is a tab-state correctness issue: when tab availability depends on connection type, uncontrolled `defaultValue` tabs can keep pointing at content that no longer exists.
 - Moving the editor to controlled tab state with a tiny `model -> general` normalization is the smallest safe fix because it preserves the existing UI and tab labels while preventing blank editor states when the draft stops being an internal agent.
+- Silent microphone startup failure in the floating panel is a high-signal desktop bug: voice recording is a primary entry point, and a permission/device failure should not look like a brief UI flash followed by “nothing happened.”
+- Reusing the panel’s existing reset behavior but adding a visible `displayError(...)` message is the smallest safe fix because it preserves the current recording-state cleanup and MCP-context handling while finally telling the user why recording did not start.
+- Mirroring the onboarding flow’s microphone-specific messaging is a low-risk repo-local choice because desktop already treats those exact permission/device cases as actionable user-facing errors elsewhere.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -425,6 +442,7 @@
 - Assumption: resetting an invalid `model` tab back to `general` is acceptable because `General` is the safest always-available editor section, while mobile has no competing tab-state behavior that needs to stay aligned here.
 - Assumption: using the existing desktop toast pattern for `ActiveAgentsSidebar` stop failures is acceptable because the action is destructive/core, the app already mounts a global `sonner` toaster, and recent nearby desktop send/stop fixes established visible error feedback as the repo-local pattern.
 - Assumption: surfacing only the rejected `emergencyStopAgent()` path with a toast (while keeping the best-effort pre-stop `stopAllTts()` cleanup console-only) is acceptable for this pass because the user-facing bug is the silent failure of the destructive kill-switch action itself, and widening the UX contract around secondary audio cleanup would be a larger behavior decision.
+- Assumption: mapping `NotReadableError` / `TrackStartError` to a generic “microphone unavailable / another app may be using it” message is acceptable for this pass because that is a common Chromium/Electron failure mode, onboarding already distinguishes microphone setup failures at a similar level, and the fallback still preserves the raw error message for unexpected cases.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -455,3 +473,5 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/active-agents-sidebar.stop-session.test.tsx` and live-verify that a failed stop click from the desktop sessions sidebar surfaces the new toast instead of appearing to do nothing.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/app-layout.emergency-stop.test.tsx` and live-verify that a failed desktop global emergency-stop click surfaces the new toast instead of appearing to do nothing.
 - After that, inspect whether adjacent `ActiveAgentsSidebar` snooze/restore failures also need visible feedback for consistency with the now-covered sidebar stop action.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` and live-verify the floating panel by forcing microphone denial / missing-device failure so the new visible recorder error contract is exercised end to end.
+- After that, inspect whether any other desktop voice-entry surfaces outside `panel.tsx` still swallow `startRecording()` failures with console-only logging.

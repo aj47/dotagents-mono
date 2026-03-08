@@ -57,6 +57,37 @@ const resizeVisualizerData = (data: number[], targetLength: number): number[] =>
   return [...Array<number>(targetLength - data.length).fill(-1000), ...data]
 }
 
+const getRecordingStartErrorDetails = (error: unknown): { title: string; message: string } => {
+  const errorMessage = error instanceof Error ? error.message || error.name : String(error)
+
+  if (errorMessage.includes("Permission denied") || errorMessage.includes("NotAllowedError")) {
+    return {
+      title: "Microphone access denied",
+      message: "Microphone access was denied. Please allow microphone access in your system settings and try again.",
+    }
+  }
+
+  if (errorMessage.includes("NotFoundError") || errorMessage.includes("no audio input")) {
+    return {
+      title: "No microphone found",
+      message: "No microphone found. Please connect a microphone and try again.",
+    }
+  }
+
+  if (errorMessage.includes("NotReadableError") || errorMessage.includes("TrackStartError")) {
+    return {
+      title: "Microphone unavailable",
+      message:
+        "The microphone is unavailable. Another app may be using it, or the input device could not be started. Please close other recording apps and try again.",
+    }
+  }
+
+  return {
+    title: "Failed to start recording",
+    message: errorMessage ? `Failed to start recording: ${errorMessage}` : "Failed to start recording. Please try again.",
+  }
+}
+
 export function Component() {
   const [visualizerData, setVisualizerData] = useState(() =>
     getInitialVisualizerData(),
@@ -85,6 +116,29 @@ export function Component() {
     if (lastRequestedModeRef.current === mode) return
     lastRequestedModeRef.current = mode
     tipcClient.setPanelMode({ mode })
+  }
+
+  const handleRecordingStartFailure = (
+    err: unknown,
+    options: { clearMcpContext?: boolean } = {},
+  ) => {
+    console.error('[panel] startRecording failed, resetting recording state:', err)
+    setRecording(false)
+    recordingRef.current = false
+    setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
+    setFromButtonClick(false)
+
+    if (options.clearMcpContext) {
+      setMcpMode(false)
+      mcpModeRef.current = false
+      mcpConversationIdRef.current = undefined
+      mcpSessionIdRef.current = undefined
+      fromTileRef.current = false
+      setContinueConversationTitle(null)
+    }
+
+    const { title, message } = getRecordingStartErrorDetails(err)
+    void tipcClient.displayError({ title, message })
   }
 
 
@@ -647,10 +701,7 @@ export function Component() {
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
       recorderRef.current?.startRecording()?.catch((err: unknown) => {
-        console.error('[panel] startRecording failed, resetting recording state:', err)
-        setRecording(false)
-        recordingRef.current = false
-        setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
+        handleRecordingStartFailure(err)
       })
     })
 
@@ -697,10 +748,7 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         tipcClient.showPanelWindow({})
         recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
-          console.error('[panel] startRecording failed, resetting recording state:', err)
-          setRecording(false)
-          recordingRef.current = false
-          setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
+          handleRecordingStartFailure(err)
           fromTileRef.current = false
         })
       }
@@ -838,17 +886,7 @@ export function Component() {
       recordingRef.current = true
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
       recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
-        console.error('[panel] startRecording failed, resetting recording state:', err)
-        setRecording(false)
-        recordingRef.current = false
-        setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-        // Also clear MCP context to avoid leaving the panel stuck in MCP mode
-        // with no active recording.
-        setMcpMode(false)
-        mcpModeRef.current = false
-        mcpConversationIdRef.current = undefined
-        mcpSessionIdRef.current = undefined
-        fromTileRef.current = false
+        handleRecordingStartFailure(err, { clearMcpContext: true })
       })
     })
 
@@ -893,17 +931,7 @@ export function Component() {
         requestPanelMode("normal") // Ensure panel is normal size for recording
         tipcClient.showPanelWindow({})
         recorderRef.current?.startRecording()?.catch?.((err: unknown) => {
-          console.error('[panel] startRecording failed, resetting recording state:', err)
-          setRecording(false)
-          recordingRef.current = false
-          setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-          // Also clear MCP context to avoid leaving the panel stuck in MCP mode
-          // with no active recording (similar to aborted/empty/too-short early returns).
-          setMcpMode(false)
-          mcpModeRef.current = false
-          mcpConversationIdRef.current = undefined
-          mcpSessionIdRef.current = undefined
-          fromTileRef.current = false
+          handleRecordingStartFailure(err, { clearMcpContext: true })
         })
       }
     })

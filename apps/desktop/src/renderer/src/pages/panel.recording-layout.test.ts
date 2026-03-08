@@ -51,4 +51,13 @@ describe("panel recording layout", () => {
     expect(tipcSource).toContain('state.isTextInputActive = false')
     expect(tipcSource).toContain('hideFloatingPanelWindow()')
   })
+
+  it("surfaces panel microphone startup failures with user-visible recorder error dialogs", () => {
+    expect(panelSource).toContain("const getRecordingStartErrorDetails = (error: unknown)")
+    expect(panelSource).toContain('errorMessage.includes("Permission denied") || errorMessage.includes("NotAllowedError")')
+    expect(panelSource).toContain('errorMessage.includes("NotFoundError") || errorMessage.includes("no audio input")')
+    expect(panelSource).toContain('errorMessage.includes("NotReadableError") || errorMessage.includes("TrackStartError")')
+    expect(panelSource).toContain('void tipcClient.displayError({ title, message })')
+    expect(panelSource.match(/handleRecordingStartFailure\(err/g)?.length).toBe(4)
+  })
 })
