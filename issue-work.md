@@ -3064,3 +3064,38 @@
   - Re-run the real mobile TypeScript/Expo validation once the worktree has the missing mobile dependencies restored.
 
 - Next recommended issue work item: refresh open issues again and prefer either a fresh bug or a small, source-confirmed UX polish outside `#58`; if `#58` continues, the next honest step is session-list filtering/details rather than more storage work.
+
+##### Issue #57 — Restore dialog now surfaces backup provenance and target mismatch context
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` first and avoided reopening the broader `#58` history track after several recent iterations there.
+  - Among the remaining open issues, `#57` still had a narrow trust-focused follow-up explicitly noted earlier in the ledger: show richer backup metadata inside the restore flow itself, not only in the Settings list.
+  - This was a small, user-facing slice with strong local verification and no need to fork the existing bundle preview/import pipeline.
+- Investigation:
+  - Re-read issue `#57`, its comments, and the existing ledger trail for the backup/restore work.
+  - Inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, and `apps/desktop/src/main/bundle-service.ts`.
+  - Confirmed recent backups in Settings already show provenance (`sourceBundleName`, target layer, import summary), but the shared restore confirmation dialog did not surface that same context before the user clicked `Restore`.
+  - Confirmed the selected backup bundle already embeds the needed metadata in `manifest.backup`, so the missing behavior was renderer presentation rather than new backend plumbing.
+- Important assumptions:
+  - Assumption: the backup bundle's own embedded `manifest.backup` metadata is the correct source of truth for restore provenance.
+  - Why acceptable: it travels with the backup artifact itself, works whether the backup was opened from the recent list or via the file picker, and avoids adding another state-carrying side channel.
+  - Assumption: warning about restore-target mismatch is a good first trust improvement even if restore does not yet auto-switch back to the original slot/layer.
+  - Why acceptable: it gives users actionable context immediately while keeping this pass limited to UI/provenance polish rather than changing restore semantics.
+- Changes implemented:
+  - Extended the local `BundleManifest` typing in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so the dialog can read `manifest.backup` metadata from automatic backup bundles.
+  - Added restore-specific backup provenance helpers to format the original snapshot target, prior import-result summary, and slot-aware labels from the embedded backup metadata.
+  - Added a new `Backup provenance` card to the shared bundle import dialog whenever the selected bundle is an automatic pre-import snapshot.
+  - Added a restore-target mismatch warning when the current restore destination differs from the snapshot's original target, including guidance to activate the original bundle slot first when appropriate.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and `apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` with source-level regression coverage for the new provenance UI and mismatch copy.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/pages/settings-capabilities.restore-backup.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Consider defaulting restore destination back to the snapshot's original slot/layer when that intent is unambiguous, instead of only warning when they differ.
+  - Consider surfacing the same provenance summary in import/restore success toasts or recent-backup detail rows in a more compact form.
+  - Reuse the same provenance/mismatch cues in Hub-installed bundle restore paths if those flows diverge later.
+
+- Next recommended issue work item: refresh the open issue list again and prefer a fresh, well-scoped bug first; if `#57` continues, the next honest slice is restore-target defaulting/original-slot restoration rather than more backup metadata text.

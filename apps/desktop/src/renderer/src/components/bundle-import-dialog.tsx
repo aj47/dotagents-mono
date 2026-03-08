@@ -94,6 +94,7 @@ interface BundleManifest {
   description?: string
   createdAt: string
   exportedFrom: string
+  backup?: BundleImportBackupMetadata
   components: {
     agentProfiles: number
     mcpServers: number
@@ -359,6 +360,83 @@ function formatImportTargetLabel(
 ): string {
   return getImportTargetSlotLabel(importTarget, slotState)
     ?? formatImportTargetLayerLabel(importTarget?.layer)
+}
+
+function getBackupTargetSlotLabel(
+  backup?: BundleImportBackupMetadata,
+  slotState?: BundleSlotState | null,
+): string | null {
+  if (backup?.targetLayer !== "slot" || !backup.targetAgentsDir) {
+    return null
+  }
+
+  const normalizedTargetDir = normalizeImportTargetPath(backup.targetAgentsDir)
+  const matchingSlot = slotState?.slots.find(
+    (slot) => normalizeImportTargetPath(slot.slotDir) === normalizedTargetDir,
+  )
+  const inferredSlotId = matchingSlot?.id
+    ?? normalizedTargetDir.split("/").filter(Boolean).pop()
+
+  if (!inferredSlotId) {
+    return "Bundle slot"
+  }
+
+  return slotState?.activeSlotId === inferredSlotId
+    ? `Bundle slot "${inferredSlotId}" (active)`
+    : `Bundle slot "${inferredSlotId}"`
+}
+
+function formatBackupTargetLabel(
+  backup?: BundleImportBackupMetadata,
+  slotState?: BundleSlotState | null,
+): string {
+  return getBackupTargetSlotLabel(backup, slotState)
+    ?? formatImportTargetLayerLabel(backup?.targetLayer)
+}
+
+function formatBackupImportResultSummary(summary?: ImportResultSummary): string | null {
+  if (!summary) return null
+
+  const parts = [
+    summary.appliedCount > 0 ? `${summary.appliedCount} applied` : null,
+    summary.skipped > 0 ? `${summary.skipped} skipped` : null,
+    summary.failed > 0 ? `${summary.failed} failed` : null,
+  ].filter(Boolean)
+
+  return parts.length > 0
+    ? parts.join(" · ")
+    : summary.processedCount > 0
+      ? `${summary.processedCount} checked`
+      : null
+}
+
+function formatBackupProvenance(
+  backup?: BundleImportBackupMetadata,
+  slotState?: BundleSlotState | null,
+): string | null {
+  if (!backup) return null
+
+  const targetLabel = formatBackupTargetLabel(backup, slotState)
+  const sourceLabel = backup.sourceBundleName
+    ? `Created before importing ${backup.sourceBundleName} into ${targetLabel}.`
+    : `Created as a pre-import snapshot for ${targetLabel}.`
+  const summaryLabel = formatBackupImportResultSummary(backup.importResultSummary)
+
+  return summaryLabel
+    ? `${sourceLabel} Last recorded result: ${summaryLabel}.`
+    : sourceLabel
+}
+
+function doesRestoreTargetDiffer(
+  importTarget?: BundlePreview["importTarget"],
+  backup?: BundleImportBackupMetadata,
+): boolean {
+  if (!importTarget || !backup?.targetAgentsDir) {
+    return false
+  }
+
+  return importTarget.layer !== backup.targetLayer
+    || normalizeImportTargetPath(importTarget.agentsDir) !== normalizeImportTargetPath(backup.targetAgentsDir)
 }
 
 function getTemplatePlaceholderTokens(value: unknown): string[] {
@@ -937,6 +1015,7 @@ export function BundleImportDialog({
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
   const importTarget = preview?.importTarget
+  const backupMetadata = manifest?.backup
   const suggestedNewSlotId = getSuggestedNewSlotId(
     preview?.bundle?.manifest?.name,
     bundleSlotState?.slots ?? [],
@@ -974,6 +1053,8 @@ export function BundleImportDialog({
     normalizedComponents,
     selectedItems,
   )
+  const backupProvenance = formatBackupProvenance(backupMetadata, bundleSlotState)
+  const restoreTargetDiffersFromBackupOrigin = doesRestoreTargetDiffer(importTarget, backupMetadata)
 
   useEffect(() => {
     if (!showImportTargetSelector || hasEditedNewSlotId) return
@@ -1132,6 +1213,35 @@ export function BundleImportDialog({
                 Created: {new Date(manifest.createdAt).toLocaleDateString()}
               </p>
             </div>
+
+            {backupMetadata && (
+              <div className={`rounded-lg border p-3 ${restoreTargetDiffersFromBackupOrigin ? "border-amber-300 bg-amber-50/60" : "border-sky-300 bg-sky-50/60"}`}>
+                <div className="flex items-start gap-2">
+                  {restoreTargetDiffersFromBackupOrigin
+                    ? <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
+                    : <Package className="mt-0.5 h-4 w-4 text-sky-600" />}
+                  <div className="space-y-2">
+                    <Label>Backup provenance</Label>
+                    <p className="text-xs text-muted-foreground">
+                      This bundle was created as a pre-import snapshot on {new Date(manifest.createdAt).toLocaleString()}. {backupProvenance}
+                    </p>
+                    {backupMetadata.targetAgentsDir && (
+                      <div className="rounded-md border border-sky-200 bg-background/70 px-2 py-2 text-[11px] text-muted-foreground">
+                        <p>
+                          Original snapshot target: <span className="font-medium text-foreground">{formatBackupTargetLabel(backupMetadata, bundleSlotState)}</span>
+                        </p>
+                        <p className="mt-1 break-all font-mono">{backupMetadata.targetAgentsDir}</p>
+                      </div>
+                    )}
+                    {restoreTargetDiffersFromBackupOrigin && importTarget && (
+                      <p className="text-[11px] text-amber-700">
+                        This restore is currently pointed at {formatImportTargetLabel(importTarget, bundleSlotState)} instead of the original snapshot target. If you meant to roll back a slot-specific import, activate that slot from Settings → Capabilities → Bundle slots before restoring.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-3">
               <div className="space-y-2">

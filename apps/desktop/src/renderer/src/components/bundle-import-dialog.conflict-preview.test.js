@@ -61,6 +61,20 @@ test('bundle import dialog shows the automatic safety backup guarantee before co
   assert.match(dialogSource, /toast\.error\([\s\S]*\$\{importTargetMessage\}\$\{backupMessage\}\$\{sourceMessage\}[\s\S]*getRevealBackupToastOptions\(backupFilePath\)/);
 });
 
+test('bundle import dialog surfaces backup provenance when restoring an automatic snapshot', () => {
+  assert.match(dialogSource, /interface BundleManifest \{[\s\S]*backup\?: BundleImportBackupMetadata/);
+  assert.match(dialogSource, /function getBackupTargetSlotLabel\([\s\S]*backup\?: BundleImportBackupMetadata,[\s\S]*slotState\?: BundleSlotState \| null,[\s\S]*\): string \| null/);
+  assert.match(dialogSource, /function formatBackupImportResultSummary\(summary\?: ImportResultSummary\): string \| null/);
+  assert.match(dialogSource, /function formatBackupProvenance\([\s\S]*Created before importing \$\{backup\.sourceBundleName\} into \$\{targetLabel\}\./);
+  assert.match(dialogSource, /function doesRestoreTargetDiffer\([\s\S]*normalizeImportTargetPath\(backup\.targetAgentsDir\)/);
+  assert.match(dialogSource, /const backupMetadata = manifest\?\.backup/);
+  assert.match(dialogSource, /const backupProvenance = formatBackupProvenance\(backupMetadata, bundleSlotState\)/);
+  assert.match(dialogSource, /<Label>Backup provenance<\/Label>/);
+  assert.match(dialogSource, /This bundle was created as a pre-import snapshot on \{new Date\(manifest\.createdAt\)\.toLocaleString\(\)\}\. \{backupProvenance\}/);
+  assert.match(dialogSource, /Original snapshot target: <span className="font-medium text-foreground">\{formatBackupTargetLabel\(backupMetadata, bundleSlotState\)\}<\/span>/);
+  assert.match(dialogSource, /This restore is currently pointed at \{formatImportTargetLabel\(importTarget, bundleSlotState\)\} instead of the original snapshot target\./);
+});
+
 test('bundle import can explicitly target the active bundle slot through the existing preview and import pipeline', () => {
   assert.match(tipcSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "new-slot"/);
   assert.match(tipcSource, /async function resolveBundleImportTarget\([\s\S]*activeSlotLayer[\s\S]*targetLayer: "slot"/);
