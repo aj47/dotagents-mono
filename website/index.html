@@ -1629,6 +1629,29 @@
             return normalized || 'stdio'
         }
 
+        function getTemplatePlaceholderTokens(value) {
+            if (typeof value !== 'string') return []
+            return Array.from(value.matchAll(/<([A-Z0-9][A-Z0-9_-]*)>/g)).map((match) => match[1])
+        }
+
+        function collectPlaceholderRequirements(value, label, pushRequirement) {
+            if (typeof value === 'string') {
+                getTemplatePlaceholderTokens(value).forEach((token) => pushRequirement(`${label} (${token})`))
+                return
+            }
+
+            if (Array.isArray(value)) {
+                value.forEach((entry, index) => collectPlaceholderRequirements(entry, `${label}[${index}]`, pushRequirement))
+                return
+            }
+
+            if (isRecord(value)) {
+                Object.entries(value).forEach(([key, nestedValue]) => {
+                    collectPlaceholderRequirements(nestedValue, label ? `${label}.${key}` : key, pushRequirement)
+                })
+            }
+        }
+
         function getMcpConfigurationRequirements(server) {
             const requirements = []
             const seen = new Set()
@@ -1642,14 +1665,13 @@
                 server.redactedSecretFields.forEach((field) => pushRequirement(String(field).trim()))
             }
 
+            collectPlaceholderRequirements(server.command, 'command', pushRequirement)
+            collectPlaceholderRequirements(server.args, 'args', pushRequirement)
+            collectPlaceholderRequirements(server.url, 'url', pushRequirement)
+
             const config = isRecord(server.config) ? server.config : null
-            const env = config && isRecord(config.env) ? config.env : null
-            if (env) {
-                Object.entries(env).forEach(([key, value]) => {
-                    if (typeof value === 'string' && value.includes('<CONFIGURE_YOUR_KEY>')) {
-                        pushRequirement(`env.${key}`)
-                    }
-                })
+            if (config) {
+                collectPlaceholderRequirements(config, 'config', pushRequirement)
             }
 
             return requirements
@@ -1687,6 +1709,7 @@
             ].join('\n').length
 
             if ((bundle.mcpServers || []).length) warnings.push('Contains MCP commands')
+            if ((bundle.mcpServers || []).some((server) => getMcpConfigurationRequirements(server).length)) warnings.push('Requires setup')
             if ((bundle.memories || []).length) warnings.push('Contains memories')
             if (promptWeight > 2800) warnings.push('Large prompt content')
 

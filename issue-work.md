@@ -2089,3 +2089,34 @@
   - Revisit live Electron repro when the attached renderer can surface the real sessions UI; if the duplicate maximize or agent-name symptoms are still observable beyond the current source guards, take the smallest isolated follow-up for those paths.
 
 - Next recommended issue work item: if dependencies become available, verify the existing `#55` source guards through the real desktop test runner; otherwise continue with another concrete trust/reliability slice from `#56`/`#57`, and keep `#54` blocked until auth feasibility evidence exists.
+
+##### Issue #56 — Hub bundle inspector: MCP placeholder/setup disclosure
+
+- Selection rationale:
+  - After the latest `#55` bug slice, `#56` still offered a narrow, high-trust follow-up that stayed inside the existing landing-page inspector rather than reopening larger desktop/provider work.
+  - Real public bundles are already installable from the featured cards, so exposing hidden MCP setup requirements before install has direct user value.
+- Investigation:
+  - Re-read issue `#56`, its labels (`enhancement`, `ui`, `hub`), and its trust-focused comment about inspect-before-install disclosure.
+  - Re-inspected `website/index.html` and `website/website-hub-inspector.test.js`, then fetched the real featured `Dev Powerpack` bundle artifact from `aj47/dotagents-hub`.
+  - Confirmed a concrete current gap: the bundle includes a filesystem MCP arg with `/Users/<YOUR_USERNAME>`, but the website inspector's `getMcpConfigurationRequirements(server)` only looked at `server.config.env` placeholders and `redactedSecretFields`, so the modal did not flag that this MCP still requires user configuration.
+- Important assumptions:
+  - Assumption: treating any angle-bracket placeholder in MCP command/args/url/config values as a setup requirement is acceptable for this slice, even when the placeholder is not a secret key.
+  - Why acceptable: from the installer's perspective both secret placeholders and templated local values (for example usernames or paths) mean the bundle is not plug-and-play and should be disclosed before install.
+  - Assumption: surfacing this as both per-server `Requires configuration:` copy and a top-level `Requires setup` warning badge is enough for the first trust-focused fix.
+  - Why acceptable: it improves visibility without redesigning the modal or inventing a new requirements panel.
+- Changes implemented:
+  - Added `getTemplatePlaceholderTokens(value)` and `collectPlaceholderRequirements(value, label, pushRequirement)` in `website/index.html` to detect generic placeholder tokens like `<YOUR_USERNAME>` across nested MCP values.
+  - Expanded `getMcpConfigurationRequirements(server)` to scan top-level `command`, `args`, `url`, and nested `config` values instead of only `config.env` placeholder cases.
+  - Added a top-level `Requires setup` warning badge when any MCP server in the inspected bundle still contains unresolved configuration placeholders.
+  - Extended `website/website-hub-inspector.test.js` with targeted source assertions locking the new placeholder-detection helpers and setup-warning wiring in place.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If more bundle metadata is added upstream, consider surfacing manifest dependency/compatibility requirements in the same trust-oriented modal area.
+  - If setup disclosure grows beyond a badge + note, consider a small dedicated `Requirements` section rather than overloading the MCP rows.
+
+- Next recommended issue work item: refresh the remaining open issues again and prefer another similarly concrete trust/reliability slice, likely from `#57`/`#58`, while keeping `#54` blocked until auth feasibility evidence exists.

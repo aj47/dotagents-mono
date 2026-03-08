@@ -18,6 +18,7 @@ test('bundle inspector modal includes required sections and warnings', () => {
     assert.match(source, /id="inspect-modal"/)
     assert.match(source, /role="dialog"/)
     assert.match(source, /Contains MCP commands/)
+    assert.match(source, /Requires setup/)
     assert.match(source, /Contains memories/)
     assert.match(source, /Large prompt content/)
     assert.match(source, /Agent Profiles \(\$\{bundle\.agentProfiles\.length\}\)/)
@@ -43,11 +44,16 @@ test('repeat task preview discloses startup behavior and bundle defaults', () =>
 test('MCP preview discloses transport-aware connection details and setup requirements', () => {
     assert.match(source, /function formatTransportLabel\(transport\)/)
     assert.match(source, /function getMcpConnectionPreview\(server\)/)
+    assert.match(source, /function getTemplatePlaceholderTokens\(value\)/)
+    assert.match(source, /function collectPlaceholderRequirements\(value, label, pushRequirement\)/)
     assert.match(source, /function getMcpConfigurationRequirements\(server\)/)
+    assert.ok(source.includes("value.matchAll(/<([A-Z0-9][A-Z0-9_-]*)>/g)"))
+    assert.match(source, /collectPlaceholderRequirements\(server\.args, 'args', pushRequirement\)/)
     assert.match(source, /streamable HTTP/)
     assert.match(source, /Remote MCP server via bundled HTTP transport/)
     assert.match(source, /Requires configuration:/)
-    assert.match(source, /<CONFIGURE_YOUR_KEY>/)
+    assert.ok(source.includes("pushRequirement(`${label} (${token})`"))
+    assert.ok(source.includes("`${label}[${index}]`"))
 })
 
 test('modal logic fetches bundle JSON and supports expected dismissal paths', () => {
