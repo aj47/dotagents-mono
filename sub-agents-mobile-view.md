@@ -4228,3 +4228,52 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Current main agent` remains readable in ACP-mode loading, error, empty, and missing-selection cards on narrow screens.
   - Check the ACP selector with VoiceOver / accessibility inspection if practical to confirm the new row labels (`Select … main agent`, `Current … main agent`) sound natural.
   - After live validation is restored, continue with the next highest-signal local mobile sub-agent issue instead of revisiting ACP copy consistency again without fresh evidence.
+
+### 2026-03-08 — Iteration 97: keep mobile selector entry points passive when only the current agent exists
+
+- Status: shipped locally with focused regression coverage; live Expo validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iterations 10–13 and 94–96 for recent selector-state work
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - `apps/mobile/src/screens/SessionListScreen.tsx`
+  - focused selector-entry regression coverage in `apps/mobile/tests/chat-composer-accessibility.test.js` and `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow blocker before validation:
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile web -- --help` → failed with `sh: expo: command not found`; pnpm also warned that local `node_modules` are missing
+  - Because Expo is still unavailable here, this iteration used source-backed state-flow review plus focused regression coverage instead of screenshot-backed mobile inspection.
+- Current behavior observed before the fix:
+  - Source review showed both `ChatScreen` and `SessionListScreen` treated the mobile selector as interactive whenever the server returned any selector option at all.
+  - That meant a server state with exactly one returned option — the already-active agent — still left the header selector tappable and, in chat, still showed the composer agent chip.
+  - On mobile, that would lead users into a selector with no alternative action, which weakened state clarity even after the earlier no-options cleanup.
+- Issue selected:
+  - The mobile selector entry points still behaved like real switchers when there were no alternative agents to switch to.
+- Decision:
+  - Keep showing the current agent in the header for state clarity.
+  - Do not redesign `AgentSelectorSheet` again while live validation is blocked.
+  - Make the smallest local fix in the entry points: treat the selector as interactive only when at least one available option differs from the current agent, and update the passive-state accessibility copy so it accurately describes the no-alternative state.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - compare fetched selector option IDs against the current agent ID in both profile and ACP modes,
+    - hide the composer agent chip when only the current agent is available,
+    - keep the header badge passive in that state and update its accessibility copy to `No other agents are available to switch to right now.`
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` to:
+    - use the same current-vs-alternative availability check in both profile and ACP modes,
+    - keep the `Chats` header badge passive when the selector has no alternative option,
+    - use the same more-accurate passive accessibility copy.
+  - Updated focused regression coverage in:
+    - `apps/mobile/tests/chat-composer-accessibility.test.js`
+    - `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - This no-alternative state still needs a real narrow-screen pass once Expo is restored to confirm the passive header treatment and hidden composer row feel obvious in practice.
+  - A one-alternative recovery state (current missing, one valid replacement available) should still be smoke-tested live to confirm the selector remains interactive when it should.
+  - The selector sheet itself still lacks fresh screenshot-backed validation after several recent state-clarity iterations.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that a single-current-agent server state now shows passive header status with no composer selector chip.
+  - Live-test a state where exactly one alternative agent is available to confirm the header and composer selector stay interactive when there is still a real switch to make.
+  - After live validation is restored, continue with the next highest-signal mobile sub-agent issue instead of revisiting this selector-entry gating without fresh evidence.

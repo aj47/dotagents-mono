@@ -31,9 +31,10 @@ for (const [screenName, source] of [
 
   test(`${screenName} only makes the header agent control interactive when switchable options exist`, () => {
     assert.match(source, /const \[hasAgentSelectorOptions, setHasAgentSelectorOptions\] = useState\(false\);/);
+    assert.match(source, /const hasAlternativeAgentSelectorOption = useCallback\(\(optionIds: string\[\]\) => \{[\s\S]*?if \(optionIds\.length === 0\) return false;[\s\S]*?if \(!currentAgentId\) return true;[\s\S]*?optionIds\.some\(\(optionId\) => optionId !== currentAgentId\);[\s\S]*?\}, \[currentAgentId\]\);/);
     assert.match(source, /hasAgentSelectorOptions \? \(/);
     assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
-    assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. No switchable agents are available right now\.`\}/);
+    assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. No other agents are available to switch to right now\.`\}/);
     assert.match(source, /\{currentAgentLabel\}/);
     assert.match(source, /style=\{styles\.headerAgentSelectorBadgeChevron\}[\s\S]*?>\s*▼\s*<\/Text>/);
     assert.doesNotMatch(source, /\{`\$\{currentAgentLabel\} ▼`\}/);

@@ -34,7 +34,7 @@ import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
-import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
+import { getAcpMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
@@ -282,6 +282,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
+  const currentAgentId = currentProfile?.id;
   const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const handsFree = !!config.handsFree;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
@@ -313,6 +314,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
 
+  const hasAlternativeAgentSelectorOption = useCallback((optionIds: string[]) => {
+    if (optionIds.length === 0) return false;
+    if (!currentAgentId) return true;
+    return optionIds.some((optionId) => optionId !== currentAgentId);
+  }, [currentAgentId]);
+
   const refreshAgentSelectorAvailability = useCallback(async () => {
     if (!config.baseUrl || !config.apiKey) {
       setHasAgentSelectorOptions(false);
@@ -325,19 +332,23 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (settings.mainAgentMode === 'acp') {
         const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
+        const mainAgentOptionIds = getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || [])
+          .map((option) => toMainAgentProfile(option).id);
         setHasAgentSelectorOptions(
-          getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []).length > 0
+          hasAlternativeAgentSelectorOption(mainAgentOptionIds)
         );
         return;
       }
 
       const profilesResponse = await client.getProfiles();
-      setHasAgentSelectorOptions((profilesResponse.profiles || []).length > 0);
+      setHasAgentSelectorOptions(
+        hasAlternativeAgentSelectorOption((profilesResponse.profiles || []).map((profile) => profile.id))
+      );
     } catch (error) {
       console.warn('[ChatScreen] Failed to refresh agent selector availability:', error);
       setHasAgentSelectorOptions(false);
     }
-  }, [config.baseUrl, config.apiKey]);
+  }, [config.baseUrl, config.apiKey, hasAlternativeAgentSelectorOption]);
 
   useEffect(() => {
     void refreshAgentSelectorAvailability();
@@ -510,7 +521,7 @@ export default function ChatScreen({ route, navigation }: any) {
           <View
             style={styles.headerAgentSelectorTrigger}
             accessible
-            accessibilityLabel={`Current agent: ${currentAgentLabel}. No switchable agents are available right now.`}
+            accessibilityLabel={`Current agent: ${currentAgentLabel}. No other agents are available to switch to right now.`}
           >
             <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
             <View style={[styles.headerAgentSelectorBadge, styles.headerAgentSelectorBadgeStatic]}>
