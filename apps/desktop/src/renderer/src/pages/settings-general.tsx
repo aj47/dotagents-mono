@@ -33,7 +33,7 @@ import {
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { ExternalLink, AlertCircle, FolderOpen, FolderUp, FileText } from "lucide-react"
+import { ExternalLink, AlertCircle, AlertTriangle, FolderOpen, FolderUp, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -124,6 +124,12 @@ export function Component() {
   const selectableMainAcpAgents = getSelectableMainAcpAgents(
     externalAgentsQuery.data,
     configQuery.data?.acpAgents
+  )
+  const normalizedConfiguredMainAgentName = configQuery.data?.mainAgentName?.trim().toLowerCase() || ""
+  const hasSelectableMainAcpAgents = selectableMainAcpAgents.length > 0
+  const hasConfiguredMainAgentName = normalizedConfiguredMainAgentName.length > 0
+  const hasAvailableConfiguredMainAgent = selectableMainAcpAgents.some(
+    agent => agent.name.trim().toLowerCase() === normalizedConfiguredMainAgentName,
   )
 
   const openGlobalAgentsFolder = useCallback(async () => {
@@ -448,12 +454,13 @@ export function Component() {
               <Control label={<ControlLabel label="ACP Agent" tooltip="Select which configured ACP agent to use as the main agent. The agent must be configured in the Agents settings page." />} className="px-3">
                 <Select
                   value={configQuery.data?.mainAgentName || ""}
+                  disabled={!hasSelectableMainAcpAgents}
                   onValueChange={(value: string) => {
                     saveConfig({ mainAgentName: value })
                   }}
                 >
                   <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Select an agent..." />
+                    <SelectValue placeholder={hasSelectableMainAcpAgents ? "Select an agent..." : "No ACP agents available"} />
                   </SelectTrigger>
                   <SelectContent>
                     {selectableMainAcpAgents.map(agent => (
@@ -465,7 +472,61 @@ export function Component() {
                 </Select>
               </Control>
 
-              {configQuery.data?.mainAgentName && (
+              {!hasSelectableMainAcpAgents && (
+                <div className="mx-3 mb-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-sm text-amber-700 dark:text-amber-300">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="space-y-2">
+                      <div>
+                        <p className="font-medium">No ACP agent is ready to use yet</p>
+                        <p className="mt-1 text-xs leading-5 text-amber-700/90 dark:text-amber-200">
+                          ACP mode needs at least one enabled ACP or stdio agent. Add one in Agents settings, or switch back to API mode until one is ready.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => navigate("/settings/agents")}>
+                          Open Agents Settings
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => saveConfig({ mainAgentMode: "api" })}>
+                          Use API Mode
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {hasSelectableMainAcpAgents && !hasConfiguredMainAgentName && (
+                <div className="mx-3 mb-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Choose which enabled ACP agent should handle chat submissions before using ACP mode.
+                </div>
+              )}
+
+              {hasSelectableMainAcpAgents && hasConfiguredMainAgentName && !hasAvailableConfiguredMainAgent && (
+                <div className="mx-3 mb-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-sm text-amber-700 dark:text-amber-300">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="space-y-2">
+                      <div>
+                        <p className="font-medium">Selected ACP agent unavailable</p>
+                        <p className="mt-1 text-xs leading-5 text-amber-700/90 dark:text-amber-200">
+                          {`\"${configQuery.data?.mainAgentName}\" is no longer enabled or configured. Pick another ACP agent below, update it in Agents settings, or switch back to API mode.`}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => navigate("/settings/agents")}>
+                          Open Agents Settings
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => saveConfig({ mainAgentMode: "api" })}>
+                          Use API Mode
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {hasAvailableConfiguredMainAgent && configQuery.data?.mainAgentName && (
                 <div className="px-3 py-2 text-sm text-muted-foreground bg-muted/30 rounded-md mx-3 mb-2">
                   <span className="font-medium">Note:</span> When using ACP mode, the agent will use its own MCP tools and LLM, not DotAgents's configured providers and tools.
                 </div>

@@ -36,6 +36,19 @@ test('general settings exposes custom agent mode hold/toggle choices and incompl
   assert.match(settingsSource, /Agent Mode won't start from the keyboard until one is saved\./);
 });
 
+test('general settings explains ACP main-agent setup gaps and offers recovery actions', () => {
+  assert.match(settingsSource, /const hasSelectableMainAcpAgents = selectableMainAcpAgents\.length > 0/);
+  assert.match(settingsSource, /disabled=\{!hasSelectableMainAcpAgents\}/);
+  assert.match(settingsSource, /placeholder=\{hasSelectableMainAcpAgents \? "Select an agent\.\.\." : "No ACP agents available"\}/);
+  assert.match(settingsSource, /No ACP agent is ready to use yet/);
+  assert.match(settingsSource, /ACP mode needs at least one enabled ACP or stdio agent\./);
+  assert.match(settingsSource, /Choose which enabled ACP agent should handle chat submissions before using ACP mode\./);
+  assert.match(settingsSource, /Selected ACP agent unavailable/);
+  assert.match(settingsSource, /Open Agents Settings/);
+  assert.match(settingsSource, /Use API Mode/);
+  assert.match(settingsSource, /navigate\("\/settings\/agents"\)/);
+});
+
 test('shared MCP shortcut display reflects custom mode and unset custom shortcuts', () => {
   assert.match(keyUtilsSource, /customMode: "hold" \| "toggle" = "hold"/);
   assert.match(keyUtilsSource, /return customMode === "toggle"\s*\? `Press \$\{formattedShortcut\}`\s*:\s*`Hold \$\{formattedShortcut\}`/);
