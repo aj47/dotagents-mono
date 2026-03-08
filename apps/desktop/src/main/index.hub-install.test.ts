@@ -8,11 +8,15 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function loadIndexForHubInstall(argv: string[]) {
+async function loadIndexForHubInstall(
+  argv: string[],
+  options: { downloadError?: Error } = {},
+) {
   vi.resetModules()
   process.argv = argv
 
   const handlers = new Map<string, Function[]>()
+  const showErrorBox = vi.fn()
   const createMainWindow = vi.fn()
   const createPanelWindow = vi.fn()
   const createSetupWindow = vi.fn()
@@ -23,7 +27,13 @@ async function loadIndexForHubInstall(argv: string[]) {
       ? "https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents"
       : null
   })
-  const downloadHubBundleToTempFile = vi.fn(async () => "/tmp/downloaded-featured-agent.dotagents")
+  const downloadHubBundleToTempFile = vi.fn(async () => {
+    if (options.downloadError) {
+      throw options.downloadError
+    }
+
+    return "/tmp/downloaded-featured-agent.dotagents"
+  })
   const findHubBundleHandoffFilePath = vi.fn((candidates: readonly string[]) =>
     candidates.find(
       (candidate) =>
@@ -46,6 +56,7 @@ async function loadIndexForHubInstall(argv: string[]) {
       dock: { show: vi.fn(), hide: vi.fn(), isVisible: vi.fn(() => true) },
       quit: vi.fn(),
     },
+    dialog: { showErrorBox },
     Menu: { setApplicationMenu: vi.fn() },
   }))
   vi.doMock("@electron-toolkit/utils", () => ({
@@ -121,6 +132,7 @@ async function loadIndexForHubInstall(argv: string[]) {
     createMainWindow,
     showMainWindow,
     downloadHubBundleToTempFile,
+    showErrorBox,
   }
 }
 
@@ -190,5 +202,50 @@ describe("Hub install handoff routing", () => {
     expect(showMainWindow).toHaveBeenCalledWith(
       `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
     )
+  })
+
+  it("shows a user-visible error when a startup Hub bundle download fails", async () => {
+    const deepLink =
+      "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffeatured-agent.dotagents"
+    const { createMainWindow, showErrorBox } = await loadIndexForHubInstall(
+      ["electron", deepLink],
+      { downloadError: new Error("Hub bundle download failed with 404 Not Found") },
+    )
+
+    expect(showErrorBox).toHaveBeenCalledWith(
+      "Hub Bundle Download Failed",
+      expect.stringContaining("Hub bundle download failed with 404 Not Found"),
+    )
+    expect(showErrorBox).toHaveBeenCalledWith(
+      "Hub Bundle Download Failed",
+      expect.stringContaining("Bundle URL: https://hub.dotagentsprotocol.com/bundles/featured-agent.dotagents"),
+    )
+    expect(createMainWindow).toHaveBeenCalledWith(undefined)
+    expect(createMainWindow).not.toHaveBeenCalledWith({
+      url: `/settings/agents?installBundle=${encodeURIComponent("/tmp/downloaded-featured-agent.dotagents")}`,
+    })
+  })
+
+  it("shows a user-visible error when an open-url Hub bundle download fails", async () => {
+    const deepLink =
+      "dotagents://install?bundle=https%3A%2F%2Fhub.dotagentsprotocol.com%2Fbundles%2Ffeatured-agent.dotagents"
+    const { handlers, showMainWindow, showErrorBox } = await loadIndexForHubInstall(
+      ["electron"],
+      { downloadError: new Error("Hub bundle download returned an empty response") },
+    )
+
+    showMainWindow.mockClear()
+    const openUrlHandler = handlers.get("open-url")?.[0] as ((event: { preventDefault: () => void }, url: string) => void)
+
+    const event = { preventDefault: vi.fn() }
+    openUrlHandler(event, deepLink)
+    await flushPromises()
+
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(showErrorBox).toHaveBeenCalledWith(
+      "Hub Bundle Download Failed",
+      expect.stringContaining("Hub bundle download returned an empty response"),
+    )
+    expect(showMainWindow).not.toHaveBeenCalled()
   })
 })

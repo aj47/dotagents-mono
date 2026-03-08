@@ -1135,3 +1135,34 @@
   - Continue Phase 2 work only when there is a similarly concrete local slice (for example, registry caching, install/update status, or Hub install provenance) rather than reopening the entire umbrella issue at once.
 
 - Next recommended issue work item: either return to `#25` for a narrow Phase 2 Hub install/status slice, or pivot to another fresh issue only if it offers a tighter user-visible reliability/UX increment than the remaining bundle follow-ups.
+
+##### Issue #25 — Hub install reliability: user-visible failure feedback for remote bundle downloads
+
+- Selection rationale:
+  - After the `.dotagents` docs/spec pass, issue `#25` still had a concrete Phase 2-adjacent reliability gap with direct user value: `dotagents://install?bundle=...` failures were only logged in the main process, so a broken Hub bundle URL or network error could look like a no-op install click.
+  - This was a small, reviewable slice that improves trust in the one-click Hub install flow without reopening registry caching or broader marketplace work.
+- Investigation:
+  - Re-read issue `#25`, focusing on the Phase 2 acceptance direction around one-click install from Hub and install/update status.
+  - Inspected `apps/desktop/src/main/index.ts`, `apps/desktop/src/main/hub-install.ts`, `apps/desktop/src/main/index.hub-install.test.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`.
+  - Confirmed the current path is: deep link / open-url / argv → `queueHubBundleInstallFromUrl(...)` → `downloadHubBundleToTempFile(...)` → `/settings/agents?installBundle=...`.
+  - Confirmed the failure path only logged `[hub-install] Failed to download Hub bundle` and returned `false`, with no renderer toast, no error dialog, and no user-facing explanation.
+- Important assumptions:
+  - Assumption: a native Electron error dialog is the safest first feedback surface for Hub download failures.
+  - Why acceptable: this failure can happen before the renderer install dialog opens, so a main-process `dialog.showErrorBox(...)` is more reliable than depending on router state or an already-mounted toast system.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/index.ts` so failed remote Hub bundle downloads now surface a `Hub Bundle Download Failed` native error dialog including the error message, source bundle URL, and a retry hint.
+  - Extended `apps/desktop/src/main/index.hub-install.test.ts` with focused regression coverage for startup deep-link failures and runtime `open-url` failures, asserting the error dialog appears and the install handoff is not routed into `/settings/agents?installBundle=...`.
+- Verification run:
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts src/main/hub-install.test.ts`
+  - Blocked: command failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` because `vitest` is not available in this worktree (`Command "vitest" not found`).
+  - Action taken: kept the regression tests in-tree, avoided installing dependencies without explicit permission, and documented the exact blocked command here for the next iteration once the worktree test tooling baseline is restored.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the targeted Vitest files as soon as desktop test dependencies are restored in this worktree.
+  - Consider whether Hub install should also surface a renderer-visible success/failure status after the import dialog completes, rather than relying only on the dialog flow plus native error fallback.
+  - Continue Phase 2 only with similarly tight slices (for example, install provenance, cache freshness, or update-status affordances).
+
+- Next recommended issue work item: once the desktop test runner is available, re-run the targeted Hub-install tests and commit this reliability slice; otherwise pivot only to another issue that can be verified in the current worktree without dependency restoration.

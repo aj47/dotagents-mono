@@ -1,4 +1,4 @@
-import { app, Menu } from "electron"
+import { app, Menu, dialog } from "electron"
 import { electronApp, optimizer } from "@electron-toolkit/utils"
 import {
   createMainWindow,
@@ -113,10 +113,15 @@ async function queueHubBundleInstallFromUrl(
     const downloadedPath = await downloadHubBundleToTempFile(bundleUrl)
     return queueHubBundleInstall(downloadedPath, options)
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
     logApp("[hub-install] Failed to download Hub bundle", {
       bundleUrl,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     })
+    dialog.showErrorBox(
+      "Hub Bundle Download Failed",
+      `Couldn't download the requested .dotagents bundle.\n\n${errorMessage}\n\nBundle URL: ${bundleUrl}\n\nCheck the bundle link and your network connection, then try again.`,
+    )
     return false
   }
 }
