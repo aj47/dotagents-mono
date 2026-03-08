@@ -33,9 +33,10 @@ test('offers a mobile-friendly path back to agent settings from the empty state'
 });
 
 test('turns the missing-config selector error into a direct settings escape hatch', () => {
-  assert.match(sheetSource, /const missingConfigError = 'Configure server URL and API key in Settings to switch agents\.'/);
+  assert.match(sheetSource, /const missingConfigError = selectorMode === 'acp'[\s\S]*?switch main agents\.[\s\S]*?switch profiles\./);
   assert.match(sheetSource, /const isMissingConfigError = error === missingConfigError;/);
-  assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\(openSettingsButtonLabel\)[\s\S]*?Returns to Settings so you can add server details and review agent mode\.[\s\S]*?\{openSettingsButtonLabel\}/);
+  assert.match(sheetSource, /const errorSettingsButtonHint = selectorMode === 'acp'[\s\S]*?review main-agent mode\.[\s\S]*?review saved profiles\./);
+  assert.match(sheetSource, /\{isMissingConfigError \? \([\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?onPress=\{handleOpenAgentSettings\}[\s\S]*?createButtonAccessibilityLabel\(openSettingsButtonLabel\)[\s\S]*?accessibilityHint=\{errorSettingsButtonHint\}[\s\S]*?\{openSettingsButtonLabel\}/);
 });
 
 test('keeps the current agent visible through selector-sheet errors so the failure feels recoverable', () => {
@@ -66,12 +67,14 @@ test('makes the selector loading state read as active progress while keeping the
 
 test('keeps selector-sheet retry and cancel actions mobile-sized with explicit button semantics for recoverable errors', () => {
   assert.match(sheetSource, /const actionButtonTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
-  assert.match(sheetSource, /\) : \([\s\S]*?style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Retry loading agents'\)/);
-  assert.match(sheetSource, /accessibilityHint="Attempts to load the available agents again\."/);
+  assert.match(sheetSource, /const retryLoadingButtonLabel = selectorMode === 'acp' \? 'Retry loading main agents' : 'Retry loading profiles';/);
+  assert.match(sheetSource, /const retryLoadingButtonHint = selectorMode === 'acp'[\s\S]*?available main agents again\.[\s\S]*?available profiles again\./);
+  assert.match(sheetSource, /\) : \([\s\S]*?style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(retryLoadingButtonLabel\)[\s\S]*?accessibilityHint=\{retryLoadingButtonHint\}/);
   assert.match(sheetSource, /retryButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget,[\s\S]*?alignSelf:\s*'stretch',[\s\S]*?borderRadius:\s*radius\.lg,[\s\S]*?borderWidth:\s*1,[\s\S]*?backgroundColor:\s*theme\.colors\.primary \+ '10',[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center'/);
   assert.match(sheetSource, /retryButtonText:\s*\{[\s\S]*?fontSize:\s*15,[\s\S]*?fontWeight:\s*'600',[\s\S]*?textAlign:\s*'center'/);
-  assert.match(sheetSource, /style=\{\[styles\.closeButton, isSwitching && styles\.closeButtonDisabled\]\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Close agent selector'\)/);
-  assert.match(sheetSource, /accessibilityHint=\{isSwitching[\s\S]*?Wait for the current agent switch to finish before dismissing this sheet\.[\s\S]*?: 'Dismisses this sheet and returns to the current screen\.'/);
+  assert.match(sheetSource, /const closeSelectorAccessibilityLabel = selectorMode === 'acp'[\s\S]*?'Close main agent selector'[\s\S]*?'Close profile selector';/);
+  assert.match(sheetSource, /const closeSelectorAccessibilityHint = isSwitching[\s\S]*?current main-agent switch[\s\S]*?current profile switch[\s\S]*?Dismisses this main-agent selector and returns to the current screen\.[\s\S]*?Dismisses this profile selector and returns to the current screen\./);
+  assert.match(sheetSource, /style=\{\[styles\.closeButton, isSwitching && styles\.closeButtonDisabled\]\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(closeSelectorAccessibilityLabel\)[\s\S]*?accessibilityHint=\{closeSelectorAccessibilityHint\}/);
   assert.match(sheetSource, /closeButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget[\s\S]*?width:\s*'100%'/);
 });
 
@@ -97,7 +100,7 @@ test('drops the generic ACP placeholder subtitle while keeping real selector des
 test('makes the selected agent row read as the current state instead of only a checkmark', () => {
   assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'profile';/);
   assert.match(sheetSource, /const selectionAccessibilityLabel = isPending[\s\S]*?`Switching to \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Current \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Select \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`;/);
-  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current main agent to this option\.[\s\S]*?Switches the current profile to this option\./);
+  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Main-agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Profile switch in progress\. Wait for the current request to finish\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this main agent\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this profile\.[\s\S]*?Switches the current main agent to this option\.[\s\S]*?Switches the current profile to this option\./);
   assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching, busy: isPending \}\}/);
   assert.match(sheetSource, /\{isPending \? \([\s\S]*?\) : isSelected && \([\s\S]*?<View style=\{styles\.profileCurrentBadge\}>[\s\S]*?<Text style=\{styles\.profileCurrentBadgeText\}>Current<\/Text>/);
   assert.match(sheetSource, /profileItemSelected:\s*\{[\s\S]*?borderWidth:\s*1,[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '33'/);
@@ -115,7 +118,8 @@ test('shows switching progress and temporarily prevents dismissing the sheet mid
   assert.match(sheetSource, /<Pressable style=\{styles\.backdrop\} onPress=\{handleDismiss\} disabled=\{isSwitching\}>/);
   assert.match(sheetSource, /\{isSwitching && \([\s\S]*?<View style=\{styles\.switchingStatus\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.switchingStatusText\}>\{switchingMessage\}<\/Text>/);
   assert.match(sheetSource, /style=\{\[styles\.closeButton, isSwitching && styles\.closeButtonDisabled\]\}[\s\S]*?disabled=\{isSwitching\}[\s\S]*?accessibilityState=\{\{ disabled: isSwitching \}\}/);
-  assert.match(sheetSource, /Wait for the current agent switch to finish before dismissing this sheet\./);
+  assert.match(sheetSource, /Wait for the current main-agent switch to finish before dismissing this sheet\./);
+  assert.match(sheetSource, /Wait for the current profile switch to finish before dismissing this sheet\./);
   assert.match(sheetSource, /\{isSwitching \? 'Switching…' : 'Cancel'\}/);
 });
 
@@ -123,7 +127,7 @@ test('marks the tapped selector row as pending while an agent switch is in fligh
   assert.match(sheetSource, /const isPending = pendingProfileId === item\.id;/);
   assert.match(sheetSource, /const isBlockedBySwitch = isSwitching && !isPending && !isSelected;/);
   assert.match(sheetSource, /const selectionAccessibilityLabel = isPending[\s\S]*?`Switching to \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Current \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`[\s\S]*?`Select \$\{item\.name\} \$\{selectorChoiceRoleLabel\}`;/);
-  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Another agent switch is in progress\. Wait for it to finish before changing this selection\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this agent\.[\s\S]*?Switches the current main agent to this option\.[\s\S]*?Switches the current profile to this option\./);
+  assert.match(sheetSource, /const selectionAccessibilityHint = isPending[\s\S]*?Main-agent switch in progress\. Wait for the current request to finish\.[\s\S]*?Profile switch in progress\. Wait for the current request to finish\.[\s\S]*?Another main-agent switch is in progress\. Wait for it to finish before changing this selection\.[\s\S]*?Another profile switch is in progress\. Wait for it to finish before changing this selection\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this main agent\.[\s\S]*?Currently selected\. Double tap to close this selector and keep this profile\.[\s\S]*?Switches the current main agent to this option\.[\s\S]*?Switches the current profile to this option\./);
   assert.match(sheetSource, /style=\{\[[\s\S]*?styles\.profileItem,[\s\S]*?isSelected && styles\.profileItemSelected,[\s\S]*?isPending && styles\.profileItemPending,[\s\S]*?isBlockedBySwitch && styles\.profileItemBlocked,[\s\S]*?\]\}/);
   assert.match(sheetSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSwitching, busy: isPending \}\}/);
   assert.match(sheetSource, /\{isPending \? \([\s\S]*?<View style=\{styles\.profilePendingBadge\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.profilePendingBadgeText\}>Switching…<\/Text>/);
@@ -165,9 +169,24 @@ test('uses main-agent terminology consistently across ACP selector status copy',
   assert.match(sheetSource, /const selectorTitle = selectorMode === 'acp' \? 'Select Main Agent' : 'Select Profile';/);
   assert.match(sheetSource, /const currentAgentBadgeLabel = selectorMode === 'acp' \? 'Current main agent' : 'Current profile';/);
   assert.match(sheetSource, /const selectorChoiceRoleLabel = selectorMode === 'acp' \? 'main agent' : 'profile';/);
+  assert.match(sheetSource, /const missingConfigError = selectorMode === 'acp'[\s\S]*?switch main agents\.[\s\S]*?switch profiles\./);
   assert.match(sheetSource, /const loadingAccessibilityLabel = selectorMode === 'acp' \? 'Loading available main agents' : 'Loading available profiles';/);
   assert.match(sheetSource, /const loadingStatusText = selectorMode === 'acp' \? 'Loading available main agents…' : 'Loading available profiles…';/);
+  assert.match(sheetSource, /const retryLoadingButtonLabel = selectorMode === 'acp' \? 'Retry loading main agents' : 'Retry loading profiles';/);
+  assert.match(sheetSource, /const closeSelectorAccessibilityLabel = selectorMode === 'acp'[\s\S]*?'Close main agent selector'[\s\S]*?'Close profile selector';/);
   assert.match(sheetSource, /Your current main agent stays active\. Open Settings to finish connecting this server and review main-agent mode\./);
   assert.match(sheetSource, /Your current main agent stays active while you retry loading the available options\./);
   assert.match(sheetSource, /This main agent stays active until you switch\./);
+});
+
+test('uses profile terminology consistently across selector recovery copy in profile mode', () => {
+  assert.match(sheetSource, /const missingConfigError = selectorMode === 'acp'[\s\S]*?switch main agents\.[\s\S]*?switch profiles\./);
+  assert.match(sheetSource, /const loadFailureMessage = selectorMode === 'acp' \? 'Failed to load main agents' : 'Failed to load profiles';/);
+  assert.match(sheetSource, /setError\(err\?\.message \|\| \(profile\.selectorMode === 'acp' \? 'Failed to switch main agent' : 'Failed to switch profile'\)\);/);
+  assert.match(sheetSource, /const retryLoadingButtonLabel = selectorMode === 'acp' \? 'Retry loading main agents' : 'Retry loading profiles';/);
+  assert.match(sheetSource, /const retryLoadingButtonHint = selectorMode === 'acp'[\s\S]*?available main agents again\.[\s\S]*?available profiles again\./);
+  assert.match(sheetSource, /const errorSettingsButtonHint = selectorMode === 'acp'[\s\S]*?review main-agent mode\.[\s\S]*?review saved profiles\./);
+  assert.match(sheetSource, /const emptyStateSettingsButtonHint = selectorMode === 'acp'[\s\S]*?review agents and main-agent mode\.[\s\S]*?review saved profiles and delegation agents\./);
+  assert.match(sheetSource, /const closeSelectorAccessibilityLabel = selectorMode === 'acp'[\s\S]*?'Close main agent selector'[\s\S]*?'Close profile selector';/);
+  assert.match(sheetSource, /const closeSelectorAccessibilityHint = isSwitching[\s\S]*?current main-agent switch[\s\S]*?current profile switch[\s\S]*?Dismisses this main-agent selector and returns to the current screen\.[\s\S]*?Dismisses this profile selector and returns to the current screen\./);
 });

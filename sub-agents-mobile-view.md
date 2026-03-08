@@ -1,5 +1,49 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 150 - Make selector recovery states say profile when mobile users are switching profiles
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not rework the just-touched selector title/badge/loading wording without fresh evidence.
+  - Reconfirmed the current mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` via the local `web` script → `expo start --web`
+  - Re-checked `apps/mobile/src/ui/AgentSelectorSheet.tsx` plus `apps/mobile/tests/agent-selector-sheet.test.js` because the selector still had a small, source-backed recovery-state terminology gap after the broader profile-mode chrome cleanup in iteration 149.
+  - Tried again to recover live-validation confidence, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Saved-profile mode already used profile wording for the selector title, current-state badge, loading copy, and list heading.
+  - But the recovery and error paths in the same mobile sheet still fell back to generic `agent` language in several places, including missing-config guidance, retry/cancel accessibility copy, and the fallback switch-failure message.
+  - On mobile, those are the moments when the user most needs precise state language, so this leftover mismatch weakened recovery clarity even after the main selector chrome had been cleaned up.
+- Issue identified:
+  - The mobile selector's saved-profile recovery states still used generic agent wording, making error and retry states less consistent than the normal profile-switching flow.
+- Decision and rationale:
+  - Keep the existing selector layout, actions, and ACP/main-agent wording unchanged.
+  - Avoid another layout pass while live validation is still blocked.
+  - Make the smallest useful fix instead: align the selector's recovery, dismissal, and fallback error copy with the current mode so profile mode consistently says `profile` and ACP mode continues to say `main agent`.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to make selector recovery copy mode-aware, including:
+    - missing-config guidance (`switch profiles` / `switch main agents`)
+    - fallback load/switch failure messages (`Failed to load profiles`, `Failed to switch profile`, etc.)
+    - retry button accessibility labels and hints
+    - settings escape-hatch accessibility hints in both error and empty states
+    - close-button accessibility labels and hints
+    - pending / blocked / selected row accessibility hints during switching
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new recovery-copy contract in both profile and ACP modes.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that tightening recovery-state terminology is worth a standalone iteration because those states carry disproportionate clarity value on small screens even though they are not part of the happy path.
+  - Kept the visible `Retry` / `Cancel` button text compact to avoid width pressure, and improved the surrounding spoken/error semantics instead of widening the button labels.
+  - This remains a source-backed improvement and still needs live confirmation that the revised recovery semantics feel coherent in actual profile-mode and ACP-mode failure flows.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that selector error, retry, and dismiss states now read consistently in both saved-profile and ACP flows.
+  - Capture screenshot-backed evidence for one profile-mode recovery state and one ACP-mode recovery state so the terminology can be judged in context, not only from source.
+  - If live validation shows the recovery copy is still ambiguous, prefer another small wording refinement before changing the selector layout.
+
 ## Iteration 149 - Make profile-mode selector language match what mobile users are actually switching
 
 - Date: 2026-03-08

@@ -42,7 +42,6 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const { currentProfile, setCurrentProfile, refresh } = useProfile();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
-  const missingConfigError = 'Configure server URL and API key in Settings to switch agents.';
 
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +50,10 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const [pendingProfileName, setPendingProfileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectorMode, setSelectorMode] = useState<'profile' | 'acp'>('profile');
+  const missingConfigError = selectorMode === 'acp'
+    ? 'Configure server URL and API key in Settings to switch main agents.'
+    : 'Configure server URL and API key in Settings to switch profiles.';
+  const loadFailureMessage = selectorMode === 'acp' ? 'Failed to load main agents' : 'Failed to load profiles';
 
   const fetchProfiles = useCallback(async () => {
     if (!hasApiConfig) {
@@ -87,11 +90,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       }
     } catch (err: any) {
       console.warn('[AgentSelectorSheet] Failed to fetch profiles:', err);
-      setError(err?.message || 'Failed to load agents');
+      setError(err?.message || loadFailureMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [config.baseUrl, config.apiKey, hasApiConfig, missingConfigError]);
+  }, [config.baseUrl, config.apiKey, hasApiConfig, loadFailureMessage, missingConfigError]);
 
   useEffect(() => {
     if (visible) {
@@ -121,6 +124,26 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       : 'Your current profile stays active while you retry loading the available profiles.';
   const emptyStateTitle = selectorMode === 'acp' ? 'No main agents ready yet' : 'No saved profiles yet';
   const openSettingsButtonLabel = 'Open Settings';
+  const errorSettingsButtonHint = selectorMode === 'acp'
+    ? 'Returns to Settings so you can add server details and review main-agent mode.'
+    : 'Returns to Settings so you can add server details and review saved profiles.';
+  const emptyStateSettingsButtonHint = selectorMode === 'acp'
+    ? 'Returns to Settings so you can review agents and main-agent mode.'
+    : 'Returns to Settings so you can review saved profiles and delegation agents.';
+  const retryLoadingButtonLabel = selectorMode === 'acp' ? 'Retry loading main agents' : 'Retry loading profiles';
+  const retryLoadingButtonHint = selectorMode === 'acp'
+    ? 'Attempts to load the available main agents again.'
+    : 'Attempts to load the available profiles again.';
+  const closeSelectorAccessibilityLabel = selectorMode === 'acp'
+    ? 'Close main agent selector'
+    : 'Close profile selector';
+  const closeSelectorAccessibilityHint = isSwitching
+    ? selectorMode === 'acp'
+      ? 'Wait for the current main-agent switch to finish before dismissing this sheet.'
+      : 'Wait for the current profile switch to finish before dismissing this sheet.'
+    : selectorMode === 'acp'
+      ? 'Dismisses this main-agent selector and returns to the current screen.'
+      : 'Dismisses this profile selector and returns to the current screen.';
 
   const handleOpenAgentSettings = () => {
     onClose();
@@ -159,7 +182,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       onClose();
     } catch (err: any) {
       console.error('[AgentSelectorSheet] Failed to switch profile:', err);
-      setError(err?.message || 'Failed to switch agent');
+      setError(err?.message || (profile.selectorMode === 'acp' ? 'Failed to switch main agent' : 'Failed to switch profile'));
     } finally {
       setIsSwitching(false);
       setPendingProfileId(null);
@@ -223,11 +246,17 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ? `Current ${item.name} ${selectorChoiceRoleLabel}`
         : `Select ${item.name} ${selectorChoiceRoleLabel}`;
     const selectionAccessibilityHint = isPending
-      ? 'Agent switch in progress. Wait for the current request to finish.'
+      ? selectorMode === 'acp'
+        ? 'Main-agent switch in progress. Wait for the current request to finish.'
+        : 'Profile switch in progress. Wait for the current request to finish.'
       : isSwitching
-        ? 'Another agent switch is in progress. Wait for it to finish before changing this selection.'
+        ? selectorMode === 'acp'
+          ? 'Another main-agent switch is in progress. Wait for it to finish before changing this selection.'
+          : 'Another profile switch is in progress. Wait for it to finish before changing this selection.'
       : isSelected
-        ? 'Currently selected. Double tap to close this selector and keep this agent.'
+        ? selectorMode === 'acp'
+          ? 'Currently selected. Double tap to close this selector and keep this main agent.'
+          : 'Currently selected. Double tap to close this selector and keep this profile.'
         : selectorMode === 'acp'
           ? 'Switches the current main agent to this option.'
           : 'Switches the current profile to this option.';
@@ -344,7 +373,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                 onPress={handleOpenAgentSettings}
                 accessibilityRole="button"
                 accessibilityLabel={createButtonAccessibilityLabel(openSettingsButtonLabel)}
-                accessibilityHint="Returns to Settings so you can add server details and review agent mode."
+                accessibilityHint={errorSettingsButtonHint}
                 activeOpacity={0.7}
               >
                 <Text style={styles.manageAgentsButtonText}>{openSettingsButtonLabel}</Text>
@@ -354,8 +383,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
                 style={styles.retryButton}
                 onPress={fetchProfiles}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Retry loading agents')}
-                accessibilityHint="Attempts to load the available agents again."
+                accessibilityLabel={createButtonAccessibilityLabel(retryLoadingButtonLabel)}
+                accessibilityHint={retryLoadingButtonHint}
                 activeOpacity={0.7}
               >
                 <Text style={styles.retryButtonText}>Retry</Text>
@@ -383,7 +412,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               onPress={handleOpenAgentSettings}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel(openSettingsButtonLabel)}
-              accessibilityHint="Returns to Settings so you can review agents and agent mode."
+              accessibilityHint={emptyStateSettingsButtonHint}
               activeOpacity={0.7}
             >
               <Text style={styles.manageAgentsButtonText}>{openSettingsButtonLabel}</Text>
@@ -436,10 +465,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           onPress={handleDismiss}
           disabled={isSwitching}
           accessibilityRole="button"
-          accessibilityLabel={createButtonAccessibilityLabel('Close agent selector')}
-          accessibilityHint={isSwitching
-            ? 'Wait for the current agent switch to finish before dismissing this sheet.'
-            : 'Dismisses this sheet and returns to the current screen.'}
+          accessibilityLabel={createButtonAccessibilityLabel(closeSelectorAccessibilityLabel)}
+          accessibilityHint={closeSelectorAccessibilityHint}
           accessibilityState={{ disabled: isSwitching }}
           activeOpacity={isSwitching ? 1 : 0.7}
         >
