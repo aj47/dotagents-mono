@@ -11,77 +11,16 @@ import { ImagePlus, Sparkles, X } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import {
+  expandSlashCommandText,
+  getSlashCommandState,
+  replaceSlashCommandSelection,
+} from "./skill-slash-commands"
+import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
-
-const normalizeSkillSlashToken = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/^\/+/, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-
-const getSkillSlashTokens = (skill: AgentSkill) =>
-  [skill.id, skill.name]
-    .map(normalizeSkillSlashToken)
-    .filter(Boolean)
-
-function getSlashCommandState(text: string, skills: AgentSkill[]) {
-  const trimmedStartText = text.replace(/^\s+/, "")
-  if (!trimmedStartText.startsWith("/")) {
-    return null
-  }
-
-  const commandMatch = trimmedStartText.match(/^\/([^\s\n]*)/)
-  if (!commandMatch) {
-    return null
-  }
-
-  const query = commandMatch[1] ?? ""
-  const normalizedQuery = normalizeSkillSlashToken(query)
-  const exactSkill = normalizedQuery
-    ? skills.find((skill) => getSkillSlashTokens(skill).includes(normalizedQuery)) ?? null
-    : null
-  const suggestions = skills
-    .filter((skill) => {
-      if (!normalizedQuery) {
-        return true
-      }
-      return getSkillSlashTokens(skill).some((token) => token.includes(normalizedQuery))
-    })
-    .slice(0, 6)
-  const nextCharacter = trimmedStartText.slice(commandMatch[0].length, commandMatch[0].length + 1)
-
-  return {
-    query,
-    exactSkill,
-    suggestions,
-    shouldShowSuggestions: nextCharacter === "",
-  }
-}
-
-function expandSlashCommandText(text: string, exactSkill: AgentSkill | null) {
-  if (!exactSkill) {
-    return text
-  }
-
-  const trimmedStartText = text.replace(/^\s+/, "")
-  const commandMatch = trimmedStartText.match(/^\/([^\s\n]+)([\s\S]*)$/)
-  if (!commandMatch) {
-    return text
-  }
-
-  const trailingText = commandMatch[2].trim()
-  if (!trailingText) {
-    return exactSkill.instructions.trim()
-  }
-
-  return `${exactSkill.instructions.trim()}\n\nUser request:\n${trailingText}`
-}
 
 interface TextInputPanelProps {
   onSubmit: (text: string) => void | Promise<boolean | void>
@@ -165,17 +104,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }, [slashCommandState?.query, slashCommandState?.suggestions.length])
 
   const handleSelectSlashSkill = (skill: AgentSkill) => {
-    setText((currentText) => {
-      const commandMatch = currentText.match(/^(\s*)\/([^\s\n]*)/)
-      if (!commandMatch) {
-        return currentText
-      }
-
-      const leadingWhitespace = commandMatch[1] ?? ""
-      const remainder = currentText.slice(commandMatch[0].length)
-      const spacer = remainder.length === 0 ? " " : ""
-      return `${leadingWhitespace}/${skill.id}${spacer}${remainder}`
-    })
+    setText((currentText) => replaceSlashCommandSelection(currentText, skill))
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
 

@@ -749,3 +749,36 @@
   - Reuse the same clearer provenance/copy affordances in Hub install history if bundle-install recovery becomes a first-class surface.
 
 - Next recommended issue work item: treat `#57` as effectively wrapped for now and pivot to a fresher validated issue slice, with `#58` desktop/ACP history provenance or another well-scoped bug preferred over the still-speculative `#54`.
+
+##### Issue #53 — Inline skill invocation: unify main desktop composer onto shared slash helpers
+
+- Selection rationale:
+  - `#54` remains too speculative for a trustworthy implementation pass, while `#53` still had a concrete, reviewable follow-up already called out in this ledger: the main desktop composer duplicated slash-command parsing/expansion logic that overlay and tile follow-up inputs had already moved into a shared helper module.
+  - This slice improves consistency and lowers drift risk across the three desktop slash-command surfaces without changing the user-facing contract.
+- Investigation:
+  - Re-read issue `#53` and confirmed the acceptance criteria are about slash-triggered discovery, inline invocation, optional arguments, and visible active-skill indication across chat inputs.
+  - Re-inspected `apps/desktop/src/renderer/src/components/text-input-panel.tsx` and confirmed it still had its own local `normalizeSkillSlashToken`, `getSlashCommandState`, and `expandSlashCommandText` helpers plus inline slash-command replacement logic.
+  - Re-inspected `apps/desktop/src/renderer/src/components/skill-slash-commands.ts`, `overlay-follow-up-input.tsx`, and `tile-follow-up-input.tsx` and confirmed those two follow-up composers already shared the extracted slash-command helpers.
+  - Checked mobile parity only to confirm there is still no equivalent mobile slash-command composer flow to update in this narrow desktop-only consistency pass.
+- Important assumptions:
+  - Assumption: helper unification is a valid shippable `#53` slice even without adding new slash-command capabilities.
+  - Why acceptable: it directly reduces regression risk across the existing desktop slash-command experience and keeps future behavior changes from drifting between composer surfaces.
+  - Assumption: no mobile follow-up is required for this slice.
+  - Why acceptable: mobile still does not expose the desktop slash-command UI contract, so parity work there would be a separate product/UX decision rather than part of this consistency refactor.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/text-input-panel.tsx` to import `getSlashCommandState`, `expandSlashCommandText`, and `replaceSlashCommandSelection` from `skill-slash-commands.ts`.
+  - Removed the main composer’s duplicate local slash-command parsing/expansion helpers so the primary desktop composer now uses the same helper contract as overlay and tile follow-up inputs.
+  - Replaced the main composer’s inline selection-rewrite logic with `replaceSlashCommandSelection(...)` so slash suggestion acceptance stays behaviorally aligned across desktop inputs.
+  - Extended `apps/desktop/src/renderer/src/components/text-input-panel.slash-command.test.js` with assertions covering the shared-helper import and the removal of the old local helper definitions.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/text-input-panel.slash-command.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - Decide whether mobile should gain a platform-appropriate slash-command picker or remain desktop-only for now.
+  - Consider whether any additional slash-command affordances (for example, command aliases or richer structured invocation metadata) should be implemented once the desktop helper contract is fully stabilized.
+  - Re-run broader desktop Vitest/typecheck once this worktree has the missing dependency/tooling baseline restored.
+
+- Next recommended issue work item: either keep closing small consistency/polish gaps on `#53` only if a real user-facing mismatch remains, or pivot back to `#58` for any remaining ACP/live-session history provenance work since that issue still maps more directly to current trust/UX priorities.
