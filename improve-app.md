@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop emergency-stop global approval cancellation and dependency-light runtime coverage in `apps/desktop/src/main/emergency-stop.ts` / new `apps/desktop/src/main/emergency-stop-core.ts`, with ACP/process cleanup behavior rechecked in `apps/desktop/src/main/acp/acp-client-service.ts`, `apps/desktop/src/main/acp-service.ts`, and `apps/desktop/src/main/acp/acp-process-manager.ts`, kill-switch callers rechecked in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`, focused runtime coverage added in `tests/desktop-emergency-stop-runtime.test.js`, source guardrails updated in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --experimental-strip-types --test`, `node --test`, `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`, plus `git diff --check`.
 - 2026-03-08: Desktop shared shutdown cleanup orchestration in `apps/desktop/src/main/index.ts`, with duplicated headless / `before-quit` cleanup flow inspected there, new shared helper added in `apps/desktop/src/main/shutdown-cleanup.ts`, existing shutdown guardrail tests updated in `tests/desktop-app-quit-cleanup.test.js` and `tests/desktop-headless-shutdown-guardrails.test.js`, focused runtime coverage added in `tests/desktop-shutdown-cleanup-runtime.test.js`, and targeted verification run locally via `node --experimental-strip-types --test` plus `git diff --check`.
 - 2026-03-08: Mobile queued-message action-failure parity in `apps/mobile/src/ui/MessageQueuePanel.tsx`, with queue mutation return semantics rechecked in `apps/mobile/src/store/message-queue.ts`, Chat screen wiring cross-checked in `apps/mobile/src/screens/ChatScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/chat-message-queue-feedback.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop repeat-task explicit-restart scheduling reliability in `apps/desktop/src/main/tipc.ts`, with `loopService` stop/start semantics rechecked in `apps/desktop/src/main/loop-service.ts`, per-loop enable/save actions cross-checked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source guardrails extended in new `tests/desktop-loop-restart-guardrails.test.js` alongside existing `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
@@ -127,6 +128,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop emergency stop now centralizes `cancelAllApprovals()` inside a dependency-light `runEmergencyStopAll(...)` helper in `apps/desktop/src/main/emergency-stop-core.ts`, so every kill-switch entrypoint (window/UI, remote API, built-in tool, headless CLI) immediately clears pending approval prompts before the rest of best-effort shutdown runs; the same extraction also adds real local runtime coverage for ACP failure isolation without needing missing desktop Vitest dependencies. Tradeoff: this pass intentionally keeps the existing built-in-tool pre-cancel call and overall kill-switch behavior unchanged rather than broadening into a larger emergency-stop refactor.
 - 2026-03-08: Desktop headless and GUI quit cleanup now share one bounded cleanup helper in `apps/desktop/src/main/shutdown-cleanup.ts` plus one shared cleanup-task list in `apps/desktop/src/main/index.ts`, and the app now has real dependency-light runtime coverage for timeout and per-task best-effort behavior via `tests/desktop-shutdown-cleanup-runtime.test.js`, reducing the risk that `--headless` and `before-quit` drift apart or regress silently when future shutdown tasks change; tradeoff: this pass intentionally keeps the actual service list and quit-path wiring unchanged rather than broadening into a larger lifecycle refactor.
 - 2026-03-08: Desktop queued-message recovery UX in `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now preserves edit drafts after failed saves, surfaces inline retryable error feedback for edit/remove/retry/clear/pause/resume/retry-and-resume actions, and treats false IPC queue-action results as real failures instead of silent success, so blocked queues no longer look like they accepted edits or destructive actions when nothing actually changed; tradeoff: this pass intentionally stayed scoped to the desktop IPC-backed queue panel rather than widening into the separate mobile queue UI in the same iteration.
 - 2026-03-08: Desktop Memories edit dialog in `apps/desktop/src/renderer/src/pages/memories.tsx` now treats false `updateMemory(...)` results as real failures, keeps save failures inline with preserved draft state plus `Retry save`, warns before dismissing dirty notes/tags edits, and disables no-op saves, so memory edits no longer look successfully saved when persistence actually failed or disappear on accidental dismiss; tradeoff: this pass intentionally stays scoped to desktop edit reliability rather than redesigning the broader memories page or mirroring the same draft-loss policy onto the separate mobile edit screen.
@@ -210,6 +212,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --experimental-strip-types --test tests/desktop-emergency-stop-runtime.test.js` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
+- 2026-03-08: `node --test tests/desktop-emergency-stop-guardrails.test.js` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
+- 2026-03-08: `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
+- 2026-03-08: `git diff --check` after the desktop emergency-stop global approval cancellation/runtime-coverage pass
 - 2026-03-08: `node --experimental-strip-types --test tests/desktop-shutdown-cleanup-runtime.test.js tests/desktop-app-quit-cleanup.test.js tests/desktop-headless-shutdown-guardrails.test.js` after the desktop shared shutdown cleanup helper pass
 - 2026-03-08: `git diff --check` after the desktop shared shutdown cleanup helper pass
 - 2026-03-08: `node --test tests/desktop-message-queue-recovery.test.js` after the desktop queued-message action-failure feedback pass
@@ -516,7 +522,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / web-native live validation remains a strong adjacent mobile history follow-up, because deletion is safer at the source level but the long-press affordance, `Deleting chat...` density, and failure-alert clarity still need real product evidence once Expo is available.
 - Desktop repeat-task startup scheduling now has source-level guardrails, but behavior-level validation with mocked timers or a runnable Electron lifecycle is the freshest adjacent reliability follow-up because the key user value is preventing a stray extra run during disable/reload/quit races.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest desktop UX follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
-- Desktop emergency-stop still lacks execution-path validation against throwing ACP collaborators in this dependency-light worktree, because current coverage locks in the best-effort guardrails at the source level but does not yet exercise the runtime function with mocked ACP failures.
+- Desktop emergency-stop now has dependency-light runtime coverage for global approval cancellation and ACP failure isolation, so the freshest adjacent follow-up is end-to-end validation of the real kill-switch entrypoints (`window`, remote API, built-in tool, and headless/CLI) plus any remaining non-ACP failure seams once a runnable Electron target or fuller main-process harness is available.
 - Once a runnable Electron target is available, live-check desktop `Settings → General` modular config across global-only, upward-detected workspace, and `DOTAGENTS_WORKSPACE_DIR` cases to confirm the new active-layer summary and prompt-file labels make it obvious which files will actually be edited.
 - Once a runnable Electron target is available, live-check desktop `Settings → WhatsApp` across first load, QR-required connect, reconnect with cached credentials, disconnect, logout, and background-status refresh overlap to confirm the new loading/pending hierarchy feels trustworthy in the real UI
 - Once a runnable Electron target is available, live-check desktop agent deletion in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` across confirm, cancel, failed-delete retry, and successful removal to validate the new inline guardrails in a dense agent grid.
@@ -3103,6 +3109,39 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once Expo/mobile runtime verification is convenient, live-check the new inline error banners for edit/remove/retry/clear actions and confirm the compact panel keeps the copy readable on narrow screens
   - next highest-value nearby target: inspect desktop remote-server settings live validation for debounced port/CORS/named-tunnel edits in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
+
+### 2026-03-08 — Desktop emergency-stop global approval cancellation and runtime coverage
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process emergency kill switch in `apps/desktop/src/main/emergency-stop.ts`
+  - new dependency-light runtime helper in `apps/desktop/src/main/emergency-stop-core.ts`
+  - ACP cleanup collaborators reviewed in `apps/desktop/src/main/acp/acp-client-service.ts`, `apps/desktop/src/main/acp-service.ts`, and `apps/desktop/src/main/acp/acp-process-manager.ts`
+  - kill-switch callers reviewed in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`
+  - focused runtime/source verification in `tests/desktop-emergency-stop-runtime.test.js` and `tests/desktop-emergency-stop-guardrails.test.js`
+- Why it was chosen:
+  - the ledger still flagged desktop emergency-stop execution-path validation as a high-value reliability seam, and the previous pass only locked in source structure rather than exercising the runtime cleanup path itself
+  - investigation found one concrete behavior gap with immediate user value: only the built-in tool caller pre-cancelled all pending approvals, so other entrypoints depended on per-session cleanup and tracker/state consistency to clear approval prompts during a kill switch
+  - this was a compact, local improvement with a clear verification path in a dependency-light worktree
+- What was inspected:
+  - emergency-stop orchestration and state mutation order in `apps/desktop/src/main/emergency-stop.ts`
+  - ACP run cancellation / agent shutdown behavior in `apps/desktop/src/main/acp/acp-client-service.ts`, `apps/desktop/src/main/acp-service.ts`, and `apps/desktop/src/main/acp/acp-process-manager.ts`
+  - kill-switch caller behavior in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`
+  - nearby dependency-light runtime test patterns in `tests/desktop-shutdown-cleanup-runtime.test.js`
+- Improvement made:
+  - extracted the body of `emergencyStopAll()` into a dependency-light `runEmergencyStopAll(...)` helper so the kill-switch path can be exercised directly with mocked collaborators in `node:test`
+  - centralized `toolApprovalManager.cancelAllApprovals()` at the top of the emergency-stop flow so every entrypoint denies pending prompts consistently before per-session cleanup begins
+  - added dependency-light runtime coverage that proves approval cancellation runs first and that thrown ACP cancellation / stop / shutdown collaborators do not prevent the rest of the kill-switch cleanup from finishing
+  - updated the existing source guardrails to track the extracted helper instead of the old monolithic file
+  - assumptions / tradeoffs: this pass assumes emergency stop should always deny all pending approvals regardless of the caller, keeps the existing built-in-tool pre-cancel call in place to avoid unnecessary churn, and intentionally stops short of a broader kill-switch architecture refactor
+- Tests / verification:
+  - `node --experimental-strip-types --test tests/desktop-emergency-stop-runtime.test.js`
+  - `node --test tests/desktop-emergency-stop-guardrails.test.js`
+  - `pnpm exec tsc -p apps/desktop/tsconfig.json --noEmit --pretty false`
+  - `git diff --check`
+- Follow-up checks:
+  - when a runnable Electron target or fuller main-process harness is available, validate the real `window`, remote API, built-in tool, and headless/CLI emergency-stop entrypoints end-to-end to confirm the same cleanup sequencing holds outside mocked collaborators
+  - if that fuller validation path becomes easy, consider deduping the built-in-tool pre-cancel call now that the main kill-switch path owns global approval cancellation
 
 ### Iteration Template
 - Date:
