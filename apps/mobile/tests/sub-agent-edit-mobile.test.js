@@ -20,6 +20,22 @@ test('AgentEditScreen makes connection-type chips mobile-sized buttons with sele
   assert.match(agentEditSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isBuiltInAgent \}\}/);
 });
 
+test('AgentEditScreen explains the selected connection type and keeps ACP on the command-based path', () => {
+  assert.match(agentEditSource, /const CONNECTION_TYPE_DETAILS: Record<ConnectionType, \{ helperText: string; accessibilityHint: string \}> = \{/);
+  assert.match(agentEditSource, /helperText: 'Runs an ACP-compatible agent from a local command\.'/);
+  assert.match(agentEditSource, /helperText: 'Starts a local process and communicates over stdio\.'/);
+  assert.match(agentEditSource, /helperText: 'Connects to a remote HTTP agent endpoint\.'/);
+  assert.match(agentEditSource, /const showCommandFields = formData\.connectionType === 'acp' \|\| formData\.connectionType === 'stdio';/);
+  assert.match(agentEditSource, /const showBaseUrlField = formData\.connectionType === 'remote';/);
+  assert.match(agentEditSource, /const selectedConnectionTypeDetails = CONNECTION_TYPE_DETAILS\[formData\.connectionType\];/);
+  assert.match(agentEditSource, /const commandPlaceholder = formData\.connectionType === 'acp' \? 'claude-code-acp' : 'node';/);
+  assert.match(agentEditSource, /const argumentsPlaceholder = formData\.connectionType === 'acp' \? '--acp' : 'agent\.js --port 3000';/);
+  assert.match(agentEditSource, /<Text style=\{styles\.connectionTypeHelperText\}>\{selectedConnectionTypeDetails\.helperText\}<\/Text>/);
+  assert.match(agentEditSource, /\{showCommandFields && \([\s\S]*?placeholder=\{commandPlaceholder\}[\s\S]*?placeholder=\{argumentsPlaceholder\}[\s\S]*?renderFieldLabel\('Working Directory'/);
+  assert.match(agentEditSource, /\{showBaseUrlField && \([\s\S]*?renderFieldLabel\('Base URL'/);
+  assert.match(agentEditSource, /connectionTypeHelperText:\s*\{[\s\S]*?lineHeight:\s*17/);
+});
+
 test('AgentEditScreen makes built-in read-only fields look passive instead of editable', () => {
   assert.match(agentEditSource, /Built-in agents keep their name, connection, and prompts\. You can still update guidelines,[\s\S]*?enabled, and auto spawn\./);
   assert.match(agentEditSource, /const renderFieldLabel = \(label: string, options\?: \{ required\?: boolean; readOnly\?: boolean \}\) =>/);

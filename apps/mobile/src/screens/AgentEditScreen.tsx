@@ -49,6 +49,25 @@ const defaultFormData: AgentFormData = {
   autoSpawn: false,
 };
 
+const CONNECTION_TYPE_DETAILS: Record<ConnectionType, { helperText: string; accessibilityHint: string }> = {
+  internal: {
+    helperText: 'Uses the built-in DotAgents agent for this profile.',
+    accessibilityHint: 'Uses the built-in DotAgents agent for this profile.',
+  },
+  acp: {
+    helperText: 'Runs an ACP-compatible agent from a local command.',
+    accessibilityHint: 'Runs an ACP-compatible agent from a local command.',
+  },
+  stdio: {
+    helperText: 'Starts a local process and communicates over stdio.',
+    accessibilityHint: 'Starts a local process and communicates over stdio.',
+  },
+  remote: {
+    helperText: 'Connects to a remote HTTP agent endpoint.',
+    accessibilityHint: 'Connects to a remote HTTP agent endpoint.',
+  },
+};
+
 export default function AgentEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -202,6 +221,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
+  const showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio';
+  const showBaseUrlField = formData.connectionType === 'remote';
+  const selectedConnectionTypeDetails = CONNECTION_TYPE_DETAILS[formData.connectionType];
+  const commandPlaceholder = formData.connectionType === 'acp' ? 'claude-code-acp' : 'node';
+  const argumentsPlaceholder = formData.connectionType === 'acp' ? '--acp' : 'agent.js --port 3000';
   const hasDisplayName = formData.displayName.trim().length > 0;
   const saveValidationMessage = !hasDisplayName
     ? 'Add a display name to enable saving.'
@@ -306,7 +330,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             accessibilityHint={
               isBuiltInAgent
                 ? 'Built-in agent connections are fixed and cannot be changed here.'
-                : 'Updates how this agent connects.'
+                : CONNECTION_TYPE_DETAILS[ct.value].accessibilityHint
             }
             accessibilityState={{ selected: formData.connectionType === ct.value, disabled: isBuiltInAgent }}
             activeOpacity={0.7}
@@ -322,17 +346,18 @@ export default function AgentEditScreen({ navigation, route }: any) {
           </TouchableOpacity>
         ))}
       </View>
+      <Text style={styles.connectionTypeHelperText}>{selectedConnectionTypeDetails.helperText}</Text>
 
       {showConnectionFields && (
         <>
-          {(formData.connectionType === 'stdio') && (
+          {showCommandFields && (
             <>
               {renderFieldLabel('Command', { readOnly: isBuiltInAgent })}
               <TextInput
                 style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionCommand}
                 onChangeText={v => updateField('connectionCommand', v)}
-                placeholder="node"
+                placeholder={commandPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Command') : {})}
@@ -343,7 +368,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 style={[styles.input, isBuiltInAgent && styles.inputReadOnly]}
                 value={formData.connectionArgs}
                 onChangeText={v => updateField('connectionArgs', v)}
-                placeholder="agent.js --port 3000"
+                placeholder={argumentsPlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 {...(isBuiltInAgent ? getReadOnlyInputAccessibilityProps('Arguments') : {})}
@@ -362,7 +387,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               />
             </>
           )}
-          {(formData.connectionType === 'remote' || formData.connectionType === 'acp') && (
+          {showBaseUrlField && (
             <>
               {renderFieldLabel('Base URL', { readOnly: isBuiltInAgent })}
               <TextInput
@@ -570,6 +595,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       gap: spacing.xs,
       flexWrap: 'wrap',
+    },
+    connectionTypeHelperText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
+      lineHeight: 17,
     },
     connectionTypeOption: {
       ...selectionChipTouchTarget,

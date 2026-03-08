@@ -1715,3 +1715,49 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that built-in locked fields now announce their read-only state clearly alongside the visible `Read only` cues.
   - After live validation returns, confirm the added spoken hint helps more than it repeats, especially when scrolling through multiple locked built-in fields.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 40: keep ACP editing on the correct command-based path
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen`
+  - desktop agent settings parity in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the mobile install (`expo/tsconfig.base` plus Expo / React Native packages unresolved)
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed desktop treats `ACP` profiles as command-based external agents with `Command`, `Arguments`, and `Working Directory` fields.
+  - Mobile `AgentEditScreen` still grouped `ACP` with `Remote`, so selecting `ACP` showed `Base URL` instead of the command-based fields.
+  - On a narrow mobile form, that mismatch weakened both state clarity and editability because the selected connection type did not match the inputs shown underneath it.
+- Issue selected:
+  - `AgentEditScreen` routed `ACP` profiles through the wrong field group on mobile, making the connection-type state misleading and blocking the expected command-based edit path.
+- Decision:
+  - Keep the existing chip row and overall section order unchanged.
+  - Match mobile to the existing desktop/shared model instead of inventing a mobile-only ACP interpretation.
+  - Make the smallest local fix: add one selected-mode helper line, move `ACP` onto the command-field path, and keep `Base URL` exclusive to `Remote`.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - add concise per-connection helper copy below the chip row so the current mode is explained on mobile,
+    - route both `ACP` and `Stdio` through `Command`, `Arguments`, and `Working Directory`,
+    - keep `Base URL` exclusive to `Remote`,
+    - use ACP-specific command/argument placeholders (`claude-code-acp`, `--acp`) so the revealed fields better match the selected mode,
+    - upgrade connection-type chip accessibility hints to announce the mode-specific behavior.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new helper text and the ACP/remote field split.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The corrected ACP field set still needs a real narrow-screen pass once Expo Web or a simulator is available again, especially to confirm the helper line plus revealed fields do not crowd the section.
+  - `Auto Spawn` still appears to deserve a desktop/mobile parity review after live validation returns, but I did not broaden the change without fresh evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that switching from `Remote` to `ACP` immediately swaps `Base URL` for the command-based fields.
+  - After live validation returns, confirm the new helper line improves scanability instead of adding clutter in the connection section.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
