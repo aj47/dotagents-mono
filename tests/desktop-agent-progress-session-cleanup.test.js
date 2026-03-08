@@ -30,3 +30,20 @@ test('AgentProgress resets session-scoped transient UI state when sessionId chan
     assert.match(resetCode, new RegExp(expectedSnippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
 })
+
+test('AgentProgress keeps transcript expansion and tab state scoped to the current session run', () => {
+  const source = fs.readFileSync(agentProgressPath, 'utf8')
+
+  assert.match(
+    source,
+    /const currentViewStateScopeKey = progress\?\.sessionId[\s\S]*progress\.runId[\s\S]*"no-run"/,
+  )
+  assert.match(
+    source,
+    /const viewStateByScopeRef = useRef\(new Map<string, \{[\s\S]*activeTab: "chat" \| "summary"[\s\S]*\}>\(\)\)/,
+  )
+  assert.match(source, /viewStateByScopeRef\.current\.set\(previousScopeKey, latestViewStateRef\.current\)/)
+  assert.match(source, /const nextViewState = currentViewStateScopeKey[\s\S]*viewStateByScopeRef\.current\.get\(currentViewStateScopeKey\)/)
+  assert.match(source, /setExpandedItems\(nextViewState\?\.expandedItems \?\? \{\}\)/)
+  assert.match(source, /setActiveTab\(nextViewState\?\.activeTab \?\? "chat"\)/)
+})

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop `AgentProgress` session-scoped transcript/tab view-state handling in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, with focused-session reuse rechecked in `apps/desktop/src/renderer/src/pages/panel.tsx`, existing session-cleanup coverage extended in `tests/desktop-agent-progress-session-cleanup.test.js`, mobile parity reviewed in `apps/mobile/src/screens/ChatScreen.tsx` (no equivalent change needed because the mobile chat surface is screen-scoped rather than a reused overlay), and live desktop inspection still blocked by the missing Electron/CDP target.
 - 2026-03-08: Mobile automatic assistant read-aloud failure feedback in `apps/mobile/src/screens/ChatScreen.tsx`, including both streaming `respond_to_user` and final-response `Speech.speak(...)` paths, nearby inline composer warning patterns in `ChatScreen`, focused source-level coverage added in `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop WhatsApp connection-state feedback in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`, with the WhatsApp connect/status/disconnect/logout IPC handlers reviewed in `apps/desktop/src/main/tipc.ts`, existing page-level coverage extended in `apps/desktop/src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx`, mobile parity checked across `apps/mobile/src/` (no equivalent WhatsApp settings surface exists there), live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target), and focused desktop Vitest attempted via `pnpm exec vitest run src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` (blocked because this dependency-less worktree does not have `vitest` available).
 - 2026-03-08: Desktop agent deletion guardrails in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with `deleteAgentProfile` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/agent-profile-service.ts`, nearby inline destructive-action patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` / `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change needed because mobile already uses native confirmation plus follow-up error alert flow), focused source-level coverage added in `tests/desktop-settings-agents-delete-guardrails.test.js`, and live desktop inspection attempted but blocked because no Electron/CDP target is available in this environment.
@@ -68,6 +69,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop `AgentProgress` per-session tab/expansion restore still needs live Electron validation once a runnable target is available, especially to confirm that switching A → B → A restores each run's prior chat/summary selection and expanded transcript/tool rows without feeling sticky or surprising when a brand-new run starts.
 - 2026-03-08: Mobile automatic assistant read-aloud warning/retry states still need live device or Expo-web validation once the mobile toolchain is available, especially for invalid voice selection, mid-stream `respond_to_user` playback failure followed by final-response fallback, and retry-to-success recovery from the composer banner.
 - 2026-03-08: Desktop WhatsApp connection feedback still needs live Electron validation once a runnable target is available, especially to confirm the initial `Checking WhatsApp status...` state, QR/reconnect transitions, and the disabled-action behavior feel clear while connect/disconnect/logout requests and background polling overlap.
 - 2026-03-08: Desktop agent deletion guardrails still need live Electron validation once a runnable target is available, especially to confirm the inline confirmation density, successful removal timing, and failed-delete retry state feel clear in a crowded agents grid.
@@ -77,6 +79,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop `AgentProgress` now keeps chat-vs-summary tab choice and transcript/tool expansion state scoped to the active `sessionId` + `runId`, so switching the focused overlay from session A to session B no longer leaks A's open tab/expanded rows into B, while switching back to A in the same overlay lifecycle restores the view the user last had there; tradeoff: this pass keeps the state cache local to the component instead of promoting it into a shared store because the reuse bug is isolated to the existing overlay instance and the smallest fix is the safest one.
 - 2026-03-08: Mobile `ChatScreen` automatic assistant read-aloud now routes both streaming and final-response `Speech.speak(...)` calls through one guarded helper, surfaces startup/playback failures in a compact composer-level banner with `Retry read aloud`, clears stale auto-read-aloud errors when a new request or manual read-aloud begins, and only marks mid-turn playback as handled after speech actually starts so a startup failure no longer fails silently or suppresses the final-response fallback attempt; tradeoff: this pass intentionally stays scoped to `ChatScreen`’s automatic speech path and does not yet widen the same retry UX into `ResponseHistoryPanel`’s separate manual playback controls.
 - 2026-03-08: Desktop `Settings → WhatsApp` now distinguishes the initial status check from a real unavailable-server warning, replacing the misleading first-render `WhatsApp server not available` flash with `Checking WhatsApp status...`, and the connection action row now shows action-local pending labels (`Disconnecting...`, `Refreshing...`, `Logging out...`) while disabling conflicting buttons so repeated clicks and overlapping polling no longer make the connection state feel ambiguous; tradeoff: this pass intentionally stays scoped to connection-status clarity and does not yet redesign the broader WhatsApp onboarding/settings copy.
 - 2026-03-08: Desktop `Settings → Agents` now keeps custom-agent deletion inside the card with an inline confirmation panel, row-local `Deleting...` / `Retry delete` feedback, and false-result/error handling that preserves context instead of relying on a one-shot browser confirm plus silent failure; tradeoff: this pass intentionally stays scoped to delete guardrails and does not yet broaden into agent-list load states or edit-flow polish.
@@ -136,6 +139,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-agent-progress-session-cleanup.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- 2026-03-08: `git diff --check` after the desktop `AgentProgress` session-scoped view-state pass
 - 2026-03-08: `node --test apps/mobile/tests/chat-auto-response-tts-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/mobile/src/screens/ChatScreen.tsx`
 - 2026-03-08: `git diff --check` after the mobile automatic response TTS feedback pass
@@ -285,6 +291,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this `AgentProgress` session-scoped view-state pass was blocked because no Electron renderer/CDP target is available in this environment (`electron_execute` returns `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this automatic response TTS feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this WhatsApp connection-feedback pass was blocked because `electron_execute` returned `No Electron targets found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop Vitest verification for this WhatsApp connection-feedback pass is blocked in this worktree because `pnpm exec vitest run src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` fails with `Command "vitest" not found`.
@@ -345,11 +352,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop `AgentProgress` transcript expansion/tab persistence across focused-session changes (`apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/pages/panel.tsx`)
+- Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
 - Desktop repeat-task run/toggle/delete mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
-- Desktop `AgentProgress` transcript expansion/tab persistence across focused-session changes is now the freshest high-leverage code follow-up, because the earlier transient-state cleanup reduced one session-leak class but left the remaining reused-view persistence behavior unverified and potentially inconsistent
+- Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish is now the freshest adjacent code follow-up, because individual delete guardrails are in place but the larger history-browsing workflow still has unreviewed reliability and navigation seams.
 - Once a runnable Electron target is available, live-check desktop `Settings → WhatsApp` across first load, QR-required connect, reconnect with cached credentials, disconnect, logout, and background-status refresh overlap to confirm the new loading/pending hierarchy feels trustworthy in the real UI
 - Once a runnable Electron target is available, live-check desktop agent deletion in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` across confirm, cancel, failed-delete retry, and successful removal to validate the new inline guardrails in a dense agent grid.
 - Once a runnable mobile target is available, live-check the new mobile message-level read-aloud warning/retry state across invalid voice selection, empty-text messages, and repeated retry from the same assistant card
@@ -387,6 +394,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the desktop overlay follow-up composer across session switching plus late success/failure/image-read completions to confirm stale drafts/errors no longer leak across focused sessions in the actual UI
+
+### 2026-03-08 — Desktop `AgentProgress` session-scoped tab and transcript view state
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop `AgentProgress` overlay reuse path in `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+  - focused-session handoff reviewed in `apps/desktop/src/renderer/src/pages/panel.tsx`
+  - focused source-level regression coverage extended in `tests/desktop-agent-progress-session-cleanup.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/ChatScreen.tsx`; confirmed no equivalent fix is needed because the mobile chat surface is mounted per screen/session rather than reused across a changing focused-session shell
+- Why it was chosen:
+  - the ledger explicitly called out remaining `AgentProgress` transcript/tab persistence as the freshest unreconciled session-scope behavior after the earlier stop-confirmation cleanup pass
+  - investigation confirmed a concrete UX leak: the desktop panel reuses one `AgentProgress` instance as the focused session changes, but the local `activeTab` and `expandedItems` state had no session/run boundary, so session B could inherit session A's open summary tab or expanded transcript/tool rows
+  - the issue had a small, local implementation path with immediate user value and no need for a broader refactor or store migration
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` to trace local tab/expansion state, display-item keying, and existing session-change cleanup behavior
+  - `apps/desktop/src/renderer/src/pages/panel.tsx` to confirm the overlay variant reuses a single `AgentProgress` instance while `displayProgress` changes across focused sessions
+  - `apps/mobile/src/screens/ChatScreen.tsx` to confirm mobile does not share the same reused-overlay shape and therefore does not need a parallel fix in this pass
+  - `tests/desktop-agent-progress-session-cleanup.test.js` to extend the existing dependency-free session-scope guardrail instead of inventing a second disconnected test harness
+- Improvement made:
+  - added a local view-state scope key derived from `sessionId` + `runId`, so the reused overlay can distinguish one session/run's transcript UI from another's
+  - preserved `activeTab` plus `expandedItems` in a tiny component-local map keyed by that scope and restore the saved view when the user switches back to the same focused session/run during the current overlay lifecycle
+  - defaulted unseen sessions/runs back to collapsed transcript state and the `chat` tab so a brand-new focused run no longer inherits another run's UI affordances by accident
+  - extended the existing source-level regression test to assert the new scope key, restore path, and default-reset behavior
+- Assumptions / tradeoffs / rationale:
+  - kept the cache local to `AgentProgress` because investigation showed the bug comes from a single reused overlay instance; promoting this into a shared store would add churn without clearer product value
+  - keyed the cache by `runId` as well as `sessionId` so a fresh run inside the same session starts from a clean default instead of restoring an old completed run's expanded transcript/tab state
+  - accepted source inspection plus targeted source-level verification for this pass because live Electron validation is still blocked in the current environment, but the change remains tightly scoped and mechanically testable
+- Tests / verification:
+  - `node --test tests/desktop-agent-progress-session-cleanup.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+  - `git diff --check`
+- Follow-up checks:
+  - once an Electron target is available, live-check switching between at least two focused sessions/runs with the summary tab open and several transcript/tool rows expanded to confirm A → B → A restores each session's prior view without feeling sticky on brand-new runs
+  - if another adjacent desktop session-history pass is needed next, inspect `past-sessions-dialog.tsx` for broader load/search/delete-all recovery and keyboard-focus continuity because that remains the freshest unreviewed navigation/history seam in the ledger
 
 ### 2026-03-08 — Desktop overlay follow-up composer session-scope cleanup
 - Date:

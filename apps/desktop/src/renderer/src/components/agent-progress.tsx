@@ -2310,6 +2310,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     pendingInitialScrollTimeoutsRef.current = []
   }, [])
 
+  const currentViewStateScopeKey = progress?.sessionId
+    ? `${progress.sessionId}:${typeof progress.runId === "number" ? progress.runId : "no-run"}`
+    : null
+
   useEffect(() => {
     shouldAutoScrollRef.current = shouldAutoScroll
   }, [shouldAutoScroll])
@@ -2345,6 +2349,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
   const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
+  const viewStateByScopeRef = useRef(new Map<string, {
+    expandedItems: Record<string, boolean>
+    activeTab: "chat" | "summary"
+  }>())
+  const lastViewStateScopeKeyRef = useRef<string | null>(null)
+  const latestViewStateRef = useRef({
+    expandedItems: {} as Record<string, boolean>,
+    activeTab: "chat" as "chat" | "summary",
+  })
 
   // Get current conversation ID for deep-linking and session focus control
   const currentConversationId = useConversationStore((s) => s.currentConversationId)
@@ -2355,6 +2368,30 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const queuedMessages = useMessageQueue(progress?.conversationId)
   const isQueuePaused = useIsQueuePaused(progress?.conversationId)
   const hasQueuedMessages = queuedMessages.length > 0
+
+  useEffect(() => {
+    latestViewStateRef.current = {
+      expandedItems,
+      activeTab,
+    }
+  }, [activeTab, expandedItems])
+
+  useEffect(() => {
+    const previousScopeKey = lastViewStateScopeKeyRef.current
+    if (previousScopeKey === currentViewStateScopeKey) return
+
+    if (previousScopeKey) {
+      viewStateByScopeRef.current.set(previousScopeKey, latestViewStateRef.current)
+    }
+
+    const nextViewState = currentViewStateScopeKey
+      ? viewStateByScopeRef.current.get(currentViewStateScopeKey)
+      : undefined
+
+    setExpandedItems(nextViewState?.expandedItems ?? {})
+    setActiveTab(nextViewState?.activeTab ?? "chat")
+    lastViewStateScopeKeyRef.current = currentViewStateScopeKey
+  }, [currentViewStateScopeKey])
 
   // Helper to toggle expansion state for a specific item
   // Uses defaultExpanded fallback for items that haven't been explicitly toggled yet
