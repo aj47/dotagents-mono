@@ -222,10 +222,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
   // Check if connection fields should be shown
   const showConnectionFields = formData.connectionType !== 'internal';
   const showCommandFields = formData.connectionType === 'acp' || formData.connectionType === 'stdio';
+  const supportsAutoSpawn = showCommandFields;
   const showBaseUrlField = formData.connectionType === 'remote';
   const selectedConnectionTypeDetails = CONNECTION_TYPE_DETAILS[formData.connectionType];
   const commandPlaceholder = formData.connectionType === 'acp' ? 'claude-code-acp' : 'node';
   const argumentsPlaceholder = formData.connectionType === 'acp' ? '--acp' : 'agent.js --port 3000';
+  const builtInWarningText = supportsAutoSpawn
+    ? '⚠️ Built-in agents keep their name, connection, and prompts. You can still update guidelines, enabled, and auto spawn.'
+    : '⚠️ Built-in agents keep their name, connection, and prompts. You can still update guidelines and enabled state.';
   const hasDisplayName = formData.displayName.trim().length > 0;
   const saveValidationMessage = !hasDisplayName
     ? 'Add a display name to enable saving.'
@@ -255,6 +259,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
     accessibilityHint: 'Built-in agents keep this field fixed here.',
   });
 
+  const handleConnectionTypeChange = useCallback((connectionType: ConnectionType) => {
+    setFormData(prev => ({
+      ...prev,
+      connectionType,
+      autoSpawn: connectionType === 'acp' || connectionType === 'stdio' ? prev.autoSpawn : false,
+    }));
+  }, []);
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -282,10 +294,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
       {isBuiltInAgent && (
         <View style={styles.warningContainer}>
-          <Text style={styles.warningText}>
-            ⚠️ Built-in agents keep their name, connection, and prompts. You can still update guidelines,
-            enabled, and auto spawn.
-          </Text>
+          <Text style={styles.warningText}>{builtInWarningText}</Text>
         </View>
       )}
 
@@ -323,7 +332,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               isBuiltInAgent && styles.connectionTypeOptionReadOnly,
               isBuiltInAgent && formData.connectionType === ct.value && styles.connectionTypeOptionReadOnlyActive,
             ]}
-            onPress={() => updateField('connectionType', ct.value)}
+            onPress={() => handleConnectionTypeChange(ct.value)}
             disabled={isBuiltInAgent}
             accessibilityRole="button"
             accessibilityLabel={createButtonAccessibilityLabel(`Use ${ct.label} connection type`)}
@@ -456,29 +465,31 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.switchRow}>
-        <View style={styles.switchLabelGroup}>
-          <Text style={styles.switchLabel}>Auto Spawn</Text>
-          <Text style={styles.switchHelperText}>Start agent automatically on app launch</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.switchButton}
-          onPress={() => updateField('autoSpawn', !formData.autoSpawn)}
-          accessibilityRole="switch"
-          accessibilityLabel={createSwitchAccessibilityLabel('Auto spawn')}
-          accessibilityHint="Starts this agent automatically when the app launches."
-          accessibilityState={{ checked: formData.autoSpawn }}
-          activeOpacity={0.7}
-        >
-          <View
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            {renderSwitchVisual(formData.autoSpawn)}
+      {supportsAutoSpawn && (
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelGroup}>
+            <Text style={styles.switchLabel}>Auto Spawn</Text>
+            <Text style={styles.switchHelperText}>Start this command-based agent automatically when DotAgents starts</Text>
           </View>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.switchButton}
+            onPress={() => updateField('autoSpawn', !formData.autoSpawn)}
+            accessibilityRole="switch"
+            accessibilityLabel={createSwitchAccessibilityLabel('Auto spawn')}
+            accessibilityHint="Starts this command-based agent automatically when DotAgents starts."
+            accessibilityState={{ checked: formData.autoSpawn }}
+            activeOpacity={0.7}
+          >
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              {renderSwitchVisual(formData.autoSpawn)}
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {settingsClient && saveValidationMessage && (
         <Text style={styles.saveHelperText}>{saveValidationMessage}</Text>

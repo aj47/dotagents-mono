@@ -1761,3 +1761,49 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that switching from `Remote` to `ACP` immediately swaps `Base URL` for the command-based fields.
   - After live validation returns, confirm the new helper line improves scanability instead of adding clutter in the connection section.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 41: scope Auto Spawn to command-based agents only
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `AgentEditScreen`
+  - desktop agent-edit parity in `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
+  - shared `autoSpawn` intent in `apps/desktop/src/shared/types.ts`
+  - `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed mobile `AgentEditScreen` still rendered `Auto Spawn` for every connection type, including `Internal` and `Remote`.
+  - The same row described the behavior as happening `on app launch`, which read like a phone-app concern rather than DotAgents starting a local command-based agent.
+  - Desktop already scoped the control to `ACP` / `Stdio`, and shared types describe `autoSpawn` as startup behavior for ACP agents.
+- Issue selected:
+  - `Auto Spawn` appeared in unsupported connection modes on mobile and used misleading startup wording, weakening state clarity in the agent edit flow.
+- Decision:
+  - Keep the existing switch style and overall form order unchanged.
+  - Match the existing desktop behavior instead of inventing a mobile-only interpretation.
+  - Make the smallest local fix in `AgentEditScreen`: show `Auto Spawn` only for command-based agents, update the helper/hint to mention DotAgents startup, and clear the flag when switching to a connection type where it no longer applies.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - derive `supportsAutoSpawn` from the existing command-based connection check,
+    - route connection-type taps through `handleConnectionTypeChange(...)` so switching away from `ACP` / `Stdio` clears `autoSpawn`,
+    - render the `Auto Spawn` switch row only for command-based agents,
+    - change the helper and accessibility hint to `Start this command-based agent automatically when DotAgents starts`,
+    - make the built-in warning text state-aware so it only mentions auto spawn when that control is actually applicable.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new conditional rendering, state reset, and wording.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - The conditional `Auto Spawn` row still needs a real narrow-screen pass once Expo Web or a simulator is available again.
+  - If live inspection later shows the command-based helper competes with the connection-type helper line, the wording may need tightening — but only with evidence.
+  - The missing mobile install continues to limit screenshot-backed prioritization, so nearby follow-ups should remain conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `Internal` and `Remote` no longer show `Auto Spawn` while `ACP` and `Stdio` still do.
+  - After live validation returns, confirm the new DotAgents-startup wording reads as clearer scope rather than extra copy.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

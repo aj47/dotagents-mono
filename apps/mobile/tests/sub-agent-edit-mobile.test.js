@@ -36,8 +36,16 @@ test('AgentEditScreen explains the selected connection type and keeps ACP on the
   assert.match(agentEditSource, /connectionTypeHelperText:\s*\{[\s\S]*?lineHeight:\s*17/);
 });
 
+test('AgentEditScreen only exposes auto spawn for command-based agents and clears it when switching away', () => {
+  assert.match(agentEditSource, /const supportsAutoSpawn = showCommandFields;/);
+  assert.match(agentEditSource, /const handleConnectionTypeChange = useCallback\(\(connectionType: ConnectionType\) => \{[\s\S]*?connectionType,[\s\S]*?autoSpawn: connectionType === 'acp' \|\| connectionType === 'stdio' \? prev\.autoSpawn : false,[\s\S]*?\}\)\);/);
+  assert.match(agentEditSource, /onPress=\{\(\) => handleConnectionTypeChange\(ct\.value\)\}/);
+  assert.match(agentEditSource, /\{supportsAutoSpawn && \([\s\S]*?<Text style=\{styles\.switchLabel\}>Auto Spawn<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Start this command-based agent automatically when DotAgents starts<\/Text>[\s\S]*?accessibilityHint="Starts this command-based agent automatically when DotAgents starts\."[\s\S]*?\)\}/);
+  assert.doesNotMatch(agentEditSource, /Start agent automatically on app launch|app launches\./);
+});
+
 test('AgentEditScreen makes built-in read-only fields look passive instead of editable', () => {
-  assert.match(agentEditSource, /Built-in agents keep their name, connection, and prompts\. You can still update guidelines,[\s\S]*?enabled, and auto spawn\./);
+  assert.match(agentEditSource, /const builtInWarningText = supportsAutoSpawn[\s\S]*?You can still update guidelines, enabled, and auto spawn\.[\s\S]*?You can still update guidelines and enabled state\./);
   assert.match(agentEditSource, /const renderFieldLabel = \(label: string, options\?: \{ required\?: boolean; readOnly\?: boolean \}\) =>/);
   assert.match(agentEditSource, /options\?\.readOnly \? <Text style=\{styles\.labelReadOnlyText\}> · Read only<\/Text> : null/);
   assert.match(agentEditSource, /renderFieldLabel\('Display Name', \{ required: true, readOnly: isBuiltInAgent \}\)/);
