@@ -292,7 +292,14 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         ) : profiles.length === 0 ? (
           <View style={styles.emptyStateCard}>
             <View style={styles.currentAgentBadge}>
-              <Text style={styles.currentAgentBadgeText}>Current: {currentAgentName}</Text>
+              <Text style={styles.currentAgentBadgeLabel}>Current agent</Text>
+              <Text
+                style={styles.currentAgentBadgeText}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {currentAgentName}
+              </Text>
             </View>
             <Text style={styles.emptyStateTitle}>
               {selectorMode === 'acp' ? 'No ACP agents ready yet' : 'No switchable agents yet'}
@@ -535,15 +542,26 @@ function createStyles(theme: Theme) {
     currentAgentBadge: {
       backgroundColor: theme.colors.primary + '18',
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.full,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.primary + '33',
+      maxWidth: '100%',
+      alignItems: 'center',
+      gap: 2,
+    },
+    currentAgentBadgeLabel: {
+      color: theme.colors.primary,
+      fontSize: 11,
+      fontWeight: '700',
     },
     currentAgentBadgeText: {
       color: theme.colors.primary,
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: '600',
+      textAlign: 'center',
+      maxWidth: '100%',
+      flexShrink: 1,
     },
     manageAgentsButton: {
       minHeight: 44,

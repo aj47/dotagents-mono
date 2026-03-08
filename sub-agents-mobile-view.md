@@ -2652,3 +2652,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new empty-state notice is easy to notice and does not overpower the profile chips on a narrow screen.
   - Compare the neutral empty-state notice against the existing warning retry notice so the two states feel appropriately distinct on mobile.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 62: clamp the selector empty-state current-agent badge for long names
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed selector rows already clamp long agent names and optional descriptions for narrow screens.
+  - But the empty-state status badge still rendered as a single unbounded line: `Current: {currentAgentName}`.
+  - In the same no-switchable-agents state the sheet is meant to clarify, a long configured agent name could therefore become the least stable text element in the view.
+- Issue selected:
+  - The selector empty-state current-agent badge was not resilient to long agent names, weakening state clarity on narrow mobile screens exactly when the sheet is already in a constrained, fallback state.
+- Decision:
+  - Keep the existing selector-sheet layout, empty-state copy, and management action unchanged.
+  - Do not redesign the card or add another summary block while live validation is blocked.
+  - Make the smallest local hierarchy fix: split the badge into a compact `Current agent` label plus a clamped current-agent value that can wrap safely inside the badge.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - replace the inline `Current: ...` text with a `Current agent` label and a dedicated current-agent value,
+    - clamp the current-agent value to two lines with tail truncation,
+    - bound and center the badge content so long names stay stable inside the empty-state card.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused coverage for the new empty-state badge structure and truncation styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new badge hierarchy feels clear in the empty-state card and does not look overly heavy.
+  - Long configured agent names should still be smoke-tested in the interactive selector rows and header badges once live validation is available again.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long current-agent names stay readable in the selector empty state without forcing awkward overflow.
+  - Smoke-test the same long-name scenario in the header badge and any other selector entry points so truncation remains consistent across mobile sub-agent surfaces.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

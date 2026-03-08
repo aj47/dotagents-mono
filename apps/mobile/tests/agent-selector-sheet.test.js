@@ -13,9 +13,12 @@ test('refreshes the current profile context when the selector sheet opens', () =
 });
 
 test('keeps the empty state anchored to the current agent and explains where to manage agents', () => {
-  assert.match(sheetSource, /Current: \{currentAgentName\}/);
+  assert.match(sheetSource, /<Text style=\{styles\.currentAgentBadgeLabel\}>Current agent<\/Text>/);
+  assert.match(sheetSource, /<Text[\s\S]*?style=\{styles\.currentAgentBadgeText\}[\s\S]*?numberOfLines=\{2\}[\s\S]*?ellipsizeMode="tail"[\s\S]*?\{currentAgentName\}/);
   assert.match(sheetSource, /No switchable agents yet/);
   assert.match(sheetSource, /Manage delegation agents in Settings → Agents\./);
+  assert.match(sheetSource, /currentAgentBadge:\s*\{[\s\S]*?maxWidth:\s*'100%'[\s\S]*?alignItems:\s*'center'/);
+  assert.match(sheetSource, /currentAgentBadgeText:\s*\{[\s\S]*?textAlign:\s*'center'[\s\S]*?maxWidth:\s*'100%'[\s\S]*?flexShrink:\s*1/);
 });
 
 test('offers a mobile-friendly path back to agent settings from the empty state', () => {
