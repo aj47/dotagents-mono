@@ -26,7 +26,10 @@ describe("agent progress tile layout", () => {
 
   it("keeps ACP agent identity in one place by hiding the header profile chip when the footer badge already names the agent", () => {
     expect(agentProgressSource).toContain(
-      'const showTileProfileName = !!profileName && !acpSessionInfo?.agentTitle'
+      'const acpBadgeShowsAgentIdentity = !!(acpSessionInfo?.agentTitle || acpSessionInfo?.agentName)'
+    )
+    expect(agentProgressSource).toContain(
+      'const showTileProfileName = !!profileName && !acpBadgeShowsAgentIdentity'
     )
     expect(agentProgressSource).toContain('{showTileProfileName && (')
     expect(agentProgressSource).toContain('<ACPSessionBadge info={acpSessionInfo}')
@@ -57,6 +60,8 @@ describe("agent progress tile layout", () => {
   })
 
   it("caps ACP session badges to the available tile width and truncates long labels", () => {
+    expect(acpSessionBadgeSource).toContain("agentName?: string")
+    expect(acpSessionBadgeSource).toContain("const agentIdentityLabel = agentTitle || agentName || null")
     expect(acpSessionBadgeSource).toContain(
       '"inline-flex max-w-full min-w-0 flex-wrap items-center gap-1.5 cursor-help"'
     )

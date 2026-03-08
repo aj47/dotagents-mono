@@ -9,6 +9,7 @@ import { cn } from "@renderer/lib/utils"
 
 interface ACPSessionBadgeProps {
   info: {
+    agentName?: string
     agentTitle?: string
     agentVersion?: string
     currentModel?: string
@@ -38,13 +39,14 @@ function getConfigOptionLabel(option: {
  * Visual example: `[Claude Code v0.12.6] [Sonnet 4.5]`
  */
 export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
-  const { agentTitle, agentVersion, currentModel, currentMode, configOptions } = info
+  const { agentName, agentTitle, agentVersion, currentModel, currentMode, configOptions } = info
+  const agentIdentityLabel = agentTitle || agentName || null
 
   // Build agent label (e.g., "Claude Code v0.12.6")
-  const agentLabel = agentTitle
+  const agentLabel = agentIdentityLabel
     ? agentVersion
-      ? `${agentTitle} v${agentVersion}`
-      : agentTitle
+      ? `${agentIdentityLabel} v${agentVersion}`
+      : agentIdentityLabel
     : null
 
   // Build model label (e.g., "Sonnet 4.5" or "claude-3-5-sonnet")
@@ -62,7 +64,7 @@ export function ACPSessionBadge({ info, className }: ACPSessionBadgeProps) {
 
   // Build tooltip content with all available info
   const tooltipLines: string[] = []
-  if (agentTitle) tooltipLines.push(`Agent: ${agentTitle}`)
+  if (agentIdentityLabel) tooltipLines.push(`Agent: ${agentIdentityLabel}`)
   if (agentVersion) tooltipLines.push(`Version: ${agentVersion}`)
   if (currentModel) tooltipLines.push(`Model: ${currentModel}`)
   if (currentMode) tooltipLines.push(`Mode: ${currentMode}`)

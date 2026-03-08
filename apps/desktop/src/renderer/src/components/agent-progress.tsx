@@ -3440,7 +3440,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const shouldLimitTileTranscript = !isFocused && !isExpanded
     const shouldUseCompactTileFooter = !isFocused && !isExpanded
     const showTileExpandAction = !!onExpand && !isExpanded && !isSnoozed
-    const showTileProfileName = !!profileName && !acpSessionInfo?.agentTitle
+    const acpBadgeShowsAgentIdentity = !!(acpSessionInfo?.agentTitle || acpSessionInfo?.agentName)
+    const showTileProfileName = !!profileName && !acpBadgeShowsAgentIdentity
     const tileDisplayItems = shouldLimitTileTranscript
       ? displayItems.slice(-TILE_TRANSCRIPT_PREVIEW_ITEMS)
       : displayItems

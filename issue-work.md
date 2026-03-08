@@ -3375,3 +3375,41 @@
   - Reassess whether any other resume/bootstrap paths (for example, other internal/headless flows) also need the same preserved-history contract for consistency.
 
 - Next recommended issue work item: refresh open issues again; if no sharper bug appears beyond `#55`, either try a more direct validation pass for `#55` or take another narrow `#58` polish slice around live-session provenance now that active resumed history metadata is aligned.
+
+##### Issue #55 — Session tile ACP identity dedupe also handles `agentName`-only sessions
+
+- Selection rationale:
+  - Re-reviewed `issue-work.md` first and refreshed the still-open repo issues before choosing the next slice.
+  - `#55` remains the only open bug in the current repo, and the latest ledger entry explicitly called out a more direct validation pass for it as the next high-value step.
+  - Earlier `#55` work had already landed source fixes for the duplicate maximize action and collapsed-tile packing, so the best small follow-up was to validate the current state and close any remaining tile-header duplication gap instead of jumping to another enhancement.
+- Investigation:
+  - Re-read issue `#55`, confirmed labels (`bug`, `ui`), and confirmed there were still no issue comments adding extra constraints.
+  - Re-inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/components/acp-session-badge.tsx`, and the existing `#55` regression tests.
+  - Confirmed the earlier tile-header dedupe only hid the profile chip when `acpSessionInfo.agentTitle` existed.
+  - Confirmed the shared `AgentProgressUpdate` type still allows ACP identity via either `agentTitle` or `agentName`, and `agent-progress.tsx` already used `agentName` as a fallback for the primary agent label elsewhere.
+  - Confirmed `ACPSessionBadge` still rendered only `agentTitle`, so ACP sessions that surfaced identity only through `agentName` could still miss the intended footer identity/dedupe behavior.
+  - Attempted the desktop package Vitest path again via `pnpm --filter @dotagents/desktop test:run -- ...`, but the worktree still lacks installed workspace dependencies / `node_modules`; pretest failed in `packages/shared` with `sh: tsup: command not found`.
+- Important assumptions:
+  - Assumption: ACP sessions that populate `agentName` without `agentTitle` are a real contributor to the issue's “agent name displayed more than once” report in some cases.
+  - Why acceptable: the current shared type explicitly models both fields, the renderer already treats `agentName` as a visible identity fallback, and the tile dedupe logic was the only remaining place that ignored that fallback.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the issue is specific to the desktop session tiles view, and the mobile app does not expose an equivalent ACP tile-header surface.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/acp-session-badge.tsx` so the ACP badge now falls back to `agentName` when `agentTitle` is absent, including tooltip text.
+  - Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so tile-header profile-chip dedupe now treats either `acpSessionInfo.agentTitle` or `acpSessionInfo.agentName` as ACP-owned identity already shown by the footer badge.
+  - Updated `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` to lock in the broader ACP identity check and badge fallback.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.issue55-regressions.test.js` with a dependency-free regression assertion covering the new `agentName` fallback path.
+- Verification run:
+  - Attempted: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/agent-progress.tile-layout.test.ts src/renderer/src/pages/sessions.layout-controls.test.ts`
+  - Result: still blocked by missing workspace dependencies / `node_modules`; desktop pretest failed building `@dotagents/shared` with `sh: tsup: command not found`.
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.issue55-regressions.test.js apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` ✅
+  - Completed: `pnpm exec tsc --pretty false --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #55:
+  - Run a direct desktop UI smoke/visual validation for the tile header once the worktree has a full desktop dependency install again, so the duplicate maximize button and tile reflow can be confirmed interactively rather than only by source-level regression checks.
+  - Decide whether any non-tile ACP surfaces should also de-duplicate `profileName` vs ACP agent identity, or whether that compactness trade-off should remain tile-only.
+
+- Next recommended issue work item: refresh open issues again and stay bug-first; if `#55` still needs confidence after this fix, do a direct Electron smoke validation pass once dependencies are available, otherwise pivot to a fresh narrow slice outside the recent `#55`/`#58` work.
