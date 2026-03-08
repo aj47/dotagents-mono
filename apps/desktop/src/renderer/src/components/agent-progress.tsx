@@ -2412,6 +2412,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Get current conversation ID for deep-linking and session focus control
   const currentConversationId = useConversationStore((s) => s.currentConversationId)
+  const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
 
@@ -2494,6 +2495,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       setSessionSnoozed(progress.sessionId, false)
       logUI('🔴 [AgentProgress OVERLAY] Failed to snooze, rolled back local state')
       console.error("Failed to snooze session:", error)
+      toast.error(
+        `Failed to minimize session. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       return
     }
 
@@ -3367,6 +3371,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 e.stopPropagation()
                 if (!progress?.sessionId) return
 
+                const previousFocusedSessionId = focusedSessionId
+
                 // Update local store first so panel shows content immediately
                 setSessionSnoozed(progress.sessionId, false)
                 // Focus this session in state
@@ -3378,8 +3384,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 } catch (error) {
                   // Rollback local state only when the API call fails to keep UI and backend in sync
                   setSessionSnoozed(progress.sessionId, true)
-                  setFocusedSessionId(null)
+                  setFocusedSessionId(previousFocusedSessionId ?? null)
                   console.error("Failed to unsnooze session:", error)
+                  toast.error(
+                    `Failed to restore session. ${getActionErrorMessage(error, "Please try again.")}`,
+                  )
                   return
                 }
 
