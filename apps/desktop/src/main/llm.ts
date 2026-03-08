@@ -456,6 +456,7 @@ export async function processTranscriptWithAgentMode(
   onProgress?: (update: AgentProgressUpdate) => void, // Optional callback for external progress consumers (e.g., SSE)
   profileSnapshot?: SessionProfileSnapshot, // Profile snapshot for session isolation
   runId?: number,
+  preservedProgressHistory?: Pick<AgentProgressUpdate, "fullConversationHistory" | "conversationCompaction">,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
   const { loopMaxIterations, guardrailBudget } = resolveAgentIterationLimits(maxIterations)
@@ -585,6 +586,7 @@ export async function processTranscriptWithAgentMode(
       ...(shouldEmitUserResponse ? { userResponse: userResponseForUpdate } : {}),
       // Include response history if there are past responses
       ...(shouldEmitUserResponse && responseHistory.length > 0 ? { userResponseHistory: responseHistory } : {}),
+      ...buildPreservedHistoryProgressFields(),
       sessionId: currentSessionId,
       runId: effectiveRunId,
       conversationId: currentConversationId,
@@ -1015,6 +1017,48 @@ export async function processTranscriptWithAgentMode(
         isSummary: entry.isSummary,
         summarizedMessageCount: entry.summarizedMessageCount,
       }))
+  }
+
+  const buildPreservedHistoryProgressFields = (): Pick<
+    AgentProgressUpdate,
+    "fullConversationHistory" | "conversationCompaction"
+  > => {
+    if (!preservedProgressHistory?.fullConversationHistory?.length && !preservedProgressHistory?.conversationCompaction) {
+      return {}
+    }
+
+    const appendedHistorySinceResume = formatConversationForProgress(
+      conversationHistory.slice(currentPromptIndex + 1),
+    )
+    const appendedMessageCount = appendedHistorySinceResume.length
+    const fullConversationHistory = preservedProgressHistory.fullConversationHistory?.length
+      ? appendedMessageCount > 0
+        ? [...preservedProgressHistory.fullConversationHistory, ...appendedHistorySinceResume]
+        : preservedProgressHistory.fullConversationHistory
+      : undefined
+
+    const baseStoredRawMessageCount = preservedProgressHistory.conversationCompaction?.storedRawMessageCount
+      ?? preservedProgressHistory.fullConversationHistory?.length
+    const baseRepresentedMessageCount = preservedProgressHistory.conversationCompaction?.representedMessageCount
+      ?? preservedProgressHistory.fullConversationHistory?.length
+    const conversationCompaction = preservedProgressHistory.conversationCompaction
+      ? {
+          ...preservedProgressHistory.conversationCompaction,
+          representedMessageCount:
+            typeof baseRepresentedMessageCount === "number"
+              ? baseRepresentedMessageCount + appendedMessageCount
+              : appendedMessageCount,
+          storedRawMessageCount:
+            typeof baseStoredRawMessageCount === "number"
+              ? baseStoredRawMessageCount + appendedMessageCount
+              : undefined,
+        }
+      : undefined
+
+    return {
+      ...(fullConversationHistory?.length ? { fullConversationHistory } : {}),
+      ...(conversationCompaction ? { conversationCompaction } : {}),
+    }
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {

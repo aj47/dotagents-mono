@@ -56,11 +56,16 @@ export function sanitizeAgentProgressUpdateForDisplay(
   update: AgentProgressUpdate
 ): AgentProgressUpdate {
   const sanitizedHistory = sanitizeConversationHistoryForDisplay(update.conversationHistory)
-  if (sanitizedHistory === update.conversationHistory) {
+  const sanitizedFullHistory = sanitizeConversationHistoryForDisplay(update.fullConversationHistory)
+  if (
+    sanitizedHistory === update.conversationHistory
+    && sanitizedFullHistory === update.fullConversationHistory
+  ) {
     return update
   }
   return {
     ...update,
     conversationHistory: sanitizedHistory,
+    fullConversationHistory: sanitizedFullHistory,
   }
 }

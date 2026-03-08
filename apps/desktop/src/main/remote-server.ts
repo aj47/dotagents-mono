@@ -572,6 +572,9 @@ async function runAgent(options: RunAgentOptions): Promise<{
     isSummary?: boolean
     summarizedMessageCount?: number
   }> | undefined
+  let preservedProgressHistory:
+    | Pick<AgentProgressUpdate, "fullConversationHistory" | "conversationCompaction">
+    | undefined
   let shouldLoadCompactedConversationContext = false
   let conversationId = inputConversationId
 
@@ -665,6 +668,29 @@ async function runAgent(options: RunAgentOptions): Promise<{
     if (compactedConversation && compactedConversation.messages.length > 0) {
       const representedMessageCount = compactedConversation.compaction?.representedMessageCount ?? compactedConversation.messages.length
       const messagesToConvert = compactedConversation.messages.slice(0, -1)
+      const mapStoredConversationMessageForProgress = (
+        msg: typeof compactedConversation.messages[number],
+      ) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        toolCalls: msg.toolCalls,
+        toolResults: msg.toolResults,
+        timestamp: msg.timestamp,
+        isSummary: msg.isSummary,
+        summarizedMessageCount: msg.summarizedMessageCount,
+      })
+      const fullConversationHistory = compactedConversation.rawMessages?.map(
+        mapStoredConversationMessageForProgress,
+      )
+      preservedProgressHistory = fullConversationHistory?.length || compactedConversation.compaction
+        ? {
+            ...(fullConversationHistory?.length ? { fullConversationHistory } : {}),
+            ...(compactedConversation.compaction
+              ? { conversationCompaction: compactedConversation.compaction }
+              : {}),
+          }
+        : undefined
 
       diagnosticsService.logInfo(
         "remote-server",
@@ -788,6 +814,8 @@ async function runAgent(options: RunAgentOptions): Promise<{
       sessionId, // Pass session ID for progress routing
       onProgress, // Pass progress callback for SSE streaming
       profileSnapshot, // Pass profile snapshot for session isolation
+      undefined,
+      preservedProgressHistory,
     )
 
     // Mark session as completed

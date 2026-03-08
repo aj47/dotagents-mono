@@ -3341,3 +3341,37 @@
   - Keep the modal preview-first; avoid turning website inspection into a browser-side bundle editor.
 
 - Next recommended issue work item: refresh open issues again and prefer a concrete bug or reliability slice outside `#56`, `#57`, and `#58`; if no sharper runtime bug emerges, reassess whether `#55` can now be validated more directly or whether another small website/desktop trust gap is still plainly visible in source.
+
+##### Issue #58 — Conversation History: active resumed sessions carry preserved-history metadata
+
+- Selection rationale:
+  - After the prior `#58` work landed raw-history preservation and the first full-history viewer, the next concrete gap was parity for active resumed sessions: pending past-session tiles already forwarded preserved-history metadata, but live resumed progress updates still depended on fallback hydration or lacked immediate compaction provenance.
+- Investigation:
+  - Re-read issue `#58`, the recent ledger entries, and the current open issue state/comments to avoid reopening already-completed slices.
+  - Confirmed `apps/desktop/src/renderer/src/components/agent-progress.tsx` can already render `fullConversationHistory` / `conversationCompaction` when present, and otherwise falls back to disk hydration only when summary blocks are detected.
+  - Confirmed `apps/desktop/src/renderer/src/pages/sessions.tsx` already forwarded those fields for pending past sessions, but active resumed progress producers (`apps/desktop/src/main/tipc.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/acp-main-agent.ts`) did not include them in emitted updates.
+  - Confirmed `apps/desktop/src/main/llm.ts` already had the right place to merge current-run messages into progress history, and `apps/desktop/src/shared/message-display-utils.ts` only sanitized `conversationHistory`, not `fullConversationHistory`.
+- Important assumptions:
+  - Assumption: it is acceptable for this slice to focus on forwarding preserved-history metadata through active resumed progress updates rather than building a brand-new viewer surface.
+  - Why acceptable: the renderer contract and viewer already exist, so this is the smallest change that improves live-session parity and user trust without broad UI refactoring.
+  - Assumption: for resumed non-ACP sessions, the preserved raw-history snapshot should include the just-submitted user prompt from disk, while newly generated assistant/tool messages are appended from the in-memory current run.
+  - Why acceptable: `tipc.ts` already excludes the last stored message only for the compacted active context sent to the LLM, so using the stored raw stream as the base plus post-prompt live additions avoids duplication and keeps the full-history view current during the run.
+- Changes implemented:
+  - Extended `apps/desktop/src/main/tipc.ts` to capture `fullConversationHistory` and `conversationCompaction` from `loadConversationWithCompaction(...)` and forward them into resumed desktop agent runs.
+  - Extended `apps/desktop/src/main/remote-server.ts` with the same preserved-history forwarding so remote/SSE resumed runs stay aligned with desktop progress semantics.
+  - Extended `apps/desktop/src/main/llm.ts` so active resumed non-ACP progress updates merge preserved raw history with current-run additions and keep compaction counts current as the run advances.
+  - Extended `apps/desktop/src/main/acp-main-agent.ts` so ACP-backed resumed sessions now emit the same preserved full-history / compaction metadata for live progress updates.
+  - Updated `apps/desktop/src/shared/message-display-utils.ts` so display sanitization now applies to `fullConversationHistory` as well as the active transcript.
+  - Extended `apps/desktop/src/main/non-acp-summary-progress.test.js` and `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with dependency-free regression checks covering the new resumed-session wiring and full-history sanitization path.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/non-acp-summary-progress.test.js apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Completed: `pnpm exec tsc --pretty false --noEmit -p apps/desktop/tsconfig.json` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether active live sessions should now prefer the forwarded preserved-history payload over disk hydration everywhere, and whether any remaining hydration path can be simplified.
+  - Consider exposing clearer live-session provenance copy/badges now that resumed ACP and non-ACP runs both carry compaction metadata directly.
+  - Reassess whether any other resume/bootstrap paths (for example, other internal/headless flows) also need the same preserved-history contract for consistency.
+
+- Next recommended issue work item: refresh open issues again; if no sharper bug appears beyond `#55`, either try a more direct validation pass for `#55` or take another narrow `#58` polish slice around live-session provenance now that active resumed history metadata is aligned.

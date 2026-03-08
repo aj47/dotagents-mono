@@ -427,6 +427,9 @@ async function processWithAgentMode(
           summarizedMessageCount?: number
         }>
       | undefined
+    let preservedProgressHistory:
+      | Pick<AgentProgressUpdate, "fullConversationHistory" | "conversationCompaction">
+      | undefined
 
     if (conversationId) {
       logLLM(`[tipc.ts processWithAgentMode] Loading agent context window for conversationId: ${conversationId}`)
@@ -435,6 +438,24 @@ async function processWithAgentMode(
       if (conversation && conversation.messages.length > 0) {
         const representedMessageCount = conversation.compaction?.representedMessageCount ?? conversation.messages.length
         logLLM(`[tipc.ts processWithAgentMode] Loaded agent context window with ${conversation.messages.length} active messages representing ${representedMessageCount} stored messages`)
+
+        const mapStoredConversationMessageForProgress = (msg: typeof conversation.messages[number]) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+          timestamp: msg.timestamp,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
+        })
+        const fullConversationHistory = conversation.rawMessages?.map(mapStoredConversationMessageForProgress)
+        preservedProgressHistory = fullConversationHistory?.length || conversation.compaction
+          ? {
+              ...(fullConversationHistory?.length ? { fullConversationHistory } : {}),
+              ...(conversation.compaction ? { conversationCompaction: conversation.compaction } : {}),
+            }
+          : undefined
 
         // Convert conversation messages to the format expected by agent mode
         // Exclude the last message since it's the current user input that will be added
@@ -490,6 +511,7 @@ async function processWithAgentMode(
       undefined, // onProgress callback (not used here, progress is emitted via emitAgentProgress)
       profileSnapshot, // Pass profile snapshot for session isolation
       runId,
+      preservedProgressHistory,
     )
 
     // Mark session as completed

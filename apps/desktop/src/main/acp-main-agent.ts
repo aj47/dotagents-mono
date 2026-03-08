@@ -22,6 +22,26 @@ import { buildProfileContext } from "./agent-run-utils"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
+function cloneConversationHistoryMessage(message: ConversationHistoryMessage): ConversationHistoryMessage {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    toolCalls: message.toolCalls?.map((toolCall) => ({
+      name: toolCall.name,
+      arguments: toolCall.arguments,
+    })),
+    toolResults: message.toolResults?.map((toolResult) => ({
+      success: toolResult.success,
+      content: toolResult.content,
+      error: toolResult.error,
+    })),
+    timestamp: message.timestamp,
+    isSummary: message.isSummary,
+    summarizedMessageCount: message.summarizedMessageCount,
+  }
+}
+
 const ACP_INJECTED_BUILTIN_SERVER_NAME = "dotagents-builtin"
 const ACP_BUILTIN_TOOL_PROMPT_CONTEXT = [
   `If the injected MCP server "${ACP_INJECTED_BUILTIN_SERVER_NAME}" is available, prefer it for DotAgents builtin user-facing communication tools.`,
@@ -419,7 +439,7 @@ export async function processTranscriptWithACPAgent(
   try {
     loadedConversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
     if (loadedConversation) {
-      conversationHistory = loadedConversation.messages.map(m => ({
+      conversationHistory = loadedConversation.messages.map((m) => cloneConversationHistoryMessage({
         id: m.id,
         role: m.role,
         content: m.content,
@@ -433,6 +453,21 @@ export async function processTranscriptWithACPAgent(
   } catch (err) {
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)
   }
+
+  const initialConversationHistoryLength = conversationHistory.length
+  const preservedFullConversationHistory = loadedConversation?.rawMessages?.map((message) =>
+    cloneConversationHistoryMessage({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      toolCalls: message.toolCalls,
+      toolResults: message.toolResults,
+      timestamp: message.timestamp,
+      isSummary: message.isSummary,
+      summarizedMessageCount: message.summarizedMessageCount,
+    }),
+  )
+  const preservedConversationCompaction = loadedConversation?.compaction
 
   const appendAssistantText = (text: string, timestamp: number) => {
     if (!text) return
@@ -562,6 +597,47 @@ export async function processTranscriptWithACPAgent(
     }
   }
 
+  const buildPreservedHistoryProgressFields = (): Pick<
+    AgentProgressUpdate,
+    "fullConversationHistory" | "conversationCompaction"
+  > => {
+    if (!preservedFullConversationHistory?.length && !preservedConversationCompaction) {
+      return {}
+    }
+
+    const appendedConversationHistory = conversationHistory
+      .slice(initialConversationHistoryLength)
+      .map(cloneConversationHistoryMessage)
+    const appendedMessageCount = appendedConversationHistory.length
+    const fullConversationHistory = preservedFullConversationHistory?.length
+      ? appendedMessageCount > 0
+        ? [...preservedFullConversationHistory, ...appendedConversationHistory]
+        : preservedFullConversationHistory
+      : undefined
+    const baseStoredRawMessageCount = preservedConversationCompaction?.storedRawMessageCount
+      ?? preservedFullConversationHistory?.length
+    const baseRepresentedMessageCount = preservedConversationCompaction?.representedMessageCount
+      ?? preservedFullConversationHistory?.length
+    const conversationCompaction = preservedConversationCompaction
+      ? {
+          ...preservedConversationCompaction,
+          representedMessageCount:
+            typeof baseRepresentedMessageCount === "number"
+              ? baseRepresentedMessageCount + appendedMessageCount
+              : appendedMessageCount,
+          storedRawMessageCount:
+            typeof baseStoredRawMessageCount === "number"
+              ? baseStoredRawMessageCount + appendedMessageCount
+              : undefined,
+        }
+      : undefined
+
+    return {
+      ...(fullConversationHistory?.length ? { fullConversationHistory } : {}),
+      ...(conversationCompaction ? { conversationCompaction } : {}),
+    }
+  }
+
   // Emit progress with optional streaming content and conversation history
   const emitProgress = async (
     steps: AgentProgressStep[],
@@ -581,6 +657,7 @@ export async function processTranscriptWithACPAgent(
       finalContent: finalContent ?? (isComplete ? userResponse : undefined),
       streamingContent,
       conversationHistory,
+      ...buildPreservedHistoryProgressFields(),
       ...(userResponse ? { userResponse } : {}),
       ...(userResponseHistory?.length ? { userResponseHistory } : {}),
       // Include ACP session info in progress updates (Task 3.1)

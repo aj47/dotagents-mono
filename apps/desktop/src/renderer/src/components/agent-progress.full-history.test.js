@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename)
 const agentProgressSource = fs.readFileSync(path.join(__dirname, 'agent-progress.tsx'), 'utf8')
 const sessionsSource = fs.readFileSync(path.join(__dirname, '..', 'pages', 'sessions.tsx'), 'utf8')
 const sharedTypesSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'shared', 'types.ts'), 'utf8')
+const messageDisplayUtilsSource = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'shared', 'message-display-utils.ts'), 'utf8')
 
 test('AgentProgressUpdate carries preserved full-history metadata', () => {
   assert.match(sharedTypesSource, /fullConversationHistory\?: Array<\{/)
@@ -58,6 +59,11 @@ test('live tiles lazily hydrate preserved history from disk when only summaries 
   assert.match(agentProgressSource, /Checking for preserved full history on disk/)
   assert.match(agentProgressSource, /Couldn&apos;t load preserved full history from disk\./)
   assert.match(agentProgressSource, /storedConversationQuery\.refetch\(\)/)
+})
+
+test('display sanitization also covers preserved full-history content', () => {
+  assert.match(messageDisplayUtilsSource, /sanitizeConversationHistoryForDisplay\(update\.fullConversationHistory\)/)
+  assert.match(messageDisplayUtilsSource, /fullConversationHistory: sanitizedFullHistory/)
 })
 
 test('default and overlay views can switch between active context and stored full history', () => {
