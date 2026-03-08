@@ -310,12 +310,12 @@ export function OverlayFollowUpInput({
   // Use minimal placeholders - loading states indicated by spinners instead
   const getPlaceholder = () => {
     if (isSessionActive && isQueueEnabled) {
-      return "Queue message..."
+      return "Queue message... (/ for skills)"
     }
     if (isSessionActive) {
       return "" // Spinner indicates loading state
     }
-    return "Continue conversation..."
+    return "Continue conversation... (/ for skills)"
   }
 
   return (

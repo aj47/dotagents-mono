@@ -19,6 +19,8 @@ test('wires overlay follow-up input to skill slash suggestions and inline expans
   assert.match(overlaySource, /const selectedSlashSkill = slashCommandState\?\.suggestions\[selectedSlashSkillIndex\] \?\? null/);
   assert.match(overlaySource, /const expandedText = expandSlashCommandText\(text, matchedSlashSkill\)/);
   assert.match(overlaySource, /replaceSlashCommandSelection\(currentText, skill\)/);
+  assert.match(overlaySource, /return "Queue message\.\.\. \(\/ for skills\)"/);
+  assert.match(overlaySource, /return "Continue conversation\.\.\. \(\/ for skills\)"/);
   assert.match(overlaySource, /aria-label="Skill slash command suggestions"/);
   assert.match(overlaySource, /Skill: \{matchedSlashSkill\.name\}/);
   assert.match(overlaySource, /if \(slashCommandState\?\.shouldShowSuggestions && selectedSlashSkill\)/);
@@ -31,6 +33,8 @@ test('wires tile follow-up input to the same slash-command UX', () => {
   assert.match(tileSource, /const selectedSlashSkill = slashCommandState\?\.suggestions\[selectedSlashSkillIndex\] \?\? null/);
   assert.match(tileSource, /const expandedText = expandSlashCommandText\(text, matchedSlashSkill\)/);
   assert.match(tileSource, /replaceSlashCommandSelection\(currentText, skill\)/);
+  assert.match(tileSource, /return "Queue message\.\.\. \(\/ for skills\)"/);
+  assert.match(tileSource, /return "Continue conversation\.\.\. \(\/ for skills\)"/);
   assert.match(tileSource, /aria-label="Skill slash command suggestions"/);
   assert.match(tileSource, /Skill: \{matchedSlashSkill\.name\}/);
   assert.match(tileSource, /if \(slashCommandState\?\.shouldShowSuggestions && selectedSlashSkill\)/);

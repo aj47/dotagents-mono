@@ -1363,3 +1363,36 @@
   - If the import plan grows further, consider adding collapse/expand or search inside large component sections instead of overloading the dialog with more always-visible rows.
 
 - Next recommended issue work item: refresh the open issue list again and prefer either a verification/unblock step once desktop Vitest is available or another equally narrow, dependency-light UX/reliability slice from the remaining open issues.
+
+##### Issue #53 — Slash-command discoverability hint added to follow-up composers
+
+- Selection rationale:
+  - After refreshing the open issues and re-checking the recent ledger, `#53` still had a small, user-visible discoverability gap with a clean local path: the main desktop composer already tells users to type `/` for skills, but the overlay and tile follow-up inputs support the same slash-command flow without any comparable hint.
+  - This was a narrow desktop UX slice that improves feature discoverability without reopening invocation semantics or broader mobile parity work.
+- Investigation:
+  - Re-read issue `#53` and confirmed there were still no issue comments adding extra constraints beyond slash-triggered discovery, inline invocation, optional arguments, and visible active-skill indication.
+  - Inspected `apps/desktop/src/renderer/src/components/text-input-panel.tsx`, `overlay-follow-up-input.tsx`, and `tile-follow-up-input.tsx`.
+  - Confirmed the main composer already renders explicit `/` guidance (`Type your message • ... • Type "/" for skills`), while the two follow-up inputs only exposed generic placeholders such as `Continue conversation...` and `Queue message...` despite already shipping slash suggestions and inline expansion.
+  - Checked `apps/mobile/src/screens/ChatScreen.tsx` because the renderer `AGENTS.md` requires parity review, and confirmed mobile still does not expose the desktop slash-command interaction, so mirroring the hint there would imply a broader mobile slash-command feature decision rather than this small desktop discoverability pass.
+- Important assumptions:
+  - Assumption: adding concise `/ for skills` placeholder hints to the overlay and tile follow-up inputs is a valid `#53` slice even without changing slash-command behavior.
+  - Why acceptable: it closes a real UX mismatch between desktop composer surfaces and helps users discover a capability that already exists in those inputs.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: mobile currently lacks the slash-command composer contract itself, so adding hint text there would over-promise unsupported behavior.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` so the idle and queue-enabled placeholders now mention `(/ for skills)`.
+  - Updated `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` with the same `(/ for skills)` placeholder hint so both continuation surfaces match the main composer’s discoverability level more closely.
+  - Extended `apps/desktop/src/renderer/src/components/follow-up-input.slash-command.test.js` with dependency-free source assertions locking in the new follow-up placeholder guidance.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/follow-up-input.slash-command.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #53:
+  - Decide whether mobile should gain a platform-appropriate slash-command picker or remain explicitly desktop-only for now.
+  - If more discoverability is still needed on desktop, consider a compact inline helper row near the follow-up inputs instead of relying only on placeholders.
+  - Re-run the broader desktop slash-command Vitest coverage once the worktree has the missing desktop test runner available.
+
+- Next recommended issue work item: treat `#53` as advanced again; next iteration should either make a deliberate mobile decision for slash commands or pivot to another equally concrete, dependency-light UX/reliability slice from the remaining open issues.

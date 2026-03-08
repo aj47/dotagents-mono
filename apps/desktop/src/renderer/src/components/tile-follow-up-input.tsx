@@ -302,12 +302,12 @@ export function TileFollowUpInput({
       return "" // Spinner indicates loading state
     }
     if (isSessionActive && isQueueEnabled) {
-      return "Queue message..."
+      return "Queue message... (/ for skills)"
     }
     if (isSessionActive) {
       return "" // Spinner indicates loading state
     }
-    return "Continue conversation..."
+    return "Continue conversation... (/ for skills)"
   }
 
   return (
