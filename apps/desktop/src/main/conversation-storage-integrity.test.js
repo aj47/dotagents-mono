@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename)
 
 const serviceSource = fs.readFileSync(path.join(__dirname, 'conversation-service.ts'), 'utf8')
 const tipcSource = fs.readFileSync(path.join(__dirname, 'tipc.ts'), 'utf8')
+const remoteServerSource = fs.readFileSync(path.join(__dirname, 'remote-server.ts'), 'utf8')
 const typesSource = fs.readFileSync(path.join(__dirname, '..', 'shared', 'types.ts'), 'utf8')
 
 test('conversation types expose preserved raw-history and partial-compaction metadata', () => {
@@ -38,4 +39,12 @@ test('agent resume path loads the compacted context window instead of raw full h
   assert.match(tipcSource, /loadConversationWithCompaction\(conversationId, sessionId\)/)
   assert.match(tipcSource, /representedMessageCount = conversation\.compaction\?\.representedMessageCount \?\? conversation\.messages\.length/)
   assert.match(tipcSource, /Loaded agent context window with \$\{conversation\.messages\.length\} active messages representing \$\{representedMessageCount\} stored messages/)
+})
+
+test('remote server resumes agent runs with the compacted context window instead of the raw transcript', () => {
+  assert.match(remoteServerSource, /let shouldLoadCompactedConversationContext = false/)
+  assert.match(remoteServerSource, /shouldLoadCompactedConversationContext = true/)
+  assert.match(remoteServerSource, /loadConversationWithCompaction\(conversationId, sessionId\)/)
+  assert.match(remoteServerSource, /representedMessageCount = compactedConversation\.compaction\?\.representedMessageCount \?\? compactedConversation\.messages\.length/)
+  assert.match(remoteServerSource, /Continuing conversation \$\{conversationId\} with \$\{messagesToConvert\.length\} previous active messages representing \$\{representedMessageCount\} stored messages/)
 })

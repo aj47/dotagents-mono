@@ -471,3 +471,32 @@
   - Consider richer summary visual treatment later (for example, dedicated summary badges/cards) if the copy-only approach proves too subtle.
 
 - Next recommended issue work item: either continue `#58` with ACP/history-path alignment or pivot to a fresh issue such as `#55`/`#57` if a clearer small repro emerges first.
+
+##### Issue #58 — Conversation History: remote server resume path uses compacted context window
+
+- Selection rationale:
+  - While reviewing remaining `#58` trust gaps, the remote-server continuation flow stood out as a concrete, unaddressed path where resumed agent runs could still send the full stored transcript to the LLM instead of the compacted active window.
+- Investigation:
+  - Re-read issue `#58` and its scope-locking comment, focusing on the acceptance criterion that LLM context must stay separate from full on-disk storage.
+  - Inspected `apps/desktop/src/main/remote-server.ts` and confirmed `runAgent(...)` still built `previousConversationHistory` directly from `updatedConversation.messages.slice(0, -1)` after appending the new user prompt.
+  - Confirmed this differed from the already-fixed desktop resume path in `apps/desktop/src/main/tipc.ts`, which now uses `conversationService.loadConversationWithCompaction(conversationId, sessionId)` before building prior-context history.
+  - Confirmed the remote ACP success-path helper `loadFormattedConversationHistory()` only affects returned API history payloads, not the LLM context bootstrap, so the narrowest trust-critical fix here was the non-ACP remote resume bootstrap itself.
+- Important assumptions:
+  - Assumption: aligning the non-ACP remote-server resume path with the compaction-aware desktop resume path is a valid standalone `#58` slice even though ACP-backed remote history bootstrap remains a separate follow-up decision.
+  - Why acceptable: it closes a direct full-history-to-LLM gap on an active execution path with a very small code change, while the ACP path still depends on separate session-state behavior that deserves its own focused pass.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/remote-server.ts` so continuing an existing remote conversation first appends the new user turn, then loads prior context via `conversationService.loadConversationWithCompaction(conversationId, sessionId)` after the session ID exists.
+  - Updated remote-server resume logging to report active-message count versus represented stored-message count, mirroring the storage/context distinction already used in the desktop agent-mode path.
+  - Extended `apps/desktop/src/main/conversation-storage-integrity.test.js` with a dependency-free regression assertion covering the new remote-server compaction-aware resume wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether ACP-backed remote history bootstrap also needs an explicit compaction-aware context contract or whether its separate session-state model is sufficient.
+  - Consider whether remote read/recovery endpoints should expose preserved full history more explicitly (for example via `rawMessages`/compaction metadata) if audit/export consumers need parity with the desktop UI affordances.
+  - Continue exposing preserved-history versus active-window provenance in additional live-session surfaces if users need the same clarity outside the current past-session viewer.
+
+- Next recommended issue work item: stay on `#58` for ACP/history-path alignment, or pivot to a small `#57` trust-track metadata slice if bundle backup provenance feels more urgent next.

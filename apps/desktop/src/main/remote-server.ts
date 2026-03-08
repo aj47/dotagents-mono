@@ -554,7 +554,9 @@ async function runAgent(options: RunAgentOptions): Promise<{
     content: string
     toolCalls?: any[]
     toolResults?: any[]
+    timestamp?: number
   }> | undefined
+  let shouldLoadCompactedConversationContext = false
   let conversationId = inputConversationId
 
   // Create or continue conversation - matching tipc.ts createMcpTextInput logic
@@ -567,31 +569,7 @@ async function runAgent(options: RunAgentOptions): Promise<{
     )
 
     if (updatedConversation) {
-      // Load conversation history excluding the message we just added (the current user input)
-      // This matches tipc.ts processWithAgentMode behavior
-      const messagesToConvert = updatedConversation.messages.slice(0, -1)
-
-
-
-      diagnosticsService.logInfo("remote-server", `Continuing conversation ${conversationId} with ${messagesToConvert.length} previous messages`)
-
-      previousConversationHistory = messagesToConvert.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        toolCalls: msg.toolCalls,
-        // Preserve timestamp for correct ordering in UI (matching tipc.ts)
-        timestamp: msg.timestamp,
-        // Convert toolResults from stored format to MCPToolResult format (matching tipc.ts)
-        toolResults: msg.toolResults?.map((tr) => ({
-          content: [
-            {
-              type: "text" as const,
-              text: tr.success ? tr.content : (tr.error || tr.content),
-            },
-          ],
-          isError: !tr.success,
-        })),
-      }))
+      shouldLoadCompactedConversationContext = true
     } else {
       // Conversation not found - create it with the provided ID to maintain session continuity
       diagnosticsService.logInfo("remote-server", `Conversation ${conversationId} not found, creating with provided ID`)
@@ -662,6 +640,43 @@ async function runAgent(options: RunAgentOptions): Promise<{
   // Start or reuse agent session
   const conversationTitle = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+
+  if (shouldLoadCompactedConversationContext && conversationId) {
+    diagnosticsService.logInfo("remote-server", `Loading agent context window for conversation ${conversationId}`)
+
+    const compactedConversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
+
+    if (compactedConversation && compactedConversation.messages.length > 0) {
+      const representedMessageCount = compactedConversation.compaction?.representedMessageCount ?? compactedConversation.messages.length
+      const messagesToConvert = compactedConversation.messages.slice(0, -1)
+
+      diagnosticsService.logInfo(
+        "remote-server",
+        `Continuing conversation ${conversationId} with ${messagesToConvert.length} previous active messages representing ${representedMessageCount} stored messages`
+      )
+
+      previousConversationHistory = messagesToConvert.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+        toolCalls: msg.toolCalls,
+        // Preserve timestamp for correct ordering in UI (matching tipc.ts)
+        timestamp: msg.timestamp,
+        // Convert toolResults from stored format to MCPToolResult format (matching tipc.ts)
+        toolResults: msg.toolResults?.map((tr) => ({
+          content: [
+            {
+              type: "text" as const,
+              text: tr.success ? tr.content : (tr.error || tr.content),
+            },
+          ],
+          isError: !tr.success,
+        })),
+      }))
+    } else {
+      diagnosticsService.logInfo("remote-server", `No stored conversation context found for ${conversationId}; continuing with current turn only`)
+      previousConversationHistory = []
+    }
+  }
 
   const loadFormattedConversationHistory = async () => {
     const latestConversation = await conversationService.loadConversation(conversationId)
