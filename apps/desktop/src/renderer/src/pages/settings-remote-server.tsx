@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
@@ -63,6 +63,35 @@ interface RemoteServerSettingsGroupsProps {
   defaultCollapsed?: boolean
 }
 
+const DEFAULT_REMOTE_SERVER_PORT = 3210
+const REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS = 400
+
+function formatRemoteServerPortDraft(port: number | undefined): string {
+  return String(port ?? DEFAULT_REMOTE_SERVER_PORT)
+}
+
+function parseRemoteServerPortDraft(value: string): number | null {
+  if (!value) return null
+
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    return null
+  }
+
+  return parsed
+}
+
+function formatCorsOrigins(origins: string[] | undefined): string {
+  return (origins && origins.length > 0 ? origins : ["*"]).join(", ")
+}
+
+function parseCorsOriginsDraft(value: string): string[] {
+  return value
+    .split(",")
+    .map(entry => entry.trim())
+    .filter(Boolean)
+}
+
 export function RemoteServerSettingsGroups({
   collapsible = false,
   defaultCollapsed = false,
@@ -72,14 +101,100 @@ export function RemoteServerSettingsGroups({
   const queryClient = useQueryClient()
 
   const cfg = configQuery.data as Config | undefined
+  const cfgRef = useRef<Config | undefined>(cfg)
+  const [portDraft, setPortDraft] = useState(() => formatRemoteServerPortDraft(cfg?.remoteServerPort))
+  const portSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [corsOriginsDraft, setCorsOriginsDraft] = useState(() => formatCorsOrigins(cfg?.remoteServerCorsOrigins))
+  const corsOriginsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    cfgRef.current = cfg
+  }, [cfg])
 
   const saveConfig = useCallback(
     (partial: Partial<Config>) => {
-      if (!cfg) return
-      saveConfigMutation.mutate({ config: { ...cfg, ...partial } })
+      const currentConfig = cfgRef.current
+      if (!currentConfig) return
+      saveConfigMutation.mutate({ config: { ...currentConfig, ...partial } })
     },
-    [cfg, saveConfigMutation],
+    [saveConfigMutation],
   )
+
+  const resetPortDraftToSavedValue = useCallback(() => {
+    setPortDraft(formatRemoteServerPortDraft(cfgRef.current?.remoteServerPort))
+  }, [])
+
+  const clearPendingPortSave = useCallback(() => {
+    if (portSaveTimeoutRef.current) {
+      clearTimeout(portSaveTimeoutRef.current)
+      portSaveTimeoutRef.current = null
+    }
+  }, [])
+
+  const flushPortSave = useCallback((draft: string) => {
+    clearPendingPortSave()
+
+    const parsed = parseRemoteServerPortDraft(draft)
+    if (parsed === null) {
+      resetPortDraftToSavedValue()
+      return
+    }
+
+    saveConfig({ remoteServerPort: parsed })
+  }, [clearPendingPortSave, resetPortDraftToSavedValue, saveConfig])
+
+  const schedulePortSave = useCallback((draft: string) => {
+    clearPendingPortSave()
+
+    const parsed = parseRemoteServerPortDraft(draft)
+    if (parsed === null) {
+      return
+    }
+
+    portSaveTimeoutRef.current = setTimeout(() => {
+      portSaveTimeoutRef.current = null
+      saveConfig({ remoteServerPort: parsed })
+    }, REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS)
+  }, [clearPendingPortSave, saveConfig])
+
+  useEffect(() => {
+    setPortDraft(formatRemoteServerPortDraft(cfg?.remoteServerPort))
+  }, [cfg?.remoteServerPort])
+
+  const flushCorsOriginsSave = useCallback((draft: string) => {
+    if (corsOriginsSaveTimeoutRef.current) {
+      clearTimeout(corsOriginsSaveTimeoutRef.current)
+      corsOriginsSaveTimeoutRef.current = null
+    }
+
+    const origins = parseCorsOriginsDraft(draft)
+    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+  }, [saveConfig])
+
+  const scheduleCorsOriginsSave = useCallback((draft: string) => {
+    if (corsOriginsSaveTimeoutRef.current) {
+      clearTimeout(corsOriginsSaveTimeoutRef.current)
+    }
+
+    corsOriginsSaveTimeoutRef.current = setTimeout(() => {
+      corsOriginsSaveTimeoutRef.current = null
+      const origins = parseCorsOriginsDraft(draft)
+      saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+    }, REMOTE_SERVER_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  useEffect(() => {
+    setCorsOriginsDraft(formatCorsOrigins(cfg?.remoteServerCorsOrigins))
+  }, [cfg?.remoteServerCorsOrigins])
+
+  useEffect(() => {
+    return () => {
+      clearPendingPortSave()
+      if (corsOriginsSaveTimeoutRef.current) {
+        clearTimeout(corsOriginsSaveTimeoutRef.current)
+      }
+    }
+  }, [clearPendingPortSave])
 
   // Cloudflare Tunnel queries and mutations
   const cloudflaredInstalledQuery = useQuery({
@@ -232,10 +347,14 @@ export function RemoteServerSettingsGroups({
                   type="number"
                   min={1}
                   max={65535}
-                  value={cfg.remoteServerPort ?? 3210}
-                  onChange={(e) =>
-                    saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || "3210", 10) })
-                  }
+                  value={portDraft}
+                  onChange={(e) => {
+                    setPortDraft(e.currentTarget.value)
+                    schedulePortSave(e.currentTarget.value)
+                  }}
+                  onBlur={(e) => {
+                    flushPortSave(e.currentTarget.value)
+                  }}
                   className="w-36"
                 />
               </Control>
@@ -324,14 +443,12 @@ export function RemoteServerSettingsGroups({
               <Control label={<ControlLabel label="CORS Origins" tooltip="Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081" />} className="px-3">
                 <Input
                   type="text"
-                  value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}
+                  value={corsOriginsDraft}
                   onChange={(e) => {
-                    const origins = e.currentTarget.value
-                      .split(",")
-                      .map(s => s.trim())
-                      .filter(Boolean)
-                    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+                    setCorsOriginsDraft(e.currentTarget.value)
+                    scheduleCorsOriginsSave(e.currentTarget.value)
                   }}
+                  onBlur={(e) => flushCorsOriginsSave(e.currentTarget.value)}
                   placeholder="* or http://localhost:8081, http://example.com"
                   className="w-full"
                 />

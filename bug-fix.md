@@ -38,6 +38,16 @@
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` does not have an equivalent route-driven Skills/MCP-Servers tab surface, so this deep-link fix is desktop-only.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the capabilities tab-routing fix and regression test additions.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and confirmed the `CORS Origins` field still rendered from persisted config while parsing/trimming/saving directly from each `onChange` event.
+- [x] 2026-03-08: Confirmed `useSaveConfigMutation` invalidates the `config` query on every remote-server save in `apps/desktop/src/renderer/src/lib/queries.ts`, so per-keystroke `CORS Origins` saves can immediately refetch/reseed the controlled field from persisted config.
+- [x] 2026-03-08: Reviewed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` and confirmed the mobile remote-connection editor already keeps `baseUrl` / `apiKey` in a local `draft` until save, so draft-first editing is an existing repo pattern for remote connection strings.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the remote-server CORS draft-save fix and regression test addition.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` again and confirmed the `Port` input still rendered from persisted config while calling `saveConfig({ remoteServerPort: ... })` on every `onChange`.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` that changing `remoteServerPort` while the remote server is enabled triggers `restartRemoteServer()`, so the per-keystroke port save bug can restart the live server repeatedly during normal typing.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` has no equivalent remote-server port or Cloudflare tunnel editor, so this fix is desktop-only.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the remote-server port draft-save fix and regression test updates.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -46,6 +56,7 @@
 - [ ] Whether adjacent numeric/text settings in `settings-general.tsx` still need draft-first handling or blur-only persistence now that `mcpMaxIterations` is covered.
 - [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
 - [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
+- [ ] Whether the remaining remote-server named-tunnel inputs (`Tunnel ID`, `Hostname`, and `Credentials Path`) still need the same draft-first handling once the environment blocker is cleared.
 
 ### Reproduced
 - [x] **Desktop general-settings state-sync bug from uncontrolled persisted controls (directly confirmed in source):**
@@ -85,6 +96,14 @@
   - `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` always initialized its active tab to `"skills"`, ignoring route/search context.
   - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` wired both `Edit skill` and `Edit server` buttons to bare `/settings/capabilities`, so the server-specific flow always landed on the wrong `Skills` tab instead of `MCP Servers`.
   - `apps/desktop/src/renderer/src/router.tsx` also redirected the legacy `/settings/mcp-tools` route to bare `/settings/capabilities`, so stale MCP-tools links lost their intended tab context too.
+- [x] **Desktop remote-server CORS origins editing bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` rendered `CORS Origins` from persisted config with `value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}` and called `saveConfig({ remoteServerCorsOrigins: ... })` directly from every `onChange` event after trimming/filtering the comma-separated text.
+  - Because `useSaveConfigMutation` invalidates `config` on every save, normal edits could refetch/reseed the controlled field from persisted config while the user was still typing.
+  - Clearing the field to replace an existing allowlist also immediately collapsed to `remoteServerCorsOrigins: ["*"]`, so the input could not stay empty while the user was mid-edit and the editor effectively fought replacement edits.
+- [x] **Desktop remote-server port editing/restart bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` rendered `Port` from persisted config with `value={cfg.remoteServerPort ?? 3210}` and called `saveConfig({ remoteServerPort: parseInt(...) })` directly from every `onChange` event.
+  - That meant temporary editing states like an empty field were immediately coerced back to `3210`, and every typed intermediate number (`8`, `80`, `808`, `8080`, etc.) was persisted while the user was still editing.
+  - `apps/desktop/src/main/tipc.ts` restarts the remote server whenever `remoteServerPort` changes while remote server mode is enabled, so normal typing in the port box could repeatedly restart the live server and churn the visible base URL/status.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so the remaining persisted general-settings switches/selects now use controlled `checked` / `value` bindings instead of uncontrolled `defaultChecked` / `defaultValue` props.
@@ -139,6 +158,18 @@
 - [x] Added focused regression coverage for the new tab-routing behavior in:
   - `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.test.ts`
   - `apps/desktop/src/renderer/src/pages/settings-capabilities.tab-routing.test.ts`
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so `CORS Origins` uses a local string draft with debounced saves and blur flushes instead of parsing/saving every keystroke from the persisted-config value.
+- [x] Switched the remote-server page `saveConfig(...)` helper to merge against a `cfgRef` snapshot of the latest config so delayed `CORS Origins` saves do not overwrite newer unrelated settings.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-remote-server.draft.test.tsx` for:
+  - keeping an empty `CORS Origins` draft local while the user replaces the list
+  - debounced valid CORS-origin saving
+  - resyncing the visible draft from later saved config updates
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so the `Port` input now uses a local string draft with debounced valid saves and blur reset/flush behavior instead of persisting every keystroke from the saved config value.
+- [x] Reused the existing remote-server page latest-config merge helper so delayed `remoteServerPort` saves still merge against the freshest config snapshot before persistence.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-remote-server.draft.test.tsx` with focused regression coverage for:
+  - keeping an empty port draft local and resetting invalid blur states back to the saved port
+  - debounced valid port saving plus config-resync behavior
+  - cancelling a pending port save when a once-valid draft becomes invalid before the debounce fires
 
 ### Verified
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-general.tsx` no longer contains config-backed `defaultChecked` / `defaultValue` bindings; the affected switches/selects now read from live `configQuery.data` via controlled `checked` / `value` props.
@@ -159,6 +190,11 @@
 - [x] Manual source verification: the desktop capabilities page now reads its active tab from `searchParams.get("tab")` and updates the URL when the user switches between `Skills` and `MCP Servers`.
 - [x] Manual source verification: desktop `Edit server` now targets `/settings/capabilities?tab=mcp-servers`, and the legacy `/settings/mcp-tools` redirect now targets `/settings/capabilities?tab=mcp-servers` instead of the bare capabilities route.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the capabilities tab-routing updates.
+- [x] Manual source verification: desktop `CORS Origins` no longer parses/saves from the persisted config value on every `onChange`; it now keeps a local draft, debounces saves, and flushes the latest value on blur.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server CORS draft / regression test updates.
+- [x] Manual source verification: desktop `Port` no longer persists `remoteServerPort` directly from each `onChange`; it now keeps a local draft, only schedules valid saves, and resets invalid blur states back to the saved port.
+- [x] Manual source verification: main-process remote-server lifecycle still restarts on real persisted port changes in `apps/desktop/src/main/tipc.ts`, so removing per-keystroke saves removes the accidental restart churn without changing runtime restart semantics.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server port draft / regression test updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -169,6 +205,8 @@
 - [x] Targeted automated verification for this Supertonic numeric-editing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this OpenAI TTS speed fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this capabilities tab-routing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this remote-server CORS draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this remote-server port draft fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
@@ -179,6 +217,7 @@
 - [ ] Whether any other desktop provider editors still need temporary local-draft handling once the current numeric fixes are covered and the environment blocker is cleared.
 - [ ] Whether the desktop OpenAI `TTS Speed` control should eventually switch all the way to a slider like mobile, rather than keeping a keyboard-editable number field with draft-state protection.
 - [ ] Whether any additional settings pages should promote explicit query-param deep links for tabbed sections now that `settings/capabilities` supports them.
+- [ ] Whether the remote-server `CORS Origins` field should eventually move from debounce+blur autosave to an explicit save/apply action if users frequently paste larger allowlists.
 
 ### Diagnosis / Rationale
 - This is a clear desktop UI correctness bug: config-backed persisted controls should reflect the latest saved config, but uncontrolled `defaultChecked` / `defaultValue` props only seed the initial value and can drift stale afterward.
@@ -200,6 +239,10 @@
 - Keeping the desktop control as a number input but moving it to the existing draft-save pattern is the smallest safe fix because it preserves the current UI while aligning the save behavior more closely with the mobile slider's commit-on-complete flow.
 - The capabilities issue is a navigation correctness bug rather than a styling preference: a button labeled `Edit server` should not dump users onto the `Skills` tab, and legacy `/settings/mcp-tools` links should continue to open MCP-server settings after the tabbed-capabilities refactor.
 - Using a query-param tab contract is the smallest safe fix because it preserves the existing combined capabilities page while making server- and skill-specific entry points land on the correct visible content.
+- The remote-server `CORS Origins` field is the string-list version of the same editing bug: saving a parsed value on every keystroke makes the controlled input fight natural intermediate states such as an empty field while replacing an existing allowlist, trailing commas, or partially typed second origins.
+- Keeping the fix local to `settings-remote-server.tsx` is the smallest safe change because it preserves the current persisted format (`string[]` with `"*"` fallback) while aligning the editing behavior with the repo's existing draft-first handling for remote/mobile connection strings and other desktop settings.
+- The remote-server `Port` field is the higher-impact numeric version of the same bug: persisting each intermediate digit is not just noisy config churn, it can also repeatedly restart the live server because the main process treats persisted port changes as restart-worthy.
+- Keeping the fix local to `settings-remote-server.tsx` is the smallest safe change because it preserves the existing numeric range and restart-on-real-change behavior while preventing accidental restarts during normal typing.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -212,6 +255,8 @@
 - Assumption: handling Supertonic `Speed` / `Quality Steps` with temporary local drafts and blur reset is acceptable because mobile does not expose an equivalent editor, the final persisted values/ranges are unchanged, and the fix only makes already-allowed values possible to enter reliably from the desktop keyboard.
 - Assumption: keeping the desktop OpenAI `TTS Speed` UI as a number field (instead of redesigning it into a slider this pass) is acceptable because the mobile slider already establishes the intended range/commit timing, and this draft-backed fix removes the broken persistence/state-sync behavior without a larger UI change.
 - Assumption: a `?tab=` query-param contract is acceptable for desktop capabilities because the page is already a tabbed combined surface, the default bare route can remain `Skills`, and no equivalent mobile route needs to stay in sync.
+- Assumption: preserving the existing `remoteServerCorsOrigins: ["*"]` fallback on blur/save is acceptable for this pass because the current main-process remote-server startup already treats that as the default permissive mode, and the concrete bug being fixed is the editor fighting temporary user input rather than the semantics of the saved fallback value.
+- Assumption: keeping remote-server `Port` on debounce + blur (rather than adding an explicit Apply button) is acceptable for this pass because it removes restart-on-every-keystroke churn with the smallest code change while preserving the existing autosave behavior for a final valid port.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -231,3 +276,6 @@
 - After that, inspect whether any remaining desktop settings editors still use uncontrolled `defaultValue` plus direct-save behavior for user-editable config fields.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` to execute the new capabilities tab-routing coverage.
 - After that, check whether any other desktop buttons or toasts still deep-link to bare `/settings/capabilities` when they really intend a specific tab.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new remote-server CORS draft coverage.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` to execute the new remote-server port draft coverage alongside the existing CORS cases.
+- After that, inspect the remaining remote-server named-tunnel inputs (`Tunnel ID`, `Hostname`, and `Credentials Path`) to decide whether they need the same draft-first or blur-commit treatment.
