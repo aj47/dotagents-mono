@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
@@ -33,6 +33,34 @@ const defaultFormData: MemoryFormData = {
   tagsInput: '',
 };
 
+const MEMORY_FORM_FIELDS: Array<keyof MemoryFormData> = [
+  'title',
+  'content',
+  'importance',
+  'tagsInput',
+];
+
+function cloneMemoryFormData(formData: MemoryFormData): MemoryFormData {
+  return { ...formData };
+}
+
+function toMemoryFormData(memory?: Memory | null): MemoryFormData {
+  if (!memory) {
+    return cloneMemoryFormData(defaultFormData);
+  }
+
+  return {
+    title: memory.title,
+    content: memory.content,
+    importance: memory.importance,
+    tagsInput: tagsToInput(memory.tags),
+  };
+}
+
+function hasMemoryFormChanges(currentFormData: MemoryFormData, baselineFormData: MemoryFormData): boolean {
+  return MEMORY_FORM_FIELDS.some(field => currentFormData[field] !== baselineFormData[field]);
+}
+
 const tagsToInput = (tags?: string[]) => (Array.isArray(tags) ? tags.join(', ') : '');
 
 const parseTags = (input: string) =>
@@ -48,19 +76,12 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   const effectiveMemoryId = memoryId ?? memoryFromRoute?.id;
   const isEditing = !!effectiveMemoryId;
 
-  const [formData, setFormData] = useState<MemoryFormData>(() =>
-    memoryFromRoute
-      ? {
-        title: memoryFromRoute.title,
-        content: memoryFromRoute.content,
-        importance: memoryFromRoute.importance,
-        tagsInput: tagsToInput(memoryFromRoute.tags),
-      }
-      : defaultFormData
-  );
+  const [formData, setFormData] = useState<MemoryFormData>(() => toMemoryFormData(memoryFromRoute));
+  const [formBaseline, setFormBaseline] = useState<MemoryFormData>(() => toMemoryFormData(memoryFromRoute));
   const [isLoading, setIsLoading] = useState(isEditing && !memoryFromRoute);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipDiscardPromptRef = useRef(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -74,6 +95,23 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit Memory' : 'Create Memory' });
   }, [isEditing, navigation]);
+
+  useEffect(() => {
+    if (memoryFromRoute) {
+      const routeFormData = toMemoryFormData(memoryFromRoute);
+      setFormData(routeFormData);
+      setFormBaseline(routeFormData);
+      skipDiscardPromptRef.current = false;
+      return;
+    }
+
+    if (!isEditing) {
+      const emptyFormData = cloneMemoryFormData(defaultFormData);
+      setFormData(emptyFormData);
+      setFormBaseline(emptyFormData);
+      skipDiscardPromptRef.current = false;
+    }
+  }, [isEditing, memoryFromRoute]);
 
   useEffect(() => {
     if (isEditing && !memoryFromRoute && !settingsClient) {
@@ -97,12 +135,10 @@ export default function MemoryEditScreen({ navigation, route }: any) {
           setError('Memory not found');
           return;
         }
-        setFormData({
-          title: memory.title,
-          content: memory.content,
-          importance: memory.importance,
-          tagsInput: tagsToInput(memory.tags),
-        });
+        const loadedFormData = toMemoryFormData(memory);
+        setFormData(loadedFormData);
+        setFormBaseline(loadedFormData);
+        skipDiscardPromptRef.current = false;
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -119,6 +155,58 @@ export default function MemoryEditScreen({ navigation, route }: any) {
   const updateField = useCallback(<K extends keyof MemoryFormData>(key: K, value: MemoryFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
+
+  const hasUnsavedChanges = hasMemoryFormChanges(formData, formBaseline);
+  const memoryDraftLabel = formData.title.trim() ? `"${formData.title.trim()}"` : 'this memory';
+
+  const confirmDiscardChanges = useCallback((onDiscard: () => void) => {
+    const discardMessage = isEditing
+      ? `Discard your changes to ${memoryDraftLabel}? Your unsaved edits will be lost.`
+      : 'Discard this new memory draft? Your unsaved changes will be lost.';
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (typeof confirmFn === 'function') {
+        if (confirmFn(discardMessage)) {
+          onDiscard();
+        }
+        return;
+      }
+    }
+
+    Alert.alert('Unsaved Changes', discardMessage, [
+      {
+        text: 'Keep Editing',
+        style: 'cancel',
+      },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: onDiscard,
+      },
+    ]);
+  }, [isEditing, memoryDraftLabel]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (event: any) => {
+      if (skipDiscardPromptRef.current || !hasUnsavedChanges) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (isSaving) {
+        return;
+      }
+
+      confirmDiscardChanges(() => {
+        skipDiscardPromptRef.current = true;
+        navigation.dispatch(event.data.action);
+      });
+    });
+
+    return unsubscribe;
+  }, [confirmDiscardChanges, hasUnsavedChanges, isSaving, navigation]);
 
   const handleSave = useCallback(async () => {
     if (!settingsClient) {
@@ -153,6 +241,7 @@ export default function MemoryEditScreen({ navigation, route }: any) {
         };
         await settingsClient.createMemory(createPayload);
       }
+      skipDiscardPromptRef.current = true;
       navigation.goBack();
     } catch (err: any) {
       setError(err.message || 'Failed to save memory');
@@ -227,6 +316,12 @@ export default function MemoryEditScreen({ navigation, route }: any) {
         autoCapitalize="none"
       />
 
+      {hasUnsavedChanges && !isSaving && (
+        <View style={styles.draftWarningContainer}>
+          <Text style={styles.draftWarningText}>You have unsaved changes. Save before leaving this screen to keep this draft.</Text>
+        </View>
+      )}
+
       <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Memory' : 'Create Memory'}</Text>}
       </TouchableOpacity>
@@ -241,6 +336,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     loadingText: { marginTop: spacing.md, color: theme.colors.mutedForeground, fontSize: 14 },
     errorText: { color: theme.colors.destructive, marginBottom: spacing.sm },
     helperText: { fontSize: 12, color: theme.colors.mutedForeground, marginBottom: spacing.sm },
+    draftWarningContainer: {
+      marginTop: spacing.lg,
+      backgroundColor: theme.colors.primary + '12',
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '2e',
+      borderRadius: radius.md,
+      padding: spacing.md,
+    },
+    draftWarningText: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      lineHeight: 18,
+    },
     label: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground, marginBottom: spacing.xs, marginTop: spacing.md },
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 120 },
