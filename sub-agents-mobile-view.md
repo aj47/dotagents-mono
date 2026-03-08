@@ -291,3 +291,45 @@
   - Reduce `Agent Loops` card density with a small hierarchy tweak that preserves the current controls.
   - Revisit the chat/session header trigger sizing/state clarity on narrow screens.
   - Inspect long agent descriptions for a local truncation/grouping improvement.
+
+### 2026-03-08 — Iteration 7: make the header agent selector reliably tappable
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `ChatScreen` header agent selector trigger
+  - `SessionListScreen` header agent selector trigger
+  - `AgentSelectorSheet` for comparison against the already-improved selector sheet state
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Confirmed the chat/session header selector trigger still looked compressed relative to adjacent header actions.
+  - Measured the live header selector at roughly `88x39`, below a comfortable mobile target height.
+  - Confirmed the selector sheet itself was clearer now, so the remaining issue was the trigger affordance rather than the sheet copy.
+- Issue selected:
+  - The main sub-agent switching entry point in the mobile chat/session headers was still too short and visually cramped, making it easier to miss or mis-tap on narrow screens.
+- Decision:
+  - Keep the current stacked title + agent badge pattern.
+  - Do not redesign the navigation header.
+  - Make the improvement local to the trigger by increasing its hit target, slightly rooming out the badge, and clamping long labels so the header stays stable.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/src/screens/SessionListScreen.tsx` to:
+    - replace the inline header selector styles with named mobile-specific styles,
+    - apply `createMinimumTouchTargetStyle(...)` with zero outer margin for the header trigger,
+    - use a roomier badge treatment for the current agent label,
+    - clamp the header agent label to one line on narrow screens.
+  - Added `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` covering the minimum touch-target wiring and narrow-screen label clamp in both screens.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - session list header trigger `~115x54`
+    - chat header trigger `~115x54`
+    - both triggers now clear the `44px` minimum target and remain legible with `Main Agent` in the inspected state.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The chat composer-level `🤖 Agent` chip is still below ideal mobile target height (`~150x29`) and could use a similar tap-target pass.
+  - `Agent Loops` cards still stack prompt text and metadata densely on narrow screens.
+  - A longer agent name should still be smoke-tested in the header after the new one-line clamp.
+- Next checks:
+  - Bring the chat composer `🤖 Agent` chip up to a comfortable mobile tap target without bloating the composer row.
+  - Reduce `Agent Loops` card density with a small hierarchy tweak that preserves the current controls.
+  - Smoke-test the header selector with a longer agent name to confirm truncation and layout remain stable.

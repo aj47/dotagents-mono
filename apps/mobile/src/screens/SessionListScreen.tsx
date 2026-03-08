@@ -598,27 +598,16 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation?.setOptions?.({
       headerTitle: () => (
         <TouchableOpacity
-          style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+          style={styles.headerAgentSelectorTrigger}
           onPress={() => setAgentSelectorVisible(true)}
           accessibilityRole="button"
           accessibilityLabel={`Current agent: ${currentProfile?.name || 'Default'}. Tap to change.`}
           accessibilityHint="Opens agent selection menu"
+          activeOpacity={0.7}
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chats</Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: theme.colors.primary + '33',
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 10,
-            marginTop: 2,
-          }}>
-            <Text style={{
-              fontSize: 11,
-              color: theme.colors.primary,
-              fontWeight: '500',
-            }}>
+          <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
+          <View style={styles.headerAgentSelectorBadge}>
+            <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
               {currentProfile?.name || 'Default'} ▼
             </Text>
           </View>
@@ -927,6 +916,11 @@ export default function SessionListScreen({ navigation }: Props) {
 
 function createStyles(theme: Theme, screenHeight: number) {
   const rfButtonHeight = Math.round(screenHeight * 0.18);
+  const headerAgentSelectorTouchTarget = createMinimumTouchTargetStyle({
+    horizontalPadding: spacing.sm,
+    verticalPadding: 4,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -982,6 +976,31 @@ function createStyles(theme: Theme, screenHeight: number) {
         horizontalMargin: 0,
       }),
       marginLeft: spacing.xs,
+    },
+    headerAgentSelectorTrigger: {
+      ...headerAgentSelectorTouchTarget,
+      flexDirection: 'column',
+      borderRadius: radius.lg,
+      gap: 2,
+    },
+    headerAgentSelectorTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    headerAgentSelectorBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      minHeight: 24,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.primary + '1a',
+      maxWidth: 180,
+    },
+    headerAgentSelectorBadgeText: {
+      fontSize: 12,
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     list: {
       padding: spacing.md,

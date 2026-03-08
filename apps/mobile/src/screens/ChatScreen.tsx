@@ -435,27 +435,16 @@ export default function ChatScreen({ route, navigation }: any) {
     navigation?.setOptions?.({
       headerTitle: () => (
         <TouchableOpacity
-          style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+          style={styles.headerAgentSelectorTrigger}
           onPress={() => setAgentSelectorVisible(true)}
           accessibilityRole="button"
           accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
           accessibilityHint="Opens agent selection menu"
+          activeOpacity={0.7}
         >
-          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chat</Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: theme.colors.primary + '33',
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 10,
-            marginTop: 2,
-          }}>
-            <Text style={{
-              fontSize: 11,
-              color: theme.colors.primary,
-              fontWeight: '500',
-            }}>
+          <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
+          <View style={styles.headerAgentSelectorBadge}>
+            <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
               {currentAgentLabel} ▼
             </Text>
           </View>
@@ -3473,6 +3462,11 @@ function createStyles(theme: Theme, screenHeight: number) {
   const micButtonHeight = Math.round(screenHeight * 0.2);
   const headerActionButton = createMinimumTouchTargetStyle();
   const headerEdgeActionButton = createMinimumTouchTargetStyle({ horizontalPadding: 12 });
+  const headerAgentSelectorTouchTarget = createMinimumTouchTargetStyle({
+    horizontalPadding: spacing.sm,
+    verticalPadding: 4,
+    horizontalMargin: 0,
+  });
   return StyleSheet.create({
     headerActionsRow: {
       flexDirection: 'row',
@@ -3481,6 +3475,31 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerActionButton,
     headerEdgeActionButton,
+    headerAgentSelectorTrigger: {
+      ...headerAgentSelectorTouchTarget,
+      flexDirection: 'column',
+      borderRadius: radius.lg,
+      gap: 2,
+    },
+    headerAgentSelectorTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
+    headerAgentSelectorBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      minHeight: 24,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.primary + '1a',
+      maxWidth: 180,
+    },
+    headerAgentSelectorBadgeText: {
+      fontSize: 12,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
     // Compact desktop-style messages: left-border accent, full width, no bubbles
     msg: {
       paddingLeft: spacing.xs,
