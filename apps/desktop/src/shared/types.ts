@@ -222,12 +222,26 @@ export interface AgentProgressUpdate {
    */
   userResponseHistory?: string[]
   conversationHistory?: Array<{
+    id?: string
     role: "user" | "assistant" | "tool"
     content: string
     toolCalls?: ToolCall[]
     toolResults?: ToolResult[]
     timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
   }>
+  fullConversationHistory?: Array<{
+    id?: string
+    role: "user" | "assistant" | "tool"
+    content: string
+    toolCalls?: ToolCall[]
+    toolResults?: ToolResult[]
+    timestamp?: number
+    isSummary?: boolean
+    summarizedMessageCount?: number
+  }>
+  conversationCompaction?: ConversationCompactionMetadata
   sessionStartIndex?: number
   pendingToolApproval?: {
     approvalId: string

@@ -168,6 +168,10 @@ const COLLAPSED_USER_RESPONSE_SCAN_LIMIT = 2048
 const COLLAPSED_USER_RESPONSE_PREVIEW_LIMIT = 160
 const BOTTOM_PIN_TOLERANCE_PX = 24
 
+function isInternalCompletionNudge(content: string): boolean {
+  return content.trim() === INTERNAL_COMPLETION_NUDGE_TEXT
+}
+
 function buildCollapsedUserResponsePreview(userResponse: string): string {
   const boundedResponse = userResponse.slice(0, COLLAPSED_USER_RESPONSE_SCAN_LIMIT)
   const preview = boundedResponse
@@ -2345,6 +2349,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
   const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
+  const [showFullHistory, setShowFullHistory] = useState(false)
 
   // Get current conversation ID for deep-linking and session focus control
   const currentConversationId = useConversationStore((s) => s.currentConversationId)
@@ -2553,6 +2558,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isComplete,
     finalContent,
     conversationHistory,
+    fullConversationHistory,
+    conversationCompaction,
     sessionStartIndex,
     contextInfo,
     modelInfo,
@@ -2590,14 +2597,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       const historyForSession =
         startIndex > 0 ? conversationHistory.slice(startIndex) : conversationHistory
 
-      const isCompletionNudge = (c: string) => {
-        const trimmed = c.trim()
-        return trimmed === INTERNAL_COMPLETION_NUDGE_TEXT
-      }
-
       nextMessages.push(
         ...historyForSession
-          .filter((entry) => !(entry.role === "user" && isCompletionNudge(entry.content)))
+          .filter((entry) => !(entry.role === "user" && isInternalCompletionNudge(entry.content)))
           .map((entry) => ({
             role: entry.role,
             content: entry.content,
@@ -2700,6 +2702,64 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     nextMessages.sort((a, b) => a.timestamp - b.timestamp)
     return nextMessages
   }, [conversationHistory, finalContent, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
+
+  const visibleConversationHistory = useMemo(
+    () =>
+      (conversationHistory ?? []).filter(
+        (entry) => !(entry.role === "user" && isInternalCompletionNudge(entry.content)),
+      ),
+    [conversationHistory],
+  )
+
+  const visibleFullConversationHistory = useMemo(
+    () =>
+      (fullConversationHistory ?? []).filter(
+        (entry) => !(entry.role === "user" && isInternalCompletionNudge(entry.content)),
+      ),
+    [fullConversationHistory],
+  )
+
+  const fullHistoryDisplayItems = useMemo<DisplayItem[]>(
+    () =>
+      visibleFullConversationHistory.map((entry, index) => ({
+        kind: "message",
+        id: `full-history-${entry.id ?? `${entry.role}-${index}`}`,
+        data: {
+          role: entry.role,
+          content: entry.content,
+          isComplete: true,
+          timestamp: entry.timestamp || Date.now(),
+          isThinking: false,
+          toolCalls: entry.toolCalls,
+          toolResults: entry.toolResults,
+        },
+      })),
+    [visibleFullConversationHistory],
+  )
+
+  const activeWindowMessageCount = useMemo(
+    () => visibleConversationHistory.filter((entry) => !entry.isSummary).length,
+    [visibleConversationHistory],
+  )
+
+  const hasStoredEarlierHistory =
+    visibleFullConversationHistory.length > 0 &&
+    visibleFullConversationHistory.length > activeWindowMessageCount
+
+  const hiddenEarlierHistoryCount = hasStoredEarlierHistory
+    ? Math.max(0, visibleFullConversationHistory.length - activeWindowMessageCount)
+    : 0
+
+  const fullHistoryBoundaryIndex =
+    hasStoredEarlierHistory && activeWindowMessageCount > 0
+      ? visibleFullConversationHistory.length - activeWindowMessageCount
+      : null
+
+  const hasLegacyPartialHistoryWarning =
+    !hasStoredEarlierHistory &&
+    conversationCompaction?.partialReason === "legacy_summary_without_raw_messages"
+
+  const isShowingStoredFullHistory = variant === "tile" && showFullHistory && hasStoredEarlierHistory
 
   const fallbackRespondToUserResponses = useMemo(
     () => (progress.userResponse ? [] : extractRespondToUserResponsesFromMessages(messages)),
@@ -3041,6 +3101,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       lastDisplayItemsCountRef.current = 0
       // Also reset auto-scroll state for new sessions
       setShouldAutoScroll(true)
+      setShowFullHistory(false)
     }
   }, [clearPendingInitialScrollAttempts, progress?.sessionId])
 
@@ -3228,6 +3289,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       : displayItems
     const hiddenTileItemCount = displayItems.length - tileDisplayItems.length
     const tileDisplayOffset = displayItems.length - tileDisplayItems.length
+    const showLimitedTilePreview = shouldLimitTileTranscript && !isShowingStoredFullHistory
+    const tileTranscriptHasContent = isShowingStoredFullHistory
+      ? fullHistoryDisplayItems.length > 0
+      : tileDisplayItems.length > 0
     return (
       <div
         onClick={onFocus}
@@ -3376,27 +3441,79 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
 
             {/* Message Stream (Chat Tab) */}
-            <div className={cn("relative flex-1 min-h-0", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+              {(hasStoredEarlierHistory || hasLegacyPartialHistoryWarning) && (
+                <div className="border-b border-border/40 bg-muted/20 px-3 py-2">
+                  {hasStoredEarlierHistory ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                        <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[10px] uppercase tracking-wide">
+                          History
+                        </Badge>
+                        <span className="min-w-0 truncate">
+                          {isShowingStoredFullHistory
+                            ? "Showing the stored on-disk transcript."
+                            : `${hiddenEarlierHistoryCount} earlier message${hiddenEarlierHistoryCount === 1 ? "" : "s"} summarized out of the active context.`}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => setShowFullHistory((current) => !current)}
+                      >
+                        {isShowingStoredFullHistory ? "Show Active Window" : "Show Full History"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>Earlier summarized history is unavailable for this legacy session.</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto scrollbar-hide-until-hover"
+                className="min-h-0 flex-1 overflow-y-auto scrollbar-hide-until-hover"
               >
-                {tileDisplayItems.length > 0 ? (
+                {tileTranscriptHasContent ? (
                   <div className="space-y-1 p-2">
-                    {hiddenTileItemCount > 0 && (
-                      <div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
-                        Showing latest {tileDisplayItems.length} of {displayItems.length} updates
-                      </div>
+                    {isShowingStoredFullHistory ? (
+                      <>
+                        <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                          Showing full history from disk. Messages above the divider may be summarized out of the current LLM context.
+                        </div>
+                        {fullHistoryDisplayItems.map((item, index) => (
+                          <React.Fragment key={item.id}>
+                            {fullHistoryBoundaryIndex !== null && index === fullHistoryBoundaryIndex && (
+                              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-700 dark:text-emerald-300">
+                                Active context window starts here.
+                              </div>
+                            )}
+                            {renderDisplayItem(item, index, "tile")}
+                          </React.Fragment>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {hiddenTileItemCount > 0 && showLimitedTilePreview && (
+                          <div className="rounded-md border border-dashed border-border/60 bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
+                            Showing latest {tileDisplayItems.length} of {displayItems.length} updates
+                          </div>
+                        )}
+                        {showLimitedTilePreview
+                          ? tileDisplayItems.map((item, index) => renderDisplayItem(item, tileDisplayOffset + index, "tile"))
+                          : (
+                            <>
+                              {renderedTimestampedDisplayItems}
+                              {renderedCurrentStateDisplayItems}
+                            </>
+                          )}
+                      </>
                     )}
-                    {shouldLimitTileTranscript
-                      ? tileDisplayItems.map((item, index) => renderDisplayItem(item, tileDisplayOffset + index, "tile"))
-                      : (
-                        <>
-                          {renderedTimestampedDisplayItems}
-                          {renderedCurrentStateDisplayItems}
-                        </>
-                      )}
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center">

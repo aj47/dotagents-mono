@@ -863,6 +863,16 @@ export function Component() {
     if (!pendingConversationId || !pendingConversationQuery.data) return null
     const conv = pendingConversationQuery.data
     const isInitializing = pendingContinuationStartedAt !== null
+    const mapConversationMessage = (message: typeof conv.messages[number]) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      toolCalls: message.toolCalls,
+      toolResults: message.toolResults,
+      timestamp: message.timestamp,
+      isSummary: message.isSummary,
+      summarizedMessageCount: message.summarizedMessageCount,
+    })
 
     return {
       sessionId: `pending-${pendingConversationId}`,
@@ -883,13 +893,9 @@ export function Component() {
           ]
         : [],
       isComplete: !isInitializing,
-      conversationHistory: conv.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        toolCalls: m.toolCalls,
-        toolResults: m.toolResults,
-        timestamp: m.timestamp,
-      })),
+      conversationHistory: conv.messages.map(mapConversationMessage),
+      fullConversationHistory: conv.rawMessages?.map(mapConversationMessage),
+      conversationCompaction: conv.compaction,
     }
   }, [
     pendingConversationId,

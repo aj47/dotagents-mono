@@ -373,3 +373,41 @@
   - Reuse the same trust-oriented restore affordances for Hub installs and any future bundle-slot/preset workflows.
 
 - Next recommended issue work item: either continue `#58` with the resume-path/history-viewer split now that storage integrity is in place, or return to `#53` for slash-command helper unification/mobile follow-up if a UI-only slice is preferred next.
+
+##### Issue #58 — Conversation History: desktop `Show Full History` viewer slice
+
+- Selection rationale:
+  - `#58` already has the storage-integrity contract landed in this ledger, so the next highest-value, non-redundant slice was the first in-app viewer that exposes preserved on-disk history instead of leaving it only as backend data.
+- Investigation:
+  - Re-read issue `#58`, its earlier ledger notes, and the storage-integrity follow-up, then confirmed the issue explicitly called for a `Show Full History` path once raw history preservation existed.
+  - Inspected `apps/desktop/src/renderer/src/pages/sessions.tsx` and confirmed past-session reopen flows already synthesize a `pendingProgress` object from `loadConversation(...)`, making it the safest narrow integration point for a first viewer slice.
+  - Inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed tile-mode transcripts already render conversation history for pending past sessions, so the smallest UX change was to enrich that path rather than invent a separate modal/page.
+  - Re-checked mobile surfaces only to confirm there is no equivalent past-session desktop-style history browser to keep in parity for this slice.
+- Important assumptions:
+  - Assumption: a first `Show Full History` slice only needs to light up the existing desktop past-session tile path, not every live session/resume surface.
+  - Why acceptable: the pending past-session flow already loads full conversation files from disk, so it gives users immediate value with minimal architectural change while keeping broader resume-path work for a later `#58` follow-up.
+  - Assumption: internal completion-nudge control messages should remain hidden even in the full-history view.
+  - Why acceptable: they are system artifacts rather than user-meaningful conversation content, and hiding them keeps the new viewer aligned with the rest of the transcript UI.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: this implementation depends on the desktop past-session tile/session-history flow, which does not have an equivalent mobile UI surface today.
+- Changes implemented:
+  - Extended `AgentProgressUpdate` in `apps/desktop/src/shared/types.ts` with optional `fullConversationHistory`, `conversationCompaction`, and summary metadata fields so the renderer can distinguish active-window messages from preserved raw history.
+  - Updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so pending past-session tiles forward `conv.rawMessages`, `conv.compaction`, and summary markers from `loadConversation(...)` into the synthetic progress object.
+  - Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` to add a tile-level `Show Full History` / `Show Active Window` toggle when preserved earlier history exists, render the stored transcript from disk, and insert an `Active context window starts here.` divider.
+  - Added an explicit legacy partial-history warning for summary-only compacted sessions where older raw history is unrecoverable.
+  - Added `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js`, a dependency-free source regression test covering the shared progress contract, pending-session wiring, and the new viewer/warning affordances.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Attempted: `pnpm --filter @dotagents/desktop typecheck`
+  - Result: blocked because this worktree has no installed desktop dependencies / `node_modules`; TypeScript failed before checking app code with missing base/tooling packages such as `@electron-toolkit/tsconfig`, `electron-vite/node`, and `vitest/globals`.
+  - Confidence: moderate-to-high for this renderer slice; the targeted dependency-free regression tests pass, while full desktop typecheck/Vitest validation remains blocked on missing local dependencies in the worktree.
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Extend full-history access beyond the pending past-session tile path if users also need it during active or resumed live sessions.
+  - Separate the resume-path/context-selection logic more explicitly so LLM context loading uses the compact active window while the UI always has access to the full preserved transcript.
+  - Consider richer visual treatment for summarized sections (for example, a dedicated summary block or compaction metadata badge) if users need more provenance context.
+
+- Next recommended issue work item: stay on `#58` for the resume-path/context-selection split, or add a small follow-up that exposes the same full-history affordance in additional session surfaces if user demand is stronger on live sessions.
