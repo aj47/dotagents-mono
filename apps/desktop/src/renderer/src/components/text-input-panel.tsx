@@ -8,6 +8,7 @@ import { useTheme } from "@renderer/contexts/theme-context"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { AgentSelector } from "./agent-selector"
 import { ImagePlus, X } from "lucide-react"
+import { toast } from "sonner"
 import {
   buildMessageWithImages,
   MAX_IMAGE_ATTACHMENTS,
@@ -94,6 +95,11 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       }
     } catch (error) {
       console.error("Failed to submit text input panel message:", error)
+      toast.error(
+        error instanceof Error && error.message.trim()
+          ? `Failed to send message: ${error.message}`
+          : "Failed to send message",
+      )
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)

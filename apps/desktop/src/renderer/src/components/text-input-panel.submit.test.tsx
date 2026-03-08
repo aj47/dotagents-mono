@@ -94,10 +94,12 @@ async function flushPromises() {
 async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
   const Null = () => null
+  const toast = { error: vi.fn() }
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("sonner", () => ({ toast }))
   vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ") }))
@@ -117,7 +119,8 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
     readImageAttachments: vi.fn(),
   }))
 
-  return import("./text-input-panel")
+  const mod = await import("./text-input-panel")
+  return { ...mod, toast }
 }
 
 afterEach(() => {
@@ -194,7 +197,7 @@ describe("TextInputPanel submit behavior", () => {
 
   it("keeps the draft and clears busy state when the async submit handler rejects", async () => {
     const runtime = createHookRuntime()
-    const { TextInputPanel } = await loadTextInputPanel(runtime)
+    const { TextInputPanel, toast } = await loadTextInputPanel(runtime)
     const error = new Error("submit failed")
     const onSubmit = vi.fn(async () => {
       throw error
@@ -222,5 +225,6 @@ describe("TextInputPanel submit behavior", () => {
     expect(textarea.props.disabled).toBe(false)
     expect(retrySendButton.props.disabled).toBe(false)
     expect(consoleError).toHaveBeenCalledWith("Failed to submit text input panel message:", error)
+    expect(toast.error).toHaveBeenCalledWith("Failed to send message: submit failed")
   })
 })
