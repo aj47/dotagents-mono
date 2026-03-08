@@ -5846,3 +5846,53 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed `Agents` summary stays readable across empty, loading, all-enabled, and mixed-enabled states.
   - Capture screenshot-backed evidence for the collapsed `Agents`, `Agent Settings`, and `Agent Loops` headers together so their summary density can be compared side by side.
   - After that live pass, continue with the next highest-signal local improvement instead of revisiting this header-summary tweak without fresh evidence.
+
+## Iteration 131 - Keep mixed loop activity visible in the collapsed mobile summary
+
+- Date: 2026-03-08
+- Summary: Improved collapsed `Agent Loops` state clarity on mobile by keeping waiting/ready loop counts visible even when another loop is already running.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent `Agents` summary pass, queue/header work, or selector-sheet states without fresh evidence.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and the focused loop settings tests to find one still-local issue in the settings-side sub-agent surfaces.
+  - Confirmed `Agent Loops` already had a collapsed summary, but its current logic still hid enabled idle loops whenever at least one loop was running.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked in this worktree, ending with `tsconfig.json(2,14): error TS6053: File 'expo/tsconfig.base' not found.` plus unresolved Expo / React Native modules because the mobile install is missing
+- Current behavior observed before the fix:
+  - Source review showed the collapsed `Agent Loops` summary already counted `running` and `paused` loops.
+  - The summary only appended `active` when nothing was running or paused, and its `activeLoopCount` included running loops.
+  - In mixed states on mobile, that meant a header like `3 loops • 1 running` could hide that other enabled loops were still ready and waiting.
+- Issue identified:
+  - The collapsed mobile `Agent Loops` summary understated mixed activity states, weakening quick scanability in the main settings view.
+- Decision and rationale:
+  - Keep the existing collapsible header, one-line summary treatment, and loop row layout unchanged.
+  - Do not broaden this into a more detailed multi-line status treatment while live validation is blocked.
+  - Make the smallest local fix instead: count `Active` loops as enabled-but-not-running, and keep that count visible whenever it is non-zero.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - derive `activeLoopCount` from `loop.enabled && !loop.isRunning` so it matches the row-level `Active` state,
+    - append `${activeLoopCount} active` whenever enabled waiting loops exist, even if another loop is already running.
+  - Updated `apps/mobile/tests/settings-loop-metadata-mobile.test.js` with focused regression coverage for the revised mixed-state summary logic.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+  - Mobile typecheck re-validation ⚠️ still blocked by the same missing install / missing `expo/tsconfig.base` / unresolved Expo + React Native modules
+- Assumptions and tradeoffs:
+  - Assumed the collapsed summary should mirror the row-level `Running` / `Active` / `Paused` semantics instead of folding enabled idle loops into the running count.
+  - Kept the summary on a single truncation-safe line rather than expanding the shared header pattern, minimizing layout risk without fresh screenshots.
+  - This remains a source-backed improvement and still needs live confirmation that longer mixed-state summaries stay readable beside the header chevron on a narrow screen.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Settings > Agent Loops` still lacks fresh screenshot-backed review after recent run-CTA, delete-affordance, and collapsed-summary improvements.
+  - A live pass is still needed to confirm mixed summaries like `3 loops • 1 running • 2 active` feel clearer rather than heavier on a narrow viewport.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that mixed collapsed loop summaries remain readable across running-only, active-only, paused-only, and mixed states.
+  - Capture screenshot-backed evidence for the collapsed `Agents`, `Agent Settings`, and `Agent Loops` headers together so the three summary patterns can be compared side by side with real narrow-screen constraints.
+  - After that live pass, continue with the next highest-signal local improvement instead of revisiting this loop-summary fix without fresh evidence.

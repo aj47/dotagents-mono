@@ -369,19 +369,19 @@ export default function SettingsScreen({ navigation }: any) {
 
     const runningLoopCount = loops.filter((loop) => loop.isRunning).length;
     const pausedLoopCount = loops.filter((loop) => !loop.enabled).length;
-    const activeLoopCount = loops.length - pausedLoopCount;
+    const activeLoopCount = loops.filter((loop) => loop.enabled && !loop.isRunning).length;
     const summaryParts = [`${loops.length} ${loops.length === 1 ? 'loop' : 'loops'}`];
 
     if (runningLoopCount > 0) {
       summaryParts.push(`${runningLoopCount} running`);
     }
 
-    if (pausedLoopCount > 0) {
-      summaryParts.push(`${pausedLoopCount} paused`);
+    if (activeLoopCount > 0) {
+      summaryParts.push(`${activeLoopCount} active`);
     }
 
-    if (runningLoopCount === 0 && pausedLoopCount === 0) {
-      summaryParts.push(`${activeLoopCount} active`);
+    if (pausedLoopCount > 0) {
+      summaryParts.push(`${pausedLoopCount} paused`);
     }
 
     return summaryParts.join(' • ');

@@ -51,9 +51,10 @@ test('keeps loop activity context visible in the collapsed Agent Loops header on
   assert.match(settingsSource, /if \(loops\.length === 0\) return 'No loops';/);
   assert.match(settingsSource, /const runningLoopCount = loops\.filter\(\(loop\) => loop\.isRunning\)\.length;/);
   assert.match(settingsSource, /const pausedLoopCount = loops\.filter\(\(loop\) => !loop\.enabled\)\.length;/);
+  assert.match(settingsSource, /const activeLoopCount = loops\.filter\(\(loop\) => loop\.enabled && !loop\.isRunning\)\.length;/);
   assert.match(settingsSource, /if \(runningLoopCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{runningLoopCount\} running`\);/);
+  assert.match(settingsSource, /if \(activeLoopCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{activeLoopCount\} active`\);/);
   assert.match(settingsSource, /if \(pausedLoopCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{pausedLoopCount\} paused`\);/);
-  assert.match(settingsSource, /if \(runningLoopCount === 0 && pausedLoopCount === 0\) \{[\s\S]*?summaryParts\.push\(`\$\{activeLoopCount\} active`\);/);
   assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="agentLoops"[\s\S]*?summary=\{agentLoopsSectionSummary\}/);
 });
 
