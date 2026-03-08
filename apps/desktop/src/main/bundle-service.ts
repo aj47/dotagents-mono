@@ -972,6 +972,10 @@ function formatImportBackupTimestamp(value: Date): string {
   return value.toISOString().replace(/[:.]/g, "-")
 }
 
+export function getDefaultImportBackupDirectory(): string {
+  return path.join(os.homedir(), AGENTS_DIR_NAME, IMPORT_BACKUP_DIRECTORY_NAME)
+}
+
 function createUniqueImportBackupFilePath(backupDir: string, timestamp: string): string {
   const baseName = `backup-${timestamp}`
   let candidate = path.join(backupDir, `${baseName}.dotagents`)
@@ -1023,7 +1027,7 @@ async function createPreImportBackup(
   const timestamp = formatImportBackupTimestamp(new Date())
   const backupDir = options?.dir
     ? path.resolve(options.dir)
-    : path.join(os.homedir(), AGENTS_DIR_NAME, IMPORT_BACKUP_DIRECTORY_NAME)
+    : getDefaultImportBackupDirectory()
   const maxBackups = options?.maxBackups ?? DEFAULT_IMPORT_BACKUP_MAX
   const bundle = await exportBundle(targetAgentsDir, {
     name: `Backup ${timestamp}`,
@@ -1400,6 +1404,29 @@ export async function previewBundleFromDialog(): Promise<{
   }
 
   return { filePath: selectedPath, bundle }
+}
+
+export async function selectImportBackupBundleFromDialog(): Promise<string | null> {
+  const backupDir = getDefaultImportBackupDirectory()
+  fs.mkdirSync(backupDir, { recursive: true })
+
+  const openDialogOptions: OpenDialogOptions = {
+    title: "Restore Backup Bundle",
+    defaultPath: backupDir,
+    properties: ["openFile"],
+    filters: [{ name: "DotAgents Bundle", extensions: ["dotagents", "json"] }],
+  }
+
+  const win = BrowserWindow.getFocusedWindow()
+  const result = win
+    ? await dialog.showOpenDialog(win, openDialogOptions)
+    : await dialog.showOpenDialog(openDialogOptions)
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
 }
 
 // ============================================================================

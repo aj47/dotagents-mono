@@ -80,6 +80,8 @@ interface BundleImportDialogProps {
   availableComponents?: Partial<Record<BundleComponentKey, boolean>>
   title?: string
   description?: string
+  confirmLabel?: string
+  successVerb?: string
 }
 
 export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
@@ -95,6 +97,8 @@ export function BundleImportDialog({
   availableComponents,
   title = "Import Bundle",
   description = "Preview and import a .dotagents bundle file.",
+  confirmLabel = "Import",
+  successVerb = "imported",
 }: BundleImportDialogProps) {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -201,7 +205,7 @@ export function BundleImportDialog({
           result.repeatTasks.filter(r => r.action !== "skipped").length,
           result.memories.filter(r => r.action !== "skipped").length,
         ].reduce((a, b) => a + b, 0)
-        toast.success(`Successfully imported ${imported} item(s).${backupMessage}`)
+        toast.success(`Successfully ${successVerb} ${imported} item(s).${backupMessage}`)
         onImportComplete()
         handleClose()
       } else {
@@ -361,7 +365,7 @@ export function BundleImportDialog({
           </Button>
           <Button onClick={handleImport} disabled={!preview?.filePath || importing || loading}>
             {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import
+            {confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

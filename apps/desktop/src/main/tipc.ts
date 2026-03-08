@@ -4658,6 +4658,12 @@ export const router = {
     return previewBundleFromDialog()
   }),
 
+  selectBundleBackupFile: t.procedure.action(async () => {
+    const { selectImportBackupBundleFromDialog } = await import("./bundle-service")
+    const filePath = await selectImportBackupBundleFromDialog()
+    return filePath ? { filePath } : null
+  }),
+
   previewBundleWithConflicts: t.procedure
     .input<{ filePath: string }>()
     .action(async ({ input }) => {
