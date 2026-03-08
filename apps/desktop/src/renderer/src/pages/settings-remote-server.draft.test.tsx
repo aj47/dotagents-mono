@@ -21,7 +21,9 @@ function createHookRuntime() {
   }
 }
 
-function findNode(node: any, predicate: (node: any) => boolean): any { if (node == null) return null; if (Array.isArray(node)) return node.map(child => findNode(child, predicate)).find(Boolean) ?? null; if (typeof node === "object") return predicate(node) ? node : findNode(node.props?.children, predicate); return null }
+function findNodes(node: any, predicate: (node: any) => boolean): any[] { if (node == null) return []; if (Array.isArray(node)) return node.flatMap(child => findNodes(child, predicate)); if (typeof node === "object") return [ ...(predicate(node) ? [node] : []), ...findNodes(node.props?.children, predicate) ]; return [] }
+function findNode(node: any, predicate: (node: any) => boolean): any { return findNodes(node, predicate)[0] ?? null }
+function findButtonsByText(node: any, text: string) { return findNodes(node, candidate => candidate.type === "Button" && candidate.props?.children === text) }
 function findPortInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.type === "number" && candidate.props?.min === 1 && candidate.props?.max === 65535) }
 function findCorsInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "* or http://localhost:8081, http://example.com") }
 function findNamedTunnelIdInput(node: any) { return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") }
@@ -35,6 +37,8 @@ async function loadRemoteServerSettings(runtime: ReturnType<typeof createHookRun
   const Null = () => null
   const mutate = vi.fn()
   const actionMutate = vi.fn()
+  const copyTextToClipboard = vi.fn(async () => {})
+  const toastError = vi.fn()
   const queryData = { "cloudflared-installed": false, "cloudflared-logged-in": false, "cloudflare-tunnel-list": { tunnels: [] }, "cloudflare-tunnel-status": null, "remote-server-status": { running: false }, ...queryOverrides } as Record<string, any>
   let currentConfig: any = { remoteServerEnabled: true, remoteServerPort: 3210, remoteServerBindAddress: "127.0.0.1", remoteServerCorsOrigins: ["https://old.example.test"], streamerModeEnabled: false, ...overrides }
   vi.doMock("react", () => runtime.reactMock)
@@ -47,12 +51,13 @@ async function loadRemoteServerSettings(runtime: ReturnType<typeof createHookRun
   vi.doMock("@renderer/components/ui/select", () => ({ Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }))
   vi.doMock("@renderer/components/ui/switch", () => ({ Switch: Null }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard: vi.fn(async () => {}) }))
+  vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard }))
   vi.doMock("@renderer/lib/tipc-client", () => ({ tipcClient: {} }))
   vi.doMock("qrcode.react", () => ({ QRCodeSVG: Null }))
   vi.doMock("lucide-react", () => ({ EyeOff: Null, ExternalLink: Null }))
+  vi.doMock("sonner", () => ({ toast: { error: toastError } }))
   const mod = await import("./settings-remote-server")
-  return { RemoteServerSettingsGroups: mod.RemoteServerSettingsGroups, mutate, actionMutate, setConfig(nextConfig: any) { currentConfig = nextConfig }, getCurrentConfig() { return currentConfig } }
+  return { RemoteServerSettingsGroups: mod.RemoteServerSettingsGroups, mutate, actionMutate, copyTextToClipboard, toastError, setConfig(nextConfig: any) { currentConfig = nextConfig }, getCurrentConfig() { return currentConfig } }
 }
 
 beforeEach(() => { vi.useFakeTimers() })
@@ -248,5 +253,43 @@ describe("desktop named tunnel draft behavior", () => {
       hostname: "app.example.com",
       credentialsPath: "/tmp/cloudflare-tunnel.json",
     })
+  })
+})
+
+describe("desktop remote server copy failure feedback", () => {
+  it("shows visible error toasts when copy actions reject", async () => {
+    const runtime = createHookRuntime()
+    const { RemoteServerSettingsGroups, copyTextToClipboard, toastError } = await loadRemoteServerSettings(
+      runtime,
+      { remoteServerApiKey: "secret-key" },
+      {
+        "cloudflared-installed": true,
+        "cloudflare-tunnel-status": { running: true, url: "https://public.example.test", mode: "quick" },
+        "remote-server-status": { running: true, connectableUrl: "http://192.168.1.50:3210/v1" },
+      },
+    )
+    copyTextToClipboard.mockRejectedValue(new Error("clipboard unavailable"))
+
+    const tree = runtime.render(RemoteServerSettingsGroups, {} as any)
+    runtime.commitEffects()
+
+    const [apiKeyCopyButton, tunnelUrlCopyButton] = findButtonsByText(tree, "Copy")
+    const [localDeepLinkButton, tunnelDeepLinkButton] = findButtonsByText(tree, "Copy Deep Link")
+
+    apiKeyCopyButton.props.onClick()
+    localDeepLinkButton.props.onClick()
+    tunnelUrlCopyButton.props.onClick()
+    tunnelDeepLinkButton.props.onClick()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(copyTextToClipboard).toHaveBeenNthCalledWith(1, "secret-key")
+    expect(copyTextToClipboard).toHaveBeenNthCalledWith(2, "dotagents://config?baseUrl=http%3A%2F%2F192.168.1.50%3A3210%2Fv1&apiKey=secret-key")
+    expect(copyTextToClipboard).toHaveBeenNthCalledWith(3, "https://public.example.test/v1")
+    expect(copyTextToClipboard).toHaveBeenNthCalledWith(4, "dotagents://config?baseUrl=https%3A%2F%2Fpublic.example.test%2Fv1&apiKey=secret-key")
+    expect(toastError).toHaveBeenNthCalledWith(1, "Failed to copy remote server API key: clipboard unavailable")
+    expect(toastError).toHaveBeenNthCalledWith(2, "Failed to copy deep link: clipboard unavailable")
+    expect(toastError).toHaveBeenNthCalledWith(3, "Failed to copy tunnel URL: clipboard unavailable")
+    expect(toastError).toHaveBeenNthCalledWith(4, "Failed to copy tunnel deep link: clipboard unavailable")
   })
 })

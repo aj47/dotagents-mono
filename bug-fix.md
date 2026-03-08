@@ -124,6 +124,8 @@
 - [x] 2026-03-08: `git diff --check` completed cleanly after the desktop shared-audio reset fix and regression test update.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/panel.tsx` live transcription-preview flow and confirmed `transcribeChunk(...)` failures inside `sendChunk()` still only called `console.error(...)`, while the panel only rendered its preview block when `previewText` was non-empty.
 - [x] 2026-03-08: Confirmed mobile has no equivalent floating-panel live transcription preview surface; `apps/mobile/src/screens/ChatScreen.tsx` and settings only expose recording/final-transcription flows, so this broken preview-feedback path is desktop-only.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` copy actions and confirmed the visible `Copy`, `Copy Deep Link`, `Public URL Copy`, and tunnel `Copy Deep Link` buttons still caught `copyTextToClipboard(...)` rejections with `console.error(...)` only.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` has no equivalent desktop-generated API-key/deep-link/tunnel copy controls, so this is a desktop-only user-action failure bug rather than a cross-platform parity decision.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -261,6 +263,10 @@
   - `apps/desktop/src/renderer/src/pages/panel.tsx` runs best-effort chunk transcription in `sendChunk()`, but its `catch` branch only called `console.error("[Preview] Transcription error:", err)`.
   - The same file only rendered the preview block when `previewText` was truthy, so a failed preview request left no inline message, no dialog, and no visible reason for the empty preview area.
   - Because final transcription still happens when recording stops, this was a concrete desktop recording-feedback bug: the user could see live preview enabled yet have the panel silently look broken mid-recording instead of explaining that preview was temporarily unavailable.
+- [x] **Desktop remote-server copy failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` exposes four explicit copy actions for remote server setup (`API Key`, local `Copy Deep Link`, tunnel `Public URL` copy, and tunnel `Copy Deep Link`), but each handler still routed rejected `copyTextToClipboard(...)` promises to `console.error(...)` only.
+  - Because those buttons are part of the desktop remote-access pairing/setup flow, a clipboard failure looked like a dead/no-op button even though the requested copy action had failed.
+  - Mobile has no equivalent desktop-generated copy controls to compensate here, so this is a real desktop user-feedback bug rather than an intentional platform difference.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -382,6 +388,8 @@
 - [x] Extended `apps/desktop/src/renderer/src/components/audio-player.layout.test.ts` with focused source-level assertions that lock in the new stale-audio reset branch (`audio.removeAttribute("src")`, `audio.load()`, `setHasAudio(false)`, and `onPlayStateChange?.(false)`).
 - [x] Updated `apps/desktop/src/renderer/src/pages/panel.tsx` so live transcription-preview failures now set a small inline `previewError` message, keep the preview area visible for that error state, and clear the error again when a later preview chunk succeeds or preview mode stops.
 - [x] Extended `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` with focused source-level assertions that lock in the new `previewError` state, the inline fallback copy, and the preview-area visibility contract when chunk transcription fails.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so all four remote-server copy actions now route clipboard failures through one shared helper that preserves console logging but also surfaces a visible `toast.error(...)` message with the underlying clipboard error.
+- [x] Extended `apps/desktop/src/renderer/src/pages/settings-remote-server.draft.test.tsx` with focused regression coverage that mocks clipboard rejection across the API-key, local deep-link, tunnel URL, and tunnel deep-link buttons and asserts the new visible failure toasts.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -469,6 +477,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/panel.tsx` now tracks `previewError`, keeps the preview region visible when either `previewText` or `previewError` exists, and clears the inline error again when preview mode stops or a later chunk succeeds.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `panel.tsx` and `panel.recording-layout.test.ts`, confirming the new inline preview-error state, fallback copy, and regression test case are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the floating-panel live-preview feedback fix and regression test update.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` now imports `toast` from `sonner` and routes each remote-server copy action through `copyRemoteServerValue(...)`, so rejected clipboard writes no longer stay completely silent.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `settings-remote-server.tsx` and `settings-remote-server.draft.test.tsx`, confirming the shared copy-error helper, the visible copy-failure toast strings, and the new regression test case are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server copy-feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -503,6 +514,7 @@
 - [x] Targeted automated verification for this past-response TTS fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.past-response-tts.test.ts` still reports `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this shared `AudioPlayer` stale-reset fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/audio-player.layout.test.ts` still reports `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this floating-panel live-preview feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this remote-server copy-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -529,6 +541,7 @@
 - [ ] Whether the adjacent local-provider model download actions in `settings-providers.tsx` should also surface visible failure feedback, or whether their existing inline `status.error` rendering is already sufficient once live desktop validation is available.
 - [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
+- [ ] Whether the adjacent desktop clipboard-copy surfaces in `agent-progress.tsx` and `session-tile.tsx` should also gain visible failure feedback instead of remaining console-only once the environment blocker is cleared.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -589,6 +602,8 @@
 - Fixing the reset semantics in `audio-player.tsx` is the smallest safe change because every current desktop TTS surface already flows through that shared component, so one local patch prevents stale/revoked blob playback without redesigning the surrounding agent-progress logic.
 - The floating-panel live-preview issue is a recording-feedback bug rather than a final-transcription failure: chunk transcription is best-effort, but when it failed the panel hid all preview UI and gave the user no reason for the empty state.
 - Inline preview-error state is the smallest safe fix because it preserves the existing background chunking/final-submit flow while making the mid-recording failure visible without interrupting the active recording with a toast or modal.
+- The remote-server copy issue is a high-signal action-feedback bug: these buttons exist specifically to help users pair mobile clients or share a tunnel URL, so a rejected clipboard write should not look like a dead/no-op control.
+- Reusing one local `copyRemoteServerValue(...)` helper plus the existing desktop `toast.error(...)` pattern is the smallest safe fix because it keeps the current copy targets and fallback clipboard implementation intact while making the failure visible everywhere this page exposes a copy button.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -623,6 +638,7 @@
 - Assumption: resetting `hasAutoPlayed` and `wasStopped` when parent `audioData` is cleared is acceptable because invalidating cached audio represents a new/no-audio source, so the next fresh generation should be allowed to auto-play under the existing desktop TTS rules instead of inheriting stop state from revoked audio.
 - Assumption: calling `audio.removeAttribute("src")` plus `audio.load()` when cached audio is cleared is acceptable because this is the standard browser-side way to flush a revoked blob URL from an `<audio>` element, and the concrete bug here was stale playback state surviving after parent invalidation.
 - Assumption: keeping live-preview failure feedback inline in the panel (instead of using a toast/dialog) is acceptable because chunk preview is a secondary best-effort aid during recording, while the final transcription still runs when the user stops recording.
+- Assumption: using `toast.error(...)` for remote-server copy failures is acceptable because desktop already mounts a global `sonner` toaster, successful copy behavior is unchanged, and the concrete bug is missing feedback when the clipboard write rejects.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -668,3 +684,5 @@
 - After that, decide whether the mid-turn `userResponse` TTS flow should add its own explicit `audioData` invalidation on source changes for extra symmetry with the completed-message path, even though the shared player now behaves correctly whenever parents do clear the cache.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` and live-verify the floating panel by forcing a chunk-transcription failure to confirm the new inline preview error appears during recording and clears again after a later successful preview response.
 - After that, decide whether preview failures should stop the remaining chunk retries for the current recording or continue retrying in the background now that the user at least gets visible inline feedback.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` and live-verify the desktop remote-server `Copy` / `Copy Deep Link` / tunnel copy buttons by forcing a clipboard-write failure to confirm the new toasts appear instead of silent no-ops.
+- After that, inspect adjacent desktop clipboard-copy actions (especially in `agent-progress.tsx` and `session-tile.tsx`) for the same console-only failure pattern.

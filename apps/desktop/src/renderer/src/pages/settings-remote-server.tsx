@@ -17,6 +17,7 @@ import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
 import { EyeOff, ExternalLink } from "lucide-react"
+import { toast } from "sonner"
 
 /**
  * Mask a URL for streamer mode - masks all alphanumeric content (including the protocol)
@@ -104,6 +105,13 @@ function parseCorsOriginsDraft(value: string): string[] {
     .filter(Boolean)
 }
 
+function getRemoteServerCopyErrorMessage(label: string, error: unknown): string {
+  const prefix = `Failed to copy ${label}`
+  if (error instanceof Error && error.message.trim()) return `${prefix}: ${error.message.trim()}`
+  if (typeof error === "string" && error.trim()) return `${prefix}: ${error.trim()}`
+  return prefix
+}
+
 export function RemoteServerSettingsGroups({
   collapsible = false,
   defaultCollapsed = false,
@@ -135,6 +143,13 @@ export function RemoteServerSettingsGroups({
     },
     [saveConfigMutation],
   )
+
+  const copyRemoteServerValue = useCallback((text: string, label: string) => {
+    void copyTextToClipboard(text).catch((error) => {
+      console.error(`Failed to copy ${label}`, error)
+      toast.error(getRemoteServerCopyErrorMessage(label, error))
+    })
+  }, [])
 
   const resetPortDraftToSavedValue = useCallback(() => {
     setPortDraft(formatRemoteServerPortDraft(cfgRef.current?.remoteServerPort))
@@ -453,9 +468,7 @@ export function RemoteServerSettingsGroups({
                     title={streamerMode ? "Disabled in Streamer Mode" : undefined}
                     onClick={() => {
                       if (!cfg.remoteServerApiKey || streamerMode) return
-                      void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
-                        console.error("Failed to copy remote server API key", err)
-                      })
+                      copyRemoteServerValue(cfg.remoteServerApiKey, "remote server API key")
                     }}
                   >
                     {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
@@ -572,9 +585,7 @@ export function RemoteServerSettingsGroups({
                             onClick={() => {
                               if (streamerMode) return
                               const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
-                              void copyTextToClipboard(deepLink).catch((err) => {
-                                console.error("Failed to copy deep link", err)
-                              })
+                              copyRemoteServerValue(deepLink, "deep link")
                             }}
                           >
                             {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Deep Link"}
@@ -856,9 +867,7 @@ export function RemoteServerSettingsGroups({
                           title={streamerMode ? "Disabled in Streamer Mode" : undefined}
                           onClick={() => {
                             if (streamerMode) return
-                            void copyTextToClipboard(`${tunnelStatus.url}/v1`).catch((err) => {
-                              console.error("Failed to copy tunnel URL", err)
-                            })
+                            copyRemoteServerValue(`${tunnelStatus.url}/v1`, "tunnel URL")
                           }}
                         >
                           {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
@@ -899,9 +908,7 @@ export function RemoteServerSettingsGroups({
                               onClick={() => {
                                 if (streamerMode) return
                                 const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(cfg.remoteServerApiKey || "")}`
-                                void copyTextToClipboard(deepLink).catch((err) => {
-                                  console.error("Failed to copy tunnel deep link", err)
-                                })
+                                copyRemoteServerValue(deepLink, "tunnel deep link")
                               }}
                             >
                               {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Deep Link"}
