@@ -4,7 +4,7 @@ import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { Button } from "@renderer/components/ui/button"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
-import { Loader2, RotateCcw } from "lucide-react"
+import { FolderOpen, Loader2, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import { Component as McpToolsPage } from "./settings-mcp-tools"
 import { Component as SkillsPage } from "./settings-skills"
@@ -52,6 +52,7 @@ export function Component() {
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false)
   const [restoreFilePath, setRestoreFilePath] = useState<string>()
   const [isSelectingRestoreBackup, setIsSelectingRestoreBackup] = useState(false)
+  const [isOpeningBackupsFolder, setIsOpeningBackupsFolder] = useState(false)
   const recentBackupsQuery = useQuery({
     queryKey: ["bundle-import-backups"],
     queryFn: async () => (await tipcClient.listBundleBackups({ limit: 4 })) as RecentBackup[],
@@ -76,6 +77,21 @@ export function Component() {
       toast.error(`Failed to select backup bundle: ${errorMessage}`)
     } finally {
       setIsSelectingRestoreBackup(false)
+    }
+  }
+
+  const handleOpenBackupsFolderClick = async () => {
+    setIsOpeningBackupsFolder(true)
+    try {
+      const result = await tipcClient.openBundleBackupFolder()
+      if (!result?.success) {
+        throw new Error(result?.error || "Unknown error")
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to open backups folder: ${errorMessage}`)
+    } finally {
+      setIsOpeningBackupsFolder(false)
     }
   }
 
@@ -127,6 +143,19 @@ export function Component() {
                   DotAgents keeps automatic pre-import snapshots here so you can quickly roll back recent bundle changes.
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={handleOpenBackupsFolderClick}
+                disabled={isOpeningBackupsFolder}
+              >
+                {isOpeningBackupsFolder
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <FolderOpen className="h-4 w-4" />}
+                Open Backups Folder
+              </Button>
             </div>
 
             <div className="mt-3 space-y-2">

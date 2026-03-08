@@ -4664,6 +4664,14 @@ export const router = {
     return filePath ? { filePath } : null
   }),
 
+  openBundleBackupFolder: t.procedure.action(async () => {
+    const { getDefaultImportBackupDirectory } = await import("./bundle-service")
+    const backupDir = getDefaultImportBackupDirectory()
+    fs.mkdirSync(backupDir, { recursive: true })
+    const error = await shell.openPath(backupDir)
+    return { success: !error, error: error || undefined }
+  }),
+
   listBundleBackups: t.procedure
     .input<{ limit?: number } | undefined>()
     .action(async ({ input }) => {
