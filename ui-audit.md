@@ -1,5 +1,55 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 85: Desktop bundle import component rows crushed labels into awkward mid-word breaks under stressed dialog width + larger text
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` (`Settings → Agents` → `Install Hub Bundle` / `Import Bundle` component selection rows)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched create-agent, skills, repeat-tasks, sidebar, and memories surfaces unless a concrete follow-up justified it.
+  - The import dialog component rows were a fresh sub-surface inside the older bundle-dialog family, and they were practical to inspect live by using the existing `installBundle` deep-link path instead of thrashing on the native file picker.
+  - Live inspection produced a clearer product issue than another speculative source sweep: the component names themselves became visually broken exactly where users are deciding what the incoming bundle will import.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo’s desktop/mobile workflow guidance before choosing the next area
+  - created a small valid local bundle fixture at `tmp/ui-audit/import-bundle-fixture.dotagents` so the dialog could be opened through the existing `installBundle` query-param flow without relying on the native file picker
+  - used the live Electron renderer on `http://localhost:5173/settings/agents?installBundle=...` and stress-tested the mounted dialog at `720×700` with `22px` root text, then again around `620×700` with `24px` root text
+  - captured screenshot-backed evidence in `tmp/ui-audit/bundle-import-component-rows-before-720x700-root22.png` and a source-realistic DOM prototype in `tmp/ui-audit/bundle-import-component-rows-prototype-720x700-root22.png`
+  - cross-checked current source in `bundle-import-dialog.tsx` and confirmed the live issue still matched a rigid single-row component-row contract (`flex items-center gap-2` with switch, icon, label, and badges all competing for one line)
+  - kept the change desktop-only after confirming the mobile app does not expose this Electron bundle-import modal pattern
+
+#### Findings
+
+- Before the fix, the desktop bundle import dialog had one concrete readability/polish issue with clear user impact:
+  - each component row kept the switch, icon, label, count badge, and optional conflict badge in one rigid inline cluster with no explicit wrap-safe text lane
+  - in live inspection, the mounted dialog text visibly fractured common labels into awkward partial words such as `Repeat Ta k` and `Memorie 1` instead of preserving whole component names
+  - practical impact: while deciding whether to import agents, skills, memories, and repeat tasks, users see the very labels they need to scan most become visually broken under larger text / tighter dialog widths
+
+#### Changes made
+
+- Hardened only the component rows in `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`:
+  - changed each row from a rigid single-line cluster to an `items-start` layout that keeps the switch and icon stable while giving the label/badge lane the flexible width
+  - moved the label and badges into a dedicated `min-w-0 flex-1 flex-wrap` group so count/conflict badges can wrap intentionally instead of crushing the label text
+  - added a wrap-safe label treatment (`leading-snug`, `break-words`, `[overflow-wrap:anywhere]`) and made both badges explicitly `shrink-0`
+- Extended `apps/desktop/src/renderer/src/components/bundle-dialog.layout.test.ts` with focused source-contract coverage for the new import-row wrap behavior
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/bundle-dialog.layout.test.ts` *(blocked: `vitest` was not found because this worktree still has no local desktop dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe import-row classes plus the focused regression test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5173/settings/agents?installBundle=...`:
+  - screenshot: `tmp/ui-audit/bundle-import-component-rows-before-720x700-root22.png`
+  - live dialog text extraction at stressed settings showed representative broken labels like `Repeat Ta k` and `Memorie 1`
+- Live DOM prototype verification of the intended fix:
+  - screenshot: `tmp/ui-audit/bundle-import-component-rows-prototype-720x700-root22.png`
+  - used the mounted dialog as a visual sanity check after applying the same row-separation / wrap treatment directly in the DOM, while keeping source verification as the shipped-code truth
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx apps/desktop/src/renderer/src/components/bundle-dialog.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the import flow normally launches a native file picker, so I used the existing deep-link install path plus a local valid bundle fixture to keep the inspection live and repeatable without broader environment churn.
+- This chunk is desktop-only: the mobile app does not expose the same bundle-import modal or this component-row pattern.
+- Tradeoff/rationale: some rows may grow a little taller under stress, but that is a much better product tradeoff than splitting common nouns in the primary import checklist.
+- Best next UI audit chunk after this one: move away from the just-touched bundle-import rows unless a rebuilt renderer for this checkout becomes available; the next strongest target is another fresh desktop or mobile empty/loading/error or dense-controls surface with live runtime evidence.
+
 ### 2026-03-08 — Chunk 84: Desktop create-agent form buried the required Name field below optional chrome under constrained height + larger text
 
 - Area selected:

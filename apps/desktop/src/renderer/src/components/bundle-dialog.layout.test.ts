@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 const bundleExportDialogSource = readFileSync(new URL("./bundle-export-dialog.tsx", import.meta.url), "utf8")
+const bundleImportDialogSource = readFileSync(new URL("./bundle-import-dialog.tsx", import.meta.url), "utf8")
 const bundlePublishDialogSource = readFileSync(new URL("./bundle-publish-dialog.tsx", import.meta.url), "utf8")
 
 describe("bundle dialog layout", () => {
@@ -37,5 +38,17 @@ describe("bundle dialog layout", () => {
     expect(bundlePublishDialogSource).toContain('className="min-w-0 space-y-1 sm:col-span-2"')
     expect(bundlePublishDialogSource).not.toContain('className="grid grid-cols-2 gap-3"')
     expect(bundlePublishDialogSource).not.toContain('className="grid grid-cols-3 gap-2"')
+  })
+
+  it("lets import component rows wrap labels and badges instead of crushing words", () => {
+    expect(bundleImportDialogSource).toContain('className="flex items-start gap-2 py-1"')
+    expect(bundleImportDialogSource).toContain(
+      'className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"',
+    )
+    expect(bundleImportDialogSource).toContain(
+      'className="min-w-0 break-words text-sm leading-snug [overflow-wrap:anywhere]"',
+    )
+    expect(bundleImportDialogSource).toContain('className="shrink-0 text-xs"')
+    expect(bundleImportDialogSource).toContain('className="shrink-0 border-amber-300 text-xs text-amber-600"')
   })
 })

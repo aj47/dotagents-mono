@@ -378,14 +378,14 @@ interface ComponentRowProps {
 function ComponentRow({ icon: Icon, label, count, conflicts, checked, onToggle }: ComponentRowProps) {
   if (count === 0) return null
   return (
-    <div className="flex items-center justify-between py-1">
-      <div className="flex items-center gap-2">
-        <Switch checked={checked} onCheckedChange={onToggle} disabled={count === 0} />
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm">{label}</span>
-        <Badge variant="secondary" className="text-xs">{count}</Badge>
+    <div className="flex items-start gap-2 py-1">
+      <Switch className="mt-0.5 shrink-0" checked={checked} onCheckedChange={onToggle} disabled={count === 0} />
+      <Icon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="min-w-0 break-words text-sm leading-snug [overflow-wrap:anywhere]">{label}</span>
+        <Badge variant="secondary" className="shrink-0 text-xs">{count}</Badge>
         {conflicts > 0 && (
-          <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+          <Badge variant="outline" className="shrink-0 border-amber-300 text-xs text-amber-600">
             {conflicts} conflict{conflicts > 1 ? "s" : ""}
           </Badge>
         )}
