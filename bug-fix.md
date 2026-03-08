@@ -99,6 +99,11 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/onboarding.tsx` and confirmed the visible onboarding `Install Exa` action saves `exa` into `mcpConfig` before calling `tipcClient.setMcpServerRuntimeEnabled(...)` / `restartMcpServer(...)`, but its `catch` path previously only called `console.error(...)`.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens` has no onboarding or Exa-install equivalent, so this onboarding recovery-state fix is desktop-only rather than a cross-platform parity change.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` and confirmed the visible summary-card `Save` action awaited `tipcClient.saveMemoryFromSummary(...)` but only updated UI on `result.success && result.memory`; unsuccessful returns and thrown errors previously produced no toast/banner feedback.
+- [x] 2026-03-08: Confirmed `AgentSummaryView` is mounted inside the live desktop `AgentProgress` summary tab, so this silent save-to-memory path affects an active desktop workflow rather than dead code.
+- [x] 2026-03-08: Compared desktop summary save handling against `apps/mobile/src/screens/MemoryEditScreen.tsx` and a repo-wide mobile search; mobile has no equivalent one-click “save from summary” surface, but its memory-edit flow already shows inline save failures, so visible desktop feedback is consistent with current product behavior.
+- [x] 2026-03-08: Assumption accepted: using `toast.error(...)` for non-success summary saves is the smallest safe fix because desktop already mounts a global `sonner` toaster and this path is a core user action where “nothing happened” is misleading.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -208,6 +213,10 @@
   - `apps/desktop/src/renderer/src/pages/onboarding.tsx` saves the `exa` MCP server into `mcpConfig` first, then separately enables/restarts the runtime via `tipcClient.setMcpServerRuntimeEnabled(...)` and `tipcClient.restartMcpServer(...)`.
   - If the config save succeeds but runtime startup fails, the old `catch` block only logged `Failed to install Exa:` to the console, so first-time users saw no visible explanation and could even end up with an `Installed` state later because `exa` was now present in saved config.
   - That makes the onboarding promise misleading on an active first-run flow: the app invites the user to install web search, but a partial failure could look like success or “nothing happened” instead of offering recovery guidance.
+- [x] **Desktop summary save-to-memory failures could silently no-op (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` renders a visible `Save` button for each summary card, but `handleSaveToMemory()` previously only updated UI when `tipcClient.saveMemoryFromSummary(...)` returned both `success: true` and a non-null `memory`.
+  - That meant three real failure paths could look like “nothing happened” from the user’s point of view: a rejected IPC call, a `{ success: false }` result, or a `{ success: true, memory: null, reason: "no_durable_content" }` result.
+  - `AgentSummaryView` is mounted inside the active desktop `AgentProgress` summary tab, so this was a live user-facing bug on a core “save useful memory” workflow rather than a dead edge case.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -311,6 +320,8 @@
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-progress.stop-session.test.ts` with source-level assertions that lock in the `sonner` import, shared action-error helper, and visible `Failed to stop agent. ...` toast path.
 - [x] Updated `apps/desktop/src/renderer/src/pages/onboarding.tsx` so the onboarding Exa installer now tracks visible inline failure state, preserves the `Installed` badge when the config save succeeded but runtime startup failed, and tells the user to retry from `Settings → MCP Tools` instead of failing silently.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/onboarding.exa-install.test.tsx` for the partial-failure path where Exa is saved into config but `setMcpServerRuntimeEnabled(...)` rejects.
+- [x] Updated `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` so summary-card save-to-memory failures now surface visible `toast.error(...)` feedback for rejected IPC calls, generic unsuccessful saves, and the `no_durable_content` no-op path.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-summary-view.save-memory.test.ts` with source-level assertions that lock in the `sonner` import and the new visible failure-feedback branches.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -375,6 +386,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/onboarding.tsx` now records `exaInstallError`, distinguishes the partial-success case where Exa was saved but could not be started, and renders visible inline retry guidance instead of console-only failure handling.
 - [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `onboarding.tsx` now contains the partial-failure recovery copy and the new `onboarding.exa-install.test.tsx` regression test locks in that contract.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the onboarding Exa install recovery fix and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` now imports `toast` from `sonner` and surfaces visible failure feedback for rejected summary saves, generic non-success results, and the `no_durable_content` path instead of silently resetting back to idle.
+- [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `agent-summary-view.tsx` now contains the `no_durable_content` and generic failure toasts and that the new `agent-summary-view.save-memory.test.ts` regression file is present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the summary save-to-memory feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -401,6 +415,7 @@
 - [x] Targeted automated verification for this `AgentProcessingView` stop fallback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-processing-view.stop-session.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this `AgentProgress` stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this onboarding Exa install recovery fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this summary save-to-memory feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether adjacent `ActiveAgentsSidebar` minimize/restore (`snooze` / `unsnooze`) failure paths should also surface visible feedback instead of console-only logging once this smaller stop-action fix is live-verified.
@@ -421,6 +436,7 @@
 - [ ] Whether the floating panel should eventually offer a richer microphone recovery affordance (for example a system-settings deep link or inline banner) instead of the current minimal visible error dialog once live Electron validation is available.
 - [ ] Whether the broader `AgentProgress` and `AgentProcessingView` stop surfaces should eventually share one small desktop helper for fallback stop semantics + user-visible error copy once live verification is available, or whether keeping the logic duplicated locally is preferable to avoid new abstractions.
 - [ ] Whether onboarding should eventually distinguish “configured in settings” from “runtime server currently running” more explicitly for MCP tools once live desktop validation is available, rather than relying on the new inline warning beside the `Installed` badge.
+- [ ] Whether summary cards that currently yield `reason: "no_durable_content"` should eventually disable or explain the `Save` button up front, rather than waiting to tell the user after they click it.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -469,6 +485,8 @@
 - Reusing the same `toast.error(...)` pattern already adopted in nearby desktop stop/send flows is the smallest safe fix because it preserves the current confirmation dialog, stop semantics, and loading-state handling while finally making the failure visible.
 - The onboarding Exa issue is a first-run flow correctness bug: the UI promises “Install Exa” on a guided setup screen, but the implementation saves config before starting the runtime, so a startup failure could silently strand the user in a partial state.
 - Tracking that partial-success state explicitly is the smallest safe fix because it preserves the saved MCP configuration, avoids pretending nothing happened, and gives the user an actionable retry path without redesigning onboarding or MCP status management.
+- The summary save-to-memory issue is a high-signal desktop workflow bug because the UI exposes a one-click `Save` action for useful agent summaries, but the implementation could previously fall back to “idle button, no visible explanation” on multiple real failure paths.
+- Reusing the existing desktop `toast.error(...)` pattern is the smallest safe fix because it preserves current save semantics and the existing `Saved` success state while finally making non-success outcomes visible to the user.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -495,6 +513,7 @@
 - Assumption: using `emergencyStopAgent()` from `AgentProcessingView` before a session id exists is acceptable for this pass because there is no narrower pending-session cancel API, existing desktop pending-session stop flows already use the same fallback, and the dialog copy now warns users that this pre-start stop can affect all running sessions.
 - Assumption: using the existing desktop toast pattern for `AgentProgress` stop failures is acceptable because `sonner` is already mounted app-wide, nearby desktop stop flows already use visible failure feedback, and mobile already exposes comparable kill-switch success/failure state to the user.
 - Assumption: showing `Installed` together with an inline error after a partial Exa install is acceptable for this pass because the server really was added to saved config, while the new warning text makes the runtime startup failure and retry path explicit without inventing a new onboarding status model.
+- Assumption: using `toast.error(...)` for the summary `no_durable_content` path is acceptable for this pass because the user-initiated save action could not complete, there is no precomputed “saveability” signal on the card yet, and the desktop app already uses toasts for comparable action-level failures.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -531,3 +550,5 @@
 - After that, decide whether the equivalent `AgentProgress` fallback stop path should also gain the same explicit warning copy and visible error feedback for complete consistency.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` and live-verify onboarding by forcing an Exa runtime-start failure so the new inline recovery message appears instead of a silent/misleading install result.
 - After that, inspect adjacent onboarding setup actions for any remaining console-only failures, especially other install/setup steps that can partially succeed before a later runtime/API call rejects.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts` and live-verify the desktop summary tab by forcing both a rejected save and a `no_durable_content` result so the new visible feedback appears instead of a silent no-op.
+- After that, decide whether summary cards should expose an upfront disabled/hint state when there is nothing durable to save, rather than relying only on post-click feedback.

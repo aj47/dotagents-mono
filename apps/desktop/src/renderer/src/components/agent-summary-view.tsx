@@ -18,12 +18,25 @@ import {
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
 
 interface AgentSummaryViewProps {
   progress: AgentProgressUpdate | null
   className?: string
   conversationTitle?: string
   conversationId?: string
+}
+
+function getSaveMemoryErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return "Please try again."
 }
 
 // Importance badge component
@@ -75,9 +88,18 @@ function SummaryCard({
       if (result.success && result.memory) {
         setIsSaved(true)
         onSaved?.(summary)
+        return
       }
+
+      if (result.reason === "no_durable_content") {
+        toast.error("Nothing durable to save from this step yet.")
+        return
+      }
+
+      toast.error("Failed to save memory. Please try again.")
     } catch (error) {
       console.error("Failed to save memory:", error)
+      toast.error(`Failed to save memory. ${getSaveMemoryErrorMessage(error)}`)
     } finally {
       setIsSaving(false)
     }
