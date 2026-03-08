@@ -33,7 +33,8 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
-import { SettingsApiClient } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
+import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
@@ -296,6 +297,44 @@ export default function ChatScreen({ route, navigation }: any) {
   const [responding, setResponding] = useState(false);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const [showComposerAgentSelector, setShowComposerAgentSelector] = useState(false);
+
+  const refreshComposerAgentSelectorVisibility = useCallback(async () => {
+    if (!config.baseUrl || !config.apiKey) {
+      setShowComposerAgentSelector(false);
+      return;
+    }
+
+    try {
+      const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
+      const settings = await client.getSettings();
+
+      if (settings.mainAgentMode === 'acp') {
+        const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
+        setShowComposerAgentSelector(
+          getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []).length > 0
+        );
+        return;
+      }
+
+      const profilesResponse = await client.getProfiles();
+      setShowComposerAgentSelector((profilesResponse.profiles || []).length > 0);
+    } catch (error) {
+      console.warn('[ChatScreen] Failed to refresh composer agent selector visibility:', error);
+      setShowComposerAgentSelector(false);
+    }
+  }, [config.baseUrl, config.apiKey]);
+
+  useEffect(() => {
+    void refreshComposerAgentSelectorVisibility();
+  }, [refreshComposerAgentSelectorVisibility]);
+
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      void refreshComposerAgentSelectorVisibility();
+    });
+    return unsubscribe;
+  }, [navigation, refreshComposerAgentSelectorVisibility]);
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -3286,21 +3325,23 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
-		          <View style={styles.agentSelectorRow}>
-		            <TouchableOpacity
-		              style={styles.agentSelectorChip}
-		              onPress={() => setAgentSelectorVisible(true)}
-		              activeOpacity={0.8}
-		              accessibilityRole="button"
-		              accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-		              accessibilityHint="Opens agent selection menu"
-		            >
-		              <Text style={styles.agentSelectorChipLabel}>🤖 Agent</Text>
-		              <Text style={styles.agentSelectorChipValue} numberOfLines={1}>
-		                {currentAgentLabel} ▼
-		              </Text>
-		            </TouchableOpacity>
-		          </View>
+			          {showComposerAgentSelector && (
+			            <View style={styles.agentSelectorRow}>
+			              <TouchableOpacity
+			                style={styles.agentSelectorChip}
+			                onPress={() => setAgentSelectorVisible(true)}
+			                activeOpacity={0.8}
+			                accessibilityRole="button"
+			                accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
+			                accessibilityHint="Opens agent selection menu"
+			              >
+			                <Text style={styles.agentSelectorChipLabel}>🤖 Agent</Text>
+			                <Text style={styles.agentSelectorChipValue} numberOfLines={1}>
+			                  {currentAgentLabel} ▼
+			                </Text>
+			              </TouchableOpacity>
+			            </View>
+			          )}
 	          {/* Top row: TTS toggle, text input, send button */}
 	          <View style={styles.inputRow}>
 	            <TouchableOpacity

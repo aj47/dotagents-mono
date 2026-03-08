@@ -28,6 +28,17 @@ test('keeps the composer agent selector chip comfortably tappable on mobile', ()
   assert.match(screenSource, /agentSelectorChip:\s*\{[\s\S]*?\.\.\.composerAgentSelectorTouchTarget/);
 });
 
+test('only shows the composer agent selector when the selector actually has options', () => {
+  assert.match(screenSource, /const \[showComposerAgentSelector, setShowComposerAgentSelector\] = useState\(false\);/);
+  assert.match(screenSource, /setShowComposerAgentSelector\(\(profilesResponse\.profiles \|\| \[\]\)\.length > 0\);/);
+  assert.match(screenSource, /getAcpMainAgentOptions\(settings, agentProfilesResponse\.profiles \|\| \[\]\)\.length > 0/);
+  assert.match(screenSource, /\{showComposerAgentSelector && \(/);
+});
+
+test('refreshes composer agent selector visibility when the chat screen regains focus', () => {
+  assert.match(screenSource, /navigation\?\.addListener\?\.\('focus', \(\) => \{[\s\S]*?void refreshComposerAgentSelectorVisibility\(\);/);
+});
+
 test('lets the composer agent selector label use available row width before truncating', () => {
   assert.match(screenSource, /agentSelectorChip:\s*\{[\s\S]*?maxWidth:\s*'100%'/);
   assert.match(screenSource, /agentSelectorChipValue:\s*\{[\s\S]*?flexShrink:\s*1,/);

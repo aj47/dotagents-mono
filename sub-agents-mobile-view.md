@@ -415,3 +415,47 @@
   - Smoke-test the header selector and composer chip with a longer agent name to confirm truncation stays stable.
   - Revisit whether the entire composer selector row should become tappable if live evidence still shows missed taps.
   - Inspect whether the loop action rail can be compacted further without hurting action clarity or touch quality.
+
+### 2026-03-08 — Iteration 10: hide the dead-end composer agent row when no switchable agents exist
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `ChatScreen` composer-level agent selector row
+  - `ChatScreen` header selector trigger
+  - `AgentSelectorSheet` empty-state behavior for the same server state
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a `390x844` viewport.
+  - Opened an active chat and measured the composer-level `🤖 Agent / Main Agent ▼` chip at roughly `152x44`.
+  - Confirmed that tapping the chip opened the selector sheet into the existing empty state:
+    - `Current: Main Agent`
+    - `No switchable agents yet`
+    - `No switchable chat profiles were returned for this server...`
+  - Measured about `230px` of unused horizontal space to the right of that standalone composer chip row, while the actual composer controls lived on the row below.
+- Issue selected:
+  - The composer-level agent chip was consuming a full extra mobile row even when it led only to the known empty selector state, so the chat composer spent vertical space on a dead-end duplicate affordance.
+- Decision:
+  - Keep the header-level selector as the primary entry point.
+  - Do not redesign the selector sheet.
+  - Make the local fix in `ChatScreen` only: hide the composer-level chip when the selector currently has no options, and re-check that visibility whenever the chat regains focus.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - fetch selector availability from the existing settings/profile endpoints,
+    - hide the composer-level agent chip when no switchable options are returned,
+    - refresh that visibility on screen focus so changes from Settings are reflected when returning to chat.
+  - Updated `apps/mobile/tests/chat-composer-accessibility.test.js` to cover the conditional composer-chip rendering and focus refresh wiring.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - the standalone composer `🤖 Agent` row no longer renders in the current no-switchable-agents state,
+    - the header selector still renders at about `115x54` and still opens the selector sheet,
+    - the chat composer now shows only the actual composer controls in that bottom area (`Attach images`, `TTS`, `Edit before send`, input, `Send`, mic) with no dead-end duplicate selector row.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The header selector still opens an empty state in this server configuration, so its wording and affordance should be re-checked if this state is common.
+  - A deliberately long agent name still needs a smoke test in the header selector on narrow screens.
+  - The loop action rail may still be worth compacting if future live evidence shows text squeeze outweighing the current action clarity.
+- Next checks:
+  - Smoke-test the header selector with a longer agent name to confirm truncation still holds after the composer-row removal.
+  - Decide whether the header selector should get a lighter non-empty-state affordance tweak when there are still no switchable agents.
+  - Revisit loop action-rail width only if a fresh live pass shows loop text density is again the highest-friction mobile issue.
