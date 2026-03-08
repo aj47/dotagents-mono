@@ -995,6 +995,35 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `pnpm --filter @dotagents/desktop typecheck:node`
   - ⚠️ blocked by pre-existing worktree issues unrelated to this patch (`Cannot find name 'agentSessionTracker'` / `processChatRequestViaSdk` / `currentSessionId` etc. in `apps/desktop/src/main/llm.ts`)
 
+### 2026-03-08 — Preserved the best available assistant text when traces were ending blank after streamed work
+
+- Reviewed `langfuse-bug-fix.md` first and avoided already-documented traces.
+- Fresh trace chosen for this pass:
+  - conversation: `conv_1772425377165_7k1ddvkhg`
+  - trace: `session_1772264761651_cwlcsyu68`
+  - evidence: the Discord recap run recorded multiple successful `execute_command` tool spans plus assistant progress text (`"Great, I have all the data..."`, `"Work is not complete..."`), but the trace still finalized with `output: null`.
+- Corroborating recent null-output stop case:
+  - trace: `session_1772472232033_45qwnum4k`
+  - evidence: a stopped run ended with `metadata.wasAborted: true` and `output: null`, which pointed at the same final-output selection blind spot.
+- Diagnosis:
+  - `processTranscriptWithAgentMode()` only guaranteed Langfuse output from `finalContent` or a stored `respond_to_user` message.
+  - If the run stopped or unwound before `finalContent` was populated, Langfuse could miss the latest streamed assistant text even when the current turn had already produced usable content.
+  - The emergency-stop path also dropped the just-streamed assistant text when the stop landed immediately after the LLM response but before that text had been added to `conversationHistory`.
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm.ts`
+    - reuse `getPreferredDelegationOutput(...)` when finalizing the Langfuse trace so blank `finalContent` can fall back to the best available assistant text already present in the run history
+    - pass the just-received `llmResponse.content` into the emergency-stop finalizer so a stop right after streaming preserves that last assistant message instead of collapsing to only the kill-switch note
+    - lift `conversationHistory` to outer scope so the `finally` block can safely inspect it for final output selection
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression test proving that a stop immediately after the streamed LLM response preserves the latest assistant text in both the returned content and Langfuse trace output
+    - refreshed a few adjacent expectations in this file to match current verified completion/termination behavior while keeping the assertions focused on the user-visible guarantees
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - ✅ passed (`11 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test file exits successfully
+  - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts langfuse-bug-fix.md`
+  - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.

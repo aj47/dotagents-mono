@@ -43,6 +43,7 @@ import {
 } from "../shared/builtin-tool-names"
 import {
   appendAgentStopNote,
+  getPreferredDelegationOutput,
   isToolCallPlaceholderResponse,
   needsNativeToolCallingReminder,
   preferStoredUserResponse,
@@ -540,6 +541,14 @@ export async function processTranscriptWithAgentMode(
   let wasAborted = false // Track if agent was aborted for observability
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
   let nonCommunicationToolsExecutedInSession = false
+  let conversationHistory: Array<{
+    role: "user" | "assistant" | "tool"
+    content: string
+    toolCalls?: MCPToolCall[]
+    toolResults?: MCPToolResult[]
+    timestamp?: number
+    ephemeral?: boolean
+  }> = []
 
   try {
   // Track context usage info for progress display
@@ -949,14 +958,7 @@ export async function processTranscriptWithAgentMode(
     logLLM(`[llm.ts processTranscriptWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
   }
 
-  const conversationHistory: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    toolCalls?: MCPToolCall[]
-    toolResults?: MCPToolResult[]
-    timestamp?: number
-    ephemeral?: boolean
-  }> = [
+  conversationHistory = [
     ...(previousConversationHistory || []),
     { role: "user", content: transcript, timestamp: Date.now() },
   ]
@@ -1035,8 +1037,13 @@ export async function processTranscriptWithAgentMode(
       }))
   }
 
-  const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
-    finalContent = appendAgentStopNote(finalContent)
+  const finalizeEmergencyStop = (
+    steps: AgentProgressStep[],
+    candidateOutput?: string,
+  ) => {
+    finalContent = appendAgentStopNote(
+      getPreferredDelegationOutput(candidateOutput ?? finalContent, conversationHistory),
+    )
 
     const lastMessage = conversationHistory[conversationHistory.length - 1]
     if (
@@ -1845,7 +1852,7 @@ Return ONLY JSON per schema.`,
         thinkingStep.status = "completed"
         thinkingStep.title = "Agent stopped"
         thinkingStep.description = "Emergency stop triggered"
-        finalizeEmergencyStop(progressSteps.slice(-3))
+        finalizeEmergencyStop(progressSteps.slice(-3), llmResponse?.content)
         break
       }
     } catch (error: any) {
@@ -3219,6 +3226,7 @@ Return ONLY JSON per schema.`,
   } finally {
     // End Langfuse trace for this agent session if enabled
     // This is in a finally block to ensure traces are closed even on unexpected exceptions
+    finalContent = getPreferredDelegationOutput(finalContent, conversationHistory)
     finalContent = preferStoredUserResponse(
       finalContent,
       getSessionUserResponse(currentSessionId),

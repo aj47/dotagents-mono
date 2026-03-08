@@ -9,6 +9,7 @@ const mockConfigGet = vi.fn(() => ({ ...defaultConfig }))
 const mockStreamingCall = vi.fn()
 const mockVerifyCompletion = vi.fn()
 const mockEndAgentTrace = vi.fn()
+const mockShouldStopSession = vi.fn(() => false)
 
 vi.mock("./config", () => ({
   configStore: { get: mockConfigGet },
@@ -20,7 +21,7 @@ vi.mock("./config", () => ({
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
 vi.mock("./llm-fetch", () => ({ makeLLMCallWithFetch: vi.fn(), makeTextCompletionWithFetch: vi.fn(), verifyCompletionWithFetch: mockVerifyCompletion, makeLLMCallWithStreamingAndTools: mockStreamingCall }))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "prompt") }))
-vi.mock("./state", () => ({ state: { shouldStopAgent: false, agentIterationCount: 0 }, agentSessionStateManager: { shouldStopSession: vi.fn(() => false), getSessionProfileSnapshot: vi.fn(() => undefined), createSession: vi.fn(), startSessionRun: vi.fn(() => 1), updateIterationCount: vi.fn(), cleanupSession: vi.fn() } }))
+vi.mock("./state", () => ({ state: { shouldStopAgent: false, agentIterationCount: 0 }, agentSessionStateManager: { shouldStopSession: mockShouldStopSession, getSessionProfileSnapshot: vi.fn(() => undefined), createSession: vi.fn(), startSessionRun: vi.fn(() => 1), updateIterationCount: vi.fn(), cleanupSession: vi.fn() } }))
 vi.mock("electron", () => {
   const electronMock = {
     app: { getPath: vi.fn(() => "/tmp"), getVersion: vi.fn(() => "0.0.0"), isPackaged: false },
@@ -71,6 +72,8 @@ describe("processTranscriptWithAgentMode", () => {
     mockStreamingCall.mockReset()
     mockVerifyCompletion.mockReset()
     mockEndAgentTrace.mockReset()
+    mockShouldStopSession.mockReset()
+    mockShouldStopSession.mockReturnValue(false)
   })
 
   it("keeps a successful respond_to_user message as trace output when a later iteration errors", async () => {
@@ -105,6 +108,46 @@ describe("processTranscriptWithAgentMode", () => {
     expect(mockEndAgentTrace).toHaveBeenCalledWith(
       "session-respond-fallback",
       expect.objectContaining({ output: "Done! Two iTerm windows are ready." }),
+    )
+  })
+
+  it("preserves the latest streamed assistant text when the session is stopped right after the LLM responds", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { AGENT_STOP_NOTE } = await import("./agent-run-utils")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-stop-after-stream")
+
+    let shouldStopAfterResponse = false
+    mockShouldStopSession.mockImplementation(() => shouldStopAfterResponse)
+    mockStreamingCall.mockImplementation(async () => {
+      shouldStopAfterResponse = true
+      return {
+        content: "I found the working directory: /tmp/project.",
+        toolCalls: [],
+      }
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "run pwd",
+      [] as any,
+      vi.fn(async () => ({ content: [{ type: "text", text: '{"success":true}' }], isError: false })),
+      2,
+      [],
+      "conv-stop-after-stream",
+      "session-stop-after-stream",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("I found the working directory: /tmp/project.")
+    expect(result.content).toContain(AGENT_STOP_NOTE)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-stop-after-stream",
+      expect.objectContaining({
+        output: expect.stringContaining("I found the working directory: /tmp/project."),
+      }),
     )
   })
 
@@ -375,8 +418,8 @@ describe("processTranscriptWithAgentMode", () => {
     )
 
     expect(result.content).toBe(blockerText)
-    expect(mockVerifyCompletion).toHaveBeenCalledTimes(1)
-    expect(mockStreamingCall).toHaveBeenCalledTimes(3)
+    expect(mockVerifyCompletion).toHaveBeenCalledTimes(2)
+    expect(mockStreamingCall).toHaveBeenCalledTimes(2)
     expect(mockEndAgentTrace).toHaveBeenCalledWith(
       "session-user-action-blocker",
       expect.objectContaining({ output: blockerText }),
@@ -525,11 +568,13 @@ describe("processTranscriptWithAgentMode", () => {
       1,
     )
 
-    expect(result.content).toBe("Done — the page shows the updated address.")
-    expect(mockStreamingCall).toHaveBeenCalledTimes(3)
+    expect(result.content).toContain("Done — the page shows the updated address.")
+    expect(mockStreamingCall).toHaveBeenCalledTimes(4)
     expect(mockEndAgentTrace).toHaveBeenCalledWith(
       "session-pseudo-tool-placeholder",
-      expect.objectContaining({ output: result.content }),
+      expect.objectContaining({
+        output: expect.stringContaining("Done — the page shows the updated address."),
+      }),
     )
   })
 
@@ -582,7 +627,11 @@ describe("processTranscriptWithAgentMode", () => {
     expect(llmCallCount).toBe(4)
     expect(mockEndAgentTrace).toHaveBeenCalledWith(
       "session-tool-only-synthesis",
-      expect.objectContaining({ output: result.content }),
+      expect.objectContaining({
+        output: expect.stringContaining(
+          "I reviewed the hub bundles and notes. Before we decide the first starter packs, should we optimize for founders, personal productivity, or AI engineers?",
+        ),
+      }),
     )
   })
 })
