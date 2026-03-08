@@ -35,7 +35,7 @@ import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ExternalLink, AlertCircle, FolderOpen, FolderUp, FileText } from "lucide-react"
 import { toast } from "sonner"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
@@ -46,11 +46,41 @@ import {
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
+const LANGFUSE_INPUT_SAVE_DEBOUNCE_MS = 400
+
+type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
+
+function getLangfuseDrafts(config?: Partial<Config>) {
+  return {
+    langfusePublicKey: config?.langfusePublicKey ?? "",
+    langfuseSecretKey: config?.langfuseSecretKey ?? "",
+    langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
+  }
+}
+
+function getOptionalStringConfigUpdate<Key extends LangfuseDraftKey>(
+  key: Key,
+  value: string,
+): Pick<Config, Key> {
+  return {
+    [key]: value || undefined,
+  } as Pick<Config, Key>
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
 
   const saveConfigMutation = useSaveConfigMutation()
+  const configRef = useRef<Config | undefined>(configQuery.data as Config | undefined)
+  const [langfuseDrafts, setLangfuseDrafts] = useState(() =>
+    getLangfuseDrafts(configQuery.data as Config | undefined),
+  )
+  const langfuseSaveTimeoutsRef = useRef<Record<LangfuseDraftKey, ReturnType<typeof setTimeout> | null>>({
+    langfusePublicKey: null,
+    langfuseSecretKey: null,
+    langfuseBaseUrl: null,
+  })
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -160,13 +190,43 @@ export function Component() {
     (config: Partial<Config>) => {
       saveConfigMutation.mutate({
         config: {
-          ...(configQuery.data as any),
+          ...(configRef.current as any),
           ...config,
         },
       })
     },
-    [saveConfigMutation, configQuery.data],
+    [saveConfigMutation],
   )
+
+  const flushLangfuseDraft = useCallback(
+    (key: LangfuseDraftKey, value: string) => {
+      const timeout = langfuseSaveTimeoutsRef.current[key]
+      if (timeout) {
+        clearTimeout(timeout)
+        langfuseSaveTimeoutsRef.current[key] = null
+      }
+
+      saveConfig(getOptionalStringConfigUpdate(key, value))
+    },
+    [saveConfig],
+  )
+
+  const scheduleLangfuseSave = useCallback(
+    (key: LangfuseDraftKey, value: string) => {
+      const timeout = langfuseSaveTimeoutsRef.current[key]
+      if (timeout) clearTimeout(timeout)
+
+      langfuseSaveTimeoutsRef.current[key] = setTimeout(() => {
+        langfuseSaveTimeoutsRef.current[key] = null
+        saveConfig(getOptionalStringConfigUpdate(key, value))
+      }, LANGFUSE_INPUT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  useEffect(() => {
+    configRef.current = configQuery.data as Config | undefined
+  }, [configQuery.data])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -179,6 +239,22 @@ export function Component() {
       )
     }
   }, [(configQuery.data as any)?.themePreference])
+
+  useEffect(() => {
+    setLangfuseDrafts(getLangfuseDrafts(configQuery.data as Config | undefined))
+  }, [
+    configQuery.data?.langfusePublicKey,
+    configQuery.data?.langfuseSecretKey,
+    configQuery.data?.langfuseBaseUrl,
+  ])
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
+        if (timeout) clearTimeout(timeout)
+      }
+    }
+  }, [])
 
   // Memoize model change handler to prevent infinite re-renders
   const handleTranscriptModelChange = useCallback(
@@ -1207,8 +1283,16 @@ export function Component() {
               <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
                 <Input
                   type="text"
-                  value={configQuery.data?.langfusePublicKey ?? ""}
-                  onChange={(e) => saveConfig({ langfusePublicKey: e.currentTarget.value || undefined })}
+                  value={langfuseDrafts.langfusePublicKey}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value
+                    setLangfuseDrafts((current) => ({
+                      ...current,
+                      langfusePublicKey: value,
+                    }))
+                    scheduleLangfuseSave("langfusePublicKey", value)
+                  }}
+                  onBlur={(e) => flushLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
                   placeholder="pk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
@@ -1217,8 +1301,16 @@ export function Component() {
               <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
                 <Input
                   type="password"
-                  value={configQuery.data?.langfuseSecretKey ?? ""}
-                  onChange={(e) => saveConfig({ langfuseSecretKey: e.currentTarget.value || undefined })}
+                  value={langfuseDrafts.langfuseSecretKey}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value
+                    setLangfuseDrafts((current) => ({
+                      ...current,
+                      langfuseSecretKey: value,
+                    }))
+                    scheduleLangfuseSave("langfuseSecretKey", value)
+                  }}
+                  onBlur={(e) => flushLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
                   placeholder="sk-lf-..."
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
@@ -1227,8 +1319,16 @@ export function Component() {
               <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
                 <Input
                   type="text"
-                  value={configQuery.data?.langfuseBaseUrl ?? ""}
-                  onChange={(e) => saveConfig({ langfuseBaseUrl: e.currentTarget.value || undefined })}
+                  value={langfuseDrafts.langfuseBaseUrl}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value
+                    setLangfuseDrafts((current) => ({
+                      ...current,
+                      langfuseBaseUrl: value,
+                    }))
+                    scheduleLangfuseSave("langfuseBaseUrl", value)
+                  }}
+                  onBlur={(e) => flushLangfuseDraft("langfuseBaseUrl", e.currentTarget.value)}
                   placeholder="https://cloud.langfuse.com (default)"
                   className="w-full sm:w-[360px] max-w-full min-w-0"
                 />

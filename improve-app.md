@@ -3,12 +3,32 @@
 ### Purpose
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
-### Recently Investigated
+### Checked Recently
+- 2026-03-08: Desktop general settings Langfuse text inputs (`apps/desktop/src/renderer/src/pages/settings-general.tsx`) and mobile parity in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-07: Initial setup. No prior investigation log existed.
 - 2026-03-07: Desktop main-process session shutdown guardrails (`apps/desktop/src/main/state.ts`).
 - 2026-03-07: Desktop text composer submission resilience (`apps/desktop/src/renderer/src/components/text-input-panel.tsx`).
 - 2026-03-07: Desktop follow-up composer duplicate-submit guardrails (`apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`).
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
+
+### Improved
+- 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
+
+### Verified
+- 2026-03-08: `git diff --check`
+
+### Blocked
+- 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`.
+
+### Not Yet Checked Recently
+- Desktop provider settings API key / base URL inputs that still save on every keystroke
+- Desktop transcript post-processing prompt editor save behavior in `settings-general.tsx`
+- Agent/task management flows
+- Shared utility reliability / guardrails
+
+### Next Highest-Value Targets
+- Inspect desktop provider settings (`settings-providers.tsx`) for the same local-draft/debounce pattern, especially API key and base URL fields duplicated across active/inactive provider sections
+- Revisit desktop transcript post-processing prompt editing UX once the workspace can run tests again
 
 ### 2026-03-07 — Desktop session shutdown guardrails
 - Date:
@@ -113,6 +133,37 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - inspect other desktop settings text inputs that still save on every keystroke to see whether they need the same local-draft pattern
   - consider small copy polish for WhatsApp allowlist guidance across desktop/mobile if future UX passes revisit this screen
+
+### 2026-03-08 — Desktop Langfuse settings draft/save resilience
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop general settings Langfuse inputs in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+- Why it was chosen:
+  - the ledger already called out remaining settings text inputs that still save on every keystroke
+  - these Langfuse fields include long keys and URLs, so save-on-every-keystroke creates avoidable config churn and a visibly worse editing experience
+  - mobile already uses local drafts for the same Langfuse area, so desktop was lagging behind an existing product pattern
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - `apps/desktop/src/renderer/src/pages/settings-whatsapp.allowlist.test.tsx` for an existing local-draft/debounce test pattern
+  - `apps/desktop/src/renderer/src/lib/queries.ts` to confirm config-save invalidation behavior
+  - attempted live desktop inspection, but no Electron CDP target was available in this environment
+- Improvement made:
+  - added local draft state for Langfuse public key, secret key, and base URL inputs on desktop
+  - debounced Langfuse saves by 400ms while typing and flushes the latest value on blur
+  - switched config merging for these delayed saves to use the latest config snapshot via a ref, avoiding stale-config overwrites if another setting changes before the timeout fires
+  - added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`
+- Assumptions / tradeoffs / rationale:
+  - kept the existing autosave model instead of introducing explicit Save/Cancel controls to keep the change small and low-risk
+  - used the existing WhatsApp settings debounce timing (400ms) for behavioral consistency rather than inventing a new threshold
+  - limited this pass to Langfuse inputs instead of refactoring every settings field at once, because the user value here is clear and the implementation path is local
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` but the workspace currently lacks installed dependencies; the required prebuild failed because `tsup` was unavailable in `packages/shared`
+  - `git diff --check`
+- Follow-up checks:
+  - inspect desktop provider API key / base URL fields for the same save-on-every-keystroke pattern next
+  - once dependencies are available again, run the targeted Langfuse test file and consider broadening coverage to other settings draft-save flows
 
 ### Iteration Template
 - Date:
