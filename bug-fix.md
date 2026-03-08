@@ -1,6 +1,13 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-agents.tsx` again and confirmed the Capabilities tab still loaded `getMcpServerStatus()`, `getMcpDetailedToolList()`, and `getSkills()` behind `catch {}` blocks, so rejected IPC/config reads collapsed into the same empty arrays/objects used for genuine zero-data states.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` that those three capability loaders are plain TIPC actions with no renderer-side fallback contract, so a thrown rejection is a real state the page must distinguish instead of silently treating as “nothing configured”.
+- [x] 2026-03-08: Compared the agent-editor capabilities UX against `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx`, which already uses compact inline loading/error/retry cards for the same class of MCP data-loading failure.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts`, but the worktree still has no installed desktop test tooling (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`: `Command "vitest" not found`).
+- [x] 2026-03-08: Attempted desktop renderer type-check verification with `pnpm --filter @dotagents/desktop typecheck:web`, but the worktree still has no installed dependencies (`node_modules` missing; `@electron-toolkit/tsconfig/tsconfig.web.json` not found).
+- [x] 2026-03-08: Ran a dependency-free Node file-read sanity check for `apps/desktop/src/renderer/src/pages/settings-agents.tsx`; the assertions passed for the new capability loading/error/retry state wiring.
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop agent-capabilities load-state fix and regression test update.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-skills.tsx` and confirmed the single-skill delete mutation still toasted `Skill deleted successfully` from `onSuccess(...)` for any resolved `tipcClient.deleteSkill({ id })` call.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/tipc.ts` plus `apps/desktop/src/main/skills-service.ts` that desktop `deleteSkill` returns `false` when the skill id is missing or file deletion/rollback fails, so the Skills page could claim deletion even when nothing changed.
 - [x] 2026-03-08: Searched `apps/mobile/src` for an equivalent skills-management screen and found no matching delete flow; the visible `Agent Skills` management UI is desktop-only.
@@ -206,6 +213,9 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
 
 ### Reproduced
+- [x] **Desktop Settings → Agents Capabilities could misreport load failures as “nothing configured” (directly confirmed in source):**
+  - In `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, `loadServers()`, `loadAllTools()`, and `loadSkills()` previously swallowed all errors with `catch {}` while the page derived its sections from default-empty `serverStatus`, `allTools`, and `skills` state.
+  - That meant a rejected capability load rendered the same visible copy as a real empty configuration (`No skills available.`, `No MCP servers configured.`, `No built-in tools available.`), which is misleading on a primary desktop agent-editing surface because the user loses both the actual error and any retry affordance.
 - [x] **Desktop AgentSelector could silently disappear on agent-profile load failure (directly confirmed in source):**
   - In `apps/desktop/src/renderer/src/components/agent-selector.tsx`, the selector previously defaulted `agents` to `[]` and returned `null` whenever `enabledAgents.length === 0`, without distinguishing first-load, rejected `getAgentProfiles()` queries, or genuine zero-enabled-agent results.
   - Because `AgentSelector` is used on the desktop sessions empty state/header and session-input chrome, a rejected agent-profile load made those start surfaces look like they simply had no selectable agents instead of telling the user the load failed or offering retry.
@@ -422,6 +432,8 @@
    - That meant a stale desktop `Delete task` click could claim success even though no repeat task was actually removed, which is misleading on an active settings-management surface.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the Capabilities tab now tracks loading/error state for skills, MCP servers, and built-in tools; logs failed fetches; and swaps misleading empty-state copy for inline loading/error/retry UI when the relevant data never loaded.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` with a source-level regression test that locks in the new capability load/error/retry state wiring and guards against reintroducing silent `catch {}` handling in `settings-agents.tsx`.
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-selector.tsx` so the desktop selector now keeps a bounded outline button visible while agent profiles are loading and replaces silent initial load failures with a retryable `Retry agents` trigger that exposes the backend error in the button tooltip/title.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-skills.tsx` so the single-skill delete mutation now checks the resolved boolean result, refreshes the skills query on `false`, and surfaces a visible failure toast instead of claiming success when deletion did not happen.
 - [x] Added `apps/desktop/src/renderer/src/pages/settings-skills.feedback.test.ts` with focused source-level regression coverage locking in the new false-result handling for single-skill deletes on the desktop Skills page.
@@ -594,6 +606,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` with focused regression coverage for the stale delete-result path, locking in the new false-result guard and query refresh behavior.
 
 ### Verified
+- [x] Manual source verification: `settings-agents.tsx` now records `skillsLoadError`, `serverStatusLoadError`, and `allToolsLoadError`, renders explicit loading/error/retry states before falling back to empty-state copy, and no longer uses silent `catch {}` blocks for those capability fetches.
+- [x] Dependency-free verification: a Node file-read assertion script passed for the new `settings-agents.tsx` capability load-state wiring, including the explicit error-state checks and the absence of `catch {}`.
+- [x] Patch hygiene verification: `git diff --check` passed after the `settings-agents.tsx` capability load-state fix.
 - [x] Manual source verification: `AgentSelector` now distinguishes `isLoading` / `isFetching` / `error` from a genuine success-empty state, rendering `Loading agents...` or `Retry agents` buttons instead of returning `null` whenever the first profile query has no data yet.
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-skills.tsx` now checks `didDelete` inside the single-skill delete mutation, refreshes the `skills` query on false results, and only shows `Skill deleted successfully` when the backend actually returns `true`.
 - [x] Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts`, but this worktree still has no installed desktop test tooling (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL: Command "vitest" not found`).
@@ -748,6 +763,8 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this desktop agent-capabilities load-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Desktop renderer type-check verification for this fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` still fails because `node_modules` are missing and the base Electron toolkit tsconfig cannot be resolved.
 - [x] Targeted automated verification for this desktop Skills single-delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this desktop AgentSelector fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-selector.feedback.test.ts src/renderer/src/components/agent-selector.layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this MCP Tool Management load-state fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-tool-manager.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -802,6 +819,7 @@
 - [x] Targeted automated verification for this desktop repeat-task delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether the desktop agent-editor MCP Servers section should eventually show a non-blocking inline warning when server status loads successfully but the shared tool list fails, since the section can still render server rows while tool counts/expansions are incomplete until live validation is possible.
 - [ ] Whether a successful zero-enabled-agent result on desktop should eventually show an explicit empty-state/manage-agents affordance like mobile, rather than continuing to hide the selector outside of load/error states.
 - [ ] Whether later background polling failures in `mcp-tool-manager.tsx` should eventually surface a non-blocking stale-data banner/toast once live desktop verification is available, or whether keeping the last successful tool list visible without extra noise is the better UX.
 - [ ] Whether the throttled mid-drag `updatePanelSize(...)` failure path in `panel-resize-wrapper.tsx` should also surface limited user feedback, or remain console-only to avoid toast spam once live desktop verification is available.
@@ -839,6 +857,8 @@
 - [ ] Whether adjacent desktop repeat-task actions that also depend on boolean TIPC results (`triggerLoop`, `startLoop`, `stopLoop`) should gain the same explicit false-result feedback once loop management can be exercised in a runnable environment.
 
 ### Diagnosis / Rationale
+- The agent-capabilities issue is a page-scoped load-state correctness bug: rejected capabilities fetches were indistinguishable from a genuine empty configuration, so the editor could falsely tell users they had no skills, no MCP servers, or no built-in tools when the page had actually failed to load.
+- Reusing compact inline loading/error/retry UI is the smallest safe fix because the failure happens during page data loading rather than a one-off action, `mcp-tool-manager.tsx` already establishes the same repo-local pattern, and the successful capabilities-editing flow stays unchanged.
 - The desktop Skills issue is another clear boolean-contract mismatch on a visible management action: `Delete` is user-initiated, but the renderer previously equated any resolved `deleteSkill(...)` promise with success even though the main-process contract explicitly uses `false` to mean “nothing was deleted.”
 - Checking `didDelete`, refreshing the `skills` query on false results, and surfacing a visible error toast is the smallest safe fix because it preserves the current delete workflow/UI, keeps successful deletes unchanged, and resynchronizes stale skill lists without widening into unrelated skills-page cleanup.
 - The desktop AgentSelector issue is a primary entry-point load-state bug: when profile loading failed, the agent picker vanished from session-start surfaces and looked indistinguishable from “there are no agents to choose from.”
@@ -929,6 +949,8 @@
 - Checking the returned success flag and refreshing the loop queries is the smallest safe fix because it corrects the false-success toast without changing loop-service semantics or widening into unrelated run/toggle behavior.
 
 ### Assumptions
+- Assumption: using inline loading/error/retry states in the desktop agent editor is acceptable because this is a page-scoped initial-load failure, the repo already uses the same pattern in `mcp-tool-manager.tsx`, and a toast-only approach would be easier to miss once the editor is already open.
+- Assumption: preserving previously loaded capability data on later fetch failures is acceptable for this pass because the confirmed bug was the initial false-empty state; keeping stale-but-usable data visible is less disruptive than blanking the editor until a later live-validation pass decides whether partial-warning UX is needed.
 - Assumption: keeping this fix desktop-only is acceptable because the confirmed bug depends on the desktop `settings-skills.tsx` + TIPC boolean delete contract, and this worktree has no matching mobile skills-management delete surface to keep in sync.
 - Assumption: keeping the successful zero-enabled-agent state hidden for this pass is acceptable because the confirmed bug was load/error misreporting rather than the broader empty-agent UX, and mobile’s richer manage-settings empty state would be a larger product decision for dense desktop headers/composers.
 - Assumption: surfacing only drag-start and final-persistence resize failures with `toast.error(...)` is acceptable because those are the user-meaningful breakpoints in the floating-panel resize flow, while the high-frequency throttled `updatePanelSize(...)` path would risk noisy toast spam during normal drags.
@@ -984,6 +1006,8 @@
 - Assumption: refreshing `loops` / `loop-statuses` and showing an error toast when `deleteLoop(...)` resolves to `{ success: false }` is acceptable because the current false-return path means the task id is stale or already missing, so syncing the visible list is more honest than pretending the delete succeeded.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.system-prompt.test.ts` and live-verify the desktop Settings → Agents Capabilities tab by forcing one rejected `getSkills()`, `getMcpServerStatus()`, and `getMcpDetailedToolList()` call to confirm the page now shows inline retry states instead of false-empty capability messages.
+- After that, inspect whether the MCP Servers section should also surface a partial-warning state when server status succeeds but the tool list alone fails, since that follow-up is lower-signal than the now-fixed initial false-empty bug.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-skills.feedback.test.ts` and live-verify deleting a stale or already-missing skill so the desktop Skills page now refreshes the list and shows the new failure toast instead of `Skill deleted successfully`.
 - After that, inspect adjacent desktop Skills actions that depend on backend success contracts (for example import/export or folder-scan refresh flows) to see whether any still resolve into misleading success/no-op feedback.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-selector.feedback.test.ts src/renderer/src/components/agent-selector.layout.test.ts` and live-verify the desktop sessions empty state/header plus `SessionInput` surfaces by forcing one rejected `getAgentProfiles()` response to confirm the selector now stays visible with `Retry agents` instead of disappearing.

@@ -48,6 +48,18 @@ function normalizeAgentEditorTab(
     : tab
 }
 
+function getCapabilityLoadErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim()
+  }
+
+  return fallback
+}
+
 interface EditingAgent {
   id?: string
   displayName: string
@@ -100,8 +112,14 @@ export function SettingsAgents() {
   const [editing, setEditing] = useState<EditingAgent | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [serverStatus, setServerStatus] = useState<Record<string, ServerInfo>>({})
+  const [isLoadingServerStatus, setIsLoadingServerStatus] = useState(false)
+  const [serverStatusLoadError, setServerStatusLoadError] = useState<string | null>(null)
   const [allTools, setAllTools] = useState<{name: string, description: string, serverName: string}[]>([])
+  const [isLoadingAllTools, setIsLoadingAllTools] = useState(false)
+  const [allToolsLoadError, setAllToolsLoadError] = useState<string | null>(null)
   const [skills, setSkills] = useState<AgentSkill[]>([])
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false)
+  const [skillsLoadError, setSkillsLoadError] = useState<string | null>(null)
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const [newPropKey, setNewPropKey] = useState("")
@@ -119,7 +137,13 @@ export function SettingsAgents() {
     loadAgents()
     tipcClient.getDefaultSystemPrompt().then(setDefaultSystemPrompt).catch(console.error)
   }, [])
-  useEffect(() => { if (editing) { loadServers(); loadSkills(); loadAllTools() } }, [!!editing])
+  useEffect(() => {
+    if (!editing) return
+
+    void loadServers()
+    void loadSkills()
+    void loadAllTools()
+  }, [editing?.id])
 
   useEffect(() => {
     const installBundlePath = searchParams.get("installBundle")
@@ -172,16 +196,52 @@ export function SettingsAgents() {
     setAgents(all)
   }
   const loadServers = async () => {
-    try { const s = await tipcClient.getMcpServerStatus(); setServerStatus(s as Record<string, ServerInfo>) } catch {}
+    setIsLoadingServerStatus(true)
+
+    try {
+      const s = await tipcClient.getMcpServerStatus()
+      setServerStatus(s as Record<string, ServerInfo>)
+      setServerStatusLoadError(null)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to load MCP server status:", error)
+      setServerStatusLoadError(
+        getCapabilityLoadErrorMessage(error, "Please check your MCP server configuration and try again."),
+      )
+    } finally {
+      setIsLoadingServerStatus(false)
+    }
   }
   const loadAllTools = async () => {
+    setIsLoadingAllTools(true)
+
     try {
       const list = await tipcClient.getMcpDetailedToolList()
       setAllTools(list)
-    } catch {}
+      setAllToolsLoadError(null)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to load MCP tool list:", error)
+      setAllToolsLoadError(
+        getCapabilityLoadErrorMessage(error, "Please check your MCP server configuration and try again."),
+      )
+    } finally {
+      setIsLoadingAllTools(false)
+    }
   }
   const loadSkills = async () => {
-    try { const s = await tipcClient.getSkills(); setSkills(s) } catch {}
+    setIsLoadingSkills(true)
+
+    try {
+      const s = await tipcClient.getSkills()
+      setSkills(s)
+      setSkillsLoadError(null)
+    } catch (error) {
+      console.error("[SettingsAgents] Failed to load skills:", error)
+      setSkillsLoadError(
+        getCapabilityLoadErrorMessage(error, "Please check your skills configuration and try again."),
+      )
+    } finally {
+      setIsLoadingSkills(false)
+    }
   }
 
   const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()) }
@@ -772,12 +832,30 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
+                    {skillsLoadError && skills.length === 0 ? (
+                      <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
+                    )}
                   </div>
                 </div>
                 {!isSectionCollapsed("skills") && (
                   <div className="border-t px-2 py-2 space-y-0.5">
-                    {skills.length === 0 ? (
+                    {isLoadingSkills && skills.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Loading skills...</p>
+                      </div>
+                    ) : skillsLoadError && skills.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <p className="text-sm font-medium text-destructive">Failed to load skills</p>
+                        <p className="max-w-md text-xs text-muted-foreground [overflow-wrap:anywhere]">{skillsLoadError}</p>
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadSkills()}>
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : skills.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No skills available.</p>
                     ) : skills.map(skill => (
                       <div key={skill.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/30">
@@ -810,12 +888,30 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allServersDisabled} onClick={(e) => { e.stopPropagation(); disableAllServers() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
+                    {serverStatusLoadError && serverNames.length === 0 ? (
+                      <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
+                    )}
                   </div>
                 </div>
                 {!isSectionCollapsed("mcp-servers") && (
                   <div className="border-t px-2 py-2 space-y-1">
-                    {serverNames.length === 0 ? (
+                    {isLoadingServerStatus && serverNames.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Loading MCP servers...</p>
+                      </div>
+                    ) : serverStatusLoadError && serverNames.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <p className="text-sm font-medium text-destructive">Failed to load MCP servers</p>
+                        <p className="max-w-md text-xs text-muted-foreground [overflow-wrap:anywhere]">{serverStatusLoadError}</p>
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadServers()}>
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : serverNames.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No MCP servers configured.</p>
                     ) : serverNames.map(name => {
                       const info = serverStatus[name]
@@ -883,12 +979,30 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allBuiltinDisabled} onClick={(e) => { e.stopPropagation(); disableAllBuiltinTools() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{builtinTools.filter(t => isBuiltinToolEnabled(t.name)).length} of {builtinTools.length} enabled</Badge>
+                    {allToolsLoadError && allTools.length === 0 ? (
+                      <Badge variant="destructive" className="text-xs">Unavailable</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{builtinTools.filter(t => isBuiltinToolEnabled(t.name)).length} of {builtinTools.length} enabled</Badge>
+                    )}
                   </div>
                 </div>
                 {!isSectionCollapsed("builtin-tools") && (
                   <div className="border-t px-2 py-2 space-y-0.5">
-                    {builtinTools.length === 0 ? (
+                    {isLoadingAllTools && allTools.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Loading built-in tools...</p>
+                      </div>
+                    ) : allToolsLoadError && allTools.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-4 text-center">
+                        <p className="text-sm font-medium text-destructive">Failed to load built-in tools</p>
+                        <p className="max-w-md text-xs text-muted-foreground [overflow-wrap:anywhere]">{allToolsLoadError}</p>
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void loadAllTools()}>
+                          <RefreshCw className="h-3 w-3" />
+                          Retry
+                        </Button>
+                      </div>
+                    ) : builtinTools.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No built-in tools available.</p>
                     ) : builtinTools.map(tool => {
                       const isEssential = tool.name === "mark_work_complete"
