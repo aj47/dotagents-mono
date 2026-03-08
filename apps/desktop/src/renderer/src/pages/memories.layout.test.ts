@@ -36,6 +36,16 @@ describe("memories page layout", () => {
     )
   })
 
+  it("lets the summary stats wrap safely and keeps the high badge compact under narrow widths", () => {
+    expect(memoriesSource).toContain('className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"')
+    expect(memoriesSource).toContain('className="shrink-0 text-muted-foreground"')
+    expect(memoriesSource).toContain('className="flex max-w-full flex-wrap items-center gap-2"')
+    expect(memoriesSource).toContain('className={cn("shrink-0 text-xs", importanceColors.critical)}')
+    expect(memoriesSource).toContain('className={cn("shrink-0 text-xs", importanceColors.high)}')
+    expect(memoriesSource).toContain('title={`${highCount} high importance memories`}')
+    expect(memoriesSource).toContain('{highCount} high')
+  })
+
   it("gives per-memory icon controls full-size affordances and explicit labels", () => {
     expect(memoriesSource).toContain(
       'className="mt-0.5 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"',

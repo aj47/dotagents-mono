@@ -1,5 +1,57 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 79: Desktop memories stats strip kept count and importance badges in a single clipped row under stressed width
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/memories.tsx` (`Memories` route → summary stats row beneath the `.agents` template card)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched MCP tools, session markdown, copy-control, and earlier memories follow-ups unless a genuinely fresh sub-surface appeared.
+  - A reusable live Electron renderer was still available on `:9333`, and the `Memories` route already had real data mounted, which made it practical to inspect another unlogged sub-surface instead of guessing from source alone.
+  - The running renderer is not guaranteed to be serving this checkout’s latest bundle, so I only pursued a fix after confirming the problematic stats-row contract still exists in current source.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, and the repo’s mobile workflow/docs before choosing the next area
+  - reused raw CDP inspection against the live Electron renderer target on `http://localhost:5173/memories`
+  - stress-tested the mounted page at `420×820` with `document.documentElement.style.fontSize = '24px'`, captured screenshot-backed evidence in `tmp/ui-audit/memories-stats-420x820-root24-before.png`, and measured the mounted stats row directly in the DOM before editing source
+  - compared the live DOM against current `memories.tsx` to avoid stale-bundle traps; the rigid `flex items-center gap-4 text-sm` stats row and verbose `high importance` badge still matched this checkout
+  - prototyped the exact wrap-safe stats-row treatment in the live DOM and captured `tmp/ui-audit/memories-stats-420x820-root24-prototype.png`
+  - cross-checked mobile and confirmed `apps/mobile/src/` does not expose an equivalent memories-management page or this desktop-only stats strip, so no parallel mobile patch was needed
+
+#### Findings
+
+- Before the fix, the desktop `Memories` summary stats strip had one concrete narrow-width polish issue with clear user impact:
+  - the row rendered the total count plus both importance badges in one rigid horizontal lane (`flex items-center gap-4 text-sm`)
+  - in live inspection at `420×820` with `24px` base text, the visible stats row was only about `194px` wide but needed about `359px` of scroll width
+  - the mounted `16 high importance` badge started around `x = 432` in a `420px` viewport, so the row’s rightmost summary badge was pushed beyond the visible page instead of wrapping intentionally
+  - practical impact: users lose quick severity context right above the memories list exactly when the window is tight or text is larger, making the page feel clipped and less polished even before they interact with the list itself
+
+#### Changes made
+
+- Hardened only the summary stats strip in `apps/desktop/src/renderer/src/pages/memories.tsx`:
+  - changed the row from a rigid single-line strip to a wrap-safe `flex flex-wrap items-center gap-x-4 gap-y-2 text-sm` layout
+  - made the total-count label explicitly `shrink-0` so it keeps a stable first-line anchor
+  - grouped the importance badges into a dedicated `flex max-w-full flex-wrap items-center gap-2` cluster so they can drop cleanly beneath the count when space gets tight
+  - marked both badges `shrink-0` and shortened the visible high-importance summary from `high importance` to `high`, preserving the fuller meaning via `title={`${highCount} high importance memories`}`
+- Extended `apps/desktop/src/renderer/src/pages/memories.layout.test.ts` with focused source-contract coverage for the wrap-safe stats strip and compact high badge
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.layout.test.ts` *(blocked: this worktree still has no local dependencies / `node_modules`; `vitest` was not found)*
+- Dependency-free source-contract verification: a Node script confirmed the new stats-row classes, compact high badge/title contract, and focused regression test coverage are present ✅
+- Live Electron evidence before the fix at `http://localhost:5173/memories` via raw CDP:
+  - screenshot: `tmp/ui-audit/memories-stats-420x820-root24-before.png`
+  - representative mounted stats-row measurement: `clientWidth = 194`, `scrollWidth = 359`; the `16 high importance` badge began around `x = 432` in a `420px` viewport
+- Live DOM prototype verification of the intended fix:
+  - screenshot: `tmp/ui-audit/memories-stats-420x820-root24-prototype.png`
+  - after applying the same wrap-safe treatment and compact high badge in the mounted DOM, the stats row dropped to `clientWidth = 179`, `scrollWidth = 179`, with the badges preserved as `1 critical` and `16 high` inside the visible lane
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/memories.tsx apps/desktop/src/renderer/src/pages/memories.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer remains valuable for screenshot-backed evidence and DOM prototyping, but it is not guaranteed to be serving this checkout’s latest bundle. I therefore limited the shipped fix to a source contract that still clearly exists in current code.
+- Mobile cross-check: no matching mobile change was needed because the mobile app does not expose this desktop `Memories` management route or summary strip.
+- Tradeoff/rationale: the stats row can now take a little more vertical space under stress, but that is a better product tradeoff than clipping the high-importance summary out of view.
+- Best next UI audit chunk after this one: move away from the just-touched memories stats/header area unless a rebuilt renderer from this checkout becomes available; the next strongest target is another fresh desktop or mobile top-level surface with a real empty/loading/error or narrow-width state.
+
 ### 2026-03-08 — Chunk 78: Desktop MCP tool-group headers forced server identity and ON/OFF controls into an off-screen single row under stressed width
 
 - Area selected:

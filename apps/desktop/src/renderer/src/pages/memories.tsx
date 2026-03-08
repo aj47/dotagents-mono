@@ -510,18 +510,23 @@ Optional notes go here (saved as userNotes).
 
         {/* Stats */}
         {memories.length > 0 && (
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground">{memories.length} memories</span>
-            {criticalCount > 0 && (
-              <Badge className={cn("text-xs", importanceColors.critical)}>
-                {criticalCount} critical
-              </Badge>
-            )}
-            {highCount > 0 && (
-              <Badge className={cn("text-xs", importanceColors.high)}>
-                {highCount} high importance
-              </Badge>
-            )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <span className="shrink-0 text-muted-foreground">{memories.length} memories</span>
+            <div className="flex max-w-full flex-wrap items-center gap-2">
+              {criticalCount > 0 && (
+                <Badge className={cn("shrink-0 text-xs", importanceColors.critical)}>
+                  {criticalCount} critical
+                </Badge>
+              )}
+              {highCount > 0 && (
+                <Badge
+                  className={cn("shrink-0 text-xs", importanceColors.high)}
+                  title={`${highCount} high importance memories`}
+                >
+                  {highCount} high
+                </Badge>
+              )}
+            </div>
           </div>
         )}
 
