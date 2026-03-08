@@ -1883,3 +1883,37 @@
   - Re-run broader mobile type/build validation once the Expo/TypeScript toolchain is restored in this worktree.
 
 - Next recommended issue work item: prefer a fresh open issue slice next unless `#53` receives explicit follow-up feedback, since the remaining work there now trends toward broader mobile UX polish rather than another tiny shippable contract fix.
+
+##### Issue #56 — Hub bundle inspector: richer MCP transport and setup disclosure
+
+- Selection rationale:
+  - After the earlier landing-page inspector slice, `#56` still had one small trust-focused follow-up already called out in this ledger: the MCP section could be more informative without reopening the broader hub architecture.
+  - This was a tight website-only change with clear user value because MCP servers are one of the highest-risk parts of a bundle preview.
+- Investigation:
+  - Re-read open issue `#56` and its owner comment, which explicitly emphasized previewing MCP servers/commands before install as a key trust surface.
+  - Re-inspected `website/index.html` and confirmed the MCP section still rendered only `command + args`, falling back to a generic `configured via provider` label for non-stdio servers.
+  - Checked real public bundle data from `aj47/dotagents-hub` and confirmed the gap is user-visible today: the `TechFren Daily Driver` bundle includes an `exa` MCP entry with `transport: streamableHttp` but no command, so the inspector currently hides the meaningful connection shape behind that generic fallback.
+  - Re-checked `apps/desktop/src/main/bundle-service.ts` and confirmed the bundle format already preserves safe MCP config metadata (`config`, `redactedSecretFields`) for richer disclosure when bundles include redacted placeholders or bundled endpoints.
+- Important assumptions:
+  - Assumption: improving MCP preview fidelity is an acceptable `#56` follow-up even though the original acceptance criteria were already broadly covered by the first slice.
+  - Why acceptable: the issue is fundamentally about inspect-before-install trust, and MCP connection/setup disclosure is a direct improvement to that trust surface rather than unrelated polish.
+  - Assumption: it is worth supporting richer MCP metadata in the website inspector now even if the currently featured public bundles only use part of that shape.
+  - Why acceptable: the code stays small, improves current `streamableHttp` previews immediately, and future-proofs the modal for community bundles that carry redacted placeholder/config metadata.
+- Changes implemented:
+  - Updated `website/index.html` so MCP entries now render transport-aware connection previews instead of collapsing non-command servers into a generic provider fallback.
+  - Added MCP helper logic that normalizes transport labels (for example, `streamableHttp` → `streamable HTTP`) and surfaces a clearer preview for remote HTTP/SSE MCP servers.
+  - Added safe setup-hint rendering for MCP entries with preserved redacted placeholder metadata, showing `Requires configuration: ...` when bundles include `redactedSecretFields` or placeholder env values such as `<CONFIGURE_YOUR_KEY>`.
+  - Added a small `.bundle-entry-note` style so setup requirements read as trust/safety guidance rather than primary content.
+  - Extended `website/website-hub-inspector.test.js` with dependency-light assertions covering the new MCP helper functions and setup-warning copy.
+- Verification run:
+  - Completed: `node --test website/website-hub-inspector.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #56:
+  - If community bundles start shipping richer redacted MCP configs, consider showing a slightly more structured setup summary (for example, separating endpoint, auth fields, and local path requirements).
+  - If repeat-task preview depth becomes a recurring trust question, the next similarly small follow-up would be exposing startup-trigger details or other schedule metadata beyond the current interval label.
+  - Avoid taking on broader hub-catalog/search work here unless the repo website intentionally becomes the full hub surface.
+
+- Next recommended issue work item: refresh the open issue list again and prefer either a fresh bug with a direct local repro or another equally small trust/UX slice, avoiding `#54` unless a concrete provider contract appears.

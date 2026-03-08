@@ -749,6 +749,12 @@
             color: var(--color-fg-muted);
             font-size: 13px;
         }
+        .bundle-entry-note {
+            margin: 10px 0 0;
+            color: var(--color-accent-amber);
+            font-size: 12px;
+            line-height: 1.6;
+        }
         .bundle-command {
             margin-top: 12px;
             padding: 12px 14px;
@@ -1595,6 +1601,57 @@
             return `every ${intervalMinutes} minutes`
         }
 
+        function isRecord(value) {
+            return !!value && typeof value === 'object' && !Array.isArray(value)
+        }
+
+        function formatTransportLabel(transport) {
+            const normalized = String(transport || 'stdio').trim()
+            if (normalized === 'streamableHttp') return 'streamable HTTP'
+            if (normalized === 'sse') return 'server-sent events'
+            return normalized || 'stdio'
+        }
+
+        function getMcpConfigurationRequirements(server) {
+            const requirements = []
+            const seen = new Set()
+            const pushRequirement = (value) => {
+                if (!value || seen.has(value)) return
+                seen.add(value)
+                requirements.push(value)
+            }
+
+            if (Array.isArray(server.redactedSecretFields)) {
+                server.redactedSecretFields.forEach((field) => pushRequirement(String(field).trim()))
+            }
+
+            const config = isRecord(server.config) ? server.config : null
+            const env = config && isRecord(config.env) ? config.env : null
+            if (env) {
+                Object.entries(env).forEach(([key, value]) => {
+                    if (typeof value === 'string' && value.includes('<CONFIGURE_YOUR_KEY>')) {
+                        pushRequirement(`env.${key}`)
+                    }
+                })
+            }
+
+            return requirements
+        }
+
+        function getMcpConnectionPreview(server) {
+            const args = Array.isArray(server.args) && server.args.length ? ` ${server.args.join(' ')}` : ''
+            if (server.command) return `${server.command}${args}`
+
+            const config = isRecord(server.config) ? server.config : null
+            const endpoint = config && ['url', 'baseUrl', 'endpoint'].find((key) => typeof config[key] === 'string' && config[key].trim())
+            if (endpoint) return String(config[endpoint]).trim()
+
+            if (server.transport === 'streamableHttp') return 'Remote MCP server via bundled HTTP transport'
+            if (server.transport === 'sse') return 'Remote MCP server via bundled SSE transport'
+
+            return 'Configured via provider or local app integration'
+        }
+
         function renderSection(title, content) {
             return `
                 <details class="bundle-section" open>
@@ -1636,12 +1693,15 @@
 
             if (bundle.mcpServers?.length) {
                 const mcpHtml = bundle.mcpServers.map((server) => {
-                    const args = Array.isArray(server.args) && server.args.length ? ` ${server.args.join(' ')}` : ''
+                    const transportLabel = formatTransportLabel(server.transport)
+                    const connectionPreview = getMcpConnectionPreview(server)
+                    const configRequirements = getMcpConfigurationRequirements(server)
                     return `
                         <article class="bundle-entry">
                             <h4>🔧 ${escapeHtml(server.name)}</h4>
-                            <p class="bundle-entry-subtitle">${escapeHtml(server.transport || 'stdio')} transport${server.enabled === false ? ' · disabled' : ''}</p>
-                            <div class="bundle-command">${escapeHtml(`${server.command || 'configured via provider'}${args}`)}</div>
+                            <p class="bundle-entry-subtitle">${escapeHtml(transportLabel)} transport${server.enabled === false ? ' · disabled' : ''}</p>
+                            <div class="bundle-command">${escapeHtml(connectionPreview)}</div>
+                            ${configRequirements.length ? `<p class="bundle-entry-note">Requires configuration: ${escapeHtml(configRequirements.join(', '))}</p>` : ''}
                         </article>
                     `
                 }).join('')

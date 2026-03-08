@@ -27,6 +27,16 @@ test('bundle inspector modal includes required sections and warnings', () => {
     assert.match(source, /Memories \(\$\{bundle\.memories\.length\}\)/)
 })
 
+test('MCP preview discloses transport-aware connection details and setup requirements', () => {
+    assert.match(source, /function formatTransportLabel\(transport\)/)
+    assert.match(source, /function getMcpConnectionPreview\(server\)/)
+    assert.match(source, /function getMcpConfigurationRequirements\(server\)/)
+    assert.match(source, /streamable HTTP/)
+    assert.match(source, /Remote MCP server via bundled HTTP transport/)
+    assert.match(source, /Requires configuration:/)
+    assert.match(source, /<CONFIGURE_YOUR_KEY>/)
+})
+
 test('modal logic fetches bundle JSON and supports expected dismissal paths', () => {
     assert.match(source, /const response = await fetch\(bundleUrl\)/)
     assert.match(source, /response\.json\(\)/)
