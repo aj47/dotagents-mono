@@ -1,5 +1,47 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 139 - Surface loop profile assignment state before wrapped chips
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first to avoid reworking the just-touched `Settings > Agent Loops` row metadata and agent-row hierarchy without new evidence.
+  - Reconfirmed the mobile workflow from repo files before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Rechecked the less-recently touched mobile edit flow in `apps/mobile/src/screens/LoopEditScreen.tsx` and its focused coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js` instead of revisiting the latest settings-list tweaks.
+  - Fresh live Expo Web / simulator inspection was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` labeled the optional `Agent Profile` section, then immediately rendered the wrapped profile chip list.
+  - The screen only expressed the current assignment through chip selection state or lower notices like `No profile selected`, missing-profile warnings, and retry notices.
+  - On a narrow mobile screen, wrapped or truncated chips can push the actual assignment state down the visual hierarchy, especially before the user scrolls through the full chip cloud.
+- Issue identified:
+  - The loop edit flow did not surface the current saved-profile assignment early enough, weakening state clarity in a dense mobile section.
+- Decision and rationale:
+  - Keep the existing chip selector, loading/error notices, and `No profile` behavior; do not redesign the section or move actions around.
+  - Add the smallest useful state cue instead: a one-line assignment summary directly under the section label so users can understand the loop's current assignment before scanning the chips.
+  - Preserve a safe generic fallback when a profile id is present but the latest profile list has not resolved yet.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - derive `selectedProfileName` from the loaded profile list,
+    - compute `profileAssignmentSummaryText` for assigned, unresolved-assigned, and unassigned states,
+    - render that summary above the wrapped profile chips with muted helper styling.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new assignment-summary contract and placement.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed a short summary like `Runs with …` / `Runs without …` is easier to scan than relying on wrapped chip styling alone.
+  - Kept the summary purely informational instead of turning it into another badge or notice so the section does not become visually heavier.
+  - This remains a source-backed improvement and still needs live confirmation that the new summary feels helpful rather than redundant once the chip list is visible.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the assignment summary stays visible and useful when many saved-profile chips wrap across multiple lines.
+  - Check an already-assigned loop, an unassigned loop, and a loop whose saved profiles are still loading to confirm the fallback summary reads naturally in all three states.
+  - If live validation shows the summary competes too much with the chip group, consider only a tiny spacing or emphasis adjustment next rather than redesigning the section.
+
 ## Iteration 138 - Keep loop schedule state readable when assigned profile names get long
 
 - Date: 2026-03-08

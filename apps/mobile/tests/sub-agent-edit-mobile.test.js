@@ -161,6 +161,13 @@ test('LoopEditScreen explains when the loop is intentionally left unassigned', (
   assert.match(loopEditSource, /showNoProfileSelectedHelper && \([\s\S]*?No profile selected\. This loop will run without a saved profile until you choose one\.[\s\S]*?\)/);
 });
 
+test('LoopEditScreen surfaces the current profile assignment before the chip list', () => {
+  assert.match(loopEditSource, /const selectedProfileName = profiles\.find\(profile => profile\.id === formData\.profileId\)\?\.displayName;/);
+  assert.match(loopEditSource, /const profileAssignmentSummaryText = formData\.profileId[\s\S]*?selectedProfileName[\s\S]*?`Runs with \$\{selectedProfileName\}\.`[\s\S]*?Runs with the currently assigned saved profile\. Choose another below if needed\.[\s\S]*?Runs without a saved profile unless you choose one below\./);
+  assert.match(loopEditSource, /<Text style=\{styles\.label\}>Agent Profile \(optional\)<\/Text>[\s\S]*?<Text style=\{styles\.profileAssignmentSummary\}>\{profileAssignmentSummaryText\}<\/Text>[\s\S]*?<View style=\{styles\.profileOptions\}>/);
+  assert.match(loopEditSource, /profileAssignmentSummary:\s*\{[\s\S]*?fontSize:\s*12,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?lineHeight:\s*18,[\s\S]*?marginBottom:\s*spacing\.sm/);
+});
+
 test('LoopEditScreen surfaces load and save errors in a dedicated alert block', () => {
   assert.match(loopEditSource, /\{error && \([\s\S]*?<View style=\{styles\.errorContainer\}>[\s\S]*?<Text style=\{styles\.errorText\}>⚠️ \{error\}<\/Text>[\s\S]*?\)\}/);
   assert.match(loopEditSource, /errorContainer:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.destructive \+ '20'[\s\S]*?padding:\s*spacing\.md[\s\S]*?borderRadius:\s*radius\.md[\s\S]*?marginBottom:\s*spacing\.md/);

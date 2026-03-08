@@ -358,6 +358,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const noSavedProfilesNoticeText = didAutoClearMissingProfile
     ? 'The previously selected profile is no longer available. This loop can still run with No profile, or you can create an agent now and come back to assign it here.'
     : 'No saved profiles yet. This loop can still run with No profile, or you can create an agent now and come back to assign it here.';
+  const selectedProfileName = profiles.find(profile => profile.id === formData.profileId)?.displayName;
+  const profileAssignmentSummaryText = formData.profileId
+    ? selectedProfileName
+      ? `Runs with ${selectedProfileName}.`
+      : 'Runs with the currently assigned saved profile. Choose another below if needed.'
+    : 'Runs without a saved profile unless you choose one below.';
   const saveValidationMessage = !trimmedName && !trimmedPrompt
     ? 'Add a name and prompt to enable saving.'
     : !trimmedName
@@ -513,6 +519,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
 
       <Text style={styles.label}>Agent Profile (optional)</Text>
+      <Text style={styles.profileAssignmentSummary}>{profileAssignmentSummaryText}</Text>
       <View style={styles.profileOptions}>
         <TouchableOpacity
           style={[styles.profileOption, !formData.profileId && styles.profileOptionActive]}
@@ -809,6 +816,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     switchThumbActive: {
       backgroundColor: theme.colors.primaryForeground,
       transform: [{ translateX: 16 }],
+    },
+    profileAssignmentSummary: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      lineHeight: 18,
+      marginBottom: spacing.sm,
     },
     profileOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, alignItems: 'flex-start' },
     profileOption: {
