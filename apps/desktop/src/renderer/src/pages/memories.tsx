@@ -39,6 +39,20 @@ import { cn } from "@renderer/lib/utils"
 
 const MEMORY_SEARCH_DEBOUNCE_MS = 250
 
+function DestructiveActionError({ message }: { message: string | null }) {
+  if (!message) return null
+
+  return (
+    <div
+      role="alert"
+      aria-live="polite"
+      className="rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+    >
+      {message}
+    </div>
+  )
+}
+
 const importanceColors = {
   low: "bg-slate-500/20 text-slate-600 dark:text-slate-400",
   medium: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
@@ -214,9 +228,12 @@ export function Component() {
   const [editNotes, setEditNotes] = useState("")
   const [editTags, setEditTags] = useState("")
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkDeleteErrorMessage, setBulkDeleteErrorMessage] = useState<string | null>(null)
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
+  const [deleteAllErrorMessage, setDeleteAllErrorMessage] = useState<string | null>(null)
   const trimmedSearchQuery = searchQuery.trim()
 
   // Clear selection when filters change to avoid deleting non-visible items
@@ -267,15 +284,16 @@ export function Component() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await tipcClient.deleteMemory({ id })
+      const deleted = await tipcClient.deleteMemory({ id })
+      if (!deleted) {
+        throw new Error(`Failed to delete memory ${id}`)
+      }
+      return deleted
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["memories"] })
       toast.success("Memory deleted")
       setDeleteConfirmId(null)
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete: ${error.message}`)
     },
   })
 
@@ -303,9 +321,6 @@ export function Component() {
       setSelectedIds(new Set())
       setBulkDeleteConfirm(false)
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete: ${error.message}`)
-    },
   })
 
   const deleteAllMutation = useMutation({
@@ -317,9 +332,6 @@ export function Component() {
       toast.success(`Deleted ${deletedCount} memories`)
       setSelectedIds(new Set())
       setDeleteAllConfirm(false)
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete: ${error.message}`)
     },
   })
 
@@ -363,6 +375,10 @@ export function Component() {
   const filteredMemories = importanceFilter === "all"
     ? displayMemories
     : displayMemories.filter(m => m.importance === importanceFilter)
+  const memoryPendingDelete = deleteConfirmId
+    ? memories.find((memory) => memory.id === deleteConfirmId) ?? null
+    : null
+  const deleteMemoryLabel = memoryPendingDelete?.title ? `"${memoryPendingDelete.title}"` : "this memory"
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -386,6 +402,23 @@ export function Component() {
     })
   }
 
+  const handleDeleteMemory = async () => {
+    if (!deleteConfirmId) return
+
+    setDeleteErrorMessage(null)
+    setBulkDeleteErrorMessage(null)
+    setDeleteAllErrorMessage(null)
+
+    try {
+      await deleteMutation.mutateAsync(deleteConfirmId)
+    } catch (error) {
+      console.error("Failed to delete memory:", error)
+      setDeleteErrorMessage(
+        `Couldn't delete ${deleteMemoryLabel} yet. This memory is still available, so you can try again.`,
+      )
+    }
+  }
+
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -400,7 +433,43 @@ export function Component() {
 
   // Calculate how many of the currently visible (filtered) memories are selected
   const filteredIds = new Set(filteredMemories.map(m => m.id))
-  const visibleSelectedCount = [...selectedIds].filter(id => filteredIds.has(id)).length
+  const selectedVisibleIds = [...selectedIds].filter(id => filteredIds.has(id))
+  const visibleSelectedCount = selectedVisibleIds.length
+
+  const handleBulkDelete = async () => {
+    if (selectedVisibleIds.length === 0) {
+      setBulkDeleteConfirm(false)
+      return
+    }
+
+    setDeleteErrorMessage(null)
+    setBulkDeleteErrorMessage(null)
+    setDeleteAllErrorMessage(null)
+
+    try {
+      await deleteMultipleMutation.mutateAsync(selectedVisibleIds)
+    } catch (error) {
+      console.error("Failed to delete selected memories:", error)
+      setBulkDeleteErrorMessage(
+        "Couldn't delete the selected memories yet. They are still available, so you can try again.",
+      )
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    setDeleteErrorMessage(null)
+    setBulkDeleteErrorMessage(null)
+    setDeleteAllErrorMessage(null)
+
+    try {
+      await deleteAllMutation.mutateAsync()
+    } catch (error) {
+      console.error("Failed to delete all memories:", error)
+      setDeleteAllErrorMessage(
+        "Couldn't delete all memories yet. Your saved memories are still available, so you can try again.",
+      )
+    }
+  }
 
   const handleSelectAll = () => {
     if (visibleSelectedCount === filteredMemories.length && filteredMemories.length > 0) {
@@ -582,7 +651,12 @@ Optional notes go here (saved as userNotes).
                 variant="destructive"
                 size="sm"
                 className="gap-2"
-                onClick={() => setBulkDeleteConfirm(true)}
+                onClick={() => {
+                  setDeleteErrorMessage(null)
+                  setBulkDeleteErrorMessage(null)
+                  setDeleteAllErrorMessage(null)
+                  setBulkDeleteConfirm(true)
+                }}
                 disabled={deleteMultipleMutation.isPending}
               >
                 {deleteMultipleMutation.isPending ? (
@@ -597,7 +671,12 @@ Optional notes go here (saved as userNotes).
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDeleteAllConfirm(true)}
+                onClick={() => {
+                  setDeleteErrorMessage(null)
+                  setBulkDeleteErrorMessage(null)
+                  setDeleteAllErrorMessage(null)
+                  setDeleteAllConfirm(true)
+                }}
                 className="gap-2 text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
@@ -628,7 +707,12 @@ Optional notes go here (saved as userNotes).
                 <MemoryCard
                   key={memory.id}
                   memory={memory}
-                  onDelete={(id) => setDeleteConfirmId(id)}
+                  onDelete={(id) => {
+                    setDeleteErrorMessage(null)
+                    setBulkDeleteErrorMessage(null)
+                    setDeleteAllErrorMessage(null)
+                    setDeleteConfirmId(id)
+                  }}
                   onEdit={handleEdit}
                   isSelected={selectedIds.has(memory.id)}
                   onToggleSelect={handleToggleSelect}
@@ -679,7 +763,14 @@ Optional notes go here (saved as userNotes).
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+      <Dialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => {
+          if (open) return
+          setDeleteConfirmId(null)
+          setDeleteErrorMessage(null)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -687,28 +778,43 @@ Optional notes go here (saved as userNotes).
               Delete Memory
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this memory? This action cannot be undone.
+              {`Are you sure you want to delete ${deleteMemoryLabel}? This action cannot be undone.`}
             </DialogDescription>
           </DialogHeader>
+          <DestructiveActionError message={deleteErrorMessage} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteConfirmId(null)
+                setDeleteErrorMessage(null)
+              }}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               className="gap-2"
-              onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)}
+              onClick={handleDeleteMemory}
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete
+              {deleteErrorMessage ? "Retry delete" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Bulk Delete Confirmation Dialog */}
-      <Dialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
+      <Dialog
+        open={bulkDeleteConfirm}
+        onOpenChange={(open) => {
+          setBulkDeleteConfirm(open)
+          if (!open) {
+            setBulkDeleteErrorMessage(null)
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -719,25 +825,40 @@ Optional notes go here (saved as userNotes).
               Are you sure you want to delete {visibleSelectedCount} selected memories? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <DestructiveActionError message={bulkDeleteErrorMessage} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDeleteConfirm(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkDeleteConfirm(false)
+                setBulkDeleteErrorMessage(null)
+              }}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               className="gap-2"
-              onClick={() => deleteMultipleMutation.mutate([...selectedIds].filter(id => filteredIds.has(id)))}
+              onClick={handleBulkDelete}
               disabled={deleteMultipleMutation.isPending}
             >
               {deleteMultipleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete {visibleSelectedCount} Memories
+              {bulkDeleteErrorMessage ? "Retry delete" : `Delete ${visibleSelectedCount} Memories`}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete All Confirmation Dialog */}
-      <Dialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
+      <Dialog
+        open={deleteAllConfirm}
+        onOpenChange={(open) => {
+          setDeleteAllConfirm(open)
+          if (!open) {
+            setDeleteAllErrorMessage(null)
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -748,18 +869,25 @@ Optional notes go here (saved as userNotes).
               Are you sure you want to delete ALL {memories.length} memories? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <DestructiveActionError message={deleteAllErrorMessage} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteAllConfirm(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteAllConfirm(false)
+                setDeleteAllErrorMessage(null)
+              }}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               className="gap-2"
-              onClick={() => deleteAllMutation.mutate()}
+              onClick={handleDeleteAll}
               disabled={deleteAllMutation.isPending}
             >
               {deleteAllMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete All Memories
+              {deleteAllErrorMessage ? "Retry delete all" : "Delete All Memories"}
             </Button>
           </DialogFooter>
         </DialogContent>
