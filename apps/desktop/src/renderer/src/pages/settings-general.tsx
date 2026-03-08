@@ -68,6 +68,12 @@ function parseMcpMaxIterationsDraft(value: string) {
   return parsedValue
 }
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
@@ -1149,6 +1155,9 @@ export function Component() {
                     await tipcClient.stopAllTts()
                   } catch (error) {
                     console.error("Failed to stop TTS in all windows:", error)
+                    toast.error(
+                      `Disabled TTS for this window, but failed to stop speech in other windows. ${getActionErrorMessage(error, "Please retry if audio is still playing.")}`,
+                    )
                   }
                 }
 

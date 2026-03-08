@@ -66,15 +66,25 @@ function findNode(node: any, predicate: (node: any) => boolean): any {
   return null
 }
 
-async function loadAppLayout(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadAppLayout(
+  runtime: ReturnType<typeof createHookRuntime>,
+  options?: {
+    stopAllTtsImpl?: () => Promise<unknown>
+    emergencyStopAgentImpl?: () => Promise<unknown>
+    configData?: Record<string, unknown>
+  },
+) {
   vi.resetModules()
 
   const toast = { error: vi.fn() }
-  const stopAllTts = vi.fn(async () => undefined)
-  const emergencyStopAgent = vi.fn(async () => {
+  const stopAllTts = vi.fn(options?.stopAllTtsImpl ?? (async () => undefined))
+  const emergencyStopAgent = vi.fn(options?.emergencyStopAgentImpl ?? (async () => {
     throw new Error("backend offline")
-  })
+  }))
+  const configData = options?.configData ?? { ttsEnabled: true, whatsappEnabled: false }
+  const saveConfigMutate = vi.fn()
   const setFocusedSessionId = vi.fn()
+  const ttsManagerStopAll = vi.fn()
 
   const store = {
     focusedSessionId: "session-1",
@@ -104,10 +114,10 @@ async function loadAppLayout(runtime: ReturnType<typeof createHookRuntime>) {
     rendererHandlers: { agentSessionsUpdated: { listen: () => vi.fn() } },
   }))
   vi.doMock("@renderer/lib/query-client", () => ({
-    useConfigQuery: () => ({ data: { ttsEnabled: true, whatsappEnabled: false } }),
-    useSaveConfigMutation: () => ({ mutate: vi.fn(), isPending: false }),
+    useConfigQuery: () => ({ data: configData }),
+    useSaveConfigMutation: () => ({ mutate: saveConfigMutate, isPending: false }),
   }))
-  vi.doMock("@renderer/lib/tts-manager", () => ({ ttsManager: { stopAll: vi.fn() } }))
+  vi.doMock("@renderer/lib/tts-manager", () => ({ ttsManager: { stopAll: ttsManagerStopAll } }))
   vi.doMock("@renderer/stores", () => ({ useAgentStore: (selector: any) => selector(store) }))
   vi.doMock("@renderer/hooks/use-sidebar", () => ({
     useSidebar: () => ({
@@ -139,7 +149,15 @@ async function loadAppLayout(runtime: ReturnType<typeof createHookRuntime>) {
   })
 
   const mod = await import("./app-layout")
-  return { Component: mod.Component, toast, stopAllTts, emergencyStopAgent, setFocusedSessionId }
+  return {
+    Component: mod.Component,
+    toast,
+    stopAllTts,
+    emergencyStopAgent,
+    saveConfigMutate,
+    setFocusedSessionId,
+    ttsManagerStopAll,
+  }
 }
 
 afterEach(() => {
@@ -148,6 +166,48 @@ afterEach(() => {
 })
 
 describe("AppLayout emergency stop feedback", () => {
+  it("warns when disabling global TTS cannot stop speech in other windows", async () => {
+    const runtime = createHookRuntime()
+    const {
+      Component,
+      toast,
+      stopAllTts,
+      emergencyStopAgent,
+      saveConfigMutate,
+      ttsManagerStopAll,
+    } = await loadAppLayout(runtime, {
+      stopAllTtsImpl: async () => {
+        throw new Error("panel unreachable")
+      },
+      emergencyStopAgentImpl: async () => ({ success: true }),
+    })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    const toggleButton = findNode(
+      tree,
+      (node) => node.type === "button" && node.props?.title === "Disable global TTS",
+    )
+
+    await toggleButton.props.onClick({ stopPropagation: vi.fn() })
+
+    expect(ttsManagerStopAll).toHaveBeenCalledWith("collapsed-sidebar-global-tts-disabled")
+    expect(stopAllTts).toHaveBeenCalledOnce()
+    expect(emergencyStopAgent).not.toHaveBeenCalled()
+    expect(saveConfigMutate).toHaveBeenCalledWith({
+      config: { ttsEnabled: false, whatsappEnabled: false },
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to stop TTS in all windows:",
+      expect.any(Error),
+    )
+    expect(toast.error).toHaveBeenCalledWith(
+      "Disabled TTS for this window, but failed to stop speech in other windows. panel unreachable",
+    )
+  })
+
   it("shows a visible error when the global emergency stop action fails", async () => {
     const runtime = createHookRuntime()
     const { Component, toast, stopAllTts, emergencyStopAgent, setFocusedSessionId } = await loadAppLayout(runtime)

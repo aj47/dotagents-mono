@@ -28,4 +28,11 @@ describe("settings general controlled config bindings", () => {
     expectSourceToContain("value={shortcut}")
     expectSourceToContain('value={configQuery.data?.toggleVoiceDictationHotkey || "fn"}')
   })
+
+  it("shows visible feedback if disabling desktop TTS cannot stop speech in other windows", () => {
+    expectSourceToContain('console.error("Failed to stop TTS in all windows:", error)')
+    expectSourceToContain(
+      'toast.error(`Disabled TTS for this window, but failed to stop speech in other windows. ${getActionErrorMessage(error, "Please retry if audio is still playing.")}`)'
+    )
+  })
 })

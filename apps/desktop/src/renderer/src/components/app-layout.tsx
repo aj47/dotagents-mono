@@ -117,6 +117,9 @@ export const Component = () => {
           await tipcClient.stopAllTts()
         } catch (error) {
           console.error("Failed to stop TTS in all windows:", error)
+          toast.error(
+            `Disabled TTS for this window, but failed to stop speech in other windows. ${getActionErrorMessage(error, "Please retry if audio is still playing.")}`,
+          )
         }
       }
       saveConfig({ ttsEnabled: nextEnabled })

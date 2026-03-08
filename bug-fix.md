@@ -1,6 +1,8 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed both desktop global TTS-disable entry points in `apps/desktop/src/renderer/src/components/app-layout.tsx` and `apps/desktop/src/renderer/src/pages/settings-general.tsx`; each stopped local speech, awaited `tipcClient.stopAllTts()`, and only logged rejected cross-window stop failures to the console before still persisting `ttsEnabled: false`.
+- [x] 2026-03-08: Confirmed there is no equivalent shared multi-window stop path in `apps/mobile`; mobile `ttsEnabled` toggles are local state/settings only, so this silent cross-window stop failure is a desktop-only bug.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the visible `Import Bundle` picker path still treated any falsy `tipcClient.previewBundle()` result as a user cancel, immediately calling `onOpenChange(false)` with no visible failure state.
 - [x] 2026-03-08: Confirmed in `apps/desktop/src/main/bundle-service.ts` plus `apps/desktop/src/main/tipc.ts` that `previewBundleFromDialog()` returned `null` for both real dialog cancellation and invalid selected files (`previewBundle(selectedPath) === null`), so the renderer could not distinguish a bad `.dotagents` file from a normal cancel.
 - [x] 2026-03-08: Searched `apps/mobile/src` for an equivalent bundle-import/install UI and found none, so this broken import-preview flow is desktop-only rather than a shared mobile path.
@@ -275,6 +277,10 @@
 - [x] 2026-03-08: Compared this desktop delete flow against mobile `apps/mobile/src/screens/SessionListScreen.tsx` and `apps/mobile/src/store/sessions.ts`; mobile deletion is a local session-store path that already clears the current session synchronously and does not share the desktop React Query conversation cache, so this fix is desktop-only.
 
 ### Reproduced
+- [x] **Desktop global TTS disable could fail silently for other windows (directly confirmed in source):**
+  - In both `apps/desktop/src/renderer/src/components/app-layout.tsx` and `apps/desktop/src/renderer/src/pages/settings-general.tsx`, turning TTS off already called `ttsManager.stopAll(...)` for the current renderer and then awaited `tipcClient.stopAllTts()` for the wider desktop app.
+  - If that IPC call rejected, each handler only ran `console.error("Failed to stop TTS in all windows:", error)` and then still saved `ttsEnabled: false`, so users could believe TTS was fully disabled while speech in another window kept playing with no visible warning.
+  - This is a real desktop state/error-handling bug rather than speculative cleanup because the controls are explicitly labeled as global TTS toggles and the rejection path already existed in source.
 - [x] **Desktop bundle import could silently close on an invalid selected file (directly confirmed in source):**
   - In `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx`, `handleSelectFile()` previously awaited `tipcClient.previewBundle()` and treated any falsy result like `// User cancelled file picker`, immediately closing the dialog.
   - In `apps/desktop/src/main/bundle-service.ts`, `previewBundleFromDialog()` returned `null` both when the native picker was actually canceled and when the user selected a file that failed `previewBundle(selectedPath)` parsing.
@@ -582,6 +588,9 @@
   - Because `PredefinedPromptsMenu` is mounted in the desktop sessions header/empty state, panel composer, and overlay/tile follow-up composers, a failed create/edit save could look like it worked while silently discarding the user’s just-typed prompt draft.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/app-layout.tsx` so the visible sidebar/header global TTS toggle now surfaces `toast.error(...)` when `tipcClient.stopAllTts()` rejects, while preserving the existing local `ttsManager.stopAll(...)` behavior and config save.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` so disabling desktop TTS from Settings → General also surfaces the same visible cross-window stop warning instead of staying console-only; added a small local `getActionErrorMessage(...)` helper to preserve readable fallback copy.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/app-layout.emergency-stop.test.tsx` for the app-shell toggle path and in `apps/desktop/src/renderer/src/pages/settings-general.controlled-controls.test.ts` for the settings-page source contract.
 - [x] Updated `apps/desktop/src/main/bundle-service.ts` so bundle preview failures now preserve structured dialog intent: `previewBundleFromDialog()` returns `{ canceled, filePath, error? }`, and `previewBundleWithConflicts(...)` keeps the selected `filePath` when parsing fails instead of collapsing everything into a `null`/pathless failure.
 - [x] Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so invalid selected files now stay in a visible error state instead of closing silently, the dialog offers `Choose Another File`, and `Import` stays disabled unless the preview actually succeeded.
 - [x] Added focused coverage in `apps/desktop/src/main/bundle-service.test.ts` for the preserved failure `filePath`, plus `apps/desktop/src/renderer/src/components/bundle-import-dialog.feedback.test.ts` to lock in the new renderer cancel-vs-error handling and retry affordance.
@@ -803,6 +812,9 @@
 - [x] Added `apps/desktop/src/renderer/src/components/predefined-prompts-menu.persistence.test.ts` with focused source-level regression coverage locking in the awaited-save-before-close contract plus the pending-control guardrails.
 
 ### Verified
+- [x] Manual source verification: `app-layout.tsx` and `settings-general.tsx` now both keep the existing local stop/save flow but surface `Disabled TTS for this window, but failed to stop speech in other windows. ...` when `stopAllTts()` rejects, so the visible desktop global-TTS controls no longer fail silently.
+- [x] Dependency-free verification passed: `git diff --check` completed cleanly after this TTS-feedback fix.
+- [x] Dependency-free verification passed: a plain `node` file-read assertion script confirmed the new toast/error wiring in `app-layout.tsx` and `settings-general.tsx` plus the focused regression coverage in `app-layout.emergency-stop.test.tsx` and `settings-general.controlled-controls.test.ts`.
 - [x] Manual source verification: `bundle-import-dialog.tsx` now distinguishes `dialogResult.canceled` from `dialogResult.error`, keeps failed previews in local dialog state, shows `Choose Another File`, and guards `handleImport()` / the Import button behind `preview.success` instead of any truthy `filePath`.
 - [x] Dependency-free verification passed: a plain `node` assertion script checked `bundle-service.ts`, `bundle-service.test.ts`, `bundle-import-dialog.tsx`, and `bundle-import-dialog.feedback.test.ts`, confirming the new structured preview result, preserved failure `filePath`, retry affordance, and regression coverage are present in source.
 - [x] Repository diff sanity check: `git diff --check -- apps/desktop/src/main/bundle-service.ts apps/desktop/src/main/bundle-service.test.ts apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx apps/desktop/src/renderer/src/components/bundle-import-dialog.feedback.test.ts bug-fix.md` completed cleanly after the bundle-import preview fix.
@@ -1021,6 +1033,7 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the predefined-prompts save-ordering fix and regression test addition.
 
 ### Blocked
+- [x] Targeted automated verification for this desktop global-TTS feedback fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/app-layout.emergency-stop.test.tsx src/renderer/src/pages/settings-general.controlled-controls.test.ts` fails during `pretest` because `packages/shared` cannot find `tsup` (`node_modules` is missing), so Vitest never starts.
 - [x] Targeted automated verification for this bundle-import preview fix is blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts src/renderer/src/components/bundle-import-dialog.feedback.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`.
 - [x] Live desktop repro/validation for this Settings → Agents stale-save/delete bug is still blocked by missing workspace dependencies in this worktree: `REMOTE_DEBUGGING_PORT=9333 pnpm dev -- -d` fails during `predev` because `packages/shared` cannot find `tsup`, so the Electron renderer cannot be launched here without installing dependencies.
 - [x] Targeted automated verification for this Settings → Agents failure-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-agents.feedback.test.ts` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop test tooling remains unavailable in this worktree.
@@ -1123,7 +1136,7 @@
 - [ ] Whether the per-server MCP bulk-toggle warning should eventually name the exact failed tools instead of only reporting success/failure counts, once live desktop validation is available to judge toast noise.
 - [ ] Whether the compact desktop `AgentCapabilitiesSidebar` should eventually disable switches briefly or mention the specific capability/agent name in its failure toast, once live validation is available to judge whether the new generic feedback is sufficiently clear without adding sidebar noise.
 - [ ] Whether the remaining post-success `AgentProgress` `hidePanelWindow(...)` follow-up failure during `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
-- [ ] Whether the adjacent `tipcClient.stopAllTts()` failure path in `app-layout.tsx` also needs visible feedback, or whether keeping that secondary best-effort cleanup console-only is preferable once live desktop verification is available.
+- [ ] Whether the secondary `tipcClient.stopAllTts()` cleanup inside the global emergency-stop action should also surface visible partial-failure feedback if `emergencyStopAgent()` succeeds but cross-window speech cleanup fails, once live desktop verification is available.
 - [ ] Whether the sessions-page `Start with Text` / `Start with Voice` actions should also get a local in-flight disabled/busy guard to prevent accidental double-click startup races once live desktop debugging is available.
 - [ ] Whether any other desktop settings pages outside `settings-general.tsx` still have config-backed uncontrolled inputs once the environment blocker is cleared.
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
@@ -1159,6 +1172,8 @@
 - [ ] Whether the onboarding Exa step should eventually expose an explicit `Retry start` action in-place once runtime enable/start fails after config save, rather than keeping the current conservative `Installed` + recovery-copy state that sends the user to Settings → MCP Tools.
 
 ### Diagnosis / Rationale
+- The bug was not that TTS failed to disable for the current window; both handlers already stopped local playback first. The broken part was the global promise implied by the UI: the cross-window `stopAllTts()` step could fail and remain invisible while the persisted `ttsEnabled: false` state suggested everything had stopped.
+- A visible toast is the smallest safe fix because future TTS should still be disabled, local playback is already stopped, and the only missing behavior was honest recovery guidance when the multi-window cleanup step rejects.
 - The bundle-import bug was a direct contract mismatch between the desktop main process and renderer: the picker path used `null` for both a real cancel and an invalid selected file, so the UI could not tell whether the user backed out or whether the chosen bundle was broken.
 - Returning structured `{ canceled, filePath, error? }` dialog results is the smallest safe fix because it preserves the existing import flow while letting the renderer surface a clear invalid-file state without inventing a separate picker API or broad dialog redesign.
 - The MCP issue was not just missing feedback; it was also incorrect state labeling. Because missing `status` and genuinely disconnected `status` shared the same renderer branch, a failed diagnostics poll could actively tell the user the wrong thing (`Disconnected`) rather than simply omitting status.
@@ -1283,6 +1298,7 @@
 - Snapshotting and restoring in-memory profile state around `saveProfiles()` is the smallest safe fix because it preserves current TIPC/renderer contracts while preventing unsaved transient profile mutations from leaking into the running app after a failed write.
 
 ### Assumptions
+- Assumption: keeping the `ttsEnabled: false` save even when `stopAllTts()` rejects is acceptable because the user clearly requested future TTS disablement, the current window is already stopped locally, and the concrete bug here was the missing warning about other windows possibly still playing.
 - Assumption: keeping the bundle-import dialog open with inline error copy plus a `Choose Another File` retry button is acceptable because the confirmed bug was a silent close/no-feedback path, and this localized recovery avoids both dead-close behavior and noisy duplicate toasts.
 - Assumption: using inline retry banners plus `Checking...` / `Unavailable` badges for MCP server-status failures is acceptable because this page already functions as a diagnostics surface, while toast spam on every 1-second poll failure would be noisy and less actionable.
 - Assumption: keeping the session restored while surfacing a partial-success toast is acceptable because `unsnoozeAgentSession(...)` already succeeded before the panel-focus sync step ran, so rolling back local snooze/focus state would misrepresent the backend session state more than it would help.
@@ -1357,6 +1373,7 @@
 - Assumption: ending the active desktop conversation immediately when its backing past-session entry is deleted is acceptable because the delete action is explicit and destructive, and keeping a deleted conversation selected for the next panel action is more misleading than dropping back to fresh-session mode.
 
 ### Next Leads
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/app-layout.emergency-stop.test.tsx src/renderer/src/pages/settings-general.controlled-controls.test.ts` and live-verify both desktop global-TTS disable controls (sidebar/header toggle and Settings → General switch) while forcing a `stopAllTts()` failure, confirming the user now sees the cross-window warning instead of a silent partial stop.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/main/bundle-service.test.ts src/renderer/src/components/bundle-import-dialog.feedback.test.ts` and live-verify the desktop `Import Bundle` flow by selecting one invalid `.dotagents`/JSON file and then a valid one, confirming the dialog now stays open with an error plus `Choose Another File` instead of closing as if canceled.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.server-diagnostics-feedback.test.ts` and live-verify desktop Settings → MCP Servers by forcing both an initial `getMcpServerStatus()` failure and a later poll failure, confirming the UI now shows `Checking...` / `Unavailable` / `Couldn't refresh MCP server status.` instead of incorrectly collapsing those cases into `Disconnected`.
 - After that, inspect whether the same MCP Servers diagnostics surface should promote OAuth-status refresh failures to a shared partial-warning banner or whether the existing per-server fallback/error copy is enough.
