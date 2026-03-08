@@ -118,6 +118,31 @@ describe("agent-run-utils", () => {
         ]),
       ).toBe("Do this now")
     })
+
+    it("strips trailing raw tool-result scaffolding from assistant text", () => {
+      expect(
+        getPreferredDelegationOutput("stale output", [
+          {
+            role: "assistant",
+            content: `Done — both sessions are still running. [iterm:list_sessions] {"sessions":[{"name":"main"}]}`,
+          },
+        ]),
+      ).toBe("Done — both sessions are still running.")
+    })
+
+    it("prefers a non-progress output over a latest assistant tool-scaffold leak", () => {
+      expect(
+        getPreferredDelegationOutput(
+          "Done — both sessions are still running.",
+          [
+            {
+              role: "assistant",
+              content: `Let me check right now. [iterm:list_sessions] {"sessions":[{"name":"main"}]}`,
+            },
+          ],
+        ),
+      ).toBe("Done — both sessions are still running.")
+    })
   })
 
   describe("preferStoredUserResponse", () => {
@@ -160,6 +185,15 @@ describe("agent-run-utils", () => {
           undefined,
         ),
       ).toBe("See screenshot\n\n![Shot](/tmp/shot.png)")
+    })
+
+    it("falls back to a stored response when current final content only has tool scaffolding", () => {
+      expect(
+        preferStoredUserResponse(
+          "The text is in. Now let me check if the Post button is enabled before posting: [Calling tools: speakmcp-settings:execute_command]",
+          "Done — the post button is enabled and ready.",
+        ),
+      ).toBe("Done — the post button is enabled and ready.")
     })
   })
 

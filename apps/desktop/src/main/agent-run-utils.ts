@@ -175,9 +175,38 @@ function unwrapPseudoRespondToUserContent(content: string | undefined | null): s
   }
 }
 
+function cleanupAfterToolArtifactRemoval(content: string): string {
+  return content.trim().replace(/\s*[:\-–—]\s*$/, "").trim()
+}
+
+function stripPseudoToolArtifacts(content: string | undefined | null): string {
+  if (typeof content !== "string") return ""
+
+  const trimmed = content.trim()
+  if (!trimmed) return ""
+
+  const withoutPlaceholders = trimmed.replace(
+    /\s*\[(?:Calling tools?|Tool|Tools?):[^\]]+\]\s*/gi,
+    " ",
+  ).replace(/\s{2,}/g, " ").trim()
+
+  const genericToolArtifactMatch = withoutPlaceholders.match(
+    /\[[A-Za-z0-9_.-]*[:/.][A-Za-z0-9_.:/-]+\]\s*[\[{]/,
+  )
+
+  if (genericToolArtifactMatch?.index === undefined) {
+    return withoutPlaceholders === trimmed
+      ? trimmed
+      : cleanupAfterToolArtifactRemoval(withoutPlaceholders)
+  }
+
+  const leadingContent = withoutPlaceholders.slice(0, genericToolArtifactMatch.index)
+  return cleanupAfterToolArtifactRemoval(leadingContent)
+}
+
 function normalizeUserFacingContent(content: string | undefined | null): string {
   return unwrapPseudoRespondToUserContent(content)
-    ?? (typeof content === "string" ? content : "")
+    ?? stripPseudoToolArtifacts(content)
 }
 
 export function isToolCallPlaceholderResponse(content: string): boolean {
@@ -210,7 +239,7 @@ function isLikelyProgressOnlyResponse(content: string): boolean {
     return false
   }
 
-  return /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized)
+  return /(?:^|[.!?]\s+)(?:let me|now let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized)
 }
 
 export function buildProfileContext(
@@ -241,12 +270,23 @@ export function getPreferredDelegationOutput(
   const latestAssistantContent = normalizeUserFacingContent(
     getLatestAssistantMessageContent(conversation),
   )
+  const normalizedOutput = normalizeUserFacingContent(output)
 
-  if (latestAssistantContent.trim().length > 0) {
+  if (
+    latestAssistantContent.trim().length > 0
+    && !isLikelyProgressOnlyResponse(latestAssistantContent)
+  ) {
     return latestAssistantContent
   }
 
-  return normalizeUserFacingContent(output)
+  if (
+    normalizedOutput.trim().length > 0
+    && !isLikelyProgressOnlyResponse(normalizedOutput)
+  ) {
+    return normalizedOutput
+  }
+
+  return latestAssistantContent.trim().length > 0 ? latestAssistantContent : normalizedOutput
 }
 
 export function preferStoredUserResponse(

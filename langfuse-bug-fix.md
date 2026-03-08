@@ -26,6 +26,8 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772854646654_q7kryv45t | session_1772854646655_k5gmpg0wu | fix implemented (verification blocked) | User asked `what's next`; Langfuse showed a parallel batch where `execute_command` completed, but `Tool: github:list_issues` never recorded an end time. The run then closed with `output: null` and no answer. Root repo issue found: MCP server tool execution had connection/test timeouts, but `client.callTool(...)` itself had no timeout, so one hung tool in a parallel batch could stall the entire agent run forever. |
 | 2026-03-08 | conv_1772943712464_m4bk9psxl | session_1772943712469_klewsrmuj | fix implemented | User asked `Execute and monitor`; Langfuse showed multiple `delegate_to_agent` calls to `augustus` where outputs began with long reasoning/progress text like `**Analyzing the codebase** ... I'm considering ...` or `## Actions ... then I'll patch ...`, plus a timeout retry, even when the delegated prompt explicitly said `return only concrete results (no reasoning)`. Root repo issue found: the delegation completion heuristic only rejected short future-tense updates, so long reasoning-style progress dumps with markdown headers still counted as successful delegated results. |
 | 2026-03-08 | conv_1772917123572_de9jk57jd | session_1772917979621_p7x7puoru, session_1772922892781_i3o21grlf | fix implemented (desktop smoke blocked) | User said `continue working on this next step`; Langfuse showed one `delegate_to_agent` result that was only a `## Plan ... I'll first gather ...` handoff, then two later `delegate_to_agent` spans with `endTime: null` before the run ended as `(Agent mode was stopped by emergency kill switch)`. A later follow-up in the same conversation succeeded only after the user restated the intent more concretely. Root repo issue found: synchronous ACP delegation had no fail-fast watchdog, and local ACP `runTask()` ignored per-request abort/timeout signals, so a hung delegated prompt could block the parent run until the user killed agent mode. |
+| 2026-03-08 | conv_1772912335273_fi5tznrfx (fresh sub-agent evidence) | subsession_1772916424066_82e0fba0, subsession_1772916435166_cb8bb364, subsession_1772916449139_f650fc9f | fix implemented | Fresh Langfuse sub-session traces for the same starter-pack planning conversation showed the delegated internal `Web Browser` specialist repeatedly calling `delegate_to_agent` again instead of doing the browsing/research work itself. That caused recursive delegation failures (`Maximum recursion depth (3) reached`), oversized delegated-request failures (`request body size is too large, must be less than 512000`), blank `output: null` sub-runs, and only delayed recovery after extra turns. Root repo issue found: specialist internal sub-sessions were still built with the generic delegation guidance, so delegated agents could re-delegate the very task they had been chosen to execute. |
+| 2026-03-08 | conv_1771714066742_a3r3bqee6, conv_1771817444023_7v2d8szph | session_1771714066745_wb6k5ig9v, session_1771817444027_h74z83ol9 | fix implemented | Fresh unlogged output-leak class: one trace answering `Did it work` ended with raw pseudo tool-result text starting `Let me check right now. [iterm:list_sessions] { ... }`; corroborating trace `do we need to make more skills to make this easier` ended with `... [Calling tools: speakmcp-settings:execute_command]`. Root repo issue found: final-output helpers only unwrapped pseudo `respond_to_user` text, not generic pseudo tool scaffolding or raw tool-result wrappers, so tool-intent text and structured tool payloads could leak into final user-visible output. |
 
 ## Investigations
 
@@ -127,6 +129,54 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - tests added/updated:
     - `apps/desktop/src/main/system-prompts.test.ts`
       - added a regression test that checks the prompt no longer forces delegation for terse coding follow-ups
+
+### 2026-03-08 — Specialist internal sub-agents should execute directly instead of recursively delegating
+
+- Langfuse evidence reviewed:
+  - parent conversation: `conv_1772912335273_fi5tznrfx`
+  - fresh delegated sub-session traces:
+    - `subsession_1772916424066_82e0fba0`
+      - input asked the internal `Web Browser` agent to research current market context beyond starter packs
+      - the first generation immediately called `delegate_to_agent(agentName: "internal")`
+      - nested tool output then showed further delegation attempts to `augustus` and another `Web Browser` run, ending in `Maximum recursion depth (3) reached`
+      - trace `output` remained `null`
+    - `subsession_1772916435166_cb8bb364`
+      - same `Web Browser` profile again delegated to `internal` instead of browsing directly
+      - the nested delegated `augustus` call failed with `request body size is too large, must be less than 512000`
+      - trace `output` remained `null`
+    - `subsession_1772916449139_f650fc9f`
+      - repeated the same early re-delegation pattern, hit both recursion-depth and oversized-request failures, and only later recovered with direct research text after wasting extra iterations
+      - trace `output` still ended `null`
+  - this is fresh evidence beyond the already-tracked parent failure because it isolates a second concrete failure mode inside the delegated specialist itself: the chosen sub-agent kept trying to hand the task away again instead of executing it
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/internal-agent.ts` builds an isolated `SessionProfileSnapshot` when an internal sub-session is run as a named `AgentProfile` like `Web Browser`.
+  - `apps/desktop/src/main/llm.ts` then unconditionally fed that snapshot into `constructSystemPrompt(...)`.
+  - `apps/desktop/src/main/system-prompts.ts` always appended the generic delegation sections (`DELEGATION RULES`, `AVAILABLE AGENTS`, and `INTERNAL AGENT`) for agent-mode runs.
+  - that means a delegated specialist agent still saw orchestration-level instructions telling it to consider further delegation before responding, even though the parent had already delegated precisely because that specialist was the best executor.
+- Concrete root cause:
+  - delegation guidance was scoped too broadly: it applied not just to the main orchestrator agent, but also to internally delegated specialist sub-sessions.
+  - in practice, this let a `Web Browser` specialist recurse back into `internal` / `augustus`, producing blank or delayed sub-runs instead of directly doing the browsing/research work it had been selected for.
+- Fix implemented:
+  - `apps/desktop/src/shared/types.ts`
+    - added `disableDelegation?: boolean` to `SessionProfileSnapshot`
+  - `apps/desktop/src/main/acp/internal-agent.ts`
+    - when running a named internal `AgentProfile` / `personaName` sub-session, mark the snapshot with `disableDelegation: true`
+    - this keeps specialist sub-agents in execute mode rather than orchestration mode
+  - `apps/desktop/src/main/llm.ts`
+    - thread `disableDelegation` through all agent-mode prompt construction paths
+  - `apps/desktop/src/main/system-prompts.ts`
+    - add an `includeDelegationGuidance` switch so agent-mode prompts can omit delegation-only sections when a specialist sub-session should execute directly
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - added a regression proving delegation guidance is omitted when specialist sub-sessions disable it
+    - `apps/desktop/src/main/acp/internal-agent.test.ts`
+      - added a regression proving named specialist sub-sessions pass `disableDelegation: true` into `processTranscriptWithAgentMode(...)`
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts src/main/acp/internal-agent.test.ts`
+  - ✅ passed (`7 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `pnpm --filter @dotagents/desktop typecheck:node`
+  - ❌ still blocked by pre-existing unrelated worktree/typecheck issues, including unresolved `uuid` in `apps/desktop/src/main/acp/internal-agent.ts`, existing `llm.test.ts` mock typing errors, and existing missing `COMMUNICATION_ONLY_TOOLS` / `onlyCommunicationTools` references in `apps/desktop/src/main/llm.ts`
 
 ### 2026-03-08 — Internal delegation ignored `waitForResult=false`
 
@@ -811,6 +861,42 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/llm-fetch.ts apps/desktop/src/main/llm-fetch.test.ts`
   - ✅ passed
 
+### 2026-03-08 — Generic pseudo tool scaffolding should not leak into final user output
+
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1771714066742_a3r3bqee6` / `session_1771714066745_wb6k5ig9v`
+    - user input: `Did it work`
+    - trace outcome: final `output` began `Let me check right now. [iterm:list_sessions] { ... }`
+    - the leaked suffix was raw tool scaffolding plus structured tool payload data, not a clean user-facing status answer
+  - corroborating trace: `conv_1771817444023_7v2d8szph` / `session_1771817444027_h74z83ol9`
+    - user input: `do we need to make more skills to make this easier`
+    - trace outcome: final `output` ended `... [Calling tools: speakmcp-settings:execute_command]`
+    - observations showed the run mixing real assistant text with pseudo tool-call placeholders rather than a clean terminal answer
+- Repo reconstruction:
+  - `apps/desktop/src/main/agent-run-utils.ts` already normalized pseudo `[respond_to_user] { ... }` assistant text into clean user-facing output.
+  - however, `normalizeUserFacingContent()` otherwise returned raw assistant text unchanged.
+  - that meant generic pseudo tool scaffolding such as `[Calling tools: ...]` or raw tool-result wrappers like `[iterm:list_sessions] { ... }` could survive into `getPreferredDelegationOutput()` and `preferStoredUserResponse()`.
+  - because the raw tool payloads made the strings long and non-empty, the existing progress-only heuristic often failed to classify them as stale/in-progress output.
+- Concrete root cause:
+  - final output sanitization was too narrow: it handled pseudo `respond_to_user`, but not other pseudo tool wrappers or structured tool-result scaffolding.
+  - as a result, a run could semantically be “still checking” or mid-tool-call, yet the final Langfuse/UI output would expose raw tool text instead of a clean answer or incomplete-task fallback.
+- Fix implemented:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - added generic pseudo-tool artifact stripping for `[Calling tools: ...]` placeholders and trailing raw tool-result wrappers like `[server:tool] { ... }`
+    - extended progress-only detection to catch `Now let me ...` continuations after artifact stripping
+    - updated `getPreferredDelegationOutput()` to prefer non-progress user-facing content over a latest assistant message that only contains stripped tool scaffolding / progress text
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+      - regression for stripping raw `[iterm:list_sessions] { ... }` suffixes from assistant output
+      - regression for preferring clean output over a latest assistant tool-scaffold leak
+      - regression for falling back to stored `respond_to_user` content when current final text only contains `[Calling tools: ...]`-style scaffolding
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts`
+  - ✅ passed (`22 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test exits successfully
+  - `git diff --check -- apps/desktop/src/main/agent-run-utils.ts apps/desktop/src/main/agent-run-utils.test.ts`
+  - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -821,6 +907,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
+- Recheck a fresh delegated specialist trace (especially `Web Browser` or other internal profiles) after dependencies are restored, to confirm internal sub-agents now execute directly instead of re-delegating into `internal` / `augustus` and hitting recursion or oversized-request failures.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh post-`respond_to_user` trace where the first assistant turn is only a progress opener (`Let me ...`, `I'll ...`) and a later provider/stream error occurs, to confirm the stored user-facing answer now overrides the stale opener in Langfuse/UI.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
