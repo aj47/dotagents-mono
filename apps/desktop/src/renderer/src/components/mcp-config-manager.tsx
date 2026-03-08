@@ -60,6 +60,7 @@ import {
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry } from "@shared/types"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { getSettingsSaveErrorMessage } from "@renderer/lib/config-save-error"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES, getOAuthExample } from "@shared/oauth-examples"
@@ -80,7 +81,7 @@ interface DetailedTool {
 
 interface MCPConfigManagerProps {
   config: MCPConfig
-  onConfigChange: (config: MCPConfig) => void
+  onConfigChange: (config: MCPConfig) => Promise<void>
   // UI state persistence for collapsed/expanded sections
   collapsedToolServers?: string[]
   collapsedServers?: string[]
@@ -90,8 +91,9 @@ interface MCPConfigManagerProps {
 
 interface ServerDialogProps {
   server?: { name: string; config: MCPServerConfig }
-  onSave: (name: string, config: MCPServerConfig) => void
+  onSave: (name: string, config: MCPServerConfig) => Promise<void>
   onCancel: () => void
+  existingServerNames?: string[]
   // Import functionality props (only needed for Add mode, not Edit mode)
   onImportFromFile?: () => Promise<void>
   // Returns true on success, false on failure (to preserve user input on errors)
@@ -103,7 +105,19 @@ interface ServerDialogProps {
 // Reserved server names that cannot be used by users (used for built-in functionality)
 const RESERVED_SERVER_NAMES = ["dotagents-internal"]
 
-function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFromText, isOpen }: ServerDialogProps) {
+function normalizeServerNameForComparison(name: string): string {
+  return name.trim().toLowerCase()
+}
+
+function ServerDialog({
+  server,
+  onSave,
+  onCancel,
+  existingServerNames = [],
+  onImportFromFile,
+  onImportFromText,
+  isOpen,
+}: ServerDialogProps) {
   const [name, setName] = useState(server?.name || "")
   // Default to 'examples' tab when adding a new server, 'manual' when editing
   const [activeTab, setActiveTab] = useState<'manual' | 'file' | 'paste' | 'examples'>(server ? 'manual' : 'examples')
@@ -141,6 +155,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   const [oauthConfig, setOAuthConfig] = useState<OAuthConfig>(
     server?.config.oauth || {}
   )
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   // OAuth configuration is automatically shown for streamableHttp transport
 
   // Reset all fields when server prop changes (e.g., when switching from edit to add)
@@ -177,6 +194,9 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         : ""
     )
     setOAuthConfig(server?.config.oauth || {})
+    setValidationError(null)
+    setSaveError(null)
+    setIsSaving(false)
   }, [server])
 
   // Reset all form state when dialog opens or closes (for Add mode where server prop stays undefined)
@@ -199,37 +219,63 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
       setDisabled(false)
       setHeaders("")
       setOAuthConfig({})
+      setValidationError(null)
+      setSaveError(null)
+      setIsSaving(false)
     }
   }, [isOpen, server])
 
-  const handleSave = () => {
-    if (!name.trim()) {
-      toast.error("Server name is required")
+  useEffect(() => {
+    setValidationError(null)
+    setSaveError(null)
+  }, [name, transport, fullCommand, url, env, timeout, disabled, headers, oauthConfig, activeTab])
+
+  const handleSave = async () => {
+    const trimmedName = name.trim()
+    const originalName = server?.name ? normalizeServerNameForComparison(server.name) : null
+
+    setValidationError(null)
+    setSaveError(null)
+
+    if (!trimmedName) {
+      setValidationError("Server name is required before this configuration can be saved.")
       return
     }
 
     // Check for reserved server names
-    if (RESERVED_SERVER_NAMES.includes(name.trim().toLowerCase())) {
-      toast.error(`Server name "${name.trim()}" is reserved and cannot be used`)
+    if (RESERVED_SERVER_NAMES.includes(normalizeServerNameForComparison(trimmedName))) {
+      setValidationError(`Server name "${trimmedName}" is reserved and cannot be used.`)
+      return
+    }
+
+    const conflictingServerName = existingServerNames.find(existingName => {
+      const normalizedExistingName = normalizeServerNameForComparison(existingName)
+      return normalizedExistingName === normalizeServerNameForComparison(trimmedName)
+        && normalizedExistingName !== originalName
+    })
+    if (conflictingServerName) {
+      setValidationError(
+        `A server named "${conflictingServerName}" already exists. Rename this draft or edit the existing server instead.`,
+      )
       return
     }
 
     // Validate based on transport type
     if (transport === "stdio") {
       if (!fullCommand.trim()) {
-        toast.error("Command is required for stdio transport")
+        setValidationError("Command is required for stdio transport.")
         return
       }
     } else if (transport === "websocket" || transport === "streamableHttp") {
       if (!url.trim()) {
-        toast.error("URL is required for remote transport")
+        setValidationError("URL is required for remote transport.")
         return
       }
       // Basic URL validation
       try {
         new URL(url.trim())
       } catch (error) {
-        toast.error("Invalid URL format")
+        setValidationError("Enter a valid server URL before saving this server.")
         return
       }
     }
@@ -244,7 +290,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
           }
         })
       } catch (error) {
-        toast.error("Invalid environment variables format")
+        setValidationError("Environment variables must use KEY=value format, one per line.")
         return
       }
     }
@@ -259,7 +305,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
           }
         })
       } catch (error) {
-        toast.error("Invalid headers format")
+        setValidationError("Custom headers must use Header-Name=value format, one per line.")
         return
       }
     }
@@ -289,11 +335,29 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
       ...(transport === "streamableHttp" && Object.keys(oauthConfig).length > 0 && { oauth: oauthConfig }),
     }
 
-    onSave(name.trim(), serverConfig)
+    setIsSaving(true)
+    try {
+      await onSave(trimmedName, serverConfig)
+    } catch (error) {
+      setIsSaving(false)
+      setSaveError(`${getSettingsSaveErrorMessage(error)} Your server draft is still open so you can retry.`)
+    }
   }
 
   return (
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogContent
+      className="max-w-4xl max-h-[90vh] overflow-y-auto"
+      onEscapeKeyDown={(event) => {
+        if (isSaving) {
+          event.preventDefault()
+        }
+      }}
+      onInteractOutside={(event) => {
+        if (isSaving) {
+          event.preventDefault()
+        }
+      }}
+    >
       <DialogHeader>
         <DialogTitle>{server ? "Edit Server" : "Add Server"}</DialogTitle>
         <DialogDescription>
@@ -301,13 +365,52 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
         </DialogDescription>
       </DialogHeader>
 
-      <div className="w-full">
-        <div className="flex space-x-1 mb-4">
+      <div className="w-full space-y-4">
+        {validationError && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          </div>
+        )}
+
+        {saveError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{saveError}</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSave()}
+                disabled={isSaving}
+              >
+                Retry save
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {isSaving && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+            <div className="flex items-start gap-2">
+              <Spinner className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Saving this server… the dialog will close after the updated settings are written.</span>
+            </div>
+          </div>
+        )}
+
+        <div className={isSaving ? "pointer-events-none opacity-70" : undefined}>
+          <div className="flex space-x-1 mb-4">
           <Button
             variant={activeTab === 'manual' ? 'default' : 'outline'}
             onClick={() => setActiveTab('manual')}
             className="flex-1"
             size="sm"
+            disabled={isSaving}
           >
             Manual
           </Button>
@@ -318,6 +421,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               onClick={() => setActiveTab('file')}
               className="flex-1 gap-1"
               size="sm"
+              disabled={isSaving}
             >
               <Upload className="h-3 w-3" />
               From File
@@ -329,6 +433,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               onClick={() => setActiveTab('paste')}
               className="flex-1 gap-1"
               size="sm"
+              disabled={isSaving}
             >
               <FileText className="h-3 w-3" />
               Paste JSON
@@ -339,6 +444,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             onClick={() => setActiveTab('examples')}
             className="flex-1"
             size="sm"
+            disabled={isSaving}
           >
             Examples
           </Button>
@@ -354,6 +460,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., google-maps"
+                disabled={isSaving}
               />
             </div>
 
@@ -362,6 +469,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               <Select
                 value={transport}
                 onValueChange={(value: MCPTransportType) => setTransport(value)}
+                disabled={isSaving}
               >
                 <SelectTrigger id="transport" className="border border-primary/40">
                   <SelectValue placeholder="Select transport type" />
@@ -385,6 +493,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   value={fullCommand}
                   onChange={(e) => setFullCommand(e.target.value)}
                   placeholder="e.g., npx -y @modelcontextprotocol/server-google-maps"
+                  disabled={isSaving}
                 />
                 <p className="text-xs text-muted-foreground">
                   Full command with arguments (space-separated)
@@ -402,6 +511,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       ? "ws://localhost:8080"
                       : "http://localhost:8080"
                   }
+                  disabled={isSaving}
                 />
                 <p className="text-xs text-muted-foreground">
                   {transport === "websocket"
@@ -421,6 +531,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   onChange={(e) => setHeaders(e.target.value)}
                   placeholder="X-API-Key=your-api-key&#10;User-Agent=MyApp/1.0&#10;Content-Type=application/json"
                   rows={4}
+                  disabled={isSaving}
                 />
                 <p className="text-xs text-muted-foreground">
                   One per line in Header-Name=value format. These headers will be included in all HTTP requests to the server.
@@ -436,6 +547,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 onChange={(e) => setEnv(e.target.value)}
                 placeholder="API_KEY=your-key-here&#10;ANOTHER_VAR=value"
                 rows={4}
+                disabled={isSaving}
               />
               <p className="text-xs text-muted-foreground">
                 One per line in KEY=value format
@@ -451,6 +563,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   value={timeout}
                   onChange={(e) => setTimeout(e.target.value)}
                   placeholder="60000"
+                  disabled={isSaving}
                 />
               </div>
 
@@ -459,6 +572,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   id="disabled"
                   checked={disabled}
                   onCheckedChange={setDisabled}
+                  disabled={isSaving}
                 />
                 <Label htmlFor="disabled">Disabled</Label>
               </div>
@@ -571,7 +685,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
               </p>
               <Button onClick={async () => {
                 await onImportFromFile()
-              }}>
+              }} disabled={isSaving}>
                 Choose File
               </Button>
             </div>
@@ -595,7 +709,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       // Ignore formatting errors
                     }
                   }}
-                  disabled={!jsonInputText.trim()}
+                  disabled={isSaving || !jsonInputText.trim()}
                 >
                   Format
                 </Button>
@@ -614,6 +728,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
 }'
                 rows={12}
                 className="font-mono text-sm whitespace-pre"
+                disabled={isSaving}
               />
               <p className="text-xs text-muted-foreground">
                 Paste valid JSON configuration. New servers will be merged. Duplicate names will be replaced by imported versions.
@@ -632,7 +747,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   setIsValidatingJson(false)
                 }
               }}
-              disabled={isValidatingJson || !jsonInputText.trim()}
+              disabled={isSaving || isValidatingJson || !jsonInputText.trim()}
               className="w-full gap-2"
             >
               {isValidatingJson ? (
@@ -769,16 +884,19 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
         {/* Only show Add/Update Server button on manual and examples tabs */}
         {/* File and paste tabs have their own action buttons */}
         {(activeTab === 'manual' || activeTab === 'examples') && (
-          <Button onClick={handleSave}>{server ? "Update" : "Add"} Server</Button>
+          <Button onClick={() => void handleSave()} disabled={isSaving}>
+            {isSaving ? (server ? "Saving..." : "Adding...") : `${server ? "Update" : "Add"} Server`}
+          </Button>
         )}
       </DialogFooter>
     </DialogContent>
@@ -1346,39 +1464,36 @@ export function MCPConfigManager({
         [name]: serverConfig,
       },
     }
-    onConfigChange(newConfig)
+    await onConfigChange(newConfig)
     setShowAddDialog(false)
 
     // Auto-start the server after adding it (unless it's disabled)
     if (!serverConfig.disabled) {
-      // Wait a bit for the config to be saved
-      setTimeout(async () => {
-        try {
-          // Mark the server as runtime-enabled
-          const runtimeResult = await tipcClient.setMcpServerRuntimeEnabled({
-            serverName: name,
-            enabled: true,
-          })
-          if (!(runtimeResult as any).success) {
-            toast.error(`Failed to enable server: Server not found`)
-            return
-          }
-
-          // Start the server
-          const result = await tipcClient.restartMcpServer({ serverName: name })
-          if ((result as any).success) {
-            toast.success(`Server ${name} connected successfully`)
-          } else {
-            toast.error(`Failed to connect server: ${(result as any).error}`)
-          }
-        } catch (error) {
-          toast.error(`Failed to connect server: ${error instanceof Error ? error.message : String(error)}`)
+      try {
+        // Mark the server as runtime-enabled
+        const runtimeResult = await tipcClient.setMcpServerRuntimeEnabled({
+          serverName: name,
+          enabled: true,
+        })
+        if (!(runtimeResult as any).success) {
+          toast.error(`Failed to enable server: Server not found`)
+          return
         }
-      }, 500)
+
+        // Start the server after the config save completes successfully
+        const result = await tipcClient.restartMcpServer({ serverName: name })
+        if ((result as any).success) {
+          toast.success(`Server ${name} connected successfully`)
+        } else {
+          toast.error(`Failed to connect server: ${(result as any).error}`)
+        }
+      } catch (error) {
+        toast.error(`Failed to connect server: ${error instanceof Error ? error.message : String(error)}`)
+      }
     }
   }
 
-  const handleEditServer = (
+  const handleEditServer = async (
     oldName: string,
     newName: string,
     serverConfig: MCPServerConfig,
@@ -1393,7 +1508,7 @@ export function MCPConfigManager({
       ...config,
       mcpServers: newServers,
     }
-    onConfigChange(newConfig)
+    await onConfigChange(newConfig)
     setEditingServer(null)
   }
 
@@ -1405,7 +1520,7 @@ export function MCPConfigManager({
       ...config,
       mcpServers: newServers,
     }
-    onConfigChange(newConfig)
+    void onConfigChange(newConfig).catch(() => {})
   }
 
   const handleImportConfigFromFile = async () => {
@@ -1443,7 +1558,7 @@ export function MCPConfigManager({
             ...filteredServers,
           },
         }
-        onConfigChange(newConfig)
+        void onConfigChange(newConfig).catch(() => {})
         setShowAddDialog(false)
         toast.success(`Successfully imported ${importedCount} server(s)`)
       }
@@ -1514,7 +1629,7 @@ export function MCPConfigManager({
             ...filteredServers,
           },
         }
-        onConfigChange(newConfig)
+        void onConfigChange(newConfig).catch(() => {})
         setShowAddDialog(false)
         toast.success(`Successfully imported ${importedCount} server(s)`)
         return true
@@ -2104,6 +2219,7 @@ export function MCPConfigManager({
               </DialogTrigger>
               <ServerDialog
                 onSave={handleAddServer}
+                existingServerNames={Object.keys(servers)}
                 onCancel={() => setShowAddDialog(false)}
                 onImportFromFile={handleImportConfigFromFile}
                 onImportFromText={handleImportFromText}
@@ -2431,6 +2547,7 @@ export function MCPConfigManager({
             onSave={(newName, config) =>
               handleEditServer(editingServer.name, newName, config)
             }
+            existingServerNames={Object.keys(servers)}
             onCancel={() => setEditingServer(null)}
           />
         </Dialog>

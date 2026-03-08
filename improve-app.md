@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop MCP tools settings add/edit save recovery and validation clarity in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`, with config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, shared save-error copy checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, adjacent dialog behavior cross-checked against `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop remote-server settings startup failure recovery / share-status clarity in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server lifecycle/status reviewed in `apps/desktop/src/main/remote-server.ts` and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop provider model refresh recovery / stale-results clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with provider-settings credential autosave integration reviewed in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, targeted query invalidation inspected in `apps/desktop/src/renderer/src/lib/queries.ts`, backend credential-sensitive cache behavior checked in `apps/desktop/src/main/models-service.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider settings credential save / retry / error-handling clarity in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with shared save-error messaging reviewed in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, existing source-level coverage checked in `apps/desktop/src/renderer/src/pages/settings-providers.credentials.test.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
@@ -35,6 +36,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop MCP server add/edit dialogs now keep drafts open when config persistence fails, show inline validation/save guidance with a local `Retry save` action, block accidental duplicate server names during manual add/rename, and only auto-start newly added servers after the config save actually succeeds.
 - 2026-03-08: Desktop remote-server settings now show inline startup failure details, provide a local `Start now` / `Retry start` recovery action, and only show the local share URL when the remote server is actually running so failed startup states are clearer and less misleading.
 - 2026-03-08: Desktop shared provider model selectors now invalidate and refetch when provider discovery credentials/base URLs change, keep the last loaded model list usable while a refresh is running, and show explicit inline stale-results guidance when a refresh fails so settings no longer quietly imply that an old list is still current.
 - 2026-03-08: Desktop provider credential inputs for Groq/Gemini now show inline autosave guidance, pending/saving state, preserved-draft save-failure messaging, and a local `Retry save` action instead of relying on toast-only failure feedback.
@@ -61,6 +63,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-mcp-server-save-guardrails.test.js`
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop typecheck:web` (blocked: this worktree is missing `node_modules`, so `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved and the desktop web typecheck could not run here).
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-remote-server-settings-feedback.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-model-selector-feedback.test.js`
@@ -109,6 +114,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this MCP save-recovery/validation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
+- 2026-03-08: Focused desktop web typecheck for this MCP save-recovery/validation pass is blocked in this worktree because `node_modules` is missing, so `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`.
 - 2026-03-08: Live desktop UI inspection for this remote-server status/retry pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this provider-model refresh/stale-results pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this provider-credential autosave feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -132,11 +139,12 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop MCP tools settings test/save recovery and validation clarity (`apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`)
+- Desktop model settings save/error handling and validation clarity (`apps/desktop/src/renderer/src/pages/settings-models.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop MCP tools settings test/save recovery next so MCP server setup failures and validation issues are clearer without needing to inspect logs or retry blindly
+- Inspect desktop model settings save/error handling next so another core settings surface gives clearer validation and persistence feedback without relying on toast-only failure states
 - Once a runnable Electron target is available, live-check the desktop remote-server settings startup failure, `Start now` / `Retry start`, bind-address warnings, and local/tunnel sharing states to confirm the new recovery hierarchy feels right in the actual UI
+- Once a runnable Electron target is available, live-check the desktop MCP server add/edit dialog for duplicate-name validation, failed-save retry, pending-save lockout, and post-save auto-start timing to confirm the recovery hierarchy feels right in the real UI
 - Once the mobile workspace can typecheck or run Expo again, live-check the mobile provider picker states for missing credentials, fallback suggestions, empty results, refresh behavior, and custom-model entry to confirm the new guidance feels right on-device
 - Once a runnable Electron target is available, live-check the desktop shared `model-selector.tsx` states for missing API key, fallback suggestions, empty responses, refresh behavior, and custom-model entry to confirm the new helper text hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
@@ -1099,6 +1107,43 @@ Track small, shippable product improvements. Review this file before each iterat
   - once an Electron target is available, live-check dirty export/publish dismissal via backdrop click, Escape, and the dialog close button to confirm the confirmation cadence feels right
   - live-check the Hub publish preview step while generating and saving files to confirm the busy-state affordances feel clear during actual OS save dialogs
   - inspect desktop bundle import conflict-resolution / overwrite clarity next for the next non-overlapping improvement on the same product seam
+
+### 2026-03-08 — Desktop MCP server add/edit save recovery and validation clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop MCP server add/edit dialogs in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx`
+  - desktop MCP settings page save wiring in `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`
+  - shared save-error copy reused from `apps/desktop/src/renderer/src/lib/config-save-error.ts`
+  - focused source-level regression coverage added in `tests/desktop-mcp-server-save-guardrails.test.js`
+- Why it was chosen:
+  - the ledger explicitly called out desktop MCP tools settings test/save recovery and validation clarity as the next fresh, high-value settings surface to inspect
+  - investigation found a concrete reliability gap: add/edit submits closed immediately, auto-start could run before persistence was confirmed, and a failed config save would drop users back to the list without preserving or explaining the draft state
+  - source review also found a validation gap in the same flow: manually adding or renaming a server to an existing name could silently overwrite another server config with no inline warning
+- What was inspected:
+  - `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` for add/edit dialog state, validation, import/export behavior, and post-save auto-start sequencing
+  - `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx` for how MCP config writes are persisted from the settings page
+  - `apps/desktop/src/renderer/src/lib/queries.ts` and `apps/desktop/src/renderer/src/lib/config-save-error.ts` to confirm save-mutation failure behavior and reuse the existing settings save-error wording
+  - `apps/desktop/src/renderer/src/components/ui/dialog.tsx` to understand what close paths needed guarding during pending saves
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - MCP add/edit now await confirmed config persistence before closing the dialog, so failed saves no longer discard the draft or leave the user guessing whether anything was saved
+  - the dialog now shows inline validation and save-failure messaging, keeps the draft open after a failed save, and offers a local `Retry save` action instead of relying on toast-only recovery
+  - manual add/rename now blocks duplicate server names up front instead of silently overwriting an existing server configuration; JSON import keeps its existing explicit merge/replace behavior for this pass
+  - newly added servers now auto-start only after the config save completes, removing the previous timed race where runtime enable/restart could happen before the server definition was actually persisted
+- Assumptions / tradeoffs / rationale:
+  - kept the improvement scoped to manual add/edit because that was the highest-risk draft-loss path; import/export save feedback can be iterated separately if it remains confusing in practice
+  - chose to block duplicate manual names rather than add an overwrite confirmation because manual add/edit should be the safer path, while import already has copy explicitly describing replacement behavior
+  - reused the shared settings save-error wording to stay consistent with other settings surfaces instead of introducing a new MCP-specific failure taxonomy
+  - accepted source-level verification for this iteration because live Electron inspection and dependency-backed desktop typecheck/Vitest runs are still unavailable in the current worktree
+- Tests / verification:
+  - `node --test tests/desktop-mcp-server-save-guardrails.test.js`
+  - `git diff --check`
+  - attempted `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this worktree has no installed `node_modules`)
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check duplicate-name validation, failed-save retry, pending-save dismissal lockout, and post-save auto-start timing in the actual MCP settings UI
+  - inspect desktop model settings save/error handling next so another adjacent settings surface gets the same level of clarity around validation and persistence outcomes
 
 ### Iteration Template
 - Date:

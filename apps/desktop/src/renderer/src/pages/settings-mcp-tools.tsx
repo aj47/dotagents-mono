@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from "react"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { Config, MCPConfig } from "@shared/types"
 import { MCPConfigManager } from "@renderer/components/mcp-config-manager"
@@ -22,17 +23,23 @@ function normalizeCollapsedServers(value: unknown): string[] | undefined {
 export function Component() {
   const configQuery = useConfigQuery()
   const config = configQuery.data || {}
+  const configRef = useRef(config)
 
   const saveConfigMutation = useSaveConfigMutation()
 
-  const updateConfig = (updates: Partial<Config>) => {
-    const newConfig = { ...config, ...updates }
-    saveConfigMutation.mutate({ config: newConfig })
-  }
+  useEffect(() => {
+    configRef.current = config
+  }, [config])
 
-  const updateMcpConfig = (mcpConfig: MCPConfig) => {
-    updateConfig({ mcpConfig })
-  }
+  const updateConfig = useCallback((updates: Partial<Config>) => {
+    const newConfig = { ...configRef.current, ...updates }
+    saveConfigMutation.mutate({ config: newConfig })
+  }, [saveConfigMutation])
+
+  const updateMcpConfig = useCallback(async (mcpConfig: MCPConfig) => {
+    const newConfig = { ...configRef.current, mcpConfig }
+    await saveConfigMutation.mutateAsync({ config: newConfig })
+  }, [saveConfigMutation])
 
   const handleCollapsedToolServersChange = (servers: string[]) => {
     updateConfig({ mcpToolsCollapsedServers: servers })
