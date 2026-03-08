@@ -1,5 +1,60 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 49: Desktop Repeat Tasks titles can still collapse to zero width under real container pressure despite the earlier row-wrap pass
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-loops.tsx` (`Settings → Repeat Tasks`, collapsed task row header)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched panel/memories surfaces.
+  - This is an intentional follow-up verification of chunk 34, whose notes explicitly left live confirmation of the Repeat Tasks list for later once a reusable renderer session was available.
+  - A live settings target was available, and it exposed a residual user-facing issue stronger than any source-only guess: long repeat-task titles could still collapse away while the action strip stayed inline.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid reworking a recently covered area without a follow-up reason
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, mobile workflow/docs, and renderer guidance to stay aligned with the repo’s Electron-first inspection workflow and desktop/mobile cross-check expectations
+  - used live product inspection on the existing settings renderer target at `http://localhost:5174/settings/repeat-tasks`
+  - stress-tested the mounted page under tighter settings-column conditions (`760×670` at `125%` zoom and `720×670` at `150%` zoom) and captured screenshot-backed evidence in `tmp/ui-audit/repeat-tasks-760x670-zoom125.png` and `tmp/ui-audit/repeat-tasks-720x670-zoom150.png`
+  - measured the live DOM for representative long-name rows like `Self-Improvement Review` and `Discord Recap Tweeter` before deciding on a fix
+  - prototyped the intended container-aware reflow directly in the mounted DOM and captured `tmp/ui-audit/repeat-tasks-prototype-improved-760x670-zoom125.png`
+  - cross-checked mobile and kept this desktop-only: mobile loop management in `apps/mobile/src/screens/SettingsScreen.tsx` already uses a separate stacked/touch-oriented action column rather than this desktop collapsed-row header contract
+
+#### Findings
+
+- Before the fix, the desktop `Repeat Tasks` list still had one concrete desktop readability issue with clear user impact:
+  - the earlier row-wrap hardening reduced some pressure, but the current source still let the action strip depend on viewport-style fallback (`sm:w-auto`) plus a fully shrinkable text lane
+  - in live inspection at `760×670` with simulated `125%` zoom, a representative row was about `360px` wide while the action strip still occupied about `186px`, leaving only about `141px` for the text lane and about `74px` of visible title width against roughly `172–190px` of scroll width for longer task names
+  - in the stronger `720×670` with simulated `150%` zoom case, the action strip still stayed on the first line and the text lane could collapse to about `15px`, with measured visible title width dropping to `0px`
+  - that is materially risky because users can be left with `Run` / `File` / edit / delete controls without being able to tell which repeat task row those actions belong to
+
+#### Changes made
+
+- Hardened `apps/desktop/src/renderer/src/pages/settings-loops.tsx` with a small container-aware follow-up fix:
+  - gave the text lane a real minimum width / flex basis (`min-w-[min(100%,16rem)] flex-[1_1_16rem]`) so it can no longer be squeezed to nearly nothing beside the action strip
+  - upgraded the title/badge row from `items-center` to a more intentional wrap-safe `items-start gap-x-2 gap-y-1` treatment
+  - changed the task title itself to `min-w-[min(100%,12rem)] flex-[1_1_12rem] ... leading-snug`, which lets the status badge wrap beneath the title sooner instead of forcing the title toward zero width
+  - removed the viewport-dependent `sm:w-auto` action-strip fallback and replaced it with a container-aware `ml-auto flex max-w-full flex-[0_1_auto] flex-wrap ...` cluster so actions can drop below based on real available width rather than page breakpoint width
+- Extended `apps/desktop/src/renderer/src/pages/settings-loops.layout.test.ts` with focused source-contract coverage for the new container-aware text-lane and action-strip treatment, including a guard that the old `sm:w-auto` fallback is gone
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new text-lane minimum width, title wrap row, title flex basis, container-aware action strip, removal of `sm:w-auto`, and the regression-test update
+- Live renderer evidence before the fix at `http://localhost:5174/settings/repeat-tasks`:
+  - at `760×670` + simulated `125%` zoom, `Self-Improvement Review` had about `74px` of visible title width against about `190px` of scroll width while the action strip remained inline
+  - at `720×670` + simulated `150%` zoom, representative long-name rows reached a `0px` visible title state while the action strip still remained on the top line
+  - screenshots: `tmp/ui-audit/repeat-tasks-760x670-zoom125.png`, `tmp/ui-audit/repeat-tasks-720x670-zoom150.png`
+- Live DOM prototype verification of the intended fix:
+  - after applying the same container-aware treatment in the mounted DOM, the representative title lane expanded from about `74px` to about `268px` at `760×670` + `125%` zoom, eliminating overflow and moving the actions below the text lane
+  - at `720×670` + `150%` zoom, the text lane expanded from about `15px` to about `210px`, the title no longer overflowed, the status badge wrapped intentionally beneath it, and the actions dropped below the text lane instead of crushing it
+  - screenshot: `tmp/ui-audit/repeat-tasks-prototype-improved-760x670-zoom125.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-loops.tsx apps/desktop/src/renderer/src/pages/settings-loops.layout.test.ts ui-audit.md`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live renderer session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit product pass from this worktree. Instead, I paired live pre-fix evidence with a DOM prototype of the exact class treatment and direct source verification of the patched logic.
+- This chunk is desktop-only: mobile repeat-task management uses a different stacked action layout and does not share the desktop row contract changed here.
+- Tradeoff/rationale: under tighter settings widths or larger text, these rows may now let the action strip drop beneath the title/status cluster earlier than before, but that is a deliberate and safer tradeoff than showing row-local actions without readable task identity.
+- Best next UI audit chunk after this one: switch to a fresh top-level desktop or mobile surface that still lacks live verification, or return to `settings-loops.tsx` only if a rebuilt renderer for this checkout becomes available and post-edit confirmation is needed.
+
 ### 2026-03-08 — Chunk 48: Desktop panel can surface as a blank shell with no body content or status copy
 
 - Area selected:

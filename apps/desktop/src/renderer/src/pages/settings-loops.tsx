@@ -222,9 +222,11 @@ export function SettingsLoops() {
             )}
           >
             <div className="flex flex-wrap items-start gap-3">
-              <div className="min-w-0 flex-[1_1_16rem]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere]">{loop.name}</span>
+              <div className="min-w-[min(100%,16rem)] flex-[1_1_16rem]">
+                <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                  <span className="min-w-[min(100%,12rem)] flex-[1_1_12rem] break-words font-medium leading-snug [overflow-wrap:anywhere]">
+                    {loop.name}
+                  </span>
                   {isRunning ? (
                     <Badge variant="secondary" className="shrink-0">Running</Badge>
                   ) : loop.enabled ? (
@@ -237,7 +239,7 @@ export function SettingsLoops() {
                   {loop.prompt}
                 </p>
               </div>
-              <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
+              <div className="ml-auto flex max-w-full flex-[0_1_auto] flex-wrap items-center justify-end gap-1">
                 <Button
                   variant="outline"
                   size="sm"
