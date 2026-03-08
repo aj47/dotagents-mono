@@ -45,6 +45,7 @@ import {
   getMcpToolsShortcutDisplay,
   getSettingsHotkeyDisplay,
   getTextInputShortcutDisplay,
+  getToggleVoiceDictationShortcutDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
@@ -295,6 +296,22 @@ export function Component() {
   const sttProviderId: STT_PROVIDER_ID =
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
+  const toggleVoiceDictationEnabled =
+    configQuery.data?.toggleVoiceDictationEnabled ?? false
+  const toggleVoiceDictationHotkey = configQuery.data?.toggleVoiceDictationHotkey || "fn"
+  const hasCustomToggleVoiceDictationHotkey = Boolean(
+    configQuery.data?.customToggleVoiceDictationHotkey?.trim(),
+  )
+  const toggleVoiceDictationShortcutDisplay = getToggleVoiceDictationShortcutDisplay(
+    toggleVoiceDictationHotkey,
+    configQuery.data?.customToggleVoiceDictationHotkey,
+  )
+  const toggleVoiceDictationShortcutSummary =
+    !toggleVoiceDictationEnabled
+      ? "Toggle voice dictation is off. Turn it on if you want one shortcut press to start recording and another press to stop it. Changes save immediately."
+      : toggleVoiceDictationHotkey === "custom" && !hasCustomToggleVoiceDictationHotkey
+        ? "Record a custom shortcut to finish setup. Until then, toggle voice dictation won't start from the keyboard. Changes save immediately."
+        : `Press ${toggleVoiceDictationShortcutDisplay} once to start voice dictation, then press it again to stop and submit. Changes save immediately.`
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
   const textInputEnabled = configQuery.data?.textInputEnabled ?? true
   const hasCustomTextInputShortcut = Boolean(configQuery.data?.customTextInputShortcut?.trim())
@@ -758,7 +775,7 @@ export function Component() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Switch
-                  checked={configQuery.data?.toggleVoiceDictationEnabled || false}
+                  checked={toggleVoiceDictationEnabled}
                   onCheckedChange={(checked) => {
                     saveConfig({
                       toggleVoiceDictationEnabled: checked,
@@ -770,47 +787,56 @@ export function Component() {
                 </span>
               </div>
 
-              {configQuery.data?.toggleVoiceDictationEnabled && (
+              <Select
+                value={toggleVoiceDictationHotkey}
+                onValueChange={(value) => {
+                  saveConfig({
+                    toggleVoiceDictationHotkey:
+                      value as typeof configQuery.data.toggleVoiceDictationHotkey,
+                  })
+                }}
+                disabled={!toggleVoiceDictationEnabled}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fn">Fn</SelectItem>
+                  <SelectItem value="f1">F1</SelectItem>
+                  <SelectItem value="f2">F2</SelectItem>
+                  <SelectItem value="f3">F3</SelectItem>
+                  <SelectItem value="f4">F4</SelectItem>
+                  <SelectItem value="f5">F5</SelectItem>
+                  <SelectItem value="f6">F6</SelectItem>
+                  <SelectItem value="f7">F7</SelectItem>
+                  <SelectItem value="f8">F8</SelectItem>
+                  <SelectItem value="f9">F9</SelectItem>
+                  <SelectItem value="f10">F10</SelectItem>
+                  <SelectItem value="f11">F11</SelectItem>
+                  <SelectItem value="f12">F12</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="text-xs text-muted-foreground">
+                {toggleVoiceDictationShortcutSummary}
+              </div>
+
+              {toggleVoiceDictationHotkey === "custom" && toggleVoiceDictationEnabled && (
                 <>
-                  <Select
-                    defaultValue={configQuery.data?.toggleVoiceDictationHotkey || "fn"}
-                    onValueChange={(value) => {
+                  <KeyRecorder
+                    value={configQuery.data?.customToggleVoiceDictationHotkey || ""}
+                    onChange={(keyCombo) => {
                       saveConfig({
-                        toggleVoiceDictationHotkey: value as typeof configQuery.data.toggleVoiceDictationHotkey,
+                        customToggleVoiceDictationHotkey: keyCombo,
                       })
                     }}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fn">Fn</SelectItem>
-                      <SelectItem value="f1">F1</SelectItem>
-                      <SelectItem value="f2">F2</SelectItem>
-                      <SelectItem value="f3">F3</SelectItem>
-                      <SelectItem value="f4">F4</SelectItem>
-                      <SelectItem value="f5">F5</SelectItem>
-                      <SelectItem value="f6">F6</SelectItem>
-                      <SelectItem value="f7">F7</SelectItem>
-                      <SelectItem value="f8">F8</SelectItem>
-                      <SelectItem value="f9">F9</SelectItem>
-                      <SelectItem value="f10">F10</SelectItem>
-                      <SelectItem value="f11">F11</SelectItem>
-                      <SelectItem value="f12">F12</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {configQuery.data?.toggleVoiceDictationHotkey === "custom" && (
-                    <KeyRecorder
-                      value={configQuery.data?.customToggleVoiceDictationHotkey || ""}
-                      onChange={(keyCombo) => {
-                        saveConfig({
-                          customToggleVoiceDictationHotkey: keyCombo,
-                        })
-                      }}
-                      placeholder="Click to record custom toggle shortcut"
-                    />
+                    placeholder="Click to record custom toggle voice dictation shortcut"
+                  />
+                  {!hasCustomToggleVoiceDictationHotkey && (
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      Record a custom shortcut to finish setup. Toggle voice dictation won't start from the keyboard until one is saved.
+                    </div>
                   )}
                 </>
               )}

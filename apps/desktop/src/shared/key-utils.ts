@@ -322,6 +322,66 @@ export function getSettingsHotkeyDisplay(
 }
 
 /**
+ * Get the display string for the toggle voice dictation shortcut.
+ * This keeps settings copy aligned with the actual configured shortcut.
+ */
+export function getToggleVoiceDictationShortcutDisplay(
+  shortcut:
+    | "fn"
+    | "f1"
+    | "f2"
+    | "f3"
+    | "f4"
+    | "f5"
+    | "f6"
+    | "f7"
+    | "f8"
+    | "f9"
+    | "f10"
+    | "f11"
+    | "f12"
+    | "custom"
+    | undefined,
+  customShortcut?: string,
+): string {
+  switch (shortcut) {
+    case "fn":
+      return "Fn"
+    case "f1":
+      return "F1"
+    case "f2":
+      return "F2"
+    case "f3":
+      return "F3"
+    case "f4":
+      return "F4"
+    case "f5":
+      return "F5"
+    case "f6":
+      return "F6"
+    case "f7":
+      return "F7"
+    case "f8":
+      return "F8"
+    case "f9":
+      return "F9"
+    case "f10":
+      return "F10"
+    case "f11":
+      return "F11"
+    case "f12":
+      return "F12"
+    case "custom":
+      if (customShortcut) {
+        return formatKeyComboForDisplay(customShortcut)
+      }
+      return "Set custom shortcut"
+    default:
+      return "Fn"
+  }
+}
+
+/**
  * Get the display string for the emergency kill switch shortcut.
  * This keeps settings copy aligned with the actual configured shortcut.
  */
