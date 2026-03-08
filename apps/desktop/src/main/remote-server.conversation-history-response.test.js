@@ -22,7 +22,7 @@ test('conversation recovery route preserves summary metadata and stored raw hist
   assert.match(remoteServerSource, /compaction: conversation\.compaction/)
 })
 
-test('conversation create and update routes preserve summary metadata on write and response payloads', () => {
+test('conversation create and update routes preserve raw history and compaction metadata on write and response payloads', () => {
   const createSection = getSection('fastify.post("/v1/conversations"', '// PUT /v1/conversations/:id - Update an existing conversation')
   const updateSection = getSection('// PUT /v1/conversations/:id - Update an existing conversation', '// Kill switch endpoint - emergency stop all agent sessions')
 
@@ -30,21 +30,36 @@ test('conversation create and update routes preserve summary metadata on write a
     createSection,
     /const messages = body\.messages\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
   )
+  assert.match(createSection, /rawMessages\?: Array<\{/)
+  assert.match(createSection, /compaction\?: ConversationCompactionMetadata/)
   assert.match(
     createSection,
-    /messages: conversation\.messages\.map\(msg => \([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+    /const rawMessages = body\.rawMessages\?\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
+  assert.match(createSection, /compaction: body\.compaction/)
+  assert.match(
+    createSection,
+    /messages: conversation\.messages\.map\(msg => \([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)[\s\S]*?rawMessages: conversation\.rawMessages\?\.map\([\s\S]*?compaction: conversation\.compaction/,
   )
 
   assert.match(
     updateSection,
     /const messages = body\.messages\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
   )
+  assert.match(updateSection, /rawMessages\?: Array<\{/)
+  assert.match(updateSection, /compaction\?: ConversationCompactionMetadata/)
+  assert.match(
+    updateSection,
+    /const rawMessages = body\.rawMessages\?\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+  )
+  assert.match(updateSection, /conversation\.rawMessages = body\.rawMessages\.map\(/)
+  assert.match(updateSection, /conversation\.compaction = body\.compaction/)
   assert.match(
     updateSection,
     /conversation\.messages = body\.messages\.map\([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
   )
   assert.match(
     updateSection,
-    /messages: conversation\.messages\.map\(msg => \([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)/,
+    /messages: conversation\.messages\.map\(msg => \([\s\S]*?toolResults: msg\.toolResults,[\s\S]*?isSummary: msg\.isSummary,[\s\S]*?summarizedMessageCount: msg\.summarizedMessageCount,[\s\S]*?\}\)\)[\s\S]*?rawMessages: conversation\.rawMessages\?\.map\([\s\S]*?compaction: conversation\.compaction/,
   )
 })

@@ -2754,3 +2754,42 @@
   - If a live repro still shows metadata loss, inspect any remaining non-remote save/update paths that rebuild `Conversation.messages` without copying summary fields.
   - When a fuller desktop/mobile environment is available, add runtime request/response coverage for these remote conversation routes rather than relying only on source assertions.
 - Next recommended issue work item: refresh the open issues again and prefer either a fresh direct-value desktop bug/reliability slice or another equally concrete `#58` storage-contract follow-up only if a new source-confirmed metadata-loss path appears.
+
+##### Issue #58 — Remote conversation create/update contract now accepts preserved raw history fields
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the latest recommendation literally: only stay on `#58` if another source-confirmed storage-contract gap appeared.
+  - Refreshed the open issues and re-checked nearby code before changing anything; the clearest new gap was that remote conversation `GET` already returned `rawMessages` / `compaction`, but the shared create/update request contract still could not carry those fields back.
+  - This was a small, reviewable reliability slice with direct user value: it closes one more history-loss path on the remote API without attempting a broader mobile-state refactor in the same pass.
+- Investigation:
+  - Re-read issue `#58` and confirmed it still centers on preserving full conversation history and compaction provenance, not merely rendering summarized markers.
+  - Inspected `packages/shared/src/api-types.ts` and confirmed `CreateConversationRequest` / `UpdateConversationRequest` only allowed `messages`, so the typed remote contract still prevented clients from sending preserved raw history even though `ServerConversationFull` exposed it on reads.
+  - Inspected `apps/desktop/src/main/remote-server.ts` and confirmed the remote `POST /v1/conversations` and `PUT /v1/conversations/:id` handlers similarly had no request-body support for `rawMessages` / `compaction`, and their responses still omitted those fields after writes.
+  - Re-checked `apps/mobile/src/lib/syncService.ts` and confirmed mobile sync still only pushes the active `messages` window today; that means the smallest honest slice here was to align the shared/server contract first and explicitly document the remaining client-side plumbing gap.
+- Important assumptions:
+  - Assumption: this iteration should extend the remote/shared contract to preserve `rawMessages` / `compaction` when clients send them, but should not yet refactor mobile session state to persist full raw history locally.
+  - Why acceptable: the contract gap was source-confirmed and self-contained, while mobile-side full-history persistence is a larger follow-up that would touch store/state semantics beyond one reviewable slice.
+  - Assumption: when an update request changes normal `messages` but omits `rawMessages` / `compaction`, the server should preserve any existing stored raw-history fields rather than clearing them implicitly.
+  - Why acceptable: issue `#58` prioritizes not silently discarding preserved history; preserving prior raw-history metadata is safer than deleting it for older clients that still only know about `messages`.
+  - Assumption: source-level regression tests plus a focused desktop TypeScript check are sufficient verification for this contract-alignment slice.
+  - Why acceptable: the behavior change is isolated to request/response typing + route mapping logic, and the targeted checks pass locally.
+- Changes implemented:
+  - Extended `packages/shared/src/api-types.ts` so `CreateConversationRequest` and `UpdateConversationRequest` now optionally accept `rawMessages` and `compaction` alongside `messages`.
+  - Updated `apps/desktop/src/main/remote-server.ts` so remote conversation create/update handlers now validate optional `rawMessages` arrays and optional compaction metadata, map those fields into stored conversations, and return them in POST/PUT responses.
+  - Kept the update path preservation-friendly: if callers omit `rawMessages` / `compaction`, existing stored raw-history fields are retained instead of being silently dropped.
+  - Extended `apps/desktop/src/main/remote-server.conversation-history-response.test.js` with source assertions covering request-body support, stored mapping, and response payload preservation for `rawMessages` / `compaction`.
+  - Added `packages/shared/src/api-types.conversation-history.test.js` to lock in the shared request-contract shape for future regressions.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/remote-server.conversation-history-response.test.js packages/shared/src/api-types.conversation-history.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Attempted: `pnpm exec tsc --noEmit -p apps/mobile/tsconfig.json`
+  - Result: blocked by the pre-existing mobile worktree environment (`apps/mobile/tsconfig.json` references missing `expo/tsconfig.base`, plus widespread missing Expo/React Native type dependencies unrelated to this slice).
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Plumb `rawMessages` / `compaction` through the actual mobile sync client once session/local state can persist full raw history rather than only the active message window.
+  - Add runtime request/response coverage for the remote conversation routes when a fuller Fastify/Vitest environment is available, instead of relying only on source assertions.
+  - If a live repro still shows history loss, inspect any remaining non-remote update paths that overwrite conversations after lazy-loading full history.
+- Next recommended issue work item: refresh the open issues again and prefer a fresh direct-value desktop bug/UX slice next; only stay on `#58` if another concrete, source-confirmed full-history persistence gap appears beyond the now-aligned remote/shared write contract.

@@ -34,6 +34,7 @@ import {
 } from "./acp-session-state"
 import { WINDOWS } from "./window"
 import type { RendererHandlers } from "./renderer-handlers"
+import type { ConversationCompactionMetadata } from "../shared/types"
 
 let server: FastifyInstance | null = null
 let lastError: string | undefined
@@ -1799,6 +1800,49 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return null
   }
 
+  const validateConversationCompaction = (
+    compaction: ConversationCompactionMetadata | undefined,
+  ): string | null => {
+    if (typeof compaction === "undefined") {
+      return null
+    }
+
+    if (!compaction || typeof compaction !== "object" || Array.isArray(compaction)) {
+      return "Invalid compaction metadata: expected an object"
+    }
+
+    if (typeof compaction.rawHistoryPreserved !== "boolean") {
+      return "Invalid compaction metadata: rawHistoryPreserved must be a boolean"
+    }
+
+    if (typeof compaction.representedMessageCount !== "number" || !Number.isFinite(compaction.representedMessageCount)) {
+      return "Invalid compaction metadata: representedMessageCount must be a finite number"
+    }
+
+    if (
+      typeof compaction.storedRawMessageCount !== "undefined"
+      && (typeof compaction.storedRawMessageCount !== "number" || !Number.isFinite(compaction.storedRawMessageCount))
+    ) {
+      return "Invalid compaction metadata: storedRawMessageCount must be a finite number when provided"
+    }
+
+    if (
+      typeof compaction.compactedAt !== "undefined"
+      && (typeof compaction.compactedAt !== "number" || !Number.isFinite(compaction.compactedAt))
+    ) {
+      return "Invalid compaction metadata: compactedAt must be a finite number when provided"
+    }
+
+    if (
+      typeof compaction.partialReason !== "undefined"
+      && compaction.partialReason !== "legacy_summary_without_raw_messages"
+    ) {
+      return "Invalid compaction metadata: unsupported partialReason"
+    }
+
+    return null
+  }
+
   // GET /v1/conversations - List all conversations
   fastify.get("/v1/conversations", async (_req, reply) => {
     try {
@@ -1830,6 +1874,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           isSummary?: boolean
           summarizedMessageCount?: number
         }>
+        rawMessages?: Array<{
+          role: "user" | "assistant" | "tool"
+          content: string
+          timestamp?: number
+          toolCalls?: Array<{ name: string; arguments: any }>
+          toolResults?: Array<{ success: boolean; content: string; error?: string }>
+          isSummary?: boolean
+          summarizedMessageCount?: number
+        }>
+        compaction?: ConversationCompactionMetadata
         createdAt?: number
         updatedAt?: number
       }
@@ -1842,6 +1896,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const validationError = validateMessages(body.messages)
       if (validationError) {
         return reply.code(400).send({ error: validationError })
+      }
+
+      if (body.rawMessages !== undefined && !Array.isArray(body.rawMessages)) {
+        return reply.code(400).send({ error: "rawMessages field must be an array" })
+      }
+
+      if (body.rawMessages && Array.isArray(body.rawMessages)) {
+        const rawValidationError = validateMessages(body.rawMessages)
+        if (rawValidationError) {
+          return reply.code(400).send({ error: rawValidationError.replace("message", "rawMessages entry") })
+        }
+      }
+
+      const compactionValidationError = validateConversationCompaction(body.compaction)
+      if (compactionValidationError) {
+        return reply.code(400).send({ error: compactionValidationError })
       }
 
       const conversationId = conversationService.generateConversationIdPublic()
@@ -1865,12 +1935,25 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         summarizedMessageCount: msg.summarizedMessageCount,
       }))
 
+      const rawMessages = body.rawMessages?.map((msg, index) => ({
+        id: `msg_${now}_raw_${index}_${Math.random().toString(36).substr(2, 9)}`,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp ?? now,
+        toolCalls: msg.toolCalls,
+        toolResults: msg.toolResults,
+        isSummary: msg.isSummary,
+        summarizedMessageCount: msg.summarizedMessageCount,
+      }))
+
       const conversation = {
         id: conversationId,
         title,
         createdAt: body.createdAt ?? now,
         updatedAt: body.updatedAt ?? now,
         messages,
+        rawMessages,
+        compaction: body.compaction,
       }
 
       await conversationService.saveConversation(conversation, true)
@@ -1894,6 +1977,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           isSummary: msg.isSummary,
           summarizedMessageCount: msg.summarizedMessageCount,
         })),
+        rawMessages: conversation.rawMessages?.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
+        })),
+        compaction: conversation.compaction,
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create conversation", error)
@@ -1933,6 +2027,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           isSummary?: boolean
           summarizedMessageCount?: number
         }>
+        rawMessages?: Array<{
+          role: "user" | "assistant" | "tool"
+          content: string
+          timestamp?: number
+          toolCalls?: Array<{ name: string; arguments: any }>
+          toolResults?: Array<{ success: boolean; content: string; error?: string }>
+          isSummary?: boolean
+          summarizedMessageCount?: number
+        }>
+        compaction?: ConversationCompactionMetadata
         updatedAt?: number
       }
 
@@ -1951,6 +2055,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           return reply.code(400).send({ error: validationError })
         }
 
+        if (body.rawMessages !== undefined && !Array.isArray(body.rawMessages)) {
+          return reply.code(400).send({ error: "rawMessages field must be an array" })
+        }
+
+        if (body.rawMessages && Array.isArray(body.rawMessages)) {
+          const rawValidationError = validateMessages(body.rawMessages)
+          if (rawValidationError) {
+            return reply.code(400).send({ error: rawValidationError.replace("message", "rawMessages entry") })
+          }
+        }
+
+        const compactionValidationError = validateConversationCompaction(body.compaction)
+        if (compactionValidationError) {
+          return reply.code(400).send({ error: compactionValidationError })
+        }
+
         const firstMessageContent = body.messages[0]?.content || ""
         const title = body.title || (firstMessageContent.length > 50
           ? `${firstMessageContent.slice(0, 50)}...`
@@ -1967,12 +2087,25 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           summarizedMessageCount: msg.summarizedMessageCount,
         }))
 
+        const rawMessages = body.rawMessages?.map((msg, index) => ({
+          id: `msg_${now}_raw_${index}_${Math.random().toString(36).substr(2, 9)}`,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp ?? now,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
+        }))
+
         conversation = {
           id: conversationId,
           title,
           createdAt: now,
           updatedAt: body.updatedAt ?? now,
           messages,
+          rawMessages,
+          compaction: body.compaction,
         }
 
         await conversationService.saveConversation(conversation, true)
@@ -1985,6 +2118,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
         if (body.messages !== undefined && !Array.isArray(body.messages)) {
           return reply.code(400).send({ error: "messages field must be an array" })
+        }
+
+        if (body.rawMessages !== undefined && !Array.isArray(body.rawMessages)) {
+          return reply.code(400).send({ error: "rawMessages field must be an array" })
+        }
+
+        if (body.rawMessages && Array.isArray(body.rawMessages)) {
+          const rawValidationError = validateMessages(body.rawMessages)
+          if (rawValidationError) {
+            return reply.code(400).send({ error: rawValidationError.replace("message", "rawMessages entry") })
+          }
+        }
+
+        const compactionValidationError = validateConversationCompaction(body.compaction)
+        if (compactionValidationError) {
+          return reply.code(400).send({ error: compactionValidationError })
         }
 
         if (body.messages && Array.isArray(body.messages)) {
@@ -2004,6 +2153,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             isSummary: msg.isSummary,
             summarizedMessageCount: msg.summarizedMessageCount,
           }))
+        }
+
+        if (body.rawMessages && Array.isArray(body.rawMessages)) {
+          conversation.rawMessages = body.rawMessages.map((msg, index) => ({
+            id: `msg_${now}_raw_${index}_${Math.random().toString(36).substr(2, 9)}`,
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp ?? now,
+            toolCalls: msg.toolCalls,
+            toolResults: msg.toolResults,
+            isSummary: msg.isSummary,
+            summarizedMessageCount: msg.summarizedMessageCount,
+          }))
+        }
+
+        if (body.compaction !== undefined) {
+          conversation.compaction = body.compaction
         }
 
         conversation.updatedAt = body.updatedAt ?? now
@@ -2030,6 +2196,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           isSummary: msg.isSummary,
           summarizedMessageCount: msg.summarizedMessageCount,
         })),
+        rawMessages: conversation.rawMessages?.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+          isSummary: msg.isSummary,
+          summarizedMessageCount: msg.summarizedMessageCount,
+        })),
+        compaction: conversation.compaction,
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update conversation", error)

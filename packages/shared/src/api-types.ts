@@ -241,6 +241,8 @@ export interface ServerConversationFull {
 export interface CreateConversationRequest {
   title?: string;
   messages: ServerConversationMessage[];
+  rawMessages?: ServerConversationMessage[];
+  compaction?: ConversationCompactionMetadata;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -248,6 +250,8 @@ export interface CreateConversationRequest {
 export interface UpdateConversationRequest {
   title?: string;
   messages?: ServerConversationMessage[];
+  rawMessages?: ServerConversationMessage[];
+  compaction?: ConversationCompactionMetadata;
   updatedAt?: number;
 }
 
