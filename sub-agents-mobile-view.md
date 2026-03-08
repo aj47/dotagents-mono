@@ -506,3 +506,42 @@
   - Smoke-test the header selector with a longer configured agent name once switchable options are available again.
   - Decide whether the fallback header badge copy should be unified between `Chats` and `Chat`.
   - Revisit `Settings > Agent Loops` only if a fresh mobile pass shows text density outweighs the now-cleaner header flow.
+
+### 2026-03-08 — Iteration 12: unify the no-options header fallback copy
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `ChatScreen` header fallback state
+  - `SessionListScreen` header fallback state
+  - focused header tests in `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a `390x844` viewport.
+  - Confirmed the recent non-interactive header treatment was working in both places when no switchable agents were available.
+  - Found a wording mismatch in the visible fallback badge copy:
+    - `Chats` header: `Default`
+    - `Chat` header: `Default Agent`
+- Issue selected:
+  - The two main mobile sub-agent headers described the same no-options state with different fallback labels, which made the experience feel less polished and slightly undermined state clarity.
+- Decision:
+  - Keep the new static header treatment from Iteration 11.
+  - Do not introduce a new shared abstraction for a one-string inconsistency.
+  - Make the smallest local fix by aligning `SessionListScreen` to the clearer `Default Agent` wording already used in `ChatScreen`.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` to use `Default Agent` as the fallback current-agent label.
+  - Updated `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` with a focused regression check that both header screens use the same fallback label.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - `Chats` header badge: `Default Agent`
+    - `Chat` header badge: `Default Agent`
+    - wording is now consistent while the headers remain non-interactive in the no-options state.
+- Remaining nearby issues noted, not addressed this iteration:
+  - A deliberately long real agent name still needs a live smoke test in the header once switchable options are available again.
+  - `Agent Loops` may still be the next-best candidate for another compactness pass if fresh live evidence shows text squeeze returning.
+  - The no-options header state is now clearer, but the same server state should eventually be checked on-device in addition to Expo Web.
+- Next checks:
+  - Smoke-test the header selector with a longer configured agent name once switchable options exist again.
+  - Revisit `Settings > Agent Loops` only if a fresh mobile pass shows text density has again become the highest-friction issue.
+  - Confirm the current no-options header copy and spacing on a native device/simulator when practical.

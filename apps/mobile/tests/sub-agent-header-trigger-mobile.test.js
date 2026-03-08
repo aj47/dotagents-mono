@@ -40,3 +40,8 @@ for (const [screenName, source] of [
     assert.match(source, /navigation\?\.addListener\?\.\('focus', \(\) => \{[\s\S]*?void refreshAgentSelectorAvailability\(\);/);
   });
 }
+
+test('Chat and Chats headers use the same fallback agent label when switching is unavailable', () => {
+  assert.match(chatScreenSource, /const currentAgentLabel = currentProfile\?\.name \|\| 'Default Agent';/);
+  assert.match(sessionListScreenSource, /const currentAgentLabel = currentProfile\?\.name \|\| 'Default Agent';/);
+});

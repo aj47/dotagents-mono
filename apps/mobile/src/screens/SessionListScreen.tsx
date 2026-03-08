@@ -32,7 +32,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
-  const currentAgentLabel = currentProfile?.name || 'Default';
+  const currentAgentLabel = currentProfile?.name || 'Default Agent';
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
 
