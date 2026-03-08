@@ -1,6 +1,10 @@
 ## Bug Fix Ledger
 
 ### Checked
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` and confirmed the visible preset switch/create/update/delete actions still called `saveConfigMutation.mutate(...)` and then immediately showed success UI; create/update also closed and reset their dialogs before the config write had actually succeeded.
+- [x] 2026-03-08: Confirmed in `apps/desktop/src/renderer/src/lib/queries.ts` that `useSaveConfigMutation` only invalidates the `config` query on `onSuccess` and reports failures from `onError`, so a rejected config save can happen after `ModelPresetManager` already showed `Preset created/updated/deleted` or `Switched to preset...` success feedback.
+- [x] 2026-03-08: Compared the desktop preset switch flow against mobile `apps/mobile/src/screens/SettingsScreen.tsx`; mobile already awaits `settingsClient.updateSettings({ currentModelPresetId })` before mutating local preset state, and mobile has no equivalent desktop preset create/edit/delete dialogs.
+- [x] 2026-03-08: Assumption accepted: awaiting persistence only for the explicit preset switch/create/update/delete actions is the smallest safe fix because those are deliberate commit points; the existing background model-selector auto-save path can remain unchanged for this loop to avoid broadening scope.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-agents.tsx` again for the ledger's adjacent capabilities follow-up and confirmed a fresh partial-load bug: `allToolsLoadError` only guarded the fully empty built-in-tools state, so when `getMcpDetailedToolList()` failed after server status loaded the Capabilities tab still rendered MCP server cards with `0 tools` and no warning, and could keep showing built-in toggles without telling the user that tool availability data was stale/incomplete.
 - [x] 2026-03-08: Re-reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` and confirmed the visible `Start Tunnel` / `Stop Tunnel` actions still used React Query mutations with `onSuccess(...)` only, so renderer-side mutation/IPC failures had no toast/banner/inline feedback path.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` and confirmed the desktop WhatsApp `Connect` / `Disconnect` / `Logout` actions still mixed action failures and background status-refresh failures into the same `statusError` state.
@@ -219,6 +223,10 @@
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-tool-manager.tsx` after the newer `mcp-config-manager` diagnostics fixes landed and confirmed the separate MCP Tool Management page still treated tool-list fetch failures as an empty list with no dedicated loading/error state.
 
 ### Reproduced
+- [x] **Desktop Model Preset Manager could show false success and discard dialog state before settings were actually saved (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` wrapped config writes in a local `saveConfig(...)` helper that used `saveConfigMutation.mutate(...)`, then immediately called `toast.success(...)` for preset switching and for create/update/delete actions.
+  - The same create/update handlers also called `setIsCreateDialogOpen(false)` / `setIsEditDialogOpen(false)` and reset local form state right after firing the mutation, so a later disk-write failure could leave the user with both a success toast and an error toast while their edited preset inputs were already gone.
+  - `useSaveConfigMutation` only reports renderer save failures through its asynchronous `onError` handler, so this was a real user-visible timing bug rather than duplicate feedback for a synchronous validation branch.
 - [x] **Desktop Settings → Agents still misreported partial MCP tool-list failures as real empty tool counts (directly confirmed in source):**
   - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` already tracked `allToolsLoadError`, but only used it for the fully empty built-in-tools fallback (`allToolsLoadError && allTools.length === 0`).
   - The separate MCP Servers section mapped server names from `serverStatus`, then always rendered each card's summary from `toolsByServer(name)`, so a rejected `getMcpDetailedToolList()` refresh degraded to `0 tools` with no warning even though the page still knew the servers existed.
@@ -451,6 +459,8 @@
    - That meant a stale desktop `Delete task` click could claim success even though no repeat task was actually removed, which is misleading on an active settings-management surface.
 
 ### Fixed
+- [x] Updated `apps/desktop/src/renderer/src/components/model-preset-manager.tsx` so explicit preset switch/create/update/delete actions now await `saveConfigMutation.mutateAsync(...)` via a new `saveConfigAsync(...)` helper before showing success feedback, and create/update dialogs now stay open until the config write actually succeeds.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/model-preset-manager.save-feedback.test.ts` that locks in the awaited save ordering for preset switch/create/update/delete actions.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so the Capabilities tab now surfaces partial `getMcpDetailedToolList()` failures with an inline `Tool list unavailable` warning + retry CTA in the MCP Servers and Built-in Tools sections, changes affected server cards from misleading `0 tools` to `Tools unavailable`, and shows explicit expanded copy when a server's tool list could not be loaded.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so quick/named `Start Tunnel` mutations now surface a visible `toast.error(...)` for both rejected IPC calls and `{ success: false, error }` results, while `Stop Tunnel` now surfaces a visible toast if its mutation rejects.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` so WhatsApp action failures now use a dedicated `actionError` state instead of sharing the poll-refresh `statusError`, which preserves the specific `Connect` / `Disconnect` / `Logout` failure message even after the automatic status refresh runs.
@@ -630,6 +640,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-loops.interval-draft.test.tsx` with focused regression coverage for the stale delete-result path, locking in the new false-result guard and query refresh behavior.
 
 ### Verified
+- [x] Manual source verification: `model-preset-manager.tsx` now defines `saveConfigAsync(...)`, awaits it in the visible preset switch/create/update/delete handlers, and only closes/reset dialogs after the awaited save resolves.
+- [x] Targeted dependency-free verification command passed: a plain `node` assertion script checked the new awaited save helper plus the success-toast/dialog-close ordering in `model-preset-manager.tsx` and the new regression test expectations in `model-preset-manager.save-feedback.test.ts`.
+- [x] Regression coverage updated in `apps/desktop/src/renderer/src/components/model-preset-manager.save-feedback.test.ts` so future source changes must keep success toasts and dialog dismissal behind the awaited config-save path.
 - [x] Manual source verification: `settings-agents.tsx` now renders `renderToolListWarning(...)` whenever `allToolsLoadError` coexists with loaded server rows or existing tool rows, and per-server summaries now switch from ```${serverToolList.length} tools``` to `Tools unavailable` when the tool list failed and no server tools could be loaded.
 - [x] Targeted source-level verification command passed without dependencies: a plain `node` assertion script checked the new server-warning guard, warning copy, per-server `Tools unavailable` label, expanded warning text, built-in partial-warning guard/copy, and the new regression-test assertions.
 - [x] Regression coverage updated in `apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` so future source changes must keep the partial MCP tool-list warning paths instead of falling back to false zero-tool states.
@@ -797,6 +810,7 @@
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
+- [x] Targeted automated verification for this preset-save feedback fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/model-preset-manager.save-feedback.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop test tooling is still unavailable here.
 - [x] Full automated regression execution for this partial capabilities warning fix is still blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop exec vitest run apps/desktop/src/renderer/src/pages/settings-agents.system-prompt.test.ts` fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, and the repo root still reports `root-node_modules-missing`.
 - [x] Targeted automated verification for this remote-server tunnel feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this WhatsApp action-error regression is blocked by missing workspace dependencies in this worktree: `pnpm --filter @dotagents/desktop test -- settings-whatsapp.allowlist.test.tsx` fails in `pretest` because `pnpm -w run build:shared` cannot find `tsup`, and PNPM warns that local `node_modules` are missing.
@@ -856,6 +870,7 @@
 - [x] Targeted automated verification for this desktop repeat-task delete false-success fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.interval-draft.test.tsx` still fails with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
+- [ ] Whether the same explicit `mutateAsync`/save-confirmed UX should eventually cover the background `saveModelWithPreset(...)` model-selector path in `model-preset-manager.tsx`, once desktop dependencies are available for broader live validation.
 - [ ] Whether the MCP Servers section should eventually preserve last-known nonzero tool counts with an explicit stale badge instead of collapsing to the safer `Tools unavailable` label whenever a later tool-list refresh fails and returns no rows, once live desktop validation is available.
 - [ ] Whether the remote-server tunnel status panel should eventually suppress or deduplicate its inline `Error: ...` copy when the same failure is already shown via the new click-time toast, once live desktop validation is available.
 - [ ] Whether the WhatsApp settings `Refresh` button and/or later healthy polling should explicitly clear a previously shown `actionError` after the user has seen it long enough, or whether keeping that message sticky until the next user action is the better desktop UX.
