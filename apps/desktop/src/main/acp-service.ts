@@ -713,7 +713,8 @@ class ACPService extends EventEmitter {
   getAgentStatus(
     agentName: string
   ): { status: ACPAgentStatus; error?: string; workingDirectory?: string } | null {
-    const instance = this.agents.get(agentName)
+    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
+    const instance = this.agents.get(resolvedAgentName)
     if (!instance) {
       return { status: "stopped" }
     }
@@ -737,11 +738,41 @@ class ACPService extends EventEmitter {
    * Provides access to agent info, session info, and other instance data.
    */
   getAgentInstance(agentName: string): ACPAgentInstance | undefined {
-    return this.agents.get(agentName)
+    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
+    return this.agents.get(resolvedAgentName)
+  }
+
+  private normalizeAgentIdentifier(agentIdentifier: string): string {
+    return agentIdentifier.trim().toLowerCase()
+  }
+
+  private findLegacyAgentConfig(
+    agentIdentifier: string,
+    config: { acpAgents?: ACPAgentConfig[] } = configStore.get()
+  ): ACPAgentConfig | undefined {
+    const normalizedIdentifier = this.normalizeAgentIdentifier(agentIdentifier)
+    if (!normalizedIdentifier) {
+      return undefined
+    }
+
+    return config.acpAgents?.find(agent => {
+      const normalizedName = this.normalizeAgentIdentifier(agent.name)
+      const normalizedDisplayName = agent.displayName
+        ? this.normalizeAgentIdentifier(agent.displayName)
+        : null
+
+      return normalizedName === normalizedIdentifier || normalizedDisplayName === normalizedIdentifier
+    })
   }
 
   private resolveAgentIdentifier(agentIdentifier: string): string {
-    return agentProfileService.getByIdentifier(agentIdentifier)?.name || agentIdentifier
+    const trimmedIdentifier = agentIdentifier.trim()
+
+    return (
+      agentProfileService.getByIdentifier(trimmedIdentifier)?.name ||
+      this.findLegacyAgentConfig(trimmedIdentifier)?.name ||
+      trimmedIdentifier
+    )
   }
 
   /**
@@ -750,10 +781,11 @@ class ACPService extends EventEmitter {
   async spawnAgent(agentName: string, options: ACPSpawnOptions = {}): Promise<ACPSpawnResult> {
     const config = configStore.get()
     const requestedWorkingDirectory = options.workingDirectory?.trim() || undefined
-    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
+    const requestedAgentName = agentName.trim()
+    const resolvedAgentName = this.resolveAgentIdentifier(requestedAgentName)
 
     // First try to find it in the unified AgentProfile system
-    const profile = agentProfileService.getByIdentifier(agentName)
+    const profile = agentProfileService.getByIdentifier(requestedAgentName)
     let agentConfig: ACPAgentConfig | undefined
 
     if (profile && (profile.connection.type === "acp" || profile.connection.type === "stdio")) {
@@ -775,15 +807,15 @@ class ACPService extends EventEmitter {
       }
     } else {
       // Fallback to legacy config.acpAgents
-      agentConfig = config.acpAgents?.find(a => a.name === resolvedAgentName)
+      agentConfig = this.findLegacyAgentConfig(requestedAgentName, config)
     }
 
     if (!agentConfig) {
-      throw new Error(`Agent ${agentName} not found in configuration`)
+      throw new Error(`Agent ${requestedAgentName} not found in configuration`)
     }
 
     if (agentConfig.enabled === false) {
-      throw new Error(`Agent ${agentName} is disabled`)
+      throw new Error(`Agent ${requestedAgentName} is disabled`)
     }
 
     const targetWorkingDirectory = this.resolveAgentWorkingDirectory(agentConfig, requestedWorkingDirectory)
@@ -975,7 +1007,8 @@ class ACPService extends EventEmitter {
    * Stop an ACP agent process
    */
   async stopAgent(agentName: string): Promise<void> {
-    const instance = this.agents.get(agentName)
+    const resolvedAgentName = this.resolveAgentIdentifier(agentName)
+    const instance = this.agents.get(resolvedAgentName)
     if (!instance) {
       return
     }
@@ -992,7 +1025,7 @@ class ACPService extends EventEmitter {
 
     if (!instance.process) {
       instance.status = "stopped"
-      this.emit("agentStatusChanged", { agentName, status: "stopped" })
+      this.emit("agentStatusChanged", { agentName: resolvedAgentName, status: "stopped" })
       return
     }
 
@@ -1045,7 +1078,7 @@ class ACPService extends EventEmitter {
 
     instance.status = "stopped"
     instance.process = undefined
-    this.emit("agentStatusChanged", { agentName, status: "stopped" })
+    this.emit("agentStatusChanged", { agentName: resolvedAgentName, status: "stopped" })
   }
 
   /**

@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { acpService } from '../acp-service'
 
+const mockConfig = {
+  acpAgents: [
+    {
+      name: 'test-agent',
+      displayName: 'Test Agent',
+      enabled: true,
+      connection: { type: 'stdio' as const },
+    },
+  ],
+}
+
 const { mockRunInternalSubSession, mockCancelSubSession } = vi.hoisted(() => ({
   mockRunInternalSubSession: vi.fn(),
   mockCancelSubSession: vi.fn(),
@@ -21,15 +32,7 @@ vi.mock('./acp-background-notifier', () => ({
 
 vi.mock('../config', () => ({
   configStore: {
-    get: vi.fn(() => ({
-      acpAgents: [
-        {
-          name: 'test-agent',
-          enabled: true,
-          connection: { type: 'stdio' },
-        },
-      ],
-    })),
+    get: vi.fn(() => mockConfig),
   },
 }))
 vi.mock('../acp-service', () => ({
@@ -289,6 +292,30 @@ describe('handleDelegateToAgent', () => {
       agentName: 'test-agent',
       input: 'Post the prepared recap now',
       forceNewSession: true,
+      mode: 'sync',
+    }))
+  })
+
+  it('resolves legacy ACP agents by displayName before delegating', async () => {
+    vi.mocked(acpService.runTask).mockResolvedValue({
+      success: true,
+      result: 'Delegated through legacy displayName alias',
+    })
+
+    await expect(handleDelegateToAgent(
+      { agentName: '  test agent  ', task: 'Print the resolved agent name' },
+      'parent-session-legacy-display-name',
+    )).resolves.toMatchObject({
+      success: true,
+      status: 'completed',
+      agentName: 'test-agent',
+      output: 'Delegated through legacy displayName alias',
+    })
+
+    expect(acpService.spawnAgent).toHaveBeenCalledWith('test-agent', expect.any(Object))
+    expect(acpService.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      agentName: 'test-agent',
+      input: 'Print the resolved agent name',
       mode: 'sync',
     }))
   })

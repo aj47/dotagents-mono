@@ -1292,6 +1292,45 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - followed `apps/desktop/DEBUGGING.md` and tried `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dapp`
   - ❌ blocked before Electron launch by the pre-existing desktop `predev` failure: `Cannot find module .../tsx/dist/cli.mjs` while running `npx tsx scripts/ensure-rust-binary.ts`
 
+## 2026-03-08 — Legacy ACP displayName aliases now resolve before delegation/spawn
+
+- Reviewed `langfuse-bug-fix.md` first and skipped already-logged ACP profile-ID / stale-output cases.
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772253342946_1vf40z8ma` / `session_1772253342947_yjtugc90v`
+    - user input: `can start fred in dotagents mono cwd and tell it to build an android apk`
+    - trace outcome: no completed delegated result; final user-facing text stayed at a progress opener (`I'll start Fred...`)
+    - observations showed:
+      - `list_available_agents` surfaced `Fred` as available
+      - the run then tried `delegate_to_agent(agentName: "Fred")` and later `spawn_agent(agentName: "Fred")`
+      - both ACP tool calls failed with `Agent "Fred" not found in configuration`
+  - adjacent unlogged ACP evidence: `session_1772253385945_cr80c574d`
+    - the run tried `auggie`, discovered `... not found in configuration`, then still drifted into more introspection instead of cleanly resolving the target alias
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp-service.ts` only canonicalized ACP agent identifiers through `agentProfileService.getByIdentifier(...)`; legacy `config.acpAgents` fallback still matched exact `name` only.
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` had the same exact-name-only legacy fallback in `resolveAcpAgentConfig(...)`.
+  - that meant a legacy ACP agent referenced via `displayName`, extra whitespace, or case variation could appear usable in the UI/tooling but still fail once delegation or spawn hit the legacy-config path.
+- Concrete root cause:
+  - legacy ACP resolution was less forgiving than the user/model-facing surfaces that refer to agents by human-readable labels.
+  - when the model picked a display-style label like `Fred`, the delegation/spawn path could miss the actual legacy ACP config entry and fail the run.
+- Minimal fix applied:
+  - `apps/desktop/src/main/acp-service.ts`
+    - added normalized legacy ACP lookup by trimmed/case-insensitive `name` or `displayName`
+    - reused that lookup for `resolveAgentIdentifier(...)`, `spawnAgent(...)`, `getAgentStatus(...)`, `getAgentInstance(...)`, and `stopAgent(...)`
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - added the same normalized legacy ACP lookup for `resolveAcpAgentConfig(...)`
+    - canonicalize legacy alias/displayName inputs to the resolved config `name` before spawn/run-task/status wiring
+  - tests added/updated:
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - regression proving `handleDelegateToAgent(...)` can resolve legacy ACP agents by trimmed display-name alias and delegates using canonical `test-agent`
+    - `apps/desktop/src/main/acp-service.test.ts`
+      - regression proving `spawnAgent(...)` works when the caller passes a trimmed display-name alias for a legacy ACP agent
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/acp/acp-router-tools.test.ts src/main/acp-service.test.ts`
+  - ✅ passed (`44 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.node.json`
+  - ❌ still blocked by pre-existing unrelated desktop typecheck failures (existing `llm.test.ts` mock typing issues, existing missing `uuid` typing/module, and other non-touching test harness errors)
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -1311,6 +1350,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.
 - Recheck a fresh ACP recovery trace where `list_agent_profiles` surfaces a profile ID (for example Augustus) after an initial delegation failure, to confirm the next retry can use that ID successfully instead of dead-ending on `... not found in configuration`.
+- Recheck a fresh legacy ACP delegation/spawn trace where the model uses a human-readable label (`Fred`, `Test Agent`, mixed case, or extra whitespace), to confirm the run now canonicalizes through the legacy config entry instead of failing `... not found in configuration`.
 - Recheck a fresh async ACP delegation trace with repeated `check_agent_status` polling, to confirm the new running-status guidance nudges the model toward other work or a clear `still running` handoff instead of burning the run on tight polling.
 - Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
 - Recheck a fresh follow-up ACP delegation trace on the same specialist (for example `Recap Discord` followed by `post it!`) to confirm the delegated output now comes from a new session instead of resurfacing stale prior-turn results.

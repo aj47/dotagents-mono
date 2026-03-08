@@ -1020,8 +1020,30 @@ interface ResolvedAcpAgentConfig {
 /**
  * Resolve an ACP-capable agent by name from AgentProfile first, then legacy config.
  */
+function normalizeAcpAgentIdentifier(agentName: string): string {
+  return agentName.trim().toLowerCase();
+}
+
+function findLegacyAcpAgent(agentName: string) {
+  const normalizedAgentName = normalizeAcpAgentIdentifier(agentName);
+  if (!normalizedAgentName) {
+    return undefined;
+  }
+
+  const config = configStore.get();
+  return config.acpAgents?.find((agent) => {
+    const normalizedName = normalizeAcpAgentIdentifier(agent.name);
+    const normalizedDisplayName = agent.displayName
+      ? normalizeAcpAgentIdentifier(agent.displayName)
+      : null;
+
+    return normalizedName === normalizedAgentName || normalizedDisplayName === normalizedAgentName;
+  });
+}
+
 function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null {
-  const profile = agentProfileService.getByIdentifier(agentName);
+  const trimmedAgentName = agentName.trim();
+  const profile = agentProfileService.getByIdentifier(trimmedAgentName);
   if (profile) {
     return {
       source: 'profile',
@@ -1032,8 +1054,7 @@ function resolveAcpAgentConfig(agentName: string): ResolvedAcpAgentConfig | null
     };
   }
 
-  const config = configStore.get();
-  const legacy = config.acpAgents?.find((a) => a.name === agentName);
+  const legacy = findLegacyAcpAgent(trimmedAgentName);
   if (!legacy) {
     return null;
   }
@@ -1075,13 +1096,17 @@ async function executeACPAgent(
       return { success: false, error: `Agent "${args.agentName}" is disabled` };
     }
 
+    const resolvedArgs = resolvedAgent.name === args.agentName
+      ? args
+      : { ...args, agentName: resolvedAgent.name };
+
     let spawnResult: Awaited<ReturnType<typeof acpService.spawnAgent>> | null = null;
 
     // Ensure local ACP/stdio agents are spawned
     if (resolvedAgent.connectionType === 'acp' || resolvedAgent.connectionType === 'stdio') {
       try {
-        spawnResult = await acpService.spawnAgent(args.agentName, {
-          workingDirectory: args.workingDirectory,
+        spawnResult = await acpService.spawnAgent(resolvedArgs.agentName, {
+          workingDirectory: resolvedArgs.workingDirectory,
         });
       } catch (spawnError) {
         return {
@@ -1101,10 +1126,10 @@ async function executeACPAgent(
         return {
           success: true,
           prepared: true,
-          agentName: args.agentName,
+          agentName: resolvedArgs.agentName,
           status: 'ready',
           message: `Remote agent "${args.agentName}" is externally managed and ready for delegation.`,
-          note: args.workingDirectory
+          note: resolvedArgs.workingDirectory
             ? 'workingDirectory is ignored for remote ACP agents unless the remote server supports it.'
             : undefined,
         };
@@ -1113,7 +1138,7 @@ async function executeACPAgent(
       return {
         success: true,
         prepared: true,
-        agentName: args.agentName,
+        agentName: resolvedArgs.agentName,
         status: 'ready',
         message: `Agent "${args.agentName}" is ready for delegated work.`,
         effectiveWorkingDirectory: spawnResult?.effectiveWorkingDirectory,
@@ -1132,26 +1157,26 @@ async function executeACPAgent(
 
     // Create unified sub-agent state (conversation initialized automatically)
     const subAgentState = createSubAgentState({
-      agentName: args.agentName,
-      task: args.task,
+      agentName: resolvedArgs.agentName,
+      task: resolvedArgs.task,
       parentSessionId: parentSessionId || `orphaned-${Date.now()}`,
-      workingDirectory: args.workingDirectory,
+      workingDirectory: resolvedArgs.workingDirectory,
     });
     subAgentState.status = 'running';
-    registerAgentRunMapping(args.agentName, subAgentState.runId);
+    registerAgentRunMapping(resolvedArgs.agentName, subAgentState.runId);
 
     // Helper to register session mapping
     const registerSessionMapping = () => {
-      const sessionId = acpService.getAgentSessionId(args.agentName);
+      const sessionId = acpService.getAgentSessionId(resolvedArgs.agentName);
       if (sessionId) {
         sessionToRunId.set(sessionId, subAgentState.runId);
       }
     };
 
     if (waitForResult) {
-      return executeACPAgentSync(subAgentState, args, registerSessionMapping);
+      return executeACPAgentSync(subAgentState, resolvedArgs, registerSessionMapping);
     } else {
-      return executeACPAgentAsync(subAgentState, args, resolvedAgent, parentSessionId, registerSessionMapping);
+      return executeACPAgentAsync(subAgentState, resolvedArgs, resolvedAgent, parentSessionId, registerSessionMapping);
     }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -1508,7 +1533,7 @@ export async function handleStopAgent(args: { agentName: string }): Promise<obje
     }
 
     // Check current status
-    const agentStatus = acpService.getAgentStatus(args.agentName);
+    const agentStatus = acpService.getAgentStatus(resolvedAgent.name);
 
     // Check if agent is already stopped
     if (agentStatus?.status === 'stopped' || !agentStatus) {
@@ -1520,7 +1545,7 @@ export async function handleStopAgent(args: { agentName: string }): Promise<obje
     }
 
     // Stop the agent via acpService
-    await acpService.stopAgent(args.agentName);
+    await acpService.stopAgent(resolvedAgent.name);
 
     return {
       success: true,

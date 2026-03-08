@@ -329,6 +329,21 @@ describe("ACP Service", () => {
       expect(acpService.getAgentStatus("augustus")?.status).toBe("ready")
     })
 
+    it("should spawn a legacy ACP agent when referenced by trimmed displayName", async () => {
+      const { acpService } = await import("./acp-service")
+
+      await acpService.spawnAgent("  test agent  ")
+
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "test-command",
+        ["--test"],
+        expect.objectContaining({
+          stdio: ["pipe", "pipe", "pipe"],
+        })
+      )
+      expect(acpService.getAgentStatus("Test Agent")?.status).toBe("ready")
+    })
+
     it("should resolve relative configured cwd from DOTAGENTS_WORKSPACE_DIR", async () => {
       const workspaceDir = mkdtempSync(join(tmpdir(), "acp-workspace-"))
       const agentCwd = "repo/subdir"
