@@ -1299,7 +1299,17 @@ export const router = {
   }),
 
   showPanelWindow: t.procedure.action(async () => {
-    showPanelWindow()
+    const panelWindow = WINDOWS.get("panel")
+    if (!panelWindow || panelWindow.isDestroyed()) {
+      return { success: false, error: "Panel window is unavailable." }
+    }
+
+    try {
+      showPanelWindow()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: getErrorMessage(error) }
+    }
   }),
 
   showPanelWindowWithTextInput: t.procedure

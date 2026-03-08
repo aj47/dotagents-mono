@@ -176,7 +176,12 @@ export function Component() {
   const showFloatingPanelNow = useCallback(async () => {
     try {
       await tipcClient.resizePanelToNormal({})
-      await tipcClient.showPanelWindow({})
+      const showResult = await tipcClient.showPanelWindow({})
+      if (showResult && "success" in showResult && showResult.success === false) {
+        toast.error(showResult.error || "Failed to show floating panel")
+        return
+      }
+
       toast.success("Floating panel shown")
     } catch (error) {
       console.error("Failed to show floating panel:", error)
