@@ -1,5 +1,57 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 76: Desktop session message copy controls stayed undersized in live compare view under larger text
+
+- Area selected:
+  - desktop active session message headers in `apps/desktop/src/renderer/src/components/session-tile.tsx`
+  - desktop compact message headers in `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided the just-touched root empty state, agents sidebar, and recent follow-up composer/tool-summary chunks unless a distinct fresh issue appeared.
+  - A reusable live Electron renderer was already available on `:9333`, and the active Sessions compare view had real conversation data with visible copy controls, making this a stronger UI-facing candidate than another source-only pass.
+  - The ledger had recent work on tool-summary readability and follow-up-composer overflow, but no logged pass specifically on the per-message `Copy prompt` / `Copy response` affordance sizing.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, repo workflow/design guidance, and the renderer `AGENTS.md` cross-platform reminder before picking the next area
+  - reused `agent-browser --cdp 9333` against the live Electron renderer on `http://localhost:5173/`, opened a real active session, then stress-tested the mounted compare view at `680×900` with `document.documentElement.style.fontSize = '24px'`
+  - captured screenshot-backed evidence in `tmp/ui-audit/session-narrow-root24.png` and measured the mounted copy button directly in the live DOM before editing source
+  - mapped the live issue back to the exact desktop implementations in `session-tile.tsx` and `agent-progress.tsx`, then applied the smallest local sizing fix rather than redesigning message headers broadly
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/ChatScreen.tsx` does not expose equivalent `Copy prompt` / `Copy response` controls, so no parallel mobile patch was needed
+
+#### Findings
+
+- Before the fix, the desktop session message copy affordances had one concrete usability issue with clear user impact:
+  - in live inspection at `680×900` with `24px` base text, a visible `Copy prompt` button in the active compare view measured only about `30×30`
+  - that control sat in a dense message-header row where the surrounding content had already grown for larger text, but the action itself still relied on a tiny `p-1` icon-button treatment with a `12px` glyph
+  - source inspection confirmed the same undersized contract existed in both `session-tile.tsx` and `agent-progress.tsx`, so the issue was not isolated to one rendering path
+  - practical impact: the app exposed copy actions exactly where users review/reuse prompts and responses, but the real hit target stayed smaller and more fiddly than nearby desktop controls when the UI is cramped or zoomed
+
+#### Changes made
+
+- Hardened only the inline message-header action buttons in `apps/desktop/src/renderer/src/components/session-tile.tsx` and `apps/desktop/src/renderer/src/components/agent-progress.tsx`:
+  - replaced the old bare `p-1` icon-button treatment with an explicit `inline-flex min-h-8 min-w-8 ... p-1.5` contract so the hit target has a calmer minimum size and can scale to about `36px` under larger root text
+  - increased the copy/check icons from `h-3 w-3` to `h-3.5 w-3.5` so the affordance reads more intentionally inside the larger button chrome
+  - aligned the adjacent inline TTS pause/generating button in `agent-progress.tsx` to the same sizing contract so mixed action rows do not end up visually mismatched after the copy-button fix
+- Extended `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts` with focused source-contract coverage for the larger message-header action buttons in both desktop render paths
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.tile-layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new `min-h-8 min-w-8 ... p-1.5` action-button contract, the larger copy/TTS icons, removal of the old tiny `session-tile.tsx` copy-button class, and the added regression-test coverage ✅
+- Live Electron evidence before the fix at `http://localhost:5173/` via `agent-browser --cdp 9333`:
+  - screenshot: `tmp/ui-audit/session-narrow-root24.png`
+  - mounted measurement: visible `Copy prompt` button about `30×30`
+- Live DOM prototype of the exact sizing treatment:
+  - screenshot: `tmp/ui-audit/session-copy-buttons-prototype-root24.png`
+  - mounted measurement after prototype sizing: visible `Copy prompt` button about `36×36`
+  - overflow check stayed clean (`bodyScrollWidth === bodyClientWidth === 680`)
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/agent-progress.tsx apps/desktop/src/renderer/src/components/session-tile.tsx apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the reusable Electron renderer is excellent for live evidence gathering, but it is not guaranteed to be serving this checkout’s updated bundle. I therefore treated the renderer as pre-fix evidence plus a DOM prototype target, and used direct source verification for the actual edited code.
+- Mobile cross-check: no matching mobile code change was needed because the current mobile chat surface has a read-aloud button but no equivalent per-message copy controls to keep in sync.
+- Tradeoff/rationale: the message-header action buttons now claim a little more vertical space, but that is a better product tradeoff than leaving prompt/response copy affordances undersized in one of the app’s most frequently scanned dense views.
+- Best next UI audit chunk after this one: move to another fresh live-inspectable active-session sub-surface such as pending tool approval / retry state cards, or switch to a mobile UI area once a runnable Expo workflow is available in this checkout.
+
 ### 2026-03-08 — Chunk 75: Desktop agents sidebar rows hid their real click targets and kept the expand control too tiny to feel trustworthy under cramped width
 
 - Area selected:

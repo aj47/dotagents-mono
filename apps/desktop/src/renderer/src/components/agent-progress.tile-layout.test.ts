@@ -214,4 +214,17 @@ describe("agent progress tile layout", () => {
       'className="rounded-md bg-red-50 p-2 text-xs text-red-700 break-words [overflow-wrap:anywhere] dark:bg-red-900/20 dark:text-red-300"'
     )
   })
+
+  it("keeps inline copy and message-header audio actions comfortably targetable under zoom", () => {
+    expect(agentProgressSource).toContain(
+      'className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-muted/30"'
+    )
+    expect(agentProgressSource).toContain('<Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />')
+    expect(agentProgressSource).toContain('<Volume2 className="h-3.5 w-3.5 text-blue-500" />')
+    expect(sessionTileSource).toContain(
+      'className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-muted/30"'
+    )
+    expect(sessionTileSource).toContain('<Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />')
+    expect(sessionTileSource).not.toContain('className="p-1 rounded hover:bg-muted/30 transition-colors"')
+  })
 })

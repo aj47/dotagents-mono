@@ -610,16 +610,16 @@ const CompactMessage: React.FC<{
                 ttsManager.stopAll("agent-progress-message-pause")
               }}
               className={cn(
-                "p-1 rounded hover:bg-muted/30 transition-colors",
+                "inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-muted/30",
                 isTTSPlaying && "animate-pulse"
               )}
               title={isGeneratingAudio ? "Generating audio…" : "Pause TTS"}
               aria-label={isGeneratingAudio ? "Generating audio" : "Pause TTS"}
             >
               {isGeneratingAudio ? (
-                <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
               ) : (
-                <Volume2 className="h-3 w-3 text-blue-500" />
+                <Volume2 className="h-3.5 w-3.5 text-blue-500" />
               )}
             </button>
           )}
@@ -627,14 +627,14 @@ const CompactMessage: React.FC<{
           {(message.role === "user" || (message.role === "assistant" && isComplete)) && (
             <button
               onClick={handleCopyResponse}
-              className="p-1 rounded hover:bg-muted/30 transition-colors"
+              className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-muted/30"
               title={isCopied ? "Copied!" : message.role === "user" ? "Copy prompt" : "Copy response"}
               aria-label={isCopied ? "Copied!" : message.role === "user" ? "Copy prompt" : "Copy response"}
             >
               {isCopied ? (
-                <CheckCheck className="h-3 w-3 text-green-500" />
+                <CheckCheck className="h-3.5 w-3.5 text-green-500" />
               ) : (
-                <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
+                <Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
               )}
             </button>
           )}

@@ -567,14 +567,14 @@ export function SessionTile({
                         {message.role === "user" && typeof message.content === "string" && (
                           <button
                             onClick={(e) => handleCopyMessage(e, message.content as string, messageId)}
-                            className="p-1 rounded hover:bg-muted/30 transition-colors"
+                            className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-muted/30"
                             title={isCopied ? "Copied!" : "Copy prompt"}
                             aria-label={isCopied ? "Copied!" : "Copy prompt"}
                           >
                             {isCopied ? (
-                              <CheckCheck className="h-3 w-3 text-green-500" />
+                              <CheckCheck className="h-3.5 w-3.5 text-green-500" />
                             ) : (
-                              <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
+                              <Copy className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
                             )}
                           </button>
                         )}
