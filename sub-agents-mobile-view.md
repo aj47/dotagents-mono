@@ -375,3 +375,43 @@
   - Reduce `Agent Loops` card density with a small hierarchy tweak that preserves the current controls.
   - Smoke-test the header selector and composer chip with a longer agent name to confirm truncation stays stable.
   - Revisit whether the entire composer selector row should become tappable if live evidence still shows missed taps.
+
+### 2026-03-08 — Iteration 9: make loop rows easier to scan by prioritizing schedule metadata
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Loops`
+  - current loop row rendering in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - focused mobile loop metadata test coverage
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a `390x844` viewport.
+  - Confirmed the header selector and composer chip improvements were holding, so the remaining highest-friction surface was still `Settings > Agent Loops`.
+  - Found representative loop rows such as `Discord Recap Tweeter` and `Email Triage` still used about `235px` of text width beside a `~74px` action rail, with the edit area growing to roughly `235x95` before the edit affordance.
+  - Confirmed long prompt previews were shown before the schedule/status line, making rows feel taller and harder to scan quickly.
+- Issue selected:
+  - Loop rows still buried the most scannable information (`Daily`, `Every 30 min`, `Last 15:27`) under a denser multi-line prompt preview, so the section remained text-heavy on narrow screens.
+- Decision:
+  - Keep the existing row layout, action rail, and edit affordance.
+  - Improve hierarchy locally by moving schedule/status metadata above the prompt preview and clamping the prompt preview to a single line instead of redesigning the card.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - render loop schedule/status metadata before the prompt preview,
+    - clamp the prompt preview to a single line,
+    - add a dedicated `loopPromptPreview` style to visually downplay the preview relative to the metadata.
+  - Updated `apps/mobile/tests/settings-loop-metadata-mobile.test.js` to cover the new metadata-first ordering and single-line prompt preview styling.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-metadata-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - `Discord Recap Tweeter` now renders as `name → Daily • Last 15:27 → single-line prompt preview → Edit ›`
+    - the main loop text/edit area dropped to about `235x80` in the inspected row
+    - the prompt preview rendered as a single clamped line with ellipsis behavior
+- Remaining nearby issues noted, not addressed this iteration:
+  - The loop action rail still consumes meaningful width on narrow screens, even though the controls are now comfortably tappable.
+  - A deliberately long agent name should still be smoke-tested in the header selector and composer chip.
+  - The composer selector row still has some non-tappable dead space around the chip.
+- Next checks:
+  - Smoke-test the header selector and composer chip with a longer agent name to confirm truncation stays stable.
+  - Revisit whether the entire composer selector row should become tappable if live evidence still shows missed taps.
+  - Inspect whether the loop action rail can be compacted further without hurting action clarity or touch quality.

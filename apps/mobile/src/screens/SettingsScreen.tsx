@@ -2320,12 +2320,12 @@ export default function SettingsScreen({ navigation }: any) {
                             ]} />
                             <Text style={styles.serverName}>{loop.name}</Text>
                           </View>
-                          <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
                           <Text style={styles.serverMeta} numberOfLines={2}>
                             {formatLoopIntervalLabel(loop.intervalMinutes)}
                             {loop.profileName && ` • ${loop.profileName}`}
                             {loop.lastRunAt && ` • ${formatLoopLastRunLabel(loop.lastRunAt)}`}
                           </Text>
+                          <Text style={styles.loopPromptPreview} numberOfLines={1}>{loop.prompt}</Text>
                           {renderInlineEditAffordance()}
                         </View>
                       </TouchableOpacity>
@@ -3119,6 +3119,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       marginTop: 2,
       lineHeight: 16,
+    },
+    loopPromptPreview: {
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
+      lineHeight: 15,
     },
     statusDot: {
       width: 8,

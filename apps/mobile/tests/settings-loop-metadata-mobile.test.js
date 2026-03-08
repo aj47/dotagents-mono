@@ -21,3 +21,11 @@ test('shortens last-run metadata to hour and minute precision', () => {
   assert.match(settingsSource, /minute: '2-digit'/);
   assert.match(settingsSource, /formatLoopLastRunLabel\(loop\.lastRunAt\)/);
 });
+
+test('prioritizes compact loop schedule metadata over prompt preview on mobile', () => {
+  assert.match(
+    settingsSource,
+    /<Text style=\{styles\.serverMeta\} numberOfLines=\{2\}>[\s\S]*?formatLoopIntervalLabel\(loop\.intervalMinutes\)[\s\S]*?<\/Text>[\s\S]*?<Text style=\{styles\.loopPromptPreview\} numberOfLines=\{1\}>\{loop\.prompt\}<\/Text>/
+  );
+  assert.match(settingsSource, /loopPromptPreview:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 15,/);
+});
