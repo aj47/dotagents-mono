@@ -158,6 +158,10 @@
 - [x] 2026-03-08: Confirmed `apps/desktop/src/main/tipc.ts` forwards `resolveSampling` straight through to `apps/desktop/src/main/mcp-sampling.ts`, where `resolveSampling(...)` explicitly returns `false` when a sampling request is no longer pending.
 - [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/App.tsx` lazy-mounts `McpSamplingDialog`, while `apps/mobile/src` has no equivalent sampling-approval UI, so this stale/silent-response bug is desktop-only rather than a shared mobile flow.
 
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` and confirmed the visible failed-message `Retry` button still awaited `tipcClient.retryQueuedMessage(...)` without checking its boolean result or surfacing any visible error feedback.
+- [x] 2026-03-08: Confirmed `retryQueuedMessage` in `apps/desktop/src/main/tipc.ts` returns `false` when `messageQueueService.resetToPending(...)` cannot retry the item, so the renderer could silently no-op on a stale/already-changed queued message.
+- [x] 2026-03-08: Confirmed `MessageQueuePanel` is mounted inside the active desktop `AgentProgress` tile and overlay in `apps/desktop/src/renderer/src/components/agent-progress.tsx`, so this silent retry failure affects a live queue-recovery workflow rather than dead UI.
+
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
 - [ ] Current desktop/mobile logs or reproducible failing tests tied to user-facing regressions once the environment blocker is cleared.
@@ -327,6 +331,11 @@
   - The TIPC route in `apps/desktop/src/main/tipc.ts` forwards to `resolveSampling(...)` in `apps/desktop/src/main/mcp-sampling.ts`, which returns `false` when the request is already gone; the old renderer still called `setIsOpen(false)` / `setRequest(null)` immediately afterward, so a stale sampling dialog could disappear as if the response worked even though nothing was resolved.
   - `McpSamplingDialog` is lazy-mounted in the desktop app shell and mobile has no equivalent sampling approval UI, so this is a live desktop MCP workflow bug rather than dead code or a parity choice.
 
+- [x] **Desktop queued-message retry could fail with a silent no-op (directly confirmed in source):**
+   - `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` rendered a visible `Retry` button for failed queued messages, but its `retryMutation` previously awaited `tipcClient.retryQueuedMessage(...)` without checking the returned boolean or handling rejected IPC calls.
+   - `apps/desktop/src/main/tipc.ts` returns `false` when `messageQueueService.resetToPending(...)` cannot retry the target item, so a stale or already-changed failed queue entry could ignore the user's click with no toast, banner, or inline explanation.
+   - `MessageQueuePanel` is mounted in both the desktop overlay and tile `AgentProgress` surfaces, so this bug affects a live queue-recovery path for blocked conversations rather than dead code.
+
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
 - [x] Extended `apps/desktop/src/renderer/src/components/follow-up-input.submit.test.ts` with focused source-level assertions that both desktop follow-up composers import `sonner` and expose a visible `Failed to send follow-up message` error path.
@@ -469,6 +478,9 @@
 - [x] Taught the sampling dialog to detect `resolveSampling(...) === false`, close the stale dialog, and tell the user `This request is no longer pending.` rather than silently dismissing an ignored action.
 - [x] Added `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.feedback.test.ts` with focused source-level assertions that lock in the `sonner` toast import, stale-request feedback, guarded close handler, and failed action toast path.
 
+- [x] Updated `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` so failed queued-message retries now treat `retryQueuedMessage(...) === false` as a real failure, preserve console logging, and surface visible `toast.error(...)` feedback instead of silently no-oping.
+- [x] Added `apps/desktop/src/renderer/src/components/message-queue-panel.feedback.test.ts` with focused source-level assertions that lock in the retry-result check, stale-message error, and visible toast feedback contract.
+
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the follow-up error-feedback update and regression test changes.
@@ -581,6 +593,9 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.tsx` now imports `toast` from `sonner`, guards repeated submissions with `isSubmitting`, surfaces visible `Failed to approve/decline request. ...` feedback on rejected IPC responses, and shows `This request is no longer pending.` when the sampling request has already expired.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `mcp-sampling-dialog.tsx` and `mcp-sampling-dialog.feedback.test.ts`, confirming the new toast strings, stale-request branch, guarded close handler, and regression file are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop sampling-dialog feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/message-queue-panel.tsx` now imports `toast` from `sonner`, converts `retryQueuedMessage(...) === false` into `This queued message is no longer retryable.`, and surfaces visible `Failed to retry queued message. ...` feedback on failed retry actions.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` assertions passed for `message-queue-panel.tsx` and `message-queue-panel.feedback.test.ts`, confirming the retry-result check, stale-message error string, visible toast text, and regression file are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop queued-message retry feedback fix and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -622,6 +637,8 @@
 - [x] Targeted automated verification for this remote-server copy-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this sessions focus-recovery fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this MCP sampling-dialog feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-sampling-dialog.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+
+- [x] Targeted automated verification for this desktop queued-message retry feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -723,6 +740,9 @@
 - The MCP sampling issue is the same class of workflow bug already seen in elicitation: `Approve` / `Decline` are explicit user responses to a live request, so stale or rejected responses should not look like they silently worked.
 - Mirroring the elicitation dialog’s stale-request + toast-feedback pattern is the smallest safe fix because the desktop app already mounts a global `sonner` toaster, the TIPC contract already distinguishes `false` for stale sampling requests, and no broader sampling UX redesign is needed to make failures visible.
 
+- The queued-message retry issue blocks a core recovery path: failed messages sit at the head of the queue and prevent later queued work from progressing, so a silent retry no-op leaves the user stuck without understanding why the queue is still blocked.
+- Treating `retryQueuedMessage(...) === false` as a visible action failure is the smallest safe fix because the main-process contract already distinguishes that state, the desktop app already mounts a global `sonner` toaster, and no queue-processing behavior needs to change.
+
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
 - Assumption: surfacing provider model-download failures with `toast.error(...)` is acceptable because `settings-providers.tsx` already uses the same helper/toast pattern for failed Kitten / Supertonic voice-test actions, and mobile has no equivalent local download UI that would need synchronized copy changes.
@@ -765,6 +785,8 @@
 - Assumption: keeping the optimistic local tile focus for successful `focusAgentSession(...)` calls but not rolling it back for later `setPanelMode(...)` / `showPanelWindow(...)` failures is acceptable because by that point the main-process session focus has already been updated, so reverting only the earlier failed focus step is the safer sync boundary.
 - Assumption: using the same toast-based failure feedback pattern for MCP sampling `Approve` / `Decline` is acceptable because `sonner` is already mounted app-wide, these are explicit user responses to a live request, and the adjacent elicitation dialog already uses the same visible recovery model.
 - Assumption: closing the sampling dialog only for the `resolveSampling(...) === false` stale-request case is acceptable because the main-process request is already gone at that point, while keeping the dialog open on thrown IPC failures preserves the user's chance to retry a transient failure.
+
+- Assumption: surfacing `This queued message is no longer retryable.` when `retryQueuedMessage(...)` returns `false` is acceptable because the underlying service only returns `false` when the message is missing or no longer in `failed` state, and both cases mean the visible `Retry` action cannot actually proceed.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -820,3 +842,5 @@
 - After that, inspect whether any other desktop MCP approval/consent surfaces still close stale requests or swallow rejected responses without visible feedback.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` and live-verify that forcing a panel-focus failure from the Sessions page restores the previously focused tile and surfaces the new error toast instead of leaving the wrong tile selected.
 - After that, inspect whether the other Sessions page panel-launch actions (`Start typing`, `Start voice`, predefined prompts) still need the same visible failure treatment for full sessions-page consistency.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/message-queue-panel.feedback.test.ts` and live-verify the desktop queue `Retry` button by forcing both a stale queued-message state and a rejected retry IPC call to confirm the new toast appears instead of a silent no-op.
+- After that, inspect whether adjacent desktop queue actions (`Remove`, `Clear All`, `Pause`, `Resume`) still need the same visible failure treatment when their boolean/IPC contracts fail.

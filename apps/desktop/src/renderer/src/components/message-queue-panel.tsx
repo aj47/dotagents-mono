@@ -5,6 +5,13 @@ import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { toast } from "sonner"
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 interface MessageQueuePanelProps {
   conversationId: string
@@ -100,10 +107,20 @@ function QueuedMessageItem({
   const retryMutation = useMutation({
     mutationFn: async () => {
       // Retry the failed message - resets status to pending and triggers queue processing if idle
-      await tipcClient.retryQueuedMessage({
+      const success = await tipcClient.retryQueuedMessage({
         conversationId,
         messageId: message.id,
       })
+
+      if (!success) {
+        throw new Error("This queued message is no longer retryable.")
+      }
+    },
+    onError: (error) => {
+      console.error("[MessageQueuePanel] Failed to retry queued message:", error)
+      toast.error(
+        `Failed to retry queued message. ${getActionErrorMessage(error, "Please refresh and try again.")}`,
+      )
     },
   })
 
