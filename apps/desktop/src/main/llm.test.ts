@@ -769,6 +769,99 @@ describe("processTranscriptWithAgentMode", () => {
     expect(verificationMessages[1]?.content).toContain("we have enough starters")
   })
 
+  it("treats a verifier response with missing items as incomplete even if it also claims completion", async () => {
+    const { clearSessionUserResponse, setSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    const finalReply = "I tried the browser path and stopped instead of claiming success: claude.ai was down, so Claude Code Web could not be validated from here."
+
+    clearSessionUserResponse("session-verifier-contradiction")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{
+          name: "browser_agent",
+          arguments: { task: "Try the Claude Code browser flow" },
+        }],
+      })
+      .mockResolvedValueOnce({
+        content: "Claude.ai appears down, but I still need to test the Claude Code Web browser path before this is complete.",
+      })
+      .mockImplementationOnce(async (messages: Array<{ role: string; content: string }>) => {
+        expect(messages.some((message) =>
+          message.role === "user"
+          && message.content.includes("Claude Code Web browser path was not actually tested")
+        )).toBe(true)
+
+        return {
+          content: "",
+          toolCalls: [{
+            name: "respond_to_user",
+            arguments: { text: finalReply },
+          }],
+        }
+      })
+
+    mockVerifyCompletion
+      .mockResolvedValueOnce({
+        isComplete: true,
+        confidence: 0.92,
+        missingItems: ["Claude Code Web browser path was not actually tested."],
+        reason: "The requested browser workflow still needs to be attempted before this is complete.",
+      })
+      .mockResolvedValueOnce({
+        isComplete: false,
+        confidence: 0.92,
+        missingItems: ["Claude Code Web browser path was not actually tested."],
+        reason: "The requested browser workflow still needs to be attempted before this is complete.",
+      })
+      .mockResolvedValueOnce({
+        isComplete: true,
+        confidence: 0.99,
+        missingItems: [],
+        reason: "The browser attempt was made and the user received the final outcome.",
+      })
+
+    const executeToolCall = vi.fn(async (toolCall: any) => {
+      if (toolCall.name === "respond_to_user") {
+        setSessionUserResponse("session-verifier-contradiction", toolCall.arguments.text)
+      }
+
+      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+    })
+
+    await processTranscriptWithAgentMode(
+      "Try Claude Code via the browser agent and only stop once you actually know whether the browser path worked.",
+      [
+        { name: "browser_agent", description: "Run a browser task", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } },
+      ] as any,
+      executeToolCall,
+      5,
+      [],
+      "conv-verifier-contradiction",
+      "session-verifier-contradiction",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(mockStreamingCall).toHaveBeenCalledTimes(3)
+    expect(mockVerifyCompletion).toHaveBeenCalledTimes(3)
+    expect(executeToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "respond_to_user",
+        arguments: expect.objectContaining({ text: finalReply }),
+      }),
+      expect.any(Function),
+    )
+  })
+
   it("nudges pseudo tool placeholders to use native tool calls before continuing", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")

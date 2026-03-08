@@ -1710,6 +1710,34 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - ✅ passed
   - note: the Vitest runs still print the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test commands exit successfully
 
+## Investigation 2026-03-08 (contradictory verifier completion should fail closed)
+
+- Langfuse evidence:
+  - conversation: `conv_1772511078082_uluf9jec1`
+  - failing trace: `session_1772511078085_mw0rwdnxh`
+    - user intent: use Claude Code via the browser agent (or CLI if needed), actually execute the path, and report back what happened
+    - trace outcome: the run first explained options, later delegated `Web Browser`, then drifted into unrelated skill-file creation work
+    - the decisive failure came from the final `Verification Call`: it returned `{"isComplete":true,...,"missingItems":["The user specifically asked to try Claude Code via browser, but only general browser testing (visiting claude.ai which was down) was done, not the Claude Code Web browser path.","Actually starting the future work tasks mentioned in the final message (organize wrappers into subfolders, build a starter pack) was not attempted in this run."]}`
+    - despite those explicit missing items, the loop accepted the run as complete, which let a single-run miss slip through as success
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` treated any verifier payload with `isComplete === true` as authoritative inside `runVerificationAndHandleResult(...)`
+  - the code did not cross-check `missingItems`, so a self-contradictory verifier payload could short-circuit the retry/continue path and finalize the run
+- Concrete root cause:
+  - contradictory verification payloads (`isComplete: true` plus non-empty `missingItems`) were trusted instead of being normalized back to incomplete
+- Minimal fix applied:
+  - `apps/desktop/src/main/llm.ts`
+    - added `normalizeVerificationResult(...)` so verifier payloads that still list missing work are forced to `isComplete: false` before the completion gate evaluates them
+  - `apps/desktop/src/main/llm.test.ts`
+    - added a regression that simulates the contradictory verifier result, confirms the verifier does not accept it as complete, and confirms the run continues to a later `respond_to_user` turn instead
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts -t "treats a verifier response with missing items as incomplete even if it also claims completion"`
+  - ✅ passed (`1 passed`, `16 skipped`)
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - ✅ passed (`17 passed`)
+  - note: both Vitest runs still print the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop test commands exit successfully
+  - note: `pnpm --filter @dotagents/desktop test:run -- src/main/llm.test.ts` still ignores the file filter and runs a wider desktop suite; that wider run exposed unrelated pre-existing renderer failures in `src/renderer/src/components/agent-progress.tile-layout.test.ts` and `src/renderer/src/components/agent-progress.performance.test.ts`
+  - debugging-guided live verification from `apps/desktop/DEBUGGING.md` was not required here because the failing flow was fully reconstructable from Langfuse observations plus focused loop tests
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
