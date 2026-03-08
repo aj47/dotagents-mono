@@ -2825,3 +2825,38 @@
   - Consider richer MCP formatting later (for example, grouped env/headers/transport sections) only if the current JSON/details view proves insufficient in practice.
   - Keep the inspector trust-focused; avoid turning the website into a full browser-side bundle editor/manager.
 - Next recommended issue work item: refresh the open issues again and prefer a concrete desktop bug/reliability slice next; only continue `#56` if another similarly small inspect-before-install clarity gap is directly visible in source.
+
+##### Issue #55 — Added dependency-free regression coverage after the desktop test runner stayed blocked
+
+- Selection rationale:
+  - After committing the `#56` website slice, refreshed the next iteration toward the remaining open bug work.
+  - Re-checked `#55` first because it is still the clearest open bug, but avoided speculative UI churn by trying to verify the previously-landed tile/header fixes before changing behavior again.
+  - When the full desktop test runner was still blocked by missing workspace dependencies, converted that blocker into a smaller reliability slice: add no-dependency source tests so this worktree can still protect the specific `#55` regressions.
+- Investigation:
+  - Confirmed the branch was clean, then attempted the previously relevant desktop checks:
+    - `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/agent-progress.tile-layout.test.ts src/renderer/src/pages/sessions.layout-controls.test.ts`
+    - `node --test apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js`
+  - The existing no-dependency collapsed-grid test passed, but the full desktop test runner failed before running Vitest because `pnpm run pretest` shells into `pnpm -w run build:shared`, which currently cannot find `tsup` in this worktree (`node_modules` missing / not installed).
+  - Re-inspected the current source and confirmed the `#55` safeguards are still present in code (`showTileExpandAction`, ACP profile-name suppression, collapsed-tile ordering, collapsed-layout drag disablement), so the highest-value move here was to make those checks executable without package installs.
+- Important assumptions:
+  - Assumption: source-level node tests are an acceptable follow-up slice for `#55` while the full desktop toolchain remains unavailable in this worktree.
+  - Why acceptable: the issue-specific logic is already expressed in source-level terms, and the immediate goal was to keep the bug fix verifiable instead of waiting on an environment repair.
+  - Assumption: it is better to add portable issue-specific tests than to install dependencies or otherwise mutate the environment during this automated loop.
+  - Why acceptable: dependency installation requires explicit permission in general and would be broader/riskier than the targeted regression coverage needed here.
+- Changes implemented:
+  - Added `apps/desktop/src/renderer/src/components/agent-progress.issue55-regressions.test.js` to assert the snoozed/maximize action guard and ACP duplicate-name suppression directly from `agent-progress.tsx`.
+  - Added `apps/desktop/src/renderer/src/pages/sessions.issue55-collapsed-layout.test.js` to assert collapsed-tile packing order and drag-reorder disablement directly from `sessions.tsx`.
+  - Re-used the existing `apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` as part of the same no-dependency verification bundle.
+- Verification run:
+  - Attempted: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/agent-progress.tile-layout.test.ts src/renderer/src/pages/sessions.layout-controls.test.ts`
+  - Result: blocked before Vitest by the pre-existing workspace dependency gap (`tsup: command not found` during `pnpm -w run build:shared`; local `node_modules` missing).
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.issue55-regressions.test.js apps/desktop/src/renderer/src/pages/sessions.issue55-collapsed-layout.test.js apps/desktop/src/renderer/src/components/session-grid.collapsed-layout.test.js` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #55:
+  - Re-run the original desktop Vitest coverage once this worktree has its expected dependencies installed again.
+  - If a fresh manual repro still exists after that, investigate runtime behavior rather than adding more source-only checks; current source strongly suggests the originally reported regressions are already addressed.
+  - Do not keep churning `#55` without either a new repro or a fuller runtime validation path.
+- Next recommended issue work item: refresh the open issues again and prefer either a concrete runtime-repro desktop bug or a focused docs/spec sync slice for the remaining bundle/import issues if no better local bug candidate emerges.
