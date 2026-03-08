@@ -104,6 +104,12 @@
 - [x] 2026-03-08: Compared desktop summary save handling against `apps/mobile/src/screens/MemoryEditScreen.tsx` and a repo-wide mobile search; mobile has no equivalent one-click “save from summary” surface, but its memory-edit flow already shows inline save failures, so visible desktop feedback is consistent with current product behavior.
 - [x] 2026-03-08: Assumption accepted: using `toast.error(...)` for non-success summary saves is the smallest safe fix because desktop already mounts a global `sonner` toaster and this path is a core user action where “nothing happened” is misleading.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-progress.tsx` and `apps/desktop/src/renderer/src/components/session-tile.tsx` and confirmed the visible desktop `Approve` / `Deny` tool-approval actions still caught `tipcClient.respondToToolApproval(...)` failures with `console.error(...)` only.
+- [x] 2026-03-08: Confirmed `AgentProgress` and `SessionTile` are the two active desktop surfaces that render pending tool approvals, so this silent failure path affects both the floating panel/session overlay flow and the sessions-page tile flow rather than dead UI.
+- [x] 2026-03-08: Searched mobile for an equivalent pending tool-approval surface and found no matching `respondToToolApproval(...)` UI in `apps/mobile`, so this fix is desktop-only rather than a cross-platform behavior change.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Attempted desktop live-debugging prerequisites for this approval-flow bug with `pnpm --filter @dotagents/desktop exec vite --version`, but the worktree still has no installed desktop bundler/test tooling (`Command "vite" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop tool-approval feedback fix and regression test addition.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -217,6 +223,10 @@
   - `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` renders a visible `Save` button for each summary card, but `handleSaveToMemory()` previously only updated UI when `tipcClient.saveMemoryFromSummary(...)` returned both `success: true` and a non-null `memory`.
   - That meant three real failure paths could look like “nothing happened” from the user’s point of view: a rejected IPC call, a `{ success: false }` result, or a `{ success: true, memory: null, reason: "no_durable_content" }` result.
   - `AgentSummaryView` is mounted inside the active desktop `AgentProgress` summary tab, so this was a live user-facing bug on a core “save useful memory” workflow rather than a dead edge case.
+- [x] **Desktop tool-approval failures were still silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` and `apps/desktop/src/renderer/src/components/session-tile.tsx` both render visible `Approve` / `Deny` controls for `pendingToolApproval`, but their `handleApproveToolCall()` / `handleDenyToolCall()` catch blocks only logged to the console when `tipcClient.respondToToolApproval(...)` rejected.
+  - Because neither surface raised a toast, banner, or inline error, a failed approval decision looked like “the spinner briefly happened and nothing changed,” even though the user had clicked a core workflow gate.
+  - These are the active desktop approval surfaces, and mobile has no separate approval UI to rely on here, so this is a real desktop UX bug rather than an intentional platform difference.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -322,6 +332,9 @@
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/onboarding.exa-install.test.tsx` for the partial-failure path where Exa is saved into config but `setMcpServerRuntimeEnabled(...)` rejects.
 - [x] Updated `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` so summary-card save-to-memory failures now surface visible `toast.error(...)` feedback for rejected IPC calls, generic unsuccessful saves, and the `no_durable_content` no-op path.
 - [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/agent-summary-view.save-memory.test.ts` with source-level assertions that lock in the `sonner` import and the new visible failure-feedback branches.
+- [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so rejected desktop `Approve` / `Deny` tool-approval actions now surface `toast.error(...)` feedback instead of failing silently with console-only logging.
+- [x] Updated `apps/desktop/src/renderer/src/components/session-tile.tsx` with the same visible `toast.error(...)` tool-approval failure feedback so the sessions-page tile surface matches the overlay behavior.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/components/tool-approval.feedback.test.ts` with source-level assertions that both active desktop approval surfaces import `sonner`, keep the shared action-error helper, and expose visible `Failed to approve/deny tool call` feedback paths.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -389,6 +402,10 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-summary-view.tsx` now imports `toast` from `sonner` and surfaces visible failure feedback for rejected summary saves, generic non-success results, and the `no_durable_content` path instead of silently resetting back to idle.
 - [x] Low-cost automated sanity check: a `node` file-read assertion confirmed `agent-summary-view.tsx` now contains the `no_durable_content` and generic failure toasts and that the new `agent-summary-view.save-memory.test.ts` regression file is present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the summary save-to-memory feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-progress.tsx` now calls `toast.error(...)` when `respondToToolApproval(...)` rejects for either `Approve` or `Deny`, so the overlay/tile approval surface no longer fails silently.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/session-tile.tsx` now imports `toast` from `sonner` and shows the same visible `Failed to approve/deny tool call. ...` feedback on rejected approval actions.
+- [x] Low-cost automated sanity check: `node -e "..."` file-read assertions passed for `agent-progress.tsx`, `session-tile.tsx`, and `tool-approval.feedback.test.ts`, confirming the new tool-approval toasts and regression file are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the tool-approval feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -416,6 +433,8 @@
 - [x] Targeted automated verification for this `AgentProgress` stop-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.stop-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this onboarding Exa install recovery fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/onboarding.exa-install.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this summary save-to-memory feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-summary-view.save-memory.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this desktop tool-approval feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Live desktop reproduction for this approval-flow bug remains blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vite --version` fails with `Command "vite" not found`, so the desktop debug/bundler tooling needed to run the renderer is still unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether adjacent `ActiveAgentsSidebar` minimize/restore (`snooze` / `unsnooze`) failure paths should also surface visible feedback instead of console-only logging once this smaller stop-action fix is live-verified.
@@ -437,6 +456,8 @@
 - [ ] Whether the broader `AgentProgress` and `AgentProcessingView` stop surfaces should eventually share one small desktop helper for fallback stop semantics + user-visible error copy once live verification is available, or whether keeping the logic duplicated locally is preferable to avoid new abstractions.
 - [ ] Whether onboarding should eventually distinguish “configured in settings” from “runtime server currently running” more explicitly for MCP tools once live desktop validation is available, rather than relying on the new inline warning beside the `Installed` badge.
 - [ ] Whether summary cards that currently yield `reason: "no_durable_content"` should eventually disable or explain the `Save` button up front, rather than waiting to tell the user after they click it.
+- [ ] Whether the adjacent desktop tool-approval flows should eventually share a tiny renderer helper for `respondToToolApproval(...)` error copy/state reset once live verification is available, or whether keeping the duplicated local handlers is preferable to avoid a new abstraction.
+- [ ] Whether any other approval-adjacent desktop actions in session cards (for example speech generation or clipboard copy fallbacks) still rely on console-only logging and need the same visible-feedback treatment once the environment blocker is cleared.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -487,6 +508,8 @@
 - Tracking that partial-success state explicitly is the smallest safe fix because it preserves the saved MCP configuration, avoids pretending nothing happened, and gives the user an actionable retry path without redesigning onboarding or MCP status management.
 - The summary save-to-memory issue is a high-signal desktop workflow bug because the UI exposes a one-click `Save` action for useful agent summaries, but the implementation could previously fall back to “idle button, no visible explanation” on multiple real failure paths.
 - Reusing the existing desktop `toast.error(...)` pattern is the smallest safe fix because it preserves current save semantics and the existing `Saved` success state while finally making non-success outcomes visible to the user.
+- The tool-approval issue is another high-signal workflow bug: `Approve` / `Deny` gates can block the agent from proceeding, so a rejected approval response should not vanish into DevTools-only logging.
+- Reusing the same `toast.error(...)` pattern in the existing `catch` blocks is the smallest safe fix because it preserves the current approval flow, optimistic spinner handling, and retry behavior while finally telling the user why their approval action did not go through.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -514,10 +537,12 @@
 - Assumption: using the existing desktop toast pattern for `AgentProgress` stop failures is acceptable because `sonner` is already mounted app-wide, nearby desktop stop flows already use visible failure feedback, and mobile already exposes comparable kill-switch success/failure state to the user.
 - Assumption: showing `Installed` together with an inline error after a partial Exa install is acceptable for this pass because the server really was added to saved config, while the new warning text makes the runtime startup failure and retry path explicit without inventing a new onboarding status model.
 - Assumption: using `toast.error(...)` for the summary `no_durable_content` path is acceptable for this pass because the user-initiated save action could not complete, there is no precomputed “saveability” signal on the card yet, and the desktop app already uses toasts for comparable action-level failures.
+- Assumption: using the existing desktop toast pattern for tool-approval failures is acceptable because `sonner` is already mounted app-wide, there is no separate inline approval-error state today, and these actions are core workflow gates where silent failure is especially misleading.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
 - After that, inspect other desktop settings pages for remaining config-backed uncontrolled inputs outside `settings-general.tsx`.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/tool-approval.feedback.test.ts` and live-test a pending tool approval in both the floating panel/session overlay and sessions-page tile to confirm the new failure toast appears and the retry path stays usable.
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` and a focused desktop verification pass for the transcript prompt editor.
 - After that, inspect other desktop settings text inputs in `settings-general.tsx` for remaining immediate-save behavior.

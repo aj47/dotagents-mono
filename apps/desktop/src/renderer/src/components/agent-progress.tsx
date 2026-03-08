@@ -2514,6 +2514,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to approve tool call:", error)
+      toast.error(
+        `Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
@@ -2546,6 +2549,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to deny tool call:", error)
+      toast.error(
+        `Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
