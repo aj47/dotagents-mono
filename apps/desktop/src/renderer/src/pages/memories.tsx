@@ -37,6 +37,8 @@ import {
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 
+const MEMORY_SEARCH_DEBOUNCE_MS = 250
+
 const importanceColors = {
   low: "bg-slate-500/20 text-slate-600 dark:text-slate-400",
   medium: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
@@ -206,6 +208,7 @@ function MemoryCard({
 export function Component() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [importanceFilter, setImportanceFilter] = useState<string>("all")
   const [editingMemory, setEditingMemory] = useState<AgentMemory | null>(null)
   const [editNotes, setEditNotes] = useState("")
@@ -214,11 +217,25 @@ export function Component() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
+  const trimmedSearchQuery = searchQuery.trim()
 
   // Clear selection when filters change to avoid deleting non-visible items
   useEffect(() => {
     setSelectedIds(new Set())
   }, [searchQuery, importanceFilter])
+
+  useEffect(() => {
+    if (!trimmedSearchQuery) {
+      setDebouncedSearchQuery("")
+      return undefined
+    }
+
+    const timeout = setTimeout(() => {
+      setDebouncedSearchQuery(trimmedSearchQuery)
+    }, MEMORY_SEARCH_DEBOUNCE_MS)
+
+    return () => clearTimeout(timeout)
+  }, [trimmedSearchQuery])
 
   // Get all memories
   const memoriesQuery = useQuery({
@@ -236,12 +253,16 @@ export function Component() {
     staleTime: Infinity,
   })
 
-  // Search also uses the current profile filter on the backend
-  const searchMutation = useMutation({
-    mutationFn: async (query: string) => {
-      if (!query.trim()) return null
-      return await tipcClient.searchMemories({ query })
+  // Search runs on the backend, keyed by the settled query so older requests
+  // do not overwrite the latest intent when a user types quickly.
+  const searchResultsQuery = useQuery({
+    queryKey: ["memories", "search", debouncedSearchQuery],
+    queryFn: async () => {
+      return await tipcClient.searchMemories({ query: debouncedSearchQuery })
     },
+    enabled: debouncedSearchQuery.length > 0,
+    retry: 0,
+    placeholderData: (previousData) => previousData,
   })
 
   const deleteMutation = useMutation({
@@ -331,8 +352,12 @@ export function Component() {
   })
 
   const memories = memoriesQuery.data || []
-  const searchResults = searchMutation.data
-  const displayMemories = searchResults ?? memories
+  const isSearchLoading = trimmedSearchQuery.length > 0 && (
+    trimmedSearchQuery !== debouncedSearchQuery || searchResultsQuery.isFetching
+  )
+  const displayMemories = trimmedSearchQuery
+    ? (searchResultsQuery.data ?? (isSearchLoading ? memories : []))
+    : memories
 
   // Filter by importance
   const filteredMemories = importanceFilter === "all"
@@ -341,11 +366,6 @@ export function Component() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
-    if (query.trim()) {
-      searchMutation.mutate(query)
-    } else {
-      searchMutation.reset()
-    }
   }
 
   const handleEdit = (memory: AgentMemory) => {
@@ -500,7 +520,11 @@ Optional notes go here (saved as userNotes).
         {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-0 flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {isSearchLoading ? (
+              <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            )}
             <Input
               placeholder="Search memories..."
               value={searchQuery}

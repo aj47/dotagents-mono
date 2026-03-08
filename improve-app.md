@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop memories search flow in `apps/desktop/src/renderer/src/pages/memories.tsx`, plus mobile memories-management parity review in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`.
 - 2026-03-08: Desktop repeat-task creation flow in `apps/desktop/src/renderer/src/pages/settings-loops.tsx` plus main-process repeat-task persistence in `apps/desktop/src/main/loop-service.ts` / `apps/desktop/src/main/agents-files/tasks.ts`, with mobile loop-creation parity review in `apps/mobile/src/screens/LoopEditScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts`.
 - 2026-03-08: Desktop transcript post-processing prompt editor save behavior in `apps/desktop/src/renderer/src/pages/settings-general.tsx` plus mobile parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider numeric TTS inputs (`openaiTtsSpeed`, `supertonicSpeed`, `supertonicSteps`) in `apps/desktop/src/renderer/src/pages/settings-providers.tsx` plus mobile TTS parity review in `apps/mobile/src/screens/SettingsScreen.tsx`.
@@ -16,6 +17,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop memories search now debounces backend queries, keeps search results keyed to the settled query, and shows inline loading feedback so fast typing no longer spams searches or risks stale-result flashes.
 - 2026-03-08: Desktop repeat-task creation now uses collision-safe readable IDs, so creating a second task with the same name no longer silently overwrites the first task file/config entry.
 - 2026-03-08: Desktop transcript post-processing prompt editing now uses a local draft, debounced autosave, blur flush, and latest-config merging instead of mutating config on every keystroke inside the dialog.
 - 2026-03-08: Desktop provider numeric TTS settings now keep local drafts for OpenAI speed plus Supertonic speed/quality steps, debounce config writes, flush valid edits on blur, and restore invalid drafts to the last saved value.
@@ -23,23 +25,57 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.search.test.ts` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-loops.ids.test.ts` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: `git diff --check`
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` (blocked: `vitest` not installed in this worktree).
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Focused desktop Vitest verification for `src/renderer/src/pages/memories.search.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Focused desktop Vitest verification for `src/renderer/src/pages/settings-loops.ids.test.ts` is blocked in this worktree because `pnpm --filter @dotagents/desktop exec vitest ...` cannot find `vitest` without installed dependencies.
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
 - Shared utility reliability / guardrails
-- Memories management flows
 
 ### Next Highest-Value Targets
 - Inspect shared utility reliability / guardrails for the next small resilience win
-- Inspect memories management flows for the next localized UX/reliability improvement
+- Inspect mobile memories management flows for the next localized UX/reliability improvement that does not overlap this desktop search pass
 - Revisit the remaining multiline settings editors (for example `groqSttPrompt`) once tests can run reliably in this workspace
+
+### 2026-03-08 — Desktop memories search debounce and stale-result guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop memories management in `apps/desktop/src/renderer/src/pages/memories.tsx`
+- Why it was chosen:
+  - the ledger identified memories management as a fresh, not-recently-investigated area after the recent settings and loop passes
+  - the page sent a backend search request on every keystroke via a mutation, which creates avoidable work and can briefly surface stale results when earlier requests resolve after later typing
+  - the fix was localized, clearly user-visible, and did not require changing memory persistence or a broader page refactor
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/memories.tsx`
+  - `apps/desktop/src/main/memory-service.ts` and `apps/desktop/src/main/tipc.ts` for the backend search path
+  - existing desktop renderer test patterns in `apps/desktop/src/renderer/src/pages/sessions.layout-controls.test.ts` and recent settings-page tests
+  - mobile memories flows in `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/screens/MemoryEditScreen.tsx`; confirmed mobile currently has memory create/edit/delete flows but no equivalent live-search surface that needed the same change
+  - attempted live desktop inspection, but Electron CDP was unavailable in this environment
+- Improvement made:
+  - added a small 250ms debounce for desktop memory search input before issuing backend search work
+  - switched search results to a query keyed by the settled search string so older requests no longer overwrite the latest typing intent
+  - preserved prior results while a new search is settling/fetching to avoid flashing a misleading empty state mid-type
+  - added inline spinner feedback in the search field so users can tell when a search is still catching up
+  - added focused source-level regression coverage in `apps/desktop/src/renderer/src/pages/memories.search.test.ts`
+- Assumptions / tradeoffs / rationale:
+  - kept backend search instead of adding a separate local filtering layer so the page continues to use the existing desktop memory search path consistently
+  - used a small debounce window (250ms) to reduce request churn without making search feel sluggish
+  - chose a narrow page-level fix instead of extracting a new shared debounce hook because this issue is currently localized and the repo guidance favors existing patterns over broader new abstractions
+- Tests / verification:
+  - attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/memories.search.test.ts`, but the current workspace still lacks installed dependencies and `vitest` was unavailable
+  - `git diff --check`
+- Follow-up checks:
+  - once dependencies are available, run `src/renderer/src/pages/memories.search.test.ts`
+  - inspect shared utility reliability / guardrails for the next non-overlapping resilience improvement
+  - consider whether the desktop memories page should also surface an explicit search-error state once live UI validation is available
 
 ### 2026-03-08 — Desktop repeat-task duplicate-create guardrails
 - Date:
