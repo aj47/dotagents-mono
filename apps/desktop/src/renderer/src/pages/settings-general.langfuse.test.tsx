@@ -107,6 +107,13 @@ function findTextareaByRows(node: any, rows: number) {
   return findNode(node, (candidate) => candidate.type === "Textarea" && candidate.props?.rows === rows)
 }
 
+function findTextareaByPlaceholder(node: any, placeholder: string) {
+  return findNode(
+    node,
+    (candidate) => candidate.type === "Textarea" && candidate.props?.placeholder === placeholder,
+  )
+}
+
 async function flushPromises() {
   await Promise.resolve()
   await Promise.resolve()
@@ -122,6 +129,8 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     mcpUnlimitedIterations: true,
     transcriptPostProcessingEnabled: true,
     transcriptPostProcessingPrompt: "Clean this transcript.",
+    sttProviderId: "groq",
+    groqSttPrompt: "Spell DotAgents as one word.",
     ttsEnabled: false,
     toggleVoiceDictationEnabled: false,
     textInputEnabled: false,
@@ -224,7 +233,7 @@ afterEach(() => {
   vi.resetModules()
 })
 
-describe("desktop general settings Langfuse inputs", () => {
+describe("desktop general settings text drafts", () => {
   it("keeps a local draft and debounces public-key config saves while editing", async () => {
     const runtime = createHookRuntime()
     const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
@@ -304,6 +313,92 @@ describe("desktop general settings Langfuse inputs", () => {
       config: {
         ...getCurrentConfig(),
         langfuseBaseUrl: "https://self-hosted.langfuse",
+      },
+    })
+  })
+
+  it("keeps a local draft and debounces Groq STT prompt saves while editing", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const placeholder = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
+    let textarea = findTextareaByPlaceholder(tree, placeholder)
+    expect(textarea.props.value).toBe("Spell DotAgents as one word.")
+
+    textarea.props.onChange({ currentTarget: { value: "Prefer AJ when the brand name is ambiguous." } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    textarea = findTextareaByPlaceholder(tree, placeholder)
+    expect(textarea.props.value).toBe("Prefer AJ when the brand name is ambiguous.")
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        groqSttPrompt: "Prefer AJ when the brand name is ambiguous.",
+      },
+    })
+  })
+
+  it("flushes the latest Groq STT prompt draft on blur", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const placeholder = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
+    const textarea = findTextareaByPlaceholder(tree, placeholder)
+    textarea.props.onChange({ currentTarget: { value: "Keep uncommon product names exactly as spoken." } })
+    textarea.props.onBlur({ currentTarget: { value: "Keep uncommon product names exactly as spoken." } })
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        groqSttPrompt: "Keep uncommon product names exactly as spoken.",
+      },
+    })
+  })
+
+  it("uses the latest config snapshot when a delayed Groq STT prompt save fires", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig, setConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const placeholder = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
+    const textarea = findTextareaByPlaceholder(tree, placeholder)
+    textarea.props.onChange({ currentTarget: { value: "Use the workspace glossary for company names." } })
+
+    setConfig({
+      ...getCurrentConfig(),
+      streamerModeEnabled: true,
+    })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    vi.advanceTimersByTime(400)
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        groqSttPrompt: "Use the workspace glossary for company names.",
       },
     })
   })

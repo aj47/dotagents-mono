@@ -52,6 +52,7 @@ type GeneralTextDraftKey =
   | "langfusePublicKey"
   | "langfuseSecretKey"
   | "langfuseBaseUrl"
+  | "groqSttPrompt"
   | "transcriptPostProcessingPrompt"
 
 function getGeneralTextDrafts(config?: Partial<Config>) {
@@ -59,6 +60,7 @@ function getGeneralTextDrafts(config?: Partial<Config>) {
     langfusePublicKey: config?.langfusePublicKey ?? "",
     langfuseSecretKey: config?.langfuseSecretKey ?? "",
     langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
+    groqSttPrompt: config?.groqSttPrompt ?? "",
     transcriptPostProcessingPrompt: config?.transcriptPostProcessingPrompt ?? "",
   }
 }
@@ -85,6 +87,7 @@ export function Component() {
     langfusePublicKey: null,
     langfuseSecretKey: null,
     langfuseBaseUrl: null,
+    groqSttPrompt: null,
     transcriptPostProcessingPrompt: null,
   })
 
@@ -252,6 +255,7 @@ export function Component() {
     configQuery.data?.langfusePublicKey,
     configQuery.data?.langfuseSecretKey,
     configQuery.data?.langfuseBaseUrl,
+    configQuery.data?.groqSttPrompt,
     configQuery.data?.transcriptPostProcessingPrompt,
   ])
 
@@ -942,12 +946,16 @@ export function Component() {
             <Control label={<ControlLabel label="Prompt" tooltip="Optional prompt to guide the model's style or specify how to spell unfamiliar words. Limited to 224 tokens." />} className="px-3">
               <Textarea
                 placeholder="Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
-                defaultValue={configQuery.data.groqSttPrompt || ""}
+                value={generalTextDrafts.groqSttPrompt}
                 onChange={(e) => {
-                  saveConfig({
-                    groqSttPrompt: e.currentTarget.value,
-                  })
+                  const value = e.currentTarget.value
+                  setGeneralTextDrafts((current) => ({
+                    ...current,
+                    groqSttPrompt: value,
+                  }))
+                  scheduleGeneralTextSave("groqSttPrompt", value)
                 }}
+                onBlur={(e) => flushGeneralTextDraft("groqSttPrompt", e.currentTarget.value)}
                 className="min-h-[80px]"
               />
             </Control>
