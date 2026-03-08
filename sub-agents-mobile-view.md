@@ -4465,3 +4465,54 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new `Create Agent` action is easy to tap and does not crowd the profile-assignment notice on narrow screens.
   - Live-test the full return flow: open `LoopEdit`, hit `Create Agent`, save a new agent, return, and confirm the profile chips refresh without requiring a manual reopen.
   - After that live pass, decide whether selecting the newly created profile automatically would improve clarity or whether keeping explicit user choice is better.
+
+### 2026-03-08 — Iteration 102: clear hidden connection fields when the mobile agent type changes
+
+- Status: shipped locally with focused regression coverage; live Expo / Vitest validation remains blocked in this worktree.
+- Areas reviewed first:
+  - this ledger, especially Iterations 100–101, to avoid repeating recent blocked-save and empty-profile work without a fresh issue
+  - `apps/mobile/package.json` to reconfirm the mobile workflow before running commands
+  - `apps/mobile/src/screens/AgentEditScreen.tsx`
+  - nearby desktop / server handling for agent connection updates in `apps/desktop/src/main/remote-server.ts`
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Fresh screenshot-backed or simulator-backed inspection was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `pnpm --filter @dotagents/mobile test -- tests/sub-agent-edit-mobile.test.js` → failed with `sh: vitest: command not found` plus `Local package.json exists, but node_modules missing, did you mean to install?`
+    - `test -d node_modules && echo ROOT_NODE_MODULES_PRESENT || echo ROOT_NODE_MODULES_MISSING` → `ROOT_NODE_MODULES_MISSING`
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+  - Because Expo and the package-local test runner remain unavailable here, this iteration used source-backed mobile-flow review plus focused Node-based regression checks instead of live UI inspection.
+- Current behavior observed before the fix:
+  - Source review showed the mobile agent editor hides different connection fields as users switch between `Internal`, `ACP`, `Stdio`, and `Remote`.
+  - On mobile, `handleConnectionTypeChange` previously changed only `connectionType` and `autoSpawn`, leaving now-hidden command / base-URL values in form state.
+  - The save payload also forwarded those stale fields in a way that could preserve invisible prior connection details on update, weakening state clarity in a narrow form where users reasonably expect hidden fields to stop affecting the result.
+- Issue selected:
+  - Switching connection type in `AgentEditScreen` could silently preserve hidden connection values, so mobile users could save an agent with stale invisible transport state.
+- Assumptions / tradeoffs:
+  - Assumed mobile users benefit more from clearing hidden connection state than from silently preserving it across modes they can no longer see.
+  - Kept shared command-mode fields when moving between `ACP` and `Stdio`, because those fields stay visible and relevant in both modes.
+  - Avoided a broader edit-form redesign or extra warning copy while live validation is blocked; the highest-signal improvement was to make the existing state model trustworthy.
+- Decision:
+  - Normalize connection fields by connection type in one reusable helper.
+  - Clear fields that are no longer relevant when the connection type changes.
+  - Reuse that same type-aware normalization when building create/update payloads so hidden values do not persist invisibly on save.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to:
+    - add `getConnectionFieldsForType(...)` for trimmed, type-aware connection-field normalization,
+    - clear hidden connection fields inside `handleConnectionTypeChange` while preserving command fields for `ACP`/`Stdio`,
+    - build create/update payloads from the normalized connection-field set instead of blindly forwarding all raw form values.
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for:
+    - clearing hidden fields when the connection type changes,
+    - reusing the same normalized connection-field payload during saves.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile test -- tests/sub-agent-edit-mobile.test.js` ⚠️ blocked because `vitest` is unavailable and both repository and `apps/mobile` `node_modules` are missing in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - This state-clearing behavior still needs a real narrow-screen pass once Expo is restored to confirm switching between `Remote`, `ACP`, and `Internal` feels predictable in practice and does not surprise users who expected hidden values to come back later.
+  - The agent edit flow still lacks screenshot-backed validation for keyboard overlap, safe-area spacing, and save-button balance after recent blocked-state improvements.
+  - Clearing hidden connection state in mobile now improves trustworthiness locally, but the desktop settings flow appears to keep broader connection state; cross-surface consistency can be reviewed later if live usage suggests confusion.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that changing connection type visibly clears the irrelevant fields and keeps `ACP` ↔ `Stdio` command fields intact.
+  - Live-test an edit scenario that switches `Remote → ACP` and `ACP → Internal`, save each time, then reopen the agent to confirm hidden values no longer linger unexpectedly.
+  - After that live pass, continue with the next highest-signal local sub-agent mobile issue instead of revisiting this connection-state fix without fresh evidence.

@@ -36,9 +36,21 @@ test('AgentEditScreen explains the selected connection type and keeps ACP on the
   assert.match(agentEditSource, /connectionTypeHelperText:\s*\{[\s\S]*?lineHeight:\s*17/);
 });
 
+test('AgentEditScreen clears hidden connection fields when the connection type changes', () => {
+  assert.match(agentEditSource, /type AgentConnectionFields = Pick<[\s\S]*?'connectionCommand' \| 'connectionArgs' \| 'connectionBaseUrl' \| 'connectionCwd'[\s\S]*?>;/);
+  assert.match(agentEditSource, /function getConnectionFieldsForType\([\s\S]*?connectionType === 'remote'[\s\S]*?connectionCommand: '',[\s\S]*?connectionArgs: '',[\s\S]*?connectionBaseUrl: trimmedFields\.connectionBaseUrl,[\s\S]*?connectionCwd: '',[\s\S]*?connectionType === 'acp' \|\| connectionType === 'stdio'[\s\S]*?connectionCommand: trimmedFields\.connectionCommand,[\s\S]*?connectionArgs: trimmedFields\.connectionArgs,[\s\S]*?connectionBaseUrl: '',[\s\S]*?connectionCwd: trimmedFields\.connectionCwd,[\s\S]*?return \{[\s\S]*?connectionCommand: '',[\s\S]*?connectionArgs: '',[\s\S]*?connectionBaseUrl: '',[\s\S]*?connectionCwd: '',[\s\S]*?\};/);
+  assert.match(agentEditSource, /const handleConnectionTypeChange = useCallback\(\(connectionType: ConnectionType\) => \{[\s\S]*?const nextConnectionFields = getConnectionFieldsForType\(connectionType, \{[\s\S]*?connectionCommand: prev\.connectionCommand,[\s\S]*?connectionArgs: prev\.connectionArgs,[\s\S]*?connectionBaseUrl: prev\.connectionBaseUrl,[\s\S]*?connectionCwd: prev\.connectionCwd,[\s\S]*?\}\);[\s\S]*?connectionType,[\s\S]*?\.\.\.nextConnectionFields,[\s\S]*?autoSpawn: connectionType === 'acp' \|\| connectionType === 'stdio' \? prev\.autoSpawn : false,[\s\S]*?\};[\s\S]*?\}\);/);
+});
+
+test('AgentEditScreen saves type-aware connection payloads so hidden values do not persist invisibly', () => {
+  assert.match(agentEditSource, /const connectionFieldValues = getConnectionFieldsForType\(formData\.connectionType, \{[\s\S]*?connectionCommand: formData\.connectionCommand,[\s\S]*?connectionArgs: formData\.connectionArgs,[\s\S]*?connectionBaseUrl: formData\.connectionBaseUrl,[\s\S]*?connectionCwd: formData\.connectionCwd,[\s\S]*?\}\);/);
+  assert.match(agentEditSource, /const updateData: AgentProfileUpdateRequest = originalProfile\?\.isBuiltIn[\s\S]*?connectionType: formData\.connectionType,[\s\S]*?\.\.\.connectionFieldValues,[\s\S]*?enabled: formData\.enabled,[\s\S]*?autoSpawn: formData\.autoSpawn,/);
+  assert.match(agentEditSource, /const createData: AgentProfileCreateRequest = \{[\s\S]*?connectionType: formData\.connectionType,[\s\S]*?\.\.\.connectionFieldValues,[\s\S]*?enabled: formData\.enabled,[\s\S]*?autoSpawn: formData\.autoSpawn,/);
+});
+
 test('AgentEditScreen only exposes auto spawn for command-based agents and clears it when switching away', () => {
   assert.match(agentEditSource, /const supportsAutoSpawn = showCommandFields;/);
-  assert.match(agentEditSource, /const handleConnectionTypeChange = useCallback\(\(connectionType: ConnectionType\) => \{[\s\S]*?connectionType,[\s\S]*?autoSpawn: connectionType === 'acp' \|\| connectionType === 'stdio' \? prev\.autoSpawn : false,[\s\S]*?\}\)\);/);
+  assert.match(agentEditSource, /const handleConnectionTypeChange = useCallback\(\(connectionType: ConnectionType\) => \{[\s\S]*?setFormData\(prev => \{[\s\S]*?connectionType,[\s\S]*?autoSpawn: connectionType === 'acp' \|\| connectionType === 'stdio' \? prev\.autoSpawn : false,[\s\S]*?\};[\s\S]*?\}\);/);
   assert.match(agentEditSource, /onPress=\{\(\) => handleConnectionTypeChange\(ct\.value\)\}/);
   assert.match(agentEditSource, /\{supportsAutoSpawn && \([\s\S]*?<Text style=\{styles\.switchLabel\}>Auto Spawn<\/Text>[\s\S]*?<Text style=\{styles\.switchHelperText\}>Start this command-based agent automatically when DotAgents starts<\/Text>[\s\S]*?accessibilityHint="Starts this command-based agent automatically when DotAgents starts\."[\s\S]*?\)\}/);
   assert.doesNotMatch(agentEditSource, /Start agent automatically on app launch|app launches\./);

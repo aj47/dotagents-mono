@@ -35,6 +35,11 @@ interface AgentFormData {
   autoSpawn: boolean;
 }
 
+type AgentConnectionFields = Pick<
+  AgentFormData,
+  'connectionCommand' | 'connectionArgs' | 'connectionBaseUrl' | 'connectionCwd'
+>;
+
 const defaultFormData: AgentFormData = {
   displayName: '',
   description: '',
@@ -67,6 +72,43 @@ const CONNECTION_TYPE_DETAILS: Record<ConnectionType, { helperText: string; acce
     accessibilityHint: 'Connects to a remote HTTP agent endpoint.',
   },
 };
+
+function getConnectionFieldsForType(
+  connectionType: ConnectionType,
+  fields: AgentConnectionFields,
+): AgentConnectionFields {
+  const trimmedFields: AgentConnectionFields = {
+    connectionCommand: fields.connectionCommand.trim(),
+    connectionArgs: fields.connectionArgs.trim(),
+    connectionBaseUrl: fields.connectionBaseUrl.trim(),
+    connectionCwd: fields.connectionCwd.trim(),
+  };
+
+  if (connectionType === 'remote') {
+    return {
+      connectionCommand: '',
+      connectionArgs: '',
+      connectionBaseUrl: trimmedFields.connectionBaseUrl,
+      connectionCwd: '',
+    };
+  }
+
+  if (connectionType === 'acp' || connectionType === 'stdio') {
+    return {
+      connectionCommand: trimmedFields.connectionCommand,
+      connectionArgs: trimmedFields.connectionArgs,
+      connectionBaseUrl: '',
+      connectionCwd: trimmedFields.connectionCwd,
+    };
+  }
+
+  return {
+    connectionCommand: '',
+    connectionArgs: '',
+    connectionBaseUrl: '',
+    connectionCwd: '',
+  };
+}
 
 export default function AgentEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -138,6 +180,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
       return;
     }
 
+    const connectionFieldValues = getConnectionFieldsForType(formData.connectionType, {
+      connectionCommand: formData.connectionCommand,
+      connectionArgs: formData.connectionArgs,
+      connectionBaseUrl: formData.connectionBaseUrl,
+      connectionCwd: formData.connectionCwd,
+    });
+
     setIsSaving(true);
     setError(null);
 
@@ -155,10 +204,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             systemPrompt: formData.systemPrompt.trim() || undefined,
             guidelines: formData.guidelines.trim() || undefined,
             connectionType: formData.connectionType,
-            connectionCommand: formData.connectionCommand.trim() || undefined,
-            connectionArgs: formData.connectionArgs.trim() || undefined,
-            connectionBaseUrl: formData.connectionBaseUrl.trim() || undefined,
-            connectionCwd: formData.connectionCwd.trim() || undefined,
+            ...connectionFieldValues,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
           };
@@ -170,10 +216,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           systemPrompt: formData.systemPrompt.trim() || undefined,
           guidelines: formData.guidelines.trim() || undefined,
           connectionType: formData.connectionType,
-          connectionCommand: formData.connectionCommand.trim() || undefined,
-          connectionArgs: formData.connectionArgs.trim() || undefined,
-          connectionBaseUrl: formData.connectionBaseUrl.trim() || undefined,
-          connectionCwd: formData.connectionCwd.trim() || undefined,
+          ...connectionFieldValues,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
         };
@@ -263,11 +306,21 @@ export default function AgentEditScreen({ navigation, route }: any) {
   });
 
   const handleConnectionTypeChange = useCallback((connectionType: ConnectionType) => {
-    setFormData(prev => ({
-      ...prev,
-      connectionType,
-      autoSpawn: connectionType === 'acp' || connectionType === 'stdio' ? prev.autoSpawn : false,
-    }));
+    setFormData(prev => {
+      const nextConnectionFields = getConnectionFieldsForType(connectionType, {
+        connectionCommand: prev.connectionCommand,
+        connectionArgs: prev.connectionArgs,
+        connectionBaseUrl: prev.connectionBaseUrl,
+        connectionCwd: prev.connectionCwd,
+      });
+
+      return {
+        ...prev,
+        connectionType,
+        ...nextConnectionFields,
+        autoSpawn: connectionType === 'acp' || connectionType === 'stdio' ? prev.autoSpawn : false,
+      };
+    });
   }, []);
 
   if (isLoading) {
