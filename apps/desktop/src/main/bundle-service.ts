@@ -6,6 +6,7 @@
  * agent profiles, MCP server configs, skills, repeat tasks, and memories.
  */
 
+import { createHash } from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
@@ -664,6 +665,16 @@ function getMemorySecretWarningFields(memory: AgentMemory): Array<"content" | "k
 
 function hasPotentialSecretInMemory(memory: AgentMemory): boolean {
   return getMemorySecretWarningFields(memory).length > 0
+}
+
+function normalizeMemoryContentForFingerprint(content: string): string {
+  return content.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim()
+}
+
+function getMemoryContentFingerprint(memory: Pick<AgentMemory, "content"> | Pick<BundleMemory, "content">): string {
+  return createHash("sha256")
+    .update(normalizeMemoryContentForFingerprint(memory.content))
+    .digest("hex")
 }
 
 function loadAgentProfilesForBundle(
@@ -1458,7 +1469,9 @@ export function previewBundleWithConflicts(
   const existingProfileIds = new Set(existingProfiles.profiles.map((profile) => profile.id))
   const existingSkillIds = new Set(existingSkills.skills.map((skill) => skill.id))
   const existingTaskIds = new Set(existingTasks.tasks.map((task) => task.id))
-  const existingMemoryIds = new Set(existingMemories.memories.map((memory) => memory.id))
+  const existingMemoryByContentFingerprint = new Map(
+    existingMemories.memories.map((memory) => [getMemoryContentFingerprint(memory), memory]),
+  )
 
   // Load existing MCP servers
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
@@ -1490,11 +1503,21 @@ export function previewBundleWithConflicts(
         return createPreviewConflict(t.id, t.name, existingTaskIds, existing?.name)
       }),
     memories: bundle.memories
-      .filter(m => existingMemories.originById.has(m.id))
-      .map(m => {
-        const existing = existingMemories.memories.find(em => em.id === m.id)
-        return createPreviewConflict(m.id, m.title, existingMemoryIds, existing?.title)
-      }),
+      .map((memory) => {
+        const existing = existingMemories.originById.has(memory.id)
+          ? existingMemories.memories.find((item) => item.id === memory.id)
+          : existingMemoryByContentFingerprint.get(getMemoryContentFingerprint(memory))
+
+        if (!existing) return null
+
+        return {
+          id: memory.id,
+          name: memory.title,
+          existingName: existing.title,
+          defaultStrategy: "skip" as const,
+        }
+      })
+      .filter((conflict): conflict is PreviewConflict => Boolean(conflict)),
   }
 
   return { success: true, filePath, bundle, conflicts }
@@ -1981,10 +2004,13 @@ export async function importBundle(
     }
   }
 
-  // Import memories
+  // Import memories additively only.
   if (components.memories !== false) {
     const existingMemories = loadAgentsMemoriesLayer(layer)
     const existingIds = new Set(existingMemories.memories.map(m => m.id))
+    const existingContentFingerprints = new Set(
+      existingMemories.memories.map((memory) => getMemoryContentFingerprint(memory)),
+    )
 
     for (const bundleMemory of bundle.memories) {
       try {
@@ -1997,9 +2023,11 @@ export async function importBundle(
           continue
         }
 
-        const exists = existingIds.has(bundleMemory.id)
+        const contentFingerprint = getMemoryContentFingerprint(bundleMemory)
+        const existsById = existingIds.has(bundleMemory.id)
+        const existsByContent = existingContentFingerprints.has(contentFingerprint)
 
-        if (exists && conflictStrategy === "skip") {
+        if (existsById || existsByContent) {
           result.memories.push({
             id: bundleMemory.id,
             name: bundleMemory.title,
@@ -2008,19 +2036,9 @@ export async function importBundle(
           continue
         }
 
-        let finalId = bundleMemory.id
-        let action: ImportItemResult["action"] = "imported"
-
-        if (exists && conflictStrategy === "rename") {
-          finalId = generateUniqueId(bundleMemory.id, existingIds)
-          action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
-          action = "overwritten"
-        }
-
         const now = Date.now()
         const fullMemory: AgentMemory = {
-          id: finalId,
+          id: bundleMemory.id,
           title: bundleMemory.title,
           content: bundleMemory.content,
           importance: bundleMemory.importance,
@@ -2035,13 +2053,13 @@ export async function importBundle(
         const memoriesDir = path.join(layer.agentsDir, "memories")
         fs.mkdirSync(memoriesDir, { recursive: true })
         writeAgentsMemoryFile(layer, fullMemory)
-        existingIds.add(finalId)
+        existingIds.add(bundleMemory.id)
+        existingContentFingerprints.add(contentFingerprint)
 
         result.memories.push({
           id: bundleMemory.id,
           name: bundleMemory.title,
-          action,
-          newId: action === "renamed" ? finalId : undefined,
+          action: "imported",
         })
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)

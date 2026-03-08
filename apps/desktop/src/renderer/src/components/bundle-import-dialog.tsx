@@ -153,10 +153,11 @@ function getSelectedConflictCount(
   conflicts: BundlePreview["conflicts"] | undefined,
   components: BundleComponentsState,
   selectedItems: BundleItemSelectionState,
+  keys: BundleComponentKey[] = COMPONENT_KEYS,
 ): number {
   if (!conflicts) return 0
 
-  return COMPONENT_KEYS.reduce((total, key) => {
+  return keys.reduce((total, key) => {
     if (!components[key]) return total
 
     const selectedIds = new Set(getSelectedItemIds(selectedItems, key))
@@ -182,11 +183,17 @@ function formatExpectedConflictOutcome(conflictCount: number, strategy: Conflict
   return `${formatCount("existing item", conflictCount)} will be imported with renamed IDs.`
 }
 
+function formatExpectedMemoryConflictOutcome(conflictCount: number): string | null {
+  if (conflictCount === 0) return null
+  return `${formatCount("existing memory", conflictCount)} will be skipped because memory imports are additive-only.`
+}
+
 type ImportPlanAction = "add" | ConflictStrategy | "exclude"
 
 interface ImportPlanItem {
   id: string
   name: string
+  componentKey: BundleComponentKey
   existingName?: string
   action: ImportPlanAction
   selected: boolean
@@ -244,6 +251,7 @@ function buildImportPlanItems(
     if (!selected) {
       return {
         ...item,
+        componentKey: key,
         existingName: conflict?.existingName,
         action: "exclude",
         selected: false,
@@ -254,13 +262,25 @@ function buildImportPlanItems(
     if (!conflict) {
       return {
         ...item,
+        componentKey: key,
         action: "add",
+        selected: true,
+      }
+    }
+
+    if (key === "memories") {
+      return {
+        ...item,
+        componentKey: key,
+        existingName: conflict.existingName,
+        action: "skip",
         selected: true,
       }
     }
 
     return {
       ...item,
+      componentKey: key,
       existingName: conflict.existingName,
       action: strategy,
       selected: true,
@@ -295,6 +315,9 @@ function formatImportPlanOutcome(item: ImportPlanItem): string {
   }
 
   if (item.action === "skip") {
+    if (item.componentKey === "memories") {
+      return "Will keep the existing memory and skip this bundle copy because memory imports are additive-only."
+    }
     return "Will keep the existing item and skip this bundle copy."
   }
 
@@ -507,7 +530,15 @@ export function BundleImportDialog({
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
   const selectedConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems)
-  const expectedConflictOutcome = formatExpectedConflictOutcome(selectedConflictCount, conflictStrategy)
+  const selectedMemoryConflictCount = getSelectedConflictCount(conflicts, normalizedComponents, selectedItems, ["memories"])
+  const selectedNonMemoryConflictCount = getSelectedConflictCount(
+    conflicts,
+    normalizedComponents,
+    selectedItems,
+    ["agentProfiles", "mcpServers", "skills", "repeatTasks"],
+  )
+  const expectedConflictOutcome = formatExpectedConflictOutcome(selectedNonMemoryConflictCount, conflictStrategy)
+  const expectedMemoryConflictOutcome = formatExpectedMemoryConflictOutcome(selectedMemoryConflictCount)
   const hasConflicts = selectedConflictCount > 0
   const importPlanSections = COMPONENT_KEYS.map((key) => ({
     key,
@@ -676,7 +707,7 @@ export function BundleImportDialog({
                   <div className="space-y-1">
                     <Label>Import plan</Label>
                     <p className="text-xs text-muted-foreground">
-                      Review the exact items that will be added, skipped, overwritten, or renamed before importing anything.
+                      Review the exact items that will be added, skipped, overwritten, or renamed before importing anything. Memories always stay additive-only.
                     </p>
                   </div>
                 </div>
@@ -704,6 +735,11 @@ export function BundleImportDialog({
                 {expectedConflictOutcome && (
                   <p className="text-xs text-muted-foreground">
                     Current selection: {expectedConflictOutcome}
+                  </p>
+                )}
+                {expectedMemoryConflictOutcome && (
+                  <p className="text-xs text-muted-foreground">
+                    Memory selection: {expectedMemoryConflictOutcome}
                   </p>
                 )}
 

@@ -1433,3 +1433,40 @@
   - Revisit the separate `#25` acceptance items around stripped MCP secrets and import-time reconfiguration only if the bundle format is expanded to carry placeholder metadata instead of today’s coarser safe summaries.
 
 - Next recommended issue work item: prefer another concrete bug-sized UX/reliability slice from the remaining open issues, with `#55` still worth revisiting only if a fresh directly reproducible tile-layout defect is confirmed first.
+
+##### Issue #25 — Bundle memory imports now stay additive-only and skip same-content duplicates
+
+- Selection rationale:
+  - After the export warning slice, `#25` still had another concrete acceptance-aligned gap with strong reliability value: imported memories were still only deconflicted by `id`, even though the issue calls for additive-only memory handling and duplicate detection by content hash.
+  - This was a good follow-up because it stayed inside the existing bundle import flow, avoided package changes, and materially reduced accidental duplicate memory installs.
+- Investigation:
+  - Re-read the current bundle import path in `apps/desktop/src/main/bundle-service.ts` and confirmed memories still honored the global conflict strategy (`skip` / `overwrite` / `rename`) instead of staying additive-only.
+  - Confirmed `previewBundleWithConflicts(...)` only flagged memory conflicts when the incoming memory reused an existing `id`, so same-content duplicates with new IDs were invisible during preview.
+  - Reviewed `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the import plan text would currently imply overwrite/rename behavior for memories, which would become misleading once additive-only handling was enforced.
+- Important assumptions:
+  - Assumption: memory duplicate detection should fingerprint normalized memory `content` only, not the full record.
+  - Why acceptable: the issue explicitly calls for duplicate detection by content hash, and content is the core semantic payload users would not want duplicated under a new ID.
+  - Assumption: additive-only memory imports should skip duplicates rather than renaming them.
+  - Why acceptable: that matches the issue acceptance language (“memories additive only”) and avoids surprising silent proliferation of nearly identical memories.
+  - Assumption: previewing same-content duplicates as skip-only conflicts is worth the extra narrow UI update.
+  - Why acceptable: it keeps the import plan honest and avoids a preview/import mismatch for selected memory items.
+- Changes implemented:
+  - Added memory content fingerprinting to `apps/desktop/src/main/bundle-service.ts` using normalized content plus a SHA-256 hash.
+  - Updated `previewBundleWithConflicts(...)` so memory conflicts now surface both reused-`id` duplicates and same-content duplicates, with a skip-only default strategy.
+  - Updated `importBundle(...)` so memories are now truly additive-only: if an imported memory would collide by `id` or by content fingerprint, it is skipped rather than overwritten or renamed. Duplicate-content memories later in the same bundle are also skipped.
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so memory conflicts render as skip-only in the import plan, the plan copy explicitly says memories stay additive-only, and the summary includes a separate memory-specific conflict outcome line.
+  - Added targeted regression coverage in `apps/desktop/src/main/bundle-service.test.ts` for both preview-side memory conflict detection and import-time additive-only duplicate handling, and extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to lock in the renderer/main-process contract.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js apps/desktop/src/renderer/src/components/bundle-export-dialog.warning.test.js apps/desktop/src/main/bundle-service.memory-secret-warning.test.js` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+  - Completed: `git diff --check` ✅
+  - Added but not runnable in this worktree without the missing desktop dependency baseline: the new `bundle-service.test.ts` runtime tests for memory duplicate preview/import behavior.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #25:
+  - Re-run the new `bundle-service.test.ts` cases once the worktree has the normal desktop/Vitest dependency baseline available again.
+  - Consider whether memory duplicate preview UX should eventually explain *why* a memory conflicts (`id` vs same content) without making the import plan noisy.
+  - If bundle import later supports richer conflict reasons, thread the memory duplicate reason through the preview payload instead of keeping today’s generic skip-only conflict entry.
+
+- Next recommended issue work item: pivot away from `#25` for the next pass unless another clearly self-contained acceptance gap appears; `#55` remains the best bug candidate only if a fresh direct repro is confirmed first, otherwise revisit the remaining open UX issues for a similarly small verified slice.

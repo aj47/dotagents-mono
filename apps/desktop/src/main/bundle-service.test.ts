@@ -794,6 +794,75 @@ describe("bundle-service", () => {
       })
     })
 
+    it("marks duplicate memories as skip-only conflicts even when the duplicate is by content", async () => {
+      const layer = getAgentsLayerPaths(agentsDir)
+      const existingById = createTestMemory("memory-id-conflict", "Existing Memory By Id")
+      existingById.content = "Existing by id content"
+      writeAgentsMemoryFile(layer, existingById)
+
+      const existingByContent = createTestMemory("existing-memory", "Existing Memory By Content")
+      existingByContent.content = "Shared duplicate content"
+      writeAgentsMemoryFile(layer, existingByContent)
+
+      const bundle: DotAgentsBundle = {
+        manifest: {
+          version: 1,
+          name: "Memory Conflict Bundle",
+          createdAt: new Date().toISOString(),
+          exportedFrom: "test",
+          components: { agentProfiles: 0, mcpServers: 0, skills: 0, repeatTasks: 0, memories: 3 },
+        },
+        agentProfiles: [],
+        mcpServers: [],
+        skills: [],
+        repeatTasks: [],
+        memories: [
+          {
+            id: "memory-id-conflict",
+            title: "Bundle ID Conflict",
+            content: "Replacement content",
+            importance: "medium",
+            tags: [],
+          },
+          {
+            id: "memory-content-conflict",
+            title: "Duplicate Content Memory",
+            content: "Shared duplicate content",
+            importance: "medium",
+            tags: [],
+          },
+          {
+            id: "memory-unique",
+            title: "Unique Memory",
+            content: "Fresh content",
+            importance: "low",
+            tags: [],
+          },
+        ],
+      }
+
+      const bundlePath = path.join(tempDir, "memory-conflict-preview.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = previewBundleWithConflicts(bundlePath, agentsDir)
+
+      expect(result.success).toBe(true)
+      expect(result.conflicts?.memories).toEqual([
+        {
+          id: "memory-id-conflict",
+          name: "Bundle ID Conflict",
+          existingName: "Existing Memory By Id",
+          defaultStrategy: "skip",
+        },
+        {
+          id: "memory-content-conflict",
+          name: "Duplicate Content Memory",
+          existingName: "Existing Memory By Content",
+          defaultStrategy: "skip",
+        },
+      ])
+    })
+
     it("includes MCP server conflicts as structured conflict entries", async () => {
       writeTestMcpJson(agentsDir, {
         mcpConfig: {
@@ -1153,6 +1222,67 @@ describe("bundle-service", () => {
       expect(result.skills[0].action).toBe("imported")
       expect(result.repeatTasks[0].action).toBe("imported")
       expect(result.memories[0].action).toBe("imported")
+    })
+
+    it("keeps memory imports additive-only and skips duplicate content regardless of conflict strategy", async () => {
+      const layer = getAgentsLayerPaths(targetDir)
+      const existingById = createTestMemory("import-memory", "Existing Memory By Id")
+      existingById.content = "Existing by id content"
+      writeAgentsMemoryFile(layer, existingById)
+
+      const existingByContent = createTestMemory("existing-memory", "Existing Memory By Content")
+      existingByContent.content = "Shared duplicate content"
+      writeAgentsMemoryFile(layer, existingByContent)
+
+      const bundle = createTestBundle()
+      bundle.memories = [
+        {
+          id: "import-memory",
+          title: "Bundle ID Conflict",
+          content: "Replacement content that should be ignored",
+          importance: "medium",
+          tags: [],
+        },
+        {
+          id: "memory-content-conflict",
+          title: "Duplicate Content Memory",
+          content: "Shared duplicate content",
+          importance: "medium",
+          tags: [],
+        },
+        {
+          id: "memory-unique",
+          title: "Unique Memory",
+          content: "Brand new unique content",
+          importance: "medium",
+          tags: [],
+        },
+        {
+          id: "memory-duplicate-within-bundle",
+          title: "Duplicate Within Bundle",
+          content: "Brand new unique content",
+          importance: "medium",
+          tags: [],
+        },
+      ]
+
+      const bundlePath = path.join(tempDir, "import-memories-additive.dotagents")
+      fs.writeFileSync(bundlePath, JSON.stringify(bundle))
+
+      const result = await importBundleForTest(bundlePath, { conflictStrategy: "overwrite" })
+      const importedMemories = loadAgentsMemoriesLayer(layer).memories
+
+      expect(result.success).toBe(true)
+      expect(result.memories).toEqual([
+        { id: "import-memory", name: "Bundle ID Conflict", action: "skipped" },
+        { id: "memory-content-conflict", name: "Duplicate Content Memory", action: "skipped" },
+        { id: "memory-unique", name: "Unique Memory", action: "imported" },
+        { id: "memory-duplicate-within-bundle", name: "Duplicate Within Bundle", action: "skipped" },
+      ])
+      expect(importedMemories.find((memory) => memory.id === "import-memory")?.content).toBe("Existing by id content")
+      expect(importedMemories.some((memory) => memory.id === "memory-content-conflict")).toBe(false)
+      expect(importedMemories.some((memory) => memory.id === "memory-unique")).toBe(true)
+      expect(importedMemories.some((memory) => memory.id === "memory-duplicate-within-bundle")).toBe(false)
     })
 
     it("creates a pre-import backup before mutating the target layer", async () => {

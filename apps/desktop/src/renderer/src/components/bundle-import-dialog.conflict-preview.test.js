@@ -14,7 +14,7 @@ test('bundle preview conflicts include default skip policy and deterministic ren
 
 test('bundle import dialog renders an import plan with add and rename outcome details', () => {
   assert.match(dialogSource, /<Label>Import plan<\/Label>/);
-  assert.match(dialogSource, /Review the exact items that will be added, skipped, overwritten, or renamed before importing anything\./);
+  assert.match(dialogSource, /Review the exact items that will be added, skipped, overwritten, or renamed before importing anything\. Memories always stay additive-only\./);
   assert.match(dialogSource, /function buildImportPlanItems\(/);
   assert.match(dialogSource, /bundle\?\.agentProfiles \?\? \[\]/);
   assert.match(dialogSource, /function formatImportPlanOutcome\(item: ImportPlanItem\)/);
@@ -39,6 +39,17 @@ test('bundle import supports per-item cherry-pick selection across dialog, tipc,
   assert.match(dialogSource, /action: "exclude"/);
   assert.match(dialogSource, /Excluded/);
   assert.match(dialogSource, /Switch checked=\{item\.selected\} onCheckedChange=\{\(\) => onToggleItem\(item\.id\)\}/);
+});
+
+test('memory import conflicts stay skip-only and bundle service deduplicates by content fingerprint', () => {
+  assert.match(bundleServiceSource, /import \{ createHash \} from "crypto"/);
+  assert.match(bundleServiceSource, /function getMemoryContentFingerprint\(memory: Pick<AgentMemory, "content"> \| Pick<BundleMemory, "content">\): string/);
+  assert.match(bundleServiceSource, /const existingMemoryByContentFingerprint = new Map/);
+  assert.match(bundleServiceSource, /defaultStrategy: "skip" as const/);
+  assert.match(bundleServiceSource, /const existsByContent = existingContentFingerprints\.has\(contentFingerprint\)/);
+  assert.match(dialogSource, /function formatExpectedMemoryConflictOutcome\(conflictCount: number\): string \| null/);
+  assert.match(dialogSource, /Memory selection: \{expectedMemoryConflictOutcome\}/);
+  assert.match(dialogSource, /memory imports are additive-only/);
 });
 
 test('bundle import dialog supports section-level bulk selection and blocks empty imports', () => {
