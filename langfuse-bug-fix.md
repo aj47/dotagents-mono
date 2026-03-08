@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772916005809_qqlggnsj6 | session_1772916005810_0a4il8g4j | fix implemented (verification blocked) | User asked to create a GitHub issue about preserving full conversation data. Langfuse showed `github:create_issue` succeeded, then `respond_to_user` succeeded with the finished issue link/summary, but the run still ended with `output: null` after one extra empty `Streaming LLM Call`. Root repo issue found: the tool-driven completion path only treated `mark_work_complete` or repeated `respond_to_user` loops as completion signals, so a deliverable `respond_to_user` after real work could still trigger another LLM turn and lose the already-delivered answer. |
 | 2026-03-08 | conv_1772927920519_2lnwf0iww | session_1772927920521_cdsbzo6kx, session_1772928514587_t5m8i3m15 | fix implemented (verification blocked) | User asked `can you extract it into its own md`; the first run created `tiling-ux-iteration-20.md` directly in repo root with a simplistic iteration-based name, then the follow-up complaint (`why did you do that`) triggered a second run to audit and reorganize the notes. Root repo issue found: agent-mode file-creation guidance had no instruction to inspect nearby organization patterns, avoid ad-hoc repo-root exports, or choose collision-safe filenames for extracted docs. |
 | 2026-03-08 | conv_1772915850389_hzuikwa8l | session_1772915850391_hzuikwa8l | fix implemented (verification blocked) | User asked `can you check my Claude usage stats`; the run correctly told them manual Google login was required, but verification kept treating the request as unfinished, so the loop continued through more browser/login attempts and Langfuse still ended with `output: null`. Root repo issue found: verification had no terminal handoff path for deliverable responses that were explicitly waiting on user action. |
 | 2026-03-08 | conv_1772919043420_3iszm2xnb | session_1772919043422_6u1wcgxu6, session_1772928508394_om0h5iwsg | fix implemented (verification blocked) | User asked `return-shape probe`; the first run delegated immediately to the coding agent, the coding agent failed to start, and the fallback reply only asked for clarification. A later `contniue` trace in the same session actually performed the likely intended probe. Root repo issue found: delegation prompt rules were too mandatory, so terse in-repo coding follow-ups were pushed to delegation before the main agent tried to continue directly. |
@@ -305,6 +306,48 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - result: passed with exit code `0`
   - confirmed the agent-mode prompt now contains explicit guidance to inspect nearby directories, avoid repo-root note dumps by default, and choose collision-safe filenames for extracted content
 
+### 2026-03-08 — Deliverable `respond_to_user` after real tool work could still fall through to a blank trace
+
+- Langfuse evidence reviewed:
+  - `conv_1772916005809_qqlggnsj6` / `session_1772916005810_0a4il8g4j`
+  - user input: `can you add a GitHub issue ...`
+  - trace timeline from observations:
+    - `Streaming LLM Call` requested `github:create_issue`
+    - `github:create_issue` span succeeded and created issue `#58`
+    - next `Streaming LLM Call` emitted deliverable text plus a native `respond_to_user` tool call with the final issue link/summary
+    - `respond_to_user` span succeeded and stored a 529-character user-facing answer
+    - a final extra `Streaming LLM Call` started immediately after and produced no output, while the trace-level `output` remained `null`
+- Repo reconstruction:
+  - `apps/desktop/src/main/llm.ts` already preserves stored `respond_to_user` output in several fallback branches.
+  - however, the main tool-driven completion path only treated `mark_work_complete` as an immediate completion signal.
+  - for `respond_to_user`-only batches, the loop merely incremented `noOpCount` and waited for another iteration unless the agent repeated the communication-only pattern enough times to hit the `noOpCount >= 2` guard.
+- Concrete root cause:
+  - after real non-communication work succeeded, a deliverable `respond_to_user` was still not considered a completion candidate on its own.
+  - this forced an unnecessary extra LLM turn after the user-facing answer had already been produced, which reintroduced the risk of empty follow-up generations and blank trace output.
+- Fix implemented:
+  - `apps/desktop/src/main/llm.ts`
+    - track whether any non-communication tools succeeded earlier in the run
+    - treat a communication-only batch as a completion signal when all tools succeeded, earlier real work exists, and the stored `respond_to_user` content is already deliverable
+    - reuse the existing verification/finalization path instead of waiting for a second no-op loop
+  - tests added/updated:
+    - `apps/desktop/src/main/llm.test.ts`
+      - added a regression test that reproduces the traced issue-creation flow and fails if an unnecessary third LLM call happens after the final `respond_to_user`
+
+- Targeted verification attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
+  - `pnpm --filter @dotagents/desktop test -- --run src/main/llm.test.ts`
+  - `npx -y -p vitest vitest run apps/desktop/src/main/llm.test.ts`
+  - `npx -y -p vitest -p @electron-toolkit/tsconfig vitest run apps/desktop/src/main/llm.test.ts`
+- Result:
+  - blocked by missing local desktop workspace dependencies / package binaries in this worktree
+  - direct `exec vitest` failed with `Command "vitest" not found`
+  - desktop `pretest` failed while building `@dotagents/shared` because `tsup` was not installed in the local workspace
+  - standalone `npx vitest` still could not parse desktop tsconfig inheritance because `@electron-toolkit/tsconfig/tsconfig.node.json` was unavailable to Vite in this worktree
+- Dependency-free sanity check completed:
+  - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts`
+  - result: passed with exit code `0`
+  - confirmed the new completion path now recognizes `respond_to_user`-only batches after real work and avoids needing a third LLM turn for the traced issue-creation flow
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
@@ -313,6 +356,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
+- Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.

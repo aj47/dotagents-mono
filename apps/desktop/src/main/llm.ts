@@ -513,6 +513,7 @@ export async function processTranscriptWithAgentMode(
   let finalContent = ""
   let wasAborted = false // Track if agent was aborted for observability
   let toolsExecutedInSession = false // Track if ANY tools were executed, survives context shrinking
+  let nonCommunicationToolsExecutedInSession = false
 
   try {
   // Track context usage info for progress display
@@ -2415,6 +2416,9 @@ Return ONLY JSON per schema.`,
       for (const execResult of executionResults) {
         toolResults.push(execResult.result)
         toolsExecutedInSession = true
+        if (!COMMUNICATION_ONLY_TOOLS.has(execResult.toolCall.name)) {
+          nonCommunicationToolsExecutedInSession = true
+        }
         if (execResult.result.isError) {
           failedTools.push(execResult.toolCall.name)
         }
@@ -2511,6 +2515,9 @@ Return ONLY JSON per schema.`,
 
         toolResults.push(execResult.result)
         toolsExecutedInSession = true
+        if (!COMMUNICATION_ONLY_TOOLS.has(toolCall.name)) {
+          nonCommunicationToolsExecutedInSession = true
+        }
 
         // Track failed tools for better error reporting
         if (execResult.result.isError) {
@@ -2618,18 +2625,26 @@ Return ONLY JSON per schema.`,
     // Enhanced completion detection with better error handling
     const hasErrors = toolResults.some((result) => result.isError)
     const allToolsSuccessful = toolResults.length > 0 && !hasErrors
+    const storedUserResponse = getSessionUserResponse(currentSessionId)
 
     if (allToolsSuccessful) {
       finalContent = preferStoredUserResponse(
         finalContent,
-        getSessionUserResponse(currentSessionId),
+        storedUserResponse,
       )
     }
 
     // Deferred completion signal: only treat mark_work_complete as a completion signal
     // after all tools in the batch have executed successfully. If any tool (including
     // mark_work_complete itself) returned an error, keep iterating so the agent can recover.
-    const completionSignalConfirmed = completionToolCalled && allToolsSuccessful
+    const communicationOnlyCompletionSignal =
+      allToolsSuccessful &&
+      onlyCommunicationTools &&
+      nonCommunicationToolsExecutedInSession &&
+      typeof storedUserResponse === "string" &&
+      isDeliverableResponse(storedUserResponse)
+    const completionSignalConfirmed =
+      allToolsSuccessful && (completionToolCalled || communicationOnlyCompletionSignal)
 
     if (hasErrors) {
       // Enhanced error analysis and recovery suggestions

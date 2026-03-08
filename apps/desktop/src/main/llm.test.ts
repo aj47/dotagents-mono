@@ -72,6 +72,72 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("finishes immediately after a deliverable respond_to_user follows successful real work", async () => {
+    const { setSessionUserResponse, clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-issue-respond-finish")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [{
+          name: "github:create_issue",
+          arguments: { title: "Conversation History", body: "Preserve full data on disk" },
+        }],
+      })
+      .mockResolvedValueOnce({
+        content: "Issue #58 created.",
+        toolCalls: [{
+          name: "respond_to_user",
+          arguments: { text: "Filed issue #58 with the conversation-history preservation plan." },
+        }],
+      })
+      .mockImplementation(() => {
+        throw new Error("unexpected extra llm call after respond_to_user")
+      })
+    mockVerifyCompletion.mockResolvedValue({
+      isComplete: true,
+      confidence: 0.99,
+      missingItems: [],
+      reason: "The issue was created and the user was given the final result.",
+    })
+
+    const executeToolCall = vi.fn(async (toolCall: any) => {
+      if (toolCall.name === "respond_to_user") {
+        setSessionUserResponse("session-issue-respond-finish", toolCall.arguments.text)
+      }
+      return { content: [{ type: "text", text: '{"success":true}' }], isError: false }
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "can you add a GitHub issue",
+      [
+        { name: "github:create_issue", description: "Create issue", inputSchema: { type: "object", properties: {}, required: [] } },
+        { name: "respond_to_user", description: "Send a response", inputSchema: { type: "object", properties: {}, required: [] } },
+      ] as any,
+      executeToolCall,
+      4,
+      [],
+      "conv-issue-respond-finish",
+      "session-issue-respond-finish",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Filed issue #58 with the conversation-history preservation plan.")
+    expect(mockStreamingCall).toHaveBeenCalledTimes(2)
+    expect(mockVerifyCompletion).toHaveBeenCalledTimes(1)
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(
+      "session-issue-respond-finish",
+      expect.objectContaining({ output: "Filed issue #58 with the conversation-history preservation plan." }),
+    )
+  })
+
   it("replaces stale progress text with an incomplete fallback when max iterations are reached", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")
