@@ -57,16 +57,20 @@ describe("agent progress tile layout", () => {
 
   it("keeps tile message-stream tool execution rows readable at narrow widths and zoom", () => {
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30"'
+      '"flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5 rounded px-1.5 py-0.5 text-[0.6875rem] cursor-pointer hover:bg-muted/30"'
     )
     expect(agentProgressSource).toContain(
-      '"flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30"'
+      '"flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5 rounded px-1 py-0.5 text-[0.6875rem] cursor-pointer hover:bg-muted/30"'
     )
-    expect(agentProgressSource).toContain('className="min-w-0 shrink truncate font-mono font-medium"')
-    expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50"')
-    expect(agentProgressSource).toContain('className="mb-1 flex flex-wrap items-center gap-2"')
-    expect(agentProgressSource).toContain('className="ml-auto flex shrink-0 flex-wrap items-center gap-2"')
-    expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap opacity-50 text-[10px]"')
+    expect(agentProgressSource).toContain('className="min-w-0 flex-1 truncate font-mono font-medium"')
+    expect(agentProgressSource).toContain(
+      'className="order-last basis-full pl-4 pt-0.5 text-[0.6875rem] font-mono leading-4 opacity-70 line-clamp-2 break-words [overflow-wrap:anywhere]"'
+    )
+    expect(agentProgressSource).toContain(
+      'className="order-last basis-full pl-4 pt-0.5 text-[0.6875rem] leading-4 opacity-70 line-clamp-2 break-words [overflow-wrap:anywhere]"'
+    )
+    expect(agentProgressSource).toContain('className="ml-auto mt-0.5 h-2.5 w-2.5 flex-shrink-0 opacity-40 transition-transform"')
+    expect(agentProgressSource).toContain('className="shrink-0 text-[0.625rem] opacity-60"')
   })
 
   it("wraps expanded tool detail chrome and caps tool output blocks inside narrow tiles", () => {

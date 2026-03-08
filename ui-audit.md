@@ -3059,3 +3059,70 @@ Three distinct issues in frequently-used surfaces: skills settings toolbar overf
 - Font scale audit (125%–200% system font scale) on agent-progress message content and tool output `pre` blocks — verify `text-[9px]`/`text-[10px]`/`text-[11px]` sizes remain readable.
 - Check `active-agents-sidebar.tsx` and `app-layout.tsx` for sidebar collapse/expand responsiveness.
 - Audit `past-sessions-dialog.tsx` for long session title truncation and narrow dialog layout.
+
+---
+
+## 2026-03-08 — chunk 10: agent-progress compact tool summary preview under zoom
+
+### Sources consulted
+- `ui-audit.md` (picked a follow-up surface that had not been directly fixed yet)
+- `apps/desktop/DEBUGGING.md`
+- `DEVELOPMENT.md`
+- live desktop renderer on `http://localhost:9333` + dev server on `http://localhost:5174`
+- `apps/desktop/src/renderer/src/components/agent-progress.tsx`
+- `apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts`
+- `apps/mobile/src/screens/ChatScreen.tsx` (cross-check only; no change made)
+
+### Area selected
+- Follow-up from the recent `agent-progress` detail-pane work, but on a distinct sub-surface: the **collapsed compact tool summary row** in active session tiles.
+- Chosen because it was live-inspectable with real session data and still had a narrow-width / larger-text readability risk noted by the ledger.
+
+### Live inspection setup
+- Reused the already-running Electron debug target on port `9333`.
+- Audited the active Sessions compare view at approximately `620×670` with root font forced to `24px` to mimic a cramped window plus larger text.
+- Saved evidence screenshots to:
+  - `tmp/ui-audit/live-root-620x670-root24.png`
+  - `tmp/ui-audit/agent-progress-tool-summary-620x670-root24-before.png`
+  - `tmp/ui-audit/agent-progress-tool-summary-620x670-root24-prototype.png`
+
+### Issue found
+
+**agent-progress.tsx — compact tool summary preview became effectively invisible under real tile constraints**
+- In the live mounted DOM, the compact result-preview spans for rows like `respond_to_user` / `mark_work_complete` were still rendered at **fixed 10px text**.
+- Under the stressed `620×670` / `24px root` setup, those preview spans measured **`fontSize: 10px` and `width: 0`** while still holding `scrollWidth` values around `204–249px`.
+- Practical impact: the tool row kept the tool name, icon, and chevron, but the human-meaningful preview text collapsed away entirely, so users lost the quick summary of what each tool actually did.
+
+### Changes made
+
+**apps/desktop/src/renderer/src/components/agent-progress.tsx**
+- Updated both compact tool-row variants to use `flex-wrap` + `items-start` instead of forcing everything onto one line.
+- Changed the tool-name span from `shrink` to `flex-1` so the title participates in available-width negotiation cleanly.
+- Moved the preview onto an `order-last basis-full` second line with:
+  - rem-based text sizing (`text-[0.6875rem]`) so zoom/font scaling actually helps,
+  - `line-clamp-2`, `break-words`, and `overflow-wrap:anywhere` so long summaries stay readable without exploding vertically.
+- Switched the status microcopy from fixed `text-[10px]` to rem-based `text-[0.625rem]`.
+- Anchored the chevron with `ml-auto mt-0.5` so the first-row chrome remains stable after wrapping.
+
+**apps/desktop/src/renderer/src/components/agent-progress.tile-layout.test.ts**
+- Updated the existing narrow-tile source-contract test to assert the new wrapped compact-row classes and the new second-line preview treatment.
+
+### Before / after observation
+- **Before:** live compact preview spans existed but collapsed to zero visible width at stressed sizing, so tool rows effectively lost their summary text.
+- **Prototype after (live DOM style override):** the same preview texts became visible at **18px computed size**, **136px width**, and **48px height** as capped two-line summaries, confirming the layout direction before editing source.
+- **After source change:** the desktop component now matches that proven layout pattern in code.
+
+### Verification
+- Official targeted desktop test run was **blocked** in this worktree because `node_modules` are missing; `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/agent-progress.tile-layout.test.ts` failed while building shared with `tsup: command not found` and `vitest` unavailable locally.
+- Performed a targeted fallback verification with a Node source-assertion script:
+  - confirmed the new wrapped compact-row classes are present in `agent-progress.tsx`,
+  - confirmed the stale fixed-width/fixed-pixel preview strings are gone,
+  - confirmed the updated source-based test file asserts the new contract.
+- Command result: `agent-progress responsive summary preview assertions: ok`.
+
+### Mobile cross-check
+- `apps/mobile/src/screens/ChatScreen.tsx` contains a conceptually similar compact tool summary row with very small fixed font sizes (`fontSize: 9/10`).
+- I did **not** change mobile in this chunk because this iteration’s live evidence was desktop-only; keep it as a dedicated follow-up audit instead of applying parity changes blindly.
+
+### Next opportunities
+- Live-inspect the analogous compact tool summary row on mobile / Expo web and decide whether it needs the same readability treatment.
+- Return to the Sessions shell and audit another fresh live surface not touched today, likely `pendingToolApproval` cards or a currently unreviewed empty/loading state.

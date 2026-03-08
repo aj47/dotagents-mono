@@ -727,7 +727,7 @@ const ToolExecutionBubble: React.FC<{
             {/* Single line tool header */}
             <div
               className={cn(
-                "flex min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30",
+                "flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5 rounded px-1.5 py-0.5 text-[0.6875rem] cursor-pointer hover:bg-muted/30",
                 callIsPending
                   ? "text-blue-600 dark:text-blue-400"
                   : callSuccess
@@ -738,8 +738,8 @@ const ToolExecutionBubble: React.FC<{
             >
               {execCmdDisplay ? (
                 <>
-                  <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
-                  <span className="shrink-0 text-[10px] opacity-60">
+                  <span className="min-w-0 flex-1 truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
+                  <span className="shrink-0 text-[0.625rem] opacity-60">
                     {callIsPending ? (
                       <Loader2 className="h-2.5 w-2.5 animate-spin" />
                     ) : callSuccess ? (
@@ -749,13 +749,13 @@ const ToolExecutionBubble: React.FC<{
                     )}
                   </span>
                   {!isToolExpanded && execCmdDisplay.outputPreview && (
-                    <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
+                    <span className="order-last basis-full pl-4 pt-0.5 text-[0.6875rem] font-mono leading-4 opacity-70 line-clamp-2 break-words [overflow-wrap:anywhere]">→ {execCmdDisplay.outputPreview}</span>
                   )}
                 </>
               ) : (
                 <>
-                  <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
-                  <span className="shrink-0 text-[10px] opacity-60">
+                  <span className="min-w-0 flex-1 truncate font-mono font-medium" title={call.name}>{call.name}</span>
+                  <span className="shrink-0 text-[0.625rem] opacity-60">
                     {callIsPending ? (
                       <Loader2 className="h-2.5 w-2.5 animate-spin" />
                     ) : callSuccess ? (
@@ -765,12 +765,12 @@ const ToolExecutionBubble: React.FC<{
                     )}
                   </span>
                   {!isToolExpanded && callResultSummary && (
-                    <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
+                    <span className="order-last basis-full pl-4 pt-0.5 text-[0.6875rem] leading-4 opacity-70 line-clamp-2 break-words [overflow-wrap:anywhere]">{callResultSummary}</span>
                   )}
                 </>
               )}
               <ChevronRight className={cn(
-                "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
+                "ml-auto mt-0.5 h-2.5 w-2.5 flex-shrink-0 opacity-40 transition-transform",
                 isToolExpanded && "rotate-90"
               )} />
             </div>
@@ -931,7 +931,7 @@ const AssistantWithToolsBubble: React.FC<{
                 <div
                   key={idx}
                   className={cn(
-                    "flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-[11px] cursor-pointer hover:bg-muted/30",
+                    "flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5 rounded px-1 py-0.5 text-[0.6875rem] cursor-pointer hover:bg-muted/30",
                     callIsPending
                       ? "text-blue-600 dark:text-blue-400"
                       : callSuccess
@@ -942,8 +942,8 @@ const AssistantWithToolsBubble: React.FC<{
                 >
                   {execCmdDisplay ? (
                     <>
-                      <span className="min-w-0 shrink truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
-                      <span className="shrink-0 text-[10px] opacity-60">
+                      <span className="min-w-0 flex-1 truncate font-mono font-medium" title={call.arguments?.command}>{execCmdDisplay.displayCommand}</span>
+                      <span className="shrink-0 text-[0.625rem] opacity-60">
                         {callIsPending ? (
                           <Loader2 className="h-2.5 w-2.5 animate-spin" />
                         ) : callSuccess ? (
@@ -953,13 +953,13 @@ const AssistantWithToolsBubble: React.FC<{
                         )}
                       </span>
                       {!showToolDetails && execCmdDisplay.outputPreview && (
-                        <span className="min-w-0 flex-1 truncate text-[10px] font-mono opacity-50">→ {execCmdDisplay.outputPreview}</span>
+                        <span className="order-last basis-full pl-4 pt-0.5 text-[0.6875rem] font-mono leading-4 opacity-70 line-clamp-2 break-words [overflow-wrap:anywhere]">→ {execCmdDisplay.outputPreview}</span>
                       )}
                     </>
                   ) : (
                     <>
-                      <span className="min-w-0 shrink truncate font-mono font-medium" title={call.name}>{call.name}</span>
-                      <span className="shrink-0 text-[10px] opacity-60">
+                      <span className="min-w-0 flex-1 truncate font-mono font-medium" title={call.name}>{call.name}</span>
+                      <span className="shrink-0 text-[0.625rem] opacity-60">
                         {callIsPending ? (
                           <Loader2 className="h-2.5 w-2.5 animate-spin" />
                         ) : callSuccess ? (
@@ -969,12 +969,12 @@ const AssistantWithToolsBubble: React.FC<{
                         )}
                       </span>
                       {!showToolDetails && callResultSummary && (
-                        <span className="min-w-0 flex-1 truncate text-[10px] opacity-50">{callResultSummary}</span>
+                        <span className="order-last basis-full pl-4 pt-0.5 text-[0.6875rem] leading-4 opacity-70 line-clamp-2 break-words [overflow-wrap:anywhere]">{callResultSummary}</span>
                       )}
                     </>
                   )}
                   <ChevronRight className={cn(
-                    "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
+                    "ml-auto mt-0.5 h-2.5 w-2.5 flex-shrink-0 opacity-40 transition-transform",
                     showToolDetails && "rotate-90"
                   )} />
                 </div>
