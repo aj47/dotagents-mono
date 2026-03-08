@@ -459,3 +459,50 @@
   - Smoke-test the header selector with a longer agent name to confirm truncation still holds after the composer-row removal.
   - Decide whether the header selector should get a lighter non-empty-state affordance tweak when there are still no switchable agents.
   - Revisit loop action-rail width only if a fresh live pass shows loop text density is again the highest-friction mobile issue.
+
+### 2026-03-08 — Iteration 11: stop header selectors from opening a known empty state
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `ChatScreen` header agent selector
+  - `SessionListScreen` header agent selector
+  - `AgentSelectorSheet` empty-state behavior for the same no-switchable-agents server state
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a `390x844` viewport.
+  - Confirmed both `Chats` and `Chat` headers still showed a tappable current-agent badge with a chevron.
+  - Measured representative header selectors before the fix at roughly `115x54`.
+  - Confirmed tapping either header opened the full selector sheet into the already-known empty state (`No switchable agents yet` + `Open Agent Settings`).
+- Issue selected:
+  - The main sub-agent entry point in the mobile headers still behaved like a working dropdown even when there were no switchable options, leading users into a full-screen dead end.
+- Decision:
+  - Keep showing the current agent in the header for state clarity.
+  - Do not redesign `AgentSelectorSheet` again.
+  - Make the local fix in the two header surfaces only: if there are no switchable options, render the header badge as static status instead of an interactive selector.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to:
+    - reuse the selector-availability state for both the composer row and the header,
+    - render the header title/badge as a non-button status view when no selector options exist,
+    - remove the chevron and button-style accessibility copy in that no-options state.
+  - Updated `apps/mobile/src/screens/SessionListScreen.tsx` to:
+    - fetch the same selector availability on load/focus,
+    - gate header selector interactivity on actual switchable options,
+    - keep the current agent badge visible as static status when switching is unavailable.
+  - Updated focused tests in:
+    - `apps/mobile/tests/chat-composer-accessibility.test.js`
+    - `apps/mobile/tests/sub-agent-header-trigger-mobile.test.js`
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/sub-agent-header-trigger-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - `Chats` header keeps the current-agent badge visible, removes the chevron, and no longer opens the selector sheet in the current no-switchable-agents state
+    - `Chat` header does the same while preserving the existing `44px+` mobile target height for the interactive state when options return
+    - neither header now sends the user through the known empty-state modal just to confirm there are no options
+- Remaining nearby issues noted, not addressed this iteration:
+  - The fallback badge copy still differs between `Chats` (`Default`) and `Chat` (`Default Agent`) in the no-options state.
+  - A deliberately long real agent name still needs a smoke test in the header to confirm truncation stays stable once switchable options exist again.
+  - `Agent Loops` may still be the next-best place for a compactness pass if live evidence shows the action rail squeezing text again.
+- Next checks:
+  - Smoke-test the header selector with a longer configured agent name once switchable options are available again.
+  - Decide whether the fallback header badge copy should be unified between `Chats` and `Chat`.
+  - Revisit `Settings > Agent Loops` only if a fresh mobile pass shows text density outweighs the now-cleaner header flow.

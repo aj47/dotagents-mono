@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
+import { useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { useSessionContext, SessionStore } from '../store/sessions';
@@ -10,6 +11,8 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
+import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
@@ -22,13 +25,53 @@ interface Props {
 }
 
 export default function SessionListScreen({ navigation }: Props) {
+  const { config } = useConfigContext();
   const { theme, isDark } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
+  const currentAgentLabel = currentProfile?.name || 'Default';
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
+
+  const refreshAgentSelectorAvailability = useCallback(async () => {
+    if (!config.baseUrl || !config.apiKey) {
+      setHasAgentSelectorOptions(false);
+      return;
+    }
+
+    try {
+      const client = new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
+      const settings = await client.getSettings();
+
+      if (settings.mainAgentMode === 'acp') {
+        const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
+        setHasAgentSelectorOptions(
+          getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []).length > 0
+        );
+        return;
+      }
+
+      const profilesResponse = await client.getProfiles();
+      setHasAgentSelectorOptions((profilesResponse.profiles || []).length > 0);
+    } catch (error) {
+      console.warn('[SessionListScreen] Failed to refresh agent selector availability:', error);
+      setHasAgentSelectorOptions(false);
+    }
+  }, [config.baseUrl, config.apiKey]);
+
+  useEffect(() => {
+    void refreshAgentSelectorAvailability();
+  }, [refreshAgentSelectorAvailability]);
+
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      void refreshAgentSelectorAvailability();
+    });
+    return unsubscribe;
+  }, [navigation, refreshAgentSelectorAvailability]);
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -597,21 +640,36 @@ export default function SessionListScreen({ navigation }: Props) {
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
-        <TouchableOpacity
-          style={styles.headerAgentSelectorTrigger}
-          onPress={() => setAgentSelectorVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentProfile?.name || 'Default'}. Tap to change.`}
-          accessibilityHint="Opens agent selection menu"
-          activeOpacity={0.7}
-        >
-          <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
-          <View style={styles.headerAgentSelectorBadge}>
-            <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
-              {currentProfile?.name || 'Default'} ▼
-            </Text>
+        hasAgentSelectorOptions ? (
+          <TouchableOpacity
+            style={styles.headerAgentSelectorTrigger}
+            onPress={() => setAgentSelectorVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
+            accessibilityHint="Opens agent selection menu"
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
+            <View style={styles.headerAgentSelectorBadge}>
+              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
+                {`${currentAgentLabel} ▼`}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={styles.headerAgentSelectorTrigger}
+            accessible
+            accessibilityLabel={`Current agent: ${currentAgentLabel}. No switchable agents are available right now.`}
+          >
+            <Text style={styles.headerAgentSelectorTitle}>Chats</Text>
+            <View style={styles.headerAgentSelectorBadge}>
+              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
+                {currentAgentLabel}
+              </Text>
+            </View>
           </View>
-        </TouchableOpacity>
+        )
       ),
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -632,7 +690,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentAgentLabel, hasAgentSelectorOptions]);
   const insets = useSafeAreaInsets();
   const sessionStore = useSessionContext();
   sessionStoreRef.current = sessionStore;

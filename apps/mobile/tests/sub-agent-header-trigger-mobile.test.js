@@ -27,4 +27,16 @@ for (const [screenName, source] of [
     assert.match(source, /style=\{styles\.headerAgentSelectorBadgeText\} numberOfLines=\{1\}/);
     assert.match(source, /maxWidth: 180/);
   });
+
+  test(`${screenName} only makes the header agent control interactive when switchable options exist`, () => {
+    assert.match(source, /const \[hasAgentSelectorOptions, setHasAgentSelectorOptions\] = useState\(false\);/);
+    assert.match(source, /hasAgentSelectorOptions \? \(/);
+    assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
+    assert.match(source, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. No switchable agents are available right now\.`\}/);
+    assert.match(source, /\{`\$\{currentAgentLabel\} ▼`\}/);
+  });
+
+  test(`${screenName} refreshes header selector availability when the screen regains focus`, () => {
+    assert.match(source, /navigation\?\.addListener\?\.\('focus', \(\) => \{[\s\S]*?void refreshAgentSelectorAvailability\(\);/);
+  });
 }

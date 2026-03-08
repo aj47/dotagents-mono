@@ -297,11 +297,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const [responding, setResponding] = useState(false);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
-  const [showComposerAgentSelector, setShowComposerAgentSelector] = useState(false);
+  const [hasAgentSelectorOptions, setHasAgentSelectorOptions] = useState(false);
 
-  const refreshComposerAgentSelectorVisibility = useCallback(async () => {
+  const refreshAgentSelectorAvailability = useCallback(async () => {
     if (!config.baseUrl || !config.apiKey) {
-      setShowComposerAgentSelector(false);
+      setHasAgentSelectorOptions(false);
       return;
     }
 
@@ -311,30 +311,30 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (settings.mainAgentMode === 'acp') {
         const agentProfilesResponse = await client.getAgentProfiles().catch(() => ({ profiles: [] }));
-        setShowComposerAgentSelector(
+        setHasAgentSelectorOptions(
           getAcpMainAgentOptions(settings, agentProfilesResponse.profiles || []).length > 0
         );
         return;
       }
 
       const profilesResponse = await client.getProfiles();
-      setShowComposerAgentSelector((profilesResponse.profiles || []).length > 0);
+      setHasAgentSelectorOptions((profilesResponse.profiles || []).length > 0);
     } catch (error) {
-      console.warn('[ChatScreen] Failed to refresh composer agent selector visibility:', error);
-      setShowComposerAgentSelector(false);
+      console.warn('[ChatScreen] Failed to refresh agent selector availability:', error);
+      setHasAgentSelectorOptions(false);
     }
   }, [config.baseUrl, config.apiKey]);
 
   useEffect(() => {
-    void refreshComposerAgentSelectorVisibility();
-  }, [refreshComposerAgentSelectorVisibility]);
+    void refreshAgentSelectorAvailability();
+  }, [refreshAgentSelectorAvailability]);
 
   useEffect(() => {
     const unsubscribe = navigation?.addListener?.('focus', () => {
-      void refreshComposerAgentSelectorVisibility();
+      void refreshAgentSelectorAvailability();
     });
     return unsubscribe;
-  }, [navigation, refreshComposerAgentSelectorVisibility]);
+  }, [navigation, refreshAgentSelectorAvailability]);
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -473,21 +473,36 @@ export default function ChatScreen({ route, navigation }: any) {
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
-        <TouchableOpacity
-          style={styles.headerAgentSelectorTrigger}
-          onPress={() => setAgentSelectorVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
-          accessibilityHint="Opens agent selection menu"
-          activeOpacity={0.7}
-        >
-          <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
-          <View style={styles.headerAgentSelectorBadge}>
-            <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
-              {currentAgentLabel} ▼
-            </Text>
+        hasAgentSelectorOptions ? (
+          <TouchableOpacity
+            style={styles.headerAgentSelectorTrigger}
+            onPress={() => setAgentSelectorVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Current agent: ${currentAgentLabel}. Tap to change.`}
+            accessibilityHint="Opens agent selection menu"
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
+            <View style={styles.headerAgentSelectorBadge}>
+              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
+                {`${currentAgentLabel} ▼`}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={styles.headerAgentSelectorTrigger}
+            accessible
+            accessibilityLabel={`Current agent: ${currentAgentLabel}. No switchable agents are available right now.`}
+          >
+            <Text style={styles.headerAgentSelectorTitle}>Chat</Text>
+            <View style={styles.headerAgentSelectorBadge}>
+              <Text style={styles.headerAgentSelectorBadgeText} numberOfLines={1}>
+                {currentAgentLabel}
+              </Text>
+            </View>
           </View>
-        </TouchableOpacity>
+        )
       ),
       headerLeft: () => (
         <View style={styles.headerActionsRow}>
@@ -582,7 +597,7 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, responding, theme, isDark, sessionStore, connectionInfo.state, connectionInfo.retryCount, currentProfile, styles, currentAgentLabel, hasAgentSelectorOptions]);
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -3325,7 +3340,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
-			          {showComposerAgentSelector && (
+			          {hasAgentSelectorOptions && (
 			            <View style={styles.agentSelectorRow}>
 			              <TouchableOpacity
 			                style={styles.agentSelectorChip}
