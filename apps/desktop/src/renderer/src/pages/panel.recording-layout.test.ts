@@ -60,4 +60,13 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain('void tipcClient.displayError({ title, message })')
     expect(panelSource.match(/handleRecordingStartFailure\(err/g)?.length).toBe(4)
   })
+
+  it("surfaces live transcription preview failures inline instead of silently hiding them", () => {
+    expect(panelSource).toContain("const [previewError, setPreviewError] = useState<string | null>(null)")
+    expect(panelSource).toContain("const PREVIEW_TRANSCRIPTION_UNAVAILABLE_MESSAGE = \"Live preview is unavailable right now. Final transcription will still run when you stop recording.\"")
+    expect(panelSource).toContain("setPreviewError(PREVIEW_TRANSCRIPTION_UNAVAILABLE_MESSAGE)")
+    expect(panelSource).toContain("const hasPreviewVisible = recording && isPreviewEnabled && (previewText.length > 0 || previewError !== null)")
+    expect(panelSource).toContain("{isPreviewEnabled && (previewText || previewError) && (")
+    expect(panelSource).toContain("text-destructive line-clamp-2")
+  })
 })

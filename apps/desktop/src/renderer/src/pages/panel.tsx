@@ -41,6 +41,7 @@ const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
 const TEXT_INPUT_MIN_HEIGHT = 180
 const TEXT_INPUT_MIN_WIDTH_PX = 380
 const PROGRESS_MIN_HEIGHT = 200
+const PREVIEW_TRANSCRIPTION_UNAVAILABLE_MESSAGE = "Live preview is unavailable right now. Final transcription will still run when you stop recording."
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -105,6 +106,7 @@ export function Component() {
   const [continueConversationTitle, setContinueConversationTitle] = useState<string | null>(null)
   const [fromButtonClick, setFromButtonClick] = useState(false)
   const [previewText, setPreviewText] = useState("")
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recordingViewportRef = useRef<HTMLDivElement | null>(null)
   const [recordingViewportSize, setRecordingViewportSize] = useState({ width: 0, height: 0 })
@@ -614,8 +616,9 @@ export function Component() {
         clearInterval(previewTimerRef.current)
         previewTimerRef.current = null
       }
-      if (!recording) {
+      if (!recording || !isPreviewEnabled) {
         setPreviewText("")
+        setPreviewError(null)
       }
       return undefined
     }
@@ -652,10 +655,13 @@ export function Component() {
         if (result?.text) {
           // Replace (not append) — each call returns the full transcript for
           // the entire recording so far, so there is no need to accumulate.
+          setPreviewError(null)
           setPreviewText(result.text)
         }
       } catch (err) {
         console.error("[Preview] Transcription error:", err)
+        setPreviewText("")
+        setPreviewError(PREVIEW_TRANSCRIPTION_UNAVAILABLE_MESSAGE)
       } finally {
         inflight = false
       }
@@ -679,9 +685,9 @@ export function Component() {
   // Resize the panel window when transcription preview text appears/disappears
   useEffect(() => {
     if (!recording) return
-    const hasPreview = isPreviewEnabled && previewText.length > 0
+    const hasPreview = isPreviewEnabled && (previewText.length > 0 || previewError !== null)
     tipcClient.resizePanelForWaveformPreview({ showPreview: hasPreview })
-  }, [recording, isPreviewEnabled, previewText])
+  }, [recording, isPreviewEnabled, previewError, previewText])
 
   useEffect(() => {
     const unlisten = rendererHandlers.startRecording.listen((data) => {
@@ -1106,7 +1112,7 @@ export function Component() {
 	  }, [anyVisibleSessions, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
 
   // Use appropriate minimum height based on current mode
-  const hasPreviewVisible = recording && isPreviewEnabled && previewText.length > 0
+  const hasPreviewVisible = recording && isPreviewEnabled && (previewText.length > 0 || previewError !== null)
   const availableWaveformWidth = Math.max(
     0,
     recordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2,
@@ -1253,11 +1259,17 @@ export function Component() {
                   </div>
 
                   {/* Transcription preview */}
-                  {isPreviewEnabled && previewText && (
+                  {isPreviewEnabled && (previewText || previewError) && (
                     <div className="w-full px-4 mt-1">
-                      <p className="text-xs text-muted-foreground italic text-center line-clamp-2">
-                        {previewText}
-                      </p>
+                      {previewError ? (
+                        <p className="text-center text-xs leading-relaxed text-destructive line-clamp-2">
+                          {previewError}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic text-center line-clamp-2">
+                          {previewText}
+                        </p>
+                      )}
                     </div>
                   )}
 
