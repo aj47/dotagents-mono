@@ -10,6 +10,10 @@
 - [x] 2026-03-08: Compared the desktop transcript post-processing prompt editor in `settings-general.tsx` against the existing mobile `SettingsScreen.tsx` `inputDrafts.transcriptPostProcessingPrompt` debounce flow.
 - [x] 2026-03-08: Attempted live desktop repro with `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS='--inspect=9339' pnpm dev -- -dui -dapp`, but the workspace has no installed dependencies (`tsup: command not found` during predev).
 - [x] 2026-03-08: Attempted targeted test verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx`, but `vitest` is unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-providers.tsx` for remaining immediate-save provider credential/base-URL inputs.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` has no equivalent Groq/Gemini provider credential editor, so this providers-page fix is desktop-only.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the providers-page draft-save fix and regression test additions.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -25,6 +29,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-general.tsx` rendered the transcript post-processing prompt dialog with a `Textarea defaultValue` and called `saveConfig({ transcriptPostProcessingPrompt: ... })` directly from `onChange`.
   - Editing a prompt is a long-form text flow, so that wiring forced a config mutation + invalidation round-trip on every keystroke while the user was still writing or pasting instructions.
   - The same setting on mobile already uses local `inputDrafts.transcriptPostProcessingPrompt` plus debounced persistence, so this was another desktop/mobile parity gap rather than an intentional immediate-save UX.
+- [x] **Desktop providers-page credential editing save-on-every-keystroke bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` wired Groq and Gemini `API Key` plus `API Base URL` inputs straight to `saveConfig(...)` from each `onChange` event in both the active and inactive provider sections.
+  - That meant every typed character in a provider credential or base URL triggered a full config mutation + invalidation round-trip while the user was still entering secrets or editing an endpoint.
+  - Unlike the earlier general-settings fixes, there is no separate mobile editor for these provider credentials, so this is a desktop-only broken editing flow rather than a parity-only gap.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` to use local Langfuse drafts with debounced saves and blur flushes for `langfusePublicKey`, `langfuseSecretKey`, and `langfuseBaseUrl`.
@@ -40,11 +48,18 @@
   - debounced transcript prompt saving
   - blur flushing of the latest prompt draft without waiting for a rerender
   - resyncing the prompt draft from saved config updates
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-providers.tsx` so Groq and Gemini `API Key` / `API Base URL` inputs use local drafts with debounced saves and blur flushes instead of saving on every keystroke.
+- [x] Switched the providers-page `saveConfig(...)` helper to merge against a `cfgRef` snapshot of the latest config so delayed provider-field saves do not overwrite newer unrelated settings.
+- [x] Added focused regression coverage in `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` for:
+  - debounced Groq API-key saving with latest-config merge behavior
+  - blur flushing plus config-resync behavior for the inactive Gemini base-URL editor
 
 ### Verified
 - [x] Manual source verification: the desktop Langfuse inputs no longer call `saveConfig(...)` directly from `onChange`; they now update local draft state and use debounce/blur persistence.
 - [x] Manual source verification: the desktop transcript post-processing prompt editor is now a controlled local draft and no longer calls `saveConfig(...)` directly from `onChange`.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the settings-general / test updates.
+- [x] Manual source verification: the Groq/Gemini provider credential inputs on desktop no longer call `saveConfig(...)` directly from `onChange`; they now use controlled drafts with debounce/blur persistence in both active and inactive provider sections.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the settings-providers / test updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -61,13 +76,18 @@
 - Using a latest-config ref is acceptable and safer here because delayed saves must merge with the freshest config snapshot, not whichever render happened to create the timer.
 - The transcript post-processing prompt is an even stronger fit for draft-first handling because it is long-form text; repeated config writes while editing or pasting a prompt are especially noisy and brittle there.
 - Mobile already treats this exact setting as a draft-backed textarea, so aligning desktop with that behavior is a low-risk parity improvement rather than a new UX direction.
+- Provider credentials and base URLs are at least as sensitive to this bug as the earlier settings fields: users often paste or carefully edit these values, so per-keystroke config writes create needless churn and make editing secrets/endpoints feel brittle.
+- Using one shared providers-page draft helper for Groq/Gemini keeps the fix small while covering both the active and inactive provider sections that exposed the same broken editing path.
 
 ### Assumptions
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
 - Assumption: keeping the secret key on debounce + blur is acceptable for this pass because it removes the repeated-save bug with the smallest code change while preserving current desktop behavior of showing the in-progress value only in a password field.
 - Assumption: debouncing the desktop transcript post-processing prompt is acceptable because the mobile settings screen already treats the same field as a local draft and prompt editing does not require per-keystroke persistence.
+- Assumption: debouncing Groq/Gemini provider API keys and base URLs is acceptable because these are long-form credential/endpoint text edits where per-keystroke persistence has no user benefit and the repo already uses draft-first handling for similar settings inputs.
 
 ### Next Leads
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` and a focused desktop verification pass for the transcript prompt editor.
 - After that, inspect other desktop settings text inputs in `settings-general.tsx` for remaining immediate-save behavior.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` and a focused desktop verification pass for Groq/Gemini credential editing.
+- After that, inspect whether other providers-page free-text inputs (for example `groqSttPrompt` or numeric freeform fields) still merit draft-first handling.
