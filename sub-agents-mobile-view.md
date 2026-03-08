@@ -1,5 +1,45 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 161 - Let expanded mobile tool headers wrap before long names get squeezed
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-shipped multi-tool count badge or result-header wrap work without new evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile` → `pnpm --filter @dotagents/mobile start`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web` → `expo start --web`
+  - Re-checked `apps/mobile/src/screens/ChatScreen.tsx` and `apps/mobile/tests/chat-tool-execution-mobile.test.js`, staying on the delegated tool-execution surface because the expanded per-tool disclosure header still had one narrow-screen layout constraint after iterations 159 and 160.
+  - Tried again to recover live validation in this worktree before closing out the change.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - Source review showed each expanded tool header still used a single `justifyContent: 'space-between'` row for the tool name and the trailing disclosure hint.
+  - The header did not yet declare `flexWrap`, and `toolName` lacked the same shrink-safe `minWidth` / `flexShrink` contract already used in nearby compact mobile rows.
+  - On narrow screens, that left long tool names competing directly with the fixed `▶ Full Details` / `▼ Collapse` affordance instead of reflowing cleanly.
+- Issue identified:
+  - Expanded mobile tool headers could squeeze long tool names before the disclosure affordance had room to wrap, weakening delegated-activity readability in the detailed view.
+- Decision and rationale:
+  - Keep the existing disclosure wording, per-tool structure, tap behavior, and input/output sections unchanged.
+  - Avoid a broader redesign of the expanded tool card while live validation remains blocked.
+  - Make the smallest effective fix instead: give the expanded header the same kind of wrap- and shrink-safe layout contract used elsewhere so long tool names can use available width without hiding the disclosure control.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` so `toolName` now explicitly uses `flexShrink: 1` and `minWidth: 0`.
+  - Updated `toolCallHeader` to align from the top, wrap when needed, and use `justifyContent: 'flex-start'` instead of forcing a rigid two-sided row.
+  - Updated `toolCallExpandHint` to anchor itself with `marginLeft: 'auto'` while staying non-shrinking so the disclosure affordance remains visible when the header wraps.
+  - Updated `apps/mobile/tests/chat-tool-execution-mobile.test.js` with focused regression coverage for the new wrap-friendly style contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/chat-tool-execution-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that preserving the existing disclosure text and interaction model is safer than shortening the affordance copy without live UI confirmation.
+  - Kept the change style-only so it remains low risk and easy to verify in source-backed tests.
+  - This still needs live confirmation that wrapped headers feel balanced when a long tool name and a long result preview appear in the same expanded card.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that expanded tool headers keep both long tool names and the disclosure affordance readable around ~320px width.
+  - Capture screenshot-backed evidence for one long tool name and one short tool name so the new wrap behavior can be judged in context.
+  - If live validation shows the header now feels too tall, prefer trimming the inter-item gap or shortening the visible disclosure text before changing the structure.
+
 ## Iteration 160 - Keep multi-tool mobile summaries explicit even when names truncate
 
 - Date: 2026-03-08

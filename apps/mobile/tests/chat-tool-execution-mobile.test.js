@@ -32,11 +32,11 @@ test('keeps collapsed multi-tool summaries explicit on narrow mobile screens', (
   assert.match(chatScreenSource, /toolCallCompactCountBadge:\s*\{[\s\S]*?fontSize: 10,[\s\S]*?fontWeight: '600',[\s\S]*?borderRadius: 999,[\s\S]*?flexShrink: 0/);
 });
 
-test('gives each expanded tool disclosure header a mobile-sized tap target and clearer text sizing', () => {
+test('lets expanded tool disclosure headers wrap before long tool names get squeezed on narrow screens', () => {
   assert.match(chatScreenSource, /const toolCallHeaderTouchTarget = createMinimumTouchTargetStyle\([\s\S]*?minSize: 44,[\s\S]*?horizontalMargin: 0[\s\S]*?\);/);
-  assert.match(chatScreenSource, /toolCallHeader:\s*\{[\s\S]*?\.\.\.toolCallHeaderTouchTarget,[\s\S]*?justifyContent: 'space-between',[\s\S]*?minWidth: 0,[\s\S]*?gap: spacing\.xs/);
-  assert.match(chatScreenSource, /toolName:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 16,[\s\S]*?flex: 1/);
-  assert.match(chatScreenSource, /toolCallExpandHint:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 16,[\s\S]*?fontWeight: '500'/);
+  assert.match(chatScreenSource, /toolCallHeader:\s*\{[\s\S]*?\.\.\.toolCallHeaderTouchTarget,[\s\S]*?alignItems: 'flex-start',[\s\S]*?justifyContent: 'flex-start',[\s\S]*?flexWrap: 'wrap',[\s\S]*?minWidth: 0,[\s\S]*?gap: spacing\.xs/);
+  assert.match(chatScreenSource, /toolName:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?lineHeight: 16,[\s\S]*?flex: 1,[\s\S]*?flexShrink: 1,[\s\S]*?minWidth: 0/);
+  assert.match(chatScreenSource, /toolCallExpandHint:\s*\{[\s\S]*?fontSize: 11,[\s\S]*?lineHeight: 16,[\s\S]*?fontWeight: '500',[\s\S]*?marginLeft: 'auto',[\s\S]*?flexShrink: 0/);
 });
 
 test('lets expanded tool result metadata wrap cleanly before the output header gets squeezed on narrow screens', () => {
