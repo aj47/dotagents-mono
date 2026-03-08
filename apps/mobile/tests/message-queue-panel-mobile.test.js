@@ -61,13 +61,21 @@ test('gives queued-message row actions mobile-sized targets and explicit labels'
   assert.match(queuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.queueActionTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(queuePanelSource, /actionButtonDanger:\s*\{[\s\S]*?theme\.colors\.destructive/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Retry failed queued message \$\{queuedMessageAccessibilityContext\}`\)/);
-  assert.match(queuePanelSource, /const retryAccessibilityHint = isFailed[\s\S]*?Moves this failed message back into the queue so it can send again and unblock later queued messages\.[\s\S]*?Moves this queued message back into the queue so it can send again\./);
+  assert.match(queuePanelSource, /const retryAccessibilityHint = isFailed[\s\S]*?isAddedToHistory[\s\S]*?Moves this failed queued message back into the queue so it can send again and unblock later queued messages without duplicating the existing chat history entry\.[\s\S]*?Moves this failed queued message back into the queue so it can send again and unblock later queued messages\.[\s\S]*?Moves this queued message back into the queue so it can send again without duplicating the existing chat history entry\.[\s\S]*?Moves this queued message back into the queue so it can send again\./);
   assert.match(queuePanelSource, /accessibilityHint=\{retryAccessibilityHint\}/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Edit queued message \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /accessibilityHint="Lets you revise this queued message before it sends\."/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Remove queued message \$\{queuedMessageAccessibilityContext\}`\)/);
-  assert.match(queuePanelSource, /const removeAccessibilityHint = isFailed[\s\S]*?Deletes this failed queued message so later queued messages can continue\.[\s\S]*?Deletes this queued message without sending it\./);
+  assert.match(queuePanelSource, /const removeAccessibilityHint = isFailed[\s\S]*?isAddedToHistory[\s\S]*?Deletes this failed queued message from the queue so later queued messages can continue\. The existing chat history entry stays in the conversation\.[\s\S]*?Deletes this failed queued message so later queued messages can continue\.[\s\S]*?Deletes this queued message from the queue\. The existing chat history entry stays in the conversation\.[\s\S]*?Deletes this queued message without sending it\./);
   assert.match(queuePanelSource, /accessibilityHint=\{removeAccessibilityHint\}/);
+});
+
+test('explains when a queued row is already in chat history and therefore not editable', () => {
+  assert.match(queuePanelSource, /const historyLockDetailText = isAddedToHistory \? 'In chat history • Edit unavailable' : null;/);
+  assert.match(queuePanelSource, /historyLockText:\s*\{[\s\S]*?lineHeight:\s*16,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?marginTop:\s*4/);
+  assert.match(queuePanelSource, /historyLockTextWarning:\s*\{[\s\S]*?theme\.colors\.destructive/);
+  assert.match(queuePanelSource, /\{historyLockDetailText && \([\s\S]*?<Text[\s\S]*?styles\.historyLockText,[\s\S]*?isFailed && styles\.historyLockTextWarning,[\s\S]*?\{historyLockDetailText\}[\s\S]*?<\/Text>[\s\S]*?\)\}/);
+  assert.match(queuePanelSource, /\{!isAddedToHistory && \([\s\S]*?createButtonAccessibilityLabel\(`Edit queued message \$\{queuedMessageAccessibilityContext\}`\)/);
 });
 
 test('gives the queued-message expander disclosure semantics with a mobile touch target', () => {

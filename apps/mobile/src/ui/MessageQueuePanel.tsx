@@ -119,12 +119,21 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const queuedMessageAccessibilityContext = formatQueuedMessageAccessibilityContext(message.text, rowTimestampLabel);
   const trimmedEditText = editText.trim();
   const queueStatusLabel = isFailed ? 'Failed - blocking queue' : isProcessing ? 'Processing...' : 'Queued';
+  const historyLockDetailText = isAddedToHistory ? 'In chat history • Edit unavailable' : null;
   const retryAccessibilityHint = isFailed
-    ? 'Moves this failed message back into the queue so it can send again and unblock later queued messages.'
-    : 'Moves this queued message back into the queue so it can send again.';
+    ? isAddedToHistory
+      ? 'Moves this failed queued message back into the queue so it can send again and unblock later queued messages without duplicating the existing chat history entry.'
+      : 'Moves this failed queued message back into the queue so it can send again and unblock later queued messages.'
+    : isAddedToHistory
+      ? 'Moves this queued message back into the queue so it can send again without duplicating the existing chat history entry.'
+      : 'Moves this queued message back into the queue so it can send again.';
   const removeAccessibilityHint = isFailed
-    ? 'Deletes this failed queued message so later queued messages can continue.'
-    : 'Deletes this queued message without sending it.';
+    ? isAddedToHistory
+      ? 'Deletes this failed queued message from the queue so later queued messages can continue. The existing chat history entry stays in the conversation.'
+      : 'Deletes this failed queued message so later queued messages can continue.'
+    : isAddedToHistory
+      ? 'Deletes this queued message from the queue. The existing chat history entry stays in the conversation.'
+      : 'Deletes this queued message without sending it.';
   const editContextLabel = `${isFailed ? 'Editing failed queued message' : 'Editing queued message'} • ${rowTimestampLabel}`;
   const editValidationMessage = !trimmedEditText
     ? 'Enter message text to save your queued message changes.'
@@ -163,6 +172,15 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
       fontSize: 12,
       color: `${theme.colors.destructive}CC`,
       marginTop: 4,
+    },
+    historyLockText: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: theme.colors.mutedForeground,
+      marginTop: 4,
+    },
+    historyLockTextWarning: {
+      color: `${theme.colors.destructive}CC`,
     },
     metaRow: {
       flexDirection: 'row',
@@ -374,6 +392,16 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           </Text>
           {isFailed && message.errorMessage && (
             <Text style={styles.errorText}>Error: {message.errorMessage}</Text>
+          )}
+          {historyLockDetailText && (
+            <Text
+              style={[
+                styles.historyLockText,
+                isFailed && styles.historyLockTextWarning,
+              ]}
+            >
+              {historyLockDetailText}
+            </Text>
           )}
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>

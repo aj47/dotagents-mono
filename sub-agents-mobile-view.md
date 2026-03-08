@@ -4844,3 +4844,50 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the danger-tinted delete pill stays readable, aligned, and appropriately weighted beside the wrapped toggle on a narrow device.
   - Capture screenshot-backed evidence for at least one regular agent row and one current-main-agent row after this affordance update.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this delete-affordance tweak without fresh evidence.
+
+## Iteration 110 - Explain history-locked queued messages on mobile
+
+- Date: 2026-03-08
+- Summary: Clarified the mobile queued-message state when a row was already added to chat history by surfacing a compact visible explanation and making retry/remove hints explicit about the preserved chat entry.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid redoing the recent queue-header disclosure and agent-delete affordance work without new evidence.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx`, the shared `QueuedMessage` type, and focused queue-panel tests to pick one still-local state-clarity issue in the sub-agent activity flow.
+  - Confirmed this exact `addedToHistory` / hidden-edit state had not already been covered in the ledger.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed queue-state review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Source review showed `MessageQueuePanel` already hides the mobile edit action when `message.addedToHistory === true`.
+  - The visible row state still only showed generic queue status such as `Queued` or `Failed - blocking queue`, with no explanation that the message was already present in conversation history.
+  - On a cramped mobile row, that made the missing edit affordance feel arbitrary and left retry/remove consequences less obvious once a failed message had already been recorded in chat history.
+- Issue identified:
+  - History-locked queued messages did not visibly explain why edit was unavailable, weakening state clarity in one of the main mobile sub-agent activity surfaces.
+- Decision and rationale:
+  - Keep the queue row layout, action order, and existing compact action rail unchanged.
+  - Do not add a new visible disabled edit button while live validation is blocked, since that would widen an already-dense mobile action cluster.
+  - Make the smallest local clarification instead: show a short inline `In chat history • Edit unavailable` note only for history-locked rows, and update retry/remove accessibility hints so they describe the preserved history entry.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - derive `historyLockDetailText` from `message.addedToHistory`,
+    - render that note inline beneath the message/error content with muted styling that escalates to destructive tint for failed rows,
+    - expand retry/remove accessibility hints when the queued message is already in chat history so they explain that retry avoids duplication and remove does not delete the existing chat entry.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new history-lock explanation and the updated action-hint branches.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed that a short inline explanation is a better mobile fit than restoring a disabled edit button, because it preserves the current action-rail width while still explaining the hidden state.
+  - Chose not to change the core `Queued` / `Failed - blocking queue` status label so the main queue-state wording stays stable and the new note only explains the history-lock condition.
+  - This improves source-level clarity, but still needs live narrow-screen validation to confirm the added line does not make failed rows feel too tall beside the action rail.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The queue panel still needs screenshot-backed review overall now that several small row/header clarifications have accumulated without fresh Expo confirmation in this worktree.
+  - The relationship between queue rows and the nearby response-history panel still deserves live one-handed hierarchy review once Expo is available again.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that history-locked queue rows read clearly and that the extra inline note stays balanced on a narrow width.
+  - Capture screenshot-backed evidence for at least one failed history-locked row and one non-history-locked row to confirm the distinction is easy to scan.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this history-lock clarification without fresh evidence.
