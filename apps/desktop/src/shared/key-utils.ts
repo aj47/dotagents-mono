@@ -249,6 +249,7 @@ export function getEffectiveShortcut(
 export function getMcpToolsShortcutDisplay(
   shortcut: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom" | undefined,
   customShortcut?: string,
+  customMode: "hold" | "toggle" = "hold",
 ): string {
   switch (shortcut) {
     case "hold-ctrl-alt":
@@ -256,12 +257,15 @@ export function getMcpToolsShortcutDisplay(
     case "toggle-ctrl-alt":
       return "Press Ctrl+Alt"
     case "ctrl-alt-slash":
-      return "Ctrl+Alt+/"
+      return "Press Ctrl+Alt+/"
     case "custom":
       if (customShortcut) {
-        return formatKeyComboForDisplay(customShortcut)
+        const formattedShortcut = formatKeyComboForDisplay(customShortcut)
+        return customMode === "toggle"
+          ? `Press ${formattedShortcut}`
+          : `Hold ${formattedShortcut}`
       }
-      return "Hold Ctrl+Alt"
+      return "Set custom shortcut"
     default:
       return "Hold Ctrl+Alt"
   }

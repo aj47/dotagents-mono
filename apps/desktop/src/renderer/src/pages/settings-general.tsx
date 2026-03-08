@@ -41,8 +41,7 @@ import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
 import {
-  getEffectiveShortcut,
-  formatKeyComboForDisplay,
+  getMcpToolsShortcutDisplay,
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
@@ -294,6 +293,24 @@ export function Component() {
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const mcpToolsShortcut = configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"
+  const customMcpToolsShortcutMode =
+    configQuery.data?.customMcpToolsShortcutMode || "hold"
+  const hasCustomMcpToolsShortcut = Boolean(
+    configQuery.data?.customMcpToolsShortcut?.trim(),
+  )
+  const agentModeShortcutDisplay = getMcpToolsShortcutDisplay(
+    mcpToolsShortcut,
+    configQuery.data?.customMcpToolsShortcut,
+    customMcpToolsShortcutMode,
+  )
+  const agentModeShortcutSummary =
+    mcpToolsShortcut === "custom" && !hasCustomMcpToolsShortcut
+      ? "Record a custom shortcut to finish setup. Until then, keyboard Agent Mode won't start. Changes save immediately."
+      : mcpToolsShortcut === "hold-ctrl-alt" ||
+          (mcpToolsShortcut === "custom" && customMcpToolsShortcutMode === "hold")
+        ? `${agentModeShortcutDisplay} to start agent mode, then release the keys to send or stop. Changes save immediately.`
+        : `${agentModeShortcutDisplay} once to start agent mode, then press it again to send or stop. Changes save immediately.`
 
 
   if (!configQuery.data) return null
@@ -842,7 +859,7 @@ export function Component() {
           <Control label={<ControlLabel label="Agent Mode" tooltip="Choose how to activate agent mode for MCP tool calling" />} className="px-3">
             <div className="space-y-2">
               <Select
-                value={configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"}
+                value={mcpToolsShortcut}
                 onValueChange={(value: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom") => {
                   saveConfig({ mcpToolsShortcut: value })
                 }}
@@ -858,14 +875,42 @@ export function Component() {
                 </SelectContent>
               </Select>
 
-              {configQuery.data?.mcpToolsShortcut === "custom" && (
-                <KeyRecorder
-                  value={configQuery.data?.customMcpToolsShortcut || ""}
-                  onChange={(keyCombo) => {
-                    saveConfig({ customMcpToolsShortcut: keyCombo })
-                  }}
-                  placeholder="Click to record custom agent mode shortcut"
-                />
+              <div className="text-xs text-muted-foreground">
+                {agentModeShortcutSummary}
+              </div>
+
+              {mcpToolsShortcut === "custom" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Mode</label>
+                    <Select
+                      value={customMcpToolsShortcutMode}
+                      onValueChange={(value: "hold" | "toggle") => {
+                        saveConfig({ customMcpToolsShortcutMode: value })
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hold">Hold (Press and hold to start agent mode)</SelectItem>
+                        <SelectItem value="toggle">Toggle (Press once to start, again to send)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <KeyRecorder
+                    value={configQuery.data?.customMcpToolsShortcut || ""}
+                    onChange={(keyCombo) => {
+                      saveConfig({ customMcpToolsShortcut: keyCombo })
+                    }}
+                    placeholder="Click to record custom agent mode shortcut"
+                  />
+                  {!hasCustomMcpToolsShortcut && (
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      Record a custom shortcut to finish setup. Agent Mode won't start from the keyboard until one is saved.
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </Control>

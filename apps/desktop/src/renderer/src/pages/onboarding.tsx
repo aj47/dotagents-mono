@@ -520,6 +520,20 @@ function AgentStep({
   }, [config?.mcpConfig?.mcpServers])
 
   const mcpToolsShortcut = config?.mcpToolsShortcut || "hold-ctrl-alt"
+  const customMcpToolsShortcutMode = config?.customMcpToolsShortcutMode || "hold"
+  const hasCustomMcpToolsShortcut = Boolean(config?.customMcpToolsShortcut?.trim())
+  const agentModeShortcutDisplay = getMcpToolsShortcutDisplay(
+    mcpToolsShortcut,
+    config?.customMcpToolsShortcut,
+    customMcpToolsShortcutMode,
+  )
+  const agentModeShortcutSummary =
+    mcpToolsShortcut === "custom" && !hasCustomMcpToolsShortcut
+      ? "Record a custom shortcut to finish setup. Until then, keyboard Agent Mode won't start. Changes save immediately."
+      : mcpToolsShortcut === "hold-ctrl-alt" ||
+          (mcpToolsShortcut === "custom" && customMcpToolsShortcutMode === "hold")
+        ? `${agentModeShortcutDisplay} to start agent mode, then release the keys to send or stop. Changes save immediately.`
+        : `${agentModeShortcutDisplay} once to start agent mode, then press it again to send or stop. Changes save immediately.`
 
   const handleInstallExa = async () => {
     setIsInstallingExa(true)
@@ -634,16 +648,46 @@ function AgentStep({
             </SelectContent>
           </Select>
 
+          <div className="text-xs text-muted-foreground">
+            {agentModeShortcutSummary}
+          </div>
+
           {mcpToolsShortcut === "custom" && (
-            <KeyRecorder
-              value={config?.customMcpToolsShortcut || ""}
-              onChange={(keyCombo) => {
-                onSaveConfig({
-                  customMcpToolsShortcut: keyCombo,
-                })
-              }}
-              placeholder="Click to record custom agent mode shortcut"
-            />
+            <>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Mode</label>
+                <Select
+                  value={customMcpToolsShortcutMode}
+                  onValueChange={(value: "hold" | "toggle") => {
+                    onSaveConfig({
+                      customMcpToolsShortcutMode: value,
+                    })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hold">Hold (Press and hold to start agent mode)</SelectItem>
+                    <SelectItem value="toggle">Toggle (Press once to start, again to send)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <KeyRecorder
+                value={config?.customMcpToolsShortcut || ""}
+                onChange={(keyCombo) => {
+                  onSaveConfig({
+                    customMcpToolsShortcut: keyCombo,
+                  })
+                }}
+                placeholder="Click to record custom agent mode shortcut"
+              />
+              {!hasCustomMcpToolsShortcut && (
+                <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Record a custom shortcut to finish setup. Agent Mode won't start from the keyboard until one is saved.
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -709,7 +753,7 @@ function AgentStep({
         <div className="flex items-center gap-2 mb-3 p-2 rounded bg-primary/10 border border-primary/20">
           <span className="i-mingcute-keyboard-fill text-primary"></span>
           <span className="text-sm">
-            <strong>{getMcpToolsShortcutDisplay(mcpToolsShortcut, config?.customMcpToolsShortcut)}</strong> to speak to your agent from anywhere
+            <strong>{agentModeShortcutDisplay}</strong> to speak to your agent from anywhere
           </span>
         </div>
 

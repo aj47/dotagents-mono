@@ -204,6 +204,10 @@ export function Component() {
       } else if (shortcut === "ctrl-alt-slash") {
         return "Ctrl+Alt+/"
       } else if (shortcut === "custom" && config.customMcpToolsShortcut) {
+        const mode = config.customMcpToolsShortcutMode || "hold"
+        if (mode === "hold") {
+          return "Release keys"
+        }
         return formatKeyComboForDisplay(config.customMcpToolsShortcut)
       }
     } else {

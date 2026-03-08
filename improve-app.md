@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop agent-mode shortcut / custom keybinding discoverability and save-state clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with shared shortcut-display helpers reviewed in `apps/desktop/src/shared/key-utils.ts`, panel/session/onboarding shortcut affordances checked in `apps/desktop/src/renderer/src/pages/panel.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/onboarding.tsx`, mobile shortcut parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop capabilities subtab navigation / legacy deep-link continuity in `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`, with existing redirect coverage reviewed in `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.test.ts`, mobile settings parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop models-route navigation clarity and provider/model wayfinding in `apps/desktop/src/renderer/src/pages/settings-models.tsx`, `apps/desktop/src/renderer/src/pages/settings-providers-and-models.tsx`, and `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with router/nav wiring reviewed in `apps/desktop/src/renderer/src/components/app-layout.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop MCP tools settings add/edit save recovery and validation clarity in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` / `apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`, with config save mutation behavior reviewed in `apps/desktop/src/renderer/src/lib/queries.ts`, shared save-error copy checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, adjacent dialog behavior cross-checked against `apps/desktop/src/renderer/src/components/ui/dialog.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -38,6 +39,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop Agent Mode shortcut setup now exposes the existing custom hold-vs-toggle behavior in both Settings and onboarding, shows inline setup/status guidance including an explicit incomplete-custom warning, and keeps shared shortcut hints plus the floating panel submit hint aligned with the saved Agent Mode behavior.
 - 2026-03-08: Desktop `Settings → Capabilities` now keeps the selected Skills vs MCP Servers tab in the URL, preserves that intent when legacy `/settings/skills` and `/settings/mcp-tools` links redirect into the combined page, and sends agent settings “Edit” links directly to the matching subtab so refreshes and deep links stop dumping users back onto the wrong view.
 - 2026-03-08: Desktop `Settings → Models` now leads with a model-configuration guide, current provider-role summary, and quick-jump shortcuts into provider/model sections, while the combined providers/models page now uses a single scroll container and shows the guide only on the models route so users land on model-focused context instead of a generic provider page.
 - 2026-03-08: Desktop MCP server add/edit dialogs now keep drafts open when config persistence fails, show inline validation/save guidance with a local `Retry save` action, block accidental duplicate server names during manual add/rename, and only auto-start newly added servers after the config save actually succeeds.
@@ -67,6 +69,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/shared/key-utils.ts`, `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/panel.tsx`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-capabilities-navigation.test.js`
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx`
 - 2026-03-08: `git diff --check`
@@ -124,6 +129,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this agent-mode shortcut/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this capabilities-navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this models-route/navigation pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused desktop renderer typecheck for this models-route/navigation pass is blocked in this worktree because the dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json` cannot be resolved locally, so `pnpm --filter @dotagents/desktop exec tsc --noEmit -p tsconfig.web.json --composite false` cannot complete here.
@@ -152,10 +158,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop general settings agent-mode shortcut / custom keybinding discoverability and save-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
+- Desktop general settings emergency kill switch custom hotkey completion / saved-state clarity (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop general settings agent-mode shortcut / custom keybinding discoverability and save-state feedback next so another core desktop settings surface gives clearer local guidance without relying on trial-and-error
+- Inspect desktop general settings emergency kill switch custom hotkey completion / saved-state feedback next so another core desktop shortcut surface stops relying on hidden defaults and toast-only confidence
+- Once a runnable Electron target is available, live-check the desktop Agent Mode shortcut configuration in Settings and onboarding to confirm the new hold/toggle guidance, incomplete-custom warning, and floating-panel release hint feel right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop remote-server settings startup failure, `Start now` / `Retry start`, bind-address warnings, and local/tunnel sharing states to confirm the new recovery hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop `Settings → Models` route to confirm the new guide, provider-role summary, section jump targets, and single-scroll layout feel right in the real UI
 - Once a runnable Electron target is available, live-check the desktop MCP server add/edit dialog for duplicate-name validation, failed-save retry, pending-save lockout, and post-save auto-start timing to confirm the recovery hierarchy feels right in the real UI
@@ -1236,6 +1243,48 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once an Electron target is available, live-check duplicate-name validation, failed-save retry, pending-save dismissal lockout, and post-save auto-start timing in the actual MCP settings UI
   - inspect desktop model settings save/error handling next so another adjacent settings surface gets the same level of clarity around validation and persistence outcomes
+
+### 2026-03-08 — Desktop Agent Mode shortcut discoverability and saved-behavior clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop shortcut settings in `apps/desktop/src/renderer/src/pages/settings-general.tsx`
+  - onboarding agent hotkey setup in `apps/desktop/src/renderer/src/pages/onboarding.tsx`
+  - shared shortcut display helper in `apps/desktop/src/shared/key-utils.ts`
+  - floating panel submit hint in `apps/desktop/src/renderer/src/pages/panel.tsx`
+  - session shortcut chips in `apps/desktop/src/renderer/src/pages/sessions.tsx`
+  - focused source-level regression coverage added in `tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed mobile does not expose equivalent global shortcut configuration, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger explicitly marked desktop Agent Mode shortcut discoverability/save-state clarity as the next fresh area to inspect
+  - investigation found a concrete usability gap: the app already persisted `customMcpToolsShortcutMode`, but desktop settings did not expose it, so custom Agent Mode shortcuts silently defaulted to hold behavior with no way to choose toggle from the main settings surface
+  - source review also found misleading feedback around partially configured custom shortcuts: several UI hints treated an unset custom Agent Mode shortcut like the default shortcut or otherwise failed to clarify what would actually happen when users tried to invoke Agent Mode
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-general.tsx` to confirm the custom Agent Mode shortcut UI recorded a key combo but offered no hold/toggle mode choice or explicit saved-behavior summary
+  - `apps/desktop/src/main/keyboard.ts` to confirm the main process already honored `customMcpToolsShortcutMode` for hold vs toggle behavior, making the missing renderer control a real user-facing gap rather than a backend limitation
+  - `apps/desktop/src/renderer/src/pages/panel.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/onboarding.tsx` to find where the current Agent Mode shortcut was surfaced elsewhere and check whether those hints matched the real runtime behavior
+  - `apps/desktop/src/shared/key-utils.ts` to verify the shared display helper did not yet encode custom hold/toggle semantics or incomplete-custom setup state
+  - `apps/mobile/src/screens/SettingsScreen.tsx` to confirm there is no equivalent mobile global shortcut surface before broadening scope
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - desktop `Settings → General → Shortcuts → Agent Mode` now exposes a custom `Mode` selector, so users can choose whether a custom Agent Mode shortcut behaves as hold-to-talk or toggle without editing config files or accepting a hidden default
+  - the settings page now shows inline saved-behavior guidance and an explicit warning when `Custom` is selected but no keybinding has been recorded yet, so users can tell when Agent Mode is actually ready from the keyboard
+  - onboarding now mirrors that same custom Agent Mode mode selector and setup guidance so first-run shortcut configuration matches the later settings surface instead of silently forcing hold mode
+  - shared Agent Mode shortcut display copy now reflects custom hold vs toggle semantics and incomplete custom setup, and the floating panel submit hint now correctly switches to `Release keys` for custom hold-mode Agent Mode shortcuts
+  - added focused regression coverage for the new settings/onboarding/panel/shared-helper invariants
+- Assumptions / tradeoffs / rationale:
+  - reused the already-supported `customMcpToolsShortcutMode` config field instead of changing keyboard runtime behavior, because the highest-value issue was missing discoverability and confidence rather than a deeper hotkey-engine bug
+  - updated the shared display helper so onboarding and sessions inherit the same meaning as settings, avoiding a local copy fix that would drift again later
+  - kept this pass scoped to Agent Mode rather than refactoring every custom hotkey surface in the same page at once; adjacent shortcuts like the kill switch and main-window hotkey remain good follow-up targets
+  - accepted source-level verification for this pass because live Electron inspection is still unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-general-agent-mode-shortcuts.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/shared/key-utils.ts`, `apps/desktop/src/renderer/src/pages/settings-general.tsx`, `apps/desktop/src/renderer/src/pages/onboarding.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/renderer/src/pages/panel.tsx`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check custom Agent Mode hold vs toggle setup from both onboarding and settings to confirm the helper copy and warning state feel right in the actual UI
+  - inspect desktop general settings emergency kill switch custom hotkey completion/save-state clarity next so the remaining high-impact shortcut surface gets the same confidence improvements
 
 ### Iteration Template
 - Date:

@@ -505,6 +505,7 @@ export function Component() {
   const voiceInputShortcut = getMcpToolsShortcutDisplay(
     configQuery.data?.mcpToolsShortcut,
     configQuery.data?.customMcpToolsShortcut,
+    configQuery.data?.customMcpToolsShortcutMode,
   )
   const dictationShortcut = getDictationShortcutDisplay(
     configQuery.data?.shortcut,
