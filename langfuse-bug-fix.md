@@ -1268,6 +1268,37 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `apps/desktop/src/shared/message-display-utils.ts` already had `sanitizeMessageContentForDisplay(...)`, which strips inline `data:image` markdown down to a compact `[Image: ...]` placeholder for display-safe contexts
 - Concrete root cause:
   - Langfuse trace finalization reused the raw stored user-facing response, including megabyte-scale inline `data:image` payloads
+
+### 2026-03-08 — Bare `continue` without attached history should clarify, not spelunk through live state
+
+- Reviewed `langfuse-bug-fix.md` first and avoided already-documented traces before sampling fresh unlogged `continue` runs.
+- Fresh trace chosen for this pass:
+  - conversation: `conv_1771900494441_z5lm50xab`
+  - trace: `session_1771900494446_kpiort165`
+  - user input: `continue`
+  - evidence: Langfuse shows `metadata.hasHistory: false`, `metadata.wasAborted: true`, `totalIterations: 11`, and the final output was only `I'll check what's currently going on to understand what to continue.` after the run started listing iTerm sessions and snoozed agents to guess the missing context.
+- Corroborating fresh traces with the same shape:
+  - `session_1771900317549_sio1g2w47` — `continue` with `hasHistory: true` still leaked stale progress-only browser text (`Let me scroll down to see the tweets on the profile.`) instead of a useful continuation result.
+  - `session_1771903966983_1h20hcrjx` — `continue` ended with `Let me read the terminal output first to see what's happening.` and `wasAborted: true`.
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` already told the agent to clarify fragmentary or vague inputs before broad reconnaissance, but it did not explicitly call out bare follow-ups like `continue` / `go on` / `keep going` as ambiguous when prior history is missing or the visible task is already complete.
+  - In the chosen trace that gap let the model treat `continue` as permission to inspect terminals, running agents, and note files to infer what should resume, which burned the whole run without delivering a user-facing result.
+- Concrete root cause:
+  - the prompt guidance for low-context inputs was too generic; it did not explicitly prevent bare continuation verbs from triggering broad live-state spelunking when attached history was absent or no unfinished task was obvious.
+- Minimal fix applied:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - added explicit low-context guidance that bare follow-ups like `continue`, `go on`, and `keep going` only count as clear instructions when the unfinished task is obvious from attached conversation history
+    - told the agent not to scan running agents, terminals, notes, or repo state just to guess what to resume when that context is missing or the visible task already looks complete
+  - `apps/desktop/src/main/system-prompts.test.ts`
+    - extended the low-context regression to assert the new bare-`continue` clarification guidance is present in both the full and minimal agent prompts
+- Targeted verification:
+  - `pnpm exec vitest run src/main/system-prompts.test.ts` (from `apps/desktop`)
+  - ✅ passed (`10 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt test exits successfully
+  - broader run note: `pnpm --filter @dotagents/desktop test:run -- src/main/system-prompts.test.ts` accidentally ran the full desktop suite; the new prompt test still passed there, but the run remained red because of unrelated pre-existing renderer/source assertions in `src/renderer/src/components/agent-progress.performance.test.ts` and `src/renderer/src/components/agent-progress.tile-layout.test.ts`
+- Remaining promising leads:
+  - fresh unlogged `continue`/recovery traces where `hasHistory: true` still ended with stale progress text (`session_1771900317549_sio1g2w47`, `session_1772307598984_gtjeybg9a`) are still worth a future pass if they continue reproducing after this prompt clarification change
+  - older fresh Feb 28 traces with `Invalid schema for function 'respond_to_user'` remain useful historical evidence, but current repo code already appears to contain later schema-normalization coverage, so they were not the best candidate for a new fix in this pass
   - large inline image blobs could push the final trace `output` over Langfuse/CLI size limits, replacing the preserved result with a useless truncation placeholder instead of readable final user-facing text
 - Minimal fix applied:
   - `apps/desktop/src/main/llm.ts`

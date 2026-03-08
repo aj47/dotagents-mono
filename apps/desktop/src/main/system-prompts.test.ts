@@ -144,9 +144,13 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("ask a brief clarification before loading repo context")
     expect(prompt).toContain("stray words or vague fragments")
     expect(prompt).toContain("surrounding conversation already makes the intended next step obvious")
+    expect(prompt).toContain('Bare follow-ups like "continue", "go on", or "keep going"')
+    expect(prompt).toContain("do not guess by spelunking through running agents, terminals, notes, or repo state")
 
     expect(minimalPrompt).toContain("fragmentary, truncated, or garbled inputs")
     expect(minimalPrompt).toContain("before loading repo context")
+    expect(minimalPrompt).toContain("bare follow-ups like continue/go on/keep going")
+    expect(minimalPrompt).toContain("do not guess by scanning terminals, running agents, notes, or repo state")
   })
 
   it("treats skill loading as internal prep and pushes immediate execution", async () => {

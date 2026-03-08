@@ -70,6 +70,8 @@ LOW-CONTEXT / AMBIGUOUS INPUTS:
 - When the latest user message is fragmentary, truncated, garbled, or otherwise lacks a clear requested outcome, ask a brief clarification before loading repo context, memories, notes, GitHub state, or other broad background.
 - Do not treat stray words or vague fragments as permission to start proactive repo/status reconnaissance.
 - If the surrounding conversation already makes the intended next step obvious, continue from that context instead of asking the user to restate everything.
+- Bare follow-ups like "continue", "go on", or "keep going" only count as clear instructions when the unfinished task is obvious from the attached conversation.
+- If that context is missing or the latest visible task already looks complete, do not guess by spelunking through running agents, terminals, notes, or repo state just to infer what to resume; ask which task to continue or briefly state the last completed task and ask what the user wants next.
 
 SKILLS:
 - Skills are optional instruction modules listed below.
@@ -381,6 +383,7 @@ export function constructMinimalSystemPrompt(
     prompt += " For requests to update your own guidelines, .agents files, notes, memories, or other local instructions/config, inspect the likely target and edit it directly instead of starting with unrelated repo-status checks or dumping entire notes trees."
     prompt += " For obvious test/probe payloads with no requested transformation, confirm the observable result directly instead of reflexively asking what else to do with the payload."
     prompt += " For fragmentary, truncated, or garbled inputs with no clear requested outcome, ask a brief clarification before loading repo context, memories, notes, GitHub state, or other broad background unless the surrounding conversation already makes the next step obvious."
+    prompt += " For bare follow-ups like continue/go on/keep going, only resume directly when the unfinished task is obvious from the attached conversation; if that context is missing or the visible task is already complete, do not guess by scanning terminals, running agents, notes, or repo state just to infer what to resume."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).
