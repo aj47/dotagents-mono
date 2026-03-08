@@ -1114,3 +1114,48 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that the empty-state helper reads clearly beneath the profile chips without overwhelming the section.
   - After live validation returns, confirm the empty state and the profile-load error state are visually distinct and not confused for one another.
   - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.
+
+### 2026-03-08 — Iteration 26: make agent-settings selection chips clearer and more tappable
+
+- Status: shipped locally with live/typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Settings`
+  - `apps/mobile/src/screens/SettingsScreen.tsx`
+  - existing focused settings-screen tests
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo mobile_node_modules_present || echo mobile_node_modules_missing` → `mobile_node_modules_missing`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` still fails because the worktree is missing the mobile install / `expo/tsconfig.base` / Expo + React Native dependencies
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the sub-agent-specific chips in `Settings > Agent Settings` were still plain `Pressable`s:
+    - `Main Agent Mode` (`API`, `ACP`)
+    - `ACP Agent` selection chips when ACP mode is active
+  - Unlike the recently improved sub-agent controls elsewhere, those chips did not expose explicit button labels, selected-state semantics, or narrow-screen truncation safeguards.
+- Issue selected:
+  - The main mobile controls that choose how sub-agents are routed still had weaker state clarity and assistive-tech feedback than the surrounding improved sub-agent surfaces.
+- Decision:
+  - Keep the existing chip layout and wording.
+  - Do not refactor the broader shared `providerOption` pattern used across unrelated settings sections.
+  - Make the smallest local fix in `SettingsScreen`: add explicit mobile semantics and apply the existing minimum-touch-target guardrail only to the sub-agent-specific chip cluster.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add dedicated mobile-sized `agentSettingsOption` chip styling based on `createMinimumTouchTargetStyle(...)`,
+    - give `Main Agent Mode` chips explicit button labels, mode-aware hints, and selected-state semantics,
+    - give `ACP Agent` chips explicit button labels, routing hints, and selected-state semantics,
+    - clamp both chip labels to one line with tail truncation for narrow screens.
+  - Added `apps/mobile/tests/settings-agent-mode-mobile.test.js` covering the new semantics and truncation/touch-target contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing install (`expo` unavailable)
+- Remaining nearby issues noted, not addressed this iteration:
+  - The improved agent-settings chips still need a real narrow-screen visual pass once Expo Web or a simulator is available again.
+  - The adjacent `Inject Builtin Tools` toggle in `Agent Settings` still uses a plain native `Switch`, unlike the wrapped touch-target pattern now used in several other sub-agent surfaces.
+  - If live validation shows ACP agent names still feel crowded, the chip row may later need spacing or grouping polish, but that should wait for visual evidence.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that `API` / `ACP` mode chips and ACP agent chips read clearly and truncate gracefully.
+  - Compare the `Agent Settings` chip row against the neighboring `Inject Builtin Tools` toggle once live validation returns to decide if that switch is now the next weakest mobile affordance.
+  - Re-establish live inspection before taking on another sub-agent mobile tweak so the next change is again grounded in current evidence.

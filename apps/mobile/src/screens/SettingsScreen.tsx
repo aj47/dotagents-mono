@@ -1748,15 +1748,27 @@ export default function SettingsScreen({ navigation }: any) {
                     <Pressable
                       key={mode}
                       style={[
-                        styles.providerOption,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionActive,
+                        styles.agentSettingsOption,
+                        remoteSettings.mainAgentMode === mode && styles.agentSettingsOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('mainAgentMode', mode)}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${mode.toUpperCase()} main agent mode`)}
+                      accessibilityHint={
+                        mode === 'acp'
+                          ? 'Routes new chats through a selected ACP agent as the main agent.'
+                          : 'Uses the configured API model directly as the main agent for new chats.'
+                      }
+                      accessibilityState={{ selected: remoteSettings.mainAgentMode === mode }}
                     >
-                      <Text style={[
-                        styles.providerOptionText,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionTextActive,
-                      ]}>
+                      <Text
+                        style={[
+                          styles.agentSettingsOptionText,
+                          remoteSettings.mainAgentMode === mode && styles.agentSettingsOptionTextActive,
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
                         {mode.toUpperCase()}
                       </Text>
                     </Pressable>
@@ -1776,15 +1788,23 @@ export default function SettingsScreen({ navigation }: any) {
                           <Pressable
                             key={agent.name}
                             style={[
-                              styles.providerOption,
-                              remoteSettings.mainAgentName === agent.name && styles.providerOptionActive,
+                              styles.agentSettingsOption,
+                              remoteSettings.mainAgentName === agent.name && styles.agentSettingsOptionActive,
                             ]}
                             onPress={() => handleRemoteSettingUpdate('mainAgentName', agent.name)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Use ${agent.displayName || agent.name} as ACP main agent`)}
+                            accessibilityHint="Routes main-agent requests through this ACP agent."
+                            accessibilityState={{ selected: remoteSettings.mainAgentName === agent.name }}
                           >
-                            <Text style={[
-                              styles.providerOptionText,
-                              remoteSettings.mainAgentName === agent.name && styles.providerOptionTextActive,
-                            ]}>
+                            <Text
+                              style={[
+                                styles.agentSettingsOptionText,
+                                remoteSettings.mainAgentName === agent.name && styles.agentSettingsOptionTextActive,
+                              ]}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
                               {agent.displayName || agent.name}
                             </Text>
                           </Pressable>
@@ -2882,6 +2902,31 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
     },
     providerOptionTextActive: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
+    },
+    agentSettingsOption: {
+      ...compactActionTouchTarget,
+      minWidth: 84,
+      maxWidth: '100%',
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      alignSelf: 'flex-start',
+    },
+    agentSettingsOptionActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary,
+    },
+    agentSettingsOptionText: {
+      fontSize: 14,
+      color: theme.colors.foreground,
+      maxWidth: '100%',
+      flexShrink: 1,
+      textAlign: 'center',
+    },
+    agentSettingsOptionTextActive: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
