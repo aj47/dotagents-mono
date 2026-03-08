@@ -56,6 +56,10 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function getCopyErrorMessage(label: string, error: unknown): string {
+  return `Failed to copy ${label}: ${getActionErrorMessage(error, "Please try again.")}`
+}
+
 // Enhanced conversation message component
 
 // Types for unified tool execution display items
@@ -260,6 +264,7 @@ const CompactMessage: React.FC<{
   // Copy to clipboard handler
   const handleCopyResponse = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    const copyLabel = message.role === "user" ? "prompt" : "response"
     try {
       await copyTextToClipboard(message.content)
       setIsCopied(true)
@@ -270,6 +275,7 @@ const CompactMessage: React.FC<{
       copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000)
     } catch (err) {
       console.error("Failed to copy response:", err)
+      toast.error(getCopyErrorMessage(copyLabel, err))
     }
   }
 
@@ -705,17 +711,20 @@ const ToolExecutionBubble: React.FC<{
   isExpanded: boolean
   onToggleExpand: () => void
 }> = ({ execution, isExpanded, onToggleExpand }) => {
-  const copy = async (text: string) => {
+  const copy = async (text: string, label: string) => {
     try {
       await copyTextToClipboard(text)
-    } catch {}
+    } catch (error) {
+      console.error(`Failed to copy ${label}:`, error)
+      toast.error(getCopyErrorMessage(label, error))
+    }
   }
 
   const handleToggleExpand = () => onToggleExpand()
 
-  const handleCopy = (e: React.MouseEvent, text: string) => {
+  const handleCopy = (e: React.MouseEvent, text: string, label: string) => {
     e.stopPropagation()
-    copy(text)
+    void copy(text, label)
   }
 
   // Compact single-line per tool display
@@ -789,7 +798,7 @@ const ToolExecutionBubble: React.FC<{
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="min-w-0 font-medium opacity-70">Parameters</span>
-                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2))}>
+                      <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => handleCopy(e, JSON.stringify(call.arguments, null, 2), "tool parameters")}>
                         <Copy className="h-2 w-2 mr-0.5" /> Copy
                       </Button>
                     </div>
@@ -1413,6 +1422,7 @@ const SubAgentConversationMessage: React.FC<{
       copyTimeoutRef.current = setTimeout(() => setIsCopied(false), 2000)
     } catch (err) {
       console.error("Failed to copy message:", err)
+      toast.error(getCopyErrorMessage("message", err))
     }
   }
 
@@ -1548,6 +1558,7 @@ const SubAgentConversationPanel: React.FC<{
       await copyTextToClipboard(fullConversation)
     } catch (err) {
       console.error("Failed to copy conversation:", err)
+      toast.error(getCopyErrorMessage("conversation", err))
     }
   }
 

@@ -126,6 +126,12 @@
 - [x] 2026-03-08: Confirmed mobile has no equivalent floating-panel live transcription preview surface; `apps/mobile/src/screens/ChatScreen.tsx` and settings only expose recording/final-transcription flows, so this broken preview-feedback path is desktop-only.
 - [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` copy actions and confirmed the visible `Copy`, `Copy Deep Link`, `Public URL Copy`, and tunnel `Copy Deep Link` buttons still caught `copyTextToClipboard(...)` rejections with `console.error(...)` only.
 - [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` has no equivalent desktop-generated API-key/deep-link/tunnel copy controls, so this is a desktop-only user-action failure bug rather than a cross-platform parity decision.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/agent-progress.tsx` and confirmed the visible `Copy prompt`, `Copy response`, `Copy message`, `Copy conversation`, and tool-parameter copy actions still routed rejected `copyTextToClipboard(...)` calls to `console.error(...)` only (or swallowed the error entirely in the tool-parameter case).
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/session-tile.tsx` and confirmed the visible session-tile `Copy prompt` action still caught clipboard failures with `console.error(...)` only.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/ChatScreen.tsx` has no equivalent message-copy/chat-transcript copy surface, so this copy-feedback fix is desktop-only rather than a cross-platform parity gap.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `agent-progress.tsx`, `session-tile.tsx`, and `copy-feedback.test.ts`; the assertions passed for the new copy-error helper/toast wiring and regression test coverage.
+- [x] 2026-03-08: `git diff --check` completed cleanly after the desktop session-copy feedback fix and regression test addition.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -267,6 +273,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` exposes four explicit copy actions for remote server setup (`API Key`, local `Copy Deep Link`, tunnel `Public URL` copy, and tunnel `Copy Deep Link`), but each handler still routed rejected `copyTextToClipboard(...)` promises to `console.error(...)` only.
   - Because those buttons are part of the desktop remote-access pairing/setup flow, a clipboard failure looked like a dead/no-op button even though the requested copy action had failed.
   - Mobile has no equivalent desktop-generated copy controls to compensate here, so this is a real desktop user-feedback bug rather than an intentional platform difference.
+- [x] **Desktop session-surface copy failures were silent (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/agent-progress.tsx` still exposed several user-facing copy actions (`Copy prompt`, `Copy response`, `Copy message`, `Copy conversation`, and expanded tool-parameter copy) where rejected clipboard writes either only logged to the console or were swallowed entirely.
+  - `apps/desktop/src/renderer/src/components/session-tile.tsx` still exposed a visible `Copy prompt` action whose rejection path only called `console.error(...)`.
+  - Because these buttons live in the main desktop session history/progress surfaces, a clipboard failure looked like a dead/no-op button even though the user had just invoked an explicit copy action.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -390,6 +400,9 @@
 - [x] Extended `apps/desktop/src/renderer/src/pages/panel.recording-layout.test.ts` with focused source-level assertions that lock in the new `previewError` state, the inline fallback copy, and the preview-area visibility contract when chunk transcription fails.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` so all four remote-server copy actions now route clipboard failures through one shared helper that preserves console logging but also surfaces a visible `toast.error(...)` message with the underlying clipboard error.
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-remote-server.draft.test.tsx` with focused regression coverage that mocks clipboard rejection across the API-key, local deep-link, tunnel URL, and tunnel deep-link buttons and asserts the new visible failure toasts.
+- [x] Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so its visible prompt/response/message/conversation/tool-parameter copy actions now preserve console logging but also surface a `toast.error(...)` message when clipboard writes reject.
+- [x] Updated `apps/desktop/src/renderer/src/components/session-tile.tsx` so its visible `Copy prompt` action now surfaces a `toast.error(...)` message instead of failing silently when the clipboard write rejects.
+- [x] Added `apps/desktop/src/renderer/src/components/copy-feedback.test.ts` with focused source-level assertions that lock in the new `AgentProgress` / `SessionTile` clipboard-failure toast paths.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -480,6 +493,10 @@
 - [x] Manual source verification: `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` now imports `toast` from `sonner` and routes each remote-server copy action through `copyRemoteServerValue(...)`, so rejected clipboard writes no longer stay completely silent.
 - [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `settings-remote-server.tsx` and `settings-remote-server.draft.test.tsx`, confirming the shared copy-error helper, the visible copy-failure toast strings, and the new regression test case are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the remote-server copy-feedback update and regression test addition.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/agent-progress.tsx` now routes its visible copy actions through `getCopyErrorMessage(...)` + `toast.error(...)`, so rejected session-history/progress clipboard writes no longer stay silent.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/session-tile.tsx` now calls `toast.error(getCopyErrorMessage("prompt", err))` when `Copy prompt` fails, so clipboard rejection is no longer a no-op in the sessions-page tile surface.
+- [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `agent-progress.tsx`, `session-tile.tsx`, and `copy-feedback.test.ts`, confirming the new copy-error helpers, visible toast wiring, and regression test case are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop session-copy feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -488,6 +505,7 @@
 - [x] Live desktop reproduction and automated tests are blocked because this worktree does not have installed dependencies (`tsup` missing in predev, `vitest` missing for targeted tests). Per instructions, I did not install dependencies without separate permission.
 - [x] Additional desktop verification for this Groq STT prompt fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop typecheck:web` cannot resolve `@electron-toolkit/tsconfig/tsconfig.web.json`, and `pnpm --filter @dotagents/desktop exec prettier ...` cannot find `prettier`, which indicates `apps/desktop/node_modules` is absent in this worktree.
 - [x] Targeted automated verification for this `Max Iterations` fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this desktop session-copy feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this Supertonic numeric-editing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this OpenAI TTS speed fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this capabilities tab-routing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
@@ -541,7 +559,6 @@
 - [ ] Whether the adjacent local-provider model download actions in `settings-providers.tsx` should also surface visible failure feedback, or whether their existing inline `status.error` rendering is already sufficient once live desktop validation is available.
 - [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
-- [ ] Whether the adjacent desktop clipboard-copy surfaces in `agent-progress.tsx` and `session-tile.tsx` should also gain visible failure feedback instead of remaining console-only once the environment blocker is cleared.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -604,6 +621,8 @@
 - Inline preview-error state is the smallest safe fix because it preserves the existing background chunking/final-submit flow while making the mid-recording failure visible without interrupting the active recording with a toast or modal.
 - The remote-server copy issue is a high-signal action-feedback bug: these buttons exist specifically to help users pair mobile clients or share a tunnel URL, so a rejected clipboard write should not look like a dead/no-op control.
 - Reusing one local `copyRemoteServerValue(...)` helper plus the existing desktop `toast.error(...)` pattern is the smallest safe fix because it keeps the current copy targets and fallback clipboard implementation intact while making the failure visible everywhere this page exposes a copy button.
+- Session history/progress copy buttons are explicit user actions in the primary desktop workflow, so silent clipboard rejections create the same “dead button” failure pattern as the earlier remote-server copy bug.
+- Reusing the existing `getActionErrorMessage(...)` + `toast.error(...)` pattern inside `agent-progress.tsx` and `session-tile.tsx` is the smallest safe fix because it preserves the current optimistic copied-state behavior while finally making clipboard failures visible.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -639,6 +658,7 @@
 - Assumption: calling `audio.removeAttribute("src")` plus `audio.load()` when cached audio is cleared is acceptable because this is the standard browser-side way to flush a revoked blob URL from an `<audio>` element, and the concrete bug here was stale playback state surviving after parent invalidation.
 - Assumption: keeping live-preview failure feedback inline in the panel (instead of using a toast/dialog) is acceptable because chunk preview is a secondary best-effort aid during recording, while the final transcription still runs when the user stops recording.
 - Assumption: using `toast.error(...)` for remote-server copy failures is acceptable because desktop already mounts a global `sonner` toaster, successful copy behavior is unchanged, and the concrete bug is missing feedback when the clipboard write rejects.
+- Assumption: using `toast.error(...)` for `AgentProgress` / `SessionTile` copy failures is acceptable because those desktop surfaces already use toasts for other explicit user-action failures, and the concrete bug here is missing visible feedback rather than clipboard implementation semantics.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -685,4 +705,5 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` and live-verify the floating panel by forcing a chunk-transcription failure to confirm the new inline preview error appears during recording and clears again after a later successful preview response.
 - After that, decide whether preview failures should stop the remaining chunk retries for the current recording or continue retrying in the background now that the user at least gets visible inline feedback.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` and live-verify the desktop remote-server `Copy` / `Copy Deep Link` / tunnel copy buttons by forcing a clipboard-write failure to confirm the new toasts appear instead of silent no-ops.
-- After that, inspect adjacent desktop clipboard-copy actions (especially in `agent-progress.tsx` and `session-tile.tsx`) for the same console-only failure pattern.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts` and live-verify the desktop `AgentProgress` / `SessionTile` copy buttons by forcing a clipboard-write failure to confirm the new toasts appear instead of silent no-ops.
+- After that, inspect any remaining desktop clipboard-copy actions outside `AgentProgress` / `SessionTile` / remote-server settings for the same silent-failure pattern.

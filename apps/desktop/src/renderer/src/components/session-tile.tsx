@@ -46,6 +46,10 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function getCopyErrorMessage(label: string, error: unknown): string {
+  return `Failed to copy ${label}: ${getActionErrorMessage(error, "Please try again.")}`
+}
+
 interface SessionTileProps {
   session: {
     id: string
@@ -147,6 +151,7 @@ export function SessionTile({
       copyTimeoutRef.current = setTimeout(() => setCopiedMessageId(null), 2000)
     } catch (err) {
       console.error("Failed to copy message:", err)
+      toast.error(getCopyErrorMessage("prompt", err))
     }
   }
 
