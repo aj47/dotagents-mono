@@ -68,7 +68,7 @@ test('gives queued-message row actions mobile-sized targets and explicit labels'
   assert.match(queuePanelSource, /const queuedMessageAccessibilityContext = formatQueuedMessageAccessibilityContext\(message\.text, rowTimestampLabel\);/);
   assert.match(queuePanelSource, /const queueStatusLabel = isFailed \? 'Failed - blocking queue' : isProcessing \? 'Processing\.\.\.' : 'Queued';/);
   assert.match(queuePanelSource, /const queueMetaText = `\$\{queueStatusLabel\} • \$\{rowTimestampLabel\}`;/);
-  assert.match(queuePanelSource, /<Text style=\{styles\.metaText\}>[\s\S]*?\{queueMetaText\}[\s\S]*?<\/Text>/);
+  assert.match(queuePanelSource, /<Text style=\{styles\.metaText\} numberOfLines=\{2\} ellipsizeMode="tail">[\s\S]*?\{queueMetaText\}[\s\S]*?<\/Text>/);
   assert.match(queuePanelSource, /actionButton:\s*\{[\s\S]*?\.\.\.queueActionTouchTarget[\s\S]*?borderRadius:\s*999/);
   assert.match(queuePanelSource, /actionButtonDanger:\s*\{[\s\S]*?theme\.colors\.destructive/);
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Retry failed queued message \$\{queuedMessageAccessibilityContext\}`\)/);
@@ -79,6 +79,12 @@ test('gives queued-message row actions mobile-sized targets and explicit labels'
   assert.match(queuePanelSource, /createButtonAccessibilityLabel\(`Remove queued message \$\{queuedMessageAccessibilityContext\}`\)/);
   assert.match(queuePanelSource, /const removeAccessibilityHint = isFailed[\s\S]*?isAddedToHistory[\s\S]*?Deletes this failed queued message from the queue so later queued messages can continue\. The existing chat history entry stays in the conversation\.[\s\S]*?Deletes this failed queued message so later queued messages can continue\.[\s\S]*?Deletes this queued message from the queue\. The existing chat history entry stays in the conversation\.[\s\S]*?Deletes this queued message without sending it\./);
   assert.match(queuePanelSource, /accessibilityHint=\{removeAccessibilityHint\}/);
+});
+
+test('keeps queued-message status metadata readable beside the inline expander on narrow screens', () => {
+  assert.match(queuePanelSource, /metaRow:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'flex-start',[\s\S]*?minWidth:\s*0/);
+  assert.match(queuePanelSource, /metaText:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0,[\s\S]*?flexShrink:\s*1,[\s\S]*?fontSize:\s*12,[\s\S]*?lineHeight:\s*16/);
+  assert.match(queuePanelSource, /\{hasExpandableDetails && \([\s\S]*?<TouchableOpacity[\s\S]*?style=\{styles\.expandButton\}/);
 });
 
 test('explains when a queued row is already in chat history and therefore not editable', () => {

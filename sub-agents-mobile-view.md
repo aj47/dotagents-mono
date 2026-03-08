@@ -5742,3 +5742,55 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that longer response-history summaries remain readable without making the collapsed panel feel too tall on a narrow screen.
   - Capture screenshot-backed evidence of the collapsed response-history panel in both `Latest HH:MM` and `Speaking now` states so the new two-line summary can be judged in context.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this response-history header tweak without fresh evidence.
+
+## Iteration 129 - Let each queued message keep more of its status line beside the inline expander
+
+- Date: 2026-03-08
+- Summary: Improved queued-message state clarity on narrow mobile screens by letting each row's `Queued` / `Processing...` / `Failed - blocking queue` metadata shrink and wrap to two lines instead of competing rigidly with the inline `More` disclosure.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the just-updated response-history header without fresh evidence.
+  - Re-checked `apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/tests/message-queue-panel-mobile.test.js`, and `ChatScreen.tsx` usage so this iteration stayed inside the live mobile chat queue surface.
+  - Considered a larger pause/resume control gap, but deferred it because it would require broader queue-state wiring and this pass could still deliver a smaller shippable readability improvement.
+- Live inspection / workflow status:
+  - Reconfirmed the current mobile workflow before validation:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Fresh Expo Web or simulator validation was still blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `undefined`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL`, `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → failed immediately with missing Expo / React Native modules and `tsconfig.json` base lookup errors (`expo/tsconfig.base` not found), confirming the install remains unavailable for deeper live verification
+  - Because Expo is still unavailable locally, this iteration used source-backed layout review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `MessageQueuePanel` already surfaced useful per-row state text such as `Queued • HH:MM`, `Processing... • HH:MM`, and `Failed - blocking queue • HH:MM`.
+  - Source review showed the row metadata sat in a horizontal `metaRow` beside the inline `More` disclosure, but the row had no `minWidth: 0` guardrail and the metadata text had no explicit flex-shrink or wrap contract.
+  - On narrow screens, that meant the most important per-message queue status could get squeezed harder than intended once it shared space with the inline disclosure.
+- Issue identified:
+  - Individual queued-message rows preserved actions and disclosure affordances, but their state metadata did not have the same narrow-screen resilience that recent mobile header improvements added elsewhere.
+- Decision and rationale:
+  - Keep the queue row structure, `More` affordance, action buttons, timestamps, and accessibility labels unchanged.
+  - Do not broaden this into a pause/resume control project while live validation is still blocked.
+  - Make the smallest useful hierarchy fix instead: let the row metadata claim the remaining width, wrap to two lines, and truncate only after preserving more status context.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - change the queue row `metaRow` alignment to `flex-start` and add `minWidth: 0`,
+    - add `flex: 1`, `minWidth: 0`, `flexShrink: 1`, and `lineHeight: 16` to the metadata text style,
+    - render the visible metadata text with `numberOfLines={2}` and tail truncation.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the shrink/wrap contract beside the inline expander.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because `apps/mobile/node_modules` is missing and local `expo` is unavailable
+  - Mobile typecheck re-validation ⚠️ still blocked by the same missing install / config base problem, so no new type regression signal was available from `pnpm --filter @dotagents/mobile exec tsc --noEmit`
+- Assumptions and tradeoffs:
+  - Assumed preserving `Failed - blocking queue` or `Processing...` context beside `More` is more valuable on narrow screens than holding the metadata to a strict single line.
+  - Reused the same general narrow-screen pattern already applied to other mobile activity summaries: let informational text shrink and wrap before it truncates.
+  - This remains a source-backed improvement and still needs live confirmation that a two-line queue status feels balanced beside the inline disclosure and action rails on a real narrow viewport.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The broader queue-control gap (for example, pausing queued follow-ups on mobile) still appears worth evaluating, but it is broader than this shippable readability fix.
+  - The queue panel still lacks fresh screenshot-backed validation after multiple row-action, height, and status-line adjustments.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that long queued-message statuses remain readable beside `More` without making the row feel overly tall.
+  - Capture screenshot-backed evidence for queued rows in `Queued`, `Processing...`, and `Failed - blocking queue` states on a narrow viewport.
+  - After that live pass, re-evaluate whether the next highest-signal local improvement is a queue-control/state-action gap rather than another text-wrapping tweak.

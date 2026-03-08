@@ -189,12 +189,17 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     },
     metaRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
       marginTop: 4,
+      minWidth: 0,
     },
     metaText: {
+      flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
       fontSize: 12,
+      lineHeight: 16,
       color: isFailed
         ? `${theme.colors.destructive}B3`
         : isProcessing
@@ -415,7 +420,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
             </Text>
           )}
           <View style={styles.metaRow}>
-            <Text style={styles.metaText}>
+            <Text style={styles.metaText} numberOfLines={2} ellipsizeMode="tail">
               {queueMetaText}
             </Text>
             {hasExpandableDetails && (
