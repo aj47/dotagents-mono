@@ -6,7 +6,12 @@ import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
-import { createMcpServerSwitchAccessibilityLabel, createSwitchAccessibilityLabel } from '../lib/accessibility';
+import {
+  createButtonAccessibilityLabel,
+  createMcpServerSwitchAccessibilityLabel,
+  createMinimumTouchTargetStyle,
+  createSwitchAccessibilityLabel,
+} from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, Memory, AgentProfile, Loop } from '../lib/settingsApi';
 import { getAcpMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -2222,24 +2227,44 @@ export default function SettingsScreen({ navigation }: any) {
                           </Text>
                         </View>
                       </TouchableOpacity>
-                      <View style={{ alignItems: 'center' }}>
-                        <Switch
-                          value={loop.enabled}
-                          onValueChange={() => handleLoopToggle(loop.id)}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                          thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                        />
+                      <View style={styles.loopActions}>
                         <TouchableOpacity
-                          style={{ marginTop: 8, padding: 4 }}
-                          onPress={() => handleLoopRun(loop.id)}
+                          style={styles.loopSwitchButton}
+                          onPress={() => handleLoopToggle(loop.id)}
+                          accessibilityRole="switch"
+                          accessibilityLabel={createSwitchAccessibilityLabel(`${loop.name} loop`)}
+                          accessibilityHint="Enables or pauses this scheduled loop."
+                          accessibilityState={{ checked: loop.enabled }}
+                          activeOpacity={0.7}
                         >
-                          <Text style={{ color: theme.colors.primary, fontSize: 12 }}>▶ Run</Text>
+                          <View pointerEvents="none">
+                            <Switch
+                              accessible={false}
+                              value={loop.enabled}
+                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                              thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                            />
+                          </View>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={{ marginTop: 8, padding: 4 }}
-                          onPress={() => handleLoopDelete(loop)}
+                          style={styles.loopActionButton}
+                          onPress={() => handleLoopRun(loop.id)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
+                          accessibilityHint="Triggers this loop immediately."
+                          activeOpacity={0.7}
                         >
-                          <Text style={{ color: theme.colors.destructive, fontSize: 12 }}>🗑 Delete</Text>
+                          <Text style={styles.loopRunText}>▶ Run</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.loopActionButton}
+                          onPress={() => handleLoopDelete(loop)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
+                          accessibilityHint="Removes this scheduled loop after confirmation."
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.loopDeleteText}>🗑 Delete</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -2610,6 +2635,13 @@ export default function SettingsScreen({ navigation }: any) {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const compactActionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: spacing.sm,
+    verticalPadding: spacing.xs,
+    horizontalMargin: 0,
+  });
+
   return StyleSheet.create({
     container: {
       padding: spacing.lg,
@@ -3014,6 +3046,34 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     agentDeleteButton: {
       padding: spacing.xs,
+    },
+    loopActions: {
+      alignItems: 'stretch',
+      gap: spacing.xs,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
+    },
+    loopSwitchButton: {
+      ...compactActionTouchTarget,
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.secondary,
+    },
+    loopActionButton: {
+      ...compactActionTouchTarget,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.secondary,
+    },
+    loopRunText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    loopDeleteText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '600',
     },
     createAgentButton: {
       marginTop: spacing.md,

@@ -73,3 +73,48 @@
   - Inspect the non-empty selector state on a real configured server with multiple selectable agents.
   - Tighten touch targets in the chat/session headers if still below comfortable mobile size.
   - Reduce density in `Settings > Agent Loops` with a local readability improvement.
+
+### 2026-03-08 — Iteration 2: make loop actions reliably tappable on mobile
+
+- Status: shipped locally.
+- Areas reviewed first:
+  - this ledger
+  - `Settings > Agent Loops`
+  - `Settings > Agents`
+  - chat header selector trigger sizing
+- Live inspection before the fix:
+  - Reused Expo Web at `http://localhost:19007` in a ~390px mobile viewport.
+  - Confirmed `Settings > Agent Loops` was the highest-friction sub-agents surface on narrow screens.
+  - Measured a representative loop action rail before changes at roughly:
+    - toggle `40x20`
+    - `Run` `43x22`
+    - `Delete` `60x22`
+  - The right-side action rail was compressed beside long loop copy, making the destructive action especially easy to mis-tap.
+- Issue selected:
+  - Loop action controls were below comfortable mobile touch-target size and visually crowded for a dense, high-consequence row.
+- Decision:
+  - Keep the fix local to the loop action rail.
+  - Do not redesign loop cards yet.
+  - Reuse the shared mobile `createMinimumTouchTargetStyle` pattern instead of inventing a new layout helper.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - give the loop toggle wrapper, `Run`, and `Delete` a shared minimum `44px` touch target,
+    - add consistent vertical spacing between loop actions,
+    - add explicit accessibility roles/labels/hints for the loop toggle, run, and delete actions.
+  - Added `apps/mobile/tests/settings-loop-actions-mobile.test.js` covering the touch-target and accessibility wiring.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ✅
+  - Re-verified in Expo Web mobile viewport after the fix:
+    - loop toggle hit target `71x44`
+    - `Run` `71x44`
+    - `Delete` `71x44`
+    - controls now expose explicit accessible names/roles in the rendered web accessibility tree.
+- Remaining nearby issues noted, not addressed this iteration:
+  - The visual loop switch still exposes an extra unnamed inner focusable switch node on web, so accessibility semantics are improved but not fully clean yet.
+  - Loop cards remain text-heavy overall; readability can still improve without a broad redesign.
+  - `Settings > Agents` action rails still feel tight on narrow screens.
+- Next checks:
+  - Remove the duplicate unnamed inner loop switch exposure on web without regressing the larger hit target.
+  - Reduce loop-card text density with a local hierarchy improvement once action semantics are clean.
+  - Revisit the `Settings > Agents` action rail for similar touch-target improvements.
