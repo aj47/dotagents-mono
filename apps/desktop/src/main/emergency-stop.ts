@@ -20,23 +20,31 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
   agentSessionStateManager.stopAllSessions()
 
   // Mark all active agent sessions as stopped in the tracker and emit progress updates
-  try {
-    const activeSessions = agentSessionTracker.getActiveSessions()
-    for (const session of activeSessions) {
-      // Cancel any pending tool approvals for this session
+  const activeSessions = agentSessionTracker.getActiveSessions()
+  for (const session of activeSessions) {
+    // Cancel any pending tool approvals for this session
+    try {
       toolApprovalManager.cancelSessionApprovals(session.id)
+    } catch (error) {
+      console.error("[EmergencyStop] Error cancelling pending approvals during emergency stop:", session.id, error)
+    }
 
-      // Pause the message queue for this conversation to prevent processing the next queued message
-      // The user can resume the queue later if they want to continue
-      if (session.conversationId) {
+    // Pause the message queue for this conversation to prevent processing the next queued message
+    // The user can resume the queue later if they want to continue
+    if (session.conversationId) {
+      try {
         messageQueueService.pauseQueue(session.conversationId)
+      } catch (error) {
+        console.error("[EmergencyStop] Error pausing queued conversation during emergency stop:", session.id, error)
       }
+    }
 
-      // Emit a final progress update so the UI shows "Stopped" state
-      // This allows users to see the stopped state and send follow-up messages
-      // Note: pendingToolApproval is explicitly set to undefined to clear any stale
-      // approval bubble from the UI since updateSessionProgress preserves fields not
-      // present in the update (spreads existing state)
+    // Emit a final progress update so the UI shows "Stopped" state
+    // This allows users to see the stopped state and send follow-up messages
+    // Note: pendingToolApproval is explicitly set to undefined to clear any stale
+    // approval bubble from the UI since updateSessionProgress preserves fields not
+    // present in the update (spreads existing state)
+    try {
       await emitAgentProgress({
         sessionId: session.id,
         conversationId: session.conversationId,
@@ -58,12 +66,16 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
         conversationHistory: [],
         pendingToolApproval: undefined,
       })
-
-      // Mark the session as stopped in the tracker
-      agentSessionTracker.stopSession(session.id)
+    } catch (error) {
+      console.error("[EmergencyStop] Error emitting final progress update during emergency stop:", session.id, error)
     }
-  } catch {
-    // ignore
+
+    // Mark the session as stopped in the tracker even if one of the steps above failed
+    try {
+      agentSessionTracker.stopSession(session.id)
+    } catch (error) {
+      console.error("[EmergencyStop] Error marking session as stopped in tracker:", session.id, error)
+    }
   }
 
   // Abort any in-flight LLM HTTP requests (handled by session state manager)
@@ -88,10 +100,20 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
 
   const after = agentProcessManager.getActiveProcessCount()
 
-	  // Clean up all session states (including user response)
-  for (const [sessionId] of state.agentSessions) {
-	    clearSessionUserResponse(sessionId)
-    agentSessionStateManager.cleanupSession(sessionId)
+  // Clean up all session states (including user response)
+  const sessionIds = Array.from(state.agentSessions.keys())
+  for (const sessionId of sessionIds) {
+    try {
+      clearSessionUserResponse(sessionId)
+    } catch (error) {
+      console.error("[EmergencyStop] Error clearing session user response:", sessionId, error)
+    }
+
+    try {
+      agentSessionStateManager.cleanupSession(sessionId)
+    } catch (error) {
+      console.error("[EmergencyStop] Error cleaning up session state:", sessionId, error)
+    }
   }
 
   // Reset some core agent state flags for clean state

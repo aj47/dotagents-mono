@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop main-process emergency-stop best-effort failure isolation in `apps/desktop/src/main/emergency-stop.ts`, with session-state ownership reviewed in `apps/desktop/src/main/state.ts`, tracker/queue/user-response cleanup behavior cross-checked in `apps/desktop/src/main/agent-session-tracker.ts`, `apps/desktop/src/main/message-queue-service.ts`, and `apps/desktop/src/main/session-user-response-store.ts`, focused source-level guardrail coverage added in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree does not have `node_modules` / `vitest` available.
 - 2026-03-08: Desktop modular config (`.agents`) path/source clarity in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with layer-resolution behavior reviewed in `apps/desktop/src/main/tipc.ts`, `apps/desktop/src/main/config.ts`, and `apps/desktop/src/main/agents-files/modular-config.ts`, adjacent folder/source copy reviewed in `apps/desktop/src/renderer/src/pages/settings-skills.tsx` / `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile `.agents` filesystem UI exists there because mobile settings are remote/server-backed rather than local workspace-backed), focused source-level coverage extended in `tests/desktop-settings-general-agent-mode-shortcuts.test.js`, and live desktop inspection attempted via `electron_execute` (renderer target available but only an unhydrated blank `#root` shell at `http://localhost:5174/`, so no meaningful product UI could be inspected).
 - 2026-03-08: Desktop main-agent ACP selection guidance in `apps/desktop/src/renderer/src/pages/settings-general.tsx`, with eligible-agent filtering reviewed in `apps/desktop/src/renderer/src/pages/settings-general-main-agent-options.ts`, runtime selection failure messaging reviewed in `apps/desktop/src/main/main-agent-selection.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/mainAgentOptions.ts` (no equivalent change needed because mobile already surfaces a `No ACP agents available` helper state inside `Agent Settings`), focused source-level coverage extended in `tests/desktop-settings-general-agent-mode-shortcuts.test.js`, and live desktop inspection attempted via `electron_execute` (renderer target available but only an unhydrated blank `#root` shell at `http://localhost:5174/`, so no meaningful product UI could be inspected).
 - 2026-03-08: Desktop repeat-task delete guardrails in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `deleteLoop` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/loop-service.ts`, nearby inline destructive-action patterns reviewed in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent change in this pass because mobile already uses the shared native destructive-confirmation pattern for loop deletion and this iteration focused on the desktop browser-`confirm(...)` path), focused source-level coverage added in `tests/desktop-settings-loops-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (renderer target available but only an unhydrated blank `#root` shell at `http://localhost:5174/`, so no meaningful product UI could be inspected).
@@ -89,6 +90,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop emergency stop now isolates per-session failures in `apps/desktop/src/main/emergency-stop.ts`, so one broken approval cancel, queue pause, progress emit, or tracker update can no longer short-circuit the rest of the kill-switch pass, and session cleanup now snapshots session IDs before mutating `state.agentSessions` while treating response-store + state cleanup as best-effort per session; tradeoff: this pass intentionally stays scoped to the existing kill-switch path and stops short of broader ACP-subsystem refactors.
 - 2026-03-08: Desktop `Settings → General` modular config (`.agents`) now makes the active prompt/editing layer explicit, translates workspace detection into human-readable source copy, surfaces separate Skills and Memories folders for both global and workspace layers, and renames the prompt reveal actions to target the active files, so users are less likely to edit the wrong location when a workspace `.agents` overlay is present; tradeoff: this pass stays scoped to clarity inside General settings and intentionally stops short of adding new filesystem actions or a broader modular-config editor.
 - 2026-03-08: Desktop `Settings → General` now turns ACP main-agent dead-end states into actionable guidance: the ACP agent picker disables with a `No ACP agents available` placeholder when no enabled ACP/stdio agents exist, ACP mode now explains when no agent is ready or when the saved selection is unavailable, and inline quick actions let users jump straight to Agents settings or switch back to API mode, so choosing ACP mode no longer leaves users in a blank dropdown with no clue how to recover; tradeoff: this pass intentionally stays scoped to guidance and recovery inside General settings rather than auto-switching modes or redesigning the broader Agents setup flow.
 - 2026-03-08: Desktop `Repeat Tasks` deletion now replaces the blocking browser `confirm(...)` flow with an inline row-level confirmation card, disables row controls while a delete is in flight, handles false `deleteLoop(...)` results explicitly instead of treating them like success, and keeps failed deletions recoverable with local error copy plus `Retry delete`, so removing a task no longer depends on brittle modal confirms or misleading success feedback; tradeoff: this pass intentionally stays scoped to deletion and leaves `Run` / enable-toggle mutation pending-state polish for a follow-up.
@@ -154,6 +156,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-emergency-stop-guardrails.test.js`
+- 2026-03-08: `git diff --check` after the desktop emergency-stop best-effort isolation pass
 - 2026-03-08: `node --test tests/desktop-settings-general-agent-mode-shortcuts.test.js` after the desktop modular-config path/source clarity pass
 - 2026-03-08: `git diff --check` after the desktop modular-config path/source clarity pass
 - 2026-03-08: `node --test tests/desktop-settings-general-agent-mode-shortcuts.test.js`
@@ -389,6 +393,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Desktop repeat-task `Run` / enable-toggle mutation failure feedback and pending-state clarity (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop emergency-stop ACP cancellation / shutdown best-effort isolation is the freshest adjacent reliability follow-up, because per-session kill-switch failures are now isolated but the later ACP-wide `cancelAllRuns()` step still assumes that subsystem cannot throw.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is the freshest non-loops desktop UX follow-up if the next pass should avoid staying on the same `Repeat Tasks` surface twice in a row.
 - Desktop repeat-task `Run` / enable-toggle mutation pending-state and partial-success feedback is now the freshest adjacent loops follow-up, because deletion no longer depends on blocking confirms but the remaining action buttons still rely mostly on toast-only feedback.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest adjacent history follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
@@ -2353,6 +2358,41 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable mobile target is available, live-check invalid voice selection, streaming `respond_to_user` playback failure, final-response fallback after a startup error, and retry-to-success recovery from the composer banner
   - inspect desktop `AgentProgress` transcript/tab persistence next as the freshest not-recently-checked code follow-up
+
+### 2026-03-08 — Desktop emergency-stop best-effort failure isolation
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process emergency kill switch in `apps/desktop/src/main/emergency-stop.ts`
+  - adjacent session-state ownership in `apps/desktop/src/main/state.ts`
+  - tracker / queue / response-store integration in `apps/desktop/src/main/agent-session-tracker.ts`, `apps/desktop/src/main/message-queue-service.ts`, and `apps/desktop/src/main/session-user-response-store.ts`
+  - focused source-level guardrail coverage added in `tests/desktop-emergency-stop-guardrails.test.js`
+- Why it was chosen:
+  - this was a fresh, non-UI reliability target that had not been investigated recently and could be verified locally despite the dependency-less worktree
+  - investigation found a concrete kill-switch gap: one failure inside the active-session stop loop could stop iteration early and leave later sessions without queue pause, final stopped progress, or tracker cleanup
+  - the fix had clear user value because emergency stop should be best-effort and predictable exactly when the app is already in a degraded state
+- What was inspected:
+  - `apps/desktop/src/main/emergency-stop.ts`
+  - `apps/desktop/src/main/state.ts`
+  - `apps/desktop/src/main/emit-agent-progress.ts`
+  - `apps/desktop/src/main/agent-session-tracker.ts`
+  - `apps/desktop/src/main/message-queue-service.ts`
+  - `apps/desktop/src/main/session-user-response-store.ts`
+  - existing main-process / guardrail test patterns in `apps/desktop/src/main/state.test.ts` and `tests/desktop-settings-general-kill-switch-feedback.test.js`
+- Improvement made:
+  - removed the single broad `try/catch` around the active-session loop and instead isolated approval cancellation, queue pausing, final progress emission, and tracker stop per session, logging failures without aborting the rest of the kill-switch pass
+  - snapshot session IDs before cleanup so `state.agentSessions` can be mutated safely during the cleanup pass without relying on in-loop map mutation semantics
+  - made user-response clearing and session-state cleanup best-effort per session so one corrupted/stale session cannot prevent the others from being torn down
+- Assumptions / tradeoffs / rationale:
+  - stayed within the existing emergency-stop orchestration instead of refactoring the broader session/ACP lifecycle because the highest-value issue was one session failure blocking the rest of the stop sequence
+  - accepted source-level regression coverage in `tests/` rather than a full Vitest behavior test because this worktree has no `node_modules` / `vitest` available
+  - added explicit console logging for isolated failures so future debugging has evidence when the kill switch had to continue past a partial subsystem error
+- Tests / verification:
+  - `node --test tests/desktop-emergency-stop-guardrails.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - add dedicated behavioral coverage for `emergencyStopAll()` once the desktop Vitest toolchain is available in this worktree
+  - inspect whether `acpClientService.cancelAllRuns()` should also be wrapped in best-effort isolation so ACP-wide cancellation cannot block later emergency-stop cleanup
 
 ### Iteration Template
 - Date:
