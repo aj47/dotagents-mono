@@ -26,3 +26,9 @@ test('keeps stub-session affordances aligned without forcing extra title margin 
   assert.match(screenSource, /sessionStubIndicator:\s*\{[\s\S]*?fontSize: 12,[\s\S]*?marginTop: 2,/);
   assert.doesNotMatch(screenSource, /sessionTitle:\s*\{[\s\S]*?marginRight: 8,/);
 });
+
+test('gives the empty session state an in-place primary action instead of text alone', () => {
+  assert.match(screenSource, /const EmptyState = \(\) => \([\s\S]*?<TouchableOpacity[\s\S]*?style=\{\[styles\.emptyAction, styles\.sessionActionTouchTarget\]\}[\s\S]*?onPress=\{handleCreateSession\}[\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Start your first chat'\)\}[\s\S]*?<Text style=\{styles\.emptyActionText\}>Start your first chat<\/Text>/);
+  assert.match(screenSource, /emptyState:\s*\{[\s\S]*?maxWidth: 320,[\s\S]*?gap: spacing\.sm,/);
+  assert.match(screenSource, /emptyAction:\s*\{[\s\S]*?backgroundColor: theme\.colors\.primary,[\s\S]*?borderRadius: radius\.lg,/);
+});

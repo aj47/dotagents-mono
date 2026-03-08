@@ -1,5 +1,48 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 62: Mobile session-list empty state looked inert because the first-run action lived only in distant header chrome
+
+- Area selected:
+  - mobile `apps/mobile/src/screens/SessionListScreen.tsx`
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided repeating the most recent desktop settings/memories/provider passes and the recently touched mobile editor screens.
+  - `mobile-app-improvement.md` still listed session-list empty/loading states as a worthwhile mobile follow-up, and its earlier notes explicitly left the session-list header/empty-state polish area open.
+  - Live Expo Web inspection would have been the preferred path here, but this worktree currently cannot launch Expo, so the best non-thrashy move was a small, defensible fix to a clearly neglected user-facing state instead of speculative broad redesign work.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid revisiting a recently investigated area without a concrete follow-up reason
+  - reviewed `apps/desktop/DEBUGGING.md`, `apps/mobile/README.md`, `mobile-app-improvement.md`, and the existing `apps/mobile/tests/session-list-screen-layout.test.js` contract coverage to stay aligned with the repo’s documented desktop/mobile inspection workflow and prior mobile audit notes
+  - attempted practical live mobile verification with `pnpm --filter @dotagents/mobile exec expo --version`, but Expo was unavailable in this checkout (`Command "expo" not found`), so live Expo Web inspection was blocked before runtime
+  - inspected `SessionListScreen.tsx` directly with focus on the empty/list/loading states and compared the current text-only empty state against the surrounding session-list action/header affordances before choosing the smallest effective fix
+
+#### Findings
+
+- Before the fix, the mobile session list had one concrete visually neglected first-run state with clear user impact:
+  - the `FlatList` empty state rendered only centered title/subtitle text (`No Sessions Yet` + `Start a new chat to begin a conversation`)
+  - the real recovery action existed only in the separate top header button (`+ New Chat`), so the centered empty surface itself looked inert even though users most needed a direct next step there
+  - this matters because first-run and cleared-out session states are recognition-heavy moments; making the central state look like passive copy instead of an actionable affordance increases scan/reach friction and makes the screen feel less polished than the rest of the mobile app
+
+#### Changes made
+
+- Hardened the mobile empty state in `apps/mobile/src/screens/SessionListScreen.tsx` with the smallest effective first-run polish fix:
+  - kept the existing header `+ New Chat` action intact
+  - added an in-place `Start your first chat` CTA inside the empty state that reuses `handleCreateSession`
+  - reused the existing `sessionActionTouchTarget` minimum-touch-target guardrail so the new CTA stays comfortably tappable
+  - expanded the helper copy to clarify that recent chats will appear in this view
+  - lightly constrained and centered the empty-state layout (`maxWidth`, `gap`, centered title) so the state reads as an intentional block rather than loose text
+- Extended `apps/mobile/tests/session-list-screen-layout.test.js` with focused source-contract coverage for the new empty-state CTA and layout treatment
+
+#### Verification
+
+- Targeted mobile source-contract test: `node --test apps/mobile/tests/session-list-screen-layout.test.js` ✅
+- Patch hygiene: `git diff --check -- apps/mobile/src/screens/SessionListScreen.tsx apps/mobile/tests/session-list-screen-layout.test.js ui-audit.md` ✅
+- Targeted mobile typecheck attempt: `pnpm --filter @dotagents/mobile exec tsc --noEmit` *(blocked: this worktree is still missing the mobile Expo/React Native dependency graph; `expo/tsconfig.base` and multiple app dependencies could not be resolved)*
+
+#### Notes
+
+- Important blocker/rationale: live Expo Web inspection was not practical in this worktree because Expo is currently unavailable here, so this chunk is source-inspection-driven rather than screenshot-backed.
+- Tradeoff/rationale: the empty state now repeats the create-chat action already present in the header, but that duplication is intentional and safer because the centered first-run state now contains its own obvious next step instead of looking passive.
+- Best next UI audit chunk after this one: once Expo Web is runnable again, do a literal live pass on `SessionListScreen` at narrow mobile widths (`~320–390px`) to verify the empty/loading/list states visually, or move to another fresh mobile surface with live runtime evidence.
+
 ### 2026-03-08 — Chunk 61: Desktop settings-general Langfuse credential rows were squeezed into an unnecessarily narrow mid-width value lane
 
 - Area selected:

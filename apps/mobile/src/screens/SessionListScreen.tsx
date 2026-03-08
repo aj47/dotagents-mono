@@ -850,8 +850,17 @@ export default function SessionListScreen({ navigation }: Props) {
     <View style={styles.emptyState}>
       <Text style={styles.emptyTitle}>No Sessions Yet</Text>
       <Text style={styles.emptySubtitle}>
-        Start a new chat to begin a conversation
+        Start a new chat to begin a conversation. Your recent chats will show up here.
       </Text>
+      <TouchableOpacity
+        style={[styles.emptyAction, styles.sessionActionTouchTarget]}
+        onPress={handleCreateSession}
+        accessibilityRole="button"
+        accessibilityLabel={createButtonAccessibilityLabel('Start your first chat')}
+        accessibilityHint="Creates and opens a new chat."
+      >
+        <Text style={styles.emptyActionText}>Start your first chat</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -1144,15 +1153,26 @@ function createStyles(theme: Theme, screenHeight: number) {
     emptyState: {
       alignItems: 'center',
       padding: spacing.xl,
+      maxWidth: 320,
+      gap: spacing.sm,
     },
     emptyTitle: {
       ...theme.typography.h2,
-      marginBottom: spacing.sm,
+      textAlign: 'center',
     },
     emptySubtitle: {
       ...theme.typography.body,
       color: theme.colors.mutedForeground,
       textAlign: 'center',
+    },
+    emptyAction: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: radius.lg,
+      marginTop: spacing.xs,
+    },
+    emptyActionText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     rfContainer: {
       borderTopWidth: theme.hairline,
