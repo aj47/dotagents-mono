@@ -46,7 +46,7 @@ import {
 } from "@shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 
-const LANGFUSE_SETTINGS_SAVE_DEBOUNCE_MS = 400
+const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
 type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
 
@@ -67,6 +67,10 @@ export function Component() {
   const cfgRef = useRef<Config | undefined>(cfg)
   const [langfuseDrafts, setLangfuseDrafts] = useState(() => getLangfuseDrafts(cfg))
   const langfuseSaveTimeoutsRef = useRef<Partial<Record<LangfuseDraftKey, ReturnType<typeof setTimeout>>>>({})
+  const [transcriptPostProcessingPromptDraft, setTranscriptPostProcessingPromptDraft] = useState(
+    () => cfg?.transcriptPostProcessingPrompt ?? "",
+  )
+  const transcriptPostProcessingPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -196,9 +200,17 @@ export function Component() {
   }, [cfg?.langfusePublicKey, cfg?.langfuseSecretKey, cfg?.langfuseBaseUrl])
 
   useEffect(() => {
+    setTranscriptPostProcessingPromptDraft(cfg?.transcriptPostProcessingPrompt ?? "")
+  }, [cfg?.transcriptPostProcessingPrompt])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
         if (timeout) clearTimeout(timeout)
+      }
+
+      if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
+        clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
       }
     }
   }, [])
@@ -222,7 +234,7 @@ export function Component() {
     langfuseSaveTimeoutsRef.current[key] = setTimeout(() => {
       delete langfuseSaveTimeoutsRef.current[key]
       saveConfig({ [key]: value || undefined } as Partial<Config>)
-    }, LANGFUSE_SETTINGS_SAVE_DEBOUNCE_MS)
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
   }, [saveConfig])
 
   const updateLangfuseDraft = useCallback((key: LangfuseDraftKey, value: string) => {
@@ -232,6 +244,31 @@ export function Component() {
     }))
     scheduleLangfuseSave(key, value)
   }, [scheduleLangfuseSave])
+
+  const flushTranscriptPostProcessingPromptSave = useCallback((value: string) => {
+    if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
+      clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
+      transcriptPostProcessingPromptSaveTimeoutRef.current = null
+    }
+
+    saveConfig({ transcriptPostProcessingPrompt: value })
+  }, [saveConfig])
+
+  const scheduleTranscriptPostProcessingPromptSave = useCallback((value: string) => {
+    if (transcriptPostProcessingPromptSaveTimeoutRef.current) {
+      clearTimeout(transcriptPostProcessingPromptSaveTimeoutRef.current)
+    }
+
+    transcriptPostProcessingPromptSaveTimeoutRef.current = setTimeout(() => {
+      transcriptPostProcessingPromptSaveTimeoutRef.current = null
+      saveConfig({ transcriptPostProcessingPrompt: value })
+    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+  }, [saveConfig])
+
+  const updateTranscriptPostProcessingPromptDraft = useCallback((value: string) => {
+    setTranscriptPostProcessingPromptDraft(value)
+    scheduleTranscriptPostProcessingPromptSave(value)
+  }, [scheduleTranscriptPostProcessingPromptSave])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -982,14 +1019,16 @@ export function Component() {
                     </DialogHeader>
                     <Textarea
                       rows={10}
-                      defaultValue={
-                        configQuery.data.transcriptPostProcessingPrompt
-                      }
+                      value={transcriptPostProcessingPromptDraft}
                       onChange={(e) => {
-                        saveConfig({
-                          transcriptPostProcessingPrompt:
-                            e.currentTarget.value,
-                        })
+                        updateTranscriptPostProcessingPromptDraft(
+                          e.currentTarget.value,
+                        )
+                      }}
+                      onBlur={(e) => {
+                        flushTranscriptPostProcessingPromptSave(
+                          e.currentTarget.value,
+                        )
                       }}
                     ></Textarea>
                     <div className="text-sm text-muted-foreground">

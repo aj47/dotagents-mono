@@ -96,6 +96,10 @@ function findInputByPlaceholder(node: any, placeholder: string) {
   return findNode(node, candidate => candidate.type === "Input" && candidate.props?.placeholder === placeholder)
 }
 
+function findTextarea(node: any) {
+  return findNode(node, candidate => candidate.type === "Textarea" && candidate.props?.rows === 10)
+}
+
 async function flushPromises() {
   await Promise.resolve()
   await Promise.resolve()
@@ -105,12 +109,15 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   vi.resetModules()
 
   const Null = () => null
+  const PassThrough = (props: any) => props?.children ?? null
   const mutate = vi.fn()
   let currentConfig: any = {
     langfuseEnabled: true,
     langfusePublicKey: "pk-lf-old",
     langfuseSecretKey: "sk-lf-old",
     langfuseBaseUrl: "",
+    transcriptPostProcessingEnabled: true,
+    transcriptPostProcessingPrompt: "Prompt old",
     launchAtLogin: false,
     acpAgents: [],
   }
@@ -146,8 +153,8 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@renderer/components/ui/select", () => ({ Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }))
   vi.doMock("@renderer/components/ui/tooltip", () => ({ Tooltip: Null, TooltipContent: Null, TooltipProvider: Null, TooltipTrigger: Null }))
-  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: Null }))
-  vi.doMock("@renderer/components/ui/dialog", () => ({ Dialog: Null, DialogContent: Null, DialogHeader: Null, DialogTitle: Null, DialogTrigger: Null }))
+  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
+  vi.doMock("@renderer/components/ui/dialog", () => ({ Dialog: PassThrough, DialogContent: PassThrough, DialogHeader: PassThrough, DialogTitle: PassThrough, DialogTrigger: PassThrough }))
   vi.doMock("@renderer/components/model-selector", () => ({ ModelSelector: Null }))
   vi.doMock("@renderer/components/key-recorder", () => ({ KeyRecorder: Null }))
   vi.doMock("./settings-remote-server", () => ({ RemoteServerSettingsGroups: Null }))
@@ -175,7 +182,7 @@ afterEach(() => {
   vi.resetModules()
 })
 
-describe("desktop general settings langfuse drafts", () => {
+describe("desktop general settings draft behavior", () => {
   it("keeps the public key draft local, debounces saves, and merges with the latest config", async () => {
     const runtime = createHookRuntime()
     const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
@@ -252,5 +259,81 @@ describe("desktop general settings langfuse drafts", () => {
 
     expect(findInputByPlaceholder(tree, "pk-lf-...").props.value).toBe("pk-lf-synced")
     expect(findInputByPlaceholder(tree, "https://cloud.langfuse.com (default)").props.value).toBe("https://langfuse.example")
+  })
+
+  it("keeps the transcript post-processing prompt draft local, debounces saves, and merges with the latest config", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    let promptTextarea = findTextarea(tree)
+    expect(promptTextarea.props.value).toBe("Prompt old")
+
+    promptTextarea.props.onChange({ currentTarget: { value: "Prompt new" } })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    promptTextarea = findTextarea(tree)
+    expect(promptTextarea.props.value).toBe("Prompt new")
+    expect(mutate).not.toHaveBeenCalled()
+
+    setConfig({ ...getCurrentConfig(), launchAtLogin: true })
+    runtime.render(Component, {} as any)
+    runtime.commitEffects()
+
+    vi.advanceTimersByTime(399)
+    expect(mutate).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        transcriptPostProcessingPrompt: "Prompt new",
+      },
+    })
+  })
+
+  it("flushes the latest transcript post-processing prompt on blur without waiting for a rerender", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const promptTextarea = findTextarea(tree)
+    promptTextarea.props.onChange({ currentTarget: { value: "Prompt blur" } })
+    promptTextarea.props.onBlur({ currentTarget: { value: "Prompt blur" } })
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        transcriptPostProcessingPrompt: "Prompt blur",
+      },
+    })
+  })
+
+  it("resyncs the transcript post-processing prompt draft from saved config updates", async () => {
+    const runtime = createHookRuntime()
+    const { Component, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    setConfig({
+      ...getCurrentConfig(),
+      transcriptPostProcessingPrompt: "Prompt synced",
+    })
+
+    tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    tree = runtime.render(Component, {} as any)
+
+    expect(findTextarea(tree).props.value).toBe("Prompt synced")
   })
 })
