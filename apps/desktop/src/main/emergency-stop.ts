@@ -124,8 +124,13 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
   state.isAgentModeActive = false
   state.agentIterationCount = 0
 
-  // Cancel all ACP runs
-  acpClientService.cancelAllRuns()
+  // Cancel all ACP runs - isolated so failures don't prevent later ACP cleanup
+  try {
+    acpClientService.cancelAllRuns()
+  } catch (error) {
+    // Log but don't fail - emergency stop should be best-effort
+    console.error('[EmergencyStop] Error cancelling ACP runs:', error)
+  }
 
   // Stop all spawned ACP agents - isolated so failures don't prevent rest of cleanup
   try {

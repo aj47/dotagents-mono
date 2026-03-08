@@ -27,3 +27,12 @@ test('emergency stop snapshots session ids before cleanup and keeps cleanup best
   assert.match(source, /Error clearing session user response/);
   assert.match(source, /Error cleaning up session state/);
 });
+
+test('emergency stop keeps ACP-wide cancellation and shutdown best-effort', () => {
+  assert.match(source, /try \{\s*acpClientService\.cancelAllRuns\(\)/);
+  assert.match(source, /Error cancelling ACP runs/);
+  assert.match(source, /try \{\s*await acpProcessManager\.stopAllAgents\(\)/);
+  assert.match(source, /Error stopping ACP agents/);
+  assert.match(source, /try \{\s*await acpService\.shutdown\(\)/);
+  assert.match(source, /Error shutting down ACP service/);
+});
