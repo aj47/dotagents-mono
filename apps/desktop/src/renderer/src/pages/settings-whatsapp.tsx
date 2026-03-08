@@ -21,6 +21,10 @@ function maskPhoneNumber(phone: string | undefined): string {
 }
 
 const WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS = 400
+const WHATSAPP_CONNECTION_ACTIONS_CLASS_NAME = "flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+const WHATSAPP_CONNECTION_ACTION_BUTTON_CLASS_NAME = "w-full justify-center sm:w-auto"
+const WHATSAPP_QR_FRAME_CLASS_NAME = "w-full max-w-[288px] rounded-lg bg-white p-4 shadow-md"
+const WHATSAPP_QR_PLACEHOLDER_CLASS_NAME = "flex aspect-square w-full max-w-[288px] flex-col items-center justify-center rounded-lg bg-muted/50 p-4 shadow-md"
 
 function formatWhatsappAllowFrom(values: string[] | undefined): string {
   return (values || []).join(", ")
@@ -279,13 +283,17 @@ export function Component() {
               {qrCodeData && !status?.connected && (
                 <div className="mb-4 flex flex-col items-center">
                   {streamerMode ? (
-                    <div className="bg-muted/50 p-4 rounded-lg shadow-md flex flex-col items-center justify-center" style={{ width: 256, height: 256 }}>
+                    <div className={WHATSAPP_QR_PLACEHOLDER_CLASS_NAME}>
                       <EyeOff className="h-12 w-12 text-muted-foreground mb-2" />
                       <span className="text-sm text-muted-foreground text-center">QR Code hidden<br />Streamer Mode is active</span>
                     </div>
                   ) : (
-                    <div className="bg-white p-4 rounded-lg shadow-md">
-                      <QRCodeSVG value={qrCodeData} size={256} />
+                    <div className={WHATSAPP_QR_FRAME_CLASS_NAME}>
+                      <QRCodeSVG
+                        value={qrCodeData}
+                        size={256}
+                        className="h-auto w-full max-w-full"
+                      />
                     </div>
                   )}
                   <p className="mt-2 text-sm text-muted-foreground text-center">
@@ -295,13 +303,14 @@ export function Component() {
               )}
 
               {/* Action buttons */}
-              <div className="flex gap-2 flex-wrap">
+              <div className={WHATSAPP_CONNECTION_ACTIONS_CLASS_NAME}>
                 {!status?.connected ? (
                   <Button
                     onClick={handleConnect}
                     disabled={isConnecting || !status?.available}
                     variant="default"
                     size="sm"
+                    className={WHATSAPP_CONNECTION_ACTION_BUTTON_CLASS_NAME}
                   >
                     {isConnecting ? (
                       <>
@@ -316,19 +325,34 @@ export function Component() {
                     )}
                   </Button>
                 ) : (
-                  <Button onClick={handleDisconnect} variant="outline" size="sm">
+                  <Button
+                    onClick={handleDisconnect}
+                    variant="outline"
+                    size="sm"
+                    className={WHATSAPP_CONNECTION_ACTION_BUTTON_CLASS_NAME}
+                  >
                     <XCircle className="h-4 w-4 mr-2" />
                     Disconnect
                   </Button>
                 )}
 
-                <Button onClick={fetchStatus} variant="ghost" size="sm">
+                <Button
+                  onClick={fetchStatus}
+                  variant="ghost"
+                  size="sm"
+                  className={WHATSAPP_CONNECTION_ACTION_BUTTON_CLASS_NAME}
+                >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
 
                 {(status?.connected || status?.hasCredentials) && (
-                  <Button onClick={handleLogout} variant="ghost" size="sm" className="text-red-600">
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="sm"
+                    className={WHATSAPP_CONNECTION_ACTION_BUTTON_CLASS_NAME + " text-red-600"}
+                  >
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout
                   </Button>

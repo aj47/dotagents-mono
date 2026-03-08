@@ -1,5 +1,59 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 69: Desktop WhatsApp connection card used a fixed QR footprint and awkward wrapped actions under narrow settings widths
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` (`Settings → WhatsApp` → `Connection` card)
+- Why this chunk:
+  - I re-read `ui-audit.md` first and avoided redoing the just-touched General, Sessions, Memories, and Capabilities surfaces.
+  - This was an intentional WhatsApp follow-up, not duplicate churn: earlier WhatsApp passes explicitly left the connection-status / QR block for a live check once a reusable renderer target with real state was available.
+  - A live Electron renderer was available at `http://localhost:5174/settings/whatsapp`, making screenshot-backed inspection practical for a fresh sub-surface with real user impact.
+- Audit method:
+  - re-read `ui-audit.md`, `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and the repo desktop/mobile workflow guidance before choosing the next area
+  - used live browser inspection against the running Electron renderer at `http://localhost:5174/settings/whatsapp`
+  - stress-tested the connection card at `620×900` with approximate `125%` zoom, captured screenshot-backed evidence in `tmp/ui-audit/settings-whatsapp-connection-620w-zoom125-before.png`, and measured the mounted action row directly in the DOM before editing source
+  - cross-checked the QR implementation in `settings-whatsapp.tsx` against that live card width to confirm the currently hard-coded `256px` QR plus `p-4` wrapper would consume about `288px` when shown
+  - prototyped the intended narrow-width action treatment directly in the mounted DOM and captured `tmp/ui-audit/settings-whatsapp-connection-620w-zoom125-prototype.png`
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SettingsScreen.tsx` only exposes a simpler WhatsApp toggle / allowed-numbers form, not this desktop QR onboarding card
+
+#### Findings
+
+- Before the fix, the desktop WhatsApp connection card still had one concrete narrow-width responsiveness issue with clear user impact:
+  - in live inspection at `620×900` with approximate `125%` zoom, the visible action row was only about `245px` wide while the two visible actions still needed about `179px` (`Connect with QR Code`) + `93px` (`Refresh`), so the row broke into a cramped two-line wrap
+  - the current source also rendered the QR onboarding block at a fixed `256px` square inside a `p-4` wrapper, which implies about a `288px` footprint — wider than the same stressed card width even before accounting for instruction copy
+  - practical impact: the primary onboarding card becomes fragmented exactly when the window is tight; the controls no longer read as a calm grouped action set, and a real QR state would feel cramped or risk overflow in the same column
+
+#### Changes made
+
+- Hardened only the WhatsApp `Connection` card in `apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx` with the smallest effective responsiveness fix:
+  - replaced the fixed QR shell with a bounded responsive frame (`w-full max-w-[288px]`) and made the rendered `QRCodeSVG` scale to the available width with `h-auto w-full max-w-full`
+  - replaced the fixed streamer-mode placeholder square with the same responsive, aspect-ratio-preserving frame so both QR states behave consistently
+  - changed the action container to an intentional narrow-width stack (`flex-col`) with the existing inline row preserved from `sm` upward, rather than relying on accidental wrap behavior
+  - made the connect / disconnect / refresh / logout buttons full-width and centered in the stacked state so the card reads as a deliberate action group under tight settings widths
+- Extended `apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts` with focused source-contract coverage for the responsive QR frame and stacked connection-action treatment
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-whatsapp.layout.test.ts` *(blocked: `vitest` not found because this worktree still has no local dependencies / `node_modules`)*
+- Targeted desktop typecheck attempt: `pnpm --filter @dotagents/desktop typecheck:web` *(blocked: local TypeScript/tooling dependencies are unavailable in this worktree; `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new responsive action-row classes, all four responsive button usages, the responsive QR frame/placeholder constants, the scalable QR SVG class, and the focused regression test coverage ✅
+- Live desktop evidence before the fix at `http://localhost:5174/settings/whatsapp`:
+  - screenshot: `tmp/ui-audit/settings-whatsapp-connection-620w-zoom125-before.png`
+  - measured action-row width: about `245px`
+  - measured button widths: about `179px` (`Connect with QR Code`) and `93px` (`Refresh`)
+  - the mounted row still used the old `flex gap-2 flex-wrap` class, confirming the awkward wrapped state in the running product session
+- Live DOM prototype verification of the intended fix:
+  - after applying the same stacked-button treatment directly in the mounted DOM, both visible buttons expanded to the full `245px` card width and aligned as an intentional vertical action group instead of a cramped wrap
+  - screenshot: `tmp/ui-audit/settings-whatsapp-connection-620w-zoom125-prototype.png`
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx apps/desktop/src/renderer/src/pages/settings-whatsapp.layout.test.ts ui-audit.md` ✅
+
+#### Notes
+
+- Important blocker/rationale: the currently running `localhost:5174` renderer is a reusable live app instance and is not guaranteed to be serving this checkout’s edited bundle, so I treated the live renderer as pre-fix evidence plus DOM prototyping rather than claiming a rebuilt post-edit product confirmation from this worktree.
+- Mobile cross-check: no parallel mobile code change was needed because the mobile app does not expose the same QR onboarding card or desktop action-row chrome; it only exposes a simpler WhatsApp toggle / allowed-numbers settings section.
+- Tradeoff/rationale: on the narrowest widths the connection actions now stack earlier and consume a little more vertical space, but that is a safer tradeoff than a cramped accidental wrap plus a QR block that assumes more width than the card can guarantee.
+- Best next UI audit chunk after this one: return to `settings-whatsapp.tsx` only when a live QR-present state is available so the actual rendered QR block can be screenshot-verified after rebuild; otherwise move back to a fresh desktop/mobile surface rather than reworking WhatsApp again immediately.
+
 ### 2026-03-08 — Chunk 68: Desktop settings accordions looked like full-width rows but only exposed text-width click targets
 
 - Area selected:
