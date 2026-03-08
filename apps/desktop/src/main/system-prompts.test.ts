@@ -49,4 +49,24 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("waitForResult: false")
     expect(prompt).toContain("keep working")
   })
+
+  it("allows direct handling of terse coding follow-ups instead of forcing delegation", async () => {
+    const { agentProfileService } = await import("./agent-profile-service")
+    vi.mocked(agentProfileService.getByRole).mockReturnValue([
+      {
+        id: "augustus",
+        enabled: true,
+        displayName: "Augustus",
+        description: "Coding agent",
+      } as any,
+    ])
+
+    const { getAgentsPromptAddition } = await import("./system-prompts")
+
+    const prompt = getAgentsPromptAddition()
+
+    expect(prompt).toContain("terse follow-ups or current-workspace coding tasks")
+    expect(prompt).toContain("If delegation fails to start")
+    expect(prompt).not.toContain("ALWAYS delegate")
+  })
 })

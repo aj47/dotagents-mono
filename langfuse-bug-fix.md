@@ -9,6 +9,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
 | 2026-03-08 | conv_1772915850389_hzuikwa8l | session_1772915850391_hzuikwa8l | fix implemented (verification blocked) | User asked `can you check my Claude usage stats`; the run correctly told them manual Google login was required, but verification kept treating the request as unfinished, so the loop continued through more browser/login attempts and Langfuse still ended with `output: null`. Root repo issue found: verification had no terminal handoff path for deliverable responses that were explicitly waiting on user action. |
+| 2026-03-08 | conv_1772919043420_3iszm2xnb | session_1772919043422_6u1wcgxu6, session_1772928508394_om0h5iwsg | fix implemented (verification blocked) | User asked `return-shape probe`; the first run delegated immediately to the coding agent, the coding agent failed to start, and the fallback reply only asked for clarification. A later `contniue` trace in the same session actually performed the likely intended probe. Root repo issue found: delegation prompt rules were too mandatory, so terse in-repo coding follow-ups were pushed to delegation before the main agent tried to continue directly. |
 | 2026-03-08 | conv_1772432432747_7ibvlw0k0 | session_1772432432218_cdjv7gyla | fix implemented (verification blocked) | User clarified `I meant Claude Code by Anthropic.`; the run hit max iterations and Langfuse `output` ended as stale progress text (`Let me search for the correct URL and browse to it.`) plus a timeout note instead of a real blocker/partial-result summary. Root repo issue found: max-iteration finalization trusted the latest assistant text even when it was only an in-progress status update. |
 | 2026-03-08 | conv_1772942234347_xyec3dx8u | session_1772942234349_piwpgovtd | fix implemented | User asked `What should I do`; the trace contained the right guidance but `output` was raw pseudo-tool text starting with `[respond_to_user] { ... }` instead of the clean user-facing answer. Root repo issue found: final output helpers preserved pseudo-tool wrappers when the model wrote them as plain assistant text instead of making a native tool call. |
 | 2026-03-08 | conv_1772917235730_melwhp7ys | session_1772917234993_92gait83c | fix implemented | User explicitly complained that delegation should not block the main agent; trace ended with `output: null` after long-running `delegate_to_agent` spans. Root repo issue found: internal delegation ignored `waitForResult=false`, making non-blocking delegation impossible for internal agents. |
@@ -61,6 +62,35 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
     - apply that normalization in both `getPreferredDelegationOutput()` and `preferStoredUserResponse()` so delegated flows and top-level trace finalization both benefit
   - tests added/updated:
     - `apps/desktop/src/main/agent-run-utils.test.ts`
+
+### 2026-03-08 — Terse coding follow-ups were over-delegated before direct execution
+
+- Langfuse evidence reviewed:
+  - `conv_1772919043420_3iszm2xnb`
+  - failing trace: `session_1772919043422_6u1wcgxu6`
+    - user input: `return-shape probe`
+    - observations showed the main run immediately calling `delegate_to_agent` for `augustus`
+    - delegated agent startup failed twice with `Agent 'augustus' stopped unexpectedly during startup.`
+    - the same run then delegated to `internal`, whose answer only said `Likely intent: return-shape probe in the current workspace/repo. Please clarify ...` instead of doing the repo work
+  - recovery trace: `session_1772928508394_om0h5iwsg`
+    - later user input: `contniue`
+    - in the same session, the agent then proceeded with `return-shape probe in the current workspace/repo` and completed concrete repo work
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` appends `getAgentsPromptAddition()` in agent mode.
+  - before this change, that prompt section said `ALWAYS delegate to a matching agent BEFORE responding or asking for clarification` and `Only respond directly if NO agent matches the request`.
+  - for terse in-repo coding follow-ups, those rules strongly pushed the model to delegate to a coding agent even when the current agent already had the repo tools/context to continue directly.
+  - when the delegated coding agent failed to start, the run lost the original momentum and degraded into a clarification response instead of best-effort execution.
+- Concrete root cause:
+  - the delegation prompt treated agent matching as mandatory rather than advisory.
+  - that made single-run success fragile for short coding continuations: one startup failure on the delegated agent could derail the turn before the main agent attempted the obvious repo action itself.
+- Fix implemented:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - changed delegation guidance from mandatory `always delegate` wording to preference-based guidance
+    - explicitly allow direct handling for terse follow-ups and current-workspace coding tasks the main agent can complete itself
+    - explicitly tell the agent to continue itself or use the internal agent when delegation fails to start, unless the intent is genuinely unclear
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - added a regression test that checks the prompt no longer forces delegation for terse coding follow-ups
 
 ### 2026-03-08 — Internal delegation ignored `waitForResult=false`
 
@@ -192,6 +222,14 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - used Node's `--experimental-strip-types` loader to import `apps/desktop/src/main/agent-run-utils.ts` directly
   - verified the new helper path unwraps pseudo `[respond_to_user] { "text": ... }` content into plain final text
   - verified pseudo `respond_to_user` image payloads are rendered into markdown image links
+- Targeted test command attempted:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+- Result:
+  - blocked by missing local desktop test dependencies / `node_modules`
+  - exact blocker: `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
+- Dependency-free sanity check completed:
+  - confirmed `apps/desktop/src/main/system-prompts.ts` now allows direct handling for terse current-workspace coding follow-ups and instructs the main agent to continue when delegation startup fails
+  - confirmed `apps/desktop/src/main/system-prompts.test.ts` contains a regression test that fails if the old `ALWAYS delegate` rule returns
 
 ### 2026-03-08 — Verification loop should stop when a run is explicitly waiting on user action
 
@@ -234,6 +272,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
+- Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.
 - Recheck a fresh post-`respond_to_user` trace once dependencies are installed and the desktop app can be exercised locally, to confirm the UI/run completion path preserves the delivered response even if later extra tool work is interrupted.
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.
