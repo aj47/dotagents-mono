@@ -1003,3 +1003,38 @@
   - Re-run targeted desktop typecheck/Vitest once the dependency baseline is restored in this worktree.
 
 - Next recommended issue work item: either finish `#57` with true per-item conflict actions/item-level toggles, or pivot to a fresh issue like `#58`/`#25` if a similarly concrete trust or provenance gap has a tighter repro path.
+
+##### Issue #58 — Recent Sessions follow-up: mirror compacted/partial provenance badges in Sessions empty state
+
+- Selection rationale:
+  - The most concrete remaining `#58` inconsistency was in the Sessions page empty state: the `Recent Sessions` list reused persisted history items but still lacked the compacted/partial provenance badges already added to the Past Sessions dialog and session headers.
+  - This was a small desktop-only trust improvement with a direct local implementation path and no new main-process work.
+- Investigation:
+  - Re-read issue `#58` and the recent ledger entries to avoid repeating the already-landed history storage, header badge, and Past Sessions badge work.
+  - Inspected `apps/desktop/src/renderer/src/pages/sessions.tsx` and confirmed the empty-state `Recent Sessions` list rendered only title + timestamp for `useConversationHistoryQuery()` items, with no history-state badge.
+  - Re-inspected `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and confirmed it already had the exact compacted/partial badge mapping logic, but only as a local helper inside that component.
+  - Confirmed this is desktop-only UI parity work; mobile still has no equivalent Past Sessions / recent-history provenance surface to update.
+- Important assumptions:
+  - Assumption: reusing the same compacted/partial badge mapping in the Sessions-page recent history list is a valid shippable `#58` slice even without adding new history controls.
+  - Why acceptable: it directly advances the issue’s requirement to visually differentiate summarized/partial history in another real navigation surface users rely on before opening a conversation.
+  - Assumption: extracting the existing renderer badge mapping into a tiny shared helper is preferable to duplicating the same compaction wording across multiple components.
+  - Why acceptable: this keeps provenance copy/class semantics aligned between Past Sessions and the Sessions-page recent-history list while staying entirely within the renderer boundary.
+- Changes implemented:
+  - Added `apps/desktop/src/renderer/src/lib/conversation-history-badges.ts` with a shared `getConversationHistoryBadge(...)` helper that maps stored compaction metadata to the existing `History compacted` / `History partial` label, tooltip, and styling contract.
+  - Updated `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` to reuse the new helper instead of keeping a local copy of the badge logic.
+  - Updated `apps/desktop/src/renderer/src/pages/sessions.tsx` so the empty-state `Recent Sessions` rows now show the same provenance badge next to the session title when compacted or legacy-partial history metadata is present.
+  - Updated `apps/desktop/src/renderer/src/components/past-sessions-dialog.layout.test.ts` to assert the shared-helper wiring.
+  - Added `apps/desktop/src/renderer/src/pages/sessions.recent-history-badges.test.js`, a dependency-free regression test covering helper reuse and badge rendering contracts across both desktop history surfaces.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/pages/sessions.recent-history-badges.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Known blocker unchanged: broader desktop typecheck/Vitest remains unavailable in this worktree until workspace dependencies / `node_modules` are restored.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Consider whether the active-agents sidebar’s past-session rows should also surface compacted/partial provenance for consistency with Sessions and Past Sessions.
+  - If the desktop dependency baseline is restored, re-run targeted renderer Vitest/typecheck to replace the current no-install source verification.
+  - Consider whether compacted-history badges should expose a richer tooltip/popover if users need more detail than the current concise titles.
+
+- Next recommended issue work item: either continue `#58` with sidebar history provenance parity, or pivot back to `#25` / another fresh issue if a tighter locally verifiable trust or UX slice is available.

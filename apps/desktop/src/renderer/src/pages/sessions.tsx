@@ -29,7 +29,9 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
+import { Badge } from "@renderer/components/ui/badge"
 import { cn } from "@renderer/lib/utils"
+import { getConversationHistoryBadge } from "@renderer/lib/conversation-history-badges"
 import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
 import { toast } from "sonner"
 
@@ -465,19 +467,34 @@ function EmptyState({
             )}
           </div>
           <div className="space-y-0.5">
-            {recentSessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => onPastSessionClick(session.id)}
-                className="hover:bg-accent/50 group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors"
-              >
-                <CheckCircle2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{session.title}</span>
-                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
-                  {formatTimestamp(session.updatedAt)}
-                </span>
-              </button>
-            ))}
+            {recentSessions.map((session) => {
+              const historyBadge = getConversationHistoryBadge(session)
+
+              return (
+                <button
+                  key={session.id}
+                  onClick={() => onPastSessionClick(session.id)}
+                  className="hover:bg-accent/50 group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors"
+                >
+                  <CheckCircle2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                    <span className="min-w-0 flex-1 truncate">{session.title}</span>
+                    {historyBadge && (
+                      <Badge
+                        variant="outline"
+                        className={cn("shrink-0 text-[10px]", historyBadge.className)}
+                        title={historyBadge.title}
+                      >
+                        {historyBadge.label}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                    {formatTimestamp(session.updatedAt)}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

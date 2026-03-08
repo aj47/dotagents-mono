@@ -4,6 +4,7 @@ import dayjs from "dayjs"
 import { AlertTriangle, CheckCircle2, Clock, FolderOpen, Loader2, Search, Trash2 } from "lucide-react"
 
 import { cn } from "@renderer/lib/utils"
+import { getConversationHistoryBadge } from "@renderer/lib/conversation-history-badges"
 import { useConversationHistoryQuery, useDeleteConversationMutation, useDeleteAllConversationsMutation } from "@renderer/lib/queries"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { Badge } from "@renderer/components/ui/badge"
@@ -17,7 +18,6 @@ import {
   DialogTitle,
 } from "@renderer/components/ui/dialog"
 import { toast } from "sonner"
-import type { ConversationHistoryItem } from "@shared/types"
 
 const INITIAL_PAST_SESSIONS = 20
 
@@ -37,30 +37,6 @@ function formatTimestamp(timestamp: number): string {
 
   if (diffHours < 168) return date.format("ddd h:mm A")
   return date.format("MMM D")
-}
-
-function getPastSessionHistoryBadge(session: ConversationHistoryItem) {
-  if (!session.compaction) {
-    return null
-  }
-
-  if (session.compaction.partialReason === "legacy_summary_without_raw_messages") {
-    return {
-      label: "History partial",
-      title: "Earlier raw history is unavailable for this legacy summarized session.",
-      className: "border-amber-500/40 text-amber-700 dark:text-amber-300",
-    }
-  }
-
-  const storedCount = session.compaction.storedRawMessageCount ?? session.compaction.representedMessageCount
-
-  return {
-    label: "History compacted",
-    title: storedCount
-      ? `Earlier history in this session has been summarized for the active context, with ${storedCount} raw messages preserved on disk.`
-      : "Earlier history in this session has been summarized for the active context, with raw history preserved on disk.",
-    className: "border-primary/40 text-primary",
-  }
 }
 
 export function PastSessionsDialog({
@@ -248,7 +224,7 @@ export function PastSessionsDialog({
             ) : (
               <>
                 {visiblePastSessions.map((session) => {
-                  const historyBadge = getPastSessionHistoryBadge(session)
+                  const historyBadge = getConversationHistoryBadge(session)
 
                   return <div
                     key={session.id}

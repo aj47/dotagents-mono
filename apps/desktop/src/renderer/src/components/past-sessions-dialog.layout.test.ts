@@ -5,6 +5,10 @@ const pastSessionsDialogSource = readFileSync(
   new URL("./past-sessions-dialog.tsx", import.meta.url),
   "utf8",
 )
+const historyBadgeSource = readFileSync(
+  new URL("../lib/conversation-history-badges.ts", import.meta.url),
+  "utf8",
+)
 
 describe("past sessions dialog layout", () => {
   it("keeps the toolbar and session rows usable under narrow widths", () => {
@@ -55,9 +59,19 @@ describe("past sessions dialog layout", () => {
   })
 
   it("shows compacted-history provenance badges in session rows", () => {
-    expect(pastSessionsDialogSource).toContain("function getPastSessionHistoryBadge(session: ConversationHistoryItem)")
-    expect(pastSessionsDialogSource).toContain("History compacted")
-    expect(pastSessionsDialogSource).toContain("History partial")
-    expect(pastSessionsDialogSource).toContain("Earlier raw history is unavailable for this legacy summarized session.")
+    expect(pastSessionsDialogSource).toContain(
+      'import { getConversationHistoryBadge } from "@renderer/lib/conversation-history-badges"',
+    )
+    expect(pastSessionsDialogSource).toContain(
+      "const historyBadge = getConversationHistoryBadge(session)",
+    )
+    expect(historyBadgeSource).toContain(
+      "export function getConversationHistoryBadge(",
+    )
+    expect(historyBadgeSource).toContain("History compacted")
+    expect(historyBadgeSource).toContain("History partial")
+    expect(historyBadgeSource).toContain(
+      "Earlier raw history is unavailable for this legacy summarized session.",
+    )
   })
 })
