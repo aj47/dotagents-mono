@@ -30,6 +30,10 @@
 - [x] 2026-03-08: Confirmed mobile handles `openaiTtsSpeed` with a controlled slider in `apps/mobile/src/screens/SettingsScreen.tsx`, so this edit is desktop-only while aligning with existing mobile commit-on-complete behavior.
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: `git diff --check` completed cleanly after the OpenAI TTS speed draft-save fix and regression test additions.
+- [x] 2026-03-08: Reviewed desktop capabilities routing in `apps/desktop/src/renderer/src/router.tsx`, `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx`, and `apps/desktop/src/renderer/src/pages/settings-agents.tsx` for stale legacy redirects and tab-selection mismatches.
+- [x] 2026-03-08: Confirmed `apps/mobile/src/screens/SettingsScreen.tsx` does not have an equivalent route-driven Skills/MCP-Servers tab surface, so this deep-link fix is desktop-only.
+- [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
+- [x] 2026-03-08: `git diff --check` completed cleanly after the capabilities tab-routing fix and regression test additions.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -37,6 +41,7 @@
 - [ ] Other desktop settings text inputs that may still save on every keystroke.
 - [ ] Whether adjacent numeric/text settings in `settings-general.tsx` still need draft-first handling or blur-only persistence now that `mcpMaxIterations` is covered.
 - [ ] Whether any remaining provider editors outside the now-covered Supertonic / OpenAI TTS numeric fields still need draft-first handling once the environment blocker is cleared.
+- [ ] Whether any other desktop capabilities entry points should deep-link to a specific tab now that `settings/capabilities` supports `?tab=` routing.
 
 ### Reproduced
 - [x] **Desktop Langfuse settings save-on-every-keystroke bug (directly confirmed in source):**
@@ -68,6 +73,10 @@
   - That meant valid intermediate prefixes like `3` while typing `3.75` triggered config mutation + invalidation round-trips while the user was still editing, while temporary invalid states like `0` or an empty field had no blur-time reset path.
   - Because the input was uncontrolled, later saved config updates to `openaiTtsSpeed` would also not reliably resync into the visible field after mount, leaving stale values on screen.
   - Mobile already treats the same setting as a controlled slider committed on `onSlidingComplete`, so this was another desktop-only broken editing flow rather than an intentional immediate-save UX.
+- [x] **Desktop capabilities deep-link/tab mismatch bug (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` always initialized its active tab to `"skills"`, ignoring route/search context.
+  - `apps/desktop/src/renderer/src/pages/settings-agents.tsx` wired both `Edit skill` and `Edit server` buttons to bare `/settings/capabilities`, so the server-specific flow always landed on the wrong `Skills` tab instead of `MCP Servers`.
+  - `apps/desktop/src/renderer/src/router.tsx` also redirected the legacy `/settings/mcp-tools` route to bare `/settings/capabilities`, so stale MCP-tools links lost their intended tab context too.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-general.tsx` to use local Langfuse drafts with debounced saves and blur flushes for `langfusePublicKey`, `langfuseSecretKey`, and `langfuseBaseUrl`.
@@ -114,6 +123,12 @@
   - debounced valid OpenAI speed saving with latest-config merge behavior
   - resetting invalid blur states back to the saved speed
   - resyncing the visible speed draft from later saved config updates
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-capabilities.tsx` so the page derives its active tab from `?tab=` search params and writes tab changes back into the URL.
+- [x] Updated `apps/desktop/src/renderer/src/pages/settings-agents.tsx` so `Edit skill` explicitly opens `?tab=skills` and `Edit server` explicitly opens `?tab=mcp-servers`.
+- [x] Updated `apps/desktop/src/renderer/src/router.tsx` and `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.ts` so legacy `/settings/mcp-tools` and `/settings/skills` redirects preserve the intended target tab while still appending any extra query/hash context.
+- [x] Added focused regression coverage for the new tab-routing behavior in:
+  - `apps/desktop/src/renderer/src/lib/legacy-settings-redirect.test.ts`
+  - `apps/desktop/src/renderer/src/pages/settings-capabilities.tab-routing.test.ts`
 
 ### Verified
 - [x] Manual source verification: the desktop Langfuse inputs no longer call `saveConfig(...)` directly from `onChange`; they now update local draft state and use debounce/blur persistence.
@@ -129,6 +144,9 @@
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the Supertonic numeric draft / regression test updates.
 - [x] Manual source verification: the desktop OpenAI `TTS Speed` input no longer uses uncontrolled `defaultValue` or direct `saveConfig(...)` from `onChange`; it now keeps a controlled local draft, debounces valid saves, resets invalid blur states, and resyncs from saved config updates.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the OpenAI TTS speed draft / regression test updates.
+- [x] Manual source verification: the desktop capabilities page now reads its active tab from `searchParams.get("tab")` and updates the URL when the user switches between `Skills` and `MCP Servers`.
+- [x] Manual source verification: desktop `Edit server` now targets `/settings/capabilities?tab=mcp-servers`, and the legacy `/settings/mcp-tools` redirect now targets `/settings/capabilities?tab=mcp-servers` instead of the bare capabilities route.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the capabilities tab-routing updates.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -137,6 +155,7 @@
 - [x] Targeted automated verification for this `Max Iterations` fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse-draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this Supertonic numeric-editing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this OpenAI TTS speed fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this capabilities tab-routing fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether any other desktop settings inputs still need the same local-draft treatment once a fully runnable environment is available.
@@ -145,6 +164,7 @@
 - [ ] Whether the Groq STT prompt should eventually move to an explicit save/cancel affordance if the field grows beyond a short guidance prompt in real usage.
 - [ ] Whether any other desktop provider editors still need temporary local-draft handling once the current numeric fixes are covered and the environment blocker is cleared.
 - [ ] Whether the desktop OpenAI `TTS Speed` control should eventually switch all the way to a slider like mobile, rather than keeping a keyboard-editable number field with draft-state protection.
+- [ ] Whether any additional settings pages should promote explicit query-param deep links for tabbed sections now that `settings/capabilities` supports them.
 
 ### Diagnosis / Rationale
 - This is a clear user-facing editing bug: saving on every keystroke makes settings inputs more brittle, creates unnecessary config churn, and can invalidate/refetch state while the user is mid-edit.
@@ -162,6 +182,8 @@
 - Keeping the fix local to `SupertonicProviderSection` is the smallest safe change because the problem is isolated to those two numeric inputs and the parent providers page already owns the latest-config merge behavior for persisted saves.
 - The OpenAI `TTS Speed` field combines two user-facing issues at once: direct-save churn on valid intermediate edits and stale UI risk from using `defaultValue` instead of a controlled input when saved config changes later.
 - Keeping the desktop control as a number input but moving it to the existing draft-save pattern is the smallest safe fix because it preserves the current UI while aligning the save behavior more closely with the mobile slider's commit-on-complete flow.
+- The capabilities issue is a navigation correctness bug rather than a styling preference: a button labeled `Edit server` should not dump users onto the `Skills` tab, and legacy `/settings/mcp-tools` links should continue to open MCP-server settings after the tabbed-capabilities refactor.
+- Using a query-param tab contract is the smallest safe fix because it preserves the existing combined capabilities page while making server- and skill-specific entry points land on the correct visible content.
 
 ### Assumptions
 - Assumption: debouncing these three desktop Langfuse fields is acceptable because the repo already treats similar settings inputs as draft-first on both desktop and mobile.
@@ -172,6 +194,7 @@
 - Assumption: keeping invalid `Max Iterations` input local until blur, then snapping back to the saved config when still invalid, is acceptable because the field already has an enforced numeric range in the UI and there is no meaningful persisted empty/zero state for this setting.
 - Assumption: handling Supertonic `Speed` / `Quality Steps` with temporary local drafts and blur reset is acceptable because mobile does not expose an equivalent editor, the final persisted values/ranges are unchanged, and the fix only makes already-allowed values possible to enter reliably from the desktop keyboard.
 - Assumption: keeping the desktop OpenAI `TTS Speed` UI as a number field (instead of redesigning it into a slider this pass) is acceptable because the mobile slider already establishes the intended range/commit timing, and this draft-backed fix removes the broken persistence/state-sync behavior without a larger UI change.
+- Assumption: a `?tab=` query-param contract is acceptable for desktop capabilities because the page is already a tabbed combined surface, the default bare route can remain `Skills`, and no equivalent mobile route needs to stay in sync.
 
 ### Next Leads
 - Once dependencies are installed, rerun the targeted test file and a focused desktop renderer verification pass for the Langfuse settings section.
@@ -187,3 +210,5 @@
 - After that, inspect whether any other provider editors still combine uncontrolled/defaultValue rendering with direct-save behavior.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx` to execute the new OpenAI TTS speed coverage alongside the existing provider credential / Supertonic draft tests.
 - After that, inspect whether any remaining desktop settings editors still use uncontrolled `defaultValue` plus direct-save behavior for user-editable config fields.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/lib/legacy-settings-redirect.test.ts src/renderer/src/pages/settings-capabilities.tab-routing.test.ts` to execute the new capabilities tab-routing coverage.
+- After that, check whether any other desktop buttons or toasts still deep-link to bare `/settings/capabilities` when they really intend a specific tab.

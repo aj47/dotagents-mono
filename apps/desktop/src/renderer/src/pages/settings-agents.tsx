@@ -760,7 +760,7 @@ export function SettingsAgents() {
                           <span className="text-sm truncate block">{skill.name}</span>
                           {skill.description && <span className="text-xs text-muted-foreground truncate block">{skill.description}</span>}
                         </div>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit skill" onClick={() => navigate("/settings/capabilities")}>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit skill" onClick={() => navigate("/settings/capabilities?tab=skills")}>
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -810,7 +810,7 @@ export function SettingsAgents() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit server" onClick={() => navigate("/settings/capabilities")}>
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Edit server" onClick={() => navigate("/settings/capabilities?tab=mcp-servers")}>
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </Button>
                               <button type="button" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded" onClick={() => toggleExpandServer(name)}>
