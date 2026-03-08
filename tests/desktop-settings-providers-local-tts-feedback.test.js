@@ -25,6 +25,12 @@ const tipcSource = fs.readFileSync(
 
 test('desktop local TTS settings explain runtime readiness and disable unusable voice tests', () => {
   assert.match(providersSource, /type LocalTtsModelStatus = \{/);
+  assert.match(providersSource, /function LocalModelStatusLoadError\(/);
+  assert.match(providersSource, /Settings cannot confirm whether the local model is already downloaded or ready on this device until status loads successfully\./);
+  assert.ok((providersSource.match(/const hasStatusLoadError = modelStatusQuery\.isError && !status/g) || []).length >= 2);
+  assert.match(providersSource, /retryLabel="Retry status"/);
+  assert.match(providersSource, /<LocalModelStatusLoadError[\s\S]*providerName="Kitten"/);
+  assert.match(providersSource, /<LocalModelStatusLoadError[\s\S]*providerName="Supertonic"/);
   assert.match(providersSource, /<LocalTtsRuntimeWarning providerName="Kitten" status=\{status\} \/>/);
   assert.match(providersSource, /<LocalTtsRuntimeWarning providerName="Supertonic" status=\{status\} \/>/);
   assert.match(providersSource, /The model files are on this device, but the \$\{providerName\} speech runtime could not load, so local speech output would still fail until that is fixed\./);

@@ -219,6 +219,25 @@ function LocalTtsActionError({
   )
 }
 
+function LocalModelStatusLoadError({
+  providerName,
+  error,
+  onRetry,
+}: {
+  providerName: string
+  error: unknown
+  onRetry: () => void
+}) {
+  return (
+    <LocalTtsActionError
+      message={getActionErrorMessage(error, `${providerName} model status could not be loaded`)}
+      recoveryHint="Settings cannot confirm whether the local model is already downloaded or ready on this device until status loads successfully."
+      onRetry={onRetry}
+      retryLabel="Retry status"
+    />
+  )
+}
+
 async function playBase64WavAudio(audioBase64: string) {
   const audioData = Uint8Array.from(atob(audioBase64), (char) => char.charCodeAt(0))
   const blob = new Blob([audioData], { type: "audio/wav" })
@@ -450,6 +469,7 @@ function ParakeetModelDownload() {
   }
 
   const status = modelStatusQuery.data as ParakeetModelStatus | undefined
+  const hasStatusLoadError = modelStatusQuery.isError && !status
   const runtimeUnavailable = status?.runtimeAvailable === false
   const runtimeError = status?.runtimeError?.trim()
   const downloadFailureMessage = status?.error
@@ -478,6 +498,18 @@ function ParakeetModelDownload() {
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
+  }
+
+  if (hasStatusLoadError) {
+    return (
+      <LocalModelStatusLoadError
+        providerName="Parakeet"
+        error={modelStatusQuery.error}
+        onRetry={() => {
+          void modelStatusQuery.refetch()
+        }}
+      />
+    )
   }
 
   if (status?.downloaded) {
@@ -708,6 +740,7 @@ function KittenModelDownload() {
   }
 
   const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
+  const hasStatusLoadError = modelStatusQuery.isError && !status
   const runtimeUnavailable = status?.runtimeAvailable === false
   const runtimeWarning = <LocalTtsRuntimeWarning providerName="Kitten" status={status} />
   const downloadFailureMessage = status?.error
@@ -716,6 +749,18 @@ function KittenModelDownload() {
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
+  }
+
+  if (hasStatusLoadError) {
+    return (
+      <LocalModelStatusLoadError
+        providerName="Kitten"
+        error={modelStatusQuery.error}
+        onRetry={() => {
+          void modelStatusQuery.refetch()
+        }}
+      />
+    )
   }
 
   if (status?.downloaded) {
@@ -992,6 +1037,7 @@ function SupertonicModelDownload() {
   }
 
   const status = modelStatusQuery.data as LocalTtsModelStatus | undefined
+  const hasStatusLoadError = modelStatusQuery.isError && !status
   const runtimeUnavailable = status?.runtimeAvailable === false
   const runtimeWarning = <LocalTtsRuntimeWarning providerName="Supertonic" status={status} />
   const downloadFailureMessage = status?.error
@@ -1000,6 +1046,18 @@ function SupertonicModelDownload() {
 
   if (modelStatusQuery.isLoading) {
     return <span className="text-xs text-muted-foreground">Checking...</span>
+  }
+
+  if (hasStatusLoadError) {
+    return (
+      <LocalModelStatusLoadError
+        providerName="Supertonic"
+        error={modelStatusQuery.error}
+        onRetry={() => {
+          void modelStatusQuery.refetch()
+        }}
+      />
+    )
   }
 
   if (status?.downloaded) {

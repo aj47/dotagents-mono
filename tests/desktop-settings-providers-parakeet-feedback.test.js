@@ -20,6 +20,12 @@ const tipcSource = fs.readFileSync(
 
 test('desktop Parakeet settings explain runtime readiness, download failures, and preview limitations inline', () => {
   assert.match(providersSource, /runtimeAvailable\?: boolean/);
+  assert.match(providersSource, /function LocalModelStatusLoadError\(/);
+  assert.match(providersSource, /\$\{providerName\} model status could not be loaded/);
+  assert.match(providersSource, /Settings cannot confirm whether the local model is already downloaded or ready on this device until status loads successfully\./);
+  assert.match(providersSource, /const hasStatusLoadError = modelStatusQuery\.isError && !status/);
+  assert.match(providersSource, /retryLabel="Retry status"/);
+  assert.match(providersSource, /<LocalModelStatusLoadError[\s\S]*providerName="Parakeet"/);
   assert.match(providersSource, /Local runtime unavailable/);
   assert.match(providersSource, /Downloading the model alone will not make Parakeet usable until the local transcription runtime can load on this device\./);
   assert.match(providersSource, /const \[downloadError, setDownloadError\] = useState<string \| null>\(null\)/);

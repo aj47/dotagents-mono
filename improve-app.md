@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop local-model status query failure feedback before any model data loads in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with local-model status/error branches reviewed in that file, main-process status return paths checked in `apps/desktop/src/main/parakeet-stt.ts`, `apps/desktop/src/main/kitten-tts.ts`, and `apps/desktop/src/main/supertonic-tts.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop Parakeet model download failure feedback in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with adjacent local-model error/retry patterns reviewed in that page, main-process download/status behavior checked in `apps/desktop/src/main/parakeet-stt.ts` / `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop local TTS download/test failure feedback in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with Kitten/Supertonic action handlers inspected in that page, main-process local-model behavior reviewed in `apps/desktop/src/main/kitten-tts.ts`, `apps/desktop/src/main/supertonic-tts.ts`, and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/ui/TTSSettings.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
 - 2026-03-08: Desktop local TTS provider settings runtime readiness / model usability clarity in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with Kitten/Supertonic runtime status wiring reviewed in `apps/desktop/src/main/kitten-tts.ts`, `apps/desktop/src/main/supertonic-tts.ts`, and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempted but blocked by the missing Electron/CDP target.
@@ -49,6 +50,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop Parakeet/Kitten/Supertonic model-status rows now surface an inline `Retry status` failure state when the first local-model status IPC query fails before any data loads, so Settings no longer falls back to generic checking/download states that can mislead users about whether the model is actually missing versus temporarily unreadable; tradeoff: the normal download CTA stays hidden until status loads successfully, which is safer than presenting setup controls against an unknown local state.
 - 2026-03-08: Desktop Parakeet model downloads now keep failures inline with the same normalized error + recovery-hint pattern used by the other local model sections, including a local `Retry download` affordance, so on-device STT setup no longer falls back to raw error text or console-only recovery clues when a download request fails; tradeoff: this intentionally reuses the existing shared local-model error component instead of introducing Parakeet-specific UI copy, which keeps the fix small and behavior consistent.
 - 2026-03-08: Desktop Kitten and Supertonic settings now keep local model download failures inline with explicit retry guidance, surface `Test Voice` failures in-context with `Retry test`, show a pending `Testing...` state to block duplicate clicks, and share safer WAV playback cleanup so local TTS setup no longer depends on console-only errors when a download or sample playback fails.
 - 2026-03-08: Desktop Kitten and Supertonic provider settings now distinguish downloaded files from actual local runtime readiness, warn inline when the local speech runtime cannot load before or after download, disable `Test Voice` while runtime loading is blocked, and pass runtime availability/error details through main-process status IPC so local TTS is less likely to look usable when it would still fail; tradeoff: opening the settings section now proactively checks the cached local runtime once, but that mirrors the existing Parakeet readiness pattern and avoids a more misleading “Model Ready” state.
@@ -89,6 +91,9 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-settings-providers-parakeet-feedback.test.js tests/desktop-settings-providers-local-tts-feedback.test.js`
+- 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-providers-parakeet-feedback.test.js` after expanding Parakeet download-failure feedback coverage
 - 2026-03-08: `git diff --check` after the desktop Parakeet download-failure feedback pass
 - 2026-03-08: refreshed `node --test tests/desktop-settings-providers-local-tts-feedback.test.js` after expanding inline download/test failure coverage
@@ -178,6 +183,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this local-model status query failure-feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this Parakeet download-failure feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this local TTS download/test failure-feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this local TTS runtime-readiness/settings pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
@@ -217,10 +223,10 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop local-model status query failure feedback before any model data loads (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`)
+- Desktop session lifecycle and error-state cleanup consistency (`apps/desktop/src/main/state.ts`, `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx`, `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop local-model status query failure feedback next so Settings does not get stuck on generic loading/empty states when Parakeet/Kitten/Supertonic status IPC fails before returning model data
+- Inspect desktop session lifecycle and error-state cleanup next, especially queue/user-response cleanup consistency, so failed or canceled runs do not leave stale progress UI or orphaned follow-up affordances
 - Once a runnable Electron target is available, live-check the desktop Kitten and Supertonic provider sections across download failure, downloaded, runtime-unavailable, runtime-ready, and voice-test failure states to confirm the new retry/error hierarchy reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop Parakeet provider section across not-downloaded, downloaded, runtime-unavailable, and preview-enabled states to confirm the new warning hierarchy reads clearly in the actual UI
 - Once a runnable Electron target is available, live-check the desktop transcription preview switch across off, Groq, and Parakeet states to confirm the new cost/availability guidance reads clearly in the actual UI
@@ -242,6 +248,41 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop local-model status query failure feedback before first load
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop provider settings local-model status rows in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - focused source-level regression coverage updated in `tests/desktop-settings-providers-parakeet-feedback.test.js` and `tests/desktop-settings-providers-local-tts-feedback.test.js`
+  - main-process status return paths reviewed in `apps/desktop/src/main/parakeet-stt.ts`, `apps/desktop/src/main/kitten-tts.ts`, and `apps/desktop/src/main/supertonic-tts.ts`
+  - mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` / `apps/mobile/src/lib/settingsApi.ts`; confirmed mobile does not expose an equivalent live local-model status or download surface
+- Why it was chosen:
+  - the ledger explicitly called out local-model status query failure feedback as the next fresh, high-value gap in desktop provider settings
+  - investigation found a concrete reliability issue: if the first Parakeet/Kitten/Supertonic status IPC query failed before any data returned, the UI fell through to generic checking/download-looking states that could falsely imply the model was simply missing rather than temporarily unreadable
+  - the fix had clear user value and a local implementation path inside one renderer page plus focused regression coverage
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` to trace initial `useQuery` loading/error branches for the Parakeet, Kitten, and Supertonic model-status components
+  - `apps/desktop/src/main/parakeet-stt.ts`, `apps/desktop/src/main/kitten-tts.ts`, and `apps/desktop/src/main/supertonic-tts.ts` to confirm runtime-unavailable states already return structured status data and that true query failures are a distinct load problem worth surfacing separately
+  - `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/src/lib/settingsApi.ts` to confirm there is no equivalent mobile local-model status/download surface to update in parallel
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - added a shared inline `LocalModelStatusLoadError` state so Parakeet, Kitten, and Supertonic now show explicit status-load failure feedback with `Retry status` when the first status query fails before any cached data exists
+  - the new copy explains that Settings cannot yet confirm whether the local model is already downloaded or ready, which avoids the previous misleading fallback to a normal-looking download/setup state
+  - retry now uses the existing query refetch path, so users can recover in place instead of navigating away or guessing whether download/setup actions are safe after an IPC failure
+- Assumptions / tradeoffs / rationale:
+  - only show the blocking error state when the query has no status data; if stale cached status exists, keeping the last known state visible is more helpful than replacing it with a hard error banner
+  - chose to hide the normal download CTA until status loads successfully because presenting setup controls against an unknown local state is more misleading than temporarily withholding them after an IPC failure
+  - reused the existing local-model action-error presentation so status failures, download failures, and voice-test failures share a consistent recovery pattern instead of adding another bespoke UI treatment
+  - accepted source-level verification for this pass because live Electron inspection remains unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-settings-providers-parakeet-feedback.test.js tests/desktop-settings-providers-local-tts-feedback.test.js`
+  - custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-providers.tsx`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check each desktop local-model status row under first-load IPC failure and retry recovery to confirm the inline copy and CTA hierarchy read clearly in the actual UI
+  - inspect desktop session lifecycle and error-state cleanup next, especially queue/user-response cleanup consistency, so failed or canceled runs do not leave stale progress UI behind
 
 ### 2026-03-08 — Desktop local TTS download/test failure feedback
 - Date:
