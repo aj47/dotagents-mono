@@ -30,6 +30,7 @@ type ConflictStrategyOverrideState = Partial<Record<ConflictStrategyOverrideKey,
 
 type BundleSlotState = {
   activeSlotId: string | null
+  slotsFolder?: string
   slots: Array<{ id: string; slotDir: string; isActive: boolean }>
 }
 
@@ -42,6 +43,8 @@ const COMPONENT_LABELS: Record<BundleComponentKey, string> = {
 }
 
 const MCP_SERVERS_SETTINGS_ROUTE = "/settings/capabilities?tab=mcp-servers"
+const BUNDLE_SLOT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+const DEFAULT_BUNDLE_SLOTS_FOLDER = "~/.agents/bundle-slots"
 
 const DEFAULT_COMPONENTS: BundleComponentsState = {
   agentProfiles: true,
@@ -221,6 +224,29 @@ function getSuggestedNewSlotId(
   }
 
   return `${baseId}-next`.slice(0, 64)
+}
+
+function getBundleSlotIdError(
+  value: string,
+  existingSlots: Array<{ id: string }>,
+): string | null {
+  if (!value) {
+    return "Enter a bundle slot id."
+  }
+
+  if (!BUNDLE_SLOT_ID_PATTERN.test(value)) {
+    return "Use 1-64 letters, numbers, dots, underscores, or hyphens."
+  }
+
+  if (existingSlots.some((slot) => slot.id === value)) {
+    return `Bundle slot "${value}" already exists.`
+  }
+
+  return null
+}
+
+function buildBundleSlotPreviewPath(slotsFolder: string | undefined, slotId: string | undefined): string {
+  return `${slotsFolder ?? DEFAULT_BUNDLE_SLOTS_FOLDER}/${slotId || "<new-slot-id>"}`
 }
 
 function getSelectedConflictCount(
@@ -623,6 +649,8 @@ export function BundleImportDialog({
   const [preview, setPreview] = useState<BundlePreview | null>(null)
   const [bundleSlotState, setBundleSlotState] = useState<BundleSlotState | null>(null)
   const [importTargetMode, setImportTargetMode] = useState<BundleImportTargetMode>("default")
+  const [newSlotIdInput, setNewSlotIdInput] = useState("")
+  const [hasEditedNewSlotId, setHasEditedNewSlotId] = useState(false)
   const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
   const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
   const [selectedItems, setSelectedItems] = useState<BundleItemSelectionState>(() => createDefaultItemSelections())
@@ -646,6 +674,8 @@ export function BundleImportDialog({
       setPreview(null)
       setBundleSlotState(null)
       setImportTargetMode("default")
+      setNewSlotIdInput("")
+      setHasEditedNewSlotId(false)
       setConflictStrategy("skip")
       setComponents(resolveComponents(initialComponents))
       setSelectedItems(createDefaultItemSelections())
@@ -753,6 +783,7 @@ export function BundleImportDialog({
   const handleImportTargetModeChange = async (value: string) => {
     const nextTargetMode = value as BundleImportTargetMode
     const previousTargetMode = importTargetMode
+    const resolvedNewSlotId = newSlotIdInput.trim() || suggestedNewSlotId
     setImportTargetMode(nextTargetMode)
 
     if (!preview?.filePath) return
@@ -763,7 +794,7 @@ export function BundleImportDialog({
       await loadPreviewForFile(preview.filePath, requestId, {
         resetSelections: false,
         targetMode: nextTargetMode,
-        newSlotId: nextTargetMode === "new-slot" ? suggestedNewSlotId : undefined,
+        newSlotId: nextTargetMode === "new-slot" ? resolvedNewSlotId : undefined,
       })
     } catch (error) {
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
@@ -779,12 +810,18 @@ export function BundleImportDialog({
 
   const handleImport = async () => {
     if (!preview?.filePath) return
+    if (importTargetMode === "new-slot" && newSlotIdError) {
+      toast.error(newSlotIdError)
+      return
+    }
+
+    const resolvedNewSlotId = currentNewSlotId || suggestedNewSlotId
     setImporting(true)
     try {
       const result = await tipcClient.importBundle({
         filePath: preview.filePath,
         ...(importTargetMode === "default" ? {} : { targetMode: importTargetMode }),
-        ...(importTargetMode === "new-slot" ? { newSlotId: suggestedNewSlotId } : {}),
+        ...(importTargetMode === "new-slot" ? { newSlotId: resolvedNewSlotId } : {}),
         conflictStrategy,
         components: normalizedComponents,
         selectedItems,
@@ -843,6 +880,8 @@ export function BundleImportDialog({
     setPreview(null)
     setBundleSlotState(null)
     setImportTargetMode("default")
+    setNewSlotIdInput("")
+    setHasEditedNewSlotId(false)
     setConflictStrategy("skip")
     setComponents(resolveComponents(initialComponents))
     setSelectedItems(createDefaultItemSelections())
@@ -857,6 +896,14 @@ export function BundleImportDialog({
     preview?.bundle?.manifest?.name,
     bundleSlotState?.slots ?? [],
   )
+  const currentNewSlotId = newSlotIdInput.trim()
+  const displayNewSlotId = currentNewSlotId || suggestedNewSlotId
+  const newSlotIdError = importTargetMode === "new-slot"
+    ? getBundleSlotIdError(currentNewSlotId, bundleSlotState?.slots ?? [])
+    : null
+  const importTargetPath = importTargetMode === "new-slot"
+    ? buildBundleSlotPreviewPath(bundleSlotState?.slotsFolder, displayNewSlotId)
+    : importTarget?.agentsDir
   const activeBundleSlot = bundleSlotState?.activeSlotId
     ? (bundleSlotState.slots.find((slot) => slot.id === bundleSlotState.activeSlotId) ?? null)
     : null
@@ -882,6 +929,12 @@ export function BundleImportDialog({
     normalizedComponents,
     selectedItems,
   )
+
+  useEffect(() => {
+    if (!showImportTargetSelector || hasEditedNewSlotId) return
+    if (!suggestedNewSlotId || newSlotIdInput === suggestedNewSlotId) return
+    setNewSlotIdInput(suggestedNewSlotId)
+  }, [hasEditedNewSlotId, newSlotIdInput, showImportTargetSelector, suggestedNewSlotId])
 
   const handleOpenBackupsFolderClick = async () => {
     setIsOpeningBackupFolder(true)
@@ -980,7 +1033,7 @@ export function BundleImportDialog({
     })
   }
 
-  const importDisabled = !preview?.filePath || importing || loading || selectedPlanItemCount === 0
+  const importDisabled = !preview?.filePath || importing || loading || selectedPlanItemCount === 0 || Boolean(newSlotIdError)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -1051,13 +1104,25 @@ export function BundleImportDialog({
                           {activeBundleSlot && (
                             <SelectItem value="active-slot">Active bundle slot ({activeBundleSlot.id})</SelectItem>
                           )}
-                          <SelectItem value="new-slot">New bundle slot ({suggestedNewSlotId})</SelectItem>
+                          <SelectItem value="new-slot">New bundle slot ({displayNewSlotId})</SelectItem>
                         </SelectContent>
                       </Select>
                       {importTargetMode === "new-slot" && (
                         <div className="space-y-1">
                           <Label>New slot id</Label>
-                          <Input value={suggestedNewSlotId} readOnly className="h-8 font-mono text-xs" />
+                          <Input
+                            value={newSlotIdInput}
+                            onChange={(event) => {
+                              setHasEditedNewSlotId(true)
+                              setNewSlotIdInput(event.target.value)
+                            }}
+                            placeholder={suggestedNewSlotId}
+                            disabled={loading || importing}
+                            className="h-8 font-mono text-xs"
+                          />
+                          <p className={`text-[11px] ${newSlotIdError ? "text-destructive" : "text-muted-foreground"}`}>
+                            {newSlotIdError ?? "Use 1-64 letters, numbers, dots, underscores, or hyphens."}
+                          </p>
                         </div>
                       )}
                       <p className="text-[11px] text-muted-foreground">
@@ -1067,7 +1132,7 @@ export function BundleImportDialog({
                             </>
                           : importTargetMode === "new-slot"
                           ? <>
-                              New slot creates a fresh isolated layer at <span className="font-mono text-foreground">{importTarget?.agentsDir ?? `~/.agents/bundle-slots/${suggestedNewSlotId}`}</span>. It will not become active automatically.
+                              New slot creates a fresh isolated layer at <span className="font-mono text-foreground">{importTargetPath}</span>. It will not become active automatically.
                             </>
                           : <>
                               Default writes into the current workspace/global layer.
@@ -1084,7 +1149,7 @@ export function BundleImportDialog({
                     <p>
                       Import target: <span className="font-medium text-foreground">{formatImportTargetLayerLabel(importTarget.layer)}</span>
                     </p>
-                    <p className="mt-1 break-all font-mono">{importTarget.agentsDir}</p>
+                    <p className="mt-1 break-all font-mono">{importTargetPath}</p>
                   </div>
                 )}
                 <div>

@@ -2650,3 +2650,39 @@
   - Re-run the blocked desktop Vitest/typecheck verification once package dependencies are available in this worktree.
 
 - Next recommended issue work item: if staying on `#57`, take one more honest slot workflow slice only if it directly improves write semantics or slot naming/editability; otherwise refresh the open issues again and keep `#54` blocked until there is concrete auth/model-transport feasibility evidence.
+
+##### Issue #57 — Bundle import: make the new-slot id editable before import
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the most recent `#57` recommendation instead of re-triaging the whole issue list again.
+  - This was the smallest remaining user-visible gap on the new-slot import path: the dialog could create a fresh slot, but users could not rename the suggested slot id inline before importing.
+  - It is a focused desktop UX improvement with immediate value and low blast radius because it stays inside the existing bundle import dialog.
+- Investigation:
+  - Re-checked issue `#57`, recent ledger notes, and the open issue list for the current repo; `#54` still lacked a safe local implementation path, so the best actionable next slice remained on `#57`.
+  - Re-inspected `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` and confirmed the `New slot id` input was rendered as read-only and always used the derived slug from the bundle name.
+  - Re-checked `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/main/config.ts` to confirm backend support for `new-slot` imports already existed, so this follow-up could stay renderer-only if the dialog validated ids before import.
+  - Re-inspected the lightweight source-level regression coverage in `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` and confirmed it was the fastest reliable place to lock in the new behavior.
+- Important assumptions:
+  - Assumption: local dialog validation can mirror the existing backend slot-id rules instead of adding a second main-process API just for live validation.
+  - Why acceptable: the main process still remains the source of truth on import, while the renderer can prevent the obvious empty/invalid/already-existing cases and keep this slice narrow.
+  - Assumption: changing the typed new-slot id does not require a fresh conflict preview for every keystroke in this first pass.
+  - Why acceptable: for a valid brand-new slot, the meaningful change is the destination path and collision guardrail; the import button is disabled for invalid/existing ids and the underlying import still uses the current typed value.
+  - Assumption: no mobile follow-up is needed for this slice.
+  - Why acceptable: the bundle import dialog and bundle slot model are desktop/Electron-only workflows.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/bundle-import-dialog.tsx` so `New slot id` is now editable, seeded from the suggested bundle-name slug, and preserved until the dialog closes.
+  - Added renderer-side slot-id validation for empty ids, invalid characters/length, and collisions with already-known slot ids, then disabled import and surfaced an inline error until the target is valid.
+  - Updated the dialog’s new-slot label and destination-path copy so the UI reflects the current typed slot id rather than the original auto-suggested slug.
+  - Extended `apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` to cover the editable input, validation helper wiring, and the stricter import-disable condition.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/bundle-import-dialog.conflict-preview.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+  - Completed: `git diff --check` ✅
+- Related branch/PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Decide whether the dialog should re-run preview automatically after a valid new-slot id edit so the preview target path and any slot-specific guardrails update immediately rather than only at import time.
+  - Consider preserving per-item conflict overrides (not just selected items) when users switch between default / active-slot / new-slot targets.
+  - Review whether other settings/config write paths should expose similar active-slot vs writable-layer clarity.
+- Next recommended issue work item: refresh the open issues again and only stay on `#57` if there is one more very small write-semantics or preview-sync follow-up; otherwise move to the next concrete desktop reliability/UX issue and keep `#54` blocked until feasibility changes.

@@ -60,14 +60,19 @@ test('bundle import can explicitly target the active bundle slot through the exi
   assert.match(dialogSource, /type BundleImportTargetMode = "default" \| "active-slot" \| "new-slot"/);
   assert.match(dialogSource, /filePath,[\s\S]*\.\.\.\(targetMode === "default" \? \{\} : \{ targetMode \}\),[\s\S]*\.\.\.\(targetMode === "new-slot" && newSlotId \? \{ newSlotId \} : \{\}\)/);
   assert.match(dialogSource, /const \[importTargetMode, setImportTargetMode\] = useState<BundleImportTargetMode>\("default"\)/);
+  assert.match(dialogSource, /const \[newSlotIdInput, setNewSlotIdInput\] = useState\(""\)/);
+  assert.match(dialogSource, /function getBundleSlotIdError\([\s\S]*Use 1-64 letters, numbers, dots, underscores, or hyphens\.[\s\S]*Bundle slot "\$\{value\}" already exists\./);
+  assert.match(dialogSource, /function buildBundleSlotPreviewPath\(/);
   assert.match(dialogSource, /const handleImportTargetModeChange = async \(value: string\) => \{/);
   assert.match(dialogSource, /<Label>Import target<\/Label>/);
   assert.match(dialogSource, /<SelectItem value="active-slot">Active bundle slot \(\{activeBundleSlot\.id\}\)<\/SelectItem>/);
-  assert.match(dialogSource, /<SelectItem value="new-slot">New bundle slot \(\{suggestedNewSlotId\}\)<\/SelectItem>/);
+  assert.match(dialogSource, /<SelectItem value="new-slot">New bundle slot \(\{displayNewSlotId\}\)<\/SelectItem>/);
   assert.match(dialogSource, /function getSuggestedNewSlotId\(/);
   assert.match(dialogSource, /<Label>New slot id<\/Label>/);
+  assert.match(dialogSource, /<Input[\s\S]*value=\{newSlotIdInput\}[\s\S]*setHasEditedNewSlotId\(true\)[\s\S]*setNewSlotIdInput\(event\.target\.value\)/);
+  assert.match(dialogSource, /\{newSlotIdError \?\? "Use 1-64 letters, numbers, dots, underscores, or hyphens\."\}/);
   assert.match(dialogSource, /importTargetMode === "default" \? \{\} : \{ targetMode: importTargetMode \}/);
-  assert.match(dialogSource, /importTargetMode === "new-slot" \? \{ newSlotId: suggestedNewSlotId \} : \{\}/);
+  assert.match(dialogSource, /importTargetMode === "new-slot" \? \{ newSlotId: resolvedNewSlotId \} : \{\}/);
 });
 
 test('bundle import supports per-item cherry-pick selection across dialog, tipc, and service layers', () => {
@@ -103,7 +108,7 @@ test('bundle import dialog supports section-level bulk selection and blocks empt
   assert.match(dialogSource, /Select all/);
   assert.match(dialogSource, /Clear all/);
   assert.match(dialogSource, /Select at least one item to import\./);
-  assert.match(dialogSource, /const importDisabled = !preview\?\.filePath \|\| importing \|\| loading \|\| selectedPlanItemCount === 0/);
+  assert.match(dialogSource, /const importDisabled = !preview\?\.filePath \|\| importing \|\| loading \|\| selectedPlanItemCount === 0 \|\| Boolean\(newSlotIdError\)/);
   assert.match(dialogSource, /<Button onClick=\{handleImport\} disabled=\{importDisabled\}>/);
 });
 
