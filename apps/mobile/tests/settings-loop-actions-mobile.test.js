@@ -22,6 +22,13 @@ test('adds explicit accessibility semantics for loop actions', () => {
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete \$\{loop\.name\} loop`\)/);
 });
 
+test('styles the loop delete action as a compact destructive control', () => {
+  assert.match(settingsSource, /style=\{\[styles\.loopActionButton, styles\.loopActionButtonDanger\]\}/);
+  assert.match(settingsSource, /<View style=\{styles\.loopDeleteActionContent\}>[\s\S]*?<Ionicons name="trash-outline" size=\{14\} color=\{theme\.colors\.destructive\} style=\{styles\.loopDeleteIcon\} \/>[\s\S]*?<Text style=\{styles\.loopDeleteText\}>Delete<\/Text>/);
+  assert.match(settingsSource, /loopActionButtonDanger:\s*\{[\s\S]*?borderColor: theme\.colors\.destructive \+ '2E',[\s\S]*?backgroundColor: theme\.colors\.destructive \+ '10',/);
+  assert.match(settingsSource, /loopDeleteActionContent:\s*\{[\s\S]*?flexDirection:\s*'row',[\s\S]*?alignItems:\s*'center',[\s\S]*?gap:\s*4,/);
+});
+
 test('shows loop Run actions as busy and prevents duplicate taps while a trigger request is in flight', () => {
   assert.match(settingsSource, /const \[pendingLoopRunIds, setPendingLoopRunIds\] = useState<string\[\]>\(\[\]\);/);
   assert.match(settingsSource, /if \(!settingsClient \|\| pendingLoopRunIds\.includes\(loopId\)\) return;/);

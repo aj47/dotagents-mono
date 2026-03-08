@@ -5266,3 +5266,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Blocked by 1 failed • Sending now • 2 waiting` remains legible and appropriately prioritized on a narrow screen.
   - Capture screenshot-backed evidence for a failed queue row so the new `Failed - blocking queue • 14:40` ordering can be judged beside long queued-message text and the action rail.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this queue-summary ordering without fresh evidence.
+
+## Iteration 119 - Make the mobile loop delete affordance consistent and clearly destructive
+
+- Date: 2026-03-08
+- Summary: Improved `Settings > Agent Loops` action clarity on mobile by replacing the raw `🗑 Delete` treatment with a stable trash icon plus a subtle danger tint, matching the stronger destructive affordance already used for agent deletion.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recently touched queue/history/settings work without a fresh, local issue.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-loop-actions-mobile.test.js` because the loop action rail was the clearest remaining mobile surface adjacent to the recent agent-action polish.
+  - Compared the loop delete control against the already-modernized agent delete affordance from Iteration 109 and confirmed the loop row still relied on a platform-dependent emoji treatment.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with a focused command:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING && pnpm --filter @dotagents/mobile exec expo --version` → `APPS_MOBILE_NODE_MODULES_MISSING`, then `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed loop action-rail review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - Source review showed loop rows already had stronger tap targets, explicit run-busy state, and clear row-level edit affordances.
+  - The delete action still rendered as raw `🗑 Delete` text inside the generic neutral `loopActionButton` treatment.
+  - On a dense mobile action rail, that left the highest-consequence loop action more visually inconsistent and more dependent on platform emoji rendering than the nearby agent delete control.
+- Issue identified:
+  - The mobile loop delete affordance still looked too neutral and platform-variable, weakening quick destructive-action recognition in the `Agent Loops` action rail.
+- Decision and rationale:
+  - Keep the current action order, touch-target size, confirmation flow, and visible `Delete` label unchanged.
+  - Do not collapse the loop delete action to icon-only while live validation is blocked, since the visible label still helps discoverability on narrow screens.
+  - Make the smallest local fix instead: keep the compact footprint, but pair the `Delete` label with a stable `trash-outline` icon and a subtle destructive tint so the control reads more clearly as high-consequence.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - style the loop delete button as `[styles.loopActionButton, styles.loopActionButtonDanger]`,
+    - center loop action button content consistently,
+    - replace the emoji text with an inline `Ionicons` `trash-outline` icon plus `Delete` label inside a compact row.
+  - Updated `apps/mobile/tests/settings-loop-actions-mobile.test.js` with focused regression coverage for the new danger-tinted delete button styling and icon-plus-label rendering contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-loop-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo inspection / screenshot capture ⚠️ still blocked in this worktree because `apps/mobile/node_modules` is missing and Expo is unavailable
+- Assumptions and tradeoffs:
+  - Assumed preserving the visible `Delete` label is a safer mobile choice than going icon-only before a real narrow-screen pass confirms the action rail balance.
+  - Reused the same subtle destructive tint direction as the agent delete control so the two high-consequence actions now feel more consistent without a broader redesign.
+  - This improves source-backed affordance clarity, but it still needs live confirmation that the icon-plus-label delete pill stays balanced beside the toggle and `Run` action on narrow screens.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Settings > Agent Loops` still needs screenshot-backed review overall after the recent run-state, status-label, and now delete-affordance updates landed without fresh Expo confirmation in this worktree.
+  - A live pass is still needed to confirm the tinted delete button remains readable and does not visually overpower paused vs. running loop rows.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new loop delete pill stays readable, aligned, and appropriately weighted on a narrow screen.
+  - Capture screenshot-backed evidence for at least one paused loop row and one running loop row after this affordance update.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this loop delete affordance tweak without fresh evidence.

@@ -2740,14 +2740,17 @@ export default function SettingsScreen({ navigation }: any) {
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={styles.loopActionButton}
+                          style={[styles.loopActionButton, styles.loopActionButtonDanger]}
                           onPress={() => handleLoopDelete(loop)}
                           accessibilityRole="button"
                           accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
                           accessibilityHint="Removes this scheduled loop after confirmation."
                           activeOpacity={0.7}
                         >
-                          <Text style={styles.loopDeleteText}>🗑 Delete</Text>
+                          <View style={styles.loopDeleteActionContent}>
+                            <Ionicons name="trash-outline" size={14} color={theme.colors.destructive} style={styles.loopDeleteIcon} />
+                            <Text style={styles.loopDeleteText}>Delete</Text>
+                          </View>
                         </TouchableOpacity>
                       </View>
                       </View>
@@ -3735,11 +3738,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     loopActionButtonPending: {
       borderColor: theme.colors.primary + '2E',
       backgroundColor: theme.colors.primary + '10',
       opacity: 0.85,
+    },
+    loopActionButtonDanger: {
+      borderColor: theme.colors.destructive + '2E',
+      backgroundColor: theme.colors.destructive + '10',
     },
     loopRunText: {
       color: theme.colors.primary,
@@ -3748,6 +3757,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     loopRunTextPending: {
       color: theme.colors.primary,
+    },
+    loopDeleteActionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    loopDeleteIcon: {
+      textAlign: 'center',
     },
     loopDeleteText: {
       color: theme.colors.destructive,
