@@ -5078,3 +5078,49 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the queue header badge remains legible and balanced next to `Clear All` on narrow screens.
   - Capture screenshot-backed evidence of the chat screen with both response-history and queued-messages panels visible so header consistency can be judged with real width constraints.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this queue-header tweak without fresh evidence.
+
+## Iteration 115 - Add visible helper copy for important agent-workflow toggles
+
+- Date: 2026-03-08
+- Summary: Improved mobile state clarity in `Settings > Agent Settings` by adding visible helper text for the `Message Queue` and `Verify Completion` toggles so those workflow controls no longer rely only on terse labels or accessibility hints.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid reworking the recently touched queue/history/settings areas without new evidence.
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-agent-mode-mobile.test.js` to find a still-local sub-agent mobile issue outside the most recent queue/header tweaks.
+  - Noted that adjacent toggles like `Inject Builtin Tools`, `Require Tool Approval`, and `Final Summary` already expose visible helper copy, while `Message Queue` and `Verify Completion` did not.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed settings review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `Settings > Agent Settings` already used mobile-sized named switch controls for `Message Queue` and `Verify Completion`.
+  - Unlike nearby workflow toggles, those two rows stopped at the title + switch, with no visible helper text explaining what they do.
+  - On a dense mobile settings stack, that left two important sub-agent behavior controls feeling more jargon-heavy and easier to misread at a glance than their neighboring settings.
+- Issue identified:
+  - Important sub-agent workflow toggles lacked visible explanatory copy on mobile, weakening state clarity and increasing cognitive load in a high-impact settings surface.
+- Decision and rationale:
+  - Keep the existing `Agent Settings` layout, switch controls, accessibility semantics, and toggle behavior unchanged.
+  - Do not broaden this into row-level pressability or a larger settings redesign while live validation is blocked.
+  - Make the smallest local fix instead: add short helper lines under `Message Queue` and `Verify Completion`, matching the established pattern already used by adjacent toggles in the same section.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add a visible helper line under `Message Queue` (`Queue incoming messages while the agent is already working on another step`),
+    - add a visible helper line under `Verify Completion` (`Check whether the agent actually finished the task before stopping`).
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new helper text under both toggles.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked in this worktree because Expo is unavailable and the mobile install is missing
+- Assumptions and tradeoffs:
+  - Assumed a short visible helper line is a better mobile fit than adding more icons or longer toggle titles, because it improves scanability without changing the control structure.
+  - Kept the helper copy closely aligned with the existing accessibility hints so the visible and non-visual explanations stay consistent.
+  - This slightly increases section height, but the tradeoff favors comprehension for two high-consequence workflow settings.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `Settings > Agent Settings` still needs screenshot-backed review overall after several recent state-clarity tweaks landed without fresh Expo confirmation in this worktree.
+  - A live pass is still needed to confirm the added helper text does not make the section feel too tall once ACP-specific controls are also visible.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new helper lines improve scanability without making `Agent Settings` feel overly long on narrow screens.
+  - Capture screenshot-backed evidence for `Agent Settings` in both API mode and ACP mode so the added helper text can be judged within the full section density.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this helper-copy tweak without fresh evidence.

@@ -2043,6 +2043,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   </TouchableOpacity>
                 </View>
+                <Text style={styles.helperText}>
+                  Queue incoming messages while the agent is already working on another step
+                </Text>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Require Tool Approval</Text>
@@ -2088,6 +2091,9 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   </TouchableOpacity>
                 </View>
+                <Text style={styles.helperText}>
+                  Check whether the agent actually finished the task before stopping
+                </Text>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Final Summary</Text>

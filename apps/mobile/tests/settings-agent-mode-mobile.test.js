@@ -91,6 +91,7 @@ test('wraps Message Queue in the same named mobile-sized switch control', () => 
   assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\('Message Queue'\)/);
   assert.match(settingsSource, /accessibilityHint="Queues incoming messages while the agent is already working on another step\."/);
   assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpMessageQueueEnabled \?\? true \}\}/);
+  assert.match(settingsSource, /<Text style=\{styles\.helperText\}>[\s\S]*?Queue incoming messages while the agent is already working on another step[\s\S]*?<\/Text>/);
   assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.mcpMessageQueueEnabled \?\? true\)/);
 });
 
@@ -100,6 +101,7 @@ test('wraps Verify Completion in the same named mobile-sized switch control', ()
   assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\('Verify Completion'\)/);
   assert.match(settingsSource, /accessibilityHint="Checks whether the agent actually finished the task before stopping\."/);
   assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpVerifyCompletionEnabled \?\? true \}\}/);
+  assert.match(settingsSource, /<Text style=\{styles\.helperText\}>[\s\S]*?Check whether the agent actually finished the task before stopping[\s\S]*?<\/Text>/);
   assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.mcpVerifyCompletionEnabled \?\? true\)/);
 });
 
