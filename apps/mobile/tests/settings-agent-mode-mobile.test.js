@@ -71,6 +71,15 @@ test('keeps Summarization state visible in the collapsible header on mobile', ()
   assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="summarization"[\s\S]*?summary=\{summarizationSectionSummary\}/);
 });
 
+test('keeps Tool Execution state visible in the collapsible header on mobile', () => {
+  assert.match(settingsSource, /const toolExecutionSectionSummary = useMemo\(\(\) => \{[\s\S]*?const disabledStates: string\[\] = \[\];/);
+  assert.match(settingsSource, /if \(!\(remoteSettings\.mcpParallelToolExecution \?\? true\)\) \{[\s\S]*?disabledStates\.push\('Parallel off'\);/);
+  assert.match(settingsSource, /if \(!\(remoteSettings\.mcpToolResponseProcessingEnabled \?\? true\)\) \{[\s\S]*?disabledStates\.push\('Processing off'\);/);
+  assert.match(settingsSource, /if \(!\(remoteSettings\.mcpContextReductionEnabled \?\? true\)\) \{[\s\S]*?disabledStates\.push\('Context reduction off'\);/);
+  assert.match(settingsSource, /return disabledStates\.length > 0 \? disabledStates\.join\(' • '\) : 'All on';/);
+  assert.match(settingsSource, /<CollapsibleSection[\s\S]*?id="toolExecution"[\s\S]*?summary=\{toolExecutionSectionSummary\}/);
+});
+
 test('wraps Summarization in the same named mobile-sized switch control', () => {
   assert.match(settingsSource, /<Text style=\{styles\.label\}>Summarization<\/Text>[\s\S]*?style=\{styles\.agentSettingsSwitchButton\}/);
   assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('dualModelEnabled', !\(remoteSettings\.dualModelEnabled \?\? false\)\)\}/);
@@ -135,6 +144,28 @@ test('wraps Unlimited Iterations in the same named mobile-sized switch control',
   assert.match(settingsSource, /accessibilityHint="Removes the max-iteration limit so the agent can keep working until it finishes or you stop it\."/);
   assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpUnlimitedIterations \?\? false \}\}/);
   assert.match(settingsSource, /accessibilityElementsHidden[\s\S]*?importantForAccessibility="no-hide-descendants"[\s\S]*?renderActionRailSwitchVisual\(remoteSettings\.mcpUnlimitedIterations \?\? false\)/);
+});
+
+test('wraps Tool Execution toggles in the same named mobile-sized switch control', () => {
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Context Reduction<\/Text>[\s\S]*?style=\{styles\.agentSettingsSwitchButton\}/);
+  assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('mcpContextReductionEnabled', !\(remoteSettings\.mcpContextReductionEnabled \?\? true\)\)\}/);
+  assert.match(settingsSource, /accessibilityRole="switch"[\s\S]*?createSwitchAccessibilityLabel\('Context Reduction'\)/);
+  assert.match(settingsSource, /accessibilityHint="Reduces oversized tool context before the agent continues\."/);
+  assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpContextReductionEnabled \?\? true \}\}/);
+  assert.match(settingsSource, /renderActionRailSwitchVisual\(remoteSettings\.mcpContextReductionEnabled \?\? true\)/);
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Tool Response Processing<\/Text>[\s\S]*?style=\{styles\.agentSettingsSwitchButton\}/);
+  assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('mcpToolResponseProcessingEnabled', !\(remoteSettings\.mcpToolResponseProcessingEnabled \?\? true\)\)\}/);
+  assert.match(settingsSource, /createSwitchAccessibilityLabel\('Tool Response Processing'\)/);
+  assert.match(settingsSource, /accessibilityHint="Processes large tool results before the agent uses them\."/);
+  assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpToolResponseProcessingEnabled \?\? true \}\}/);
+  assert.match(settingsSource, /Process large tool results before the agent uses them/);
+  assert.match(settingsSource, /renderActionRailSwitchVisual\(remoteSettings\.mcpToolResponseProcessingEnabled \?\? true\)/);
+  assert.match(settingsSource, /<Text style=\{styles\.label\}>Parallel Tool Execution<\/Text>[\s\S]*?style=\{styles\.agentSettingsSwitchButton\}/);
+  assert.match(settingsSource, /onPress=\{\(\) => handleRemoteSettingToggle\('mcpParallelToolExecution', !\(remoteSettings\.mcpParallelToolExecution \?\? true\)\)\}/);
+  assert.match(settingsSource, /createSwitchAccessibilityLabel\('Parallel Tool Execution'\)/);
+  assert.match(settingsSource, /accessibilityHint="Runs multiple tool calls at the same time when possible\."/);
+  assert.match(settingsSource, /accessibilityState=\{\{ checked: remoteSettings\.mcpParallelToolExecution \?\? true \}\}/);
+  assert.match(settingsSource, /renderActionRailSwitchVisual\(remoteSettings\.mcpParallelToolExecution \?\? true\)/);
 });
 
 test('hides max iterations while unlimited iterations is enabled', () => {

@@ -423,6 +423,25 @@ export default function SettingsScreen({ navigation }: any) {
 
     return remoteSettings.dualModelEnabled ? 'On • Step summaries' : 'Off';
   }, [remoteSettings]);
+  const toolExecutionSectionSummary = useMemo(() => {
+    if (!remoteSettings) return null;
+
+    const disabledStates: string[] = [];
+
+    if (!(remoteSettings.mcpParallelToolExecution ?? true)) {
+      disabledStates.push('Parallel off');
+    }
+
+    if (!(remoteSettings.mcpToolResponseProcessingEnabled ?? true)) {
+      disabledStates.push('Processing off');
+    }
+
+    if (!(remoteSettings.mcpContextReductionEnabled ?? true)) {
+      disabledStates.push('Context reduction off');
+    }
+
+    return disabledStates.length > 0 ? disabledStates.join(' • ') : 'All on';
+  }, [remoteSettings]);
 
   // Profile import/export state
   const [isExportingProfile, setIsExportingProfile] = useState(false);
@@ -2253,15 +2272,30 @@ export default function SettingsScreen({ navigation }: any) {
 
             {/* 4g. Tool Execution */}
             {remoteSettings && (
-              <CollapsibleSection id="toolExecution" title="Tool Execution">
+              <CollapsibleSection
+                id="toolExecution"
+                title="Tool Execution"
+                summary={toolExecutionSectionSummary}
+              >
                 <View style={styles.row}>
                   <Text style={styles.label}>Context Reduction</Text>
-                  <Switch
-                    value={remoteSettings.mcpContextReductionEnabled ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpContextReductionEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpContextReductionEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpContextReductionEnabled', !(remoteSettings.mcpContextReductionEnabled ?? true))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Context Reduction')}
+                    accessibilityHint="Reduces oversized tool context before the agent continues."
+                    accessibilityState={{ checked: remoteSettings.mcpContextReductionEnabled ?? true }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpContextReductionEnabled ?? true)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.helperText}>
                   Reduce context size for tool responses
@@ -2269,22 +2303,47 @@ export default function SettingsScreen({ navigation }: any) {
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Tool Response Processing</Text>
-                  <Switch
-                    value={remoteSettings.mcpToolResponseProcessingEnabled ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpToolResponseProcessingEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpToolResponseProcessingEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpToolResponseProcessingEnabled', !(remoteSettings.mcpToolResponseProcessingEnabled ?? true))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Tool Response Processing')}
+                    accessibilityHint="Processes large tool results before the agent uses them."
+                    accessibilityState={{ checked: remoteSettings.mcpToolResponseProcessingEnabled ?? true }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpToolResponseProcessingEnabled ?? true)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
+                <Text style={styles.helperText}>
+                  Process large tool results before the agent uses them
+                </Text>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Parallel Tool Execution</Text>
-                  <Switch
-                    value={remoteSettings.mcpParallelToolExecution ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('mcpParallelToolExecution', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpParallelToolExecution ? theme.colors.primaryForeground : theme.colors.background}
-                  />
+                  <TouchableOpacity
+                    style={styles.agentSettingsSwitchButton}
+                    onPress={() => handleRemoteSettingToggle('mcpParallelToolExecution', !(remoteSettings.mcpParallelToolExecution ?? true))}
+                    accessibilityRole="switch"
+                    accessibilityLabel={createSwitchAccessibilityLabel('Parallel Tool Execution')}
+                    accessibilityHint="Runs multiple tool calls at the same time when possible."
+                    accessibilityState={{ checked: remoteSettings.mcpParallelToolExecution ?? true }}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      {renderActionRailSwitchVisual(remoteSettings.mcpParallelToolExecution ?? true)}
+                    </View>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.helperText}>
                   Execute multiple tools in parallel when possible

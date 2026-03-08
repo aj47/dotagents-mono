@@ -1,5 +1,53 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 147 - Bring Tool Execution in line with adjacent mobile sub-agent controls
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not immediately revisit the just-touched `Agents` collapsed summary or earlier selector/list changes without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx` and `apps/mobile/tests/settings-agent-mode-mobile.test.js` because the nearby `Tool Execution` controls were still the next untouched mobile sub-agent runtime surface after the recent `Summarization` pass.
+  - Used repo code search to confirm what the three execution toggles actually control before adjusting mobile copy:
+    - `mcpParallelToolExecution` switches between parallel vs sequential tool execution when multiple tool calls are returned
+    - `mcpToolResponseProcessingEnabled` controls processing / summarizing large tool results before the agent uses them
+    - `mcpContextReductionEnabled` controls context shrinking before the next model step
+  - Tried to restore live-validation confidence again, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi; pnpm --filter @dotagents/mobile exec expo --version` → `root node_modules: missing` / `apps/mobile node_modules: missing` / `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `Settings > Summarization` and the nearby agent-runtime controls already used wrapped 44px mobile switch targets and exposed collapsed header summaries.
+  - `Settings > Tool Execution` still used raw native `Switch` controls, exposed no collapsed summary, and left `Tool Response Processing` without helper copy.
+  - The section also treated all three toggles as `?? false` in the UI even though the desktop config defaults these settings to enabled, which risked under-reporting state if a response ever omitted one of those fields.
+- Issue identified:
+  - The mobile `Tool Execution` section lagged behind neighboring sub-agent runtime controls in touch-target quality and collapsed-state clarity, and it could miscommunicate default-on execution behavior.
+- Decision and rationale:
+  - Keep the section structure, order, and settings themselves unchanged.
+  - Avoid a broader runtime-settings cleanup while live validation is blocked.
+  - Make the smallest useful consistency fix instead: reuse the same wrapped mobile switch control as adjacent sections, add a concise collapsed summary that only calls out deviations from the default-on state, and fill in the missing helper copy for `Tool Response Processing`.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` to:
+    - add `toolExecutionSectionSummary`, returning `All on` by default and listing `Parallel off`, `Processing off`, and/or `Context reduction off` when users deviate from the default execution setup,
+    - pass that summary into the `Tool Execution` `CollapsibleSection`,
+    - replace the three raw `Switch` controls with the same `agentSettingsSwitchButton` pattern already used by neighboring sub-agent runtime settings,
+    - add explicit accessibility labels, hints, checked state, and hidden inner visuals for those wrapped controls,
+    - add missing helper copy for `Tool Response Processing`,
+    - align the UI fallback state for all three tool-execution toggles with the desktop default of `true`.
+  - Updated `apps/mobile/tests/settings-agent-mode-mobile.test.js` with focused regression coverage for the new summary contract and wrapped-switch semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-mode-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed the default-on execution posture is the most useful collapsed-state baseline, so the summary should stay short when everything matches defaults and spend its space on deviations.
+  - Chose concise helper / hint copy based on the underlying desktop behavior instead of inventing broader product language while live validation is unavailable.
+  - Kept the section otherwise unchanged rather than refactoring other raw switches in unrelated settings groups during the same iteration.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the wrapped `Tool Execution` toggles feel as tappable as adjacent runtime settings and that the `All on` / `... off` summary reads clearly on a narrow screen.
+  - Check mixed states (`Parallel off`, `Processing off`, `Context reduction off`) to confirm the deviation-first summary order feels intuitive when only one or two toggles are disabled.
+  - Confirm with live data that the default-true fallback now matches the server response in older and current desktop builds.
+
 ## Iteration 146 - Keep the collapsed mobile Agents header aware of the current main agent
 
 - Date: 2026-03-08
