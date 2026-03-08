@@ -45,6 +45,18 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const expandButtonTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 4,
+    verticalPadding: 4,
+    horizontalMargin: 0,
+  });
+  const queueActionTouchTarget = createMinimumTouchTargetStyle({
+    minSize: 44,
+    horizontalPadding: 8,
+    verticalPadding: 8,
+    horizontalMargin: 0,
+  });
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -130,8 +142,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
         : theme.colors.mutedForeground,
     },
     expandButton: {
+      ...expandButtonTouchTarget,
       flexDirection: 'row',
       alignItems: 'center',
+      alignSelf: 'flex-start',
+      borderRadius: 999,
     },
     expandText: {
       fontSize: 12,
@@ -140,11 +155,22 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     },
     actions: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
+      alignItems: 'flex-start',
+      gap: 6,
+      marginLeft: 4,
+      flexShrink: 0,
     },
     actionButton: {
-      padding: 4,
+      ...queueActionTouchTarget,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      flexShrink: 0,
+    },
+    actionButtonDanger: {
+      borderColor: `${theme.colors.destructive}26`,
+      backgroundColor: `${theme.colors.destructive}10`,
     },
     editContainer: {
       gap: 8,
@@ -245,6 +271,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               <TouchableOpacity
                 style={styles.expandButton}
                 onPress={() => setIsExpanded(!isExpanded)}
+                accessibilityRole="button"
+                accessibilityLabel={createExpandCollapseAccessibilityLabel('queued message details', isExpanded)}
+                accessibilityHint="Shows or hides the full queued message text."
+                accessibilityState={{ expanded: isExpanded }}
+                activeOpacity={0.7}
               >
                 <Ionicons
                   name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -261,7 +292,14 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
         {!isProcessing && (
           <View style={styles.actions}>
             {isFailed && (
-              <TouchableOpacity style={styles.actionButton} onPress={onRetry}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={onRetry}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Retry failed queued message')}
+                accessibilityHint="Moves this failed message back into the queue so it can send again."
+                activeOpacity={0.7}
+              >
                 <Ionicons name="refresh" size={16} color={theme.colors.foreground} />
               </TouchableOpacity>
             )}
@@ -269,12 +307,23 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => setIsEditing(true)}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Edit queued message')}
+                accessibilityHint="Lets you revise this queued message before it sends."
+                activeOpacity={0.7}
               >
                 <Ionicons name="pencil" size={16} color={theme.colors.foreground} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.actionButton} onPress={onRemove}>
-              <Ionicons name="close" size={16} color={theme.colors.foreground} />
+            <TouchableOpacity
+              style={[styles.actionButton, styles.actionButtonDanger]}
+              onPress={onRemove}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Remove queued message')}
+              accessibilityHint="Deletes this queued message without sending it."
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={16} color={theme.colors.destructive} />
             </TouchableOpacity>
           </View>
         )}

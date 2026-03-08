@@ -2961,3 +2961,47 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the queue notice reads clearly above the list and does not crowd the composer.
   - Check the busy queue state with one processing message plus multiple pending messages to confirm the new notice and compact summary feel proportional on narrow screens.
   - If live validation still shows action strain in queue rows, prioritize making the edit / retry / remove controls easier to tap before attempting broader queue UI changes.
+
+### 2026-03-08 — Iteration 69: make queued-message row actions easier to tap and understand
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` → still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed each queued-message row still used tiny icon-only controls for `Retry`, `Edit`, and `Remove`.
+  - Those actions used only `padding: 4`, exposed no explicit labels or hints, and left the destructive remove affordance visually similar to the neutral actions.
+  - The inline `More` / `Less` expander also lacked explicit disclosure semantics.
+- Issue selected:
+  - The core per-message queue controls were still too easy to mis-tap and too opaque for assistive tech, weakening user control in the mobile sub-agent activity flow.
+- Decision:
+  - Keep the queue row layout, icon-based actions, and message states unchanged.
+  - Do not redesign the whole queue list while live validation is blocked.
+  - Make the smallest local control pass: apply mobile-sized touch-target guardrails, add explicit labels/hints, and give the destructive remove action a clearer visual treatment.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add shared `44px` minimum touch-target helpers for the per-row action buttons and the `More` / `Less` expander,
+    - give `Retry failed queued message`, `Edit queued message`, and `Remove queued message` explicit button labels and action-specific hints,
+    - give the `Remove` action a dedicated destructive tint so it reads less like a neutral icon,
+    - add explicit expand/collapse disclosure semantics for the full-message toggle.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new row-action touch targets, labels/hints, destructive styling, and expander semantics.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo + React Native dependencies in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the roomier queue-row action buttons do not squeeze message text too aggressively when three actions are visible.
+  - The queue-row edit mode still uses relatively small `Cancel` / `Save` buttons compared with the newly improved icon actions.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that failed queue rows still balance message width and the now-roomier action rail on a narrow screen.
+  - Check both a two-action queued row and a three-action failed row to confirm the new destructive styling and larger targets feel clear without making the panel too tall.
+  - If live validation shows edit mode now feels like the weakest queue control state, raise the `Cancel` / `Save` buttons to the same mobile control baseline before attempting broader queue changes.
