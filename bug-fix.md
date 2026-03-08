@@ -154,6 +154,9 @@
 - [x] 2026-03-08: Attempted targeted verification with `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.draft.test.tsx`, but `vitest` is still unavailable in this worktree (`Command "vitest" not found`).
 - [x] 2026-03-08: Ran a low-cost Node file-read sanity check for `settings-providers.tsx` and `settings-providers.draft.test.tsx`; the assertions passed for the new model-download toast wiring and regression test coverage.
 - [x] 2026-03-08: `git diff --check` completed cleanly after the local-model download feedback fix and regression test additions.
+- [x] 2026-03-08: Reviewed `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.tsx` and confirmed the visible MCP sampling approval dialog still awaited `tipcClient.resolveSampling(...)` without `try/catch`, then immediately closed regardless of whether the response actually resolved.
+- [x] 2026-03-08: Confirmed `apps/desktop/src/main/tipc.ts` forwards `resolveSampling` straight through to `apps/desktop/src/main/mcp-sampling.ts`, where `resolveSampling(...)` explicitly returns `false` when a sampling request is no longer pending.
+- [x] 2026-03-08: Confirmed `apps/desktop/src/renderer/src/App.tsx` lazy-mounts `McpSamplingDialog`, while `apps/mobile/src` has no equivalent sampling-approval UI, so this stale/silent-response bug is desktop-only rather than a shared mobile flow.
 
 ### Not Yet Checked
 - [ ] Fresh high-signal bug leads after the workspace dependencies are installed and live desktop/mobile debugging can run.
@@ -319,6 +322,10 @@
   - `apps/desktop/src/renderer/src/pages/settings-providers.tsx` exposed explicit `Download Model` / `Retry Download` buttons for Parakeet, Kitten, and Supertonic, but each `handleDownload(...)` catch block only called `console.error(...)` when the underlying `download*Model` IPC rejected.
   - Because those actions start desktop-only model setup for local STT/TTS providers, a failed click looked like a dead/no-op button even though the requested model download had failed.
   - Mobile only shows desktop-configuration notices for these local providers and does not expose an equivalent download flow, so this is a concrete desktop setup bug rather than a shared product decision.
+- [x] **Desktop MCP sampling dialog actions could fail silently or dismiss a stale request with no explanation (directly confirmed in source):**
+  - `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.tsx` handles the visible `Approve` / `Decline` actions for MCP sampling requests, but `handleResponse(...)` previously awaited `tipcClient.resolveSampling(...)` without any `try/catch` or visible error UI.
+  - The TIPC route in `apps/desktop/src/main/tipc.ts` forwards to `resolveSampling(...)` in `apps/desktop/src/main/mcp-sampling.ts`, which returns `false` when the request is already gone; the old renderer still called `setIsOpen(false)` / `setRequest(null)` immediately afterward, so a stale sampling dialog could disappear as if the response worked even though nothing was resolved.
+  - `McpSamplingDialog` is lazy-mounted in the desktop app shell and mobile has no equivalent sampling approval UI, so this is a live desktop MCP workflow bug rather than dead code or a parity choice.
 
 ### Fixed
 - [x] Updated `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` and `apps/desktop/src/renderer/src/components/tile-follow-up-input.tsx` so failed follow-up sends now surface a `toast.error(...)` message instead of failing silently with console logging only.
@@ -458,6 +465,9 @@
 - [x] Added `apps/desktop/src/renderer/src/pages/sessions.launch-actions.test.ts` with focused source-level assertions that lock in the new sessions launch-action error-feedback contract.
 - [x] Updated `apps/desktop/src/renderer/src/pages/settings-providers.tsx` so failed Parakeet, Kitten, and Supertonic local-model downloads now preserve console logging but also surface `toast.error(...)` feedback via the existing `getProviderActionErrorMessage(...)` helper.
 - [x] Extended `apps/desktop/src/renderer/src/pages/settings-providers.draft.test.tsx` with focused regression coverage for rejected Parakeet / Kitten / Supertonic model downloads, while also reusing a small `findButtonByText(...)` helper and query-status override hook for the existing lightweight runtime.
+- [x] Updated `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.tsx` so `handleResponse(...)` now tracks `isSubmitting`, catches rejected `resolveSampling(...)` calls, and surfaces visible `toast.error(...)` feedback instead of failing silently.
+- [x] Taught the sampling dialog to detect `resolveSampling(...) === false`, close the stale dialog, and tell the user `This request is no longer pending.` rather than silently dismissing an ignored action.
+- [x] Added `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.feedback.test.ts` with focused source-level assertions that lock in the `sonner` toast import, stale-request feedback, guarded close handler, and failed action toast path.
 
 ### Verified
 - [x] Manual source verification: both desktop follow-up composers now import `toast` from `sonner` and call `toast.error(...)` when `sendMutation.mutateAsync(...)` rejects, so failed follow-up sends no longer stay completely silent.
@@ -568,6 +578,9 @@
 - [x] Manual source verification: the three desktop local-model download handlers in `settings-providers.tsx` now call `toast.error(getProviderActionErrorMessage(...))` in their `catch` paths, so rejected Parakeet / Kitten / Supertonic downloads no longer fail silently.
 - [x] Low-cost automated sanity check: `node <<'NODE' ... NODE` file-read assertions passed for `settings-providers.tsx` and `settings-providers.draft.test.tsx`, confirming the new model-download toast strings and regression test cases are present.
 - [x] Repository diff sanity check: `git diff --check` completed cleanly after the local-model download feedback fix and regression test additions.
+- [x] Manual source verification: `apps/desktop/src/renderer/src/components/mcp-sampling-dialog.tsx` now imports `toast` from `sonner`, guards repeated submissions with `isSubmitting`, surfaces visible `Failed to approve/decline request. ...` feedback on rejected IPC responses, and shows `This request is no longer pending.` when the sampling request has already expired.
+- [x] Low-cost automated sanity check: `node - <<'NODE' ... NODE` file-read assertions passed for `mcp-sampling-dialog.tsx` and `mcp-sampling-dialog.feedback.test.ts`, confirming the new toast strings, stale-request branch, guarded close handler, and regression file are present.
+- [x] Repository diff sanity check: `git diff --check` completed cleanly after the desktop sampling-dialog feedback update and regression test addition.
 - [ ] Automated verification is currently blocked by missing workspace dependencies (`vitest`/shared build tooling unavailable).
 
 ### Blocked
@@ -608,6 +621,7 @@
 - [x] Targeted automated verification for this floating-panel live-preview feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/panel.recording-layout.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this remote-server copy-feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.draft.test.tsx` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 - [x] Targeted automated verification for this sessions focus-recovery fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
+- [x] Targeted automated verification for this MCP sampling-dialog feedback fix is blocked by the same missing dependency state: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-sampling-dialog.feedback.test.ts` still fails with `Command "vitest" not found`, which indicates the desktop workspace dependencies remain unavailable in this worktree.
 
 ### Still Uncertain
 - [ ] Whether the post-success sidebar `focusAgentSession(...)` / `hidePanelWindow(...)` follow-up failures during `Restore` / `Minimize` should also surface visible feedback instead of remaining console-only once live desktop verification is available.
@@ -635,6 +649,7 @@
 - [ ] Whether any other approval-adjacent desktop actions in session cards (for example speech generation or clipboard copy fallbacks) still rely on console-only logging and need the same visible-feedback treatment once the environment blocker is cleared.
 - [ ] Whether any remaining desktop `AudioPlayer` callers or parent TTS flows still need explicit cache invalidation when their source text changes, now that the shared player correctly resets itself whenever `audioData` is cleared.
 - [ ] Whether floating-panel live-preview failures should eventually pause further chunk retries for the current recording, or whether the new inline message plus continued best-effort retries is the better behavior once live desktop validation is available.
+- [ ] Whether the sampling dialog should eventually expose a clearer in-flight approval state (for example button text/spinner) while an approved request is executing, rather than only disabling the buttons during submission.
 
 ### Diagnosis / Rationale
 - Silent failure on a core “continue conversation” action is high-signal user pain: the user clicks send, nothing visible happens, and the only error is hidden in DevTools.
@@ -705,6 +720,8 @@
 - Reusing the existing `getActionErrorMessage(...)` + `toast.error(...)` pattern inside `agent-progress.tsx` and `session-tile.tsx` is the smallest safe fix because it preserves the current optimistic copied-state behavior while finally making clipboard failures visible.
 - The Sessions page focus bug is a state-and-feedback correctness issue: clicking a session tile should not leave the global focused-session state pointing at a new tile if the panel focus handshake never actually succeeded.
 - Teaching `focusAgentSession` to report handler-unavailable/send failures and rolling back to `previousFocusedSessionId` only for that failed focus step is the smallest safe fix because it preserves the existing optimistic tile-selection UX while bringing renderer state back in sync when the panel-focus contract fails.
+- The MCP sampling issue is the same class of workflow bug already seen in elicitation: `Approve` / `Decline` are explicit user responses to a live request, so stale or rejected responses should not look like they silently worked.
+- Mirroring the elicitation dialog’s stale-request + toast-feedback pattern is the smallest safe fix because the desktop app already mounts a global `sonner` toaster, the TIPC contract already distinguishes `false` for stale sampling requests, and no broader sampling UX redesign is needed to make failures visible.
 
 ### Assumptions
 - Assumption: switching these desktop settings controls from uncontrolled to controlled props is acceptable because the same page already mixes controlled config-backed controls successfully, and mobile already treats analogous settings state as controlled.
@@ -746,6 +763,8 @@
 - Assumption: using the existing desktop toast pattern for MCP elicitation `Accept` / `Decline` / `Cancel` failures is acceptable because `sonner` is already mounted app-wide, these are explicit user responses to a live MCP request, and the dialog had no inline error state before.
 - Assumption: closing the dialog only for the `resolveElicitation(...) === false` stale-request case is acceptable because the main-process request is already gone at that point, while keeping the dialog open on thrown IPC failures preserves the user's chance to retry a transient failure.
 - Assumption: keeping the optimistic local tile focus for successful `focusAgentSession(...)` calls but not rolling it back for later `setPanelMode(...)` / `showPanelWindow(...)` failures is acceptable because by that point the main-process session focus has already been updated, so reverting only the earlier failed focus step is the safer sync boundary.
+- Assumption: using the same toast-based failure feedback pattern for MCP sampling `Approve` / `Decline` is acceptable because `sonner` is already mounted app-wide, these are explicit user responses to a live request, and the adjacent elicitation dialog already uses the same visible recovery model.
+- Assumption: closing the sampling dialog only for the `resolveSampling(...) === false` stale-request case is acceptable because the main-process request is already gone at that point, while keeping the dialog open on thrown IPC failures preserves the user's chance to retry a transient failure.
 
 ### Next Leads
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.controlled-controls.test.ts` and a focused desktop settings pass that edits/reloads the affected switches/selects to confirm state stays in sync after config refreshes.
@@ -797,6 +816,7 @@
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/copy-feedback.test.ts` and live-verify the desktop `AgentProgress` / `SessionTile` copy buttons by forcing a clipboard-write failure to confirm the new toasts appear instead of silent no-ops.
 - After that, inspect any remaining desktop clipboard-copy actions outside `AgentProgress` / `SessionTile` / remote-server settings for the same silent-failure pattern.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-elicitation-dialog.feedback.test.ts` and live-verify an MCP form/URL elicitation by forcing both a stale request and a rejected `resolveElicitation(...)` call to confirm the new toasts appear while retry remains possible after transient IPC failure.
-- After that, inspect whether the adjacent desktop `mcp-sampling` dialog needs the same stale-request / rejected-response feedback treatment for parity with elicitation.
+- Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-sampling-dialog.feedback.test.ts` and live-verify an MCP sampling approval by forcing both a stale request and a rejected `resolveSampling(...)` call to confirm the new toasts appear while retry remains possible after transient IPC failure.
+- After that, inspect whether any other desktop MCP approval/consent surfaces still close stale requests or swallow rejected responses without visible feedback.
 - Once dependencies are installed, rerun `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/sessions.focus-session.test.ts` and live-verify that forcing a panel-focus failure from the Sessions page restores the previously focused tile and surfaces the new error toast instead of leaving the wrong tile selected.
 - After that, inspect whether the other Sessions page panel-launch actions (`Start typing`, `Start voice`, predefined prompts) still need the same visible failure treatment for full sessions-page consistency.
