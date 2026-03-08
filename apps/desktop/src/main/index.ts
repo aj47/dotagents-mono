@@ -48,6 +48,7 @@ import { buildHubBundleInstallUrl, resolveStartupMainWindowDecision } from "./st
 const isQRMode = process.argv.includes("--qr")
 // Check for --headless flag (headless mode without GUI)
 const isHeadlessMode = process.argv.includes("--headless")
+const CLEANUP_TIMEOUT_MS = 5000 // 5 second timeout for graceful cleanup
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
 // This must be called before app.whenReady()
@@ -263,9 +264,49 @@ app.whenReady().then(async () => {
       isHeadlessShuttingDown = true
       console.log("\n[Headless] Shutting down...")
       loopService.stopAllLoops()
-      await acpService.shutdown().catch(() => {})
-      await mcpService.cleanup().catch(() => {})
-      await stopRemoteServer().catch(() => {})
+
+      const cleanupTasks = [
+        { label: "ACP service shutdown", run: () => acpService.shutdown() },
+        { label: "MCP service cleanup", run: () => mcpService.cleanup() },
+        { label: "remote server shutdown", run: () => stopRemoteServer() },
+      ] as const
+
+      const cleanupPromise = Promise.all(
+        cleanupTasks.map(async ({ label, run }) => {
+          try {
+            await run()
+          } catch (error) {
+            console.error(`[Headless] Error during ${label}:`, error)
+          }
+        })
+      )
+
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          cleanupPromise,
+          new Promise<void>((_, reject) => {
+            const id = setTimeout(
+              () => reject(new Error("Headless cleanup timeout")),
+              CLEANUP_TIMEOUT_MS
+            )
+            timeoutId = id
+            // unref() ensures this timer won't keep the event loop alive
+            // if cleanup finishes quickly (only available in Node.js)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (id && typeof (id as any).unref === "function") {
+              (id as any).unref()
+            }
+          }),
+        ])
+      } catch (error) {
+        logApp("Error during headless cleanup:", error)
+      } finally {
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId)
+        }
+      }
+
       process.exit(exitCode)
     }
 
@@ -584,8 +625,6 @@ app.whenReady().then(async () => {
 
   // Track if we're already cleaning up to prevent re-entry
   let isCleaningUp = false
-  const CLEANUP_TIMEOUT_MS = 5000 // 5 second timeout for graceful cleanup
-
   app.on("before-quit", async (event) => {
     setAppQuitting()
     makePanelWindowClosable()

@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop headless shutdown cleanup bounding in `apps/desktop/src/main/index.ts`, with `--headless` startup / `gracefulShutdown(...)` flow reviewed in that file, GUI quit-path parity rechecked in the same file, focused dependency-free source guardrails added in `tests/desktop-headless-shutdown-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check` in this dependency-light worktree.
 - 2026-03-08: Mobile `ChatScreen` emergency-stop feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with `killSwitch()` client semantics reviewed in the mobile chat session client path, adjacent mobile banner/voice-feedback patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-kill-switch-feedback.test.js`, adjacent `ChatScreen` feedback guards re-run in `apps/mobile/tests/chat-voice-start-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop app `before-quit` cleanup synchronization in `apps/desktop/src/main/index.ts`, with headless shutdown parity reviewed in that file, async shutdown semantics checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/remote-server.ts`, existing desktop main-process test patterns reviewed in `apps/desktop/src/main/index.hub-install.test.ts`, focused source-level coverage added in `tests/desktop-app-quit-cleanup.test.js`, and targeted verification run locally via `node --test` because this dependency-light worktree does not have desktop `vitest` available.
 - 2026-03-08: Mobile `Settings → Agent Loops` mutation feedback in `apps/mobile/src/screens/SettingsScreen.tsx`, with loop API response semantics reviewed in `apps/mobile/src/lib/settingsApi.ts`, existing mobile loop action coverage rechecked in `apps/mobile/tests/settings-loop-actions-mobile.test.js` / `apps/mobile/tests/settings-loop-feedback-mobile.test.js` / `apps/mobile/tests/settings-loop-metadata-mobile.test.js`, new mutation-feedback coverage added in `apps/mobile/tests/settings-loop-mutation-feedback-mobile.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
@@ -83,6 +84,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop headless shutdown cleanup still needs behavior-level validation once desktop Vitest or a runnable headless/Electron target is available, especially to confirm `SIGTERM`, CLI-triggered shutdown, remote-server start failure, and slow ACP/MCP/remote-server teardown all respect the shared timeout budget without double-exit surprises.
 - 2026-03-08: Mobile `ChatScreen` emergency-stop confirmation/banner flow still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the header action remains discoverable under large text, the inline success/error banner does not crowd the bottom action rail, and retry feels clear after transient remote-server failures.
 - 2026-03-08: Desktop app `before-quit` cleanup still needs execution-path validation once desktop Vitest or a runnable Electron target is available, especially to confirm real quit re-entry, shared-timeout fallback, and slow ACP/MCP/remote-server shutdown timing all behave predictably.
 - 2026-03-08: Mobile `Settings → Agent Loops` row-local pending / retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline warning density, disabled-action affordances, and optimistic `lastRunAt` refresh feel clear on compact screens.
@@ -105,6 +107,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop `--headless` shutdown in `apps/desktop/src/main/index.ts` now cleans up ACP, MCP, and the remote server in one bounded parallel batch with per-service best-effort logging and the same 5 second timeout budget used by GUI quit, so headless exits no longer risk hanging forever behind one stalled cleanup call or taking longer than necessary because services shut down sequentially; tradeoff: this pass intentionally keeps the existing inline cleanup structure in `index.ts` instead of extracting a shared helper while the worktree is limited to dependency-free guardrail verification.
 - 2026-03-08: Mobile `ChatScreen` emergency stop now routes confirmation through platform-safe helpers in `apps/mobile/src/screens/ChatScreen.tsx`, disables repeated taps while a kill request is in flight, replaces raw browser success/error alerts with inline pending/success/failure banner feedback, surfaces a contextual retry action on failure, and reports missing remote-server connectivity directly in context, so a safety-critical stop request no longer feels like a fire-and-forget icon tap or depends on web-only dialog APIs; tradeoff: this pass intentionally keeps the existing header action and compact bottom-banner pattern instead of introducing a custom modal or toast system.
 - 2026-03-08: Desktop app `before-quit` now waits for ACP shutdown, MCP cleanup, and remote-server shutdown together in `apps/desktop/src/main/index.ts`, bounded by one quit-time timeout and with per-service best-effort error logging, so the normal desktop quit path no longer fire-and-forgets ACP shutdown or skips local server cleanup before exiting; tradeoff: this pass intentionally stays scoped to the GUI quit path and source-level guardrails instead of refactoring the already-functional headless shutdown flow.
 - 2026-03-08: Mobile `Settings → Agent Loops` now tracks per-row `run` / `toggle` / `delete` mutations in `apps/mobile/src/screens/SettingsScreen.tsx`, disables conflicting controls while a row action is in flight, treats false `settingsClient` success results as real failures, replaces one-shot loop-action alerts with inline retryable warnings, and updates `lastRunAt` locally before background refresh on successful runs, so loop actions no longer feel fire-and-forget or silently fail behind transient alerts; tradeoff: this pass intentionally keeps the existing compact loop row layout and source-level verification instead of broadening into a settings-screen redesign or new global toast infrastructure.
@@ -179,6 +182,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-headless-shutdown-guardrails.test.js tests/desktop-app-quit-cleanup.test.js` after the desktop headless shutdown cleanup-bounding pass
+- 2026-03-08: `git diff --check` after the desktop headless shutdown cleanup-bounding pass
 - 2026-03-08: `node --test apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-voice-start-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js` after the mobile ChatScreen emergency-stop feedback pass
 - 2026-03-08: `git diff --check` after the mobile ChatScreen emergency-stop feedback pass
 - 2026-03-08: `node --test tests/desktop-app-quit-cleanup.test.js` after the desktop before-quit cleanup pass
@@ -445,6 +450,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Desktop headless shutdown now has source-level guardrails, but mocked execution-path validation for `SIGTERM`, CLI-initiated exit, remote-server start failure, and slow shutdown collaborators is the freshest adjacent reliability follow-up because the key user value is graceful termination under real timing and re-entry conditions, not just structural parity with GUI quit.
 - Mobile `ChatScreen` image-attachment feedback is the freshest adjacent mobile follow-up, because desktop attachment handling already gained inline failure guidance while the separate React Native picker path still appears to rely on alert-style recovery and likely lacks partial-success / retry clarity in context.
 - Desktop app `before-quit` cleanup now has source-level guardrails, but real Electron or mocked main-process execution-path validation is the freshest adjacent reliability follow-up because the user value depends on actual quit re-entry and timeout behavior, not just source structure.
 - Mobile `Settings → Agent Loops` live validation is now the freshest adjacent mobile loops follow-up, because the new row-local pending/error guardrails are only source-verified so far and the compact warning density, disabled-action affordances, and optimistic run-refresh behavior still need real product evidence once Expo is available.
@@ -2616,6 +2622,37 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once Expo or a runnable mobile target is available, live-check the compact loop rows across run success, run failure, toggle failure, delete failure, and retry flows to confirm the inline warnings stay readable without crowding the action rail
   - if the optimistic `lastRunAt` update feels misleading in real use, revisit whether the row should show a shorter-lived `Triggered` status instead of immediately advancing the timestamp
+
+### 2026-03-08 — Desktop headless shutdown cleanup bounding
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop main-process `--headless` startup/shutdown path in `apps/desktop/src/main/index.ts`
+  - rechecked GUI `before-quit` cleanup structure in the same file to confirm the intended parity target and timeout shape
+  - focused dependency-free guardrail coverage added in `tests/desktop-headless-shutdown-guardrails.test.js`
+- Why it was chosen:
+  - the ledger already had several desktop UI passes blocked on missing runnable Electron targets, so the next best move was a reliability improvement with a clear local implementation and verification path
+  - fresh source review found a concrete mismatch inside `index.ts`: GUI quit now cleans up ACP/MCP/remote-server in parallel under one timeout, but headless shutdown still awaited them sequentially with no timeout, making `--headless` exits the less resilient path if one collaborator stalls
+  - this is a high-leverage trust improvement because headless mode is explicitly used for remote/server-style operation where graceful shutdown behavior matters during `SIGTERM`, startup failure rollback, and CLI-triggered exit
+- What was inspected:
+  - `apps/desktop/src/main/index.ts` around the headless `gracefulShutdown(...)` implementation, `SIGTERM` registration, startup failure path, and the GUI `before-quit` cleanup block
+  - existing dependency-free guardrail patterns in `tests/desktop-app-quit-cleanup.test.js` to keep this pass compatible with a no-`node_modules` worktree
+  - `apps/desktop/src/main/headless-cli.ts` shutdown handoff to confirm the same headless cleanup path is used for interactive CLI exits
+- Improvement made:
+  - introduced a shared top-level cleanup timeout constant so both GUI and headless cleanup paths use the same 5 second budget
+  - replaced the headless shutdown sequence's sequential `await ... .catch(...)` calls with one parallel cleanup batch covering ACP shutdown, MCP cleanup, and remote-server shutdown
+  - bounded that batch with `Promise.race(...)`, `unref()` timer handling, and best-effort per-service logging so headless exits keep making forward progress even when one cleanup collaborator is slow or throws
+  - added `tests/desktop-headless-shutdown-guardrails.test.js` to lock in the headless cleanup contract in this dependency-light worktree
+- Assumptions / tradeoffs / rationale:
+  - kept the implementation inline inside `index.ts` instead of extracting a reusable helper because the smallest effective change here was to eliminate the headless shutdown risk without broadening the shutdown architecture in the same pass
+  - reused the existing 5 second budget rather than introducing separate per-service deadlines so headless and GUI exits stay conceptually aligned
+  - accepted dependency-free source assertions for now because this worktree still lacks desktop Vitest/runtime dependencies, but the change still improves real shutdown behavior immediately
+- Tests / verification:
+  - `node --test tests/desktop-headless-shutdown-guardrails.test.js tests/desktop-app-quit-cleanup.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once desktop Vitest or a runnable headless/Electron target is available, exercise `SIGTERM`, CLI-triggered shutdown, startup-failure rollback, and intentionally slow ACP/MCP/remote-server mocks to confirm timeout/re-entry behavior end to end
+  - if shutdown work expands again, consider extracting the shared long-lived-service cleanup batch so GUI and headless paths cannot drift apart
 
 ### 2026-03-08 — Desktop app before-quit cleanup synchronization
 - Date:
