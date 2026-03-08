@@ -31,9 +31,12 @@ export interface LoopStatus {
   intervalMinutes: number
 }
 
+type LoopExecutionOrigin = "manual" | "scheduled" | "startup"
+
 class LoopService {
   private static instance: LoopService | null = null
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
+  private pendingStartupRuns: Map<string, ReturnType<typeof setImmediate>> = new Map()
   private loopNextRunAt: Map<string, number> = new Map()
   private executingLoops: Set<string> = new Set()
   private isStopping: boolean = false
@@ -182,8 +185,10 @@ class LoopService {
 
   stopAllLoops(): void {
     this.isStopping = true
-    logApp(`[LoopService] Stopping all loops. Active timers: ${this.activeTimers.size}`)
-    for (const [loopId] of this.activeTimers) {
+    logApp(
+      `[LoopService] Stopping all loops. Active timers: ${this.activeTimers.size}, pending startup runs: ${this.pendingStartupRuns.size}`
+    )
+    for (const loopId of new Set([...this.activeTimers.keys(), ...this.pendingStartupRuns.keys()])) {
       this.stopLoop(loopId)
     }
   }
@@ -204,15 +209,18 @@ class LoopService {
       return false
     }
 
+    this.clearPendingStartupRun(loopId)
     this.clearScheduledTimer(loopId)
 
     logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), interval: ${loop.intervalMinutes}m`)
 
     if (loop.runOnStartup) {
       logApp(`[LoopService] Loop "${loop.name}" has runOnStartup=true, triggering immediately`)
-      setImmediate(() => {
-        void this.executeLoop(loopId, { rescheduleAfterRun: true })
+      const startupRun = setImmediate(() => {
+        this.pendingStartupRuns.delete(loopId)
+        void this.executeLoop(loopId, { rescheduleAfterRun: true, origin: "startup" })
       })
+      this.pendingStartupRuns.set(loopId, startupRun)
     } else {
       this.scheduleNextRun(loopId, this.getIntervalMs(loop))
     }
@@ -221,10 +229,11 @@ class LoopService {
   }
 
   stopLoop(loopId: string): boolean {
-    const hadTimer = this.activeTimers.has(loopId)
+    const hadScheduledWork = this.activeTimers.has(loopId) || this.pendingStartupRuns.has(loopId)
+    this.clearPendingStartupRun(loopId)
     this.clearScheduledTimer(loopId)
 
-    if (!hadTimer) {
+    if (!hadScheduledWork) {
       logApp(`[LoopService] Stop requested for ${loopId}: no scheduled timer`)
       return false
     }
@@ -248,7 +257,7 @@ class LoopService {
     logApp(`[LoopService] Manually triggering loop "${loop.name}" (${loopId})`)
     // Reschedule after manual run if the loop is enabled so we don't lose the timer
     const shouldReschedule = loop.enabled && this.activeTimers.has(loopId)
-    await this.executeLoop(loopId, { rescheduleAfterRun: shouldReschedule })
+    await this.executeLoop(loopId, { rescheduleAfterRun: shouldReschedule, origin: "manual" })
     return true
   }
 
@@ -281,12 +290,27 @@ class LoopService {
     }
   }
 
-  private async executeLoop(loopId: string, options: { rescheduleAfterRun: boolean }): Promise<void> {
+  private async executeLoop(
+    loopId: string,
+    options: { rescheduleAfterRun: boolean; origin: LoopExecutionOrigin }
+  ): Promise<void> {
     const loop = this.getLoop(loopId)
 
     if (!loop) {
       logApp(`[LoopService] Cannot execute loop ${loopId}: not found`)
       return
+    }
+
+    if (options.origin !== "manual") {
+      if (this.isStopping) {
+        logApp(`[LoopService] Skip ${options.origin} execution for "${loop.name}" (${loopId}): service stopping`)
+        return
+      }
+
+      if (!loop.enabled) {
+        logApp(`[LoopService] Skip ${options.origin} execution for "${loop.name}" (${loopId}): disabled`)
+        return
+      }
     }
 
     if (this.executingLoops.has(loopId)) {
@@ -295,6 +319,7 @@ class LoopService {
     }
 
     this.executingLoops.add(loopId)
+    this.clearPendingStartupRun(loopId)
     this.clearScheduledTimer(loopId)
 
     logApp(`[LoopService] Executing loop "${loop.name}" (${loopId})`)
@@ -347,10 +372,18 @@ class LoopService {
     const timer = setTimeout(() => {
       this.activeTimers.delete(loopId)
       this.loopNextRunAt.delete(loopId)
-      void this.executeLoop(loopId, { rescheduleAfterRun: true })
+      void this.executeLoop(loopId, { rescheduleAfterRun: true, origin: "scheduled" })
     }, delayMs)
 
     this.activeTimers.set(loopId, timer)
+  }
+
+  private clearPendingStartupRun(loopId: string): void {
+    const pendingRun = this.pendingStartupRuns.get(loopId)
+    if (pendingRun) {
+      clearImmediate(pendingRun)
+    }
+    this.pendingStartupRuns.delete(loopId)
   }
 
   private clearScheduledTimer(loopId: string): void {

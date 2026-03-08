@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop repeat-task `runOnStartup` scheduling guardrails in `apps/desktop/src/main/loop-service.ts`, with startup/stop/reload/shutdown call sites reviewed in `apps/desktop/src/main/index.ts` and `apps/desktop/src/main/tipc.ts`, existing repeat-task renderer feedback context rechecked in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, focused source-level coverage added in `tests/desktop-loop-service-startup-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree still does not have desktop Vitest dependencies installed.
 - 2026-03-08: Desktop repeat-task `Run` / enable-toggle local action feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, with `triggerLoop` / `startLoop` / `stopLoop` semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/loop-service.ts`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (similar mutation-only feedback still lives in a separate remote/native flow there, so it remains a dedicated mobile follow-up rather than part of this desktop pass), focused source-level coverage extended in `tests/desktop-settings-loops-feedback.test.js` and `tests/desktop-settings-loops-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target with `--inspect` in this environment).
 - 2026-03-08: Desktop emergency-stop ACP-wide cancellation / shutdown best-effort isolation in `apps/desktop/src/main/emergency-stop.ts`, with ACP run-tracking behavior reviewed in `apps/desktop/src/main/acp/acp-client-service.ts`, ACP shutdown semantics cross-checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/acp/acp-process-manager.ts`, kill-switch callers reviewed in `apps/desktop/src/main/window.ts`, `apps/desktop/src/main/remote-server.ts`, and `apps/desktop/src/main/builtin-tools.ts`, focused source-level coverage extended in `tests/desktop-emergency-stop-guardrails.test.js`, and targeted verification run locally via `node --test` because this dependency-less worktree does not have `node_modules` / `vitest` available.
 - 2026-03-08: Desktop skills delete guardrails in `apps/desktop/src/renderer/src/pages/settings-skills.tsx`, with `deleteSkill` / `deleteSkills` return semantics reviewed in `apps/desktop/src/main/tipc.ts` / `apps/desktop/src/main/skills-service.ts`, adjacent destructive-action patterns reviewed in `apps/desktop/src/renderer/src/pages/settings-agents.tsx` and `apps/desktop/src/renderer/src/pages/memories.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile delete surface exists there because mobile currently exposes skill toggling but not desktop skill authoring/deletion), focused source-level coverage added in `tests/desktop-settings-skills-delete-guardrails.test.js`, and live desktop inspection attempted via `electron_execute` (blocked: no Electron/CDP target).
@@ -78,6 +79,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Desktop repeat-task `runOnStartup` disable/reload/shutdown behavior still needs behavioral validation once desktop Vitest or a runnable Electron target is available, especially for enable-then-immediate-disable, repeated `startLoop(...)` calls, bundle-reload pauses, and quit-right-after-launch timing.
 - 2026-03-08: Desktop repeat-task `Run` / enable-toggle inline pending/error/retry UI still needs live Electron validation once a runnable target is available, especially to confirm the new row-level status panel, `Running...` / `Enabling...` labels, and retry affordances feel clear without overcrowding already compact task rows.
 - 2026-03-08: Desktop `Settings → Skills` single/bulk delete dialogs still need live Electron validation once a runnable target is available, especially to confirm the destructive-modal cadence, partial-failure retry copy, and selection-preservation behavior feel clear in select mode without making bulk cleanup cumbersome.
 - 2026-03-08: Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity still needs live Electron validation once the renderer mounts real product content, especially to confirm the new `Active prompt layer` summary, Skills/Memories path density, and `Reveal Active …` labels stay understandable without making the advanced section feel overly busy.
@@ -95,6 +97,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Desktop repeat-task startup scheduling now tracks pending `runOnStartup` immediates in `apps/desktop/src/main/loop-service.ts`, cancels or replaces them when a loop is stopped/restarted, and skips non-manual executions after a loop has been disabled or global scheduling has entered shutdown, so enabled-on-start tasks no longer risk one stray extra run during rapid toggle, reload, or quit edges; tradeoff: this pass stays narrowly focused on the existing main-process scheduler and uses source-level guardrails in this dependency-light worktree instead of a broader runtime refactor.
 - 2026-03-08: Desktop `Repeat Tasks` now gives `Run` and enabled/disabled actions row-local pending/error feedback in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, disabling conflicting controls while a request is in flight, replacing the old fire-and-forget action feel with inline `Running...` / `Enabling...` / `Disabling...` status copy, refreshing loop metadata after manual runs, and surfacing retryable inline warnings when an enable save succeeds but the schedule cannot start, so loop actions no longer feel inert or ambiguously successful; tradeoff: this pass intentionally stays scoped to desktop renderer feedback and stops short of reworking the separate mobile/native loops action flow.
 - 2026-03-08: Desktop emergency stop now treats ACP-wide `acpClientService.cancelAllRuns()` as best-effort in `apps/desktop/src/main/emergency-stop.ts`, so a thrown ACP cancellation edge case can no longer prevent the later spawned-agent and stdio-agent shutdown attempts from running; rationale: the kill switch should keep making forward cleanup progress even if one ACP subsystem misbehaves, and the smallest safe fix is to align ACP run cancellation with the surrounding guarded cleanup steps rather than broaden ACP client internals in the same pass.
 - 2026-03-08: Desktop `Settings → Skills` now replaces one-shot browser `confirm(...)` deletion with recoverable single and bulk confirmation dialogs, treats false `deleteSkill(...)` results as failures instead of success, keeps failed bulk deletions selected for retry, and disables conflicting actions while delete mutations are in flight, so skill cleanup no longer silently succeeds or drops the user's selection after a partial failure; tradeoff: this pass intentionally stays scoped to deletion and leaves the earlier draft-discard confirmation flow as a separate follow-up decision.
@@ -164,6 +167,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-loop-service-startup-guardrails.test.js tests/desktop-settings-loops-feedback.test.js` after the desktop repeat-task startup-scheduling guardrails pass
+- 2026-03-08: `git diff --check` after the desktop repeat-task startup-scheduling guardrails pass
 - 2026-03-08: `node --test tests/desktop-settings-loops-feedback.test.js tests/desktop-settings-loops-delete-guardrails.test.js` after the desktop repeat-task run/toggle action-feedback pass
 - 2026-03-08: custom `node` + `typescript.transpileModule` syntax check for `apps/desktop/src/renderer/src/pages/settings-loops.tsx` after the desktop repeat-task run/toggle action-feedback pass
 - 2026-03-08: `git diff --check` after the desktop repeat-task run/toggle action-feedback pass
@@ -403,12 +408,14 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
+- Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop `Settings → General` ACP main-agent warning density / recovery flow live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
 - Desktop past-sessions dialog broader loading/search/delete-all recovery and focus-restoration polish (`apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx`, `apps/desktop/src/renderer/src/pages/sessions.tsx`)
 - Mobile `Settings → Agent Loops` mutation feedback (`run`, `toggle`, `delete`) in `apps/mobile/src/screens/SettingsScreen.tsx`
 
 ### Next Highest-Value Targets
+- Desktop repeat-task startup scheduling now has source-level guardrails, but behavior-level validation with mocked timers or a runnable Electron lifecycle is the freshest adjacent reliability follow-up because the key user value is preventing a stray extra run during disable/reload/quit races.
 - Desktop past-sessions dialog focus-restoration / keyboard-navigation polish is now the freshest desktop UX follow-up, because loading/search recovery is clearer now but row-to-session handoff and close/reopen focus behavior still lack live product evidence.
 - Mobile loop action mutation failure feedback (`run`, `toggle`, `delete`) is now the freshest adjacent loops follow-up, because desktop repeat-task actions now have row-local recovery but mobile still relies on separate remote/native mutation handling.
 - Desktop emergency-stop still lacks execution-path validation against throwing ACP collaborators in this dependency-light worktree, because current coverage locks in the best-effort guardrails at the source level but does not yet exercise the runtime function with mocked ACP failures.
@@ -2476,6 +2483,39 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once an Electron target is available, live-check single delete, bulk delete, partial bulk failure, and retry-to-success flows in the real desktop settings UI
   - decide in a later pass whether the remaining skills draft-discard confirmations should stay lightweight or move to the same custom dialog pattern
+
+### 2026-03-08 — Desktop repeat-task startup scheduling guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop repeat-task scheduler in `apps/desktop/src/main/loop-service.ts`
+  - startup and shutdown call sites in `apps/desktop/src/main/index.ts`
+  - repeat-task reload flow in `apps/desktop/src/main/tipc.ts`
+  - focused source-level guardrail coverage added in `tests/desktop-loop-service-startup-guardrails.test.js`
+- Why it was chosen:
+  - the ledger already covered repeat-task UI feedback and deletion, so the next highest-value adjacent opportunity was in the scheduler itself rather than another renderer pass
+  - source review found a concrete reliability gap: `runOnStartup` used fire-and-forget `setImmediate(...)`, which was not tracked or cancelled, and the automatic execution path did not re-check disabled/stopping state before running
+  - that meant a task could still run once after a fast disable/restart/shutdown edge, which is especially risky because repeat tasks are supposed to be predictable automation
+- What was inspected:
+  - `apps/desktop/src/main/loop-service.ts` scheduling, `startLoop(...)`, `stopLoop(...)`, `stopAllLoops()`, and `executeLoop(...)`
+  - `apps/desktop/src/main/index.ts` startup and `before-quit` loop-service usage
+  - `apps/desktop/src/main/tipc.ts` bundle-reload flow using `stopAllLoops()` / `resumeScheduling()` / `startAllLoops()`
+  - `apps/desktop/src/renderer/src/pages/settings-loops.tsx` to confirm manual `Run` behavior should remain allowed even for disabled tasks
+- Improvement made:
+  - added `pendingStartupRuns` tracking so `runOnStartup` immediates are now cancellable and replaced cleanly when a loop is restarted
+  - made `stopLoop(...)` and `stopAllLoops()` clear queued startup runs in addition to ordinary timers, so pending startup work counts as real scheduled work instead of invisible fire-and-forget state
+  - tagged loop execution origin as `manual`, `startup`, or `scheduled`, preserving manual runs for disabled tasks while skipping automatic executions when the loop has been disabled or scheduling is stopping
+  - kept rescheduling behavior unchanged after a successful automatic run, so the fix stays narrowly scoped to stray-start prevention rather than broader scheduler semantics
+- Assumptions / tradeoffs / rationale:
+  - explicitly preserved manual `Run now` behavior for disabled tasks because the existing settings UI exposes that as a valid one-off action
+  - chose a narrow main-process guardrail fix over a larger scheduler refactor because the highest-value bug was the untracked startup-immediate edge, not the overall loop architecture
+  - accepted dependency-free source assertions in `tests/` rather than a mocked Vitest behavior test because this worktree does not currently have `node_modules` / `vitest`
+- Tests / verification:
+  - `node --test tests/desktop-loop-service-startup-guardrails.test.js tests/desktop-settings-loops-feedback.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once desktop Vitest or a runnable Electron target is available, behavior-test enable-then-immediate-disable, repeated `startLoop(...)`, reload, and quit races to confirm no stray automatic run slips through
+  - if another loops pass is needed after that, inspect mobile loop mutation feedback next so repeat-task recovery quality stays aligned across desktop and mobile
 
 ### Iteration Template
 - Date:
