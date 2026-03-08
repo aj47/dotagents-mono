@@ -1,3 +1,14 @@
+const UNREADABLE_CONTROL_CHAR_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u
+const UNREADABLE_ESCAPED_CONTROL_CHAR_REGEX = /\\u00(?:0[0-8BCEF]|1[0-9A-F]|7F|8[0-9A-F]|9[0-9A-F])/iu
+
+function isReadableErrorMessage(message: string | undefined): message is string {
+  if (!message || !message.trim()) {
+    return false
+  }
+
+  return !UNREADABLE_CONTROL_CHAR_REGEX.test(message) && !UNREADABLE_ESCAPED_CONTROL_CHAR_REGEX.test(message)
+}
+
 function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string | undefined {
   if (error === null || error === undefined) {
     return undefined
@@ -12,7 +23,7 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
   }
 
   if (error instanceof Error) {
-    if (error.message) {
+    if (isReadableErrorMessage(error.message)) {
       return error.message
     }
 
@@ -28,7 +39,7 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
   }
 
   if (typeof error === "string") {
-    return error || undefined
+    return isReadableErrorMessage(error) ? error : undefined
   }
 
   if (Array.isArray(error)) {
@@ -57,7 +68,7 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
 
     try {
       const serialized = JSON.stringify(error)
-      if (serialized && serialized !== "{}") {
+      if (serialized && serialized !== "{}" && isReadableErrorMessage(serialized)) {
         return serialized
       }
     } catch {

@@ -25,6 +25,25 @@ describe("error-utils", () => {
     expect(getErrorMessage(aggregateLikeError, "Fallback message")).toBe("Primary provider unavailable")
   })
 
+  it("ignores unreadable binary-like messages and prefers readable nested causes", () => {
+    const original = new Error("\u001f\u008b\b\u0000binary-gzip-noise", {
+      cause: new Error("Cannot connect to API: upstream reset the connection"),
+    })
+
+    expect(getErrorMessage(original, "Fallback message")).toBe(
+      "Cannot connect to API: upstream reset the connection",
+    )
+    expect(formatTerminalErrorMessage(original, "Fallback message")).toBe(
+      "Error: Cannot connect to API: upstream reset the connection",
+    )
+  })
+
+  it("falls back when only unreadable binary-like text is available", () => {
+    expect(getErrorMessage("\u001f\u008b\b\u0000binary-gzip-noise", "Fallback message")).toBe(
+      "Fallback message",
+    )
+  })
+
   it("uses the fallback when Error.cause forms a cycle", () => {
     const error = new Error("") as Error & { cause?: unknown }
     error.cause = error

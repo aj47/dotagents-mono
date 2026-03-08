@@ -697,13 +697,53 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `pnpm --filter @dotagents/desktop exec vitest run src/main/llm.test.ts`
     - ❌ blocked by a pre-existing desktop test-harness issue in this worktree (`Named export 'ipcMain' not found` from the Electron module after wider main-process imports load), before the new regression could complete
 
+### 2026-03-08 — Binary/gzip provider noise should not become the terminal Langfuse/UI error
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1772226125439_yq6ahvtqo`
+  - first failing trace: `session_1772234129399_xn2blvdwj`
+    - user input: `what`
+    - trace `output` was `null`
+    - `Streaming LLM Call` error status recorded raw binary/gzip-like noise after retries instead of a readable provider failure
+  - second failing trace: `session_1772234536054_7kum1z2gj`
+    - user input: `try again`
+    - trace `output` was `null`
+    - one `Streaming LLM Call` again recorded binary/gzip-like noise before a later non-retryable schema error (`Invalid schema for function 'respond_to_user' ...`)
+  - later recovery trace: `session_1772235103739_r8ax7fa2k`
+    - user had to narrow the same conversation to `how many prs are open in that repo` before the run completed successfully
+- Repo reconstruction:
+  - `apps/desktop/src/main/error-utils.ts` treated the first non-empty message string as authoritative, even when it contained control characters / gzip-like binary noise
+  - `apps/desktop/src/main/llm-fetch.ts` still used raw `error.message` in several terminal paths (`generateText` Langfuse error status, text-completion error status, verification fallback reason, and message-based retry detection)
+  - that meant unreadable provider transport noise could leak directly into Langfuse/UI error reporting instead of falling back to a readable nested cause or stable fallback text
+- Concrete root cause:
+  - binary/compressed provider payload text was being treated as a valid terminal error message
+  - once that happened, the later user-facing error/reporting path could preserve unreadable noise or an empty/low-signal message instead of a clean provider failure explanation
+- Change made:
+  - `apps/desktop/src/main/error-utils.ts`
+    - added unreadable-message detection for control-character / escaped-control-character payloads
+    - ignore binary-like message strings and continue walking nested `cause` / `errors` data for a readable explanation
+  - `apps/desktop/src/main/llm-fetch.ts`
+    - switched `generateText` and text-completion Langfuse error statuses to `getErrorMessage(...)`
+    - switched verification fallback reasons and retry message inspection to the same normalized error extraction
+  - tests added/updated:
+    - `apps/desktop/src/main/error-utils.test.ts`
+      - regressions for binary-like top-level messages with readable nested causes, and for binary-only fallback behavior
+    - `apps/desktop/src/main/llm-fetch.test.ts`
+      - regression proving Langfuse error finalization now records the readable nested cause instead of the binary-like top-level message
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/error-utils.test.ts src/main/llm-fetch.test.ts`
+  - ✅ passed (`44 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `git diff --check -- apps/desktop/src/main/error-utils.ts apps/desktop/src/main/error-utils.test.ts apps/desktop/src/main/llm-fetch.ts apps/desktop/src/main/llm-fetch.test.ts langfuse-bug-fix.md`
+  - ✅ passed
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
 - Recheck a fresh ad-hoc extraction trace after dependencies are restored, to confirm the agent now chooses a source-adjacent or dedicated subdirectory instead of writing extracted notes straight into repo root.
 - Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
-- Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now both preserve the terminal error message.
+- Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now surface the normalized readable error message instead of binary/gzip transport noise.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
 - Recheck a fresh terse in-repo coding follow-up after an agent startup failure, to confirm the main agent now continues directly (or uses the internal agent constructively) instead of reflexively bouncing the user into clarification.

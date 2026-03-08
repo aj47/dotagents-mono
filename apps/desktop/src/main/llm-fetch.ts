@@ -347,7 +347,7 @@ function withLLMStreamTimeout<T>(
  */
 function isEmptyResponseError(error: unknown): boolean {
   if (error instanceof Error) {
-    const message = error.message.toLowerCase()
+    const message = getErrorMessage(error, error.message || "").toLowerCase()
     return (
       message.includes("empty response") ||
       message.includes("empty content") ||
@@ -778,7 +778,7 @@ export async function makeLLMCallWithFetch(
           if (generationId) {
             endLLMGeneration(generationId, {
               level: "ERROR",
-              statusMessage: error instanceof Error ? error.message : "generateText failed",
+              statusMessage: getErrorMessage(error, "generateText failed"),
             })
           }
           throw error
@@ -1222,7 +1222,7 @@ export async function makeTextCompletionWithFetch(
         if (generationId) {
           endLLMGeneration(generationId, {
             level: "ERROR",
-            statusMessage: error instanceof Error ? error.message : "Text completion failed",
+            statusMessage: getErrorMessage(error, "Text completion failed"),
           })
         }
         diagnosticsService.logError("llm-fetch", "Text completion failed", error)
@@ -1335,7 +1335,7 @@ export async function verifyCompletionWithFetch(
         diagnosticsService.logError("llm-fetch", "Verification call failed", error)
         return {
           isComplete: false,
-          reason: (error as any)?.message || "Verification failed",
+          reason: getErrorMessage(error, "Verification failed"),
         }
       } finally {
         unregisterSessionAbortController(abortController, sessionId)
