@@ -21,4 +21,17 @@ describe("desktop skills page failure feedback", () => {
     expect(settingsSkillsSource).not.toContain('toast.info("No new skills found in folder")')
     expect(settingsSkillsSource).not.toContain("Auto-imported")
   })
+
+  it("keeps the GitHub import dialog open when no skills were imported", () => {
+    expect(settingsSkillsSource).toContain("if (!result) {")
+    expect(settingsSkillsSource).toContain("if (result.imported.length > 0) {")
+    expect(settingsSkillsSource).toContain('toast.error(`Failed to import: ${result.errors.join("; ")}`)')
+    expect(settingsSkillsSource).toContain('toast.info("No skills found in repository")')
+    expect(settingsSkillsSource).toContain("setIsGitHubDialogOpen(false)")
+    expect(settingsSkillsSource).toContain('setGitHubRepoInput("")')
+    expect(settingsSkillsSource).toContain('toast.success(`Imported ${result.imported.length} skill(s) from GitHub: ${result.imported.map(s => s.name).join(", ")}`)')
+    expect(settingsSkillsSource).toContain("if (result.errors.length > 0) {")
+    expect(settingsSkillsSource).toContain('toast.error(`Failed to import: ${result.errors.join("; ")}`)\n        return')
+    expect(settingsSkillsSource).toContain('toast.info("No skills found in repository")')
+  })
 })

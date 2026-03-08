@@ -314,18 +314,24 @@ export function Component() {
       return await tipcClient.importSkillFromGitHub({ repoIdentifier })
     },
     onSuccess: (result) => {
-      if (result) {
+      if (!result) {
+        return
+      }
+
+      if (result.imported.length > 0) {
         queryClient.invalidateQueries({ queryKey: ["skills"] })
-        if (result.imported.length > 0) {
-          toast.success(`Imported ${result.imported.length} skill(s) from GitHub: ${result.imported.map(s => s.name).join(", ")}`)
-        } else if (result.errors.length > 0) {
-          toast.error(`Failed to import: ${result.errors.join("; ")}`)
-        } else {
-          toast.info("No skills found in repository")
-        }
+        toast.success(`Imported ${result.imported.length} skill(s) from GitHub: ${result.imported.map(s => s.name).join(", ")}`)
         setIsGitHubDialogOpen(false)
         setGitHubRepoInput("")
+        return
       }
+
+      if (result.errors.length > 0) {
+        toast.error(`Failed to import: ${result.errors.join("; ")}`)
+        return
+      }
+
+      toast.info("No skills found in repository")
     },
     onError: (error: Error) => {
       toast.error(`Failed to import from GitHub: ${error.message}`)
