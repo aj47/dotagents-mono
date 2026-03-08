@@ -2486,3 +2486,43 @@
   - Re-run the new Vitest coverage once package dependencies are available in the workspace.
 
 - Next recommended issue work item: if staying on `#57`, tackle the first honest write-path follow-up (especially agent-profile/config persistence semantics under an active slot); otherwise refresh open issues and pick the next concrete desktop bug/reliability slice.
+
+##### Issue #57 — Feature: Bundle load/unload safety — slot-aware prompt/profile persistence follow-up
+
+- Selection rationale:
+  - Re-read `issue-work.md` first and followed the prior recommended next step instead of jumping to a broader speculative feature.
+  - Issue `#57` already had the runtime read-side slot overlay landed, and the owner follow-up explicitly called out bundle slots / easy swapping as part of the trust track.
+  - The most concrete remaining reliability gap was local and testable: effective profiles/prompts could be read from an active slot, but edits still tended to persist into the default writable layer rather than the layer that supplied the visible data.
+- Investigation:
+  - Re-read issue `#57` plus the owner comments, especially the follow-up requirement that the runtime loader mount the active slot as its own layer for easy bundle swapping without config loss.
+  - Re-inspected `apps/desktop/src/main/agent-profile-service.ts` and confirmed two concrete problems:
+    - `syncPromptsFromLayer(...)` only read prompt files from the topmost runtime layer, so a workspace overlay with no prompt files could mask valid slot/global prompt files below it.
+    - `saveSingleProfile(...)` and delete flows still targeted the global layer, so editing a profile sourced from an active slot would write back to the wrong layer.
+  - Re-checked `apps/desktop/src/main/agents-files/modular-config.ts` and confirmed prompt writes only had a combined `writeAgentsPrompts(...)` helper, making per-file layered persistence awkward.
+- Important assumptions:
+  - Assumption: for this slice, existing profiles/prompts should write back to their effective origin layer, but brand-new generic profile creation can still fall back to `writableLayer`.
+  - Why acceptable: the prior runtime-layer landing explicitly kept `writableLayer = workspace ?? global`, and changing new-item authoring semantics to default into slots would be a larger UX decision than this narrow bug fix.
+  - Assumption: deleting a profile should delete the effective origin-layer copy only, even if a lower-priority version could later become visible again.
+  - Why acceptable: that behavior matches layered override semantics and is safer than silently deleting lower layers the user may not intend to mutate.
+  - Assumption: dependency-free source-level node tests plus desktop TypeScript validation are sufficient verification for this persistence-layer follow-up.
+  - Why acceptable: the patch is confined to main-process layering/persistence logic, the new regression tests pass locally, and `tsc` passes for the desktop app in this workspace.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/agent-profile-service.ts` to track `profileOriginById` from merged layered profile loads and resolve later saves/deletes back to the profile's origin layer before falling back to `writableLayer`.
+  - Fixed prompt loading in `agent-profile-service.ts` so system prompt and agents guidelines are discovered from the highest available runtime layer for each file independently instead of assuming the topmost overlay has both files.
+  - Updated prompt persistence in `agent-profile-service.ts` so main-agent prompt files write back to their prompt source layer (or the main-agent profile layer as a fallback) rather than collapsing everything into one default layer.
+  - Added per-file prompt write helpers in `apps/desktop/src/main/agents-files/modular-config.ts` so `system-prompt.md` and `agents.md` can persist independently when their effective sources differ.
+  - Added focused source-level regression coverage in `apps/desktop/src/main/agent-profile-slot-persistence.test.js` for layered profile-origin persistence and prompt-layer resolution.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/agent-profile-slot-persistence.test.js` ✅
+  - Completed: `node --test apps/desktop/src/main/agents-layer-resolution.foundation.test.js` ✅
+  - Completed: `pnpm exec tsc --noEmit -p apps/desktop/tsconfig.json` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #57:
+  - Extend the same slot-aware origin semantics to broader config write paths where active-slot overrides are editable from settings screens.
+  - Add explicit slot UX actions (`switch slot`, `clear slot`, `import into new/current slot`, `promote current config to slot`) so users do not rely on manual pointer edits.
+  - Decide whether deleting an override should surface lower-priority versions immediately in UI or offer a clearer layered-delete affordance.
+  - Revisit deeper runtime/integration coverage once the full desktop test runner environment is consistently available.
+
+- Next recommended issue work item: stay on `#57` for one more small slice only if it tackles a concrete write-path or slot-action gap (most likely broader config save semantics or explicit slot-switch actions); otherwise refresh open issues and pick the next well-scoped desktop bug/reliability issue.

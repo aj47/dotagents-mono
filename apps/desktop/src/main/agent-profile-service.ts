@@ -23,16 +23,23 @@ import {
 } from "@shared/types"
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
-import { configStore, getRuntimeAgentsLayers } from "./config"
+import { configStore, getRuntimeAgentsLayers, type RuntimeAgentsLayer } from "./config"
 import { getBuiltinToolNames } from "./builtin-tool-definitions"
 import { acpRegistry } from "./acp/acp-registry"
 import type { ACPAgentDefinition } from "./acp/types"
-import { writeAgentsPrompts, loadAgentsPrompts } from "./agents-files/modular-config"
 import {
+  loadAgentsPrompts,
+  writeAgentsGuidelinesFile,
+  writeSystemPromptFile,
+} from "./agents-files/modular-config"
+import {
+  agentProfileIdToConfigJsonPath,
+  agentProfileIdToFilePath,
   loadMergedAgentProfiles,
   writeAgentsProfileFiles,
   writeAllAgentsProfileFiles,
   deleteAgentProfileFiles,
+  type AgentProfileOrigin,
 } from "./agents-files/agent-profiles"
 import { DEFAULT_SYSTEM_PROMPT } from "./system-prompts-default"
 
@@ -235,19 +242,76 @@ const DEFAULT_PROFILES: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">[] =
 class AgentProfileService {
   private profilesData: AgentProfilesData | undefined
   private conversationsData: AgentProfileConversationsData = {}
+  private profileOriginById = new Map<string, AgentProfileOrigin>()
+  private promptSourceLayers = {
+    systemPrompt: null as RuntimeAgentsLayer | null,
+    agentsGuidelines: null as RuntimeAgentsLayer | null,
+  }
 
   constructor() {
     this.loadProfiles()
     this.loadConversations()
   }
 
+  private persistProfilesShadow(): void {
+    if (!this.profilesData) return
+    try {
+      fs.writeFileSync(agentProfilesPath, JSON.stringify(this.profilesData, null, 2))
+    } catch (error) {
+      logApp("Error saving agent profiles shadow file:", error)
+    }
+  }
+
+  private rememberProfileOrigin(profileId: string, layer: RuntimeAgentsLayer): void {
+    this.profileOriginById.set(profileId, {
+      filePath: agentProfileIdToFilePath(layer.paths, profileId),
+      configJsonPath: agentProfileIdToConfigJsonPath(layer.paths, profileId),
+    })
+  }
+
+  private resolveProfilePersistenceLayer(profileId: string): RuntimeAgentsLayer {
+    const origin = this.profileOriginById.get(profileId)
+    if (origin?.filePath) {
+      const resolvedOriginPath = path.resolve(origin.filePath)
+      const { orderedLayers } = getRuntimeAgentsLayers()
+      for (const layer of [...orderedLayers].reverse()) {
+        const profilesDir = path.resolve(layer.paths.agentProfilesDir)
+        if (resolvedOriginPath.startsWith(`${profilesDir}${path.sep}`)) {
+          return layer
+        }
+      }
+    }
+
+    return getRuntimeAgentsLayers().writableLayer
+  }
+
   private syncPromptsFromLayer(data: AgentProfilesData) {
     const { orderedLayers } = getRuntimeAgentsLayers()
-    const agentsLayerPaths = orderedLayers[orderedLayers.length - 1]?.paths
+    let systemPrompt: string | null = null
+    let agentsGuidelines: string | null = null
+    let systemPromptLayer: RuntimeAgentsLayer | null = null
+    let agentsGuidelinesLayer: RuntimeAgentsLayer | null = null
 
-    if (!agentsLayerPaths) return
+    for (const layer of [...orderedLayers].reverse()) {
+      const loaded = loadAgentsPrompts(layer.paths)
 
-    const { systemPrompt, agentsGuidelines } = loadAgentsPrompts(agentsLayerPaths)
+      if (systemPrompt === null && loaded.systemPrompt !== null) {
+        systemPrompt = loaded.systemPrompt
+        systemPromptLayer = layer
+      }
+
+      if (agentsGuidelines === null && loaded.agentsGuidelines !== null) {
+        agentsGuidelines = loaded.agentsGuidelines
+        agentsGuidelinesLayer = layer
+      }
+
+      if (systemPrompt !== null && agentsGuidelines !== null) break
+    }
+
+    this.promptSourceLayers = {
+      systemPrompt: systemPromptLayer,
+      agentsGuidelines: agentsGuidelinesLayer,
+    }
 
     const mainAgent = data.profiles.find((p) => p.name === "main-agent")
     if (mainAgent) {
@@ -264,20 +328,34 @@ class AgentProfileService {
     }
   }
 
-  private syncPromptsToLayer() {
+  private syncPromptsToSourceLayers() {
     if (!this.profilesData) return
     const mainAgent = this.profilesData.profiles.find((p) => p.name === "main-agent")
     if (!mainAgent) return
 
-    const { writableLayer } = getRuntimeAgentsLayers()
-    const agentsLayerPaths = writableLayer.paths
+    try {
+      const profileLayer = this.resolveProfilePersistenceLayer(mainAgent.id)
+      const systemPromptLayer = this.promptSourceLayers.systemPrompt ?? profileLayer
+      const agentsGuidelinesLayer = this.promptSourceLayers.agentsGuidelines ?? profileLayer
 
-    writeAgentsPrompts(
-      agentsLayerPaths,
-      mainAgent.systemPrompt || DEFAULT_SYSTEM_PROMPT,
-      mainAgent.guidelines || "",
-      DEFAULT_SYSTEM_PROMPT
-    )
+      writeSystemPromptFile(
+        systemPromptLayer.paths,
+        mainAgent.systemPrompt || DEFAULT_SYSTEM_PROMPT,
+        DEFAULT_SYSTEM_PROMPT
+      )
+
+      writeAgentsGuidelinesFile(
+        agentsGuidelinesLayer.paths,
+        mainAgent.guidelines || "",
+      )
+
+      this.promptSourceLayers = {
+        systemPrompt: systemPromptLayer,
+        agentsGuidelines: agentsGuidelinesLayer,
+      }
+    } catch (error) {
+      logApp("Error saving layered agent prompt files:", error)
+    }
   }
 
   /**
@@ -313,6 +391,7 @@ class AgentProfileService {
         profiles: mergedProfiles.profiles,
         currentProfileId,
       }
+      this.profileOriginById = new Map(mergedProfiles.originById)
       this.syncPromptsFromLayer(this.profilesData)
       logApp(`Loaded ${this.profilesData.profiles.length} agent profile(s) from .agents/agents/`)
       return this.profilesData
@@ -363,6 +442,15 @@ class AgentProfileService {
     try {
       const { globalLayer } = getRuntimeAgentsLayers()
       writeAllAgentsProfileFiles(globalLayer.paths, profiles, { onlyIfMissing: true, maxBackups: 10 })
+      this.profileOriginById = new Map(
+        profiles.map((profile) => [
+          profile.id,
+          {
+            filePath: agentProfileIdToFilePath(globalLayer.paths, profile.id),
+            configJsonPath: agentProfileIdToConfigJsonPath(globalLayer.paths, profile.id),
+          },
+        ])
+      )
       logApp(`Migrated ${profiles.length} agent profile(s) to .agents/agents/`)
     } catch (error) {
       logApp("Error migrating agent profiles to modular files:", error)
@@ -438,14 +526,29 @@ class AgentProfileService {
   private saveProfiles(): void {
     if (!this.profilesData) return
     try {
-      this.syncPromptsToLayer()
+      const { globalLayer } = getRuntimeAgentsLayers()
+      for (const profile of this.profilesData.profiles) {
+        if (!this.profileOriginById.has(profile.id)) {
+          this.rememberProfileOrigin(profile.id, globalLayer)
+        }
+      }
+
+      this.syncPromptsToSourceLayers()
 
       // Canonical: write modular .agents/agents/ files
-      const { globalLayer } = getRuntimeAgentsLayers()
       writeAllAgentsProfileFiles(globalLayer.paths, this.profilesData.profiles, { maxBackups: 10 })
+      this.profileOriginById = new Map(
+        this.profilesData.profiles.map((profile) => [
+          profile.id,
+          {
+            filePath: agentProfileIdToFilePath(globalLayer.paths, profile.id),
+            configJsonPath: agentProfileIdToConfigJsonPath(globalLayer.paths, profile.id),
+          },
+        ])
+      )
 
       // Shadow: keep legacy agent-profiles.json for backward compatibility
-      fs.writeFileSync(agentProfilesPath, JSON.stringify(this.profilesData, null, 2))
+      this.persistProfilesShadow()
     } catch (error) {
       logApp("Error saving agent profiles:", error)
     }
@@ -456,8 +559,9 @@ class AgentProfileService {
    */
   private saveSingleProfile(profile: AgentProfile): void {
     try {
-      const { globalLayer } = getRuntimeAgentsLayers()
-      writeAgentsProfileFiles(globalLayer.paths, profile, { maxBackups: 10 })
+      const targetLayer = this.resolveProfilePersistenceLayer(profile.id)
+      writeAgentsProfileFiles(targetLayer.paths, profile, { maxBackups: 10 })
+      this.rememberProfileOrigin(profile.id, targetLayer)
     } catch (error) {
       logApp("Error saving agent profile to modular files:", error)
     }
@@ -538,7 +642,9 @@ class AgentProfileService {
       this.profilesData = { profiles: [] }
     }
     this.profilesData.profiles.push(newProfile)
-    this.saveProfiles()
+    this.syncPromptsToSourceLayers()
+    this.saveSingleProfile(newProfile)
+    this.persistProfilesShadow()
 
     return newProfile
   }
@@ -559,7 +665,9 @@ class AgentProfileService {
     }
 
     Object.assign(profile, allowedUpdates, { updatedAt: Date.now() })
-    this.saveProfiles()
+    this.syncPromptsToSourceLayers()
+    this.saveSingleProfile(profile)
+    this.persistProfilesShadow()
 
     return profile
   }
@@ -576,13 +684,15 @@ class AgentProfileService {
     const index = this.profilesData.profiles.findIndex((p) => p.id === id)
     if (index === -1) return false
 
+    const targetLayer = this.resolveProfilePersistenceLayer(id)
     this.profilesData.profiles.splice(index, 1)
-    this.saveProfiles()
+    this.syncPromptsToSourceLayers()
+    this.persistProfilesShadow()
 
     // Delete modular files from .agents/agents/
     try {
-      const { globalLayer } = getRuntimeAgentsLayers()
-      deleteAgentProfileFiles(globalLayer.paths, id)
+      deleteAgentProfileFiles(targetLayer.paths, id)
+      this.profileOriginById.delete(id)
     } catch (error) {
       logApp("Error deleting agent profile files:", error)
     }
@@ -693,7 +803,7 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (profile) {
       this.profilesData.currentProfileId = id
-      this.saveProfiles()
+      this.persistProfilesShadow()
     }
   }
 
@@ -738,7 +848,8 @@ class AgentProfileService {
     const profile = this.getById(profileId)
     if (profile) {
       profile.conversationId = undefined
-      this.saveProfiles()
+      this.saveSingleProfile(profile)
+      this.persistProfilesShadow()
     }
   }
 

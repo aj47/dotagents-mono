@@ -115,6 +115,21 @@ export function loadAgentsPrompts(layer: AgentsLayerPaths): { systemPrompt: stri
   }
 }
 
+function buildSystemPromptMarkdown(systemPrompt: string, defaultSystemPrompt: string): string {
+  const effectiveSystemPrompt = systemPrompt?.trim() ? systemPrompt : defaultSystemPrompt
+  return stringifyFrontmatterDocument({
+    frontmatter: { kind: "system-prompt" },
+    body: effectiveSystemPrompt,
+  })
+}
+
+function buildAgentsGuidelinesMarkdown(agentsGuidelines: string): string {
+  return stringifyFrontmatterDocument({
+    frontmatter: { kind: "agents" },
+    body: agentsGuidelines || "",
+  })
+}
+
 export function loadMergedAgentsConfig(
   options: {
     globalAgentsDir: string
@@ -227,21 +242,22 @@ export function writeAgentsPrompts(
   defaultSystemPrompt: string,
   options: { onlyIfMissing?: boolean; maxBackups?: number } = {},
 ): void {
+  writeSystemPromptFile(layer, systemPrompt, defaultSystemPrompt, options)
+  writeAgentsGuidelinesFile(layer, agentsGuidelines, options)
+}
+
+export function writeSystemPromptFile(
+  layer: AgentsLayerPaths,
+  systemPrompt: string,
+  defaultSystemPrompt: string,
+  options: { onlyIfMissing?: boolean; maxBackups?: number } = {},
+): void {
   const onlyIfMissing = options.onlyIfMissing === true
   const maxBackups = options.maxBackups ?? 10
 
   ensureDirSync(layer.agentsDir)
 
-  const effectiveSystemPrompt = systemPrompt?.trim() ? systemPrompt : defaultSystemPrompt
-  const systemPromptMd = stringifyFrontmatterDocument({
-    frontmatter: { kind: "system-prompt" },
-    body: effectiveSystemPrompt,
-  })
-
-  const agentsMd = stringifyFrontmatterDocument({
-    frontmatter: { kind: "agents" },
-    body: agentsGuidelines || "",
-  })
+  const systemPromptMd = buildSystemPromptMarkdown(systemPrompt, defaultSystemPrompt)
 
   if (!onlyIfMissing || !fileExists(layer.systemPromptMdPath)) {
     safeWriteFileSync(layer.systemPromptMdPath, systemPromptMd, {
@@ -250,6 +266,19 @@ export function writeAgentsPrompts(
       encoding: "utf8",
     })
   }
+}
+
+export function writeAgentsGuidelinesFile(
+  layer: AgentsLayerPaths,
+  agentsGuidelines: string,
+  options: { onlyIfMissing?: boolean; maxBackups?: number } = {},
+): void {
+  const onlyIfMissing = options.onlyIfMissing === true
+  const maxBackups = options.maxBackups ?? 10
+
+  ensureDirSync(layer.agentsDir)
+
+  const agentsMd = buildAgentsGuidelinesMarkdown(agentsGuidelines)
 
   if (!onlyIfMissing || !fileExists(layer.agentsMdPath)) {
     safeWriteFileSync(layer.agentsMdPath, agentsMd, {
