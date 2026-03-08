@@ -47,6 +47,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const [profiles, setProfiles] = useState<SelectableProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [pendingProfileName, setPendingProfileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectorMode, setSelectorMode] = useState<'profile' | 'acp'>('profile');
 
@@ -108,6 +109,11 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     navigation.navigate('Settings');
   };
 
+  const handleDismiss = useCallback(() => {
+    if (isSwitching) return;
+    onClose();
+  }, [isSwitching, onClose]);
+
   const handleSelectProfile = async (profile: SelectableProfile) => {
     if (!hasApiConfig) {
       setProfiles([]);
@@ -119,6 +125,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       return;
     }
 
+    setError(null);
+    setPendingProfileName(profile.name);
     setIsSwitching(true);
     try {
       const client = new SettingsApiClient(config.baseUrl, config.apiKey);
@@ -135,8 +143,13 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       setError(err?.message || 'Failed to switch agent');
     } finally {
       setIsSwitching(false);
+      setPendingProfileName(null);
     }
   };
+
+  const switchingMessage = pendingProfileName
+    ? `Switching to ${pendingProfileName}…`
+    : 'Switching agents…';
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
@@ -188,9 +201,9 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       visible={visible}
       animationType="slide"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.backdrop} onPress={handleDismiss} disabled={isSwitching}>
         <View style={{ flex: 1 }} />
       </Pressable>
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
@@ -201,6 +214,13 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             ? 'Choose which enabled ACP agent should act as the main agent for new chats.'
             : 'Switch between saved chat profiles. Delegation agents stay available from Settings → Agents.'}
         </Text>
+
+        {isSwitching && (
+          <View style={styles.switchingStatus}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={styles.switchingStatusText}>{switchingMessage}</Text>
+          </View>
+        )}
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -264,14 +284,20 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         )}
 
         <TouchableOpacity
-          style={styles.closeButton}
-          onPress={onClose}
+          style={[styles.closeButton, isSwitching && styles.closeButtonDisabled]}
+          onPress={handleDismiss}
+          disabled={isSwitching}
           accessibilityRole="button"
           accessibilityLabel={createButtonAccessibilityLabel('Close agent selector')}
-          accessibilityHint="Dismisses this sheet and returns to the current screen."
-          activeOpacity={0.7}
+          accessibilityHint={isSwitching
+            ? 'Wait for the current agent switch to finish before dismissing this sheet.'
+            : 'Dismisses this sheet and returns to the current screen.'}
+          accessibilityState={{ disabled: isSwitching }}
+          activeOpacity={isSwitching ? 1 : 0.7}
         >
-          <Text style={styles.closeButtonText}>Cancel</Text>
+          <Text style={[styles.closeButtonText, isSwitching && styles.closeButtonTextDisabled]}>
+            {isSwitching ? 'Switching…' : 'Cancel'}
+          </Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -378,6 +404,26 @@ function createStyles(theme: Theme) {
       alignItems: 'center',
       paddingVertical: spacing.xl,
     },
+    switchingStatus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.primary + '22',
+      backgroundColor: theme.colors.primary + '10',
+    },
+    switchingStatusText: {
+      marginLeft: spacing.sm,
+      color: theme.colors.primary,
+      fontSize: 13,
+      fontWeight: '500',
+      textAlign: 'center',
+      flexShrink: 1,
+    },
     loadingText: {
       marginTop: spacing.sm,
       color: theme.colors.mutedForeground,
@@ -452,10 +498,16 @@ function createStyles(theme: Theme) {
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
     },
+    closeButtonDisabled: {
+      opacity: 0.75,
+    },
     closeButtonText: {
       color: theme.colors.primary,
       fontSize: 16,
       fontWeight: '500',
+    },
+    closeButtonTextDisabled: {
+      color: theme.colors.mutedForeground,
     },
   });
 }

@@ -2191,3 +2191,47 @@
   - Restore the mobile install in this worktree, then verify on a narrow viewport that long loop names keep the `Running` / `Active` / `Paused` badge readable in `Settings > Agent Loops`.
   - Check a deliberately long loop name plus `Run on startup` metadata together to confirm the new two-line clamp improves stability without hiding too much useful context.
   - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.
+
+### 2026-03-08 — Iteration 51: make agent switching feel in-progress instead of inert
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector-sheet regression coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+  - current mobile workflow in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current mobile workflow before editing:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `AgentSelectorSheet` already disabled selector rows during an in-flight switch.
+  - The sheet still allowed backdrop dismissal, `onRequestClose`, and footer `Cancel` while the request was in flight.
+  - There was also no visible progress message naming the target agent, so on mobile a tap could feel ignored or ambiguously interrupted.
+- Issue selected:
+  - The mobile sub-agent selector did not make in-progress switching state clear enough, weakening user confidence and user control during a high-salience action.
+- Decision:
+  - Keep the current selector-sheet layout, row design, and switching flow unchanged.
+  - Do not add row-level spinners or redesign the footer while live validation is blocked.
+  - Make the smallest local fix in `AgentSelectorSheet`: show a compact switching status banner with the target agent name and temporarily lock dismissal until the switch resolves.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - track `pendingProfileName` during selection,
+    - show `Switching to …` inline with a compact activity indicator,
+    - route modal close, backdrop press, and footer dismissal through a guarded `handleDismiss(...)`,
+    - disable and restyle the footer action as `Switching…` while the request is in flight,
+    - clear the pending switching state in the existing `finally` path.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the new switching-state banner and dismissal lock.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new switching banner feels proportional and does not crowd the top of the sheet.
+  - If live validation later shows users still miss which row is being activated, the next step may need a row-level pending state rather than more top-of-sheet copy.
+  - The missing mobile install continues to block screenshot-backed prioritization, so nearby follow-ups should stay conservative until that blocker is removed.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on a narrow viewport that selecting another agent shows the new in-progress status immediately and prevents accidental dismissal.
+  - Check both profile mode and ACP mode to confirm the switching banner wording still reads clearly with longer agent names.
+  - Re-rank the next sub-agent mobile issue using fresh live evidence as soon as Expo Web or a simulator becomes available again.

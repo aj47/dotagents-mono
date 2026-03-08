@@ -35,8 +35,8 @@ test('keeps selector-sheet retry and cancel actions mobile-sized with explicit b
   assert.match(sheetSource, /\) : \([\s\S]*?style=\{styles\.retryButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Retry loading agents'\)/);
   assert.match(sheetSource, /accessibilityHint="Attempts to load the available agents again\."/);
   assert.match(sheetSource, /retryButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget/);
-  assert.match(sheetSource, /style=\{styles\.closeButton\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Close agent selector'\)/);
-  assert.match(sheetSource, /accessibilityHint="Dismisses this sheet and returns to the current screen\."/);
+  assert.match(sheetSource, /style=\{\[styles\.closeButton, isSwitching && styles\.closeButtonDisabled\]\}[\s\S]*?accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\('Close agent selector'\)/);
+  assert.match(sheetSource, /accessibilityHint=\{isSwitching[\s\S]*?Wait for the current agent switch to finish before dismissing this sheet\.[\s\S]*?: 'Dismisses this sheet and returns to the current screen\.'/);
   assert.match(sheetSource, /closeButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget[\s\S]*?width:\s*'100%'/);
 });
 
@@ -60,4 +60,18 @@ test('makes the selected agent row read as the current state instead of only a c
   assert.match(sheetSource, /\{isSelected && \([\s\S]*?<View style=\{styles\.profileCurrentBadge\}>[\s\S]*?<Text style=\{styles\.profileCurrentBadgeText\}>Current<\/Text>/);
   assert.match(sheetSource, /profileItemSelected:\s*\{[\s\S]*?borderWidth:\s*1,[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '33'/);
   assert.match(sheetSource, /profileCurrentBadge:\s*\{[\s\S]*?backgroundColor:\s*theme\.colors\.primary \+ '16'[\s\S]*?borderColor:\s*theme\.colors\.primary \+ '33'/);
+});
+
+test('shows switching progress and temporarily prevents dismissing the sheet mid-switch', () => {
+  assert.match(sheetSource, /const \[pendingProfileName, setPendingProfileName\] = useState<string \| null>\(null\);/);
+  assert.match(sheetSource, /const handleDismiss = useCallback\(\(\) => \{[\s\S]*?if \(isSwitching\) return;[\s\S]*?onClose\(\);[\s\S]*?\}, \[isSwitching, onClose\]\);/);
+  assert.match(sheetSource, /setPendingProfileName\(profile\.name\);[\s\S]*?setIsSwitching\(true\);/);
+  assert.match(sheetSource, /finally \{[\s\S]*?setIsSwitching\(false\);[\s\S]*?setPendingProfileName\(null\);[\s\S]*?\}/);
+  assert.match(sheetSource, /const switchingMessage = pendingProfileName[\s\S]*?`Switching to \$\{pendingProfileName\}…`[\s\S]*?: 'Switching agents…';/);
+  assert.match(sheetSource, /onRequestClose=\{handleDismiss\}/);
+  assert.match(sheetSource, /<Pressable style=\{styles\.backdrop\} onPress=\{handleDismiss\} disabled=\{isSwitching\}>/);
+  assert.match(sheetSource, /\{isSwitching && \([\s\S]*?<View style=\{styles\.switchingStatus\}>[\s\S]*?<ActivityIndicator size="small" color=\{theme\.colors\.primary\} \/>[\s\S]*?<Text style=\{styles\.switchingStatusText\}>\{switchingMessage\}<\/Text>/);
+  assert.match(sheetSource, /style=\{\[styles\.closeButton, isSwitching && styles\.closeButtonDisabled\]\}[\s\S]*?disabled=\{isSwitching\}[\s\S]*?accessibilityState=\{\{ disabled: isSwitching \}\}/);
+  assert.match(sheetSource, /Wait for the current agent switch to finish before dismissing this sheet\./);
+  assert.match(sheetSource, /\{isSwitching \? 'Switching…' : 'Cancel'\}/);
 });
