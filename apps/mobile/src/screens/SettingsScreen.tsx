@@ -188,6 +188,17 @@ function formatLoopLastRunLabel(timestamp: number): string {
   })}`;
 }
 
+function formatRemoteCollectionError(collectionName: string, error: unknown): string {
+  const fallbackMessage = `Couldn't load ${collectionName}.`;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    const detailMessage = error.message.trim();
+    if (detailMessage.length > 0) {
+      return `${fallbackMessage} ${detailMessage}`;
+    }
+  }
+  return fallbackMessage;
+}
+
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -236,6 +247,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [skillsError, setSkillsError] = useState<string | null>(null);
+  const [memoriesError, setMemoriesError] = useState<string | null>(null);
+  const [agentProfilesError, setAgentProfilesError] = useState<string | null>(null);
+  const [loopsError, setLoopsError] = useState<string | null>(null);
   const availableAcpMainAgents = useMemo(
     () => getAcpMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -290,6 +305,59 @@ export default function SettingsScreen({ navigation }: any) {
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const renderRemoteCollectionState = ({
+    itemCount,
+    isLoading,
+    error,
+    loadingText,
+    emptyText,
+    retryActionLabel,
+    retryHint,
+    onRetry,
+  }: {
+    itemCount: number;
+    isLoading: boolean;
+    error: string | null;
+    loadingText: string;
+    emptyText: string;
+    retryActionLabel: string;
+    retryHint: string;
+    onRetry: () => void;
+  }) => {
+    if (isLoading && itemCount === 0) {
+      return (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>{loadingText}</Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.inlineWarningContainer}>
+          <Text style={styles.inlineWarningText}>⚠️ {error}</Text>
+          <TouchableOpacity
+            style={styles.inlineRetryButton}
+            onPress={onRetry}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel(retryActionLabel)}
+            accessibilityHint={retryHint}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.inlineRetryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (itemCount === 0) {
+      return <Text style={styles.helperText}>{emptyText}</Text>;
+    }
+
+    return null;
+  };
+
   // Create settings API client when we have valid credentials
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -313,6 +381,14 @@ export default function SettingsScreen({ navigation }: any) {
       setProfiles([]);
       setMcpServers([]);
       setRemoteSettings(null);
+      setSkills([]);
+      setMemories([]);
+      setAgentProfiles([]);
+      setLoops([]);
+      setSkillsError(null);
+      setMemoriesError(null);
+      setAgentProfilesError(null);
+      setLoopsError(null);
       setIsDotAgentsServer(false);
       return;
     }
@@ -379,11 +455,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchSkills = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingSkills(true);
+    setSkillsError(null);
     try {
       const res = await settingsClient.getSkills();
       setSkills(res.skills);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch skills:', error);
+      setSkillsError(formatRemoteCollectionError('skills', error));
     } finally {
       setIsLoadingSkills(false);
     }
@@ -393,11 +471,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchMemories = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingMemories(true);
+    setMemoriesError(null);
     try {
       const res = await settingsClient.getMemories();
       setMemories(res.memories);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch memories:', error);
+      setMemoriesError(formatRemoteCollectionError('memories', error));
     } finally {
       setIsLoadingMemories(false);
     }
@@ -407,11 +487,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchAgentProfiles = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingAgentProfiles(true);
+    setAgentProfilesError(null);
     try {
       const res = await settingsClient.getAgentProfiles();
       setAgentProfiles(res.profiles);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch agent profiles:', error);
+      setAgentProfilesError(formatRemoteCollectionError('agents', error));
     } finally {
       setIsLoadingAgentProfiles(false);
     }
@@ -421,11 +503,13 @@ export default function SettingsScreen({ navigation }: any) {
   const fetchLoops = useCallback(async () => {
     if (!settingsClient) return;
     setIsLoadingLoops(true);
+    setLoopsError(null);
     try {
       const res = await settingsClient.getLoops();
       setLoops(res.loops);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch loops:', error);
+      setLoopsError(formatRemoteCollectionError('agent loops', error));
     } finally {
       setIsLoadingLoops(false);
     }
@@ -2124,11 +2208,17 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4k. Skills */}
             {isDotAgentsServer && (
               <CollapsibleSection id="skills" title="Skills">
-                {isLoadingSkills ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : skills.length === 0 ? (
-                  <Text style={styles.helperText}>No skills configured</Text>
-                ) : (
+                {renderRemoteCollectionState({
+                  itemCount: skills.length,
+                  isLoading: isLoadingSkills,
+                  error: skillsError,
+                  loadingText: 'Loading skills...',
+                  emptyText: 'No skills configured',
+                  retryActionLabel: 'Retry loading skills',
+                  retryHint: 'Tries to load skills for the current profile again.',
+                  onRetry: fetchSkills,
+                })}
+                {skills.length > 0 && (
                   skills.map((skill) => (
                     <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
                       <View style={styles.serverInfo}>
@@ -2156,11 +2246,17 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4l. Memories */}
             {isDotAgentsServer && (
               <CollapsibleSection id="memories" title="Memories">
-                {isLoadingMemories ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : memories.length === 0 ? (
-                  <Text style={styles.helperText}>No memories saved</Text>
-                ) : (
+                {renderRemoteCollectionState({
+                  itemCount: memories.length,
+                  isLoading: isLoadingMemories,
+                  error: memoriesError,
+                  loadingText: 'Loading memories...',
+                  emptyText: 'No memories saved',
+                  retryActionLabel: 'Retry loading memories',
+                  retryHint: 'Tries to load saved memories again.',
+                  onRetry: fetchMemories,
+                })}
+                {memories.length > 0 && (
                   memories.map((memory) => (
                     <View key={memory.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
                       <TouchableOpacity
@@ -2212,11 +2308,17 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4m. Agents */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agents" title="Agents">
-                {isLoadingAgentProfiles ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : agentProfiles.length === 0 ? (
-                  <Text style={styles.helperText}>No agents configured</Text>
-                ) : (
+                {renderRemoteCollectionState({
+                  itemCount: agentProfiles.length,
+                  isLoading: isLoadingAgentProfiles,
+                  error: agentProfilesError,
+                  loadingText: 'Loading agents...',
+                  emptyText: 'No agents configured',
+                  retryActionLabel: 'Retry loading agents',
+                  retryHint: 'Tries to load agents again.',
+                  onRetry: fetchAgentProfiles,
+                })}
+                {agentProfiles.length > 0 && (
                   agentProfiles.map((profile) => (
                     <View
                       key={profile.id}
@@ -2297,11 +2399,17 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4n. Agent Loops */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agentLoops" title="Agent Loops">
-                {isLoadingLoops ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : loops.length === 0 ? (
-                  <Text style={styles.helperText}>No agent loops configured</Text>
-                ) : (
+                {renderRemoteCollectionState({
+                  itemCount: loops.length,
+                  isLoading: isLoadingLoops,
+                  error: loopsError,
+                  loadingText: 'Loading agent loops...',
+                  emptyText: 'No agent loops configured',
+                  retryActionLabel: 'Retry loading agent loops',
+                  retryHint: 'Tries to load scheduled agent loops again.',
+                  onRetry: fetchLoops,
+                })}
+                {loops.length > 0 && (
                   loops.map((loop) => (
                     <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
                       <TouchableOpacity
@@ -2939,6 +3047,32 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       fontWeight: '600',
       marginLeft: spacing.sm,
+    },
+    inlineWarningContainer: {
+      backgroundColor: '#f59e0b14',
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+      borderRadius: radius.md,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    inlineWarningText: {
+      color: '#d97706',
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    inlineRetryButton: {
+      ...compactActionTouchTarget,
+      alignSelf: 'flex-start',
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.background,
+    },
+    inlineRetryText: {
+      color: theme.colors.primary,
+      fontSize: 13,
+      fontWeight: '600',
     },
     profileList: {
       gap: spacing.xs,

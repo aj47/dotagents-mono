@@ -6,7 +6,93 @@
 - Prefer one small, shippable improvement per iteration.
 - Use Expo Web when practical for repeatable inspection.
 
+## Coverage Map
+
+### Checked screens/flows
+
+- Settings root shell on narrow mobile web viewport (`Settings`, theme chooser, voice, notifications)
+- Connection settings flow (`Settings -> Connection -> Test & Save`)
+- Chat entry flow (`Settings -> Go to Chats -> New Chat`)
+- Chat composer actions (`Send`, `Attach images`, `Edit before send`) and nearby accessibility states
+- Settings remote collection sections in code and load-state handling (`Skills`, `Memories`, `Agents`, `Agent Loops`)
+
+### Not yet checked or stale
+
+- Session list empty/loading/error states and destructive flows (`Clear All`, delete session)
+- Agent edit, Memory edit, and Loop edit detail forms
+- Onboarding/setup edge cases beyond Connection basics (including QR/web limitations)
+- Modal/sheet states such as model picker, voice picker, confirmations, and keyboard-constrained layouts
+- Awkward viewport and larger-text resilience on deeper Settings and Sessions surfaces
+
+### Reproduced
+
+- Settings remote collections could fail in the background and read like empty sections instead of failed loads
+- Prior connected-state warning `⚠️ Failed to load: settings` remains noted from earlier passes and still needs root-cause isolation
+- Full workspace install currently hits an unrelated native desktop build failure under Node 25; mobile web work is still possible with `pnpm install --frozen-lockfile --ignore-scripts`
+
+### Improved
+
+- Connection first-run save validation, nested back navigation, and inline action touch targets
+- Chat composer send/accessory controls and related web accessibility state exposure
+- Settings remote collection loading/error/retry clarity for `Skills`, `Memories`, `Agents`, and `Agent Loops`
+
+### Verified
+
+- `node --test apps/mobile/tests/settings-remote-collection-states-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js`
+- `pnpm --filter @dotagents/mobile exec tsc --noEmit -p tsconfig.json`
+- Expo Web bundle on `http://localhost:19011`
+- Headless Chrome mobile-width render of the Settings screen with no obvious red error overlay
+
+### Blocked
+
+- Connected-state live validation for desktop-backed Settings collections was not possible in the current web session because the app rendered in a `Not connected` state
+
+### Still uncertain
+
+- Whether the top-level reconnect warning `⚠️ Failed to load: settings` shares the same root cause as the collection fetch failures
+- How the session list and edit-form surfaces behave under empty/error/loading states on narrow viewports
+
 ## Recent Iterations
+
+### 2026-03-08 — Iteration 6: clarify Settings remote collection failures and add inline retry
+
+- Status: completed
+- Area:
+  - remote collection states inside `apps/mobile/src/screens/SettingsScreen.tsx`
+  - live shell inspected in Expo Web at `http://localhost:19011` on a narrow mobile viewport
+- Why this area:
+  - recent ledger entries heavily covered Connection and Chat, so this pass widened coverage into under-checked Settings states instead of polishing the same controls again.
+  - the existing ledger still had a standing follow-up around Settings load failures, and code inspection showed `Skills`, `Memories`, `Agents`, and `Agent Loops` could fail silently.
+- What was investigated:
+  - current Expo Web mobile workflow and Settings renderability
+  - the remote collection fetch logic and section rendering in `SettingsScreen.tsx`
+  - nearby mobile Settings regression tests for agents/loops actions
+- Findings:
+  - section fetch failures were logged to the console but not surfaced inline, so an initial failure could look like an empty section instead of a failed load.
+  - loading states used a bare spinner without explanatory text, which weakened clarity on narrow screens.
+  - there was no section-local retry affordance, so users had little control short of a full refresh.
+- Assumptions / tradeoffs / rationale:
+  - preserve already-loaded rows if a later refresh fails, and show an inline warning above them instead of blanking the section.
+  - keep the change local to `SettingsScreen.tsx` rather than introducing a broader state-management refactor.
+  - keep create actions visible in editable sections so users are not blocked from adding content even when list fetching fails.
+- Change made:
+  - added section-specific error state for `Skills`, `Memories`, `Agents`, and `Agent Loops`
+  - added explicit loading copy (`Loading skills...`, etc.) for clearer small-screen feedback
+  - added inline warning cards with `Retry` actions and mobile-sized touch targets
+  - added `apps/mobile/tests/settings-remote-collection-states-mobile.test.js` to lock the error/loading/retry behavior in source
+- Verification:
+  - `pnpm build:shared`
+  - `node --test apps/mobile/tests/settings-remote-collection-states-mobile.test.js apps/mobile/tests/settings-agent-actions-mobile.test.js apps/mobile/tests/settings-loop-actions-mobile.test.js`
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit -p tsconfig.json`
+  - live Expo Web rebuild on `http://localhost:19011` with successful web bundle
+  - headless Chrome confirmation that the mobile-width Settings screen rendered and showed no obvious red error overlay
+- Blockers encountered:
+  - `pnpm install --frozen-lockfile` hit an unrelated native desktop package build failure under Node 25, so the workspace was prepared with `pnpm install --frozen-lockfile --ignore-scripts` to continue mobile-only verification.
+  - the live app session was `Not connected`, so the new connected-only collection states could not be exercised against real remote data in-browser during this pass.
+- Follow-up checks:
+  - reproduce and isolate the top-level reconnect warning `⚠️ Failed to load: settings` while connected to a desktop-backed server
+  - inspect `SessionListScreen` empty/loading/error states and destructive confirmations next
+  - inspect `AgentEditScreen`, `MemoryEditScreen`, and `LoopEditScreen` for narrow-layout and validation-state issues
 
 ### 2026-03-07 — Iteration 5: enlarge chat composer accessory controls and expose edit-toggle state on web
 
