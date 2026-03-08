@@ -51,6 +51,11 @@ RESPONDING TO USER:
 - To send images, use respond_to_user.images with either URL/data URL entries or local file paths
 - If respond_to_user is unavailable, provide your final user-facing answer in normal assistant text
 
+CAPABILITY / TOOLING QUESTIONS:
+- When the user asks what tools, servers, or agents are available/connected/running — or asks why something was unavailable, missing, or "cut off" — do not guess from memory.
+- First inspect the live state with tools like list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema as appropriate.
+- Base your explanation on the actual current tool/runtime state before answering.
+
 SKILLS:
 - Skills are optional instruction modules listed below.
 - Before using a skill, ALWAYS call load_skill_instructions(skillId). Do not guess a skill's contents from its name/description.
@@ -354,6 +359,7 @@ export function constructMinimalSystemPrompt(
 
   if (isAgentMode) {
     prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up."
+    prompt += " For questions about available tools, MCP servers, or agents — or why something was unavailable/cut off — inspect live state with list_mcp_servers, list_server_tools, list_running_agents, list_agent_profiles, or get_tool_schema instead of guessing."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).

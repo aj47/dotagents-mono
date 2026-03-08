@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772236244285_xzqrrynd8 | session_1772236244288_jbyzrkt1b, session_1772239900929_r2gu4lvnr | fix implemented | User asked `How did they get cut off before` twice. The first run incorrectly claimed the iTerm tools were not surfaced in the system prompt header even though they were listed in `AVAILABLE MCP SERVERS`; the later identical follow-up explicitly corrected that mistake. Root repo issue found: agent-mode prompt guidance taught tool discovery, but did not explicitly tell the model to inspect live tool/agent state before answering meta questions about current capabilities or why something was unavailable/cut off. |
 | 2026-03-08 | conv_1772413081893_0m2fhduf9 | session_1772413081894_y5zkxuyrj | fix implemented | User asked for mobile parity around desktop `respond_to_user`; Langfuse showed the run consuming 60 iterations and finalizing with only future-tense progress text (`Let me examine the current mobile app...`) plus the generic timeout note. Corroborating traces `subsession_1772433101034_b71f5c33`, `subsession_1772413302748_948ec4be`, and `subsession_1772420541552_f1cc42f4` showed the same `I'll help you... Let me first load... (Note: Task may not be fully complete...)` pattern. Root repo issue found: progress/deliverable heuristics counted long progress-only text as deliverable once the appended timeout note pushed it past the short-progress word-count threshold. |
 | 2026-03-08 | conv_1772260442055_0tyysyfq3 | session_1772260441759_qlnn5jvxv | fix implemented | User asked `Can you ask Augustus what folder he's in?`; Langfuse showed `list_running_agents`, a mistaken `send_agent_message` to the current session, then failing `spawn_agent` / `send_to_agent` calls with `Agent "augustus" not found in configuration`, yet the run still ended without a useful blocker answer. Root repo issue found: when a run timed out after tool-only failures, finalization dropped the latest concrete tool error reason instead of surfacing it to the user. |
 | 2026-03-08 | conv_1772744648565_y8l300gt0 | session_1772744648567_uthjyczt8 | fix implemented | User asked to investigate a broken custom-domain flow and trigger a Codex web agent. Langfuse showed an early async `delegate_to_agent`, then many repeated `check_agent_status` calls that kept returning `status: running`, eventually burning 84 iterations before the run fell back incomplete. Root repo issue found: background delegation/status responses told the model how to poll, but not when to stop polling or what to do instead while the delegated work was still running. |
@@ -34,6 +35,40 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 | 2026-03-08 | conv_1772296995433_edqj7m4pq | session_1772296995436_z0f1boi1x | inspected; adjacent evidence only | User asked to run Augustus in the repo and use Chrome Browser to debug the mobile app. Langfuse showed early skill/repo context work, then the run stalled without a user-facing answer. I treated it as adjacent evidence for delegated specialist failure modes, but kept the code change scoped to the tighter trace-backed internal specialist re-delegation fix already in progress rather than widening this iteration to a separate hung-tool diagnosis. |
 
 ## Investigations
+
+### 2026-03-08 — Capability/introspection questions should inspect live tool state before answering
+
+- Langfuse evidence reviewed:
+  - conversation: `conv_1772236244285_xzqrrynd8`
+  - first failing trace: `session_1772236244288_jbyzrkt1b`
+    - user input: `How did they get cut off before`
+    - final output incorrectly said the `iterm` MCP tools `just weren't surfaced in my system prompt header`
+    - observation timeline showed the run first calling `list_running_agents`, later `execute_command`, then finally `list_mcp_servers` and `list_server_tools`, yet it still delivered the wrong explanation
+  - recovery trace: `session_1772239900929_r2gu4lvnr`
+    - the user asked the exact same question again
+    - this later run answered directly that the earlier explanation was wrong and that the iTerm tools were already listed in `AVAILABLE MCP SERVERS`
+- Repo reconstruction:
+  - `apps/desktop/src/main/system-prompts.ts` already listed available MCP servers/tools and mentioned `list_server_tools(...)` / `get_tool_schema(...)` for discovery.
+  - however, the prompt did not explicitly say that questions about available tools/servers/agents or why something was unavailable/cut off must be answered from inspected live state rather than speculation.
+  - because agent mode now relies on broad tool availability instead of a curated `relevantTools` shortlist, this kind of meta-capability question is especially vulnerable to speculative answers unless the prompt makes the introspection workflow explicit.
+- Concrete root cause:
+  - the agent-mode prompt taught discovery tools, but not the decision rule to use them before answering capability/introspection questions.
+  - that let a single run confidently explain the wrong cause for the supposed cutoff even though the available tools and prompt state already contained the evidence needed to answer correctly.
+- Fix implemented:
+  - `apps/desktop/src/main/system-prompts.ts`
+    - added a `CAPABILITY / TOOLING QUESTIONS` section to the main agent-mode prompt
+    - explicitly instruct the agent not to guess from memory when asked what tools/servers/agents are available, connected, running, missing, unavailable, or `cut off`
+    - direct the agent to inspect live state with `list_mcp_servers`, `list_server_tools`, `list_running_agents`, `list_agent_profiles`, or `get_tool_schema` before explaining
+    - preserved the same rule in `constructMinimalSystemPrompt(...)` so context-shrunk runs keep the policy
+  - tests added/updated:
+    - `apps/desktop/src/main/system-prompts.test.ts`
+      - added a regression proving both the full and minimal prompts now teach live-state inspection for capability questions instead of guessing
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/system-prompts.test.ts`
+  - ✅ passed (`6 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop prompt tests exit successfully
+  - `cd apps/desktop && pnpm exec tsc --noEmit -p tsconfig.json`
+  - ✅ passed
 
 ### 2026-03-08 — Repeated context-gathering tool passes needed a synthesis / follow-up-question nudge
 
@@ -1084,4 +1119,5 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.
 - Recheck a fresh browser/terminal trace that previously emitted `[Calling tools: ...]` placeholder text after real work, to confirm the loop now immediately corrects back to native tool calls instead of spending remaining iterations on faux tool markers.
+- Recheck a fresh capability/introspection trace (for example asking why tools were `cut off` or whether a server/agent is available) to confirm the agent now inspects `list_mcp_servers` / `list_server_tools` / `list_running_agents` / `list_agent_profiles` first instead of speculating.
 - Once dependencies are available in this worktree, rerun the targeted Vitest command above and then a slightly wider desktop ACP test slice if needed.

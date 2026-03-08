@@ -85,6 +85,23 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("collision-safe filenames")
   })
 
+  it("teaches capability questions to inspect live tool and agent state before answering", async () => {
+    const { constructSystemPrompt, constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, true)
+    const minimalPrompt = constructMinimalSystemPrompt([], true)
+
+    expect(prompt).toContain("CAPABILITY / TOOLING QUESTIONS")
+    expect(prompt).toContain("do not guess from memory")
+    expect(prompt).toContain("list_mcp_servers")
+    expect(prompt).toContain("list_running_agents")
+    expect(prompt).toContain("list_agent_profiles")
+
+    expect(minimalPrompt).toContain("instead of guessing")
+    expect(minimalPrompt).toContain("list_server_tools")
+    expect(minimalPrompt).toContain("get_tool_schema")
+  })
+
   it("omits delegation guidance for specialist sub-sessions that should execute directly", async () => {
     const { agentProfileService } = await import("./agent-profile-service")
     vi.mocked(agentProfileService.getByRole).mockReturnValue([
