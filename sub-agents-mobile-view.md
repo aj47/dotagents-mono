@@ -3440,3 +3440,45 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the prompt helper reads clearly above the interval section at narrow widths.
   - Compare the new prompt helper against the existing interval preview and profile notices so the loop editor still scans cleanly as one stack on mobile.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of iterating further on edit-flow copy without new evidence.
+
+### 2026-03-08 — Iteration 79: make the selector-sheet recovery action match the mobile button baseline
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/AgentSelectorSheet.tsx`
+  - focused selector coverage in `apps/mobile/tests/agent-selector-sheet.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current worktree validation path before editing:
+    - `pnpm --filter @dotagents/mobile web -- --port 19007` → failed with `sh: expo: command not found`
+    - the same Expo run again reported `Local package.json exists, but node_modules missing, did you mean to install?`
+  - Because `apps/mobile/node_modules` is still missing in this worktree, fresh Expo Web / simulator validation was not practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed the primary `Open Agent Settings` recovery action in `AgentSelectorSheet` still used a bespoke content-width style in both the missing-config error state and the no-options empty state.
+  - Unlike the sheet's `Retry` and `Cancel` actions, that button did not reuse the shared `actionButtonTouchTarget` mobile guardrail.
+  - On narrow screens, that made the main way forward from those blocked states less consistent and potentially easier to miss or mis-tap than the other selector actions.
+- Issue selected:
+  - The selector sheet's main recovery action did not match the stronger mobile button baseline already used by the rest of the sheet.
+- Decision:
+  - Keep the current empty/error copy, navigation target, and overall sheet layout unchanged.
+  - Do not redesign the recovery states while live validation is blocked.
+  - Make the smallest local fix: apply the existing shared action-button touch target to `Open Agent Settings`, stretch it across the available card width, and keep the press behavior consistent in both recovery states.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/AgentSelectorSheet.tsx` to:
+    - switch `manageAgentsButton` to the shared `actionButtonTouchTarget` baseline,
+    - stretch the recovery action across the card width with centered text,
+    - add the same explicit press opacity to the empty-state button path.
+  - Updated `apps/mobile/tests/agent-selector-sheet.test.js` with focused regression coverage for the widened recovery action and shared touch-target styling contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/agent-selector-sheet.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile web -- --port 19007` ⚠️ blocked because local `expo` is unavailable and `apps/mobile/node_modules` is missing in this worktree
+  - `pnpm --filter @dotagents/mobile exec tsc --noEmit` ⚠️ still blocked in this worktree by the missing mobile install / missing `expo/tsconfig.base` / unresolved Expo and React Native dependencies
+- Remaining nearby issues noted, not addressed this iteration:
+  - The widened `Open Agent Settings` action still needs a real narrow-screen pass to confirm it feels prominent without overpowering the surrounding copy.
+  - The selector sheet still needs fresh Expo Web or simulator validation overall now that several local mobile affordance improvements have accumulated.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the full-width `Open Agent Settings` action reads clearly and is easy to tap in both empty and missing-config states.
+  - Reconfirm the selector sheet's visual hierarchy after this recovery-action change before making any further source-only layout tweaks.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting this selector action without new evidence.

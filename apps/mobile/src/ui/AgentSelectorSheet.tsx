@@ -345,6 +345,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel('Open agent settings')}
               accessibilityHint="Returns to Settings so you can review agents and agent mode."
+              activeOpacity={0.7}
             >
               <Text style={styles.manageAgentsButtonText}>Open Agent Settings</Text>
             </TouchableOpacity>
@@ -618,10 +619,8 @@ function createStyles(theme: Theme) {
       flexShrink: 1,
     },
     manageAgentsButton: {
-      minHeight: 44,
-      minWidth: 180,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
+      ...actionButtonTouchTarget,
+      alignSelf: 'stretch',
       borderRadius: radius.lg,
       backgroundColor: theme.colors.primary + '14',
       alignItems: 'center',
@@ -631,6 +630,7 @@ function createStyles(theme: Theme) {
       color: theme.colors.primary,
       fontSize: 15,
       fontWeight: '600',
+      textAlign: 'center',
     },
     closeButton: {
       ...actionButtonTouchTarget,

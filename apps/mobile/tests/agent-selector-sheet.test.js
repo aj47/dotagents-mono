@@ -24,7 +24,9 @@ test('keeps the empty state anchored to the current agent and explains where to 
 test('offers a mobile-friendly path back to agent settings from the empty state', () => {
   assert.match(sheetSource, /navigation\.navigate\('Settings'\)/);
   assert.match(sheetSource, /accessibilityLabel=\{createButtonAccessibilityLabel\('Open agent settings'\)\}/);
-  assert.match(sheetSource, /manageAgentsButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*180,/);
+  assert.match(sheetSource, /\{selectorMode === 'acp' \? 'No main agents ready yet' : 'No switchable agents yet'\}[\s\S]*?style=\{styles\.manageAgentsButton\}[\s\S]*?activeOpacity=\{0\.7\}/);
+  assert.match(sheetSource, /manageAgentsButton:\s*\{[\s\S]*?\.\.\.actionButtonTouchTarget,[\s\S]*?alignSelf:\s*'stretch'/);
+  assert.match(sheetSource, /manageAgentsButtonText:\s*\{[\s\S]*?textAlign:\s*'center'/);
 });
 
 test('turns the missing-config selector error into a direct settings escape hatch', () => {
