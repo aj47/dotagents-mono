@@ -32,6 +32,15 @@ test('tile transcript exposes a full-history toggle and legacy partial warning',
   assert.match(agentProgressSource, /Earlier summarized history is unavailable for this legacy session\./)
 })
 
+test('summary messages are visually distinguished inline in the active transcript', () => {
+  assert.match(agentProgressSource, /isSummary\?: boolean/)
+  assert.match(agentProgressSource, /summarizedMessageCount\?: number/)
+  assert.match(agentProgressSource, /const isSummaryMessage = message\.isSummary === true/)
+  assert.match(agentProgressSource, /Context summary/)
+  assert.match(agentProgressSource, /Represents \$\{summarizedMessageCount\.toLocaleString\(\)\} earlier/)
+  assert.match(agentProgressSource, /Represents earlier messages outside the active window/)
+})
+
 test('header surfaces compacted-history provenance badges outside the transcript area', () => {
   assert.match(agentProgressSource, /const historyStatusBadge = useMemo\(\(\) =>/)
   assert.match(agentProgressSource, /History compacted/)

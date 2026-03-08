@@ -1232,3 +1232,63 @@
   - Continue Phase 2 only with similarly narrow, concrete slices (for example, update-status affordances) rather than reopening registry caching or broader Hub marketplace work.
 
 - Next recommended issue work item: treat `#25` as meaningfully advanced for now and pivot next to a fresh issue only if it offers a similarly tight, locally verifiable bug/UX slice.
+
+##### Issue #54 — ChatGPT subscription provider support triaged as externally blocked for now
+
+- Selection rationale:
+  - After the recent `#25`, `#53`, `#55`, `#57`, and `#58` slices, `#54` was the only clearly fresh open issue in the repo that had not already been investigated in this ledger.
+  - I evaluated it first to avoid repeating recently-worked issues without a justified follow-up.
+- Investigation:
+  - Re-read issue `#54` and checked the current desktop provider/auth implementation.
+  - Inspected `apps/desktop/src/renderer/src/pages/settings-providers.tsx` and `apps/desktop/src/renderer/src/components/model-selector.tsx`.
+  - Confirmed the current provider UX is explicitly API-key/base-URL/model driven for the supported providers; there is no model-provider pathway for a subscription/OAuth-only provider.
+  - Inspected `apps/desktop/src/main/oauth-client.ts`, `apps/desktop/src/main/mcp-service.ts`, and `apps/desktop/src/preload/index.ts`.
+  - Confirmed the existing OAuth client is wired for MCP/external service auth flows, not for chat/model providers.
+  - Checked current public OpenAI help/docs and found the documented contract is still that ChatGPT Plus/Pro subscriptions do **not** include API credits; I did not find a public developer-facing subscription OAuth flow I could wire up safely from this repo.
+- Important assumptions:
+  - Assumption: we should only implement provider auth against public/supported APIs or an explicit product decision, not by reverse-engineering ChatGPT web session auth.
+  - Why acceptable: this repo is a desktop product and issue work should favor reliable, supportable integrations over brittle or policy-risky hacks.
+- Changes implemented:
+  - None in this iteration.
+- Verification run:
+  - Code inspection only; no code changes were made.
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #54:
+  - Confirm whether the desired outcome is an officially supported OAuth/provider contract from OpenAI or a different product direction entirely.
+  - If an official contract becomes available, the likely first implementation slice is provider-metadata/auth-mode plumbing in settings plus a non-API-key provider path.
+
+- Next recommended issue work item: leave `#54` blocked until there is a public provider/auth contract, then resume with a narrowly scoped provider-plumbing slice.
+
+##### Issue #58 — Inline summary messages are now visibly distinct in the active transcript
+
+- Selection rationale:
+  - After blocking on `#54`, I pivoted to the best documented follow-up slice on `#58`: the issue explicitly asks for summarized vs active messages to be visually differentiated, and prior ledger work had already landed storage, full-history, and boundary affordances.
+  - This was a narrow, locally verifiable renderer change with direct user value.
+- Investigation:
+  - Re-read issue `#58` and its scope comment emphasizing preserved raw history, `Show Full History`, and clear summarized-vs-active UI affordances.
+  - Inspected `apps/desktop/src/renderer/src/components/agent-progress.tsx`, `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js`, `apps/desktop/src/renderer/src/pages/sessions.tsx`, and `apps/desktop/src/shared/types.ts`.
+  - Confirmed the data model already carries `isSummary` / `summarizedMessageCount`, and the desktop transcript already had full-history banners/dividers, but the compact inline message renderer still treated summary blocks like ordinary assistant messages.
+  - Checked `apps/mobile/src/screens/ChatScreen.tsx` and confirmed mobile currently strips summary metadata when mapping saved session messages and does not yet have the same preserved-history viewer contract, so a mobile mirror would be a separate deeper slice.
+- Important assumptions:
+  - Assumption: adding a subtle inline badge/count to summary messages in the desktop transcript is the smallest useful interpretation of the issue’s “visually differentiate summarized vs active” acceptance direction.
+  - Why acceptable: users can now identify summary blocks even when they stay in the active-window view, without waiting for a larger transcript redesign.
+  - Assumption: desktop-only is acceptable for this pass.
+  - Why acceptable: the preserved-history viewer and compaction provenance work for `#58` currently lives in the desktop renderer; mobile needs separate summary-metadata plumbing before the same badge can be applied there.
+- Changes implemented:
+  - Updated `apps/desktop/src/renderer/src/components/agent-progress.tsx` so compact transcript messages accept `isSummary` / `summarizedMessageCount`, apply a subtle summary-specific card style, and render a `Context summary` badge with the represented earlier-message count.
+  - Extended `apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` with dependency-free source regression coverage for the new inline summary affordance.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/renderer/src/components/agent-progress.full-history.test.js` ✅
+  - Completed: `git diff --check` ✅
+  - Completed: `pnpm --filter @dotagents/desktop exec tsc --noEmit` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Mirror summary metadata through the mobile session/message mapping layer before attempting the same inline distinction in `apps/mobile`.
+  - Consider whether summary blocks should suppress per-message TTS controls if that proves noisy in long transcripts.
+  - If more provenance is still needed, consider a complementary “active window” badge for non-summary messages near the full-history boundary.
+
+- Next recommended issue work item: treat `#58` as meaningfully advanced again; next iteration should either take another concrete/mobile follow-up on `#58` or move to a different locally verifiable issue once one is available.

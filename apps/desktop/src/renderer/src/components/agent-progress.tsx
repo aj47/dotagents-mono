@@ -59,6 +59,8 @@ type DisplayItem =
       isComplete: boolean
       timestamp: number
       isThinking: boolean
+      isSummary?: boolean
+      summarizedMessageCount?: number
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
     } }
@@ -216,6 +218,8 @@ const CompactMessage: React.FC<{
     content: string
     isComplete?: boolean
     isThinking?: boolean
+    isSummary?: boolean
+    summarizedMessageCount?: number
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     timestamp: number
@@ -292,6 +296,13 @@ const CompactMessage: React.FC<{
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
   const shouldCollapse = (message.content?.length ?? 0) > 100 || hasExtras
+  const isSummaryMessage = message.isSummary === true
+  const summarizedMessageCount = typeof message.summarizedMessageCount === "number" && message.summarizedMessageCount > 0
+    ? message.summarizedMessageCount
+    : null
+  const summaryCountLabel = summarizedMessageCount
+    ? `Represents ${summarizedMessageCount.toLocaleString()} earlier ${summarizedMessageCount === 1 ? "message" : "messages"}`
+    : "Represents earlier messages outside the active window"
 
   // Track the computed ttsSource (ttsText || message.content) since that's what determines the
   // ttsKey and should also gate async state updates.
@@ -433,6 +444,10 @@ const CompactMessage: React.FC<{
   }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, ttsError, wasStopped, variant, sessionId, ttsSource])
 
   const getRoleStyle = () => {
+    if (isSummaryMessage) {
+      return "border-l-2 border-sky-400 bg-sky-400/5 ring-1 ring-sky-400/15"
+    }
+
     switch (message.role) {
       case "user":
         return "border-l-2 border-blue-400 bg-blue-400/5"
@@ -477,6 +492,20 @@ const CompactMessage: React.FC<{
         onClick={handleToggleExpand}
       >
         <div className="flex-1 min-w-0">
+          {isSummaryMessage && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-sky-700 dark:text-sky-200">
+              <Badge
+                variant="outline"
+                className="border-sky-300/70 bg-sky-100/70 text-sky-700 dark:border-sky-700/70 dark:bg-sky-950/40 dark:text-sky-200"
+              >
+                <Brain className="mr-1 h-3 w-3" />
+                Context summary
+              </Badge>
+              <span className="font-medium text-sky-700/80 dark:text-sky-300/80">
+                {summaryCountLabel}
+              </span>
+            </div>
+          )}
           <div className={cn(
             "leading-relaxed text-left",
             !isExpanded && shouldCollapse && "line-clamp-2"
