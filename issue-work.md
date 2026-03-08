@@ -500,3 +500,34 @@
   - Continue exposing preserved-history versus active-window provenance in additional live-session surfaces if users need the same clarity outside the current past-session viewer.
 
 - Next recommended issue work item: stay on `#58` for ACP/history-path alignment, or pivot to a small `#57` trust-track metadata slice if bundle backup provenance feels more urgent next.
+
+##### Issue #58 — ACP recreated sessions bootstrap with compacted prior context only
+
+- Selection rationale:
+  - The ledger’s clearest remaining `#58` gap was ACP/history-path alignment: when an ACP-backed conversation had to recreate its ACP session, DotAgents reused none of the prior conversation context, and there was still no explicit active-window-only contract on that bootstrap path.
+  - This was a small, reviewable slice with direct user value for resumed ACP conversations and strong alignment with the issue’s “LLM context window separate from storage policy” acceptance criteria.
+- Investigation:
+  - Re-read issue `#58` and its scope-locking comment to keep the slice focused on separating active context from full stored history.
+  - Inspected `apps/desktop/src/main/acp-main-agent.ts` and confirmed it loaded conversation state only for UI display, then created/reused ACP sessions and always called `acpService.sendPrompt(...)` without any explicit prior-context bootstrap when a new ACP session was created.
+  - Confirmed `apps/desktop/src/main/tipc.ts` and the previously-fixed `apps/desktop/src/main/remote-server.ts` non-ACP paths already use `conversationService.loadConversationWithCompaction(conversationId, sessionId)` to honor the active-window-only contract.
+  - Confirmed the current user turn is already persisted before `processTranscriptWithACPAgent(...)` is invoked, so an ACP bootstrap helper can safely exclude the current prompt and inject only prior context.
+- Important assumptions:
+  - Assumption: when an ACP session must be recreated for an existing DotAgents conversation, providing the compacted prior context via the existing prompt-context channel is an acceptable first slice even without implementing ACP protocol-level `session/load` support.
+  - Why acceptable: it restores continuity with a very small code change, uses the already-supported `sendPrompt(..., context)` API, and still keeps the full raw transcript out of the recreated session bootstrap.
+- Changes implemented:
+  - Updated `apps/desktop/src/main/acp-main-agent.ts` to load continued ACP conversations through `conversationService.loadConversationWithCompaction(conversationId, sessionId)` instead of the raw loader.
+  - Added a compact-context formatter in `acp-main-agent.ts` that, on recreated ACP sessions only, injects prior DotAgents context into the prompt as the active window (including summary markers) while explicitly excluding the current user prompt.
+  - Preserved the existing session-reuse path so normal ACP turns do not redundantly re-inject prior context into already-live ACP sessions.
+  - Updated `apps/desktop/src/main/acp-main-agent.test.ts` mocks and added a unit test covering compacted prior-context bootstrap for recreated ACP sessions.
+  - Extended `apps/desktop/src/main/conversation-storage-integrity.test.js` with a dependency-free regression assertion covering the ACP compaction-aware bootstrap wiring.
+- Verification run:
+  - Completed: `node --test apps/desktop/src/main/conversation-storage-integrity.test.js` ✅
+- Branch / PR status:
+  - Branch: `aloops/issue-work-loop`
+  - PR: not created in this iteration.
+- Remaining follow-ups for issue #58:
+  - Decide whether ACP agents that support protocol-level session loading should later adopt `session/load` for higher-fidelity resume semantics instead of prompt-context reconstruction.
+  - Consider exposing the same active-window-vs-full-history provenance more explicitly in live ACP UI surfaces if users need the distinction outside the past-session viewer.
+  - Consider a targeted integration test for recreated ACP sessions once local desktop test dependencies are available in this worktree.
+
+- Next recommended issue work item: stay on `#58` for protocol-level ACP resume fidelity or live-session provenance polish, unless a new bug with a tighter repro path supersedes it.

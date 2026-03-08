@@ -7,6 +7,7 @@ const mockOn = vi.fn()
 const mockOff = vi.fn()
 const mockEmitAgentProgress = vi.fn(() => Promise.resolve())
 const mockLoadConversation = vi.fn()
+const mockLoadConversationWithCompaction = vi.fn()
 let sessionUpdateHandler: ((event: any) => void) | undefined
 
 vi.mock("./acp-service", () => ({
@@ -34,6 +35,7 @@ vi.mock("./emit-agent-progress", () => ({
 vi.mock("./conversation-service", () => ({
   conversationService: {
     loadConversation: mockLoadConversation,
+    loadConversationWithCompaction: mockLoadConversationWithCompaction,
   },
 }))
 
@@ -48,6 +50,7 @@ describe("acp-main-agent", () => {
     sessionUpdateHandler = undefined
 
     mockLoadConversation.mockResolvedValue(undefined)
+    mockLoadConversationWithCompaction.mockResolvedValue(undefined)
     mockGetOrCreateSession.mockResolvedValue("acp-session-1")
     mockSendPrompt.mockResolvedValue({ success: true, response: "done" })
     mockOn.mockImplementation((eventName: string, handler: (event: any) => void) => {
@@ -175,6 +178,48 @@ describe("acp-main-agent", () => {
     expect(promptContext).toContain('then call "mark_work_complete" with a concise completion summary')
     expect(promptContext).toContain("System Prompt: Be helpful")
     expect(promptContext).toContain("Guidelines: Stay concise")
+  })
+
+  it("bootstraps recreated ACP sessions with compacted prior DotAgents context", async () => {
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    mockLoadConversationWithCompaction.mockResolvedValue({
+      messages: [
+        {
+          role: "assistant",
+          content: "Earlier reply",
+          timestamp: 1,
+          isSummary: true,
+          summarizedMessageCount: 12,
+        },
+        {
+          role: "assistant",
+          content: "Latest active assistant message",
+          timestamp: 2,
+        },
+        {
+          role: "user",
+          content: "hello",
+          timestamp: 3,
+        },
+      ],
+      compaction: {
+        representedMessageCount: 15,
+      },
+    })
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+    })
+
+    const promptContext = mockSendPrompt.mock.calls[0]?.[3]
+    expect(promptContext).toContain("Previous DotAgents conversation context")
+    expect(promptContext).toContain("active window only, not the full raw transcript")
+    expect(promptContext).toContain("Summary representing 12 earlier messages")
+    expect(promptContext).toContain("Assistant: Latest active assistant message")
   })
 
   it("adds ACP content blocks to conversation history progressively instead of only at completion", async () => {

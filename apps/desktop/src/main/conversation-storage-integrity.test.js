@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename)
 const serviceSource = fs.readFileSync(path.join(__dirname, 'conversation-service.ts'), 'utf8')
 const tipcSource = fs.readFileSync(path.join(__dirname, 'tipc.ts'), 'utf8')
 const remoteServerSource = fs.readFileSync(path.join(__dirname, 'remote-server.ts'), 'utf8')
+const acpMainAgentSource = fs.readFileSync(path.join(__dirname, 'acp-main-agent.ts'), 'utf8')
 const typesSource = fs.readFileSync(path.join(__dirname, '..', 'shared', 'types.ts'), 'utf8')
 
 test('conversation types expose preserved raw-history and partial-compaction metadata', () => {
@@ -47,4 +48,11 @@ test('remote server resumes agent runs with the compacted context window instead
   assert.match(remoteServerSource, /loadConversationWithCompaction\(conversationId, sessionId\)/)
   assert.match(remoteServerSource, /representedMessageCount = compactedConversation\.compaction\?\.representedMessageCount \?\? compactedConversation\.messages\.length/)
   assert.match(remoteServerSource, /Continuing conversation \$\{conversationId\} with \$\{messagesToConvert\.length\} previous active messages representing \$\{representedMessageCount\} stored messages/)
+})
+
+test('ACP recreated sessions bootstrap only the compacted active conversation window', () => {
+  assert.match(acpMainAgentSource, /loadConversationWithCompaction\(conversationId, sessionId\)/)
+  assert.match(acpMainAgentSource, /buildAcpBootstrapConversationContext\(loadedConversation, transcript\)/)
+  assert.match(acpMainAgentSource, /active window only, not the full raw transcript/)
+  assert.match(acpMainAgentSource, /conversation\.messages\.slice\(0, -1\)/)
 })

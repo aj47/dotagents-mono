@@ -258,6 +258,79 @@ function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMess
   }
 }
 
+type ACPBootstrapConversationMessage = {
+  role: ConversationHistoryMessage["role"]
+  content: string
+  toolCalls?: ToolCall[]
+  toolResults?: ToolResult[]
+  isSummary?: boolean
+  summarizedMessageCount?: number
+}
+
+function formatAcpBootstrapConversationMessage(message: ACPBootstrapConversationMessage): string | undefined {
+  const content = typeof message.content === "string" ? message.content.trim() : ""
+
+  if (message.isSummary) {
+    const summarizedLabel = typeof message.summarizedMessageCount === "number" && message.summarizedMessageCount > 0
+      ? `${message.summarizedMessageCount} earlier messages`
+      : "earlier conversation"
+    return `Summary representing ${summarizedLabel}: ${content || "(empty)"}`
+  }
+
+  const roleLabel = message.role === "user"
+    ? "User"
+    : (message.role === "assistant" ? "Assistant" : "Tool")
+
+  const parts = [`${roleLabel}: ${content || "(empty)"}`]
+
+  if (message.toolCalls?.length) {
+    const toolCalls = message.toolCalls.map((toolCall) => {
+      const args = stringifyAcpValue(toolCall.arguments)
+      return args ? `- ${toolCall.name} ${args}` : `- ${toolCall.name}`
+    })
+    parts.push(`Tool calls:\n${toolCalls.join("\n")}`)
+  }
+
+  if (message.toolResults?.length) {
+    const toolResults = message.toolResults.map((toolResult) => {
+      const status = toolResult.success ? "success" : "error"
+      const resultText = (toolResult.error || toolResult.content || "").trim() || "(empty)"
+      return `- ${status}: ${resultText}`
+    })
+    parts.push(`Tool results:\n${toolResults.join("\n")}`)
+  }
+
+  return parts.join("\n")
+}
+
+function buildAcpBootstrapConversationContext(
+  conversation: {
+    messages: ACPBootstrapConversationMessage[]
+    compaction?: { representedMessageCount?: number }
+  },
+  transcript: string,
+): string | undefined {
+  const lastMessage = conversation.messages[conversation.messages.length - 1]
+  const priorMessages = lastMessage?.role === "user" && lastMessage.content === transcript
+    ? conversation.messages.slice(0, -1)
+    : conversation.messages
+
+  if (!priorMessages.length) return undefined
+
+  const representedMessageCount = conversation.compaction?.representedMessageCount ?? priorMessages.length
+  const formattedMessages = priorMessages
+    .map(formatAcpBootstrapConversationMessage)
+    .filter((value): value is string => !!value && value.trim().length > 0)
+
+  if (!formattedMessages.length) return undefined
+
+  const header = representedMessageCount > priorMessages.length
+    ? `Previous DotAgents conversation context (active window only, not the full raw transcript; ${priorMessages.length} prior messages representing ${representedMessageCount} stored messages):`
+    : `Previous DotAgents conversation context (${priorMessages.length} prior messages):`
+
+  return [header, ...formattedMessages].join("\n\n")
+}
+
 function normalizeToolArguments(input: unknown): ToolCall["arguments"] {
   if (input && typeof input === "object" && !Array.isArray(input)) {
     return input as ToolCall["arguments"]
@@ -341,11 +414,12 @@ export async function processTranscriptWithACPAgent(
 
   // Load existing conversation history for UI display
   let conversationHistory: ConversationHistoryMessage[] = []
+  let loadedConversation: Awaited<ReturnType<typeof conversationService.loadConversationWithCompaction>> = null
 
   try {
-    const conversation = await conversationService.loadConversation(conversationId)
-    if (conversation) {
-      conversationHistory = conversation.messages.map(m => ({
+    loadedConversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
+    if (loadedConversation) {
+      conversationHistory = loadedConversation.messages.map(m => ({
         role: m.role,
         content: m.content,
         toolCalls: m.toolCalls,
@@ -723,7 +797,13 @@ export async function processTranscriptWithACPAgent(
 
     try {
       // Send the prompt
-      const promptContext = buildProfileContext(profileSnapshot, ACP_BUILTIN_TOOL_PROMPT_CONTEXT)
+      const bootstrapConversationContext = (!existingSession || existingSession.agentName !== agentName) && loadedConversation
+        ? buildAcpBootstrapConversationContext(loadedConversation, transcript)
+        : undefined
+      const promptContext = buildProfileContext(
+        profileSnapshot,
+        [ACP_BUILTIN_TOOL_PROMPT_CONTEXT, bootstrapConversationContext].filter(Boolean).join("\n\n"),
+      )
       const result = await acpService.sendPrompt(agentName, acpSessionId, transcript, promptContext)
 
       const { userResponse } = deriveAcpUserResponseState(conversationHistory)
