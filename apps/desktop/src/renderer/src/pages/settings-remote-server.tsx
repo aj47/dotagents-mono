@@ -241,68 +241,72 @@ export function RemoteServerSettingsGroups({
               </Control>
 
               <Control label={<ControlLabel label="Bind Address" tooltip="127.0.0.1 for local-only access; 0.0.0.0 to allow LAN access (requires API key)" />} className="px-3">
-                <Select
-                  value={(cfg.remoteServerBindAddress as any) || "127.0.0.1"}
-                  onValueChange={(value: any) =>
-                    saveConfig({ remoteServerBindAddress: value })
-                  }
-                >
-                  <SelectTrigger className="w-full sm:w-[220px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bindOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {cfg.remoteServerBindAddress === "0.0.0.0" && (
-                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                    Warning: Exposes the server on your local network. Keep your API key secure.
-                  </div>
-                )}
+                <div className="flex w-full min-w-0 flex-col items-start gap-1 sm:max-w-[220px]">
+                  <Select
+                    value={(cfg.remoteServerBindAddress as any) || "127.0.0.1"}
+                    onValueChange={(value: any) =>
+                      saveConfig({ remoteServerBindAddress: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[220px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bindOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {cfg.remoteServerBindAddress === "0.0.0.0" && (
+                    <div className="text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                      Warning: Exposes the server on your local network. Keep your API key secure.
+                    </div>
+                  )}
+                </div>
               </Control>
 
               <Control label={<ControlLabel label="API Key" tooltip="Bearer token required in Authorization header" />} className="px-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input type="password" value={cfg.remoteServerApiKey || ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={streamerMode}
-                    title={streamerMode ? "Disabled in Streamer Mode" : undefined}
-                    onClick={() => {
-                      if (!cfg.remoteServerApiKey || streamerMode) return
-                      void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
-                        console.error("Failed to copy remote server API key", err)
-                      })
-                    }}
-                  >
-                    {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={async () => {
-                      // Generate a new 32-byte API key (hex)
-                      const bytes = new Uint8Array(32)
-                      window.crypto.getRandomValues(bytes)
-                      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
-                      saveConfig({ remoteServerApiKey: hex })
-                      await configQuery.refetch()
-                    }}
-                  >
-                    Regenerate
-                  </Button>
-                </div>
-                {streamerMode && (
-                  <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                    <EyeOff className="h-3 w-3" />
-                    Copy disabled in Streamer Mode
+                <div className="flex w-full min-w-0 flex-col items-start gap-1.5 sm:max-w-[360px]">
+                  <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+                    <Input type="password" value={cfg.remoteServerApiKey || ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={streamerMode}
+                      title={streamerMode ? "Disabled in Streamer Mode" : undefined}
+                      onClick={() => {
+                        if (!cfg.remoteServerApiKey || streamerMode) return
+                        void copyTextToClipboard(cfg.remoteServerApiKey).catch((err) => {
+                          console.error("Failed to copy remote server API key", err)
+                        })
+                      }}
+                    >
+                      {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        // Generate a new 32-byte API key (hex)
+                        const bytes = new Uint8Array(32)
+                        window.crypto.getRandomValues(bytes)
+                        const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
+                        saveConfig({ remoteServerApiKey: hex })
+                        await configQuery.refetch()
+                      }}
+                    >
+                      Regenerate
+                    </Button>
                   </div>
-                )}
+                  {streamerMode && (
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                      <EyeOff className="h-3 w-3 shrink-0" />
+                      Copy disabled in Streamer Mode
+                    </div>
+                  )}
+                </div>
               </Control>
 
               <Control label={<ControlLabel label="Log Level" tooltip="Fastify logger level" />} className="px-3">
@@ -322,52 +326,56 @@ export function RemoteServerSettingsGroups({
               </Control>
 
               <Control label={<ControlLabel label="CORS Origins" tooltip="Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081" />} className="px-3">
-                <Input
-                  type="text"
-                  value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}
-                  onChange={(e) => {
-                    const origins = e.currentTarget.value
-                      .split(",")
-                      .map(s => s.trim())
-                      .filter(Boolean)
-                    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
-                  }}
-                  placeholder="* or http://localhost:8081, http://example.com"
-                  className="w-full"
-                />
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Use * for development or specify allowed origins separated by commas
+                <div className="flex w-full min-w-0 flex-col items-start gap-1 sm:max-w-[360px]">
+                  <Input
+                    type="text"
+                    value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}
+                    onChange={(e) => {
+                      const origins = e.currentTarget.value
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(Boolean)
+                      saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+                    }}
+                    placeholder="* or http://localhost:8081, http://example.com"
+                    className="w-full"
+                  />
+                  <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                    Use * for development or specify allowed origins separated by commas
+                  </div>
                 </div>
               </Control>
 
               {(baseUrl || showConnectableUrlResolutionWarning || showLoopbackBindWarning) && (
                 <>
                   <Control label="Base URL" className="px-3">
-                    {baseUrl ? (
-                      <div className="text-sm text-muted-foreground select-text break-all">
-                        {streamerMode ? maskUrl(baseUrl) : baseUrl}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-amber-700 dark:text-amber-300 break-words">
-                        Unable to resolve a LAN-reachable URL for the current bind address.
-                      </div>
-                    )}
-                    {streamerMode && baseUrl && (
-                      <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <EyeOff className="h-3 w-3" />
-                        URL masked in Streamer Mode
-                      </div>
-                    )}
-                    {showConnectableUrlResolutionWarning && (
-                      <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words">
-                        The server is running, but no LAN-reachable address was detected for wildcard bind (0.0.0.0/::). Connect to a local network or use a specific LAN IP/host to enable mobile pairing.
-                      </div>
-                    )}
-                    {showLoopbackBindWarning && (
-                      <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 break-words">
-                        The server is running on loopback ({configuredBindAddress}), which is only reachable from this computer. Use 0.0.0.0 or a LAN IP to enable mobile pairing.
-                      </div>
-                    )}
+                    <div className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]">
+                      {baseUrl ? (
+                        <div className="w-full min-w-0 text-sm text-muted-foreground select-text break-words [overflow-wrap:anywhere]">
+                          {streamerMode ? maskUrl(baseUrl) : baseUrl}
+                        </div>
+                      ) : (
+                        <div className="w-full min-w-0 text-sm text-amber-700 dark:text-amber-300 break-words [overflow-wrap:anywhere]">
+                          Unable to resolve a LAN-reachable URL for the current bind address.
+                        </div>
+                      )}
+                      {streamerMode && baseUrl && (
+                        <div className="flex flex-wrap items-center gap-1 text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                          <EyeOff className="h-3 w-3 shrink-0" />
+                          URL masked in Streamer Mode
+                        </div>
+                      )}
+                      {showConnectableUrlResolutionWarning && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                          The server is running, but no LAN-reachable address was detected for wildcard bind (0.0.0.0/::). Connect to a local network or use a specific LAN IP/host to enable mobile pairing.
+                        </div>
+                      )}
+                      {showLoopbackBindWarning && (
+                        <div className="text-xs text-amber-600 dark:text-amber-400 break-words [overflow-wrap:anywhere]">
+                          The server is running on loopback ({configuredBindAddress}), which is only reachable from this computer. Use 0.0.0.0 or a LAN IP to enable mobile pairing.
+                        </div>
+                      )}
+                    </div>
                   </Control>
 
                   {baseUrl && cfg?.remoteServerApiKey && (
@@ -649,34 +657,36 @@ export function RemoteServerSettingsGroups({
                 {tunnelStatus?.url && tunnelStatus?.running && (
                   <>
                     <Control label={<ControlLabel label="Public URL" tooltip="Use this URL to access your remote server from anywhere" />} className="px-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Input
-                          type={streamerMode ? "password" : "text"}
-                          value={streamerMode ? "••••••••••••••••••••" : `${tunnelStatus.url}/v1`}
-                          readOnly
-                          className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={streamerMode}
-                          title={streamerMode ? "Disabled in Streamer Mode" : undefined}
-                          onClick={() => {
-                            if (streamerMode) return
-                            void copyTextToClipboard(`${tunnelStatus.url}/v1`).catch((err) => {
-                              console.error("Failed to copy tunnel URL", err)
-                            })
-                          }}
-                        >
-                          {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
-                        </Button>
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {streamerMode
-                          ? <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1"><EyeOff className="h-3 w-3" />URL hidden in Streamer Mode</span>
-                          : tunnelStatus.mode === "named"
-                            ? "This URL is persistent and will remain the same across restarts."
-                            : "This URL is temporary and will change when you restart the tunnel."}
+                      <div className="flex w-full min-w-0 flex-col items-start gap-1.5 text-left sm:max-w-[360px]">
+                        <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+                          <Input
+                            type={streamerMode ? "password" : "text"}
+                            value={streamerMode ? "••••••••••••••••••••" : `${tunnelStatus.url}/v1`}
+                            readOnly
+                            className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={streamerMode}
+                            title={streamerMode ? "Disabled in Streamer Mode" : undefined}
+                            onClick={() => {
+                              if (streamerMode) return
+                              void copyTextToClipboard(`${tunnelStatus.url}/v1`).catch((err) => {
+                                console.error("Failed to copy tunnel URL", err)
+                              })
+                            }}
+                          >
+                            {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
+                          </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                          {streamerMode
+                            ? <span className="flex flex-wrap items-center gap-1 text-amber-600 dark:text-amber-400"><EyeOff className="h-3 w-3 shrink-0" />URL hidden in Streamer Mode</span>
+                            : tunnelStatus.mode === "named"
+                              ? "This URL is persistent and will remain the same across restarts."
+                              : "This URL is temporary and will change when you restart the tunnel."}
+                        </div>
                       </div>
                     </Control>
 

@@ -1,5 +1,45 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 38: Desktop remote-server URL/pairing helper rows under narrow settings widths and zoom
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the just-touched `settings-general.tsx` and chose a fresh desktop settings surface with dense pairing/status controls. The remote-server page still had several URL/helper/warning rows built on the shared `Control` layout, which made it a high-signal place to look for horizontal crowding under narrower settings widths and increased font zoom.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `DEVELOPMENT.md`, and `apps/desktop/src/renderer/src/AGENTS.md` for desktop/mobile workflow and renderer guidance
+  - checked runtime readiness again before choosing the area: root, desktop, and mobile `node_modules` are still absent, so live Electron and Expo inspection are not practical in this worktree right now
+  - inspected the shared settings-row contract in `apps/desktop/src/renderer/src/components/ui/control.tsx`, then inspected the remote-server `Bind Address`, `API Key`, `CORS Origins`, `Base URL`, and Cloudflare `Public URL` rows in `settings-remote-server.tsx` with narrow settings-column constraints and zoom pressure in mind
+  - cross-checked the mobile connection surface in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`; it is the consumer-side pairing UI, not a direct equivalent of the desktop host/tunnel configuration rows, so this pass remained desktop-only
+
+#### Findings
+
+- Before the fix, the remote-server settings page still had one concrete desktop layout issue with clear user impact:
+  - multiple remote-server pairing rows passed both the main control chrome and their follow-up helper/warning text directly into the shared `Control` value slot, even though that slot is horizontally laid out
+  - the most important cases were the `Bind Address` LAN warning, the `API Key` streamer-mode notice, the `CORS Origins` helper copy, the `Base URL` reachability warnings, and the Cloudflare `Public URL` persistence/streamer copy
+  - under narrower settings widths or larger font zoom, that supporting guidance had to compete beside selects, inputs, and copy buttons instead of stacking beneath them intentionally, making pairing/setup status easier to miss and the rows feel cramped
+
+#### Changes made
+
+- Hardened the remote-server URL/pairing subsection in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` with a small, local layout fix:
+  - wrapped the `Bind Address`, `API Key`, and `CORS Origins` rows in `min-w-0` vertical containers so warnings/helper text now sits beneath the primary control instead of beside it
+  - wrapped the `Base URL` and Cloudflare `Public URL` rows in matching stacked containers so masked-state notices and reachability/persistence guidance keep a deliberate vertical relationship to the displayed URL
+  - made the follow-up copy explicitly wrap-safe with `break-words` / `[overflow-wrap:anywhere]`, and kept the primary input/button clusters `flex-wrap` safe
+- Added `apps/desktop/src/renderer/src/pages/settings-remote-server.layout.test.ts` so this remote-server layout contract now has focused regression coverage.
+
+#### Verification
+
+- Attempted targeted desktop layout test: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-remote-server.layout.test.ts` *(blocked: `vitest` not found because this worktree is still missing local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` against `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` confirmed the new stacked container and wrap-safe helper/warning class fragments are present
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/pages/settings-remote-server.tsx apps/desktop/src/renderer/src/pages/settings-remote-server.layout.test.ts`
+
+#### Notes
+
+- This chunk is desktop-only: mobile `ConnectionSettingsScreen` is the client-side connection form and does not share these desktop host/tunnel control rows, so no matching mobile code change was needed.
+- Tradeoff/rationale: kept the remote-server information architecture intact instead of redesigning pairing/tunnel settings; the fix only restores the expected stacked relationship between primary controls and their critical supporting guidance.
+- Live screenshot-backed confirmation should be revisited once dependencies are restored and Electron can launch again; the best follow-up is to inspect remote-server settings with streamer mode on, `0.0.0.0` selected, and Cloudflare tunnel URL/status visible at increased font zoom.
+- Best next UI audit chunk after this one: stay in `settings-remote-server.tsx` for the Cloudflare install/login/status cards and named-tunnel helper links, or move to another fresh desktop surface once runtime dependencies are available for live confirmation.
+
 ### 2026-03-08 — Chunk 37: Desktop Langfuse helper/status rows in settings-general under narrow settings widths and zoom
 
 - Area selected:
