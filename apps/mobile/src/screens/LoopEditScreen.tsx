@@ -374,6 +374,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
           ? 'Enter a valid interval in whole minutes to enable saving.'
           : null;
   const isSaveDisabled = isSaving || !settingsClient || !!saveValidationMessage;
+  const saveHelperMessage = !settingsClient
+    ? 'Configure Base URL and API key in Settings to save this loop.'
+    : saveValidationMessage;
   const saveButtonAccessibilityLabel = createButtonAccessibilityLabel(isEditing ? 'Save loop changes' : 'Create loop');
   const saveButtonAccessibilityHint = !settingsClient
     ? 'Configure Base URL and API key in Settings before saving this loop.'
@@ -625,8 +628,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
         </View>
       )}
 
-      {settingsClient && saveValidationMessage && (
-        <Text style={styles.saveHelperText}>{saveValidationMessage}</Text>
+      {saveHelperMessage && (
+        <Text style={styles.saveHelperText}>{saveHelperMessage}</Text>
       )}
 
       <TouchableOpacity

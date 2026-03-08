@@ -278,6 +278,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
     ? 'Add a display name to enable saving.'
     : null;
   const isSaveDisabled = isSaving || !settingsClient || !!saveValidationMessage;
+  const saveHelperMessage = !settingsClient
+    ? 'Configure Base URL and API key in Settings to save this agent.'
+    : saveValidationMessage;
   const saveButtonAccessibilityLabel = createButtonAccessibilityLabel(isEditing ? 'Save agent changes' : 'Create agent');
   const saveButtonAccessibilityHint = !settingsClient
     ? 'Configure Base URL and API key in Settings before saving this agent.'
@@ -585,8 +588,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
       )}
 
-      {settingsClient && saveValidationMessage && (
-        <Text style={styles.saveHelperText}>{saveValidationMessage}</Text>
+      {saveHelperMessage && (
+        <Text style={styles.saveHelperText}>{saveHelperMessage}</Text>
       )}
 
       <TouchableOpacity

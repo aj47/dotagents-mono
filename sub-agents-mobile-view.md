@@ -1,5 +1,41 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 141 - Keep disabled save-state guidance visible near mobile edit CTAs
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the newly updated ledger first so I would not immediately rework the just-touched selector-sheet height change without fresh evidence.
+  - Re-checked `apps/mobile/src/screens/AgentEditScreen.tsx`, `apps/mobile/src/screens/LoopEditScreen.tsx`, and `apps/mobile/tests/sub-agent-edit-mobile.test.js` because the edit flows still had a narrow, source-backed state-clarity issue available.
+  - Confirmed both edit screens already show a top-of-form blocking notice when Base URL / API key settings are missing, and both expose good save-button accessibility hints.
+  - Fresh Expo Web / simulator validation was still not practical in this worktree because the mobile install blocker from Iteration 140 remains unresolved (`apps/mobile/node_modules` missing; local `expo` unavailable).
+- Current behavior observed before the fix:
+  - `AgentEditScreen` and `LoopEditScreen` both disabled their bottom save CTA when `settingsClient` was unavailable.
+  - The only visible explanation on-screen lived in the blocking notice near the top of each long form.
+  - Near the bottom save action, helper text appeared only for field-validation issues (`display name`, `prompt`, `interval`, etc.), not for the missing-config state.
+  - On mobile, that meant users who had already scrolled through the form could hit a disabled primary CTA without a nearby visible reason.
+- Issue identified:
+  - Disabled save buttons in long mobile sub-agent edit forms did not keep the missing-config reason visible close to the action, weakening state clarity at the moment users try to save.
+- Decision and rationale:
+  - Keep the existing blocking notice and recovery button at the top of the form.
+  - Avoid adding another warning card or broader layout change; the smallest effective improvement is to reuse the existing `saveHelperText` slot so the disabled CTA always has a nearby explanation.
+  - Keep validation-copy behavior unchanged for normal field errors; only extend the same pattern to the missing-config state.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/AgentEditScreen.tsx` to derive `saveHelperMessage`, showing `Configure Base URL and API key in Settings to save this agent.` when server config is missing and otherwise falling back to the existing validation message.
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` with the same pattern for `...save this loop.`
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` so regression coverage now checks the shared helper-message pattern in both edit flows.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Live Expo / simulator validation ⚠️ still blocked by the unresolved missing-install state in this worktree
+- Assumptions and tradeoffs:
+  - Assumed repeating a short config reminder near the disabled CTA is preferable to making users scroll back to the top blocking notice.
+  - Kept the copy short and action-adjacent instead of promoting another full-width CTA near the bottom, to avoid over-weighting the blocked state.
+  - This still needs live confirmation that the extra helper line feels helpful, not redundant, on narrow screens.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that both edit screens now keep the missing-config reason readable near the disabled save CTA.
+  - Check a field-validation-only case versus a missing-config case so the shared helper slot feels consistent and never shows conflicting guidance.
+  - If live validation shows the repeated helper text is visually noisy, prefer a tiny spacing/tone adjustment before considering any larger blocking-state redesign.
+
 ## Iteration 140 - Let the mobile selector list use the sheet's remaining height
 
 - Date: 2026-03-08
