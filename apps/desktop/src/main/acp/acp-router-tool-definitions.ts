@@ -68,7 +68,8 @@ export const acpRouterToolDefinitions = [
   },
   {
     name: 'check_agent_status',
-    description: 'Check the status of a running delegated agent task',
+    description:
+      'Check the status of a running delegated agent task. Avoid tight polling in the same run; if the task is still running, continue other work or report that it is still in progress and can be checked again later.',
     inputSchema: {
       type: 'object' as const,
       properties: {

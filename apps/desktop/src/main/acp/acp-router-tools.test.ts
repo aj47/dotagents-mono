@@ -80,9 +80,21 @@ describe('handleDelegateToAgent', () => {
     const initial = await handleDelegateToAgent(
       { agentName: 'internal', task: 'Investigate this', waitForResult: false },
       'parent-session-1',
-    ) as { runId: string; status: string; agentName: string }
+    ) as {
+      runId: string;
+      status: string;
+      agentName: string;
+      message: string;
+      note?: string;
+    }
 
-    expect(initial).toMatchObject({ success: true, status: 'running', agentName: 'internal' })
+    expect(initial).toMatchObject({
+      success: true,
+      status: 'running',
+      agentName: 'internal',
+      note: expect.stringContaining('avoid repeated status polling'),
+    })
+    expect(initial.message).toContain('Avoid tight polling in the same run')
     expect(mockRunInternalSubSession).toHaveBeenCalledWith(expect.objectContaining({
       task: 'Investigate this',
       parentSessionId: 'parent-session-1',
@@ -92,6 +104,9 @@ describe('handleDelegateToAgent', () => {
     await expect(handleCheckAgentStatus({ runId: initial.runId })).resolves.toMatchObject({
       success: true,
       status: 'running',
+      recommendedAction: 'continue_other_work_or_report_running',
+      nextSuggestedPollSeconds: 15,
+      note: expect.stringContaining('avoid repeated status polling'),
     })
 
     resolveRun({

@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772744648565_y8l300gt0 | session_1772744648567_uthjyczt8 | fix implemented | User asked to investigate a broken custom-domain flow and trigger a Codex web agent. Langfuse showed an early async `delegate_to_agent`, then many repeated `check_agent_status` calls that kept returning `status: running`, eventually burning 84 iterations before the run fell back incomplete. Root repo issue found: background delegation/status responses told the model how to poll, but not when to stop polling or what to do instead while the delegated work was still running. |
 | 2026-03-08 | conv_1772762736666_7bj08qdgg | session_1772762736667_04xp96wqz | fix implemented | User sent `hi`; the run ended with `output: null` after a single `Streaming LLM Call` error whose Langfuse status was only `Bad Request`. Fresh corroborating traces `conv_1772915623974_19t5gv3u6` / `session_1772915623977_t1j6if9gz`, `conv_1772905378777_q5hq0r5xs` / `session_1772905378779_d58nx1yvg`, and `conv_1772901755817_jhfxav45q` / `session_1772901755821_xnjfwsv3t` showed the same blank-output failure class with low-signal plain-streaming error statuses like `Cannot connect to API:`. Root repo issue found: the plain streaming LLM catch path still finalized Langfuse generations and rethrew with raw `error.message`, bypassing the repo's normalized nested-cause extraction used elsewhere. |
 | 2026-03-08 | conv_1772912335273_fi5tznrfx | session_1772912334717_md47yr0ht | fix implemented (verification blocked) | User asked for `.agent protocol hub` context plus starter-pack recommendations and follow-up questions. Langfuse showed multiple successful `github:get_file_contents` / `execute_command` context-gathering batches, then the run ended with `output: null` and no user-facing synthesis or questions. Later traces in the same session continued the same hub / starter-pack topic. Root repo issue found: repeated successful non-communication tool batches kept resetting the no-op safeguards, so the loop never nudged the model to stop gathering and synthesize or ask the focused questions it had promised. |
 | 2026-03-08 | conv_1772916005809_qqlggnsj6 | session_1772916005810_0a4il8g4j | fix implemented (verification blocked) | User asked to create a GitHub issue about preserving full conversation data. Langfuse showed `github:create_issue` succeeded, then `respond_to_user` succeeded with the finished issue link/summary, but the run still ended with `output: null` after one extra empty `Streaming LLM Call`. Root repo issue found: the tool-driven completion path only treated `mark_work_complete` or repeated `respond_to_user` loops as completion signals, so a deliverable `respond_to_user` after real work could still trigger another LLM turn and lose the already-delivered answer. |
@@ -234,7 +235,46 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
     - `apps/desktop/src/main/mcp-service.option-b.test.ts`
       - added a regression test that simulates a never-resolving `github:list_issues` call and verifies `executeToolCall(...)` returns a timeout error instead of hanging indefinitely
 
+### 2026-03-08 — Background delegation status checks needed explicit anti-poll guidance
+
+- Langfuse evidence reviewed:
+  - `conv_1772744648565_y8l300gt0` / `session_1772744648567_uthjyczt8`
+  - user input (summarized): investigate why the hub custom-domain flow was broken and trigger a Codex web agent to work on it
+  - trace outcome: incomplete fallback after `84` iterations
+  - observations showed:
+    - an early async `delegate_to_agent` call that returned `status: running`
+    - repeated `check_agent_status` calls that kept returning `status: running`
+    - later placeholder-only tool-intent generations around terminal monitoring (`[Calling tools: iterm:read_terminal_output]`), which further consumed iteration budget without a final user-facing result
+- Repo reconstruction:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts` returned only bare running-state data for `check_agent_status` and a generic `use check_agent_status` message for async delegation startup.
+  - `apps/desktop/src/main/acp/acp-router-tool-definitions.ts` also described `check_agent_status` generically, with no warning against tight polling in the same run.
+  - that left the model with no structured signal that repeated status checks are usually non-progress and that it should either do other work or report that the delegated task is still running.
+- Concrete root cause:
+  - background delegation/status tool responses taught the model how to poll but not when to stop polling.
+  - in the traced failure, that made it too easy for a single run to babysit background work until it exhausted its iteration budget, even though a clear `still running; check again later` handoff would have been more helpful to the user.
+- Change made:
+  - `apps/desktop/src/main/acp/acp-router-tools.ts`
+    - added shared running-status guidance text for async delegations
+    - when a delegated run is still `running`, return a `message`, `note`, `recommendedAction`, and `nextSuggestedPollSeconds`
+    - apply the same guidance both to the initial async `delegate_to_agent(waitForResult=false)` result and later `check_agent_status` responses
+  - `apps/desktop/src/main/acp/acp-router-tool-definitions.ts`
+    - updated the `check_agent_status` description to discourage tight polling and steer the model toward other work or a user-facing in-progress handoff
+  - tests added/updated:
+    - `apps/desktop/src/main/acp/acp-router-tools.test.ts`
+      - assert async delegation startup and `check_agent_status` both expose the new anti-poll guidance fields
+
 ## Verification Log
+
+- Targeted test command attempted:
+  - `cd apps/desktop && pnpm test -- --run src/main/acp/acp-router-tools.test.ts`
+- Result:
+  - ✅ passed (`5 passed`)
+  - note: Vitest still logs the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop ACP test exits successfully
+- Additional validation attempted:
+  - `cd apps/desktop && pnpm typecheck:node`
+- Result:
+  - blocked by pre-existing worktree/typecheck issues unrelated to this change
+  - current blockers included missing `uuid` types in the already-dirty `apps/desktop/src/main/acp/internal-agent.ts`, pre-existing mock typing failures in `acp-service.test.ts` / `llm.test.ts`, and unresolved names already present in `apps/desktop/src/main/llm.ts`
 
 - Targeted test command attempted:
   - `pnpm --filter @dotagents/desktop exec vitest run src/main/mcp-service.option-b.test.ts`
@@ -786,6 +826,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 - Recheck a fresh pseudo-`respond_to_user` trace after desktop dependencies are restored, to confirm Langfuse/UI now show only the unwrapped user-facing text rather than the pseudo-tool wrapper.
 - Recheck a fresh window-management / `Computer Use` delegation trace after dependencies are restored, to confirm a sub-agent that ends with `Let me ...` or another progress-only update is now surfaced as a failed/incomplete delegation instead of a successful completion that can collapse the parent trace to `output: null`.
 - Recheck a fresh ACP `augustus` delegation trace where the delegated agent emits long markdown-headed reasoning (`**Analyzing ...**`, `## Actions ... then I'll ...`) to confirm the parent now rejects it as non-deliverable instead of treating it as a completed result.
+- Recheck a fresh async ACP delegation trace with repeated `check_agent_status` polling, to confirm the new running-status guidance nudges the model toward other work or a clear `still running` handoff instead of burning the run on tight polling.
 - Recheck a fresh synchronous ACP delegation trace after the next desktop smoke run succeeds, to confirm a stalled delegated prompt now fails closed with the timeout message instead of hanging until emergency stop.
 - Recheck a fresh terminal-execution trace (for example `run it in a new terminal window/tab`) after dependencies are restored, to confirm the run now either writes the command into the terminal or stops with a clear blocker instead of handing the shell command back to the user.
 - Recheck a fresh post-tool streaming trace after desktop dependencies are restored, to confirm a stalled final provider stream now retries or fails closed with a surfaced timeout instead of ending as `output: null`.

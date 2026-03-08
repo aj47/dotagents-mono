@@ -132,6 +132,16 @@ interface DelegationResult {
   note?: string;
 }
 
+const BACKGROUND_STATUS_NEXT_POLL_SECONDS = 15;
+
+function buildRunningDelegationGuidance(agentName: string, runId: string): string {
+  return [
+    `Task delegated to "${agentName}".`,
+    `Use check_agent_status with runId "${runId}" when you need an update.`,
+    'Avoid tight polling in the same run; continue other work or tell the user it is still running and can be checked again later.',
+  ].join(' ');
+}
+
 function isProgressOnlyDelegationOutput(output: string): boolean {
   const trimmed = output.trim();
   if (!trimmed) return true;
@@ -234,7 +244,8 @@ function createRunningResult(subAgentState: DelegatedRun): DelegationResult {
     runId: subAgentState.runId,
     agentName: subAgentState.agentName,
     status: 'running',
-    message: `Task delegated to "${subAgentState.agentName}". Use check_agent_status with runId "${subAgentState.runId}" to check progress.`,
+    message: buildRunningDelegationGuidance(subAgentState.agentName, subAgentState.runId),
+    note: 'Background delegations can take time; avoid repeated status polling inside the same agent run.',
   };
 }
 
@@ -1391,6 +1402,13 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
 
     if (subAgentState.progress) {
       response.progress = subAgentState.progress;
+    }
+
+    if (subAgentState.status === 'running') {
+      response.message = buildRunningDelegationGuidance(subAgentState.agentName, subAgentState.runId);
+      response.note = 'Background delegations can take time; avoid repeated status polling inside the same agent run.';
+      response.recommendedAction = 'continue_other_work_or_report_running';
+      response.nextSuggestedPollSeconds = BACKGROUND_STATUS_NEXT_POLL_SECONDS;
     }
 
     if (subAgentState.status === 'completed' && subAgentState.result) {
