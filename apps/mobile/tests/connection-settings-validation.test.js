@@ -29,3 +29,16 @@ test('exposes the reset action as an accessible button with a descriptive label'
   assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
   assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
 });
+
+test('uses a web-specific DotAgents link fallback instead of the dead QR scanner flow', () => {
+  assert.match(screenSource, /const isWebPlatform = Platform\.OS === 'web';/);
+  assert.match(screenSource, /if \(isWebPlatform\) \{[\s\S]*?setShowWebLinkModal\(true\);[\s\S]*?return;/);
+  assert.match(screenSource, /isWebPlatform \? '🔗 Paste DotAgents Link' : '📷 Scan QR Code'/);
+  assert.match(screenSource, /Expo Web cannot reliably open the camera scanner here yet\./);
+});
+
+test('lets web users paste the desktop deep link and reuse the existing QR parser', () => {
+  assert.match(screenSource, /parseQRCode\(webLinkValue\.trim\(\)\)/);
+  assert.match(screenSource, /Paste the full dotagents:\/\/config link copied from the desktop app/);
+  assert.match(screenSource, /Copy the Deep Link from the desktop app and paste the full [^\n]+ value here to fill in the server URL and API key\./);
+});
