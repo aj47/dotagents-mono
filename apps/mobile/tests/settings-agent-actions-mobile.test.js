@@ -89,9 +89,11 @@ test('keeps agent availability context visible in the collapsed Agents header on
   assert.match(settingsSource, /if \(agentProfiles\.length === 0\) return 'No agents';/);
   assert.match(settingsSource, /const disabledAgentCount = agentProfiles\.filter\(\(profile\) => !profile\.enabled\)\.length;/);
   assert.match(settingsSource, /const summaryParts = \[`\$\{agentProfiles\.length\} \$\{agentProfiles\.length === 1 \? 'agent' : 'agents'\}`\];/);
+  assert.match(settingsSource, /if \(remoteSettings\?\.mainAgentMode === 'acp'\) \{[\s\S]*?Main disabled: \$\{selectedMainAgentLabel\}[\s\S]*?Main unavailable: \$\{selectedMainAgentLabel\}[\s\S]*?Main: \$\{selectedMainAgentLabel\}[\s\S]*?summaryParts\.push\('No main agent'\);/);
   assert.match(settingsSource, /if \(disabledAgentCount > 0\) \{[\s\S]*?summaryParts\.push\(`\$\{disabledAgentCount\} disabled`\);/);
-  assert.match(settingsSource, /else \{[\s\S]*?summaryParts\.push\('all enabled'\);/);
+  assert.match(settingsSource, /else if \(remoteSettings\?\.mainAgentMode !== 'acp'\) \{[\s\S]*?summaryParts\.push\('all enabled'\);/);
   assert.match(settingsSource, /return summaryParts\.join\(' • '\);/);
+  assert.match(settingsSource, /selectedMainAgentAvailabilityState,[\s\S]*?selectedMainAgentLabel,/);
   assert.match(settingsSource, /<CollapsibleSection id="agents" title="Agents" summary=\{agentsSectionSummary\}>/);
 });
 

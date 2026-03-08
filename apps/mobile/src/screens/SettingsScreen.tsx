@@ -369,14 +369,32 @@ export default function SettingsScreen({ navigation }: any) {
     const disabledAgentCount = agentProfiles.filter((profile) => !profile.enabled).length;
     const summaryParts = [`${agentProfiles.length} ${agentProfiles.length === 1 ? 'agent' : 'agents'}`];
 
+    if (remoteSettings?.mainAgentMode === 'acp') {
+      if (selectedMainAgentAvailabilityState === 'disabled' && selectedMainAgentLabel) {
+        summaryParts.push(`Main disabled: ${selectedMainAgentLabel}`);
+      } else if (selectedMainAgentAvailabilityState === 'unavailable' && selectedMainAgentLabel) {
+        summaryParts.push(`Main unavailable: ${selectedMainAgentLabel}`);
+      } else if (selectedMainAgentLabel) {
+        summaryParts.push(`Main: ${selectedMainAgentLabel}`);
+      } else {
+        summaryParts.push('No main agent');
+      }
+    }
+
     if (disabledAgentCount > 0) {
       summaryParts.push(`${disabledAgentCount} disabled`);
-    } else {
+    } else if (remoteSettings?.mainAgentMode !== 'acp') {
       summaryParts.push('all enabled');
     }
 
     return summaryParts.join(' • ');
-  }, [isLoadingAgentProfiles, agentProfiles]);
+  }, [
+    isLoadingAgentProfiles,
+    agentProfiles,
+    remoteSettings?.mainAgentMode,
+    selectedMainAgentAvailabilityState,
+    selectedMainAgentLabel,
+  ]);
   const agentLoopsSectionSummary = useMemo(() => {
     if (isLoadingLoops) return 'Loading loops…';
     if (loops.length === 0) return 'No loops';

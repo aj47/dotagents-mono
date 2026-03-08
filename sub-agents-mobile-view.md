@@ -1,5 +1,48 @@
 # Sub-Agents Mobile View Ledger
 
+## Iteration 146 - Keep the collapsed mobile Agents header aware of the current main agent
+
+- Date: 2026-03-08
+- Reviewed before making changes:
+  - Re-read the latest ledger entries first so I would not revisit the just-touched Summarization toggle treatment or selector subtitle work without fresh evidence.
+  - Reconfirmed the mobile workflow from repo files before running commands:
+    - root `package.json` exposes `pnpm dev:mobile`
+    - `apps/mobile/package.json` exposes `pnpm --filter @dotagents/mobile web`
+  - Re-checked `apps/mobile/src/screens/SettingsScreen.tsx`, `apps/mobile/tests/settings-agent-actions-mobile.test.js`, and `apps/mobile/tests/settings-agent-mode-mobile.test.js` because the collapsed `Settings > Agents` header still had an unaddressed mobile state-clarity gap.
+  - Tried to restore live-validation confidence again, but Expo Web / simulator inspection remains blocked in this worktree.
+  - Focused blocker evidence from this iteration:
+    - `printf 'root node_modules: '; if [ -d node_modules ]; then echo present; else echo missing; fi; printf 'apps/mobile node_modules: '; if [ -d apps/mobile/node_modules ]; then echo present; else echo missing; fi` → `root node_modules: missing` / `apps/mobile node_modules: missing`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+- Current behavior observed before the fix:
+  - `Settings > Agents` already surfaced `Main agent`, `Built-in`, and `Disabled` state directly in expanded rows.
+  - The collapsed `Agents` section summary only reported the agent count plus a generic availability summary like `all enabled` or `1 disabled`.
+  - On mobile, that meant ACP users could collapse the section and immediately lose the most important routing context: which delegation agent currently handles new chats, or whether that configured main agent had drifted into a disabled / unavailable state.
+- Issue identified:
+  - The collapsed mobile `Agents` header hid current ACP main-agent routing state, weakening state clarity once the dense list was closed.
+- Decision and rationale:
+  - Keep the existing agent row layout, badges, and edit/toggle/delete controls unchanged.
+  - Avoid another row-level redesign while live validation is blocked.
+  - Make the smallest useful fix instead: extend the collapsed `Agents` summary so ACP mode surfaces `Main: …`, `Main disabled: …`, `Main unavailable: …`, or `No main agent` before any disabled-count detail.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/SettingsScreen.tsx` so `agentsSectionSummary` now:
+    - preserves loading and empty-state summaries,
+    - injects ACP-aware main-agent state into the collapsed `Agents` header,
+    - keeps disabled-count context when present,
+    - skips the lower-value `all enabled` suffix in ACP mode so the one-line summary spends more space on routing state.
+  - Updated `apps/mobile/tests/settings-agent-actions-mobile.test.js` with focused regression coverage for the new ACP-aware summary contract.
+- Validation evidence:
+  - `node --test apps/mobile/tests/settings-agent-actions-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked because both root and `apps/mobile` installs are missing and local `expo` is unavailable in this worktree
+- Assumptions and tradeoffs:
+  - Assumed that, on mobile, the collapsed `Agents` summary should prioritize current ACP routing state over a generic `all enabled` suffix.
+  - Kept the summary text short and status-first rather than duplicating the longer warning copy already shown in `Agent Settings`.
+  - This remains a source-backed improvement and still needs live confirmation that the new summary truncates gracefully on narrow screens with long main-agent names.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the collapsed `Agents` header now keeps `Main: …` / `Main disabled: …` readable without crowding the disclosure row.
+  - Check ACP cases for enabled, disabled, unavailable, and unselected main-agent states to confirm the summary order feels intuitive on a narrow viewport.
+  - If live validation shows long main-agent names truncate too aggressively, prefer a small wording trim before revisiting the broader section layout.
+
 ## Iteration 145 - Make mobile Summarization state easier to toggle and re-find
 
 - Date: 2026-03-08
