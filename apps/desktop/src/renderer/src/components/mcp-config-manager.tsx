@@ -2143,7 +2143,7 @@ export function MCPConfigManager({
                       tabIndex={0}
                       aria-expanded={expandedServers.has(name)}
                       aria-label={`Toggle ${name} server details`}
-                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onClick={() => toggleServerExpansion(name)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -2152,15 +2152,17 @@ export function MCPConfigManager({
                         }
                       }}
                     >
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <div className="flex min-w-0 flex-[1_1_16rem] flex-wrap items-start gap-x-2 gap-y-1.5">
                         {expandedServers.has(name) ? (
                           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                         ) : (
                           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         )}
-                        <span className="font-medium truncate">{name}</span>
+                        <span className="min-w-0 flex-[1_1_10rem] break-words font-medium leading-tight [overflow-wrap:anywhere]">
+                          {name}
+                        </span>
                         {isBuiltin ? (
-                          <div className="flex shrink-0 items-center gap-1">
+                          <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1">
                             <CheckCircle className="h-3 w-3 text-green-500" />
                             <Badge variant="outline" className="text-xs border-green-300 text-green-600">
                               Built-in
@@ -2172,7 +2174,7 @@ export function MCPConfigManager({
                         ) : serverConfig?.disabled ? (
                           <Badge variant="secondary" className="shrink-0">Disabled</Badge>
                         ) : status?.runtimeEnabled === false ? (
-                          <div className="flex shrink-0 items-center gap-1">
+                          <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1">
                             <Square className="h-3 w-3 text-orange-500" />
                             <Badge
                               variant="outline"
@@ -2184,7 +2186,7 @@ export function MCPConfigManager({
                         ) : (
                           <>
                             {status?.connected ? (
-                              <div className="flex shrink-0 items-center gap-1">
+                              <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1">
                                 <CheckCircle className="h-3 w-3 text-green-500" />
                                 <Badge variant="default" className="text-xs">
                                   {serverTools.length > 0
@@ -2193,12 +2195,12 @@ export function MCPConfigManager({
                                 </Badge>
                               </div>
                             ) : status?.error ? (
-                              <div className="flex shrink-0 items-center gap-1">
+                              <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1">
                                 <XCircle className="h-3 w-3 text-red-500" />
                                 <Badge variant="destructive" className="text-xs">Error</Badge>
                               </div>
                             ) : (
-                              <div className="flex shrink-0 items-center gap-1">
+                              <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1">
                                 <AlertCircle className="h-3 w-3 text-yellow-500" />
                                 <Badge variant="outline" className="text-xs">Disconnected</Badge>
                               </div>
@@ -2209,7 +2211,7 @@ export function MCPConfigManager({
                       {/* Action buttons - stop propagation so clicks/keys don't toggle expansion */}
                       {!isBuiltin && serverConfig && (
                         <div
-                          className="flex shrink-0 items-center gap-1"
+                          className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1"
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >

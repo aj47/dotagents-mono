@@ -1,5 +1,54 @@
 ## UI Audit Log
 
+### 2026-03-08 — Chunk 45: Desktop Capabilities → MCP Servers collapsed rows can hide server identity under action-heavy narrow layouts
+
+- Area selected:
+  - desktop `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` (Settings → Capabilities → `MCP Servers`, collapsed server header rows)
+- Why this chunk: after re-reading `ui-audit.md`, I avoided the just-touched Capabilities → Skills rows and followed the ledger’s suggested fresh target inside the same capabilities surface: the denser `MCP Servers` list rows, not the already-audited Add/Edit Server dialog.
+- Audit method:
+  - re-read `ui-audit.md` first to avoid repeating a recently investigated area unless a follow-up fix was needed
+  - reused `apps/desktop/DEBUGGING.md`, `AGENTS.md`, and renderer guidance to stay aligned with the repo’s desktop/mobile inspection workflow
+  - confirmed a live renderer remained available at `http://localhost:5173/settings/capabilities` with CDP on `:9333`, then used live product inspection instead of source review alone
+  - switched to the `MCP Servers` tab, stress-tested the `Servers` list around `800×670` with simulated `125%` zoom, and captured screenshot-backed evidence in `tmp/ui-audit/servers-crop-zoom100.png` and `tmp/ui-audit/servers-crop-zoom125.png`
+  - measured the mounted DOM for real server rows like `auggie mcp`, `rube`, `github`, and `exa`, then prototyped the intended reflow strategy directly in the live DOM before editing source
+  - cross-checked mobile and confirmed `apps/mobile/src/screens/SettingsScreen.tsx` only shows a simpler MCP server switch row, not this desktop action-heavy collapsed header implementation; no matching mobile code change was needed
+
+#### Findings
+
+- Before the fix, the desktop `MCP Servers` list had one concrete user-impacting layout problem:
+  - collapsed server rows kept the server name, status badge, and several row-local action buttons on a rigid single-line header
+  - under tighter settings-column width plus larger text, the non-shrinking status/action chrome consumed the available width and the server name was the only thing allowed to collapse
+  - in live inspection at `800×670` with simulated `125%` zoom, rows like `auggie mcp` and `rube` reached a state where the rendered title width dropped to `0px` while restart/stop/edit/delete controls still remained visible
+  - that is materially risky because users can end up seeing destructive or state-changing row actions without being able to tell which MCP server row they belong to
+
+#### Changes made
+
+- Hardened the collapsed server rows in `apps/desktop/src/renderer/src/components/mcp-config-manager.tsx` with a small, local reflow fix:
+  - changed the row header from a rigid single-line `justify-between` layout to a wrap-safe `flex-wrap` / `items-start` container with explicit row and column gaps
+  - upgraded the left identity lane to a wrap-safe flexible basis so the chevron, server title, and status badge cluster can reflow within the real container width instead of competing on a single line
+  - replaced the one-line `truncate` server title with a wrap-safe multiline title using `break-words` and `[overflow-wrap:anywhere]`
+  - made the status badge clusters and action strip wrap-safe, allowing controls to drop to a second line when needed instead of squeezing the server name to zero width
+- Extended `apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts` with focused source-contract coverage for this collapsed-row identity-preservation treatment.
+
+#### Verification
+
+- Targeted desktop test attempt: `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/mcp-config-manager.layout.test.ts` *(blocked: `vitest` not found because this worktree still lacks local dependencies / `node_modules`)*
+- Dependency-free source-contract verification: `node --input-type=module <<'EOF' ... EOF` confirmed the new wrap-safe collapsed-row shell, flexible identity lane, multiline title treatment, wrap-safe status clusters, action-strip fallback, and regression test case are present
+- Live renderer evidence before the fix at `http://localhost:5173/settings/capabilities`:
+  - for `auggie mcp` at simulated `125%` zoom, the row width was about `215px`, the action strip still occupied about `128px`, and the title width collapsed to `0px` even though the text still existed in the DOM
+  - similarly affected rows like `rube` and `exa` also lost readable title width while status/action chrome remained visible
+- Live DOM prototype verification using the exact intended layout strategy:
+  - after applying the wrap-safe row/title/status/action treatment in the mounted DOM, the `auggie mcp` title expanded from `0px` visible width to about `183px`, and the row grew from about `56px` tall to about `134px`
+  - the same prototype restored readable title width for `rube` as well, confirming the fix trades a taller row for preserved server identity under constraint
+- Patch hygiene: `git diff --check -- apps/desktop/src/renderer/src/components/mcp-config-manager.tsx apps/desktop/src/renderer/src/components/mcp-config-manager.layout.test.ts`
+
+#### Notes
+
+- Important blocker/rationale: the reusable live renderer session is not guaranteed to be serving this checkout’s edited bundle, so I did not claim a literal rebuilt post-edit app verification. Instead, I paired live pre-fix evidence with a DOM prototype of the exact reflow strategy and direct source verification of the patched classes.
+- This chunk is desktop-only: mobile MCP settings uses a much simpler server row with a switch and metadata, not the same collapsed desktop header with multiple action buttons.
+- Tradeoff/rationale: under constrained widths or larger text, these server rows may now become taller because actions can drop beneath the identity lane, but that is a deliberate and safer tradeoff than showing row actions without readable server identity.
+- Best next UI audit chunk after this one: stay in `mcp-config-manager.tsx` for the grouped Tools section server headers and per-tool rows under the same narrow-width/zoom stress, or switch to a fresh mobile surface once live Expo inspection becomes practical.
+
 ### 2026-03-08 — Chunk 44: Desktop Capabilities → Skills row action strip truncates long skill names under real settings-column constraints
 
 - Area selected:

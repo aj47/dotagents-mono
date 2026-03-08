@@ -19,4 +19,12 @@ describe("mcp config manager layout", () => {
     expect(mcpConfigManagerSource).toContain('className="mt-1 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]"')
     expect(mcpConfigManagerSource).toContain('className="w-full sm:w-auto"')
   })
+
+  it("keeps collapsed MCP server rows identifiable when status badges and actions compete for narrow space", () => {
+    expect(mcpConfigManagerSource).toContain('className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"')
+    expect(mcpConfigManagerSource).toContain('className="flex min-w-0 flex-[1_1_16rem] flex-wrap items-start gap-x-2 gap-y-1.5"')
+    expect(mcpConfigManagerSource).toContain('className="min-w-0 flex-[1_1_10rem] break-words font-medium leading-tight [overflow-wrap:anywhere]"')
+    expect(mcpConfigManagerSource).toContain('className="flex max-w-full shrink-0 flex-wrap items-center gap-1"')
+    expect(mcpConfigManagerSource).toContain('className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1"')
+  })
 })
