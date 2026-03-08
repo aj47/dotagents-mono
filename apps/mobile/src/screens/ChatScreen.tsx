@@ -2825,6 +2825,7 @@ export default function ChatScreen({ route, navigation }: any) {
         {/* Respond-to-user history panel (Issue #26) */}
         {respondToUserHistory.length > 0 && (
           <ResponseHistoryPanel
+            conversationId={currentConversationId}
             responses={respondToUserHistory}
             ttsRate={config.ttsRate ?? 1.0}
             ttsPitch={config.ttsPitch ?? 1.0}

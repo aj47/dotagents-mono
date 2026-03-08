@@ -8,6 +8,11 @@ const responseHistorySource = fs.readFileSync(
   'utf8'
 );
 
+const chatScreenSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
+  'utf8'
+);
+
 test('gives the response history disclosure a minimum mobile touch target and explicit semantics', () => {
   assert.match(responseHistorySource, /const historyHeaderTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\);/);
   assert.match(responseHistorySource, /header:\s*\{[\s\S]*?\.\.\.historyHeaderTouchTarget[\s\S]*?justifyContent:\s*'space-between'/);
@@ -63,4 +68,11 @@ test('adds an inline speaking badge so the active playback row is obvious on nar
 
 test('keeps response-history controls usable while the chat keyboard is open', () => {
   assert.match(responseHistorySource, /<ScrollView[\s\S]*?style=\{styles\.list\}[\s\S]*?keyboardShouldPersistTaps="handled"[\s\S]*?keyboardDismissMode="on-drag"/);
+});
+
+test('resets response-history playback and collapse state when the active conversation changes', () => {
+  assert.match(responseHistorySource, /interface ResponseHistoryPanelProps \{[\s\S]*?conversationId: string;[\s\S]*?responses: ResponseHistoryEntry\[];/);
+  assert.match(responseHistorySource, /const previousConversationIdRef = useRef\(conversationId\);/);
+  assert.match(responseHistorySource, /useEffect\(\(\) => \{[\s\S]*?if \(previousConversationIdRef\.current === conversationId\) \{[\s\S]*?return;[\s\S]*?\}[\s\S]*?previousConversationIdRef\.current = conversationId;[\s\S]*?setIsCollapsed\(true\);[\s\S]*?nextSpeechRequestId\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?safeSetSpeakingIndex\(null\);[\s\S]*?\}, \[conversationId, nextSpeechRequestId, safeSetSpeakingIndex\]\);/);
+  assert.match(chatScreenSource, /<ResponseHistoryPanel[\s\S]*?conversationId=\{currentConversationId\}[\s\S]*?responses=\{respondToUserHistory\}/);
 });

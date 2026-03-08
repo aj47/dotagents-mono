@@ -5124,3 +5124,51 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the new helper lines improve scanability without making `Agent Settings` feel overly long on narrow screens.
   - Capture screenshot-backed evidence for `Agent Settings` in both API mode and ACP mode so the added helper text can be judged within the full section density.
   - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this helper-copy tweak without fresh evidence.
+
+## Iteration 116 - Reset mobile response-history state when switching chats
+
+- Date: 2026-03-08
+- Summary: Prevented stale expanded/playback state from leaking between mobile chats by resetting `ResponseHistoryPanel` when the active conversation changes.
+- Review-before-change notes:
+  - Re-read the latest ledger entries first to avoid revisiting the recent queue/header/settings tweaks without new evidence.
+  - Re-checked `apps/mobile/src/ui/ResponseHistoryPanel.tsx`, `apps/mobile/src/ui/MessageQueuePanel.tsx`, `apps/mobile/src/screens/ChatScreen.tsx`, and focused response-history coverage to find a still-local issue in the current sub-agent activity flow.
+  - Noted that `MessageQueuePanel` already resets its collapsed state on `conversationId` changes, while `ResponseHistoryPanel` still held local `isCollapsed` and `speakingIndex` state without any conversation-change reset path.
+- Live inspection / workflow status:
+  - Fresh Expo Web or simulator validation was still not practical in this worktree because the mobile install remains missing.
+  - Reconfirmed the blocker with focused commands:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable locally, this iteration used source-backed state-flow review plus focused Node-based regression checks instead of screenshot-backed inspection.
+- Current behavior observed before the fix:
+  - `ChatScreen` conditionally renders `ResponseHistoryPanel` when the current session has saved `respond_to_user` history.
+  - `ResponseHistoryPanel` kept local `isCollapsed` and `speakingIndex` state, but it did not receive `conversationId` or reset when the active chat changed.
+  - On mobile, that meant switching between chats with existing response history could carry over an already-expanded panel or stale `Speaking` state into the next conversation, which weakens activity trust and wastes vertical space at the top of the chat.
+- Issue identified:
+  - Response-history UI state could leak across chat switches on mobile, making the next conversation look more active or more expanded than it really was.
+- Decision and rationale:
+  - Keep the visible response-history layout, playback controls, badges, and header copy unchanged.
+  - Do not redesign the panel or broaden this into a larger chat-state refactor while live validation is blocked.
+  - Make the smallest local fix instead: pass the active `conversationId` into `ResponseHistoryPanel` and reset the panel back to its default collapsed/non-speaking state only when that conversation actually changes.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/ResponseHistoryPanel.tsx` to:
+    - accept `conversationId` as an explicit prop,
+    - track the previous conversation ID locally,
+    - reset `isCollapsed` to `true` and clear/stop playback when the active conversation changes.
+  - Updated `apps/mobile/src/screens/ChatScreen.tsx` to pass `currentConversationId` into `ResponseHistoryPanel`.
+  - Updated `apps/mobile/tests/response-history-panel-mobile.test.js` with focused regression coverage for the new conversation-change reset wiring.
+- Validation evidence:
+  - `node --test apps/mobile/tests/response-history-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - Expo Web / simulator re-validation ⚠️ still blocked by the missing mobile install (`apps/mobile/node_modules` missing / local `expo` unavailable)
+- Assumptions and tradeoffs:
+  - Assumed the panel should return to its default compact state when entering a different conversation, matching the current `MessageQueuePanel` behavior and avoiding stale activity chrome at the top of the chat.
+  - Chose a conversation-ID reset instead of resetting on every `responses` change so new replies in the same chat do not collapse the panel or interrupt deliberate playback.
+  - This improves source-backed state correctness, but it still needs live confirmation that the reset feels natural during rapid chat switching on a narrow device.
+- Remaining nearby issues noted, not addressed this iteration:
+  - `ResponseHistoryPanel` still needs screenshot-backed review overall now that its playback, badges, keyboard behavior, and conversation-switch reset logic have all evolved without fresh Expo confirmation in this worktree.
+  - A live pass is still needed to verify that switching between two chats that both already have response history reliably hides stale `Speaking` state and re-collapses the panel.
+  - The broader sub-agent mobile flow remains partially blocked until the missing mobile install is restored.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that switching between chats with existing response history resets the panel to collapsed and stops any in-progress playback indicator.
+  - Capture screenshot-backed evidence for two conversations with response history so the before/after state reset is verified with real narrow-screen constraints.
+  - After that live pass, continue with the next highest-signal local mobile issue instead of revisiting this response-history reset without fresh evidence.

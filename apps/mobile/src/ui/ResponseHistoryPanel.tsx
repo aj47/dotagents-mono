@@ -41,6 +41,7 @@ function formatResponseAccessibilityContext(text: string, timestampLabel: string
 }
 
 interface ResponseHistoryPanelProps {
+  conversationId: string;
   responses: ResponseHistoryEntry[];
   ttsRate?: number;
   ttsPitch?: number;
@@ -77,6 +78,7 @@ function AnimatedResponseItem({
 }
 
 export function ResponseHistoryPanel({
+  conversationId,
   responses,
   ttsRate = 1.0,
   ttsPitch = 1.0,
@@ -86,6 +88,7 @@ export function ResponseHistoryPanel({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const isMountedRef = useRef(true);
+  const previousConversationIdRef = useRef(conversationId);
   const speechRequestIdRef = useRef(0);
   const historyHeaderTouchTarget = createMinimumTouchTargetStyle({
     minSize: 44,
@@ -126,6 +129,18 @@ export function ResponseHistoryPanel({
       safeSetSpeakingIndex(null);
     }
   }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId]);
+
+  useEffect(() => {
+    if (previousConversationIdRef.current === conversationId) {
+      return;
+    }
+
+    previousConversationIdRef.current = conversationId;
+    setIsCollapsed(true);
+    nextSpeechRequestId();
+    Speech.stop();
+    safeSetSpeakingIndex(null);
+  }, [conversationId, nextSpeechRequestId, safeSetSpeakingIndex]);
 
   if (responses.length === 0) {
     return null;
