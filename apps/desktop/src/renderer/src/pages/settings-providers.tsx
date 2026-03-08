@@ -15,6 +15,7 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
+import { getSettingsSaveErrorMessage } from "@renderer/lib/config-save-error"
 import { Config, ModelPreset } from "@shared/types"
 import { ModelPresetManager } from "@renderer/components/model-preset-manager"
 import { ProviderModelSelector } from "@renderer/components/model-selector"
@@ -48,6 +49,18 @@ const PROVIDER_INPUT_SAVE_DEBOUNCE_MS = 400
 
 type ProviderTextDraftKey = "groqApiKey" | "groqBaseUrl" | "geminiApiKey" | "geminiBaseUrl"
 type ProviderNumericDraftKey = "openaiTtsSpeed" | "supertonicSpeed" | "supertonicSteps"
+type ProviderTextSaveState = "idle" | "pending" | "saving" | "error"
+type ProviderTextSaveFeedback = {
+  state: ProviderTextSaveState
+  message?: string
+}
+
+const PROVIDER_TEXT_FIELD_LABELS: Record<ProviderTextDraftKey, string> = {
+  groqApiKey: "Groq API key",
+  groqBaseUrl: "Groq API base URL",
+  geminiApiKey: "Gemini API key",
+  geminiBaseUrl: "Gemini API base URL",
+}
 
 function getProviderTextDrafts(config?: Partial<Config>) {
   return {
@@ -116,6 +129,48 @@ function getProviderNumericConfigValue<Key extends ProviderNumericDraftKey>(
   return configUpdate ? configUpdate[key] : null
 }
 
+function getEmptyProviderTextSaveFeedbacks(): Record<ProviderTextDraftKey, ProviderTextSaveFeedback> {
+  return {
+    groqApiKey: { state: "idle" },
+    groqBaseUrl: { state: "idle" },
+    geminiApiKey: { state: "idle" },
+    geminiBaseUrl: { state: "idle" },
+  }
+}
+
+function ProviderTextSaveStatus({
+  feedback,
+  onRetry,
+}: {
+  feedback: ProviderTextSaveFeedback
+  onRetry?: () => void
+}) {
+  if (feedback.state === "idle") return null
+
+  const isError = feedback.state === "error"
+
+  return (
+    <div
+      role={isError ? "alert" : undefined}
+      aria-live="polite"
+      className={`mt-1 flex items-center gap-2 text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}
+    >
+      <span>{feedback.message}</span>
+      {isError && onRetry && (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto px-0 py-0 text-xs text-destructive"
+          onClick={onRetry}
+        >
+          Retry save
+        </Button>
+      )}
+    </div>
+  )
+}
+
 // Badge component to show which features are using this provider
 function ActiveProviderBadge({ label, icon: Icon }: { label: string; icon: React.ElementType }) {
   return (
@@ -180,39 +235,57 @@ function ProviderCredentialInputs({
   apiKeyValue,
   baseUrlValue,
   baseUrlPlaceholder,
+  apiKeySaveFeedback,
+  baseUrlSaveFeedback,
   onApiKeyChange,
   onApiKeyBlur,
+  onApiKeyRetry,
   onBaseUrlChange,
   onBaseUrlBlur,
+  onBaseUrlRetry,
 }: {
   apiKeyValue: string
   baseUrlValue: string
   baseUrlPlaceholder: string
+  apiKeySaveFeedback: ProviderTextSaveFeedback
+  baseUrlSaveFeedback: ProviderTextSaveFeedback
   onApiKeyChange: (value: string) => void
   onApiKeyBlur: (value: string) => void
+  onApiKeyRetry: () => void
   onBaseUrlChange: (value: string) => void
   onBaseUrlBlur: (value: string) => void
+  onBaseUrlRetry: () => void
 }) {
   return (
     <>
       <Control label="API Key" className="px-3">
-        <Input
-          type="password"
-          value={apiKeyValue}
-          onChange={(e) => onApiKeyChange(e.currentTarget.value)}
-          onBlur={(e) => onApiKeyBlur(e.currentTarget.value)}
-        />
+        <div>
+          <Input
+            type="password"
+            value={apiKeyValue}
+            onChange={(e) => onApiKeyChange(e.currentTarget.value)}
+            onBlur={(e) => onApiKeyBlur(e.currentTarget.value)}
+          />
+          <ProviderTextSaveStatus feedback={apiKeySaveFeedback} onRetry={onApiKeyRetry} />
+        </div>
       </Control>
 
       <Control label="API Base URL" className="px-3">
-        <Input
-          type="url"
-          placeholder={baseUrlPlaceholder}
-          value={baseUrlValue}
-          onChange={(e) => onBaseUrlChange(e.currentTarget.value)}
-          onBlur={(e) => onBaseUrlBlur(e.currentTarget.value)}
-        />
+        <div>
+          <Input
+            type="url"
+            placeholder={baseUrlPlaceholder}
+            value={baseUrlValue}
+            onChange={(e) => onBaseUrlChange(e.currentTarget.value)}
+            onBlur={(e) => onBaseUrlBlur(e.currentTarget.value)}
+          />
+          <ProviderTextSaveStatus feedback={baseUrlSaveFeedback} onRetry={onBaseUrlRetry} />
+        </div>
       </Control>
+
+      <div className="px-3 pb-2">
+        <p className="text-xs text-muted-foreground">Changes save automatically after a short pause.</p>
+      </div>
     </>
   )
 }
@@ -960,11 +1033,20 @@ export function Component() {
   const [providerNumericDrafts, setProviderNumericDrafts] = useState(() =>
     getProviderNumericDrafts(configQuery.data as Config | undefined),
   )
+  const [providerTextSaveFeedbacks, setProviderTextSaveFeedbacks] = useState(() =>
+    getEmptyProviderTextSaveFeedbacks(),
+  )
   const providerTextSaveTimeoutsRef = useRef<Record<ProviderTextDraftKey, ReturnType<typeof setTimeout> | null>>({
     groqApiKey: null,
     groqBaseUrl: null,
     geminiApiKey: null,
     geminiBaseUrl: null,
+  })
+  const providerTextDraftVersionsRef = useRef<Record<ProviderTextDraftKey, number>>({
+    groqApiKey: 0,
+    groqBaseUrl: 0,
+    geminiApiKey: 0,
+    geminiBaseUrl: 0,
   })
   const providerNumericSaveTimeoutsRef = useRef<Record<ProviderNumericDraftKey, ReturnType<typeof setTimeout> | null>>({
     openaiTtsSpeed: null,
@@ -984,6 +1066,55 @@ export function Component() {
     [saveConfigMutation],
   )
 
+  const setProviderTextSaveFeedback = useCallback(
+    (key: ProviderTextDraftKey, feedback: ProviderTextSaveFeedback) => {
+      setProviderTextSaveFeedbacks((current) => {
+        const previous = current[key]
+        if (previous.state === feedback.state && previous.message === feedback.message) {
+          return current
+        }
+
+        return {
+          ...current,
+          [key]: feedback,
+        }
+      })
+    },
+    [],
+  )
+
+  const saveProviderTextDraft = useCallback(
+    (key: ProviderTextDraftKey, value: string, draftVersion = providerTextDraftVersionsRef.current[key]) => {
+      setProviderTextSaveFeedback(key, {
+        state: "saving",
+        message: "Saving...",
+      })
+
+      saveConfigMutation.mutate(
+        {
+          config: {
+            ...(configRef.current as any),
+            ...getOptionalStringConfigUpdate(key, value),
+          },
+        },
+        {
+          onSuccess: () => {
+            if (providerTextDraftVersionsRef.current[key] !== draftVersion) return
+            setProviderTextSaveFeedback(key, { state: "idle" })
+          },
+          onError: (error) => {
+            if (providerTextDraftVersionsRef.current[key] !== draftVersion) return
+            setProviderTextSaveFeedback(key, {
+              state: "error",
+              message: `${getSettingsSaveErrorMessage(error)} ${PROVIDER_TEXT_FIELD_LABELS[key]} draft is still here.`,
+            })
+          },
+        },
+      )
+    },
+    [saveConfigMutation, setProviderTextSaveFeedback],
+  )
+
   const flushProviderTextDraft = useCallback(
     (key: ProviderTextDraftKey, value: string) => {
       const timeout = providerTextSaveTimeoutsRef.current[key]
@@ -992,22 +1123,49 @@ export function Component() {
         providerTextSaveTimeoutsRef.current[key] = null
       }
 
-      saveConfig(getOptionalStringConfigUpdate(key, value))
+      saveProviderTextDraft(key, value)
     },
-    [saveConfig],
+    [saveProviderTextDraft],
   )
 
   const scheduleProviderTextSave = useCallback(
-    (key: ProviderTextDraftKey, value: string) => {
+    (key: ProviderTextDraftKey, value: string, draftVersion: number) => {
       const timeout = providerTextSaveTimeoutsRef.current[key]
       if (timeout) clearTimeout(timeout)
 
+      setProviderTextSaveFeedback(key, {
+        state: "pending",
+        message: "Saving after you stop typing...",
+      })
+
       providerTextSaveTimeoutsRef.current[key] = setTimeout(() => {
+        if (providerTextDraftVersionsRef.current[key] !== draftVersion) return
         providerTextSaveTimeoutsRef.current[key] = null
-        saveConfig(getOptionalStringConfigUpdate(key, value))
+        saveProviderTextDraft(key, value, draftVersion)
       }, PROVIDER_INPUT_SAVE_DEBOUNCE_MS)
     },
-    [saveConfig],
+    [saveProviderTextDraft, setProviderTextSaveFeedback],
+  )
+
+  const updateProviderTextDraft = useCallback(
+    (key: ProviderTextDraftKey, value: string) => {
+      providerTextDraftVersionsRef.current[key] += 1
+      const draftVersion = providerTextDraftVersionsRef.current[key]
+
+      setProviderTextDrafts((current) => ({
+        ...current,
+        [key]: value,
+      }))
+      scheduleProviderTextSave(key, value, draftVersion)
+    },
+    [scheduleProviderTextSave],
+  )
+
+  const retryProviderTextDraftSave = useCallback(
+    (key: ProviderTextDraftKey) => {
+      saveProviderTextDraft(key, providerTextDrafts[key])
+    },
+    [providerTextDrafts, saveProviderTextDraft],
   )
 
   const resetProviderNumericDraft = useCallback((key: ProviderNumericDraftKey) => {
@@ -1391,16 +1549,14 @@ export function Component() {
                   apiKeyValue={providerTextDrafts.groqApiKey}
                   baseUrlValue={providerTextDrafts.groqBaseUrl}
                   baseUrlPlaceholder="https://api.groq.com/openai/v1"
-                  onApiKeyChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, groqApiKey: value }))
-                    scheduleProviderTextSave("groqApiKey", value)
-                  }}
+                  apiKeySaveFeedback={providerTextSaveFeedbacks.groqApiKey}
+                  baseUrlSaveFeedback={providerTextSaveFeedbacks.groqBaseUrl}
+                  onApiKeyChange={(value) => updateProviderTextDraft("groqApiKey", value)}
                   onApiKeyBlur={(value) => flushProviderTextDraft("groqApiKey", value)}
-                  onBaseUrlChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, groqBaseUrl: value }))
-                    scheduleProviderTextSave("groqBaseUrl", value)
-                  }}
+                  onApiKeyRetry={() => retryProviderTextDraftSave("groqApiKey")}
+                  onBaseUrlChange={(value) => updateProviderTextDraft("groqBaseUrl", value)}
                   onBaseUrlBlur={(value) => flushProviderTextDraft("groqBaseUrl", value)}
+                  onBaseUrlRetry={() => retryProviderTextDraftSave("groqBaseUrl")}
                 />
 
                 <div className="px-3 py-2">
@@ -1499,16 +1655,14 @@ export function Component() {
                   apiKeyValue={providerTextDrafts.geminiApiKey}
                   baseUrlValue={providerTextDrafts.geminiBaseUrl}
                   baseUrlPlaceholder="https://generativelanguage.googleapis.com"
-                  onApiKeyChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, geminiApiKey: value }))
-                    scheduleProviderTextSave("geminiApiKey", value)
-                  }}
+                  apiKeySaveFeedback={providerTextSaveFeedbacks.geminiApiKey}
+                  baseUrlSaveFeedback={providerTextSaveFeedbacks.geminiBaseUrl}
+                  onApiKeyChange={(value) => updateProviderTextDraft("geminiApiKey", value)}
                   onApiKeyBlur={(value) => flushProviderTextDraft("geminiApiKey", value)}
-                  onBaseUrlChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, geminiBaseUrl: value }))
-                    scheduleProviderTextSave("geminiBaseUrl", value)
-                  }}
+                  onApiKeyRetry={() => retryProviderTextDraftSave("geminiApiKey")}
+                  onBaseUrlChange={(value) => updateProviderTextDraft("geminiBaseUrl", value)}
                   onBaseUrlBlur={(value) => flushProviderTextDraft("geminiBaseUrl", value)}
+                  onBaseUrlRetry={() => retryProviderTextDraftSave("geminiBaseUrl")}
                 />
 
                 <div className="px-3 py-2">
@@ -1652,16 +1806,14 @@ export function Component() {
                   apiKeyValue={providerTextDrafts.groqApiKey}
                   baseUrlValue={providerTextDrafts.groqBaseUrl}
                   baseUrlPlaceholder="https://api.groq.com/openai/v1"
-                  onApiKeyChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, groqApiKey: value }))
-                    scheduleProviderTextSave("groqApiKey", value)
-                  }}
+                  apiKeySaveFeedback={providerTextSaveFeedbacks.groqApiKey}
+                  baseUrlSaveFeedback={providerTextSaveFeedbacks.groqBaseUrl}
+                  onApiKeyChange={(value) => updateProviderTextDraft("groqApiKey", value)}
                   onApiKeyBlur={(value) => flushProviderTextDraft("groqApiKey", value)}
-                  onBaseUrlChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, groqBaseUrl: value }))
-                    scheduleProviderTextSave("groqBaseUrl", value)
-                  }}
+                  onApiKeyRetry={() => retryProviderTextDraftSave("groqApiKey")}
+                  onBaseUrlChange={(value) => updateProviderTextDraft("groqBaseUrl", value)}
                   onBaseUrlBlur={(value) => flushProviderTextDraft("groqBaseUrl", value)}
+                  onBaseUrlRetry={() => retryProviderTextDraftSave("groqBaseUrl")}
                 />
 
                 <div className="px-3 py-2">
@@ -1760,16 +1912,14 @@ export function Component() {
                   apiKeyValue={providerTextDrafts.geminiApiKey}
                   baseUrlValue={providerTextDrafts.geminiBaseUrl}
                   baseUrlPlaceholder="https://generativelanguage.googleapis.com"
-                  onApiKeyChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, geminiApiKey: value }))
-                    scheduleProviderTextSave("geminiApiKey", value)
-                  }}
+                  apiKeySaveFeedback={providerTextSaveFeedbacks.geminiApiKey}
+                  baseUrlSaveFeedback={providerTextSaveFeedbacks.geminiBaseUrl}
+                  onApiKeyChange={(value) => updateProviderTextDraft("geminiApiKey", value)}
                   onApiKeyBlur={(value) => flushProviderTextDraft("geminiApiKey", value)}
-                  onBaseUrlChange={(value) => {
-                    setProviderTextDrafts((current) => ({ ...current, geminiBaseUrl: value }))
-                    scheduleProviderTextSave("geminiBaseUrl", value)
-                  }}
+                  onApiKeyRetry={() => retryProviderTextDraftSave("geminiApiKey")}
+                  onBaseUrlChange={(value) => updateProviderTextDraft("geminiBaseUrl", value)}
                   onBaseUrlBlur={(value) => flushProviderTextDraft("geminiBaseUrl", value)}
+                  onBaseUrlRetry={() => retryProviderTextDraftSave("geminiBaseUrl")}
                 />
 
                 <div className="px-3 py-2">
