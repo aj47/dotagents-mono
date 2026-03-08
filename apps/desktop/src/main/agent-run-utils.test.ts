@@ -5,8 +5,9 @@ import {
   appendAgentStopNote,
   buildProfileContext,
   getPreferredDelegationOutput,
-    isToolCallPlaceholderResponse,
-    needsNativeToolCallingReminder,
+  isLikelyProgressOnlyResponse,
+  isToolCallPlaceholderResponse,
+  needsNativeToolCallingReminder,
   preferStoredUserResponse,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
@@ -194,6 +195,20 @@ describe("agent-run-utils", () => {
           "Done — the post button is enabled and ready.",
         ),
       ).toBe("Done — the post button is enabled and ready.")
+    })
+
+    it("treats a timeout note appended to progress text as non-deliverable", () => {
+      const staleProgress = [
+        "I'll help you automate this task on claude.ai/code.",
+        "Let me first load the browser automation skill.",
+        "",
+        "(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)",
+      ].join("\n")
+
+      expect(isLikelyProgressOnlyResponse(staleProgress)).toBe(true)
+      expect(preferStoredUserResponse(staleProgress, "Done — the browser task is ready.")).toBe(
+        "Done — the browser task is ready.",
+      )
     })
   })
 

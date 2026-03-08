@@ -44,6 +44,7 @@ import {
 import {
   appendAgentStopNote,
   getPreferredDelegationOutput,
+  isLikelyProgressOnlyResponse,
   isToolCallPlaceholderResponse,
   needsNativeToolCallingReminder,
   preferStoredUserResponse,
@@ -1069,27 +1070,7 @@ export async function processTranscriptWithAgentMode(
   // Helper to check if content is just a tool call placeholder (not real content)
   // Helper to detect "status update" responses that describe future work instead of delivering results
   const isProgressUpdateResponse = (content: string): boolean => {
-    const trimmed = content.trim()
-    if (!trimmed) return false
-
-    // Structured responses are usually deliverables, not progress updates
-    const lowerRaw = trimmed.toLowerCase()
-    const hasStructuredDeliverable =
-      /\n[-*]\s|\n\d+\.\s/.test(trimmed) ||
-      /\bhere(?:'s| is)\b/.test(lowerRaw)
-    if (hasStructuredDeliverable) {
-      return false
-    }
-
-    const normalized = lowerRaw.replace(/\s+/g, " ")
-    const wordCount = normalized.split(" ").filter(Boolean).length
-
-    // Keep this detector focused on short "I'm about to do X" updates to reduce false positives
-    if (wordCount > 40) {
-      return false
-    }
-
-    return /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|i need to|i still need to|i should)\b/.test(normalized)
+    return isLikelyProgressOnlyResponse(content)
   }
 
   const isDeliverableResponse = (content: string, minLength: number = 1): boolean => {

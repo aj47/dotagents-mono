@@ -4,6 +4,9 @@ export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 60
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
 
+const TRAILING_AGENT_STATUS_NOTE_REGEX =
+  /(?:\n\s*)+\(note:\s*task (?:may not be fully complete - reached maximum iteration limit\. the agent was still working on the request\.|incomplete due to repeated tool failures\. please try again or use alternative methods\.)\)\s*$/i
+
 export interface AgentIterationLimits {
   loopMaxIterations: number
   guardrailBudget: number
@@ -209,6 +212,10 @@ function normalizeUserFacingContent(content: string | undefined | null): string 
     ?? stripPseudoToolArtifacts(content)
 }
 
+function stripTrailingAgentStatusNote(content: string): string {
+  return content.replace(TRAILING_AGENT_STATUS_NOTE_REGEX, "").trim()
+}
+
 export function isToolCallPlaceholderResponse(content: string): boolean {
   const trimmed = content.trim()
   return /^\[(?:Calling tools?|Tool|Tools?):[^\]]+\]$/i.test(trimmed)
@@ -222,8 +229,8 @@ export function needsNativeToolCallingReminder(content: string): boolean {
     || isToolCallPlaceholderResponse(trimmed)
 }
 
-function isLikelyProgressOnlyResponse(content: string): boolean {
-  const trimmed = content.trim()
+export function isLikelyProgressOnlyResponse(content: string): boolean {
+  const trimmed = stripTrailingAgentStatusNote(content.trim())
   if (!trimmed) return false
 
   const lowerRaw = trimmed.toLowerCase()

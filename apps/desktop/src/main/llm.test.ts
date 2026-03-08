@@ -300,6 +300,39 @@ describe("processTranscriptWithAgentMode", () => {
     )
   })
 
+  it("replaces long progress text plus the timeout note with an incomplete fallback when max iterations are reached", async () => {
+    const { clearSessionUserResponse } = await import("./session-user-response-store")
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    clearSessionUserResponse("session-timeout-long-progress")
+    mockConfigGet.mockReturnValue({
+      ...defaultConfig,
+      mcpVerifyCompletionEnabled: true,
+    })
+    mockStreamingCall.mockResolvedValue({
+      content: "I'll help you automate this task on claude.ai/code. Let me first load the browser automation skill.",
+      toolCalls: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Post a thread on X using the browser automation workflow.",
+      [{ name: "mark_work_complete", description: "Finish", inputSchema: { type: "object", properties: {}, required: [] } } as any],
+      vi.fn(async () => ({ content: [{ type: "text", text: '{\"success\":true}' }], isError: false })),
+      1,
+      [],
+      "conv-timeout-long-progress",
+      "session-timeout-long-progress",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toContain("I couldn't complete the request after multiple attempts.")
+    expect(result.content).toContain("Reached maximum iteration limit while the agent was still in progress.")
+    expect(result.content).not.toContain("I'll help you automate this task")
+    expect(result.content).not.toContain("Task may not be fully complete - reached maximum iteration limit")
+  })
+
   it("surfaces the latest concrete tool failure reason when a tool-only run times out", async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     const { processTranscriptWithAgentMode } = await import("./llm")

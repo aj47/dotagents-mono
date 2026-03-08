@@ -8,6 +8,7 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
 
 | Date | Session ID | Trace ID | Status | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-03-08 | conv_1772413081893_0m2fhduf9 | session_1772413081894_y5zkxuyrj | fix implemented | User asked for mobile parity around desktop `respond_to_user`; Langfuse showed the run consuming 60 iterations and finalizing with only future-tense progress text (`Let me examine the current mobile app...`) plus the generic timeout note. Corroborating traces `subsession_1772433101034_b71f5c33`, `subsession_1772413302748_948ec4be`, and `subsession_1772420541552_f1cc42f4` showed the same `I'll help you... Let me first load... (Note: Task may not be fully complete...)` pattern. Root repo issue found: progress/deliverable heuristics counted long progress-only text as deliverable once the appended timeout note pushed it past the short-progress word-count threshold. |
 | 2026-03-08 | conv_1772260442055_0tyysyfq3 | session_1772260441759_qlnn5jvxv | fix implemented | User asked `Can you ask Augustus what folder he's in?`; Langfuse showed `list_running_agents`, a mistaken `send_agent_message` to the current session, then failing `spawn_agent` / `send_to_agent` calls with `Agent "augustus" not found in configuration`, yet the run still ended without a useful blocker answer. Root repo issue found: when a run timed out after tool-only failures, finalization dropped the latest concrete tool error reason instead of surfacing it to the user. |
 | 2026-03-08 | conv_1772744648565_y8l300gt0 | session_1772744648567_uthjyczt8 | fix implemented | User asked to investigate a broken custom-domain flow and trigger a Codex web agent. Langfuse showed an early async `delegate_to_agent`, then many repeated `check_agent_status` calls that kept returning `status: running`, eventually burning 84 iterations before the run fell back incomplete. Root repo issue found: background delegation/status responses told the model how to poll, but not when to stop polling or what to do instead while the delegated work was still running. |
 | 2026-03-08 | conv_1772762736666_7bj08qdgg | session_1772762736667_04xp96wqz | fix implemented | User sent `hi`; the run ended with `output: null` after a single `Streaming LLM Call` error whose Langfuse status was only `Bad Request`. Fresh corroborating traces `conv_1772915623974_19t5gv3u6` / `session_1772915623977_t1j6if9gz`, `conv_1772905378777_q5hq0r5xs` / `session_1772905378779_d58nx1yvg`, and `conv_1772901755817_jhfxav45q` / `session_1772901755821_xnjfwsv3t` showed the same blank-output failure class with low-signal plain-streaming error statuses like `Cannot connect to API:`. Root repo issue found: the plain streaming LLM catch path still finalized Langfuse generations and rethrew with raw `error.message`, bypassing the repo's normalized nested-cause extraction used elsewhere. |
@@ -1024,12 +1025,48 @@ Track inspected Langfuse sessions/traces, observed failures, suspected causes, f
   - `git diff --check -- apps/desktop/src/main/llm.ts apps/desktop/src/main/llm.test.ts langfuse-bug-fix.md`
   - ✅ passed
 
+### 2026-03-08 — Timeout note could make long progress-only text look deliverable
+
+- Langfuse evidence reviewed:
+  - primary trace: `conv_1772413081893_0m2fhduf9` / `session_1772413081894_y5zkxuyrj`
+    - user input: `can you add githubby shoes for DOT agents to match the desktop functionality of the respond to user ...`
+    - trace outcome: final `output` was only `Let me examine the current mobile app and desktop respond_to_user functionality to understand what needs to be built.` plus the generic timeout note
+    - metadata showed `totalIterations: 60` and `wasAborted: false`, so this was a true timeout/incomplete run rather than a manual stop
+  - corroborating fresh traces with the same shape:
+    - `subsession_1772433101034_b71f5c33` — `I'll help you automate this task on claude.ai/code. Let me first load the browser automation skill. (Note: Task may not be fully complete...)`
+    - `subsession_1772413302748_948ec4be` — `I'll help you read your Google Keep notes. Let me first load the browser automation skill instructions... (Note: Task may not be fully complete...)`
+    - `subsession_1772420541552_f1cc42f4` — `I'll help you update your shipping address on Amazon. Let me first load the browser automation skill... (Note: Task may not be fully complete...)`
+- Repo reconstruction:
+  - `apps/desktop/src/main/agent-run-utils.ts` used `isLikelyProgressOnlyResponse()` to reject stale delegated/user-facing fallback text, but it only classified short future-tense replies as progress-only.
+  - `apps/desktop/src/main/llm.ts` duplicated the same short-response heuristic inside `isProgressUpdateResponse()` for verification and timeout finalization.
+  - once the generic timeout note was appended, otherwise-short `Let me ...` / `I'll help you ... Let me first ...` text often crossed the `wordCount > 40` threshold and stopped being recognized as progress-only.
+- Concrete root cause:
+  - the progress/deliverable detector counted the appended timeout/failure note as part of the assistant message when deciding whether the content was a final deliverable.
+  - that turned clearly in-progress text into something the finalizer treated as acceptable user output, so single-run failures surfaced as stale progress prose instead of the repo's incomplete-task fallback.
+- Minimal fix applied:
+  - `apps/desktop/src/main/agent-run-utils.ts`
+    - export `isLikelyProgressOnlyResponse(...)` so the repo can use one shared deliverable/progress heuristic
+    - strip the standard appended timeout/failure note before classifying content as progress-only
+  - `apps/desktop/src/main/llm.ts`
+    - reuse the shared `isLikelyProgressOnlyResponse(...)` helper for `isProgressUpdateResponse()` instead of maintaining a second diverging heuristic
+  - tests added/updated:
+    - `apps/desktop/src/main/agent-run-utils.test.ts`
+      - added a regression proving timeout-note-appended progress text is still treated as non-deliverable and loses to a stored final response
+    - `apps/desktop/src/main/llm.test.ts`
+      - added a regression proving a long `I'll help you ... Let me first ...` timeout run now ends with the incomplete-task fallback instead of echoing the stale progress text plus note
+- Targeted verification:
+  - `pnpm --filter @dotagents/desktop exec vitest run src/main/agent-run-utils.test.ts src/main/llm.test.ts`
+  - ✅ passed (`35 passed`)
+  - note: Vitest still prints the pre-existing `apps/mobile/tsconfig.json` `expo/tsconfig.base` parse warning in this worktree, but the targeted desktop tests exit successfully
+  - `pnpm --filter @dotagents/desktop run typecheck:node`
+  - ❌ still blocked by pre-existing unrelated desktop/worktree issues, including unresolved `uuid` in `src/main/acp/internal-agent.ts` and long-standing `llm.test.ts` mock typing mismatches unrelated to this fix
+
 ## Remaining Leads
 
 - Review recent Langfuse traces for single-run failures with follow-up user recovery.
 - Prioritize tool/generation errors and incomplete or stalled responses.
 - Recheck a fresh ad-hoc extraction trace after dependencies are restored, to confirm the agent now chooses a source-adjacent or dedicated subdirectory instead of writing extracted notes straight into repo root.
-- Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` text.
+- Recheck a fresh max-iteration timeout trace after desktop dependencies are restored, to confirm Langfuse/UI now show either a real current-turn answer or an explicit incomplete-task fallback instead of stale `Let me ...` / `I'll help you ... Let me first ...` text with the generic timeout note.
 - Recheck a fresh provider-error trace after dependencies are installed and the desktop app can be exercised locally, to confirm the UI and Langfuse trace now surface the normalized readable error message instead of binary/gzip transport noise or low-signal plain-streaming statuses like `Bad Request`.
 - Recheck a fresh `waiting on user action` trace (manual login / auth / approval) after dependencies are restored, to confirm the run now stops cleanly with the handoff message instead of continuing into futile extra iterations.
 - Recheck a fresh trace where a real tool batch is followed by a deliverable `respond_to_user` (for example issue creation or repo mutation confirmation), to confirm the run now finalizes immediately instead of making one extra blank LLM turn.
