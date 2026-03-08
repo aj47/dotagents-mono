@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile config-persistence guardrails in `apps/mobile/src/store/config.ts`, with `AppConfig` consumers reviewed in `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, and `apps/mobile/src/ui/TTSSettings.tsx` to confirm malformed stored booleans/numbers/strings could leak into real UI behavior, existing mobile connection guardrail patterns rechecked in `apps/mobile/tests/connection-settings-validation.test.js`, focused source-level coverage added in `apps/mobile/tests/config-storage-guardrails.test.js`, and targeted verification run locally via `node --test` plus `git diff --check`.
 - 2026-03-08: Desktop onboarding save resilience in `apps/desktop/src/renderer/src/pages/onboarding.tsx`, with onboarding step transitions and config-save wiring reviewed in that file, shared save-error helpers cross-checked in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, lightweight regression-test patterns reviewed in `tests/desktop-settings-providers-credentials-feedback.test.js` and other `tests/desktop-*.test.js` files, mobile parity checked in `apps/mobile/src/` (no equivalent first-run desktop onboarding flow exists there), focused source-level coverage added in `tests/desktop-onboarding-save-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available), and desktop renderer typecheck attempted via `pnpm --filter @dotagents/desktop typecheck:web` (blocked because this dependency-light worktree is missing the shared tsconfig package / `node_modules`).
 - 2026-03-08: Desktop remote-server settings draft-save resilience in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server field wiring reviewed in that file, shared config-save mutation/error behavior checked in `apps/desktop/src/renderer/src/lib/queries.ts` and `apps/desktop/src/renderer/src/lib/config-save-error.ts`, local-draft test patterns cross-checked in `apps/desktop/src/renderer/src/pages/settings-general.langfuse.test.tsx`, mobile parity reviewed in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx` (no equivalent mobile surface exists because mobile connects to a desktop-hosted server rather than authoring desktop remote-server or Cloudflare tunnel settings), targeted source-level coverage extended in `tests/desktop-remote-server-settings-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because Electron is not exposing a CDP target in this environment).
 - 2026-03-08: Desktop sessions pending past-session continuation failure visibility in `apps/desktop/src/renderer/src/pages/sessions.tsx`, with the pending conversation query / synthetic tile / startup-timeout flow reviewed in that file, nearby inline retry/warning patterns cross-checked in `apps/desktop/src/renderer/src/components/past-sessions-dialog.tsx` and `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, mobile parity reviewed in `apps/mobile/src/screens/SessionListScreen.tsx` (no equivalent pending continuation tile exists there because mobile opens session history directly instead of staging a desktop continuation tile), focused source-level coverage added in `tests/desktop-sessions-pending-continuation-feedback.test.js`, targeted verification run locally via `node --test` plus `git diff --check`, and live desktop inspection attempted via `electron_execute` (blocked because no Electron/CDP target is available in this environment).
@@ -88,6 +89,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Mobile config corruption recovery in `apps/mobile/src/store/config.ts` still needs behavior-level validation in a runnable Expo/native environment, especially to confirm sanitized AsyncStorage rewrite/removal does not cause startup flicker and that malformed persisted TTS values recover cleanly before the settings sliders and speech controls render.
 - 2026-03-08: Desktop onboarding first-run save feedback still needs live Electron validation once a runnable renderer target is available, especially to confirm `Skipping...` / `Saving...` / `Starting...` states feel calm, the inline error banner hierarchy reads clearly on welcome/API-key/agent steps, and onboarding completion really persists when config query data is still cold on first launch.
 - 2026-03-08: Desktop remote-server settings draft-save flow still needs live Electron validation once a runnable target is available, especially to confirm port/CORS edits feel calm while typing, blank-port blur normalization is unsurprising, and named-tunnel `Start Tunnel` correctly reflects the visible draft fields without waiting for a config refetch.
 - 2026-03-08: Desktop sessions pending continuation recovery feedback still needs live Electron validation once a runnable target is available, especially to confirm the standalone load-failure tile, inline startup-timeout warning, retry/dismiss actions, and focus-layout behavior remain clear when other active sessions already occupy the grid.
@@ -115,6 +117,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile config loading/saving in `apps/mobile/src/store/config.ts` now sanitizes malformed persisted values instead of blindly spreading parsed AsyncStorage JSON, clamps persisted TTS rate/pitch values to the safe UI ranges, rewrites outdated-but-parseable config into a clean shape, and clears corrupt JSON after logging a warning, so bad local storage data no longer risks breaking settings/chat surfaces that expect booleans, strings, and numbers with valid ranges; tradeoff: this pass intentionally stays inside the shared mobile config store instead of widening into every AsyncStorage-backed mobile store in one go.
 - 2026-03-08: Desktop onboarding in `apps/desktop/src/renderer/src/pages/onboarding.tsx` now loads the latest config before saving when the cached query data is still empty, adds local pending labels plus inline retry guidance for API-key save / skip / completion actions, and keeps users on the same step with their draft intact when first-run persistence fails, so onboarding no longer risks silently advancing without actually saving or failing with only background console/toast clues; tradeoff: this pass intentionally stays scoped to the existing onboarding step actions instead of redesigning the broader first-run flow or the separate Exa-install subflow.
 - 2026-03-08: Desktop remote-server settings now keep local drafts for port, CORS origins, and named Cloudflare tunnel fields, debounce config writes, flush on blur, merge delayed saves against the latest config snapshot, and let `Start Tunnel` use the visible named-tunnel draft immediately instead of waiting for persisted config.
 - 2026-03-08: Desktop `Sessions` now keeps failed past-session continuation attempts visible in `apps/desktop/src/renderer/src/pages/sessions.tsx`, replacing toast-only disappearance with a retryable recovery tile when a saved conversation cannot be reopened and an inline timeout warning that leaves the saved conversation open when follow-up session startup stalls, so continuing an old chat no longer feels like the session vanished with no local next step; tradeoff: this pass intentionally stops short of preserving the unsent follow-up draft across startup timeout because that draft currently lives inside the existing per-tile composer and widening that state scope would be a larger refactor.
@@ -194,6 +197,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/config-storage-guardrails.test.js apps/mobile/tests/connection-settings-validation.test.js` after the mobile config-persistence guardrails pass
+- 2026-03-08: `git diff --check` after the mobile config-persistence guardrails pass
 - 2026-03-08: `node --test tests/desktop-onboarding-save-feedback.test.js` after the desktop onboarding save-resilience pass
 - 2026-03-08: `pnpm --filter @dotagents/desktop typecheck:web` after the desktop onboarding save-resilience pass *(blocked: dependency-provided `@electron-toolkit/tsconfig/tsconfig.web.json` could not be resolved because this worktree is missing installed desktop dependencies / `node_modules`)*
 - 2026-03-08: `git diff --check` after the desktop onboarding save-resilience pass
@@ -474,6 +479,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Mobile config persistence now has source-level guardrails, but behavior-level validation with a runnable Expo/native target and intentionally malformed stored values is the freshest adjacent reliability follow-up because the user value depends on startup recovery feeling invisible, not just source sanitization existing on disk.
 - Desktop remote-server settings now have source-level draft/save guardrails, but live Electron validation of the edited-field pacing, blur normalization, and named-tunnel start affordance is the freshest adjacent UX follow-up once a runnable renderer target is available.
 - Desktop headless shutdown now has source-level guardrails, but mocked execution-path validation for `SIGTERM`, CLI-initiated exit, remote-server start failure, and slow shutdown collaborators is the freshest adjacent reliability follow-up because the key user value is graceful termination under real timing and re-entry conditions, not just structural parity with GUI quit.
 - Desktop app `before-quit` cleanup now has source-level guardrails, but real Electron or mocked main-process execution-path validation is the freshest adjacent reliability follow-up because the user value depends on actual quit re-entry and timeout behavior, not just source structure.
@@ -2876,6 +2882,38 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once a runnable Electron target is available, live-check port/CORS typing cadence, empty-port blur normalization, and named-tunnel start behavior immediately after editing
   - next highest-value related target: inspect another remaining settings surface that still saves text inputs eagerly, or shift to live validation of this remote-server pass if a runnable desktop target becomes available first
+
+### 2026-03-08 — Mobile config persistence sanitization guardrails
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile shared config store in `apps/mobile/src/store/config.ts`
+  - downstream mobile consumers in `apps/mobile/src/screens/ChatScreen.tsx`, `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`, and `apps/mobile/src/ui/TTSSettings.tsx`
+- Why it was chosen:
+  - this had not been investigated recently in the ledger, while the shared mobile config store sits underneath many screens and affects startup behavior across the app
+  - `loadConfig()` was previously trusting parsed AsyncStorage JSON almost entirely, so malformed persisted values could leak wrong types into UI paths that assume booleans and numbers
+  - the clearest concrete user risk was persisted TTS values reaching `TTSSettings` / `Speech.speak(...)` with invalid types or ranges, which could make settings or playback feel broken for reasons the user cannot diagnose
+- What was inspected:
+  - `apps/mobile/src/store/config.ts`
+  - `apps/mobile/src/screens/ChatScreen.tsx`
+  - `apps/mobile/src/screens/ConnectionSettingsScreen.tsx`
+  - `apps/mobile/src/ui/TTSSettings.tsx`
+  - existing mobile guardrail coverage in `apps/mobile/tests/connection-settings-validation.test.js`
+- Improvement made:
+  - replaced the old spread-based config loader with `sanitizeStoredConfig(...)` so stored values are type-checked before the app exposes them to screens
+  - now normalize non-empty stored `baseUrl` values, keep only valid boolean toggles, preserve only non-empty `ttsVoiceId`, and clamp persisted `ttsRate` / `ttsPitch` values into the safe ranges already used by the mobile UI
+  - when stored JSON parses but contains stale/invalid shapes, the app rewrites the sanitized config back to AsyncStorage so future launches stop re-reading bad data
+  - when stored JSON is corrupt, the app now logs a warning and clears the broken config key instead of silently retrying the same bad payload forever
+- Assumptions / tradeoffs / rationale:
+  - kept the change intentionally local to the shared config store because it protects multiple screens at once without broad churn across unrelated mobile persistence layers
+  - used the UI's existing TTS slider bounds as the sanitization ranges so the persisted values match what the settings surface can actually represent
+  - chose silent self-healing plus warning logs instead of a new user-facing error banner because malformed local storage is primarily an internal recovery concern and the higher-value UX is simply not breaking at startup
+- Tests / verification:
+  - `node --test apps/mobile/tests/config-storage-guardrails.test.js apps/mobile/tests/connection-settings-validation.test.js`
+  - `git diff --check`
+- Follow-up checks:
+  - once a runnable Expo/native target is available, validate startup with intentionally malformed stored config to confirm the rewrite/remove path is invisible to users and does not cause settings flicker
+  - inspect another unreviewed shared mobile persistence layer rather than revisiting recently touched connection-status UI immediately
 
 ### Iteration Template
 - Date:

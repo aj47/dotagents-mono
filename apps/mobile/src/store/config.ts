@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
 
 export type AppConfig = {
@@ -29,25 +29,84 @@ const DEFAULTS: AppConfig = {
 
 const STORAGE_KEY = 'app_config_v1';
 
-function normalizeStoredConfig(cfg: AppConfig): AppConfig {
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function sanitizeStoredConfig(cfg: unknown): AppConfig {
+  const candidate =
+    cfg && typeof cfg === 'object' && !Array.isArray(cfg)
+      ? (cfg as Partial<AppConfig>)
+      : {};
+
   return {
-    ...cfg,
-    baseUrl: cfg.baseUrl ? normalizeApiBaseUrl(cfg.baseUrl) : cfg.baseUrl,
+    apiKey: typeof candidate.apiKey === 'string' ? candidate.apiKey : DEFAULTS.apiKey,
+    baseUrl:
+      typeof candidate.baseUrl === 'string' && candidate.baseUrl.trim().length > 0
+        ? normalizeApiBaseUrl(candidate.baseUrl)
+        : DEFAULTS.baseUrl,
+    model:
+      typeof candidate.model === 'string' && candidate.model.trim().length > 0
+        ? candidate.model
+        : DEFAULTS.model,
+    handsFree:
+      typeof candidate.handsFree === 'boolean' ? candidate.handsFree : DEFAULTS.handsFree,
+    ttsEnabled:
+      typeof candidate.ttsEnabled === 'boolean' ? candidate.ttsEnabled : DEFAULTS.ttsEnabled,
+    messageQueueEnabled:
+      typeof candidate.messageQueueEnabled === 'boolean'
+        ? candidate.messageQueueEnabled
+        : DEFAULTS.messageQueueEnabled,
+    ttsVoiceId:
+      typeof candidate.ttsVoiceId === 'string' && candidate.ttsVoiceId.trim().length > 0
+        ? candidate.ttsVoiceId
+        : undefined,
+    ttsRate: clampNumber(
+      typeof candidate.ttsRate === 'number' && Number.isFinite(candidate.ttsRate)
+        ? candidate.ttsRate
+        : (DEFAULTS.ttsRate ?? 1.0),
+      0.1,
+      10,
+    ),
+    ttsPitch: clampNumber(
+      typeof candidate.ttsPitch === 'number' && Number.isFinite(candidate.ttsPitch)
+        ? candidate.ttsPitch
+        : (DEFAULTS.ttsPitch ?? 1.0),
+      0.5,
+      2.0,
+    ),
   };
 }
 
 export async function loadConfig(): Promise<AppConfig> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) return DEFAULTS;
+
   try {
     const parsed = JSON.parse(raw);
-    return normalizeStoredConfig({ ...DEFAULTS, ...parsed } as AppConfig);
-  } catch {}
+    const sanitized = sanitizeStoredConfig(parsed);
+
+    if (JSON.stringify(parsed) !== JSON.stringify(sanitized)) {
+      console.warn('[config] Stored config was invalid or outdated; rewriting sanitized values');
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    }
+
+    return sanitized;
+  } catch (error) {
+    console.warn('[config] Failed to parse stored config; resetting to defaults', error);
+
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    } catch (storageError) {
+      console.warn('[config] Failed to clear invalid stored config', storageError);
+    }
+  }
+
   return DEFAULTS;
 }
 
 export async function saveConfig(cfg: AppConfig) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeStoredConfig(cfg)));
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeStoredConfig(cfg)));
 }
 
 export function useConfig() {
