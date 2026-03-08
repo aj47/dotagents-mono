@@ -138,6 +138,13 @@ export function RemoteServerSettingsGroups({
     },
   })
 
+  const restartRemoteServerMutation = useMutation({
+    mutationFn: () => tipcClient.restartRemoteServer(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["remote-server-status"] })
+    },
+  })
+
   const tunnelStatus = tunnelStatusQuery.data
   const remoteServerStatus = remoteServerStatusQuery.data
   const isCloudflaredInstalled = cloudflaredInstalledQuery.data ?? false
@@ -159,6 +166,7 @@ export function RemoteServerSettingsGroups({
   const streamerMode = cfg.streamerModeEnabled ?? false
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
+  const remoteServerLastError = enabled && !isRemoteServerRunning ? remoteServerStatus?.lastError?.trim() : undefined
 
   const fallbackBaseUrl = !isUnconnectableMobileHost(configuredBindAddress) &&
     cfg.remoteServerPort
@@ -168,7 +176,7 @@ export function RemoteServerSettingsGroups({
   const liveConnectableUrl = isRemoteServerRunning
     ? remoteServerStatus?.connectableUrl
     : undefined
-  const baseUrl = liveConnectableUrl ?? fallbackBaseUrl
+  const baseUrl = isRemoteServerRunning ? liveConnectableUrl ?? fallbackBaseUrl : undefined
   const shouldShowConnectabilityWarning =
     isRemoteServerRunning &&
     isUnconnectableMobileHost(configuredBindAddress) &&
@@ -209,6 +217,52 @@ export function RemoteServerSettingsGroups({
 
           {enabled && (
             <>
+              <Control label="Server Status" className="px-3">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isRemoteServerRunning ? (
+                      <>
+                        <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                        <span className="text-sm text-green-600 dark:text-green-400">
+                          Running on {configuredBindAddress}:{cfg.remoteServerPort ?? 3210}
+                        </span>
+                      </>
+                    ) : remoteServerStatusQuery.isLoading ? (
+                      <>
+                        <span className="inline-block h-2 w-2 rounded-full animate-pulse bg-yellow-500" />
+                        <span className="text-sm text-yellow-600 dark:text-yellow-400">Checking status...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                        <span className="text-sm text-red-600 dark:text-red-400">Not running</span>
+                      </>
+                    )}
+
+                    {!isRemoteServerRunning && !remoteServerStatusQuery.isLoading && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => restartRemoteServerMutation.mutate()}
+                        disabled={restartRemoteServerMutation.isPending || saveConfigMutation.isPending}
+                      >
+                        {restartRemoteServerMutation.isPending ? "Retrying..." : remoteServerLastError ? "Retry start" : "Start now"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {remoteServerLastError ? (
+                    <div className="text-xs text-red-600 dark:text-red-400 break-words">
+                      Couldn&apos;t start the remote server: {remoteServerLastError}. Fix the bind address, port, or any local networking conflict, then retry.
+                    </div>
+                  ) : !isRemoteServerRunning && !remoteServerStatusQuery.isLoading ? (
+                    <div className="text-xs text-muted-foreground break-words">
+                      The remote server should start automatically after enabling it or changing server settings. Use <span className="font-medium">Start now</span> if it does not recover on its own.
+                    </div>
+                  ) : null}
+                </div>
+              </Control>
+
               <Control label={<ControlLabel label="Auto-Show Panel" tooltip="Automatically show the floating panel when receiving messages from remote clients" />} className="px-3">
                 <Switch
                   checked={cfg.remoteServerAutoShowPanel ?? false}

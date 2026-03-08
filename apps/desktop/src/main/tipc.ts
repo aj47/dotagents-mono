@@ -3691,6 +3691,10 @@ export const router = {
     return getRemoteServerStatus()
   }),
 
+  restartRemoteServer: t.procedure.action(async () => {
+    return restartRemoteServer()
+  }),
+
   // Remote Server QR Code handler
   printRemoteServerQRCode: t.procedure.action(async () => {
     return printQRCodeToTerminal()

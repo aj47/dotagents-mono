@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Desktop remote-server settings startup failure recovery / share-status clarity in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`, with remote-server lifecycle/status reviewed in `apps/desktop/src/main/remote-server.ts` and `apps/desktop/src/main/tipc.ts`, mobile parity checked in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Desktop provider model refresh recovery / stale-results clarity in `apps/desktop/src/renderer/src/components/model-selector.tsx`, with provider-settings credential autosave integration reviewed in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, targeted query invalidation inspected in `apps/desktop/src/renderer/src/lib/queries.ts`, backend credential-sensitive cache behavior checked in `apps/desktop/src/main/models-service.ts`, and mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`.
 - 2026-03-08: Desktop provider settings credential save / retry / error-handling clarity in `apps/desktop/src/renderer/src/pages/settings-providers.tsx`, with shared save-error messaging reviewed in `apps/desktop/src/renderer/src/lib/config-save-error.ts`, existing source-level coverage checked in `apps/desktop/src/renderer/src/pages/settings-providers.credentials.test.tsx`, mobile parity checked in `apps/mobile/src/screens/SettingsScreen.tsx`, and live desktop inspection attempt blocked by missing Electron/CDP target.
 - 2026-03-08: Mobile provider model picker fallback/manual-entry clarity in `apps/mobile/src/screens/SettingsScreen.tsx`, with `apps/mobile/src/lib/settingsApi.ts` reviewed, the new desktop fallback metadata flow cross-checked, and focused source-level verification added in `apps/mobile/tests/settings-model-picker-feedback.test.js`.
@@ -34,6 +35,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Improved
+- 2026-03-08: Desktop remote-server settings now show inline startup failure details, provide a local `Start now` / `Retry start` recovery action, and only show the local share URL when the remote server is actually running so failed startup states are clearer and less misleading.
 - 2026-03-08: Desktop shared provider model selectors now invalidate and refetch when provider discovery credentials/base URLs change, keep the last loaded model list usable while a refresh is running, and show explicit inline stale-results guidance when a refresh fails so settings no longer quietly imply that an old list is still current.
 - 2026-03-08: Desktop provider credential inputs for Groq/Gemini now show inline autosave guidance, pending/saving state, preserved-draft save-failure messaging, and a local `Retry save` action instead of relying on toast-only failure feedback.
 - 2026-03-08: Mobile provider model settings now distinguish fallback suggestions from verified live model lists, keep custom/list handoff aligned with the current provider/model context instead of a stale closure, and give clearer inline/manual-entry guidance plus explicit refresh/custom action labels.
@@ -59,6 +61,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test tests/desktop-remote-server-settings-feedback.test.js`
+- 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-model-selector-feedback.test.js`
 - 2026-03-08: `git diff --check`
 - 2026-03-08: `node --test tests/desktop-settings-providers-credentials-feedback.test.js`
@@ -105,6 +109,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live desktop UI inspection for this remote-server status/retry pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this provider-model refresh/stale-results pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live desktop UI inspection for this provider-credential autosave feedback pass was blocked because no Electron renderer/CDP target was available in this environment (`electron_execute` returned `No Electron targets found`), so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Focused mobile TypeScript verification for this settings-model-picker pass is blocked in this environment because `pnpm --filter @dotagents/mobile exec tsc --noEmit` cannot resolve `expo/tsconfig.base` and numerous Expo/React Native dependency types, so only source-level regression checks were available locally.
@@ -127,10 +132,11 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
-- Desktop remote-server settings connection/share recovery and status clarity (`apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`)
+- Desktop MCP tools settings test/save recovery and validation clarity (`apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`)
 
 ### Next Highest-Value Targets
-- Inspect desktop remote-server settings connection/share recovery next so the connection surface makes reconnecting, copying/sharing access details, and tunnel/startup failures clearer without needing to inspect logs
+- Inspect desktop MCP tools settings test/save recovery next so MCP server setup failures and validation issues are clearer without needing to inspect logs or retry blindly
+- Once a runnable Electron target is available, live-check the desktop remote-server settings startup failure, `Start now` / `Retry start`, bind-address warnings, and local/tunnel sharing states to confirm the new recovery hierarchy feels right in the actual UI
 - Once the mobile workspace can typecheck or run Expo again, live-check the mobile provider picker states for missing credentials, fallback suggestions, empty results, refresh behavior, and custom-model entry to confirm the new guidance feels right on-device
 - Once a runnable Electron target is available, live-check the desktop shared `model-selector.tsx` states for missing API key, fallback suggestions, empty responses, refresh behavior, and custom-model entry to confirm the new helper text hierarchy feels right in the actual UI
 - Once a runnable Electron target is available, live-check the desktop model preset create/edit dialogs to confirm the discard-warning cadence and save-failure guidance feel right across backdrop click, Escape, titlebar close, and retry flows
@@ -140,6 +146,42 @@ Track small, shippable product improvements. Review this file before each iterat
 - Once a runnable Electron target is available, live-check the desktop skills create/edit dialogs to confirm the discard warning and unsaved-change callout feel right for backdrop click, Escape, and the titlebar close button
 - Once a runnable Electron target is available, live-check the desktop Groq STT prompt editing flow to confirm the debounced save timing and blur flush feel right in the actual settings UI
 - Once a runnable Electron target is available, live-check the new desktop follow-up composer error banner / retry behavior under an actual send failure
+
+### 2026-03-08 — Desktop remote-server settings startup recovery and share-status clarity
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - desktop remote-server settings in `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx`
+  - remote-server lifecycle/status wiring in `apps/desktop/src/main/tipc.ts` and `apps/desktop/src/main/remote-server.ts`
+  - focused source-level regression coverage added in `tests/desktop-remote-server-settings-feedback.test.js`
+  - mobile parity checked in `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` / `apps/mobile/src/screens/SettingsScreen.tsx`; confirmed the investigated gap is desktop host-side status/recovery, so no mobile code change was needed for this pass
+- Why it was chosen:
+  - the ledger explicitly marked desktop remote-server settings connection/share recovery and status clarity as the next fresh target
+  - investigation found a concrete reliability/UX gap: the main process already exposes remote-server startup failures via `lastError`, but the settings page only showed a generic not-running state and could still render a fallback local base URL even when the server had failed to start
+  - this is high leverage because remote access/pairing is a foundational product surface; misleading share details or silent startup failures push users into log-diving instead of obvious local recovery
+- What was inspected:
+  - `apps/desktop/src/renderer/src/pages/settings-remote-server.tsx` for status presentation, share/copy affordances, bind-address guidance, and any existing local recovery path
+  - `apps/desktop/src/main/remote-server.ts` for startup failure tracking, status shape, and shareable URL resolution
+  - `apps/desktop/src/main/tipc.ts` for how remote-server config changes already trigger start/stop/restart lifecycle work and whether the renderer had any direct retry path
+  - `apps/mobile/src/screens/ConnectionSettingsScreen.tsx` and `apps/mobile/src/screens/SettingsScreen.tsx` to confirm whether the same host-side issue had a mobile equivalent before broadening scope
+  - attempted live desktop inspection via Electron/CDP first, but no renderer target was available in this environment
+- Improvement made:
+  - the desktop remote-server settings page now shows an explicit `Server Status` row with clear running / checking / not-running states instead of leaving failures implicit
+  - when the remote server is enabled but not running, the page now surfaces the last startup error inline with concrete guidance to fix bind/port/network conflicts instead of forcing the user to infer the failure from logs
+  - added a local `Start now` / `Retry start` action that calls a new renderer-exposed `restartRemoteServer` TIPC action, so users can retry recovery without toggling the whole feature off and on
+  - the local share URL is now only displayed when the remote server is actually running, preventing the page from implying that a copied local URL is usable during a failed startup state
+- Assumptions / tradeoffs / rationale:
+  - kept the retry mechanism explicit and user-triggered instead of adding a more complex automatic restart loop, because the concrete issue was recovery clarity rather than background retry policy
+  - accepted hiding the local share URL while the server is down, even though that removes a pre-start preview, because showing a usable-looking URL during failure was more misleading than helpful
+  - kept this pass desktop-only because the investigated problem is on the desktop host configuration surface; mobile is a client/consumer of those connection details rather than the source of the startup failure
+  - accepted source-level verification for this iteration because a live Electron target is still unavailable in the current workspace
+- Tests / verification:
+  - `node --test tests/desktop-remote-server-settings-feedback.test.js`
+  - `git diff --check`
+  - attempted live desktop inspection via `electron_execute` (blocked: `No Electron targets found`)
+- Follow-up checks:
+  - once an Electron target is available, live-check remote-server enable, failed bind/port recovery, `Start now` / `Retry start`, and local/tunnel sharing states to confirm the status hierarchy feels right in practice
+  - inspect desktop MCP tools settings test/save recovery next so another core configuration surface gets clearer failure guidance
 
 ### 2026-03-08 — Desktop provider model refresh recovery and stale-results clarity
 - Date:
