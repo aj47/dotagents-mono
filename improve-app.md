@@ -4,6 +4,7 @@
 Track small, shippable product improvements. Review this file before each iteration to avoid repeating recent investigations and to keep momentum focused on high-leverage changes.
 
 ### Checked Recently
+- 2026-03-08: Mobile `ChatScreen` emergency-stop feedback in `apps/mobile/src/screens/ChatScreen.tsx`, with `killSwitch()` client semantics reviewed in the mobile chat session client path, adjacent mobile banner/voice-feedback patterns rechecked in the same screen, focused source-level coverage added in `apps/mobile/tests/chat-kill-switch-feedback.test.js`, adjacent `ChatScreen` feedback guards re-run in `apps/mobile/tests/chat-voice-start-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Desktop app `before-quit` cleanup synchronization in `apps/desktop/src/main/index.ts`, with headless shutdown parity reviewed in that file, async shutdown semantics checked in `apps/desktop/src/main/acp-service.ts` and `apps/desktop/src/main/remote-server.ts`, existing desktop main-process test patterns reviewed in `apps/desktop/src/main/index.hub-install.test.ts`, focused source-level coverage added in `tests/desktop-app-quit-cleanup.test.js`, and targeted verification run locally via `node --test` because this dependency-light worktree does not have desktop `vitest` available.
 - 2026-03-08: Mobile `Settings → Agent Loops` mutation feedback in `apps/mobile/src/screens/SettingsScreen.tsx`, with loop API response semantics reviewed in `apps/mobile/src/lib/settingsApi.ts`, existing mobile loop action coverage rechecked in `apps/mobile/tests/settings-loop-actions-mobile.test.js` / `apps/mobile/tests/settings-loop-feedback-mobile.test.js` / `apps/mobile/tests/settings-loop-metadata-mobile.test.js`, new mutation-feedback coverage added in `apps/mobile/tests/settings-loop-mutation-feedback-mobile.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
 - 2026-03-08: Mobile session-list delete guardrails in `apps/mobile/src/screens/SessionListScreen.tsx`, with async delete / clear persistence semantics reviewed in `apps/mobile/src/store/sessions.ts`, destructive confirmation patterns cross-checked in `apps/mobile/src/screens/SettingsScreen.tsx`, focused source-level coverage added in `apps/mobile/tests/session-list-delete-guardrails.test.js`, and live mobile inspection attempted via `pnpm --filter @dotagents/mobile exec expo --version` (blocked because `expo` is unavailable in this dependency-less worktree).
@@ -82,6 +83,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-07: Desktop WhatsApp settings allowlist editing resilience (`apps/desktop/src/renderer/src/pages/settings-whatsapp.tsx`).
 
 ### Not Yet Checked
+- 2026-03-08: Mobile `ChatScreen` emergency-stop confirmation/banner flow still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the header action remains discoverable under large text, the inline success/error banner does not crowd the bottom action rail, and retry feels clear after transient remote-server failures.
 - 2026-03-08: Desktop app `before-quit` cleanup still needs execution-path validation once desktop Vitest or a runnable Electron target is available, especially to confirm real quit re-entry, shared-timeout fallback, and slow ACP/MCP/remote-server shutdown timing all behave predictably.
 - 2026-03-08: Mobile `Settings → Agent Loops` row-local pending / retry UI still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm the new inline warning density, disabled-action affordances, and optimistic `lastRunAt` refresh feel clear on compact screens.
 - 2026-03-08: Mobile session-list delete / clear-all pending-state and failure-alert UX still needs live device or Expo-web validation once the mobile toolchain is available, especially to confirm long-press discoverability, `Deleting chat...` density, and the new failure copy feel clear on both native and web.
@@ -103,6 +105,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop floating-panel live transcription preview warning layout/recovery still needs live Electron validation once this worktree has dependencies, especially to confirm the inline warning clears promptly after a transient provider/network failure recovers mid-recording.
 
 ### Improved
+- 2026-03-08: Mobile `ChatScreen` emergency stop now routes confirmation through platform-safe helpers in `apps/mobile/src/screens/ChatScreen.tsx`, disables repeated taps while a kill request is in flight, replaces raw browser success/error alerts with inline pending/success/failure banner feedback, surfaces a contextual retry action on failure, and reports missing remote-server connectivity directly in context, so a safety-critical stop request no longer feels like a fire-and-forget icon tap or depends on web-only dialog APIs; tradeoff: this pass intentionally keeps the existing header action and compact bottom-banner pattern instead of introducing a custom modal or toast system.
 - 2026-03-08: Desktop app `before-quit` now waits for ACP shutdown, MCP cleanup, and remote-server shutdown together in `apps/desktop/src/main/index.ts`, bounded by one quit-time timeout and with per-service best-effort error logging, so the normal desktop quit path no longer fire-and-forgets ACP shutdown or skips local server cleanup before exiting; tradeoff: this pass intentionally stays scoped to the GUI quit path and source-level guardrails instead of refactoring the already-functional headless shutdown flow.
 - 2026-03-08: Mobile `Settings → Agent Loops` now tracks per-row `run` / `toggle` / `delete` mutations in `apps/mobile/src/screens/SettingsScreen.tsx`, disables conflicting controls while a row action is in flight, treats false `settingsClient` success results as real failures, replaces one-shot loop-action alerts with inline retryable warnings, and updates `lastRunAt` locally before background refresh on successful runs, so loop actions no longer feel fire-and-forget or silently fail behind transient alerts; tradeoff: this pass intentionally keeps the existing compact loop row layout and source-level verification instead of broadening into a settings-screen redesign or new global toast infrastructure.
 - 2026-03-08: Mobile `Chats` session history now routes delete / clear-all through one confirmation helper in `apps/mobile/src/screens/SessionListScreen.tsx`, awaits async `sessionStore.deleteSession(...)` / `clearAllSessions()` persistence before treating destructive actions as done, surfaces explicit delete-failure alerts instead of fire-and-forget async rejection noise, and temporarily disables overlapping destructive actions while a delete is in progress, so chat cleanup no longer depends on raw web-only `window.confirm(...)` calls or silent persistence failures; tradeoff: this pass intentionally keeps the existing long-press-to-delete gesture and alert-based recovery instead of broadening into explicit row delete controls or a custom modal.
@@ -176,6 +179,8 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Desktop Langfuse settings now keep local drafts, debounce config writes, flush on blur, and merge against the latest config snapshot before saving.
 
 ### Verified
+- 2026-03-08: `node --test apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-voice-start-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js` after the mobile ChatScreen emergency-stop feedback pass
+- 2026-03-08: `git diff --check` after the mobile ChatScreen emergency-stop feedback pass
 - 2026-03-08: `node --test tests/desktop-app-quit-cleanup.test.js` after the desktop before-quit cleanup pass
 - 2026-03-08: `git diff --check` after the desktop before-quit cleanup pass
 - 2026-03-08: `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` after the desktop before-quit cleanup pass *(blocked: `Command "vitest" not found`)*
@@ -359,6 +364,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: attempted `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` (blocked: `vitest` not installed in this worktree).
 
 ### Blocked
+- 2026-03-08: Live mobile UI inspection for this ChatScreen emergency-stop pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Runtime desktop main-process verification for the before-quit cleanup pass is still blocked because `pnpm --filter @dotagents/desktop exec vitest run src/main/index.hub-install.test.ts` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "vitest" not found`, so this iteration relied on source inspection plus dependency-free `node:test` coverage.
 - 2026-03-08: Live mobile UI inspection for the mobile loop mutation-feedback pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
 - 2026-03-08: Live mobile UI inspection for this session-list delete-guardrails pass was blocked because `pnpm --filter @dotagents/mobile exec expo --version` failed with `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`, so this iteration relied on source inspection plus targeted source-level verification.
@@ -429,6 +435,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - 2026-03-08: Targeted desktop Vitest verification is currently blocked because this worktree does not have installed dependencies (`node_modules` missing). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/pages/settings-general.langfuse.test.tsx` failed during the required shared prebuild because `packages/shared` could not run `tsup`, and both `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-providers.credentials.test.tsx` and `pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/pages/settings-general.langfuse.test.tsx` failed because `vitest` was not installed in this worktree.
 
 ### Not Yet Checked Recently
+- Mobile `ChatScreen` image-attachment failure / partial-success recovery (`apps/mobile/src/screens/ChatScreen.tsx`)
 - Desktop app `before-quit` cleanup execution-path validation (`apps/desktop/src/main/index.ts`)
 - Desktop repeat-task `runOnStartup` disable/restart/shutdown execution-path validation (`apps/desktop/src/main/loop-service.ts`)
 - Desktop `Settings → General` modular config (`.agents`) active-layer/source clarity live validation (`apps/desktop/src/renderer/src/pages/settings-general.tsx`)
@@ -438,6 +445,7 @@ Track small, shippable product improvements. Review this file before each iterat
 - Mobile session-list long-press delete discoverability / live validation (`apps/mobile/src/screens/SessionListScreen.tsx`)
 
 ### Next Highest-Value Targets
+- Mobile `ChatScreen` image-attachment feedback is the freshest adjacent mobile follow-up, because desktop attachment handling already gained inline failure guidance while the separate React Native picker path still appears to rely on alert-style recovery and likely lacks partial-success / retry clarity in context.
 - Desktop app `before-quit` cleanup now has source-level guardrails, but real Electron or mocked main-process execution-path validation is the freshest adjacent reliability follow-up because the user value depends on actual quit re-entry and timeout behavior, not just source structure.
 - Mobile `Settings → Agent Loops` live validation is now the freshest adjacent mobile loops follow-up, because the new row-local pending/error guardrails are only source-verified so far and the compact warning density, disabled-action affordances, and optimistic run-refresh behavior still need real product evidence once Expo is available.
 - Mobile session-list long-press delete discoverability / web-native live validation remains a strong adjacent mobile history follow-up, because deletion is safer at the source level but the long-press affordance, `Deleting chat...` density, and failure-alert clarity still need real product evidence once Expo is available.
@@ -2642,6 +2650,40 @@ Track small, shippable product improvements. Review this file before each iterat
 - Follow-up checks:
   - once desktop Vitest or a runnable Electron target is available, exercise real quit re-entry and timeout behavior with slow or failing ACP/MCP/remote-server mocks
   - if future shutdown work revisits both GUI and headless flows, consider extracting the shared long-lived-service cleanup sequence into one helper to reduce drift
+
+### 2026-03-08 — Mobile ChatScreen emergency-stop feedback
+- Date:
+  - 2026-03-08
+- Area / screen / subsystem:
+  - mobile `ChatScreen` emergency-stop header action in `apps/mobile/src/screens/ChatScreen.tsx`
+  - kill-switch client call semantics reviewed through the mobile chat session client path used by `getSessionClient()`
+  - focused source-level regression coverage in `apps/mobile/tests/chat-kill-switch-feedback.test.js`
+  - adjacent `ChatScreen` feedback coverage re-run in `apps/mobile/tests/chat-voice-start-feedback.test.js`, `apps/mobile/tests/chat-message-tts-feedback.test.js`, and `apps/mobile/tests/chat-auto-response-tts-feedback.test.js`
+- Why it was chosen:
+  - the ledger already covered several mobile settings/history flows, but the safety-critical emergency-stop path in chat had not been investigated recently
+  - source review found three concrete product gaps: the screen still used raw browser `confirm` / `alert` calls on web, the icon remained tappable during an in-flight stop request, and success/failure feedback disappeared into blocking dialogs instead of staying in context
+  - this was a small, high-leverage trust improvement because emergency stop is a rare but important action where users need clear confirmation, visible progress, and an obvious retry path when the remote server fails
+- What was inspected:
+  - `apps/mobile/src/screens/ChatScreen.tsx` header action wiring, nearby connection/retry banners, and adjacent inline feedback patterns already used for voice and TTS failures
+  - the kill-switch result contract exposed by the mobile session client path to confirm the handler can receive explicit `success`, `message`, and `error` outcomes
+  - existing source-level mobile chat tests to preserve nearby feedback/accessibility guardrails while adding a kill-switch regression test
+  - attempted live mobile inspection via `pnpm --filter @dotagents/mobile exec expo --version`, but Expo is unavailable in this dependency-less worktree
+- Improvement made:
+  - replaced raw `window.confirm(...)` / `window.alert(...)` usage with one platform-safe confirmation path: `globalThis.confirm` on web and `Alert.alert(...)` on native
+  - added local pending state plus a ref guard so repeated taps cannot start overlapping emergency-stop requests
+  - replaced blocking result dialogs with inline pending/success/error banner feedback near the existing bottom action rail, including a contextual retry action for failures
+  - surfaced a clear inline error when no remote session client is available instead of silently logging and doing nothing
+- Assumptions / tradeoffs / rationale:
+  - kept the existing header placement for the emergency-stop affordance because the goal was trustworthy interaction feedback, not a broader header redesign
+  - reused the existing compact banner language/pattern in `ChatScreen` so the change stays local and visually consistent without introducing new toast infrastructure
+  - accepted source-level verification because live Expo/mobile execution is blocked in this worktree
+- Tests / verification:
+  - `node --test apps/mobile/tests/chat-kill-switch-feedback.test.js apps/mobile/tests/chat-voice-start-feedback.test.js apps/mobile/tests/chat-message-tts-feedback.test.js apps/mobile/tests/chat-auto-response-tts-feedback.test.js`
+  - `git diff --check`
+  - `pnpm --filter @dotagents/mobile exec expo --version` *(blocked: `Command "expo" not found`)*
+- Follow-up checks:
+  - once Expo or a runnable mobile target is available, live-check the header action with large text, long server latency, success, failure, and retry to confirm the inline banner remains readable without crowding the composer rail
+  - investigate the separate mobile image-attachment picker/error path next, because it is a fresh adjacent `ChatScreen` flow that likely still relies on alert-style recovery instead of inline partial-success guidance
 
 ### Iteration Template
 - Date:

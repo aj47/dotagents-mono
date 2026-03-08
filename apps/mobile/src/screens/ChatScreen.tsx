@@ -110,6 +110,18 @@ type VoiceStartErrorOptions = {
   reason?: 'permission_denied' | 'api_unavailable' | 'development_build_required';
 };
 
+type KillSwitchFeedbackTone = 'info' | 'success' | 'error';
+
+type KillSwitchFeedback = {
+  tone: KillSwitchFeedbackTone;
+  title: string;
+  message: string;
+};
+
+const KILL_SWITCH_CONFIRMATION_TITLE = '⚠️ Emergency Stop';
+const KILL_SWITCH_CONFIRMATION_MESSAGE =
+  'Are you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.';
+
 const getVoiceStartErrorDetails = (
   error: unknown,
   { platform, reason }: VoiceStartErrorOptions,
@@ -598,59 +610,101 @@ export default function ChatScreen({ route, navigation }: any) {
     return unsubscribe;
   }, [sessionStore.currentSessionId, connectionManager]);
 
-  const handleKillSwitch = async () => {
+  const [killSwitchFeedback, setKillSwitchFeedback] = useState<KillSwitchFeedback | null>(null);
+  const [killSwitchPending, setKillSwitchPending] = useState(false);
+  const killSwitchPendingRef = useRef(false);
+
+  const executeKillSwitch = useCallback(async () => {
+    if (killSwitchPendingRef.current) {
+      return;
+    }
+
     console.log('[ChatScreen] Kill switch button pressed');
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for kill switch');
+      setKillSwitchFeedback({
+        tone: 'error',
+        title: 'Emergency stop unavailable',
+        message: 'Connect to a remote server before trying to stop active agent sessions.',
+      });
+      return;
+    }
+
+    killSwitchPendingRef.current = true;
+    setKillSwitchPending(true);
+    setKillSwitchFeedback({
+      tone: 'info',
+      title: 'Stopping all sessions...',
+      message: 'DotAgents is asking the remote server to terminate every active agent task.',
+    });
+
+    try {
+      const result = await client.killSwitch();
+      if (result.success) {
+        setKillSwitchFeedback({
+          tone: 'success',
+          title: 'Emergency stop sent',
+          message: result.message || 'The remote server stopped the active agent sessions.',
+        });
+        return;
+      }
+
+      setKillSwitchFeedback({
+        tone: 'error',
+        title: 'Emergency stop failed',
+        message: result.error || 'Failed to stop sessions. Check the server connection and try again.',
+      });
+    } catch (error: any) {
+      console.error('[ChatScreen] Kill switch error:', error);
+      setKillSwitchFeedback({
+        tone: 'error',
+        title: 'Emergency stop failed',
+        message: error?.message || 'Failed to connect to server',
+      });
+    } finally {
+      killSwitchPendingRef.current = false;
+      setKillSwitchPending(false);
+    }
+  }, [getSessionClient]);
+
+  const handleKillSwitch = useCallback(() => {
+    if (killSwitchPendingRef.current) {
       return;
     }
 
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        '⚠️ Emergency Stop\n\nAre you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.'
-      );
-      if (confirmed) {
-        try {
-          const result = await client.killSwitch();
-          if (result.success) {
-            window.alert(result.message || 'All sessions stopped');
-          } else {
-            window.alert('Error: ' + (result.error || 'Failed to stop sessions'));
-          }
-        } catch (e: any) {
-          console.error('[ChatScreen] Kill switch error:', e);
-          window.alert('Error: ' + (e.message || 'Failed to connect to server'));
-        }
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (!confirmFn) {
+        setKillSwitchFeedback({
+          tone: 'error',
+          title: 'Emergency stop unavailable',
+          message: 'This browser cannot show the confirmation needed to stop all sessions right now.',
+        });
+        return;
+      }
+
+      if (confirmFn(`${KILL_SWITCH_CONFIRMATION_TITLE}\n\n${KILL_SWITCH_CONFIRMATION_MESSAGE}`)) {
+        void executeKillSwitch();
       }
       return;
     }
 
     Alert.alert(
-      '⚠️ Emergency Stop',
-      'Are you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.',
+      KILL_SWITCH_CONFIRMATION_TITLE,
+      KILL_SWITCH_CONFIRMATION_MESSAGE,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Stop All',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await client.killSwitch();
-              if (result.success) {
-                Alert.alert('Success', result.message || 'All sessions stopped');
-              } else {
-                Alert.alert('Error', result.error || 'Failed to stop sessions');
-              }
-            } catch (e: any) {
-              console.error('[ChatScreen] Kill switch error:', e);
-              Alert.alert('Error', e.message || 'Failed to connect to server');
-            }
+          onPress: () => {
+            void executeKillSwitch();
           },
         },
       ],
     );
-  };
+  }, [executeKillSwitch]);
 
   const handleNewChat = useCallback(() => {
     // Reset all UI states unconditionally when creating a new chat
@@ -738,19 +792,20 @@ export default function ChatScreen({ route, navigation }: any) {
           <TouchableOpacity
             onPress={handleKillSwitch}
             accessibilityRole="button"
-            accessibilityLabel="Emergency stop - kill all agent sessions"
-            accessibilityHint="Shows a confirmation before stopping all running sessions"
-            style={styles.headerActionButton}
+            accessibilityLabel={killSwitchPending ? 'Emergency stop in progress' : 'Emergency stop - kill all agent sessions'}
+            accessibilityHint={killSwitchPending
+              ? 'Wait while DotAgents asks the remote server to stop all active sessions'
+              : 'Shows a confirmation before stopping all running sessions'}
+            accessibilityState={{ disabled: killSwitchPending }}
+            disabled={killSwitchPending}
+            style={[styles.headerActionButton, killSwitchPending && styles.headerActionButtonDisabled]}
           >
-            <View style={{
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: theme.colors.danger,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Text style={{ fontSize: 14, color: '#FFFFFF' }}>⏹</Text>
+            <View style={[styles.headerDangerActionBadge, killSwitchPending && styles.headerDangerActionBadgeDisabled]}>
+              {killSwitchPending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>⏹</Text>
+              )}
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -3473,6 +3528,47 @@ export default function ChatScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
+        {killSwitchFeedback && (
+          <View
+            style={[
+              styles.connectionBanner,
+              killSwitchFeedback.tone === 'error'
+                ? styles.connectionBannerFailed
+                : killSwitchFeedback.tone === 'success'
+                  ? styles.killSwitchBannerSuccess
+                  : styles.killSwitchBannerInfo,
+              styles.killSwitchBanner,
+            ]}
+            accessibilityLiveRegion="polite"
+            aria-live="polite"
+          >
+            <View style={styles.connectionBannerContent}>
+              {killSwitchPending ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} style={styles.killSwitchBannerSpinner} />
+              ) : (
+                <Text style={styles.connectionBannerIcon}>
+                  {killSwitchFeedback.tone === 'success' ? '⏹' : killSwitchFeedback.tone === 'error' ? '⚠️' : '⏳'}
+                </Text>
+              )}
+              <View style={styles.connectionBannerTextContainer}>
+                <Text style={styles.connectionBannerText}>{killSwitchFeedback.title}</Text>
+                <Text style={styles.connectionBannerSubtext}>{killSwitchFeedback.message}</Text>
+              </View>
+              {killSwitchFeedback.tone === 'error' && !killSwitchPending && (
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={handleKillSwitch}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry emergency stop"
+                  accessibilityHint="Shows the confirmation again before retrying the emergency stop"
+                >
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
         {/* Retry banner - shows when there's a failed message that can be retried */}
         {lastFailedMessage && !responding && (
           <View style={[styles.connectionBanner, styles.connectionBannerFailed]}>
@@ -3872,7 +3968,21 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: 2,
     },
     headerActionButton,
+    headerActionButtonDisabled: {
+      opacity: 0.65,
+    },
     headerEdgeActionButton,
+    headerDangerActionBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerDangerActionBadgeDisabled: {
+      opacity: 0.88,
+    },
     headerAgentSelectorTrigger: {
       ...headerAgentSelectorTouchTarget,
       flexDirection: 'column',
@@ -4147,6 +4257,20 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.1),
       borderColor: hexToRgba(theme.colors.destructive, 0.3),
     },
+	    killSwitchBanner: {
+	      marginBottom: spacing.xs,
+	    },
+	    killSwitchBannerInfo: {
+	      backgroundColor: hexToRgba(theme.colors.info, 0.1),
+	      borderColor: hexToRgba(theme.colors.info, 0.3),
+	    },
+	    killSwitchBannerSuccess: {
+	      backgroundColor: hexToRgba(theme.colors.primary, 0.1),
+	      borderColor: hexToRgba(theme.colors.primary, 0.24),
+	    },
+	    killSwitchBannerSpinner: {
+	      marginRight: spacing.sm,
+	    },
 	    voiceStartBanner: {
 	      marginBottom: spacing.xs,
 	    },
