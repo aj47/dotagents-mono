@@ -3139,3 +3139,46 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that empty and unchanged drafts now explain the disabled `Save` state clearly on a narrow screen.
   - Compare the empty, unchanged, and changed queue-edit states to confirm the helper disappears at the right time and does not crowd the edit actions.
   - If the helper text feels too tall in live use, tighten the vertical spacing before attempting any broader queue-panel changes.
+
+### 2026-03-08 — Iteration 73: keep queue edit mode anchored to message status and failure context
+
+- Status: shipped locally with live Expo / mobile typecheck blockers documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/ui/MessageQueuePanel.tsx`
+  - focused queue-panel regression coverage in `apps/mobile/tests/message-queue-panel-mobile.test.js`
+  - current mobile workflow notes in `apps/mobile/package.json`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `test -d apps/mobile/node_modules && echo APPS_MOBILE_NODE_MODULES_PRESENT || echo APPS_MOBILE_NODE_MODULES_MISSING` → `APPS_MOBILE_NODE_MODULES_MISSING`
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+  - Because Expo is still unavailable in this worktree, no fresh screenshot-backed Expo Web or simulator pass was practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed queued-message edit mode replaced the normal row body with only the text field, optional save-helper text, and `Cancel` / `Save` actions.
+  - That edit state hid the usual queued-message metadata (`Queued`/`Failed` plus time) and also hid the last failure reason for failed rows.
+  - On mobile, that made in-place queue edits feel less grounded right when users were trying to safely revise a sub-agent message.
+- Issue selected:
+  - Queue edit mode dropped the current message context, weakening state clarity and user confidence during a high-attention correction flow.
+- Decision:
+  - Keep the queue edit layout, text field, helper copy, and actions unchanged.
+  - Do not redesign the whole row while live validation is blocked.
+  - Make the smallest local context pass: add a compact edit-state label with timestamp for every queued-message edit and preserve the last failure reason when editing a failed row.
+- Implemented fix:
+  - Updated `apps/mobile/src/ui/MessageQueuePanel.tsx` to:
+    - add an `Editing queued message` / `Editing failed queued message` context line with the existing timestamp formatter,
+    - tint that edit-state label destructively for failed rows,
+    - preserve the latest failure reason in edit mode as a compact `Last error: ...` line when present.
+  - Updated `apps/mobile/tests/message-queue-panel-mobile.test.js` with focused regression coverage for the new edit-context label and failed-row error carryover.
+- Validation evidence:
+  - `node --test apps/mobile/tests/message-queue-panel-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ still blocked because local `expo` is unavailable in this worktree
+  - Expo Web / device re-validation ⚠️ blocked by the same missing mobile install (`apps/mobile/node_modules` missing)
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new edit-context text improves confidence without making queue edit mode feel too tall once the keyboard is up.
+  - The queued-message edit `TextInput` still deserves live validation to confirm the field, context text, helper, and action stack stay balanced on smaller devices.
+  - The missing mobile install continues to block screenshot-backed prioritization across the rest of the sub-agent activity surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that queued-message edit mode now keeps status/failure context visible on a narrow screen.
+  - Compare queued vs failed edit rows to confirm the `Last error` line helps without crowding the input on mobile.
+  - If the new context text feels too tall in live use, tighten the edit-stack spacing before attempting any broader queue-panel changes.

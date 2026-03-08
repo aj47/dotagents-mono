@@ -72,3 +72,12 @@ test('gives queued-message edit actions mobile-sized targets and explicit save/c
   assert.match(queuePanelSource, /accessibilityState=\{\{ disabled: isSaveEditDisabled \}\}/);
   assert.match(queuePanelSource, /style=\{\[styles\.editButton, styles\.saveButton, isSaveEditDisabled && styles\.saveButtonDisabled\]\}/);
 });
+
+test('keeps queue edit mode anchored to the current queued or failed message context', () => {
+  assert.match(queuePanelSource, /const editContextLabel = `\$\{isFailed \? 'Editing failed queued message' : 'Editing queued message'\} • \$\{formatTime\(message\.createdAt\)\}`;/);
+  assert.match(queuePanelSource, /editContextText:\s*\{[\s\S]*?lineHeight:\s*17,[\s\S]*?color:\s*theme\.colors\.mutedForeground,[\s\S]*?fontWeight:\s*'600'/);
+  assert.match(queuePanelSource, /editContextTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
+  assert.match(queuePanelSource, /editFailureText:\s*\{[\s\S]*?color:\s*`\$\{theme\.colors\.destructive\}CC`,[\s\S]*?marginTop:\s*2/);
+  assert.match(queuePanelSource, /<Text[\s\S]*?styles\.editContextText,[\s\S]*?isFailed && styles\.editContextTextWarning,[\s\S]*?>[\s\S]*?\{editContextLabel\}[\s\S]*?<\/Text>/);
+  assert.match(queuePanelSource, /\{isFailed && message\.errorMessage \? \([\s\S]*?<Text style=\{styles\.editFailureText\} numberOfLines=\{2\} ellipsizeMode="tail">[\s\S]*?Last error: \{message\.errorMessage\}[\s\S]*?<\/Text>[\s\S]*?\) : null\}/);
+});

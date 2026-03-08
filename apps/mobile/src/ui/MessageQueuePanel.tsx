@@ -105,6 +105,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const isProcessing = message.status === 'processing';
   const isAddedToHistory = message.addedToHistory === true;
   const trimmedEditText = editText.trim();
+  const editContextLabel = `${isFailed ? 'Editing failed queued message' : 'Editing queued message'} • ${formatTime(message.createdAt)}`;
   const editValidationMessage = !trimmedEditText
     ? 'Enter message text to save your queued message changes.'
     : trimmedEditText === trimmedOriginalText
@@ -191,6 +192,21 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     editContainer: {
       gap: 8,
     },
+    editContextText: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    editContextTextWarning: {
+      color: theme.colors.destructive,
+    },
+    editFailureText: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: `${theme.colors.destructive}CC`,
+      marginTop: 2,
+    },
     editInput: {
       minHeight: 60,
       padding: 8,
@@ -253,6 +269,21 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     return (
       <View style={styles.container}>
         <View style={styles.editContainer}>
+          <View>
+            <Text
+              style={[
+                styles.editContextText,
+                isFailed && styles.editContextTextWarning,
+              ]}
+            >
+              {editContextLabel}
+            </Text>
+            {isFailed && message.errorMessage ? (
+              <Text style={styles.editFailureText} numberOfLines={2} ellipsizeMode="tail">
+                Last error: {message.errorMessage}
+              </Text>
+            ) : null}
+          </View>
           <TextInput
             style={styles.editInput}
             value={editText}
