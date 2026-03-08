@@ -365,7 +365,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
         multiline
         numberOfLines={5}
         textAlignVertical="top"
+        accessibilityHint="Sends this instruction to the agent each time the loop runs."
       />
+      <Text style={styles.helperText}>Sent to the agent every time this loop runs.</Text>
 
       <Text style={styles.label}>Interval (minutes) *</Text>
       <TextInput

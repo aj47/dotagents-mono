@@ -154,6 +154,13 @@ test('LoopEditScreen previews interval minutes with readable cadence labels', ()
   assert.match(loopEditSource, /intervalHelperTextWarning:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
 });
 
+test('LoopEditScreen clarifies that Prompt is the instruction sent on each run', () => {
+  assert.match(loopEditSource, /<Text style=\{styles\.label\}>Prompt \*<\/Text>/);
+  assert.match(loopEditSource, /placeholder="Summarize the latest updates and notify me"/);
+  assert.match(loopEditSource, /accessibilityHint="Sends this instruction to the agent each time the loop runs\."/);
+  assert.match(loopEditSource, /<Text style=\{styles\.helperText\}>Sent to the agent every time this loop runs\.<\/Text>/);
+});
+
 test('AgentEditScreen wraps edit-flow switches in named mobile-sized controls', () => {
   assert.match(agentEditSource, /const switchTouchTarget = createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\)/);
   assert.match(agentEditSource, /Platform\.OS === 'web'[\s\S]*?styles\.switchTrack/);

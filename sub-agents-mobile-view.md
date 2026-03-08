@@ -3399,3 +3399,44 @@
   - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that `Create New Agent` and `Create New Loop` are easy to spot and tap at narrow widths.
   - Confirm the wider create actions still leave enough visual separation from the helper text and adjacent rows on a real mobile viewport.
   - After live validation is restored, continue with the next highest-signal local mobile issue instead of revisiting these create actions without new evidence.
+
+### 2026-03-08 — Iteration 77: clarify that loop prompts are the instructions sent on each run
+
+- Status: shipped locally with live Expo blocker documented.
+- Areas reviewed first:
+  - this ledger
+  - `apps/mobile/src/screens/LoopEditScreen.tsx`
+  - desktop wording baseline in `apps/desktop/src/renderer/src/pages/settings-loops.tsx`
+  - focused edit-flow regression coverage in `apps/mobile/tests/sub-agent-edit-mobile.test.js`
+- Live inspection / workflow status:
+  - Rechecked the current worktree state before validation:
+    - `pnpm --filter @dotagents/mobile exec expo --version` → `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` / `Command "expo" not found`
+    - earlier in the iteration, `pnpm --filter @dotagents/mobile web -- --port 19007` also remained blocked because local Expo is unavailable and `apps/mobile/node_modules` is missing
+  - Because `apps/mobile/node_modules` is still missing in this worktree, fresh Expo Web / simulator validation was not practical for this iteration.
+- Current behavior observed before the fix:
+  - Source review showed `LoopEditScreen` labeled the core form field only as `Prompt *` with a placeholder example.
+  - Unlike the desktop loop editor, the mobile screen did not explicitly say that this text is what gets sent to the agent on each scheduled run.
+  - On a dense mobile form, that made the highest-stakes loop instruction field easier to misread as generic notes instead of the actual loop task.
+- Issue selected:
+  - The mobile loop editor did not clearly explain what the `Prompt` field controls, weakening state clarity in a key sub-agent authoring step.
+- Decision:
+  - Keep the current field order, placeholder example, and save behavior unchanged.
+  - Do not add a new section or longer explanatory block while live validation is blocked.
+  - Make the smallest local fix: add one short helper line under `Prompt` and mirror the same meaning through accessibility metadata.
+- Implemented fix:
+  - Updated `apps/mobile/src/screens/LoopEditScreen.tsx` to:
+    - add an accessibility hint explaining that the prompt is sent to the agent each time the loop runs
+    - render helper copy under the field: `Sent to the agent every time this loop runs.`
+  - Updated `apps/mobile/tests/sub-agent-edit-mobile.test.js` with focused regression coverage for the new prompt helper and accessibility hint.
+- Validation evidence:
+  - `node --test apps/mobile/tests/sub-agent-edit-mobile.test.js` ✅
+  - `git diff --check` ✅
+  - `pnpm --filter @dotagents/mobile exec expo --version` ⚠️ blocked because local `expo` is unavailable in this worktree
+- Remaining nearby issues noted, not addressed this iteration:
+  - A real narrow-screen pass is still needed to confirm the new prompt helper improves clarity without crowding the nearby interval preview on mobile.
+  - The loop edit flow still has several inline helper/notice states clustered together, so any broader hierarchy tuning should wait for fresh live evidence instead of more source-only guessing.
+  - The missing mobile install continues to block screenshot-backed prioritization across the current sub-agent surfaces.
+- Next checks:
+  - Restore the mobile install in this worktree, then verify on Expo Web or a simulator that the prompt helper reads clearly above the interval section at narrow widths.
+  - Compare the new prompt helper against the existing interval preview and profile notices so the loop editor still scans cleanly as one stack on mobile.
+  - After live validation is restored, continue with the next highest-signal local mobile issue instead of iterating further on edit-flow copy without new evidence.
