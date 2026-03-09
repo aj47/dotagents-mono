@@ -749,6 +749,13 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const command = args.command as string
+    if (args.skillId !== undefined && typeof args.skillId !== "string") {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "skillId parameter must be a string if provided" }) }],
+        isError: true,
+      }
+    }
+
     const rawSkillId = typeof args.skillId === "string" ? args.skillId.trim() : undefined
     const skillId = rawSkillId && rawSkillId.toLowerCase() !== "default"
       ? rawSkillId

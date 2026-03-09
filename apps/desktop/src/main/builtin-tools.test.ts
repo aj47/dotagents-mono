@@ -43,6 +43,19 @@ describe("execute_command builtin tool", () => {
     )
   })
 
+  it("rejects non-string skill ids instead of treating them as omitted", async () => {
+    const { executeBuiltinTool } = await import("./builtin-tools")
+
+    const result = await executeBuiltinTool("execute_command", { command: "pwd", skillId: 123 })
+    const payload = parseToolPayload(result)
+
+    expect(result?.isError).toBe(true)
+    expect(payload.success).toBe(false)
+    expect(payload.error).toBe("skillId parameter must be a string if provided")
+    expect(getSkillMock).not.toHaveBeenCalled()
+    expect(execMock).not.toHaveBeenCalled()
+  })
+
   it("still rejects unknown explicit skill ids", async () => {
     getSkillMock.mockReturnValue(undefined)
     const { executeBuiltinTool } = await import("./builtin-tools")
