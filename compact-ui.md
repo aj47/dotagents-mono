@@ -9,6 +9,7 @@
 - [x] Desktop settings: capabilities → `MCP Servers` tab shell (`apps/desktop/src/renderer/src/pages/settings-mcp-tools.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile has inline skills/server sections inside `SettingsScreen` rather than a dedicated capabilities tab, so this wrapper-chrome issue is desktop-specific.
 - [x] Desktop settings: providers + models → `Provider Selection` group (`apps/desktop/src/renderer/src/pages/settings-providers.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile `SettingsScreen` `Provider Selection` was cross-checked and this redundant helper-copy issue is shared across both platforms.
 - [x] Desktop memories page empty/search-miss state (`apps/desktop/src/renderer/src/pages/memories.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile `SettingsScreen` has a memories subsection, but its empty state is already text-only, so this oversized empty-state chrome issue is desktop-specific rather than shared.
+- [x] Desktop settings: repeat tasks list + edit shell (`apps/desktop/src/renderer/src/pages/settings-loops.tsx`) — source-level review only this iteration because Electron runtime is still blocked before first renderer capture; mobile `SettingsScreen` keeps `Agent Loops` inline inside a collapsible section without a dedicated page header, so this top-chrome issue is desktop-specific rather than shared.
 
 ### Mobile checked screens / flows / states
 - [x] Mobile Settings root screen on initial app launch (`App.tsx` initial route `Settings`) — source-level review only this iteration because Expo web runtime was blocked before launch.
@@ -26,7 +27,7 @@
 - [ ] Desktop settings: providers + models remaining provider cards, preset/model pickers, download/progress states, and live runtime validation of the `Provider Selection` group
 - [ ] Desktop settings: capabilities → Skills tab, deeper MCP Tools & Servers content states, and live runtime validation of the MCP Servers tab shell
 - [ ] Desktop settings: agents
-- [ ] Desktop settings: repeat tasks
+- [ ] Desktop settings: repeat tasks remaining populated rows / runtime status badges / edit form field density, plus live runtime validation of the list and edit shell
 - [ ] Desktop memories page remaining list rows / selection bar / edit-delete dialogs, plus live runtime validation of the empty/search-miss states
 - [ ] Desktop panel window
 - [ ] Desktop modals / dialogs / tooltips / popovers / menus
@@ -55,6 +56,7 @@
 - [x] Desktop settings `Capabilities → MCP Servers` added a redundant intro paragraph and separate `border-t pt-6` wrapper above `MCPConfigManager`, even though the tab bar already labeled the surface and the manager itself already opens with its own `MCP Tools & Servers` heading; mobile keeps capabilities inline inside `SettingsScreen`, so this top-chrome issue is desktop-specific rather than shared.
 - [x] Desktop settings `Provider Selection` and mobile `SettingsScreen` `Provider Selection` both inserted helper copy that restated the section title and immediately repeated the nearby provider labels, pushing the first actionable provider control lower without adding new orientation.
 - [x] Desktop memories page empty/search-miss state used oversized hero chrome — a large `Brain` icon, `py-12` centered empty-state block, and wider copy — even though the page already has a `Memories` title, search/filter controls, and a collapsed file-template helper above it; the mobile `SettingsScreen` memories subsection already uses a text-only empty message, so this density issue is desktop-specific rather than shared.
+- [x] Desktop settings `Repeat Tasks` used dedicated page-header chrome (`Repeat Tasks` title, explanatory sentence, and `border-b` header band) above the actual task list or edit form, even though neighboring desktop settings pages such as `settings-agents.tsx` and `settings-mcp-tools.tsx` already rely on the settings navigation plus local action rows/form titles for orientation; mobile keeps `Agent Loops` inline inside `SettingsScreen`, so this wrapper-chrome issue is desktop-specific rather than shared.
 
 ### Improved
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
@@ -73,6 +75,7 @@
 - [x] Tightened the desktop `Capabilities → MCP Servers` tab shell by removing the redundant intro paragraph and top divider wrapper above `MCPConfigManager`, so the manager heading and primary tools/server controls appear sooner under the tab bar.
 - [x] Removed the redundant `Provider Selection` helper sentence from both desktop `settings-providers.tsx` and mobile `SettingsScreen.tsx`, so the first provider control appears immediately under the section title while keeping the desktop ACP note and all provider labels/actions intact.
 - [x] Tightened the desktop memories empty/search-miss state by replacing the centered hero treatment with a compact dashed panel and smaller title/copy block, so the empty result sits more quietly under the existing page title, file-template helper, and search/filter controls.
+- [x] Tightened the desktop `Repeat Tasks` page shell by removing the dedicated title/description header band and moving `Add Task` into a compact top-right action row inside the existing scroll container, so more list or form content appears above the fold without changing task actions.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
@@ -105,6 +108,8 @@
 - [x] Targeted cross-platform source verification passed: `node --test apps/desktop/tests/settings-providers-selection-density.test.mjs apps/mobile/tests/settings-remote-provider-density.test.js`.
 - [x] Dependency-free desktop memories empty-state density regression coverage added in `apps/desktop/tests/memories-empty-state-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/memories-empty-state-density.test.mjs`.
+- [x] Dependency-free desktop repeat-task shell density regression coverage added in `apps/desktop/tests/settings-loops-density.test.mjs`.
+- [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/settings-loops-density.test.mjs`.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
@@ -118,6 +123,7 @@
 - [x] Live provider-settings inspection remained blocked this iteration: `list-processes` found no running app surfaces, `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, and `test -d node_modules` reported `NODE_MODULES_MISSING`, so no screenshot-backed desktop/mobile provider-selection review was possible.
 - [x] Live memories-surface inspection remained blocked this iteration: `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` reported `NODE_MODULES_MISSING`, so there was no available desktop renderer or Expo web launch path for screenshot-backed review of the desktop memories page or the mobile memories subsection.
 - [x] Live mobile agent-management inspection remained blocked this iteration: `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` reported `NODE_MODULES_MISSING`, and there was no available Expo web launch path for screenshot-backed review of the `Agents` / `Agent Loops` subsections.
+- [x] Live desktop repeat-tasks inspection remained blocked this iteration: `list-processes` returned `No processes found`, `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` reported `NODE_MODULES_MISSING`, and `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, so there was no screenshot-backed review path for the desktop repeat-tasks list or edit shell.
 
 ### Still uncertain
 - [ ] Desktop renderer / Electron surfaces still need first live attachment and screenshot evidence once dependencies are installed.
@@ -131,6 +137,7 @@
 - [ ] Desktop `Capabilities → MCP Servers` shell is denser in source, but the real renderer still needs screenshot-backed validation for the tab-to-heading rhythm, initial above-the-fold card visibility, and awkward-height behavior once Electron can launch.
 - [ ] The repaired `control.test.tsx` assertion now renders `ControlLabel` correctly in source, but the component-level Vitest test still has not been executed in this environment because the desktop/shared toolchain is unavailable.
 - [ ] Desktop memories empty/search-miss state is denser in source, but the real renderer still needs screenshot-backed validation for the dashed-panel balance, search-miss readability, and surrounding spacing under narrow or short windows once Electron can launch.
+- [ ] Desktop `Repeat Tasks` is denser in source, but the real renderer still needs screenshot-backed validation for above-the-fold list density, edit-form entry spacing, and narrow-height behavior once Electron can launch.
 - [ ] Mobile Chats list row density is improved in source, but the stub-session title/date balance still needs live Expo web or device screenshot review at small-phone and larger mobile-web widths.
 - [ ] Mobile chat composer, header action row, and voice-related controls still need live narrow-width review for density and possible control crowding.
 - [ ] Mobile chat header badge and composer now avoid duplicate agent-selection chrome in source, but the real small-phone header truncation, keyboard-open layout, and agent-selector sheet entry flow still need live screenshot-backed validation.
@@ -293,3 +300,12 @@ Evidence
 - After evidence: Source now renders the mobile agent-management action column with plain-text `Delete` / `Run` controls and explicit accessibility labels, which should reduce visual noise and keep narrow settings rows clearer without losing orientation.
 - Verification commands/run results: `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` → `NODE_MODULES_MISSING` (exit 0). `list-processes` → only the completed node-modules probe was present, with no running app surfaces. `electron_execute_electron-native` → failed (`Failed to list CDP targets. Make sure Electron is running with --inspect flag.`). `node --test apps/mobile/tests/settings-agent-management-density.test.js apps/mobile/tests/settings-remote-provider-density.test.js apps/mobile/tests/settings-screen-density.test.js` → passed (6 tests, 0 failures, exit 0).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because Expo web still cannot launch in this worktree without local dependencies, so the real `Agents` / `Agent Loops` row wrapping, action-column width, and tap-target spacing still need live screenshot-backed validation once runtime access is restored.
+
+#### Iteration 18
+Evidence
+- Scope: Desktop settings `Repeat Tasks` list + edit shell density, with a cross-check against nearby desktop settings pages and the inline mobile `Agent Loops` subsection.
+- Before evidence: Source-backed observation only because runtime was blocked — `list-processes` returned `No processes found`, `pwd && test -d node_modules && echo NODE_MODULES_PRESENT || echo NODE_MODULES_MISSING && ls node_modules/.bin/expo node_modules/.bin/tsup 2>/dev/null || true` reported `NODE_MODULES_MISSING`, and `electron_execute_electron-native` returned `Failed to list CDP targets. Make sure Electron is running with --inspect flag.`, so no screenshot capture was possible. In `apps/desktop/src/renderer/src/pages/settings-loops.tsx`, the list view rendered a dedicated `Repeat Tasks` title, explanatory sentence, and `border-b` header band above the actual content. Cross-check: neighboring desktop settings pages such as `settings-agents.tsx` and `settings-mcp-tools.tsx` already rely on navigation context plus local action rows or form titles, and mobile keeps `Agent Loops` inline inside `SettingsScreen`, so this extra wrapper chrome was desktop-specific rather than shared.
+- Change: Removed the dedicated desktop repeat-task header band from `settings-loops.tsx`, moved `Add Task` into a compact top-right action row within the existing scroll container, and added dependency-free regression coverage in `apps/desktop/tests/settings-loops-density.test.mjs` to keep the list view free of the extra title/description chrome.
+- After evidence: Source now opens the desktop repeat-task surface directly into the action row and the list or edit form, which should keep more task content above the fold while preserving the existing form card title for edit-mode orientation.
+- Verification commands/run results: `node --test apps/desktop/tests/settings-loops-density.test.mjs` → passed (2 tests, 0 failures, exit 0). Runtime validation remained blocked because `list-processes` found no running app surfaces, `electron_execute_electron-native` could not attach, and `NODE_MODULES_MISSING` prevented launching Electron or Expo web in this worktree.
+- Blockers/remaining uncertainty: No before/after screenshots were possible because the desktop renderer still cannot launch in this worktree without local dependencies, so the real repeat-task list density, edit-form spacing, and awkward-height behavior still need screenshot-backed validation once runtime access is restored.

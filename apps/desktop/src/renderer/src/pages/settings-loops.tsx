@@ -416,23 +416,15 @@ export function SettingsLoops() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 border-b bg-background px-6 pb-2 pt-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold">Repeat Tasks</h1>
-            <p className="text-xs text-muted-foreground">
-              Configure tasks to run automatically at regular intervals
-            </p>
-          </div>
+    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
+      {!editing && (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <Button size="sm" className="gap-1.5" onClick={handleCreate}>
             <Plus className="h-3.5 w-3.5" />Add Task
           </Button>
         </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
-        {editing ? renderEditForm() : renderLoopList()}
-      </div>
+      )}
+      {editing ? renderEditForm() : renderLoopList()}
     </div>
   )
 }
