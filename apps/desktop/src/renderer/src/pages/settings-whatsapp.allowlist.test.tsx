@@ -351,10 +351,14 @@ describe("desktop WhatsApp settings allowlist", () => {
     const tree = await renderSettled(runtime, Component)
     const connectionGroup = findControlGroup(tree, "Connection")
     const connectionText = collectText(connectionGroup).join(" ")
+    const connectionEndDescriptionText = collectText(connectionGroup?.props?.endDescription).join(" ")
 
     expect(connectionText).toContain("Connect with QR Code")
     expect(connectionText).toContain("Open WhatsApp on your phone → Settings → Linked Devices → Scan this QR code")
+    expect(connectionGroup?.props?.endDescription).toBeUndefined()
+    expect(connectionEndDescriptionText).toBe("")
     expect(connectionText).not.toContain("Connect your WhatsApp account by scanning the QR code")
+    expect(connectionEndDescriptionText).not.toContain("Connect your WhatsApp account by scanning the QR code")
   })
 
   it("renders allowlist guidance and empty-state warning as plain text in Settings", async () => {
