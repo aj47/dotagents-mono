@@ -7,12 +7,6 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@renderer/components/ui/tooltip"
 import { STT_PROVIDER_ID } from "@shared/index"
 import { SUPPORTED_LANGUAGES } from "@shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -705,24 +699,10 @@ export function Component() {
           defaultCollapsed
           title="Shortcuts"
           endDescription={
-            <div className="flex items-center gap-1">
-              <div>
-                {shortcut === "hold-ctrl"
-                  ? "Hold Ctrl key to record, release it to finish recording"
-                  : "Press Ctrl+/ to start and finish recording"}
-              </div>
-              <TooltipProvider disableHoverableContent delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger className="inline-flex items-center justify-center">
-                    <span className="i-mingcute-information-fill text-base"></span>
-                  </TooltipTrigger>
-                  <TooltipContent collisionPadding={5}>
-                    {shortcut === "hold-ctrl"
-                      ? "Press any key to cancel"
-                      : "Press Esc to cancel"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="leading-relaxed">
+              {shortcut === "hold-ctrl"
+                ? "Hold Ctrl to record, release it to finish, and press any other key to cancel."
+                : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."}
             </div>
           }
         >
