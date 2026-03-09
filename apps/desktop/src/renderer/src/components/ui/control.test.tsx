@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest"
 
 import { Control, ControlLabel } from "./control"
 
+function renderFunctionComponent<Props>(element: React.ReactElement<Props>) {
+  if (typeof element.type !== "function") {
+    throw new Error("Expected a function component element")
+  }
+
+  return (element.type as (props: Props) => React.ReactElement)(element.props)
+}
+
 describe("Control", () => {
   it("uses a stacked-first layout so settings rows stay usable on narrow widths", () => {
     const tree = Control({ label: "Theme", children: <input /> }) as React.ReactElement
@@ -40,7 +48,8 @@ describe("ControlLabel", () => {
     expect(controlColumn.props.className).toContain("sm:max-w-[48%]")
 
     const labelWrapper = labelColumn.props.children as React.ReactElement
-    const controlLabel = labelWrapper.props.children as React.ReactElement
+    const unresolvedControlLabel = labelWrapper.props.children as React.ReactElement
+    const controlLabel = renderFunctionComponent(unresolvedControlLabel)
     const provider = React.Children.toArray(controlLabel.props.children)[1] as React.ReactElement
     const tooltip = provider.props.children as React.ReactElement
     const tooltipContent = React.Children.toArray(tooltip.props.children)[1] as React.ReactElement

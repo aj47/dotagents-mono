@@ -34,23 +34,27 @@
 - [x] Removed the duplicate in-content `Settings` title from the mobile root settings surface to reduce non-informational vertical space and let the connection card surface sooner.
 - [x] Repositioned shared desktop settings helper tooltips to prefer a vertical opening direction (`top`) with a slightly tighter offset so explanatory overlays are less likely to spill over neighboring switches/selects in dense settings rows.
 - [x] Strengthened desktop tooltip regression coverage to assert the shared settings-row composition in `Control` + `ControlLabel` and a dependency-free audit of a concrete `settings-general` row.
+- [x] Fixed `apps/desktop/src/renderer/src/components/ui/control.test.tsx` so the tooltip regression test now renders the nested `ControlLabel` component before traversing tooltip props, closing the QA-noted false-positive gap in the component-level assertion.
 
 ### Verified
 - [x] Source-level regression coverage added in `apps/mobile/tests/settings-screen-density.test.js`.
 - [x] Targeted verification passed: `node --test apps/mobile/tests/settings-screen-density.test.js apps/mobile/tests/navigation-header.test.js`.
 - [x] Dependency-free desktop regression coverage added in `apps/desktop/tests/control-tooltip-density.test.mjs`.
 - [x] Targeted desktop source verification passed: `node --test apps/desktop/tests/control-tooltip-density.test.mjs`.
+- [x] Re-ran `node --test apps/desktop/tests/control-tooltip-density.test.mjs` after the QA remediation; all 3 desktop tooltip density assertions still passed.
 
 ### Blocked
 - [x] Live mobile runtime inspection blocked: `pnpm --filter @dotagents/mobile web` failed with `node_modules missing`, `expo: command not found`, and `ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL`.
 - [x] Live desktop runtime inspection not attempted after the same dependency blocker pattern because local app dependencies appear unavailable.
 - [x] Live desktop renderer inspection remained blocked this iteration: `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` failed during `@dotagents/shared build` with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing` warnings.
 - [x] Targeted desktop Vitest execution remained blocked for the same reason: `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` failed before Vitest ran because `pnpm -w run build:shared` could not find `tsup`.
+- [x] The same targeted Vitest command is still blocked after this QA remediation pass because `pnpm -w run build:shared` fails before Vitest startup with `tsup: command not found` and `node_modules missing` warnings.
 
 ### Still uncertain
 - [ ] Desktop renderer / Electron surfaces still need first live attachment and screenshot evidence once dependencies are installed.
 - [ ] Desktop settings helper-tooltip hover occlusion remains un-reproduced in a live renderer; the current coverage is shared-component/source-level only until the desktop runtime can launch for screenshot-backed review.
 - [ ] Desktop settings surfaces remain unchecked at runtime; the shared settings-row audit is not a substitute for live renderer coverage.
+- [ ] The repaired `control.test.tsx` assertion now renders `ControlLabel` correctly in source, but the component-level Vitest test still has not been executed in this environment because the desktop/shared toolchain is unavailable.
 - [ ] Mobile chat composer, header action row, and agent selector chip still need live narrow-width review for density and possible control crowding.
 
 ### Iterations
@@ -90,3 +94,12 @@ Evidence
 - After evidence: The desktop tooltip regression coverage now checks both the shared row split (`sm:max-w-[52%]` + `sm:max-w-[48%]`) and the top-opening tooltip contract, while the ledger explicitly treats live renderer validation as pending rather than complete.
 - Verification commands/run results: `node --test apps/desktop/tests/control-tooltip-density.test.mjs` → passed (3 tests, 0 failures, exit 0). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` → failed before Vitest startup because `pnpm -w run build:shared` could not find `tsup` (exit 1). `REMOTE_DEBUGGING_PORT=9333 ELECTRON_EXTRA_LAUNCH_ARGS="--inspect=9339" pnpm dev -- -dui` → failed during predev with `tsup: command not found` before a renderer target was available (exit 1).
 - Blockers/remaining uncertainty: No before/after screenshots were possible because the desktop renderer still cannot launch without the missing desktop/shared toolchain dependencies, so live hover/click interference remains unverified until that blocker is removed.
+
+#### Iteration 5
+Evidence
+- Scope: QA round 2 remediation for the broken desktop component-level tooltip regression test.
+- Before evidence: QA found that `apps/desktop/src/renderer/src/components/ui/control.test.tsx` read `controlLabel.props.children` from the unresolved `<ControlLabel ... />` element nested inside `Control`, so the test would fail before proving the tooltip contract once Vitest became runnable.
+- Change: Added a local `renderFunctionComponent(...)` helper in `apps/desktop/src/renderer/src/components/ui/control.test.tsx` and used it to render the nested `ControlLabel` element before traversing the `TooltipProvider` / `TooltipContent` subtree.
+- After evidence: The tooltip regression test now inspects the rendered `ControlLabel` output rather than the unresolved JSX element, so the assertion path reaches the shared tooltip props it claims to verify.
+- Verification commands/run results: `node --test apps/desktop/tests/control-tooltip-density.test.mjs` → passed (3 tests, 0 failures, exit 0). `pnpm --filter @dotagents/desktop test:run -- src/renderer/src/components/ui/control.test.tsx` → still blocked before Vitest startup because `pnpm -w run build:shared` failed with `tsup: command not found`, `spawn ENOENT`, and `node_modules missing` warnings (exit 1).
+- Blockers/remaining uncertainty: The component-level test logic is repaired, but this environment still cannot execute the Vitest file end-to-end until desktop/shared dependencies are installed, and live renderer screenshot validation remains blocked for the same reason.
