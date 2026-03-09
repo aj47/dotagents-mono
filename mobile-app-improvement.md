@@ -70,6 +70,38 @@
 
 ## Recent Iterations
 
+### 2026-03-09 — QA remediation 2: strengthen stub-chat behavior evidence and fix the committed-range whitespace regression
+
+- Status: completed with targeted behavior-backed verification; live Expo Web remained blocked by missing dependencies in this worktree
+- Area:
+  - `ChatScreen` stub-session loading/error notice flow in `apps/mobile/src/screens/ChatScreen.tsx`
+  - targeted regression coverage in `apps/mobile/tests/chat-stub-session-state.test.js`
+- Why this area:
+  - QA round 1 scoped this pass to two concrete gaps only: the committed-range whitespace failure in the prior patch and the weak source-only verification for the stub-chat async notice state
+  - the remediation needed stronger fallback evidence without broadening scope beyond the existing stub-chat work
+- Findings:
+  - the prior committed range still contained `apps/mobile/tests/chat-stub-session-state.test.js:26: new blank line at EOF`, so the earlier generic `git diff --check` note was not sufficient for the QA-scoped range
+  - the prior stub-chat regression only regex-matched source text, which did not execute the lazy-load branches or prove the visible retry/settings actions were wired to reachable behavior
+- Change made:
+  - extracted the stub-chat notice copy, action mapping, and async lazy-load outcome handling into a tiny shared helper used by `ChatScreen`
+  - replaced the source-only chat stub test with behavior-focused tests that execute the null/throw/success lazy-load branches, assert the visible notice copy/view-model, and prove that `Open settings` and `Retry` route into the intended handlers
+  - removed the trailing blank-line regression from `apps/mobile/tests/chat-stub-session-state.test.js`
+- Verification:
+  - `node --experimental-strip-types --test apps/mobile/tests/chat-stub-session-state.test.js`
+  - `git diff --check`
+  - `git diff --check 88fcb982dbc316635071e2bdfd2fd11aede4c31f..HEAD`
+- Follow-up checks:
+  - once dependencies are available, verify in Expo Web that the same credential and retry notices still wrap cleanly above chat content and that the extracted helper-backed button copy matches the rendered narrow-screen banner exactly
+  - keep future work out of this already-remediated stub-chat subsection unless a new finding appears
+
+Evidence
+- Scope: QA remediation for the stub-chat async notice evidence gap and the committed-range whitespace failure
+- Before evidence: QA findings documented that `git diff --check 88fcb982dbc316635071e2bdfd2fd11aede4c31f..8f6e16001910b79d416c9edafa7316a7323120f2` failed with `apps/mobile/tests/chat-stub-session-state.test.js:26: new blank line at EOF`, and that `apps/mobile/tests/chat-stub-session-state.test.js` only regex-matched `ChatScreen.tsx` source without executing lazy-load branches, rendering the notice copy through behavior, or proving the retry/settings handlers were reachable.
+- Change: Added `apps/mobile/src/screens/chat-stub-session-notice.ts` to centralize stub-chat notice creation, action view-models, and async lazy-load outcomes; wired `ChatScreen.tsx` through that helper; and rewrote `apps/mobile/tests/chat-stub-session-state.test.js` into behavior-backed tests for credential notice routing, retry notice routing, null-result lazy-load failure, thrown lazy-load failure, and successful hydration.
+- After evidence: `ChatScreen.tsx` now derives the visible stub-chat banner title/action/accessibility copy from `getStubSessionNoticeViewModel(...)`, triggers button behavior through `activateStubSessionNotice(...)`, and resolves lazy-load notice outcomes through `resolveStubSessionLazyLoad(...)`. The updated test file now imports that helper, asserts the visible credential/retry banner copy, proves `Open settings` invokes the settings handler, proves `Retry` clears messages and retries the current stub session, and executes the `null`, `throw`, and `success` lazy-load branches directly.
+- Verification commands/run results: `node --experimental-strip-types --test apps/mobile/tests/chat-stub-session-state.test.js` ✅ (5/5 passing); `git diff --check` ✅; `git diff --check 88fcb982dbc316635071e2bdfd2fd11aede4c31f..HEAD` ✅ after the follow-up commit.
+- Blockers/remaining uncertainty: Expo Web is still unavailable in this worktree because dependencies are missing, so this QA remediation still lacks new live before/after screenshots. Remaining uncertainty is limited to runtime visual wrapping/stacking of the already-shipped stub-chat banner until the dependency blocker is cleared.
+
 ### 2026-03-09 — Iteration 12: make desktop-synced stub chats explain missing history and offer recovery
 
 - Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree

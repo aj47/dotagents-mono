@@ -52,6 +52,13 @@ import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import {
+  StubSessionNotice,
+  activateStubSessionNotice,
+  createStubSessionCredentialsNotice,
+  getStubSessionNoticeViewModel,
+  resolveStubSessionLazyLoad,
+} from './chat-stub-session-notice';
+import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
   createExpandCollapseAccessibilityLabel,
@@ -599,11 +606,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
-  const [stubSessionNotice, setStubSessionNotice] = useState<{
-    kind: 'credentials' | 'load-failed';
-    sessionId: string;
-    message: string;
-  } | null>(null);
+  const [stubSessionNotice, setStubSessionNotice] = useState<StubSessionNotice | null>(null);
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -816,21 +819,24 @@ export default function ChatScreen({ route, navigation }: any) {
     setStubSessionNotice(null);
 
     try {
-      const client = new SettingsApiClient(config.baseUrl, config.apiKey);
-      const result = await sessionStore.loadSessionMessages(stubSessionId, client);
+      const outcome = await resolveStubSessionLazyLoad({
+        stubSessionId,
+        getCurrentSessionId: () => currentSessionIdRef.current,
+        loadMessages: () => {
+          const client = new SettingsApiClient(config.baseUrl, config.apiKey);
+          return sessionStore.loadSessionMessages(stubSessionId, client);
+        },
+        onError: (err) => {
+          console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
+        },
+      });
 
-      if (!result) {
-        if (currentSessionIdRef.current === stubSessionId) {
-          setStubSessionNotice({
-            kind: 'load-failed',
-            sessionId: stubSessionId,
-            message: 'Couldn’t load this synced chat from desktop. Check your connection and retry.',
-          });
-        }
+      if (outcome.kind === 'notice') {
+        setStubSessionNotice(outcome.notice);
         return;
       }
 
-      if (currentSessionIdRef.current !== stubSessionId) {
+      if (outcome.kind !== 'loaded') {
         return;
       }
 
@@ -840,20 +846,11 @@ export default function ChatScreen({ route, navigation }: any) {
       // already in the store (both freshly fetched and in-flight bail-out cases)
       // to avoid ID/updatedAt regeneration. The flag is always cleared by the
       // persistence effect on the next render (or immediately if length is unchanged).
-      if (result.messages.length > 0) {
+      if (outcome.shouldSkipPersist) {
         skipNextPersistRef.current = true;
       }
 
-      hydrateStubSessionMessages(result.messages);
-    } catch (err: any) {
-      console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
-      if (currentSessionIdRef.current === stubSessionId) {
-        setStubSessionNotice({
-          kind: 'load-failed',
-          sessionId: stubSessionId,
-          message: 'Couldn’t load this synced chat from desktop. Check your connection and retry.',
-        });
-      }
+      hydrateStubSessionMessages(outcome.messages);
     } finally {
       if (pendingLazyLoadSessionIdRef.current === stubSessionId) {
         pendingLazyLoadSessionIdRef.current = null;
@@ -918,11 +915,7 @@ export default function ChatScreen({ route, navigation }: any) {
         void loadStubSessionMessages(currentSession.id);
       } else if (currentSession.serverConversationId) {
         setMessages([]);
-        setStubSessionNotice({
-          kind: 'credentials',
-          sessionId: currentSession.id,
-          message: 'Connect this mobile app to DotAgents to load synced chats from desktop.',
-        });
+        setStubSessionNotice(createStubSessionCredentialsNotice(currentSession.id));
       } else {
         setMessages([]);
         setStubSessionNotice(null);
@@ -2798,6 +2791,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const activeStubSessionNotice = stubSessionNotice && stubSessionNotice.sessionId === sessionStore.currentSessionId
     ? stubSessionNotice
     : null;
+  const activeStubSessionNoticeViewModel = activeStubSessionNotice
+    ? getStubSessionNoticeViewModel(activeStubSessionNotice)
+    : null;
 
 
   return (
@@ -3198,9 +3194,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <Text style={styles.connectionBannerIcon}>⚠️</Text>
               <View style={styles.connectionBannerTextContainer}>
                 <Text style={styles.connectionBannerText}>
-                  {activeStubSessionNotice.kind === 'credentials'
-                    ? 'Synced chat needs connection settings'
-                    : 'Couldn’t load synced chat history'}
+                  {activeStubSessionNoticeViewModel?.title}
                 </Text>
                 <Text style={styles.connectionBannerSubtext}>
                   {activeStubSessionNotice.message}
@@ -3209,25 +3203,21 @@ export default function ChatScreen({ route, navigation }: any) {
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => {
-                  if (activeStubSessionNotice.kind === 'credentials') {
-                    navigation.navigate('ConnectionSettings');
-                    return;
-                  }
-
-                  setMessages([]);
-                  void loadStubSessionMessages(activeStubSessionNotice.sessionId);
+                  activateStubSessionNotice(activeStubSessionNotice, {
+                    openConnectionSettings: () => navigation.navigate('ConnectionSettings'),
+                    clearMessages: () => setMessages([]),
+                    retryLoad: (sessionId) => {
+                      void loadStubSessionMessages(sessionId);
+                    },
+                  });
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel(
-                  activeStubSessionNotice.kind === 'credentials' ? 'Open connection settings' : 'Retry loading synced chat'
-                )}
-                accessibilityHint={activeStubSessionNotice.kind === 'credentials'
-                  ? 'Opens connection settings so this mobile app can load synced chat history.'
-                  : 'Attempts to load the current synced chat history from desktop again.'}
+                accessibilityLabel={activeStubSessionNoticeViewModel?.accessibilityLabel}
+                accessibilityHint={activeStubSessionNoticeViewModel?.accessibilityHint}
                 activeOpacity={0.7}
               >
                 <Text style={styles.retryButtonText}>
-                  {activeStubSessionNotice.kind === 'credentials' ? 'Open settings' : 'Retry'}
+                  {activeStubSessionNoticeViewModel?.actionLabel}
                 </Text>
               </TouchableOpacity>
             </View>
