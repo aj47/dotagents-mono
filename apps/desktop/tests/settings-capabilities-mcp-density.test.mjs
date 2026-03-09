@@ -23,3 +23,21 @@ test('desktop capabilities MCP tab removes redundant wrapper chrome above the ma
 test('desktop MCP config manager still provides its own heading after the wrapper cleanup', () => {
   assert.match(mcpConfigManagerSource, /<h3 className="text-lg font-medium">MCP Tools & Servers<\/h3>/)
 })
+
+test('desktop MCP server rows replace the icon-only action rail with one compact Actions menu', () => {
+  assert.match(mcpConfigManagerSource, /aria-label=\{`Actions for \$\{name\} server`\}/)
+  assert.match(mcpConfigManagerSource, /<span>Actions<\/span>/)
+  assert.match(mcpConfigManagerSource, /<DropdownMenuItem onClick=\{\(\) => handleRestartServer\(name\)\}>[\s\S]*?Restart server/)
+  assert.match(mcpConfigManagerSource, /<DropdownMenuItem onClick=\{\(\) => handleStopServer\(name\)\}>[\s\S]*?Stop server/)
+  assert.match(mcpConfigManagerSource, /<DropdownMenuItem[\s\S]*?handleDeleteServer\(name\)[\s\S]*?Delete server/)
+})
+
+test('desktop MCP server rows no longer pin the old title-only icon actions', () => {
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Start server"/)
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Restart server"/)
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Stop server"/)
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Edit server"/)
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Start OAuth authentication"/)
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Revoke OAuth authentication"/)
+  assert.doesNotMatch(mcpConfigManagerSource, /title="Delete server"/)
+})
