@@ -1975,7 +1975,7 @@ export default function SettingsScreen({ navigation }: any) {
             {remoteSettings && (
               <CollapsibleSection id="langfuse" title="Langfuse">
                 <View style={styles.row}>
-                  <Text style={styles.label}>Langfuse Observability</Text>
+                  <Text style={styles.label}>Enable tracing</Text>
                   <Switch
                     value={remoteSettings.langfuseEnabled ?? false}
                     onValueChange={(v) => handleRemoteSettingToggle('langfuseEnabled', v)}
@@ -1983,9 +1983,6 @@ export default function SettingsScreen({ navigation }: any) {
                     thumbColor={remoteSettings.langfuseEnabled ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
-                <Text style={styles.helperText}>
-                  Enable tracing and observability via Langfuse
-                </Text>
 
                 {remoteSettings.langfuseEnabled && (
                   <>

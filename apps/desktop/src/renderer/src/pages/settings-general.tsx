@@ -33,7 +33,7 @@ import {
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { ExternalLink, AlertCircle, FolderOpen, FolderUp, FileText } from "lucide-react"
+import { ExternalLink, FolderOpen, FolderUp, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -1347,43 +1347,20 @@ export function Component() {
           title="Langfuse Observability"
           endDescription={(
             <div className="break-words whitespace-normal">
+              Optional tracing for LLM calls, agent sessions, and tools.{" "}
               <a
                 href="https://langfuse.com"
                 target="_blank"
                 rel="noreferrer noopener"
                 className="underline inline-flex items-center gap-1"
               >
-                Langfuse
+                Docs
                 <ExternalLink className="h-3 w-3" />
-              </a>{" "}
-              is an open-source LLM observability platform. Enable this to trace LLM calls, agent sessions, and tool executions for debugging and monitoring.
+              </a>
             </div>
           )}
         >
-          {/* Show warning if langfuse package is not installed */}
-          {!isLangfuseInstalled && (
-            <div className="mx-3 mb-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-600 dark:text-amber-400">
-                    Langfuse package not installed
-                  </p>
-                  <p className="text-muted-foreground mt-1">
-                    Langfuse is an optional dependency. To enable observability features, install it by running:
-                  </p>
-                  <code className="mt-2 block bg-muted px-2 py-1 rounded text-xs font-mono">
-                    pnpm add langfuse
-                  </code>
-                  <p className="text-muted-foreground mt-2 text-xs">
-                    After installing, restart the app to enable Langfuse integration.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Control label="Enable Langfuse Tracing" className="px-3">
+          <Control label="Enable tracing" className="px-3">
             <Switch
               checked={configQuery.data?.langfuseEnabled ?? false}
               disabled={!isLangfuseInstalled}
@@ -1392,6 +1369,12 @@ export function Component() {
               }}
             />
           </Control>
+
+          {!isLangfuseInstalled && (
+            <div className="mx-3 mb-3 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+              Install the optional <span className="font-mono">langfuse</span> package with <span className="font-mono">pnpm add langfuse</span>, then restart DotAgents to enable tracing.
+            </div>
+          )}
 
           {configQuery.data?.langfuseEnabled && (
             <>
