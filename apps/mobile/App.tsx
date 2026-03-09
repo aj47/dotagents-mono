@@ -17,10 +17,11 @@ import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
 import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
-import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform, Pressable } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from './src/lib/accessibility';
 import * as Linking from 'expo-linking';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useCallback, useRef } from 'react';
@@ -357,7 +358,7 @@ function Navigation() {
                 >
                   <Stack.Navigator
                     initialRouteName="Settings"
-                    screenOptions={({ route }) => ({
+                    screenOptions={({ route, navigation }) => ({
                       headerTitleStyle: { ...theme.typography.h2 },
                       headerStyle: { backgroundColor: theme.colors.card },
                       headerTintColor: theme.colors.foreground,
@@ -370,7 +371,29 @@ function Navigation() {
                               resizeMode="contain"
                             />
                           )
-                        : undefined,
+                        : ({ tintColor }) => navigation.canGoBack()
+                          ? (
+                              <Pressable
+                                onPress={() => navigation.goBack()}
+                                accessibilityRole="button"
+                                accessibilityLabel={createButtonAccessibilityLabel('Go back')}
+                                accessibilityHint="Returns to the previous screen"
+                                style={({ pressed }) => [
+                                  styles.headerBackButton,
+                                  pressed && styles.headerBackButtonPressed,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.headerBackButtonText,
+                                    { color: tintColor ?? theme.colors.foreground },
+                                  ]}
+                                >
+                                  ‹
+                                </Text>
+                              </Pressable>
+                            )
+                          : null,
                       headerRight: () => (
                         <ConnectionStatusIndicator
                           state={tunnelConnection.connectionInfo.state}
@@ -432,6 +455,19 @@ function StatusBarWrapper() {
 }
 
 const styles = StyleSheet.create({
+  headerBackButton: {
+    ...createMinimumTouchTargetStyle({ minSize: 44, horizontalPadding: 10, verticalPadding: 10 }),
+    marginLeft: 4,
+    marginRight: 4,
+  },
+  headerBackButtonPressed: {
+    opacity: 0.72,
+  },
+  headerBackButtonText: {
+    fontSize: 26,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
