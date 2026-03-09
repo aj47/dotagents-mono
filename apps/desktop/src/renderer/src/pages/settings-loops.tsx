@@ -328,11 +328,9 @@ export function SettingsLoops() {
     if (!editing) return null
     return (
       <Card className="max-w-3xl">
-        <CardHeader className="pb-3">
+        <CardHeader className="space-y-1 pb-2">
           <CardTitle className="text-lg">{isCreating ? "Add Repeat Task" : "Edit Repeat Task"}</CardTitle>
-          <CardDescription>
-            Configure a task to run automatically at regular intervals
-          </CardDescription>
+          <CardDescription>Set the prompt, interval, and startup behavior.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -354,35 +352,34 @@ export function SettingsLoops() {
               rows={4}
             />
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="interval">Interval</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="interval"
-                  type="number"
-                  min={1}
-                  value={editing.intervalMinutesDraft}
-                  onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
-                  className="w-24"
-                />
-                <span className="text-sm text-muted-foreground self-center">minutes</span>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {INTERVAL_PRESETS.map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="interval">Interval</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id="interval"
+                type="number"
+                min={1}
+                value={editing.intervalMinutesDraft}
+                onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
+                className="h-8 w-20"
+              />
+              <span className="self-center text-xs text-muted-foreground">minutes</span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {INTERVAL_PRESETS.map((preset) => (
+                <Button
+                  key={preset.value}
+                  variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                >
+                  {preset.label}
+                </Button>
+              ))}
             </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center space-x-2">
               <Switch
                 id="enabled"
@@ -400,11 +397,11 @@ export function SettingsLoops() {
               <Label htmlFor="runOnStartup">Run on Startup</Label>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" className="gap-2" onClick={handleCancel}>
+          <div className="flex justify-end gap-2 pt-3">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCancel}>
               <X className="h-4 w-4" />Cancel
             </Button>
-            <Button className="gap-2" onClick={handleSave}>
+            <Button size="sm" className="gap-1.5" onClick={handleSave}>
               <Save className="h-4 w-4" />Save
             </Button>
           </div>
