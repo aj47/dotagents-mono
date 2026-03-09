@@ -82,31 +82,32 @@ This file tracks issue investigations and shipped slices for the issue-work loop
 
 #### 2026-03-09 — Issue #81: Hands-free toggle off still keeps wake-word gating in chat
 - Issue: `#81` — Hands-free toggle off still keeps wake-word gating in chat
-- Status: shipped
+- Status: blocked
 - Branch/PR: `aloops/issue-work-loop`; PR not created in this iteration
 - Notes:
-  - Diagnosis: `apps/mobile/src/lib/voice/useSpeechRecognizer.ts` created the web `SpeechRecognition` instance once and installed `onresult` / `onend` handlers that closed over the original `handsFree` value. After hands-free was turned off, subsequent recordings could still finalize in `handsfree` mode, which matches the reported wake-word-gated behavior.
-  - Reproduced or confirmed: Confirmed directly from source and with a focused regression test. The existing web recognizer reused stale closures after a hands-free-to-push-to-talk transition.
+  - Diagnosis: The issue text and the current codebase do not line up. The reported top-right hands-free mic toggle exists in `apps/mobile/src/screens/ChatScreen.tsx`, but the desktop individual-chat mic buttons route through `apps/desktop/src/renderer/src/components/overlay-follow-up-input.tsx` / `tile-follow-up-input.tsx` into `triggerMcpRecording` and the desktop `Recorder` / `createMcpRecording` flow, which has no hands-free or wake-word state.
+  - Reproduced or confirmed: Confirmed with live Expo web runtime plus codepath inspection. The chat UI reached at `http://localhost:8082` shows the top-right hands-free toggle described in the issue, while desktop code search and follow-up input inspection show a separate push-to-record MCP recording flow instead of hands-free gating.
   - Assumptions:
-    - The open issue's desktop symptom is routed through this shared chat speech-recognizer path. This is acceptable because repo inspection did not surface a separate desktop-specific hands-free recognizer implementation, and the stale web recognizer closure exactly matches the reported post-toggle behavior.
-    - Updating long-lived recognizer callbacks to read current refs is preferable to recreating the web recognizer on every toggle because it is smaller, less disruptive, and preserves the existing lifecycle.
+    - It is acceptable to block rather than ship code here because the issue explicitly targets Desktop, but the current Desktop implementation inspected in this pass does not expose the described hands-free wake-word toggle path.
+    - Rolling back the prior mobile-only slice is safer than keeping an unapproved change that cannot be justified against the reported desktop issue.
   - Changes:
-    - Updated `useSpeechRecognizer` so long-lived web/native recognizer callbacks read current `handsFree`, `willCancel`, logging, and callback values from refs instead of stale render-time closures.
-    - Preserved existing recognizer lifecycle while making finalization mode and error/permission handling reflect the latest chat mode.
-    - Added a regression test that reuses the same web recognizer across a hands-free-on → hands-free-off transition and verifies the final payload switches back to normal `send` mode.
+    - Reverted the prior `apps/mobile`-only `useSpeechRecognizer` fix and regression test from this draft so the branch no longer claims to fix desktop issue `#81` with an unrelated mobile/web change.
+    - Added concrete runtime/codepath notes showing the mismatch between the issue report and the current desktop implementation.
   - Verification:
-    - Targeted speech recognizer regression tests passed.
-    - The package vitest suite passed.
-    - A package-level TypeScript check still fails, but only on pre-existing unrelated `LoopEditScreen.tsx` `guidelines` errors.
-  - Next: If issue #81 needs stronger runtime proof later, add a deterministic chat-level harness or live UI script that toggles hands-free in the running client and records the actual post-toggle mic behavior.
+    - Expo web runtime launched and reached the chat screen with the top-right hands-free toggle visible.
+    - Desktop Electron dev runtime launched, and desktop codepath inspection confirmed the individual-chat mic buttons go through MCP recording rather than a hands-free recognizer.
+    - After reverting the mobile slice, the targeted remaining `useSpeechRecognizer.test.ts` suite still passes.
+  - Next: Re-triage issue `#81` against the current desktop product surface. Either update the issue to the actual mobile/web chat surface, or capture a concrete desktop reproduction against the Electron chat flow before shipping code.
 - Evidence:
-  - Scope: Fix one narrow slice of issue #81 by ensuring the shared chat speech recognizer stops treating later mic interactions as hands-free after the user toggles hands-free off.
-  - Before evidence: Issue #81 reported that turning hands-free off left chat input wake-word gated. Source review showed `useSpeechRecognizer` installed web `SpeechRecognition` handlers only once, so those handlers captured the original `handsFree` value and could keep finalizing later recordings as `handsfree` even after a toggle-off rerender.
-  - Change: Updated `apps/mobile/src/lib/voice/useSpeechRecognizer.ts` to route long-lived recognizer decisions through current refs, and extended `apps/mobile/src/lib/voice/useSpeechRecognizer.test.ts` with a regression that reuses the same web recognizer across a mode switch.
-  - After evidence: The new regression proves a recognizer created while `handsFree=true`, then reused after rerendering with `handsFree=false`, now emits `{ mode: 'send', source: 'web' }` for the next push-to-talk transcript instead of staying in hands-free mode.
+  - Scope: Remediate QA findings for issue #81 by replacing the mis-scoped mobile-only draft slice with a concrete runtime/codepath blocker trail for the reported desktop issue.
+  - Before evidence: QA findings correctly noted two gaps: (1) no live runtime attempt or blocker trail was recorded even though Expo web can run locally, and (2) the shipped code only touched `apps/mobile` even though issue `#81` explicitly targets the Desktop app.
+  - Change: Reverted the `apps/mobile/src/lib/voice/useSpeechRecognizer.ts` draft change and its regression test, launched Expo web to inspect the live chat header control, and documented the separate desktop recording codepath (`overlay-follow-up-input.tsx` / `tile-follow-up-input.tsx` -> `triggerMcpRecording` -> desktop `Recorder` / `createMcpRecording`).
+  - After evidence: Live runtime inspection at `http://localhost:8082` reached Chats -> New Chat and showed a top-right hands-free mic toggle; screenshot artifact `.aloops-artifacts/issue-work-loop/expo-web-chat-screen-final.png` captures that control. In contrast, desktop code inspection shows the individual-chat mic buttons only start MCP recording, and no desktop search hit surfaced hands-free or wake-word logic in `apps/desktop` chat components.
   - Verification commands/run results:
-    - `pnpm --filter @dotagents/mobile exec vitest run src/lib/voice/useSpeechRecognizer.test.ts` -> passed (`1` file, `4` tests); emitted an engine warning because local Node is `v25.2.1` while the package wants `>=20.19.4 <25`.
-    - `pnpm --filter @dotagents/mobile run test:vitest` -> passed (`6` files, `51` tests); same engine warning only.
-    - `pnpm --filter @dotagents/mobile exec tsc --noEmit` -> failed on pre-existing unrelated errors in `src/screens/LoopEditScreen.tsx` (`Property 'guidelines' does not exist on type 'ApiAgentProfile'`).
-  - Blockers/remaining uncertainty: This iteration did not run a live desktop UI repro. The fix is justified by a direct source match plus regression coverage on the shared chat recognizer path, but there is still no runtime artifact showing the exact top-right mic toggle flow in a running desktop client.
+    - `pnpm --filter @dotagents/mobile exec expo start --web --port 8082` -> passed (background process; Metro reported `Waiting on http://localhost:8082`).
+    - Web runtime inspection at `http://localhost:8082` -> reached chat after local browser-only config, observed the top-right hands-free toggle, and captured `.aloops-artifacts/issue-work-loop/expo-web-chat-screen-final.png`.
+    - `rg -n "hands[- ]free|handsFree|wake word|wake-word|wakePhrase|sleepPhrase" apps/desktop apps/mobile -S` -> showed hands-free / wake-word chat logic under `apps/mobile`, while desktop hits were limited to recording and unrelated config text.
+    - `pnpm --filter @dotagents/desktop run dev:no-sherpa -- --inspect=9222` -> launched Electron dev runtime successfully for desktop codepath validation.
+    - `pnpm --filter @dotagents/mobile exec vitest run src/lib/voice/useSpeechRecognizer.test.ts` -> passed (`1` file, `3` tests) after reverting the mis-scoped mobile regression; emitted only the existing Node engine warning (`v25.2.1` vs package `<25`).
+  - Blockers/remaining uncertainty: This pass did not find a current desktop runtime path that matches the issue's described hands-free wake-word chat flow. The strongest evidence now indicates the report maps to the mobile/web chat surface instead, but that needs issue re-triage or a fresh desktop repro before another code slice is justified.
 
