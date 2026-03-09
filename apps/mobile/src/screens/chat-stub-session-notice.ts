@@ -57,6 +57,30 @@ export const getStubSessionNoticeViewModel = (notice: StubSessionNotice) => {
   };
 };
 
+export const createChatScreenStubSessionNoticeActionModel = (
+  notice: StubSessionNotice,
+  handlers: {
+    navigate: (screenName: 'ConnectionSettings') => void;
+    setMessages: (messages: ChatMessage[]) => void;
+    loadStubSessionMessages: (sessionId: string) => Promise<void> | void;
+  },
+) => {
+  const viewModel = getStubSessionNoticeViewModel(notice);
+
+  return {
+    ...viewModel,
+    onPress: () => {
+      activateStubSessionNotice(notice, {
+        openConnectionSettings: () => handlers.navigate('ConnectionSettings'),
+        clearMessages: () => handlers.setMessages([]),
+        retryLoad: (sessionId) => {
+          void handlers.loadStubSessionMessages(sessionId);
+        },
+      });
+    },
+  };
+};
+
 export const activateStubSessionNotice = (
   notice: StubSessionNotice,
   handlers: {

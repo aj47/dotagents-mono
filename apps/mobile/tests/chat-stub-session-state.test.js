@@ -1,7 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+
+const chatScreenSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'screens', 'ChatScreen.tsx'),
+  'utf8'
+);
 
 const helperModuleUrl = pathToFileURL(
   path.join(__dirname, '..', 'src', 'screens', 'chat-stub-session-notice.ts')
@@ -9,34 +15,38 @@ const helperModuleUrl = pathToFileURL(
 
 const loadStubSessionHelpers = () => import(helperModuleUrl);
 
-test('builds the connection-settings notice and routes its action to settings', async () => {
+test('builds the ChatScreen connection-settings notice action model and routes press to settings', async () => {
   const {
-    activateStubSessionNotice,
+    createChatScreenStubSessionNoticeActionModel,
     createStubSessionCredentialsNotice,
-    getStubSessionNoticeViewModel,
   } = await loadStubSessionHelpers();
 
   const notice = createStubSessionCredentialsNotice('stub-credentials');
-  const viewModel = getStubSessionNoticeViewModel(notice);
-  let openedSettings = 0;
+  const openedScreens = [];
+  const setMessagesCalls = [];
   const retriedSessionIds = [];
 
-  activateStubSessionNotice(notice, {
-    openConnectionSettings: () => {
-      openedSettings += 1;
+  const actionModel = createChatScreenStubSessionNoticeActionModel(notice, {
+    navigate: (screenName) => {
+      openedScreens.push(screenName);
     },
-    retryLoad: (sessionId) => {
+    setMessages: (messages) => {
+      setMessagesCalls.push(messages);
+    },
+    loadStubSessionMessages: (sessionId) => {
       retriedSessionIds.push(sessionId);
     },
   });
 
+  actionModel.onPress();
+
   assert.deepEqual(
     {
-      title: viewModel.title,
+      title: actionModel.title,
       message: notice.message,
-      actionLabel: viewModel.actionLabel,
-      accessibilityLabel: viewModel.accessibilityLabel,
-      accessibilityHint: viewModel.accessibilityHint,
+      actionLabel: actionModel.actionLabel,
+      accessibilityLabel: actionModel.accessibilityLabel,
+      accessibilityHint: actionModel.accessibilityHint,
     },
     {
       title: 'Synced chat needs connection settings',
@@ -46,41 +56,43 @@ test('builds the connection-settings notice and routes its action to settings', 
       accessibilityHint: 'Opens connection settings so this mobile app can load synced chat history.',
     }
   );
-  assert.equal(openedSettings, 1);
+  assert.deepEqual(openedScreens, ['ConnectionSettings']);
+  assert.deepEqual(setMessagesCalls, []);
   assert.deepEqual(retriedSessionIds, []);
 });
 
-test('builds the retry notice and routes its action back into stub-session loading', async () => {
+test('builds the ChatScreen retry notice action model and routes press to clear and reload', async () => {
   const {
-    activateStubSessionNotice,
+    createChatScreenStubSessionNoticeActionModel,
     createStubSessionLoadFailedNotice,
-    getStubSessionNoticeViewModel,
   } = await loadStubSessionHelpers();
 
   const notice = createStubSessionLoadFailedNotice('stub-retry');
-  const viewModel = getStubSessionNoticeViewModel(notice);
-  let clearedMessages = 0;
+  const openedScreens = [];
+  const setMessagesCalls = [];
   const retriedSessionIds = [];
 
-  activateStubSessionNotice(notice, {
-    openConnectionSettings: () => {
-      throw new Error('retry notice should not open settings');
+  const actionModel = createChatScreenStubSessionNoticeActionModel(notice, {
+    navigate: (screenName) => {
+      openedScreens.push(screenName);
     },
-    clearMessages: () => {
-      clearedMessages += 1;
+    setMessages: (messages) => {
+      setMessagesCalls.push(messages);
     },
-    retryLoad: (sessionId) => {
+    loadStubSessionMessages: (sessionId) => {
       retriedSessionIds.push(sessionId);
     },
   });
 
+  actionModel.onPress();
+
   assert.deepEqual(
     {
-      title: viewModel.title,
+      title: actionModel.title,
       message: notice.message,
-      actionLabel: viewModel.actionLabel,
-      accessibilityLabel: viewModel.accessibilityLabel,
-      accessibilityHint: viewModel.accessibilityHint,
+      actionLabel: actionModel.actionLabel,
+      accessibilityLabel: actionModel.accessibilityLabel,
+      accessibilityHint: actionModel.accessibilityHint,
     },
     {
       title: 'Couldn’t load synced chat history',
@@ -90,8 +102,20 @@ test('builds the retry notice and routes its action back into stub-session loadi
       accessibilityHint: 'Attempts to load the current synced chat history from desktop again.',
     }
   );
-  assert.equal(clearedMessages, 1);
+  assert.deepEqual(openedScreens, []);
+  assert.deepEqual(setMessagesCalls, [[]]);
   assert.deepEqual(retriedSessionIds, ['stub-retry']);
+});
+
+test('ChatScreen uses the ChatScreen stub-session action model for the rendered banner button', () => {
+  assert.match(
+    chatScreenSource,
+    /const activeStubSessionNoticeAction = activeStubSessionNotice[\s\S]*?createChatScreenStubSessionNoticeActionModel\(activeStubSessionNotice, \{[\s\S]*?navigate: \(screenName\) => navigation\.navigate\(screenName\),[\s\S]*?setMessages,[\s\S]*?loadStubSessionMessages,[\s\S]*?\}\)/
+  );
+  assert.match(chatScreenSource, /onPress=\{activeStubSessionNoticeAction\?\.onPress\}/);
+  assert.match(chatScreenSource, /accessibilityLabel=\{activeStubSessionNoticeAction\?\.accessibilityLabel\}/);
+  assert.match(chatScreenSource, /accessibilityHint=\{activeStubSessionNoticeAction\?\.accessibilityHint\}/);
+  assert.match(chatScreenSource, /\{activeStubSessionNoticeAction\?\.actionLabel\}/);
 });
 
 test('returns a retry notice when stub-session lazy loading resolves null for the active session', async () => {

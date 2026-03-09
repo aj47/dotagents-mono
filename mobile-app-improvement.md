@@ -57,7 +57,7 @@
 
 ### Verified
 
-- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, chat stub-session state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, chat stub-session state and screen-owned banner action wiring, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
 
 ### Blocked
 
@@ -69,6 +69,37 @@
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 
 ## Recent Iterations
+
+### 2026-03-09 — QA remediation 2 follow-up: pin stub-chat banner behavior to ChatScreen wiring
+
+- Status: completed with targeted behavior + source-backed verification; live Expo Web remained blocked by missing dependencies in this worktree
+- Area:
+  - `ChatScreen` stub-session notice button wiring in `apps/mobile/src/screens/ChatScreen.tsx`
+  - targeted regression coverage in `apps/mobile/tests/chat-stub-session-state.test.js`
+- Why this area:
+  - QA round 2 narrowed scope to one remaining gap only: the previous remediation still proved the generic stub-session helper behavior, but not the exact button action wiring consumed by `ChatScreen`
+  - the smallest practical fix in this dependency-light worktree was to make the screen-owned action model explicit and test that model directly, while pinning `ChatScreen` source to it
+- Findings:
+  - `apps/mobile/tests/chat-stub-session-state.test.js` imported `chat-stub-session-notice.ts` only, so it still did not cover the exact `ChatScreen` button path that calls `navigation.navigate('ConnectionSettings')`, `setMessages([])`, and `loadStubSessionMessages(sessionId)`
+  - importing full React Native screen code is still impractical in this worktree because mobile dependencies are absent, so this pass needed the smallest dependency-free fallback evidence that still closed the wiring gap
+- Change made:
+  - added `createChatScreenStubSessionNoticeActionModel(...)` in `apps/mobile/src/screens/chat-stub-session-notice.ts` to centralize the exact stub-banner button props and `onPress` behavior that `ChatScreen` uses
+  - rewired `ChatScreen.tsx` to render the stub-session banner button from that action model instead of inlining the notice press closure
+  - extended `apps/mobile/tests/chat-stub-session-state.test.js` so it now behavior-tests the `ChatScreen` action model for both `Open settings` and `Retry`, and source-asserts that `ChatScreen` renders the banner button from that same action model
+- Verification:
+  - `node --experimental-strip-types --test apps/mobile/tests/chat-stub-session-state.test.js`
+  - `git diff --check 88fcb982dbc316635071e2bdfd2fd11aede4c31f..HEAD`
+- Follow-up checks:
+  - once dependencies are available, verify in Expo Web that the same stub-session banner still renders and wraps correctly above the chat thread on narrow widths
+  - keep future work out of this stub-chat subsection unless a new QA finding appears
+
+Evidence
+- Scope: QA remediation for the remaining `ChatScreen` stub-session banner wiring evidence gap
+- Before evidence: QA round 2 reported that `apps/mobile/tests/chat-stub-session-state.test.js` still imported only `apps/mobile/src/screens/chat-stub-session-notice.ts`, so the pass did not cover the screen-owned `ChatScreen` button path for `navigation.navigate('ConnectionSettings')`, `setMessages([])`, and `loadStubSessionMessages(sessionId)`.
+- Change: Added `createChatScreenStubSessionNoticeActionModel(...)` to build the exact button copy/accessibility/onPress contract used by `ChatScreen`, updated `ChatScreen.tsx` to render the banner button from that action model, and extended `apps/mobile/tests/chat-stub-session-state.test.js` with both behavior checks for the action model and source assertions that `ChatScreen` uses it.
+- After evidence: `ChatScreen.tsx` now creates `activeStubSessionNoticeAction` via `createChatScreenStubSessionNoticeActionModel(activeStubSessionNotice, { navigate: (screenName) => navigation.navigate(screenName), setMessages, loadStubSessionMessages })`, and the banner button now reads its `onPress`, accessibility metadata, and label from that model. The updated test proves the credentials path navigates to `ConnectionSettings` without clearing messages, proves the retry path clears messages and retries the current stub-session ID, and pins the rendered `ChatScreen` banner button to that same action model in source.
+- Verification commands/run results: `node --experimental-strip-types --test apps/mobile/tests/chat-stub-session-state.test.js` ✅ (6/6 passing; Node emitted the existing non-blocking `MODULE_TYPELESS_PACKAGE_JSON` warning while importing the `.ts` helper); `git diff --check 88fcb982dbc316635071e2bdfd2fd11aede4c31f..HEAD` ✅.
+- Blockers/remaining uncertainty: Expo Web is still unavailable in this worktree because dependencies are missing, so this follow-up still lacks new live before/after screenshots. Remaining uncertainty is limited to runtime visual presentation of the already-shipped stub-session banner, not the targeted button wiring addressed here.
 
 ### 2026-03-09 — QA remediation 2: strengthen stub-chat behavior evidence and fix the committed-range whitespace regression
 

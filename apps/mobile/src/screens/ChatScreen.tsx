@@ -53,9 +53,8 @@ import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import {
   StubSessionNotice,
-  activateStubSessionNotice,
+  createChatScreenStubSessionNoticeActionModel,
   createStubSessionCredentialsNotice,
-  getStubSessionNoticeViewModel,
   resolveStubSessionLazyLoad,
 } from './chat-stub-session-notice';
 import {
@@ -2791,8 +2790,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const activeStubSessionNotice = stubSessionNotice && stubSessionNotice.sessionId === sessionStore.currentSessionId
     ? stubSessionNotice
     : null;
-  const activeStubSessionNoticeViewModel = activeStubSessionNotice
-    ? getStubSessionNoticeViewModel(activeStubSessionNotice)
+  const activeStubSessionNoticeAction = activeStubSessionNotice
+    ? createChatScreenStubSessionNoticeActionModel(activeStubSessionNotice, {
+        navigate: (screenName) => navigation.navigate(screenName),
+        setMessages,
+        loadStubSessionMessages,
+      })
     : null;
 
 
@@ -3194,7 +3197,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <Text style={styles.connectionBannerIcon}>⚠️</Text>
               <View style={styles.connectionBannerTextContainer}>
                 <Text style={styles.connectionBannerText}>
-                  {activeStubSessionNoticeViewModel?.title}
+                  {activeStubSessionNoticeAction?.title}
                 </Text>
                 <Text style={styles.connectionBannerSubtext}>
                   {activeStubSessionNotice.message}
@@ -3202,22 +3205,14 @@ export default function ChatScreen({ route, navigation }: any) {
               </View>
               <TouchableOpacity
                 style={styles.retryButton}
-                onPress={() => {
-                  activateStubSessionNotice(activeStubSessionNotice, {
-                    openConnectionSettings: () => navigation.navigate('ConnectionSettings'),
-                    clearMessages: () => setMessages([]),
-                    retryLoad: (sessionId) => {
-                      void loadStubSessionMessages(sessionId);
-                    },
-                  });
-                }}
+                onPress={activeStubSessionNoticeAction?.onPress}
                 accessibilityRole="button"
-                accessibilityLabel={activeStubSessionNoticeViewModel?.accessibilityLabel}
-                accessibilityHint={activeStubSessionNoticeViewModel?.accessibilityHint}
+                accessibilityLabel={activeStubSessionNoticeAction?.accessibilityLabel}
+                accessibilityHint={activeStubSessionNoticeAction?.accessibilityHint}
                 activeOpacity={0.7}
               >
                 <Text style={styles.retryButtonText}>
-                  {activeStubSessionNoticeViewModel?.actionLabel}
+                  {activeStubSessionNoticeAction?.actionLabel}
                 </Text>
               </TouchableOpacity>
             </View>
