@@ -597,16 +597,18 @@ export function SettingsAgents() {
                 </div>
               </div>
               {isCreating && (
-                <div className="space-y-2">
-                  <Label>Quick Setup (Optional)</Label>
-                  <div className="flex gap-2">
+                <div className="space-y-2 rounded-lg border border-dashed bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <Label>Quick Setup</Label>
+                    <p className="text-[11px] text-muted-foreground">Start with a preset, or configure manually below.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
                     {Object.entries(AGENT_PRESETS).map(([key, preset]) => (
-                      <Button key={key} variant="outline" size="sm"
+                      <Button key={key} variant="outline" size="sm" className="h-8 px-2.5 text-xs"
                         onClick={() => setEditing({ ...emptyAgent(), ...preset })}
                       >{preset.displayName}</Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">Click a preset to auto-fill, or configure manually below.</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -637,7 +639,7 @@ export function SettingsAgents() {
                     </div>
                     {showSystemPrompt && (
                       <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
                           <p className="text-xs text-muted-foreground text-amber-600 dark:text-amber-500">
                             Not recommended to change. This replaces the core tool-calling instructions. Leave empty to use the default.
                           </p>
@@ -691,7 +693,7 @@ export function SettingsAgents() {
                   <Input id="baseUrl" value={editing.connectionBaseUrl ?? ""} onChange={e => setEditing({ ...editing, connectionBaseUrl: e.target.value })} placeholder="e.g., http://localhost:8000" />
                 </div>
               )}
-              <div className="flex items-center gap-4 pt-2">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
                 <div className="flex items-center space-x-2">
                   <Switch id="enabled" checked={editing.enabled} onCheckedChange={v => setEditing({ ...editing, enabled: v })} />
                   <Label htmlFor="enabled">Enabled</Label>
