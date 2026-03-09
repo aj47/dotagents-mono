@@ -14,6 +14,7 @@
 - [x] Connection setup flow, save validation, and inline connection actions
 - [x] Sessions list entry points, top actions, and empty state
 - [x] Chat thread composer controls, voice/listening announcements, and disclosure states
+- [x] Chat stub-session loading/error state for desktop-synced conversations (source-backed in this worktree)
 - [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
 - [x] Loop create/edit screen agent-profile selection section (source-backed in this worktree)
 - [x] Agent create/edit screen (`AgentEdit`) connection-type selection and mode-specific fields (source-backed in this worktree)
@@ -25,7 +26,7 @@
 - [ ] Memory create/edit loading, error, and runtime layout states beyond the importance selector
 - [ ] Agent create/edit remaining fields and built-in-agent limited-edit state outside the connection-type section
 - [ ] Loop create/edit live save flow, runtime layout, and remaining fields
-- [ ] Session loading, error, reconnect, and sync states
+- [ ] Remaining session reconnect and sync states outside the stub-chat loading/error flow
 - [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
 - [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
 
@@ -39,6 +40,7 @@
 - [x] AgentEdit connection-type chips crowd narrow screens, hide selected state behind color alone, and wrongly treat ACP like a remote URL mode
 - [x] MemoryEdit importance chips crowd narrow screens and communicate priority mostly through color-only state
 - [x] Settings desktop warning state squeezed long partial-load errors and a tiny text-only `Retry` action into one horizontal row
+- [x] Opening a desktop-synced stub chat could leave mobile users on a blank thread with no explanation or recovery when connection settings were missing or lazy loading failed
 
 ### Improved
 
@@ -51,10 +53,11 @@
 - [x] AgentEdit connection-type clarity, touch targets, and ACP/remote field mapping
 - [x] MemoryEdit importance selection clarity, touch targets, and priority guidance
 - [x] Settings desktop partial-load warning clarity, retry affordance, and stale-data explanation
+- [x] Stub-chat loading failure / missing-auth guidance and retry affordance in `ChatScreen`
 
 ### Verified
 
-- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
+- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, chat stub-session state, agent loop row actions, LoopEdit profile selection, AgentEdit connection types, MemoryEdit importance selection, and the Settings desktop warning state
 
 ### Blocked
 
@@ -66,6 +69,44 @@
 - [ ] Narrow-screen usability of the rest of `MemoryEdit` and the remaining `AgentEdit` / `LoopEdit` fields outside the newly checked sections
 
 ## Recent Iterations
+
+### 2026-03-09 — Iteration 12: make desktop-synced stub chats explain missing history and offer recovery
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - `ChatScreen` stub-session loading/error state in `apps/mobile/src/screens/ChatScreen.tsx`
+  - opening desktop-synced conversations that exist locally as metadata-only stubs until full message history is lazy-loaded
+- Why this area:
+  - the ledger still had session loading/error states uncovered, and recent iterations had been concentrated on form selectors plus one Settings warning rather than on chat/session recovery flows
+  - source review found a concrete high-value failure mode: when a stub chat had no local messages, `ChatScreen` either attempted a lazy load that could fail silently or skipped loading entirely when connection settings were missing, leaving users on a blank thread with no explanation or next step
+- What was investigated:
+  - stub-session lazy-load flow in `ChatScreen.tsx`, `apps/mobile/src/store/sessions.ts`, and `apps/mobile/src/lib/syncService.ts`
+  - current retry/action banner patterns already used in `ChatScreen`
+  - attempted Expo Web startup via the existing repo workflow
+- Findings:
+  - live runtime inspection is still blocked in this worktree because both root and `apps/mobile` `node_modules` are absent, so `pnpm --filter @dotagents/mobile web` fails with `expo: command not found`
+  - when `loadSessionMessages(...)` returned `null`, `ChatScreen` only logged a warning and cleared the in-flight marker, so the user could land on an empty chat with no visible recovery affordance
+  - when a stub session existed but `baseUrl`/`apiKey` were unavailable, the screen simply rendered no messages instead of telling the user that connection settings were required to hydrate desktop history
+- Change made:
+  - added a small stub-session notice state in `ChatScreen` so missing-auth and failed lazy-load cases surface as compact inline banners instead of silent blank states
+  - added an `Open settings` action for missing-auth stub chats and an in-place `Retry` action for failed lazy loads, both with explicit accessibility labels and hints
+  - added `apps/mobile/tests/chat-stub-session-state.test.js` to lock the new copy, recovery actions, and accessibility semantics
+- Verification:
+  - `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-stub-session-state.test.js`
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web`
+- Follow-up checks:
+  - once dependencies are available, verify in Expo Web that the new stub-session banner wraps cleanly above the chat content on narrow widths and does not crowd the existing reconnect / failed-send banners
+  - inspect remaining session sync/reconnect states next so session coverage broadens beyond this stub-chat load failure path instead of returning immediately to already-improved form subsections
+
+Evidence
+- Scope: `ChatScreen` stub-session loading/error state for desktop-synced conversations in `apps/mobile/src/screens/ChatScreen.tsx`
+- Before evidence: Source review showed the stub-session branch calling `sessionStore.loadSessionMessages(stubSessionId, client)` and then doing `if (!result) return;`, while the only failure handling was a `console.warn('[ChatScreen] Failed to lazy-load session messages:', err)` in `.catch(...)`. When a stub session had `serverConversationId` but lacked `baseUrl` / `apiKey`, the screen fell through to `setMessages([])` with no message or CTA. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web`, but the command failed because both root and mobile `node_modules` are missing and `expo` was not found.
+- Change: Added a focused `stubSessionNotice` state in `ChatScreen`, surfaced missing-auth and lazy-load-failure cases as inline banners, wired those banners to `navigation.navigate('ConnectionSettings')` or `loadStubSessionMessages(...)`, cleared stale notices on session changes and fresh sends, and added a focused regression test file.
+- After evidence: Source now shows `ChatScreen.tsx` setting `stubSessionNotice` to `Connect this mobile app to DotAgents to load synced chats from desktop.` when a stub chat lacks connection settings, and to `Couldn’t load this synced chat from desktop. Check your connection and retry.` when lazy loading fails. The rendered UI now includes `Synced chat needs connection settings` / `Couldn’t load synced chat history` banners plus action buttons labeled through `createButtonAccessibilityLabel(...)` for `Open connection settings` and `Retry loading synced chat`. `apps/mobile/tests/chat-stub-session-state.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/chat-composer-accessibility.test.js apps/mobile/tests/chat-stub-session-state.test.js` ✅ (6/6 passing); `node --test apps/mobile/tests/*.test.js` ✅ (26/26 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web still cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime wrapping, stacking, and prominence of the new stub-session notice when combined with other chat banners on a narrow viewport.
 
 ### 2026-03-09 — Iteration 11: make the Settings desktop warning readable and actionable on narrow screens
 
