@@ -186,13 +186,13 @@ export default function AgentEditScreen({ navigation, route }: any) {
     >
       {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>⚠️ {error}</Text>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
       {isBuiltInAgent && (
         <View style={styles.warningContainer}>
-          <Text style={styles.warningText}>⚠️ Built-in agents have limited editing options</Text>
+          <Text style={styles.warningText}>Built-in agents have limited editing options</Text>
         </View>
       )}
 

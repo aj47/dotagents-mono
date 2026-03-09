@@ -589,10 +589,9 @@ Optional notes go here (saved as userNotes).
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : filteredMemories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Brain className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium">No memories yet</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md">
+          <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center sm:px-6">
+            <h3 className="text-base font-medium">No memories yet</h3>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
               {searchQuery
                 ? "No memories match your search. Try a different query."
                 : "Save summaries from agent sessions to build your knowledge base."}

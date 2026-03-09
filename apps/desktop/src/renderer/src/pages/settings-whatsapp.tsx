@@ -231,10 +231,7 @@ export function Component() {
 
         {/* Connection Status & QR Code */}
         {enabled && (
-          <ControlGroup
-            title="Connection"
-            endDescription="Connect your WhatsApp account by scanning the QR code"
-          >
+          <ControlGroup title="Connection">
             <div className="px-3 py-2">
               {/* Streamer mode indicator */}
               {streamerMode && (
@@ -361,7 +358,7 @@ export function Component() {
                 <p>Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.</p>
                 <details className="cursor-pointer">
                   <summary className="text-blue-600 dark:text-blue-400 hover:underline">
-                    ℹ️ What are LIDs? How do I find them?
+                    What are LIDs and how do I find them?
                   </summary>
                   <div className="mt-2 p-2 bg-muted/50 rounded-md space-y-2">
                     <p>
@@ -377,14 +374,14 @@ export function Component() {
                       <li>Copy the LID number and add it here</li>
                     </ol>
                     <p className="text-amber-600 dark:text-amber-400">
-                      💡 Tip: Phone numbers still work for many contacts. Try the phone number first, then use LID if messages are blocked.
+                      Tip: Phone numbers still work for many contacts. Try the phone number first, then use a LID if messages are blocked.
                     </p>
                   </div>
                 </details>
               </div>
               {(!cfg.whatsappAllowFrom || cfg.whatsappAllowFrom.length === 0) && (
                 <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  ⚠️ No allowlist set - all incoming messages will be accepted
+                  No allowlist set - all incoming messages will be accepted
                 </div>
               )}
             </Control>
@@ -406,12 +403,12 @@ export function Component() {
               />
               {cfg.whatsappAutoReply && remoteServerEnabled && hasApiKey && (
                 <div className="mt-1 text-xs text-green-600 dark:text-green-400">
-                  ✓ Auto-reply enabled - incoming messages will be processed and replied to
+                  Auto-reply enabled - incoming messages will be processed and replied to
                 </div>
               )}
               {cfg.whatsappAutoReply && (!remoteServerEnabled || !hasApiKey) && (
                 <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                  ⚠️ Auto-reply is enabled but Remote Server or API key is missing
+                  Auto-reply is enabled but Remote Server or API key is missing
                 </div>
               )}
             </Control>

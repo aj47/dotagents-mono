@@ -181,9 +181,15 @@ describe("agent progress tile layout", () => {
       'className="border-b border-orange-200 bg-orange-100/30 px-3 py-2 text-xs text-orange-700 break-words dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"'
     )
     expect(messageQueuePanelSource).toContain(
-      'className="flex min-w-0 flex-wrap items-start gap-2"'
+      'className="flex min-w-0 items-start gap-2"'
     )
     expect(messageQueuePanelSource).toContain(
+      'className="flex min-w-0 flex-1 flex-col"'
+    )
+    expect(messageQueuePanelSource).toContain(
+      'className="mt-2 flex w-full flex-wrap items-center gap-1.5"'
+    )
+    expect(messageQueuePanelSource).not.toContain(
       '"ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity"'
     )
   })

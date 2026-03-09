@@ -970,8 +970,6 @@ export default function SettingsScreen({ navigation }: any) {
           />
         }
       >
-        <Text style={styles.h1}>Settings</Text>
-
         {/* Connection Card - Tap to navigate to ConnectionSettings */}
         <TouchableOpacity
           style={styles.connectionCard}
@@ -1084,9 +1082,7 @@ export default function SettingsScreen({ navigation }: any) {
         </Text>
 
         {/* Push Notifications Section */}
-        <Text style={styles.sectionTitle}>Notifications</Text>
-
-        <View style={styles.row}>
+        <View style={[styles.row, styles.sectionLeadRow]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>Push Notifications</Text>
             {!notificationsSupported && (
@@ -1127,8 +1123,13 @@ export default function SettingsScreen({ navigation }: any) {
 
             {remoteError && (
               <View style={styles.warningContainer}>
-                <Text style={styles.warningText}>⚠️ {remoteError}</Text>
-                <TouchableOpacity onPress={fetchRemoteSettings} accessibilityRole="button" accessibilityLabel="Retry">
+                <Text style={styles.warningText}>{remoteError}</Text>
+                <TouchableOpacity
+                  style={styles.warningAction}
+                  onPress={fetchRemoteSettings}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading desktop settings"
+                >
                   <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
               </View>
@@ -1137,12 +1138,8 @@ export default function SettingsScreen({ navigation }: any) {
             {/* Provider Selection */}
             {remoteSettings && (
               <CollapsibleSection id="providerSelection" title="Provider Selection">
-                <Text style={styles.helperText}>
-                  Select which AI provider to use for each feature.
-                </Text>
-
                 {/* Voice Transcription (STT) Provider */}
-                <Text style={styles.label}>🎤 Voice Transcription (STT)</Text>
+                <Text style={styles.label}>Voice Transcription (STT)</Text>
                 <View style={styles.providerSelector}>
                   {STT_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1164,7 +1161,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
 
                 {/* Transcript Post-Processing Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>📝 Transcript Post-Processing</Text>
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Transcript Post-Processing</Text>
                 <View style={styles.providerSelector}>
                   {CHAT_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1186,7 +1183,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
 
                 {/* Agent/MCP Tools Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>🤖 Agent/MCP Tools</Text>
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Agent/MCP Tools</Text>
                 <View style={styles.providerSelector}>
                   {CHAT_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1208,7 +1205,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
 
                 {/* Text-to-Speech (TTS) Provider */}
-                <Text style={[styles.label, { marginTop: spacing.md }]}>🔊 Text-to-Speech (TTS)</Text>
+                <Text style={[styles.label, { marginTop: spacing.md }]}>Text-to-Speech (TTS)</Text>
                 <View style={styles.providerSelector}>
                   {TTS_PROVIDERS.map((provider) => (
                     <Pressable
@@ -1268,7 +1265,7 @@ export default function SettingsScreen({ navigation }: any) {
                         disabled={isImportingProfile}
                       >
                         <Text style={styles.profileActionButtonText}>
-                          {isImportingProfile ? 'Importing...' : '📥 Import'}
+                          {isImportingProfile ? 'Importing...' : 'Import'}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -1277,7 +1274,7 @@ export default function SettingsScreen({ navigation }: any) {
                         disabled={!currentProfileId || isExportingProfile}
                       >
                         <Text style={styles.profileActionButtonText}>
-                          {isExportingProfile ? 'Exporting...' : '📤 Export'}
+                          {isExportingProfile ? 'Exporting...' : 'Export'}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1329,19 +1326,23 @@ export default function SettingsScreen({ navigation }: any) {
                     <TouchableOpacity
                       style={styles.modelActionButton}
                       onPress={() => setUseCustomModel(!useCustomModel)}
+                      accessibilityRole="button"
+                      accessibilityLabel={useCustomModel ? 'Show model list' : 'Enter custom model name'}
                     >
                       <Text style={styles.modelActionText}>
-                        {useCustomModel ? '📋 List' : '✏️ Custom'}
+                        {useCustomModel ? 'List' : 'Custom'}
                       </Text>
                     </TouchableOpacity>
                     {!useCustomModel && (
                       <TouchableOpacity
-                        style={styles.modelActionButton}
+                        style={[styles.modelActionButton, isLoadingModels && styles.modelActionButtonDisabled]}
                         onPress={() => remoteSettings?.mcpToolsProviderId && fetchModels(remoteSettings.mcpToolsProviderId)}
                         disabled={isLoadingModels}
+                        accessibilityRole="button"
+                        accessibilityLabel="Refresh available models"
                       >
                         <Text style={styles.modelActionText}>
-                          {isLoadingModels ? '⏳' : '🔄'}
+                          {isLoadingModels ? 'Refreshing…' : 'Refresh'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -1972,7 +1973,7 @@ export default function SettingsScreen({ navigation }: any) {
             {remoteSettings && (
               <CollapsibleSection id="langfuse" title="Langfuse">
                 <View style={styles.row}>
-                  <Text style={styles.label}>Langfuse Observability</Text>
+                  <Text style={styles.label}>Enable tracing</Text>
                   <Switch
                     value={remoteSettings.langfuseEnabled ?? false}
                     onValueChange={(v) => handleRemoteSettingToggle('langfuseEnabled', v)}
@@ -1980,9 +1981,6 @@ export default function SettingsScreen({ navigation }: any) {
                     thumbColor={remoteSettings.langfuseEnabled ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
-                <Text style={styles.helperText}>
-                  Enable tracing and observability via Langfuse
-                </Text>
 
                 {remoteSettings.langfuseEnabled && (
                   <>
@@ -2104,10 +2102,12 @@ export default function SettingsScreen({ navigation }: any) {
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={{ padding: 8 }}
+                        style={styles.memoryDeleteButton}
                         onPress={() => handleMemoryDelete(memory.id)}
+                        accessibilityLabel={`Delete memory ${memory.title}`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
-                        <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                        <Text style={styles.memoryDeleteButtonText}>Delete</Text>
                       </TouchableOpacity>
                     </View>
                   ))
@@ -2170,9 +2170,10 @@ export default function SettingsScreen({ navigation }: any) {
                           <TouchableOpacity
                             style={styles.agentDeleteButton}
                             onPress={() => handleAgentProfileDelete(profile)}
+                            accessibilityLabel={`Delete agent ${profile.displayName}`}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -2222,7 +2223,7 @@ export default function SettingsScreen({ navigation }: any) {
                           </Text>
                         </View>
                       </TouchableOpacity>
-                      <View style={{ alignItems: 'center' }}>
+                      <View style={styles.loopActions}>
                         <Switch
                           value={loop.enabled}
                           onValueChange={() => handleLoopToggle(loop.id)}
@@ -2230,16 +2231,18 @@ export default function SettingsScreen({ navigation }: any) {
                           thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
                         />
                         <TouchableOpacity
-                          style={{ marginTop: 8, padding: 4 }}
+                          style={styles.loopActionButton}
                           onPress={() => handleLoopRun(loop.id)}
+                          accessibilityLabel={`Run loop ${loop.name}`}
                         >
-                          <Text style={{ color: theme.colors.primary, fontSize: 12 }}>▶ Run</Text>
+                          <Text style={styles.loopRunActionText}>Run</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={{ marginTop: 8, padding: 4 }}
+                          style={styles.loopActionButton}
                           onPress={() => handleLoopDelete(loop)}
+                          accessibilityLabel={`Delete loop ${loop.name}`}
                         >
-                          <Text style={{ color: theme.colors.destructive, fontSize: 12 }}>🗑 Delete</Text>
+                          <Text style={styles.loopDeleteActionText}>Delete</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -2276,12 +2279,15 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select Model</Text>
               <TouchableOpacity
+                style={styles.modalCloseButton}
                 onPress={() => {
                   setShowModelPicker(false);
                   setModelSearchQuery('');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close model picker"
               >
-                <Text style={styles.modelPickerClose}>✕</Text>
+                <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
 
@@ -2361,8 +2367,13 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select Endpoint</Text>
-              <TouchableOpacity onPress={() => setShowPresetPicker(false)}>
-                <Text style={styles.modelPickerClose}>✕</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowPresetPicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close endpoint picker"
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
 
@@ -2415,8 +2426,13 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select TTS Model</Text>
-              <TouchableOpacity onPress={() => setShowTtsModelPicker(false)}>
-                <Text style={styles.modelPickerClose}>✕</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowTtsModelPicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close TTS model picker"
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
 
@@ -2478,8 +2494,13 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.modelPickerContainer}>
             <View style={styles.modelPickerHeader}>
               <Text style={styles.modelPickerTitle}>Select TTS Voice</Text>
-              <TouchableOpacity onPress={() => setShowTtsVoicePicker(false)}>
-                <Text style={styles.modelPickerClose}>✕</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowTtsVoicePicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close TTS voice picker"
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
 
@@ -2552,12 +2573,15 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={styles.importModalHeader}>
               <Text style={styles.importModalTitle}>Import Profile</Text>
               <TouchableOpacity
+                style={styles.modalCloseButton}
                 onPress={() => {
                   setShowImportModal(false);
                   setImportJsonText('');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close import profile modal"
               >
-                <Text style={styles.importModalClose}>✕</Text>
+                <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
 
@@ -2614,10 +2638,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     container: {
       padding: spacing.lg,
       gap: spacing.md,
-    },
-    h1: {
-      ...theme.typography.h1,
-      marginBottom: spacing.sm,
     },
     // Connection card styles
     connectionCard: {
@@ -2689,6 +2709,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       justifyContent: 'space-between',
       gap: spacing.md,
       marginTop: spacing.sm,
+    },
+    sectionLeadRow: {
+      marginTop: spacing.lg,
     },
     themeSelector: {
       flexDirection: 'row',
@@ -2792,20 +2815,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: '#f59e0b', // amber-500
       borderRadius: radius.md,
       padding: spacing.md,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      gap: spacing.sm,
+      alignItems: 'flex-start',
     },
     warningText: {
       color: '#d97706', // amber-600
       fontSize: 14,
-      flex: 1,
+      lineHeight: 20,
+      alignSelf: 'stretch',
+    },
+    warningAction: {
+      alignSelf: 'flex-start',
     },
     retryText: {
       color: theme.colors.primary,
       fontSize: 14,
       fontWeight: '600',
-      marginLeft: spacing.sm,
     },
     profileList: {
       gap: spacing.xs,
@@ -2891,17 +2916,16 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      gap: spacing.sm,
       marginBottom: spacing.md,
     },
     importModalTitle: {
+      flex: 1,
+      flexShrink: 1,
       fontSize: 18,
       fontWeight: '600',
       color: theme.colors.foreground,
-    },
-    importModalClose: {
-      fontSize: 20,
-      color: theme.colors.mutedForeground,
-      padding: spacing.xs,
+      paddingRight: spacing.xs,
     },
     importModalDescription: {
       fontSize: 14,
@@ -3015,6 +3039,39 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     agentDeleteButton: {
       padding: spacing.xs,
     },
+    agentDeleteButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    memoryDeleteButton: {
+      padding: spacing.xs,
+      alignSelf: 'flex-start',
+    },
+    memoryDeleteButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    loopActions: {
+      alignItems: 'center',
+      flexShrink: 0,
+    },
+    loopActionButton: {
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.xs,
+      paddingVertical: 4,
+    },
+    loopRunActionText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    loopDeleteActionText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
+    },
     createAgentButton: {
       marginTop: spacing.md,
       paddingVertical: spacing.sm,
@@ -3044,6 +3101,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelActionButton: {
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
+    },
+    modelActionButtonDisabled: {
+      opacity: 0.5,
     },
     modelActionText: {
       fontSize: 12,
@@ -3090,19 +3150,29 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: spacing.lg,
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
     modelPickerTitle: {
+      flex: 1,
+      flexShrink: 1,
       fontSize: 18,
       fontWeight: '600',
       color: theme.colors.foreground,
+      paddingRight: spacing.xs,
     },
-    modelPickerClose: {
-      fontSize: 20,
-      color: theme.colors.mutedForeground,
-      padding: spacing.sm,
+    modalCloseButton: {
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    modalCloseText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.primary,
     },
     modelSearchContainer: {
       padding: spacing.md,

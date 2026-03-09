@@ -213,12 +213,12 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
 
         {connectionError && (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>⚠️ {connectionError}</Text>
+            <Text style={styles.errorText}>{connectionError}</Text>
           </View>
         )}
 
         <TouchableOpacity style={styles.scanButton} onPress={handleScanQR} accessibilityRole="button" accessibilityLabel="Scan QR Code">
-          <Text style={styles.scanButtonText}>📷 Scan QR Code</Text>
+          <Text style={styles.scanButtonText}>Scan QR Code</Text>
         </TouchableOpacity>
         <Text style={styles.helperText}>
           Scan the QR code from your DotAgents desktop app to connect
@@ -303,8 +303,13 @@ export default function ConnectionSettingsScreen({ navigation }: any) {
               {scanned ? 'Invalid QR code format' : 'Scan a DotAgents QR code'}
             </Text>
           </View>
-          <TouchableOpacity style={styles.closeButton} onPress={() => setShowScanner(false)}>
-            <Text style={styles.closeButtonText}>✕ Close</Text>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowScanner(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close QR scanner"
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
       </Modal>

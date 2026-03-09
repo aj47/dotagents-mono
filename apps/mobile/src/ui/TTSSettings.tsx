@@ -158,8 +158,13 @@ export function TTSSettings({
       </View>
 
       {/* Test Button */}
-      <TouchableOpacity style={styles.testButton} onPress={testVoice}>
-        <Text style={styles.testButtonText}>🔊 Test Voice</Text>
+      <TouchableOpacity
+        style={styles.testButton}
+        onPress={testVoice}
+        accessibilityRole="button"
+        accessibilityLabel="Test text-to-speech voice"
+      >
+        <Text style={styles.testButtonText}>Test voice</Text>
       </TouchableOpacity>
 
       {/* Voice Picker Modal */}
@@ -173,8 +178,13 @@ export function TTSSettings({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Voice</Text>
-              <TouchableOpacity onPress={() => setShowVoicePicker(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowVoicePicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close voice picker"
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.voiceList}>
@@ -313,19 +323,29 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: spacing.md,
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
     modalTitle: {
+      flex: 1,
+      flexShrink: 1,
       fontSize: 18,
       fontWeight: '600',
       color: theme.colors.foreground,
+      paddingRight: spacing.xs,
     },
-    modalClose: {
-      fontSize: 20,
-      color: theme.colors.mutedForeground,
-      padding: spacing.sm,
+    modalCloseButton: {
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    modalCloseText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.primary,
     },
     voiceList: {
       padding: spacing.md,

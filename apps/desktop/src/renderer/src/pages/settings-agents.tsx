@@ -82,6 +82,33 @@ function emptyAgent(): EditingAgent {
   }
 }
 
+function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number): string[] {
+  const items = [agent.connection.type]
+
+  if (agent.modelConfig?.mcpToolsProviderId) {
+    items.push(agent.modelConfig.mcpToolsProviderId)
+  }
+
+  const enabledServerCount = agent.toolConfig?.enabledServers?.length ?? 0
+  if (enabledServerCount > 0) {
+    items.push(`${enabledServerCount} server${enabledServerCount === 1 ? "" : "s"}`)
+  }
+
+  if (availableSkillCount > 0) {
+    const enabledSkillCount = (!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault)
+      ? availableSkillCount
+      : (agent.skillsConfig.enabledSkillIds?.length ?? 0)
+    items.push(`${enabledSkillCount} skill${enabledSkillCount === 1 ? "" : "s"}`)
+  }
+
+  const propertyCount = agent.properties ? Object.keys(agent.properties).length : 0
+  if (propertyCount > 0) {
+    items.push(`${propertyCount} prop${propertyCount === 1 ? "" : "s"}`)
+  }
+
+  return items
+}
+
 export function SettingsAgents() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -423,20 +450,20 @@ export function SettingsAgents() {
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
       {!editing && (
-        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-          <Button variant="outline" className="gap-2" onClick={() => handleImportDialogOpenChange(true)}>
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-1.5">
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => handleImportDialogOpenChange(true)}>
             <Upload className="h-4 w-4" />Import Bundle
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => setIsExportDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => setIsExportDialogOpen(true)}>
             <Download className="h-4 w-4" />Export Bundle
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => setIsPublishDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => setIsPublishDialogOpen(true)}>
             <Globe className="h-4 w-4" />Export for Hub
           </Button>
-          <Button variant="outline" className="gap-2" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); queryClient.invalidateQueries({ queryKey: ["agentProfilesSidebar"] }) }}>
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
-          <Button className="gap-2" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
+          <Button size="sm" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>
         </div>
       )}
       {editing ? renderEditForm() : renderAgentList()}
@@ -464,62 +491,61 @@ export function SettingsAgents() {
   function renderAgentList() {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
-        {agents.map(agent => (
-          <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
-            <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none">
-              <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden shrink-0 bg-muted">
-                {agent.avatarDataUrl
-                  ? <img src={agent.avatarDataUrl} alt={agent.displayName} className="w-full h-full object-cover" />
-                  : <Facehash name={agent.id} size={40} colors={agentColors(agent.id)} />
-                }
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <CardTitle className="text-sm font-semibold truncate leading-none mt-0.5">
-                  {agent.displayName}
-                </CardTitle>
-                <CardDescription className="line-clamp-2 mt-1 text-[11px] leading-tight min-h-[1.75rem]">
-                  {agent.description || agent.guidelines?.slice(0, 100) || "No description provided."}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
-              <div className="flex gap-1 flex-wrap mb-2.5">
-                {agent.isBuiltIn && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
-                {agent.isDefault && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
-                {!agent.enabled && <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
-                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal">{agent.connection.type}</Badge>
-                {agent.modelConfig?.mcpToolsProviderId && (
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 truncate max-w-[80px] bg-muted/30 font-normal" title={agent.modelConfig.mcpToolsProviderId}>{agent.modelConfig.mcpToolsProviderId}</Badge>
-                )}
-                {(agent.toolConfig?.enabledServers?.length ?? 0) > 0 && (
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal"><Server className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />{agent.toolConfig!.enabledServers!.length}</Badge>
-                )}
-                {skills.length > 0 && (
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal"><Sparkles className="h-2.5 w-2.5 mr-0.5 text-muted-foreground" />{(!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault) ? skills.length : (agent.skillsConfig.enabledSkillIds?.length ?? 0)}</Badge>
-                )}
-                {agent.properties && Object.keys(agent.properties).length > 0 && (
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-muted/30 font-normal">{Object.keys(agent.properties).length} props</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1 pt-2 border-t mt-auto">
-                <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-muted-foreground hover:text-foreground px-0" onClick={() => handleEdit(agent)}>
-                  <Edit2 className="h-3 w-3 mr-1" /> Edit
-                </Button>
-                {!agent.isBuiltIn && !agent.isDefault && (
-                  <>
-                    <div className="w-[1px] h-3 bg-border"></div>
-                    <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 px-0" onClick={() => handleDelete(agent.id)}>
-                      <Trash2 className="h-3 w-3 mr-1" /> Delete
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {agents.map(agent => {
+          const summaryItems = getAgentCardSummaryItems(agent, skills.length)
+
+          return (
+            <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
+              <CardHeader className="p-3 pb-2 flex flex-row items-start gap-3 flex-none">
+                <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden shrink-0 bg-muted">
+                  {agent.avatarDataUrl
+                    ? <img src={agent.avatarDataUrl} alt={agent.displayName} className="w-full h-full object-cover" />
+                    : <Facehash name={agent.id} size={40} colors={agentColors(agent.id)} />
+                  }
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <CardTitle className="text-sm font-semibold truncate leading-none mt-0.5">
+                    {agent.displayName}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2 mt-1 text-[11px] leading-tight min-h-[1.75rem]">
+                    {agent.description || agent.guidelines?.slice(0, 100) || "No description provided."}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
+                <div className="space-y-1.5 mb-2">
+                  {(agent.isBuiltIn || agent.isDefault || !agent.enabled) && (
+                    <div className="flex gap-1 flex-wrap">
+                      {agent.isBuiltIn && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
+                      {agent.isDefault && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
+                      {!agent.enabled && <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
+                    </div>
+                  )}
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    {summaryItems.join(" • ")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 pt-2 border-t mt-auto">
+                  <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-muted-foreground hover:text-foreground px-0" onClick={() => handleEdit(agent)}>
+                    <Edit2 className="h-3 w-3 mr-1" /> Edit
+                  </Button>
+                  {!agent.isBuiltIn && !agent.isDefault && (
+                    <>
+                      <div className="w-[1px] h-3 bg-border"></div>
+                      <Button variant="ghost" size="sm" className="flex-1 h-6 text-[11px] text-destructive/80 hover:text-destructive hover:bg-destructive/10 px-0" onClick={() => handleDelete(agent.id)}>
+                        <Trash2 className="h-3 w-3 mr-1" /> Delete
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
         {agents.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-            No agents yet. Click &quot;Add Agent&quot; to create one.
+          <div className="col-span-full rounded-lg border border-dashed bg-muted/20 px-4 py-7 text-center">
+            <p className="text-sm font-medium text-foreground">No agents yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Create one with Add Agent or import an existing bundle.</p>
           </div>
         )}
       </div>
@@ -531,14 +557,14 @@ export function SettingsAgents() {
     const isInternal = editing.connectionType === "internal"
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{isCreating ? "Create Agent" : `Edit: ${editing.displayName}`}</CardTitle>
+      <Card className="max-w-5xl">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">{isCreating ? "Create Agent" : `Edit: ${editing.displayName}`}</CardTitle>
           <CardDescription>Configure agent identity, behavior, model, and capabilities.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="mb-4 flex-wrap h-auto gap-1">
+            <TabsList className="mb-3 h-auto flex-wrap gap-1">
               <TabsTrigger value="general" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />General</TabsTrigger>
               {isInternal && <TabsTrigger value="model" className="gap-1.5"><Brain className="h-3.5 w-3.5" />Model</TabsTrigger>}
               <TabsTrigger value="capabilities" className="gap-1.5"><Wrench className="h-3.5 w-3.5" />Capabilities</TabsTrigger>
@@ -572,16 +598,18 @@ export function SettingsAgents() {
                 </div>
               </div>
               {isCreating && (
-                <div className="space-y-2">
-                  <Label>Quick Setup (Optional)</Label>
-                  <div className="flex gap-2">
+                <div className="space-y-2 rounded-lg border border-dashed bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <Label>Quick Setup</Label>
+                    <p className="text-[11px] text-muted-foreground">Start with a preset, or configure manually below.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
                     {Object.entries(AGENT_PRESETS).map(([key, preset]) => (
-                      <Button key={key} variant="outline" size="sm"
+                      <Button key={key} variant="outline" size="sm" className="h-8 px-2.5 text-xs"
                         onClick={() => setEditing({ ...emptyAgent(), ...preset })}
                       >{preset.displayName}</Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">Click a preset to auto-fill, or configure manually below.</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -612,7 +640,7 @@ export function SettingsAgents() {
                     </div>
                     {showSystemPrompt && (
                       <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
                           <p className="text-xs text-muted-foreground text-amber-600 dark:text-amber-500">
                             Not recommended to change. This replaces the core tool-calling instructions. Leave empty to use the default.
                           </p>
@@ -666,7 +694,7 @@ export function SettingsAgents() {
                   <Input id="baseUrl" value={editing.connectionBaseUrl ?? ""} onChange={e => setEditing({ ...editing, connectionBaseUrl: e.target.value })} placeholder="e.g., http://localhost:8000" />
                 </div>
               )}
-              <div className="flex items-center gap-4 pt-2">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
                 <div className="flex items-center space-x-2">
                   <Switch id="enabled" checked={editing.enabled} onCheckedChange={v => setEditing({ ...editing, enabled: v })} />
                   <Label htmlFor="enabled">Enabled</Label>

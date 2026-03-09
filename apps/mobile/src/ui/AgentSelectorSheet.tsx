@@ -162,7 +162,19 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       </Pressable>
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.handle} />
-        <Text style={styles.title}>{selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}</Text>
+        <View style={styles.header}>
+          <Text style={styles.title} numberOfLines={1}>
+            {selectorMode === 'acp' ? 'Select Main Agent' : 'Select Agent'}
+          </Text>
+          <TouchableOpacity
+            style={styles.headerCloseButton}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close agent selector"
+          >
+            <Text style={styles.headerCloseButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -189,10 +201,6 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             showsVerticalScrollIndicator={false}
           />
         )}
-
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
     </Modal>
   );
@@ -218,14 +226,31 @@ function createStyles(theme: Theme) {
       backgroundColor: theme.colors.border,
       borderRadius: 2,
       alignSelf: 'center',
+      marginBottom: spacing.sm,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
       marginBottom: spacing.md,
     },
     title: {
+      flex: 1,
+      minWidth: 0,
       fontSize: 18,
       fontWeight: '600',
+      lineHeight: 22,
       color: theme.colors.foreground,
-      textAlign: 'center',
-      marginBottom: spacing.md,
+    },
+    headerCloseButton: {
+      paddingHorizontal: spacing.xs,
+      paddingVertical: spacing.xs,
+      marginRight: -spacing.xs,
+    },
+    headerCloseButtonText: {
+      color: theme.colors.primary,
+      fontSize: 14,
+      fontWeight: '500',
     },
     list: {
       maxHeight: 300,
@@ -293,18 +318,6 @@ function createStyles(theme: Theme) {
       textAlign: 'center',
       color: theme.colors.mutedForeground,
       paddingVertical: spacing.lg,
-    },
-    closeButton: {
-      alignItems: 'center',
-      paddingVertical: spacing.md,
-      marginTop: spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-    },
-    closeButtonText: {
-      color: theme.colors.primary,
-      fontSize: 16,
-      fontWeight: '500',
     },
   });
 }

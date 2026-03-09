@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { X, Clock, Trash2, Pencil, Check, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Loader2, Play, Pause } from "lucide-react"
+import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
@@ -110,7 +110,7 @@ function QueuedMessageItem({
   return (
     <div
       className={cn(
-        "px-3 py-2 group",
+        "px-3 py-2",
         isFailed ? "bg-destructive/10 hover:bg-destructive/15" :
         isProcessing ? "bg-amber-100/50 dark:bg-amber-900/20" : "hover:bg-amber-100/30 dark:hover:bg-amber-900/10",
         "transition-colors"
@@ -155,14 +155,14 @@ function QueuedMessageItem({
         </div>
       ) : (
         // View mode
-        <div className="flex min-w-0 flex-wrap items-start gap-2">
+        <div className="flex min-w-0 items-start gap-2">
           {isFailed && (
             <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
           )}
           {isProcessing && (
             <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
           )}
-          <div className="flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 flex-col">
             <p
               className={cn(
                 "text-sm",
@@ -207,48 +207,45 @@ function QueuedMessageItem({
                 </Button>
               )}
             </div>
-          </div>
-          {/* Hide action buttons when processing */}
-          {!isProcessing && (
-            <div className={cn(
-              "ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity",
-              isFailed ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            )}>
-              {isFailed && (
+            {/* Hide action buttons when processing */}
+            {!isProcessing && (
+              <div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
+                {isFailed && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+                    onClick={() => retryMutation.mutate()}
+                    disabled={retryMutation.isPending}
+                    title="Retry message"
+                  >
+                    {retryMutation.isPending ? "Retrying…" : "Retry"}
+                  </Button>
+                )}
+                {!isAddedToHistory && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setIsEditing(true)}
+                    title="Edit message"
+                  >
+                    Edit
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => retryMutation.mutate()}
-                  disabled={retryMutation.isPending}
-                  title="Retry message"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => removeMutation.mutate()}
+                  disabled={removeMutation.isPending}
+                  title="Remove from queue"
                 >
-                  <RefreshCw className={cn("h-3 w-3", retryMutation.isPending && "animate-spin")} />
+                  Remove
                 </Button>
-              )}
-              {/* Disable edit for messages already added to conversation history to prevent inconsistency */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setIsEditing(true)}
-                disabled={isAddedToHistory}
-                title={isAddedToHistory ? "Cannot edit - already added to conversation" : "Edit message"}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => removeMutation.mutate()}
-                disabled={removeMutation.isPending}
-                title="Remove from queue"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -327,30 +324,30 @@ export function MessageQueuePanel({
             <Button
               variant="ghost"
               size="icon"
-              className="h-4 w-4 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
+              className="h-6 w-6 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
               onClick={() => resumeMutation.mutate()}
               disabled={resumeMutation.isPending}
               title="Resume queue execution"
             >
-              <Play className="h-3 w-3" />
+              <Play className="h-3.5 w-3.5" />
             </Button>
           ) : (
             <Button
               variant="ghost"
               size="icon"
-              className="h-4 w-4 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              className="h-6 w-6 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               onClick={() => pauseMutation.mutate()}
               disabled={pauseMutation.isPending || hasProcessingMessage}
               title="Pause queue"
             >
-              <Pause className="h-3 w-3" />
+              <Pause className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "h-4 w-4",
+              "h-6 w-6",
               isPaused
                 ? "text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
                 : "text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
@@ -359,7 +356,7 @@ export function MessageQueuePanel({
             disabled={clearMutation.isPending || hasProcessingMessage}
             title={hasProcessingMessage ? "Cannot clear while processing" : "Clear queue"}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

@@ -157,7 +157,7 @@ function ParakeetModelDownload() {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+        Ready
       </span>
     )
   }
@@ -188,7 +188,7 @@ function ParakeetModelDownload() {
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
+          Retry
         </Button>
       </div>
     )
@@ -197,7 +197,7 @@ function ParakeetModelDownload() {
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
       <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~200MB)
+      Download (~200MB)
     </Button>
   )
 }
@@ -249,13 +249,11 @@ function ParakeetProviderSection({
       </button>
       {!isCollapsed && (
         <div id="parakeet-provider-content" className="divide-y border-t">
-          <div className="px-3 py-2 bg-muted/30 border-b">
-            <p className="text-xs text-muted-foreground">
-              {isActive
-                ? "Local speech-to-text using NVIDIA Parakeet. No API key required - runs entirely on your device."
-                : "This provider is not currently selected for any feature. Select it above to use it."}
-            </p>
-          </div>
+          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+            {isActive
+              ? "Local speech-to-text with NVIDIA Parakeet on your device."
+              : "Not selected above. You can still configure it here."}
+          </p>
 
           {/* Model Download Section */}
           <Control
@@ -341,7 +339,7 @@ function KittenModelDownload() {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+        Ready
       </span>
     )
   }
@@ -372,7 +370,7 @@ function KittenModelDownload() {
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
+          Retry
         </Button>
       </div>
     )
@@ -381,7 +379,7 @@ function KittenModelDownload() {
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
       <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~24MB)
+      Download (~24MB)
     </Button>
   )
 }
@@ -458,13 +456,11 @@ function KittenProviderSection({
       </button>
       {!isCollapsed && (
         <div id="kitten-provider-content" className="divide-y border-t">
-          <div className="px-3 py-2 bg-muted/30 border-b">
-            <p className="text-xs text-muted-foreground">
-              {isActive
-                ? "Local text-to-speech using Kitten TTS. No API key required - runs entirely on your device."
-                : "This provider is not currently selected for any feature. Select it above to use it."}
-            </p>
-          </div>
+          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+            {isActive
+              ? "Local text-to-speech with Kitten on your device."
+              : "Not selected above. You can still configure it here."}
+          </p>
 
           {/* Model Download Section */}
           <Control
@@ -569,7 +565,7 @@ function SupertonicModelDownload() {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+        Ready
       </span>
     )
   }
@@ -600,7 +596,7 @@ function SupertonicModelDownload() {
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
+          Retry
         </Button>
       </div>
     )
@@ -609,7 +605,7 @@ function SupertonicModelDownload() {
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
       <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~263MB)
+      Download (~263MB)
     </Button>
   )
 }
@@ -700,13 +696,11 @@ function SupertonicProviderSection({
       </button>
       {!isCollapsed && (
         <div id="supertonic-provider-content" className="divide-y border-t">
-          <div className="px-3 py-2 bg-muted/30 border-b">
-            <p className="text-xs text-muted-foreground">
-              {isActive
-                ? "Local text-to-speech using Supertonic. No API key required - runs entirely on your device. Supports English, Korean, Spanish, Portuguese, and French."
-                : "This provider is not currently selected for any feature. Select it above to use it."}
-            </p>
-          </div>
+          <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+            {isActive
+              ? "Local text-to-speech with Supertonic on your device. Supports English, Korean, Spanish, Portuguese, and French."
+              : "Not selected above. You can still configure it here."}
+          </p>
 
           {/* Model Download Section */}
           <Control
@@ -1050,12 +1044,6 @@ export function Component() {
       <div className="grid gap-4">
         {/* Provider Selection with clear visual hierarchy */}
         <ControlGroup title="Provider Selection">
-          <div className="px-3 py-2 bg-muted/30 border-b">
-            <p className="text-xs text-muted-foreground">
-              Select which AI provider to use for each feature. Configure API keys and models in the provider sections below.
-            </p>
-          </div>
-
           {isMainAgentAcpMode && (
             <div className="mx-3 my-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-primary">
@@ -1141,11 +1129,9 @@ export function Component() {
           {!configQuery.data.providerSectionCollapsedOpenai && (
             <div id="openai-provider-content" className="divide-y border-t">
               {activeProviders.openai.length === 0 && (
-                <div className="px-3 py-2 bg-muted/30 border-b">
-                  <p className="text-xs text-muted-foreground">
-                    This provider is not currently selected for any feature. Select it above to use it.
-                  </p>
-                </div>
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Not selected above. You can still manage presets here.
+                </p>
               )}
 
               <div className="px-3 py-2">
@@ -1480,11 +1466,9 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedGroq && (
               <div id="groq-provider-content-inactive" className="divide-y border-t">
-                <div className="px-3 py-2 bg-muted/30 border-b">
-                  <p className="text-xs text-muted-foreground">
-                    This provider is not currently selected for any feature. Select it above to use it.
-                  </p>
-                </div>
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Not selected above. You can still configure it here.
+                </p>
 
                 {renderProviderDraftInput("groqApiKey", {
                   label: "API Key",
@@ -1583,11 +1567,9 @@ export function Component() {
             </button>
             {!configQuery.data.providerSectionCollapsedGemini && (
               <div id="gemini-provider-content-inactive" className="divide-y border-t">
-                <div className="px-3 py-2 bg-muted/30 border-b">
-                  <p className="text-xs text-muted-foreground">
-                    This provider is not currently selected for any feature. Select it above to use it.
-                  </p>
-                </div>
+                <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Not selected above. You can still configure it here.
+                </p>
 
                 {renderProviderDraftInput("geminiApiKey", {
                   label: "API Key",
@@ -1724,11 +1706,9 @@ export function Component() {
           </button>
           {!config.dualModelSectionCollapsed && (
             <div id="dual-model-content" className="divide-y border-t">
-              <div className="px-3 py-2 bg-muted/30 border-b">
-                <p className="text-xs text-muted-foreground">
-                  Use a weaker model to summarize agent steps for the UI and memory storage.
-                </p>
-              </div>
+              <p className="px-3 py-1.5 text-[11px] text-muted-foreground">
+                Use a separate model for UI and memory summaries.
+              </p>
 
               <Control
                 label={

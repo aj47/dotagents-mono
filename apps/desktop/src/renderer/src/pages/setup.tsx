@@ -17,15 +17,18 @@ export function Component() {
     microphoneGranted && (process.env.IS_MAC ? accessibilityGranted : true)
 
   return (
-    <div className="app-drag-region flex h-dvh items-center justify-center p-10">
-      <div className="-mt-20">
-        <h1 className="text-center text-3xl font-extrabold">
-          Welcome to {process.env.PRODUCT_NAME}
-        </h1>
-        <h2 className="mb-10 text-center text-neutral-500 dark:text-neutral-400">
-          We need some system permissions before we can run the app
-        </h2>
-        <div className="mx-auto max-w-screen-md">
+    <div className="app-drag-region flex h-dvh items-center justify-center overflow-y-auto px-4 py-6 sm:p-10">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 sm:gap-8">
+        <div>
+          <h1 className="text-center text-2xl font-bold sm:text-3xl">
+            Welcome to {process.env.PRODUCT_NAME}
+          </h1>
+          <h2 className="mt-2 text-center text-sm text-neutral-500 dark:text-neutral-400 sm:text-base">
+            We need a few system permissions before the app can start.
+          </h2>
+        </div>
+
+        <div className="mx-auto w-full max-w-2xl">
           <div className="grid divide-y rounded-lg border">
             {process.env.IS_MAC && (
               <PermissionBlock
@@ -60,7 +63,7 @@ export function Component() {
 
         {/* Show restart instructions when permissions are granted */}
         {allPermissionsGranted && (
-          <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
+          <div className="mx-auto w-full max-w-2xl rounded-lg border border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950">
             <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-300">
               <span className="i-mingcute-check-circle-fill text-lg"></span>
               <span className="font-semibold">All permissions granted!</span>
@@ -72,7 +75,7 @@ export function Component() {
           </div>
         )}
 
-        <div className="mt-10 flex items-center justify-center">
+        <div className="flex items-center justify-center">
           <Button
             variant={allPermissionsGranted ? "default" : "outline"}
             className={`gap-2 ${allPermissionsGranted ? "animate-pulse bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800" : ""}`}
@@ -105,21 +108,21 @@ const PermissionBlock = ({
   enabled?: boolean
 }) => {
   return (
-    <div className="grid grid-cols-2 gap-5 p-3">
+    <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6">
       <div>
-        <div className="text-lg font-bold">{title}</div>
+        <div className="text-base font-semibold sm:text-lg">{title}</div>
         <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
           {description}
         </div>
       </div>
-      <div className="flex items-center justify-end">
+      <div className="flex items-center md:justify-end">
         {enabled ? (
           <div className="inline-flex items-center gap-1 text-green-500">
             <span className="i-mingcute-check-fill"></span>
             <span>Granted</span>
           </div>
         ) : (
-          <Button type="button" onClick={actionHandler}>
+          <Button type="button" onClick={actionHandler} className="w-full md:w-auto">
             {actionText}
           </Button>
         )}

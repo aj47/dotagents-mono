@@ -174,7 +174,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
 
   return (
     <div className={cn(
-      "text-input-panel modern-text-strong flex h-full w-full flex-col gap-3 rounded-xl p-3",
+      "text-input-panel modern-text-strong flex h-full w-full flex-col gap-2.5 rounded-xl p-3",
       isDark ? "dark" : ""
     )}>
       {/* Show agent progress if available */}
@@ -187,10 +187,9 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
           className="flex-1"
         />
       ) : (
-        <div className="flex flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="modern-text-muted text-[11px] uppercase tracking-wide">Agent</span>
+        <div className="flex flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
               <AgentSelector
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={onSelectAgent}
@@ -198,18 +197,18 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
               />
             </div>
             {continueConversationTitle && (
-              <div className="flex items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
+              <div className="flex max-w-full items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
                 <span className="opacity-70">Continuing:</span>
-                <span className="max-w-[200px] truncate font-medium">{continueConversationTitle}</span>
+                <span className="max-w-[180px] truncate font-medium sm:max-w-[220px]">{continueConversationTitle}</span>
               </div>
             )}
           </div>
-          <div className="modern-text-muted flex items-center justify-between gap-2 text-xs">
-            <span className="min-w-0 truncate">
-              <span className="hidden sm:inline">Type your message • Enter to send • Shift+Enter for new line • Esc to cancel</span>
-              <span className="sm:hidden">Enter to send • Esc to cancel</span>
+          <div className="modern-text-muted flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px]">
+            <span className="min-w-0 flex-1 leading-relaxed">
+              <span className="hidden sm:inline">Enter to send • Shift+Enter new line • Esc close</span>
+              <span className="sm:hidden">Enter send • Esc close</span>
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <PredefinedPromptsMenu
                 onSelectPrompt={(content) => setText(content)}
                 disabled={isBusy}
@@ -229,11 +228,11 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
             </div>
           </div>
           {imageAttachments.length > 0 && (
-            <div className="flex w-full gap-2 overflow-x-auto pb-1">
+            <div className="flex w-full gap-1.5 overflow-x-auto pb-1">
               {imageAttachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border"
+                  className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border"
                 >
                   <img src={attachment.dataUrl} alt={attachment.name} className="h-full w-full object-cover" />
                   <button

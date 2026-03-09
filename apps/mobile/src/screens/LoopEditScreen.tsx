@@ -211,7 +211,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
       keyboardShouldPersistTaps="handled"
     >
-      {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
+      {error && <Text style={styles.errorText}>{error}</Text>}
       {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
 
       <Text style={styles.label}>Name *</Text>

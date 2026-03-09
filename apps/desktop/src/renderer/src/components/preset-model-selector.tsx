@@ -9,7 +9,6 @@ import {
 } from "./ui/select"
 import {
   AlertCircle,
-  RefreshCw,
   Wrench,
   Brain,
   Image,
@@ -264,16 +263,16 @@ export function PresetModelSelector({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">{label}</Label>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <Label className="min-w-0 flex-1 text-sm font-medium">{label}</Label>
         <Button
           variant="ghost"
           size="sm"
           onClick={fetchModels}
           disabled={isLoading || disabled || !baseUrl || !apiKey}
-          className="h-6 px-2 text-xs"
+          className="h-6 whitespace-nowrap px-2 text-[11px] font-medium"
         >
-          <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+          {isLoading ? "Loading..." : "Refresh"}
         </Button>
       </div>
 
