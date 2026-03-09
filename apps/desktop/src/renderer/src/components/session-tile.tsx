@@ -34,10 +34,17 @@ import { useConfigQuery } from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { removeTTSKey } from "@renderer/lib/tts-tracking"
 import { isMissingApiKeyErrorMessage } from "@shared/api-key-error-utils"
+import { toast } from "sonner"
 
 const MIN_HEIGHT = 120
 const MAX_HEIGHT = 4000 // Allow tiles to fill large displays - effectively no practical limit
 const DEFAULT_HEIGHT = 280
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === "string" && error.trim()) return error.trim()
+  return fallback
+}
 
 interface SessionTileProps {
   session: {
@@ -221,6 +228,9 @@ export function SessionTile({
       await tipcClient.respondToToolApproval({ approvalId, approved: true })
     } catch (error) {
       console.error("Failed to approve tool call:", error)
+      toast.error(
+        `Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       setIsRespondingToApproval(false)
     }
   }
@@ -233,6 +243,9 @@ export function SessionTile({
       await tipcClient.respondToToolApproval({ approvalId, approved: false })
     } catch (error) {
       console.error("Failed to deny tool call:", error)
+      toast.error(
+        `Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       setIsRespondingToApproval(false)
     }
   }

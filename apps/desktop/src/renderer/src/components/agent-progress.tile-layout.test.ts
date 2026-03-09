@@ -134,6 +134,12 @@ describe("agent progress tile layout", () => {
     )
   })
 
+  it("uses a lightweight plain-text path for active streaming bubbles before final markdown rendering", () => {
+    expect(agentProgressSource).toContain('const contentNode = streamingContent.isStreaming')
+    expect(agentProgressSource).toContain('className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')
+    expect(agentProgressSource).toContain(': <MarkdownRenderer content={streamingContent.text} />')
+  })
+
   it("wraps retry banners and queue chrome safely in narrow tile footers", () => {
     expect(agentProgressSource).toContain(
       'className="min-w-0 max-w-full overflow-hidden rounded-lg border border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/30"'

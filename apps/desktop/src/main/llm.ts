@@ -1079,6 +1079,20 @@ export async function processTranscriptWithAgentMode(
           .filter((item) => item.length > 0)
       : []
 
+  const normalizeVerificationResult = (verification: any) => {
+    const missingItems = normalizeMissingItems(verification?.missingItems)
+
+    if (verification?.isComplete === true && missingItems.length > 0) {
+      return {
+        ...verification,
+        isComplete: false,
+        missingItems,
+      }
+    }
+
+    return verification
+  }
+
   const buildIncompleteTaskFallback = (
     _lastResponse: string,
     details?: IncompleteTaskDetails
@@ -1424,11 +1438,11 @@ Return ONLY JSON per schema.`,
     let verification: any = null
     let verified = false
     for (let i = 0; i <= retries; i++) {
-      verification = await verifyCompletionWithFetch(
+      verification = normalizeVerificationResult(await verifyCompletionWithFetch(
         buildVerificationMessages(finalContent, currentFailCount),
         config.mcpToolsProviderId,
         currentSessionId,
-      )
+      ))
       if (verification?.isComplete === true) {
         verified = true
         break

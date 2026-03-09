@@ -84,4 +84,55 @@ describe("remote-server route registration", () => {
     expect(streamableMcpSection).toContain("reply.hijack()")
     expect(streamableMcpSection).toContain("transport.handleRequest(req.raw, reply.raw, req.body)")
   })
+
+  it("does not report repeat task toggles as successful when loop persistence fails", () => {
+    const source = getRemoteServerSource()
+    const toggleLoopSection = getSection(source, 'fastify.post("/v1/loops/:id/toggle"', '// POST /v1/loops/:id/run - Run a repeat task immediately')
+
+    expect(toggleLoopSection).toContain("const saved = loopService.saveLoop(updated)")
+    expect(toggleLoopSection).toContain('if (!saved) {')
+    expect(toggleLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task toggle" })')
+
+    const saveIndex = toggleLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
+    const failureIndex = toggleLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task toggle" })')
+    const successIndex = toggleLoopSection.indexOf("return reply.send({")
+
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(failureIndex).toBeGreaterThan(saveIndex)
+    expect(successIndex).toBeGreaterThan(failureIndex)
+  })
+
+  it("does not report repeat task creation as successful when loop persistence fails", () => {
+    const source = getRemoteServerSource()
+    const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+
+    expect(createLoopSection).toContain("const saved = loopService.saveLoop(newLoop)")
+    expect(createLoopSection).toContain('if (!saved) {')
+    expect(createLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+
+    const saveIndex = createLoopSection.indexOf("const saved = loopService.saveLoop(newLoop)")
+    const failureIndex = createLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+    const successIndex = createLoopSection.indexOf('return reply.send({ loop: await formatLoopResponse(loopService?.getLoop(newLoop.id) ?? newLoop) })')
+
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(failureIndex).toBeGreaterThan(saveIndex)
+    expect(successIndex).toBeGreaterThan(failureIndex)
+  })
+
+  it("does not report repeat task updates as successful when loop persistence fails", () => {
+    const source = getRemoteServerSource()
+    const updateLoopSection = getSection(source, 'fastify.patch("/v1/loops/:id"', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+
+    expect(updateLoopSection).toContain("const saved = loopService.saveLoop(updated)")
+    expect(updateLoopSection).toContain('if (!saved) {')
+    expect(updateLoopSection).toContain('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+
+    const saveIndex = updateLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
+    const failureIndex = updateLoopSection.indexOf('return reply.code(500).send({ error: "Failed to persist repeat task" })')
+    const successIndex = updateLoopSection.indexOf('return reply.send({ success: true, loop: await formatLoopResponse(loopService?.getLoop(params.id) ?? updated) })')
+
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(failureIndex).toBeGreaterThan(saveIndex)
+    expect(successIndex).toBeGreaterThan(failureIndex)
+  })
 })

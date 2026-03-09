@@ -370,8 +370,9 @@ export interface ConversationMessage {
   toolCalls?: ToolCall[]
   toolResults?: ToolResult[]
   /**
-   * When true, this message is a compaction summary that replaces older messages.
-   * Messages before a summary message have been discarded to save context space.
+   * When true, this message is a compaction summary that represents older messages
+   * in the active context window. The original raw messages may still be preserved
+   * in `Conversation.rawMessages`.
    */
   isSummary?: boolean
   /**
@@ -379,6 +380,32 @@ export interface ConversationMessage {
    * Only set when isSummary is true.
    */
   summarizedMessageCount?: number
+}
+
+export interface ConversationCompactionMetadata {
+  /**
+   * Whether the original raw message history is still preserved on disk.
+   */
+  rawHistoryPreserved: boolean
+  /**
+   * Number of raw messages preserved separately for compacted conversations.
+   * Omitted for legacy compacted sessions where the original history is unavailable.
+   */
+  storedRawMessageCount?: number
+  /**
+   * Total number of messages represented by the current conversation payload.
+   * For compacted conversations this includes summarized older messages plus active ones.
+   */
+  representedMessageCount: number
+  /**
+   * Timestamp of the most recent compaction pass that refreshed the active window.
+   */
+  compactedAt?: number
+  /**
+   * Marks conversations whose older raw history was previously discarded and cannot
+   * be fully recovered.
+   */
+  partialReason?: "legacy_summary_without_raw_messages"
 }
 
 export interface ConversationMetadata {
@@ -397,6 +424,8 @@ export interface Conversation {
   createdAt: number
   updatedAt: number
   messages: ConversationMessage[]
+  rawMessages?: ConversationMessage[]
+  compaction?: ConversationCompactionMetadata
   metadata?: {
     totalTokens?: number
     model?: string

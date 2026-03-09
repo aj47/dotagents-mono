@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/builtin-tool-names"
@@ -1537,6 +1537,12 @@ const SubAgentConversationPanel: React.FC<{
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const node = scrollRef.current
     if (!node) return
+
+    if (behavior === "auto") {
+      node.scrollTop = node.scrollHeight
+      return
+    }
+
     node.scrollTo({ top: node.scrollHeight, behavior })
   }
 
@@ -1547,13 +1553,16 @@ const SubAgentConversationPanel: React.FC<{
     setIsPinnedToBottom(distanceFromBottom < 24)
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) return
-    requestAnimationFrame(() => scrollToBottom("auto"))
+    scrollToBottom("auto")
     setIsPinnedToBottom(true)
   }, [isOpen])
 
-  useEffect(() => {
+  // Keep ACP sub-agent conversation updates pinned in the same paint as new
+  // delegated messages arrive. Smooth scrolling here visibly lags behind rapid
+  // conversation updates and leaves the inner session scroller off-bottom.
+  useLayoutEffect(() => {
     const hadNewMessages = conversation.length > previousConversationLengthRef.current
     previousConversationLengthRef.current = conversation.length
 
@@ -1561,7 +1570,7 @@ const SubAgentConversationPanel: React.FC<{
       return
     }
 
-    requestAnimationFrame(() => scrollToBottom("smooth"))
+    scrollToBottom("auto")
   }, [conversation.length, isOpen, isPinnedToBottom])
 
   const visibleMessages = showAll
@@ -1891,6 +1900,14 @@ const StreamingContentBubble: React.FC<{
 }> = ({ streamingContent }) => {
   if (!streamingContent.text) return null
 
+  const contentNode = streamingContent.isStreaming
+    ? (
+      <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        {streamingContent.text}
+      </div>
+    )
+    : <MarkdownRenderer content={streamingContent.text} />
+
   return (
     <div className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 overflow-hidden">
       {/* Header */}
@@ -1906,8 +1923,8 @@ const StreamingContentBubble: React.FC<{
 
       {/* Content */}
       <div className="px-3 py-2">
-        <div className="text-xs text-blue-900 dark:text-blue-100 whitespace-pre-wrap break-words">
-          <MarkdownRenderer content={streamingContent.text} />
+        <div className="text-xs text-blue-900 dark:text-blue-100">
+          {contentNode}
           {streamingContent.isStreaming && (
             <span className="inline-block w-1.5 h-3.5 bg-blue-600 dark:bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />
           )}
@@ -2260,14 +2277,25 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const shouldAutoScrollRef = useRef(true)
   const lastMessageCountRef = useRef(0)
   const lastContentLengthRef = useRef(0)
   const lastDisplayItemsCountRef = useRef(0)
   const lastSessionIdRef = useRef<string | undefined>(undefined)
+  const pendingInitialScrollTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const lastDerivedUserResponseLogKeyRef = useRef<string | null>(null)
   const [showKillConfirmation, setShowKillConfirmation] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const { isDark } = useTheme()
+
+  const clearPendingInitialScrollAttempts = useCallback(() => {
+    pendingInitialScrollTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
+    pendingInitialScrollTimeoutsRef.current = []
+  }, [])
+
+  useEffect(() => {
+    shouldAutoScrollRef.current = shouldAutoScroll
+  }, [shouldAutoScroll])
 
   // Tile-specific state - support controlled mode
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false)
@@ -2455,6 +2483,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to approve tool call:", error)
+      toast.error(
+        `Failed to approve tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
@@ -2487,6 +2518,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
       console.error("[Tool Approval UI] Failed to deny tool call:", error)
+      toast.error(
+        `Failed to deny tool call. ${getActionErrorMessage(error, "Please try again.")}`,
+      )
       // Only reset on error so user can retry
       respondingApprovalIdRef.current = null
       setRespondingApprovalId(null)
@@ -2899,16 +2933,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   useEffect(() => {
     if (progress?.sessionId !== lastSessionIdRef.current) {
       lastSessionIdRef.current = progress?.sessionId
+      clearPendingInitialScrollAttempts()
       lastMessageCountRef.current = 0
       lastContentLengthRef.current = 0
       lastDisplayItemsCountRef.current = 0
       // Also reset auto-scroll state for new sessions
       setShouldAutoScroll(true)
     }
-  }, [progress?.sessionId])
+  }, [clearPendingInitialScrollAttempts, progress?.sessionId])
 
-  // Improved auto-scroll logic - tracks displayItems for comprehensive change detection
-  useEffect(() => {
+  // Keep pinned-to-bottom streaming updates in the same paint as the content commit.
+  // Using useLayoutEffect here avoids a one-frame lag where new content renders above
+  // the fold and the scroll position only catches up on the next animation frame.
+  useLayoutEffect(() => {
     const scrollContainer = scrollContainerRef.current
     if (!scrollContainer) return
 
@@ -2947,10 +2984,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       // Only auto-scroll if we should (user hasn't manually scrolled up)
       if (shouldAutoScroll) {
-        // Use requestAnimationFrame to ensure DOM is updated
-        requestAnimationFrame(() => {
-          scrollToBottom()
-        })
+        scrollToBottom()
       }
     }
   }, [messages.length, shouldAutoScroll, messages, progress.streamingContent?.text, displayItems.length, displayItems])
@@ -2960,18 +2994,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const scrollContainer = scrollContainerRef.current
     if (!scrollContainer) return
 
+    clearPendingInitialScrollAttempts()
+
     const scrollToBottom = () => {
+      if (!shouldAutoScrollRef.current) return
       scrollContainer.scrollTop = scrollContainer.scrollHeight
     }
 
     // Multiple attempts to ensure scrolling works with dynamic content
     const scrollAttempts = [0, 50, 100, 200]
-    scrollAttempts.forEach((delay) => {
-      setTimeout(() => {
+    pendingInitialScrollTimeoutsRef.current = scrollAttempts.map((delay) => {
+      return setTimeout(() => {
         requestAnimationFrame(scrollToBottom)
       }, delay)
     })
-  }, [displayItems.length > 0])
+
+    return clearPendingInitialScrollAttempts
+  }, [clearPendingInitialScrollAttempts, displayItems.length > 0])
 
   // Make panel focusable when agent completes (overlay variant only)
   // This enables the continue conversation input to receive focus and be interactable
@@ -2996,6 +3035,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
     // If user scrolled up from bottom, stop auto-scroll
     else if (!isAtBottom && shouldAutoScroll) {
+      clearPendingInitialScrollAttempts()
       setShouldAutoScroll(false)
       setIsUserScrolling(true)
     }
