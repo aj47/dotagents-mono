@@ -6,7 +6,93 @@
 - Prefer one small, shippable improvement per iteration.
 - Use Expo Web when practical for repeatable inspection.
 
+## Coverage Map
+
+### Checked screens/flows
+
+- [x] Settings root screen and nested back navigation
+- [x] Connection setup flow, save validation, and inline connection actions
+- [x] Sessions list entry points, top actions, and empty state
+- [x] Chat thread composer controls, voice/listening announcements, and disclosure states
+- [x] Settings -> Agent Loops list row actions (source-backed in this worktree)
+
+### Not yet checked
+
+- [ ] Agent create/edit screen (`AgentEdit`)
+- [ ] Memory create/edit screen (`MemoryEdit`)
+- [ ] Loop create/edit screen (`LoopEdit`)
+- [ ] Session loading, error, reconnect, and sync states
+- [ ] Modal/sheet surfaces on narrow web viewports (model picker, agent selector, voice pickers)
+- [ ] Large-text / awkward viewport behavior across Settings, Sessions, Chat, and edit screens
+- [ ] Settings reconnect warning state (`⚠️ Failed to load: settings`)
+
+### Reproduced
+
+- [x] Missing in-place CTA on the session empty state
+- [x] Undersized chat composer send/accessory controls and missing web state semantics
+- [x] Weak Connection inline action affordances
+- [x] Undersized Agent Loops `Run` / `Delete` actions in Settings source
+
+### Improved
+
+- [x] Nested-screen back navigation
+- [x] Connection first-run validation and inline action affordances
+- [x] Chat composer actions, toggles, and voice-state accessibility
+- [x] Session empty-state CTA and narrow-layout guardrails
+- [x] Agent Loops row action clarity, touch targets, and destructive-action affordance
+
+### Verified
+
+- [x] Source-backed regression coverage for navigation, connection validation, chat composer accessibility, session empty state, and agent loop row actions
+
+### Blocked
+
+- [-] Live Expo Web inspection in this worktree while `node_modules` is absent (`expo: command not found`)
+
+### Still uncertain
+
+- [ ] Runtime visual fit of source-backed fixes made while Expo Web is unavailable in this worktree
+- [ ] Narrow-screen usability of `AgentEdit`, `MemoryEdit`, and `LoopEdit`
+
 ## Recent Iterations
+
+### 2026-03-09 — Iteration 7: make agent loop row actions readable and tappable
+
+- Status: completed with source-backed verification; live Expo Web inspection was blocked by missing dependencies in this worktree
+- Area:
+  - Settings -> Agent Loops list in `apps/mobile/src/screens/SettingsScreen.tsx`
+  - row actions for existing loops: enable toggle, `Run`, and `Delete`
+- Why this area:
+  - the recent ledger heavily covered Connection, Sessions, and Chat composer surfaces, so this pass widened coverage to an under-checked Settings management surface
+  - loop rows currently packed the actionable controls into a tiny side column, which is especially risky on narrow mobile widths because `Run` and `Delete` were rendered as tiny text actions instead of clear buttons
+- What was investigated:
+  - attempted Expo Web startup via the existing repo workflow
+  - current loop row markup, action labels, and styles in `SettingsScreen.tsx`
+- Findings:
+  - live runtime inspection was blocked because the workspace currently lacks `node_modules`, so `expo` could not start
+  - the per-loop `Run` and `Delete` actions used only `padding: 4` with `fontSize: 12`, well below the app's recent 44px touch-target guardrails
+  - those actions also lacked explicit button labels/hints, making them less discoverable and less trustworthy as primary row actions
+- Change made:
+  - converted the loop action area into a full-width wrapping action row better suited to narrow screens
+  - restyled `Run now` and `Delete` as bordered button-like controls with 44px minimum touch targets and centered labels
+  - added explicit button roles, labels, and hints for running a loop immediately and opening delete confirmation
+  - added `apps/mobile/tests/agent-loops-actions.test.js` to lock the touch-target and accessibility guardrails
+- Verification:
+  - `node --test apps/mobile/tests/*.test.js`
+  - `git diff --check`
+  - attempted Expo Web verification via `pnpm --filter @dotagents/mobile web --port 8095`
+- Follow-up checks:
+  - once dependencies are installed, verify the Agent Loops action row in Expo Web on a narrow viewport and confirm the switch + buttons wrap cleanly without crowding loop content
+  - inspect the adjacent `LoopEdit` screen next so coverage moves from list-row actions into the loop create/edit flow itself
+  - continue broadening edit-flow coverage to `MemoryEdit` and `AgentEdit`
+
+Evidence
+- Scope: Settings -> Agent Loops list row actions in `apps/mobile/src/screens/SettingsScreen.tsx`
+- Before evidence: Source review showed each loop row rendering `Run` and `Delete` as tiny text controls with inline styles `padding: 4` and `fontSize: 12`, plus no explicit button labels/hints. Live Expo Web inspection was attempted with `pnpm --filter @dotagents/mobile web --port 8095` but failed because `node_modules` is missing and `expo` was not found.
+- Change: Reworked the loop action area into a wrapping full-width row, restyled `Run now` and `Delete` as 44px minimum touch-target buttons, and added descriptive accessibility labels/hints plus a focused regression test file.
+- After evidence: Source now shows `styles.loopActions` with `width: '100%'` and `flexWrap: 'wrap'`, and both loop actions use `styles.loopActionButton` with `createMinimumTouchTargetStyle({ minSize: 44, ... })`, explicit button semantics, and descriptive labels/hints. `apps/mobile/tests/agent-loops-actions.test.js` passes and locks those guardrails.
+- Verification commands/run results: `node --test apps/mobile/tests/*.test.js` ✅ (13/13 passing); `git diff --check` ✅; `pnpm --filter @dotagents/mobile web --port 8095` ❌ (`node_modules` missing, `expo: command not found`).
+- Blockers/remaining uncertainty: No live before/after visual evidence this iteration because Expo Web cannot start in the current worktree. Remaining uncertainty is limited to the exact runtime wrap/spacing of the new loop action row until dependencies are available.
 
 ### 2026-03-09 — Iteration 6: make the session empty state actionable in-place
 
