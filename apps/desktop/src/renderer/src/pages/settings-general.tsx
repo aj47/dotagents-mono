@@ -1411,9 +1411,6 @@ export function Component() {
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
                     <span className="text-sm text-green-600 dark:text-green-400">Configured</span>
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Traces will be sent to Langfuse for each agent session.
-                  </div>
                 </Control>
               )}
 

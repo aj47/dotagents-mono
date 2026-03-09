@@ -33,3 +33,10 @@ test('desktop langfuse settings use a compact install note instead of a multi-pa
   assert.doesNotMatch(langfuseBlock, /To enable observability features, install it by running:/)
   assert.doesNotMatch(langfuseBlock, /After installing, restart the app to enable Langfuse integration\./)
 })
+
+test('desktop langfuse settings avoid a redundant configured helper sentence', () => {
+  assert.ok(langfuseBlock, 'expected to find the Langfuse settings group')
+  assert.match(langfuseBlock, /<Control label="Status" className="px-3">/)
+  assert.match(langfuseBlock, />Configured</)
+  assert.doesNotMatch(langfuseBlock, /Traces will be sent to Langfuse for each agent session\./)
+})
