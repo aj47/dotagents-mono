@@ -31,3 +31,11 @@ test('desktop settings agents keep only high-signal status badges and render the
   assert.doesNotMatch(renderAgentListBlock, /enabledServers!\.length/) 
   assert.doesNotMatch(renderAgentListBlock, /Object\.keys\(agent\.properties\)\.length} props<\/Badge>/)
 })
+
+test('desktop settings agents keep the empty state compact and text-first', () => {
+  assert.ok(renderAgentListBlock, 'expected to find the desktop settings agents list block')
+  assert.match(renderAgentListBlock, /<div className="col-span-full rounded-lg border border-dashed bg-muted\/20 px-4 py-7 text-center">/)
+  assert.match(renderAgentListBlock, /<p className="text-sm font-medium text-foreground">No agents yet\.<\/p>/)
+  assert.match(renderAgentListBlock, /Create one with Add Agent or import an existing bundle\./)
+  assert.doesNotMatch(renderAgentListBlock, /text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl/)
+})

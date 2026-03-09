@@ -543,8 +543,9 @@ export function SettingsAgents() {
           )
         })}
         {agents.length === 0 && (
-          <div className="col-span-full text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-            No agents yet. Click &quot;Add Agent&quot; to create one.
+          <div className="col-span-full rounded-lg border border-dashed bg-muted/20 px-4 py-7 text-center">
+            <p className="text-sm font-medium text-foreground">No agents yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Create one with Add Agent or import an existing bundle.</p>
           </div>
         )}
       </div>
