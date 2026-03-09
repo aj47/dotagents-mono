@@ -3077,18 +3077,20 @@ export default function ChatScreen({ route, navigation }: any) {
             <Text style={styles.scrollToBottomText}>↓</Text>
           </TouchableOpacity>
         )}
-	        {listening && (
-	          <View style={[styles.overlay, { bottom: 72 + insets.bottom }]} pointerEvents="none">
-            <Text style={styles.overlayText}>
-              {handsFree ? 'Listening...' : (willCancel ? 'Release to edit' : 'Release to send')}
-            </Text>
-            {!!liveTranscript && (
-	              <Text style={styles.overlayTranscript}>
-                {liveTranscript}
-              </Text>
-            )}
-          </View>
-        )}
+		        {listening && (
+		          <View style={[styles.overlay, { bottom: 72 + insets.bottom }]} pointerEvents="none">
+		            <View style={styles.overlayCard}>
+		              <Text style={styles.overlayText}>
+		                {handsFree ? 'Listening...' : (willCancel ? 'Release to edit' : 'Release to send')}
+		              </Text>
+		              {!!liveTranscript && (
+		                <Text style={styles.overlayTranscript} numberOfLines={3}>
+		                  {liveTranscript}
+		                </Text>
+		              )}
+		            </View>
+		          </View>
+		        )}
         {/* Message Queue Panel */}
         {messageQueueEnabled && queuedMessages.length > 0 && (
           <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
@@ -3740,33 +3742,37 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
-    overlay: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 72,
+	    overlay: {
+	      position: 'absolute',
+	      left: 0,
+	      right: 0,
+	      bottom: 72,
 	      // Ensure the live transcription overlay renders above the input area.
 	      zIndex: 1000,
 	      elevation: 10,
-      alignItems: 'center',
-      padding: spacing.md,
-    },
-    overlayText: {
-      ...theme.typography.caption,
-      backgroundColor: hexToRgba(theme.colors.foreground, 0.75),
-      color: theme.colors.background,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: radius.xl,
-      marginBottom: 6,
-    },
-    overlayTranscript: {
-      backgroundColor: hexToRgba(theme.colors.foreground, 0.6),
-      color: theme.colors.background,
-      padding: 10,
-      borderRadius: radius.lg,
-      maxWidth: '90%',
-    },
+	      alignItems: 'center',
+	      paddingHorizontal: spacing.md,
+	      paddingBottom: spacing.sm,
+	    },
+	    overlayCard: {
+	      maxWidth: '88%',
+	      borderRadius: radius.xl,
+	      backgroundColor: hexToRgba(theme.colors.foreground, 0.72),
+	      paddingHorizontal: 12,
+	      paddingVertical: 8,
+	    },
+	    overlayText: {
+	      ...theme.typography.caption,
+	      color: theme.colors.background,
+	      textAlign: 'center',
+	    },
+	    overlayTranscript: {
+	      color: theme.colors.background,
+	      marginTop: 4,
+	      fontSize: 12,
+	      lineHeight: 16,
+	      opacity: 0.92,
+	    },
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
       marginTop: 2,
