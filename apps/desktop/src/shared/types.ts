@@ -138,6 +138,8 @@ export interface ACPDelegationProgress {
   runId: string
   /** Name of the ACP agent being delegated to */
   agentName: string
+  /** How this delegated run is connected/executed */
+  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote'
   /** The task that was delegated */
   task: string
   /** Current status of the delegation */
@@ -152,6 +154,12 @@ export interface ACPDelegationProgress {
   resultSummary?: string
   /** Error message (if failed) */
   error?: string
+  /** Session ID for local ACP/stdio delegated sessions */
+  acpSessionId?: string
+  /** Internal DotAgents sub-session ID for internal delegations */
+  subSessionId?: string
+  /** Remote ACP run ID for externally-managed async delegations */
+  acpRunId?: string
   /** Full conversation history from the sub-agent */
   conversation?: ACPSubAgentMessage[]
 }

@@ -32,12 +32,22 @@ describe("agent progress tile layout", () => {
     )
     expect(agentProgressSource).toContain('<span className="truncate">Summary</span>')
     expect(agentProgressSource).toContain(
-      'className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/50 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"'
+      '"flex flex-wrap items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/50 transition-colors"'
     )
+    expect(agentProgressSource).toContain('alwaysOpen ? "cursor-default" : "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"')
     expect(agentProgressSource).toContain('className="min-w-0 flex flex-1 items-center gap-2"')
     expect(agentProgressSource).toContain(
       'className="min-w-0 flex-1 truncate text-[11px] font-medium text-gray-600 dark:text-gray-400"'
     )
+  })
+
+  it("surfaces latest delegated activity and a richer live details dialog from the tile chat area", () => {
+    expect(agentProgressSource).toContain('Latest delegated activity')
+    expect(agentProgressSource).toContain('Open details')
+    expect(agentProgressSource).toContain('<DelegationSummaryStrip')
+    expect(agentProgressSource).toContain('<DelegationDetailsDialog')
+    expect(agentProgressSource).toContain('alwaysOpen')
+    expect(agentProgressSource).toContain('defaultShowAll')
   })
 
   it("caps ACP session badges to the available tile width and truncates long labels", () => {

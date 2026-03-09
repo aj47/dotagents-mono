@@ -211,6 +211,7 @@ function emitSubSessionDelegationProgress(
   const delegationProgress: ACPDelegationProgress = {
     runId: subSession.id,
     agentName,
+    connectionType: 'internal',
     task: subSession.task,
     status: subSession.status === 'pending' ? 'pending'
           : subSession.status === 'running' ? 'running'
@@ -222,6 +223,7 @@ function emitSubSessionDelegationProgress(
     progressMessage: undefined,
     resultSummary: subSession.result?.substring(0, 200),
     error: subSession.error,
+    subSessionId: subSession.id,
     conversation,
   };
 

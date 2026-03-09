@@ -85,6 +85,7 @@ interface CreateSubAgentStateArgs {
   parentSessionId: string;
   workingDirectory?: string;
   isInternal?: boolean;
+  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
 }
 
 /**
@@ -102,6 +103,7 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
   const delegatedRun: DelegatedRun = {
     runId,
     agentName: args.agentName,
+    connectionType: args.connectionType,
     parentSessionId: args.parentSessionId,
     parentRunId: agentSessionStateManager.getSessionRunId(args.parentSessionId),
     task: args.task,
@@ -465,11 +467,15 @@ acpService.on('sessionUpdate', (event: {
   const delegationProgress: ACPDelegationProgress = {
     runId: subAgentState.runId,
     agentName: subAgentState.agentName,
+    connectionType: subAgentState.connectionType,
     task: subAgentState.task,
     status: isComplete ? 'completed' : 'running',
     startTime: subAgentState.startTime,
     endTime: isComplete ? Date.now() : undefined,
     progressMessage: stopReason ? `Stop reason: ${stopReason}` : undefined,
+    acpSessionId: subAgentState.acpSessionId,
+    subSessionId: subAgentState.subSessionId,
+    acpRunId: subAgentState.acpRunId,
     conversation: prepareConversationForUI(subAgentState.conversation),
   };
 
@@ -816,6 +822,7 @@ async function executeInternalAgent(
     parentSessionId,
     workingDirectory: args.workingDirectory,
     isInternal: true,
+    connectionType: 'internal',
   });
   subAgentState.status = 'running';
 
@@ -983,22 +990,33 @@ async function executeACPAgent(
       task: args.task,
       parentSessionId: parentSessionId || `orphaned-${Date.now()}`,
       workingDirectory: args.workingDirectory,
+      connectionType: resolvedAgent.connectionType,
     });
     subAgentState.status = 'running';
     registerAgentRunMapping(args.agentName, subAgentState.runId);
 
-    // Helper to register session mapping
-    const registerSessionMapping = () => {
-      const sessionId = acpService.getAgentSessionId(args.agentName);
-      if (sessionId) {
-        sessionToRunId.set(sessionId, subAgentState.runId);
+    const registerSessionMapping = (sessionId?: string) => {
+      const resolvedSessionId = sessionId ?? acpService.getAgentSessionId(args.agentName);
+      if (resolvedSessionId) {
+        subAgentState.acpSessionId = resolvedSessionId;
+        sessionToRunId.set(resolvedSessionId, subAgentState.runId);
       }
     };
 
+    const ensureStdioSession = async (): Promise<string> => {
+      const sessionId = await acpService.getOrCreateSession(
+        args.agentName,
+        false,
+        args.workingDirectory,
+      );
+      registerSessionMapping(sessionId);
+      return sessionId;
+    };
+
     if (waitForResult) {
-      return executeACPAgentSync(subAgentState, args, registerSessionMapping);
+      return executeACPAgentSync(subAgentState, args, ensureStdioSession);
     } else {
-      return executeACPAgentAsync(subAgentState, args, resolvedAgent, parentSessionId, registerSessionMapping);
+      return executeACPAgentAsync(subAgentState, args, resolvedAgent, parentSessionId, ensureStdioSession);
     }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -1011,24 +1029,21 @@ async function executeACPAgent(
 async function executeACPAgentSync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
-  registerSessionMapping: () => void
+  ensureStdioSession: () => Promise<string>
 ): Promise<object> {
   try {
-    registerSessionMapping();
+    const sessionId = await ensureStdioSession();
 
-    const result = await acpService.runTask({
-      agentName: args.agentName,
-      input: args.task,
-      context: args.context,
-      workingDirectory: args.workingDirectory,
-      mode: 'sync',
-    });
-
-    registerSessionMapping();
+    const result = await acpService.sendPrompt(
+      args.agentName,
+      sessionId,
+      args.task,
+      args.context,
+    );
 
     // Add final assistant message if we got a result
-    if (result.result) {
-      mergeAssistantStreamText(subAgentState.conversation, result.result, Date.now());
+    if (result.response) {
+      mergeAssistantStreamText(subAgentState.conversation, result.response, Date.now());
     }
 
     // Note: Don't cleanup delegation mappings here - the sessionUpdate handler
@@ -1036,7 +1051,7 @@ async function executeACPAgentSync(
     // session/update notifications to be dropped/misrouted.
 
     if (result.success) {
-      return createCompletedResult(subAgentState, result.result || '', subAgentState.conversation);
+      return createCompletedResult(subAgentState, result.response || '', subAgentState.conversation);
     } else {
       return createFailedResult(subAgentState, result.error || 'Unknown error', subAgentState.conversation);
     }
@@ -1056,7 +1071,7 @@ function executeACPAgentAsync(
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
   agentConfig: ResolvedAcpAgentConfig,
   parentSessionId: string | undefined,
-  registerSessionMapping: () => void
+  ensureStdioSession: () => Promise<string>
 ): DelegationResult {
   // Start background polling for notifications
   acpBackgroundNotifier.startPolling();
@@ -1072,7 +1087,7 @@ function executeACPAgentAsync(
     return createFailedResult(subAgentState, `Agent "${args.agentName}" is internal and not executable via ACP external delegation`);
   } else {
     // ACP/stdio local process-backed agents
-    executeStdioAgentAsync(subAgentState, args, registerSessionMapping);
+    executeStdioAgentAsync(subAgentState, args, ensureStdioSession);
   }
 
   return createRunningResult(subAgentState);
@@ -1111,17 +1126,18 @@ function executeRemoteAgentAsync(
 function executeStdioAgentAsync(
   subAgentState: DelegatedRun,
   args: { agentName: string; task: string; context?: string; workingDirectory?: string },
-  registerSessionMapping: () => void
+  ensureStdioSession: () => Promise<string>
 ): void {
-  acpService.runTask({
-    agentName: args.agentName,
-    input: args.task,
-    context: args.context,
-    workingDirectory: args.workingDirectory,
-    mode: 'async',
-  }).then(
+  Promise.resolve()
+    .then(() => ensureStdioSession())
+    .then((sessionId) => acpService.sendPrompt(
+      args.agentName,
+      sessionId,
+      args.task,
+      args.context,
+    ))
+    .then(
     (result) => {
-      registerSessionMapping();
       const endTime = Date.now();
 
       if (result.success) {
@@ -1133,7 +1149,7 @@ function executeStdioAgentAsync(
           startTime: subAgentState.startTime,
           endTime,
           metadata: { duration: endTime - subAgentState.startTime },
-          output: [{ role: 'assistant', parts: [{ content: result.result || '' }] }],
+          output: [{ role: 'assistant', parts: [{ content: result.response || '' }] }],
         };
       } else {
         subAgentState.status = 'failed';
@@ -1485,6 +1501,7 @@ export function getDelegatedRunDetails(runId: string): ACPDelegationProgress | n
   return {
     runId: state.runId,
     agentName: state.agentName,
+    connectionType: state.connectionType,
     task: state.task,
     status: state.status,
     startTime: state.startTime,
@@ -1493,6 +1510,9 @@ export function getDelegatedRunDetails(runId: string): ACPDelegationProgress | n
     progressMessage: state.progress,
     resultSummary: state.result?.output?.[0]?.parts?.[0]?.content?.substring(0, 200),
     error: state.result?.error,
+    acpSessionId: state.acpSessionId,
+    subSessionId: state.subSessionId,
+    acpRunId: state.acpRunId,
     conversation: [...state.conversation],
   };
 }

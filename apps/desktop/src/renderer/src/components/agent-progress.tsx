@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Minimize2, Shie
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
@@ -1363,6 +1364,44 @@ const getConversationPreview = (
   return truncatePreview(`${roleLabel}: ${lastMessage.content}`, maxLength)
 }
 
+const getDelegationSourceLabel = (delegation: ACPDelegationProgress): string => {
+  switch (delegation.connectionType) {
+    case "internal":
+      return "Internal session"
+    case "acp":
+    case "stdio":
+      return delegation.acpSessionId ? "ACP session" : "ACP agent"
+    case "remote":
+      return delegation.acpRunId ? "Remote ACP run" : "Remote agent"
+    default:
+      return "Delegated run"
+  }
+}
+
+const getDelegationTrackingLabel = (delegation: ACPDelegationProgress): string | null => {
+  if (delegation.subSessionId) return `Session ${delegation.subSessionId.slice(-8)}`
+  if (delegation.acpSessionId) return `Session ${delegation.acpSessionId.slice(-8)}`
+  if (delegation.acpRunId) return `Run ${delegation.acpRunId.slice(-8)}`
+  return null
+}
+
+const getDelegationActivityTimestamp = (delegation: ACPDelegationProgress): number => (
+  delegation.conversation?.[delegation.conversation.length - 1]?.timestamp
+    ?? delegation.endTime
+    ?? delegation.startTime
+)
+
+type DelegationSummaryEntry = {
+  delegation: ACPDelegationProgress
+  statusLabel: string
+  subtitle: string
+  sourceLabel: string
+  trackingLabel: string | null
+  messageCount: number
+  isActive: boolean
+  activityTimestamp: number
+}
+
 function useCompactWidth<T extends HTMLElement>(threshold = DELEGATION_COMPACT_WIDTH) {
   const ref = useRef<T | null>(null)
   const [isCompact, setIsCompact] = useState(false)
@@ -1532,12 +1571,15 @@ const SubAgentConversationPanel: React.FC<{
   isOpen: boolean
   onToggle: () => void
   isCompact?: boolean
-}> = ({ conversation, agentName, isOpen, onToggle, isCompact = false }) => {
+  alwaysOpen?: boolean
+  defaultShowAll?: boolean
+}> = ({ conversation, agentName, isOpen, onToggle, isCompact = false, alwaysOpen = false, defaultShowAll = false }) => {
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({})
-  const [showAll, setShowAll] = useState(false)
+  const [showAll, setShowAll] = useState(defaultShowAll)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
   const previousConversationLengthRef = useRef(conversation.length)
+  const panelOpen = alwaysOpen || isOpen
 
   const toggleMessage = (index: number) => {
     setExpandedMessages(prev => ({
@@ -1560,6 +1602,12 @@ const SubAgentConversationPanel: React.FC<{
 
   const conversationPreview = getConversationPreview(conversation, agentName, isCompact ? 72 : 120)
 
+  useEffect(() => {
+    if (defaultShowAll) {
+      setShowAll(true)
+    }
+  }, [defaultShowAll])
+
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     const node = scrollRef.current
     if (!node) return
@@ -1580,10 +1628,10 @@ const SubAgentConversationPanel: React.FC<{
   }
 
   useLayoutEffect(() => {
-    if (!isOpen) return
+    if (!panelOpen) return
     scrollToBottom("auto")
     setIsPinnedToBottom(true)
-  }, [isOpen])
+  }, [panelOpen])
 
   // Keep ACP sub-agent conversation updates pinned in the same paint as new
   // delegated messages arrive. Smooth scrolling here visibly lags behind rapid
@@ -1592,12 +1640,12 @@ const SubAgentConversationPanel: React.FC<{
     const hadNewMessages = conversation.length > previousConversationLengthRef.current
     previousConversationLengthRef.current = conversation.length
 
-    if (!isOpen || !hadNewMessages || !isPinnedToBottom) {
+    if (!panelOpen || !hadNewMessages || !isPinnedToBottom) {
       return
     }
 
     scrollToBottom("auto")
-  }, [conversation.length, isOpen, isPinnedToBottom])
+  }, [conversation.length, panelOpen, isPinnedToBottom])
 
   const visibleMessages = showAll
     ? conversation
@@ -1608,12 +1656,15 @@ const SubAgentConversationPanel: React.FC<{
     <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
       {/* Collapsible Header */}
       <div
-        className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/50 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-        onClick={onToggle}
+        className={cn(
+          "flex flex-wrap items-center gap-2 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800/50 transition-colors",
+          alwaysOpen ? "cursor-default" : "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
+        )}
+        onClick={alwaysOpen ? undefined : onToggle}
       >
         <div className="min-w-0 flex flex-1 items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-gray-600 dark:text-gray-400">
-            {isOpen ? "Recent activity" : conversationPreview}
+            {panelOpen ? "Recent activity" : conversationPreview}
           </span>
           <Badge variant="outline" className="h-4 shrink-0 px-1 py-0 text-[10px]">
             {conversation.length}
@@ -1628,16 +1679,16 @@ const SubAgentConversationPanel: React.FC<{
           >
             <Copy className="h-3 w-3 opacity-60 hover:opacity-100" />
           </button>
-          {isOpen ? (
+          {!alwaysOpen && (panelOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
           ) : (
             <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
-          )}
+          ))}
         </div>
       </div>
 
       {/* Collapsible Content */}
-      {isOpen && (
+      {panelOpen && (
         <div className="relative bg-white/50 dark:bg-black/20">
           {hiddenCount > 0 && (
             <button
@@ -1692,7 +1743,8 @@ const DelegationBubble: React.FC<{
   delegation: ACPDelegationProgress
   isExpanded?: boolean
   onToggleExpand?: () => void
-}> = ({ delegation, isExpanded = false, onToggleExpand }) => {
+  onOpenDetails?: (runId: string) => void
+}> = ({ delegation, isExpanded = false, onToggleExpand, onOpenDetails }) => {
   const { ref: containerRef, isCompact } = useCompactWidth<HTMLDivElement>()
   const [isConversationOpen, setIsConversationOpen] = useState(false)
   const isRunning = delegation.status === 'running' || delegation.status === 'pending' || delegation.status === 'spawning'
@@ -1771,6 +1823,8 @@ const DelegationBubble: React.FC<{
   const bodyTextColor = textColor.replace('800', '700').replace('200', '300')
   const statusLabel = formatDelegationStatus(delegation.status)
   const subtitle = getDelegationSubtitle(delegation, isCompact ? 72 : 120)
+  const sourceLabel = getDelegationSourceLabel(delegation)
+  const trackingLabel = getDelegationTrackingLabel(delegation)
   const durationLabel = `${duration}s`
   const statusBadgeClass = isCompleted
     ? 'border-green-300/70 bg-green-100/70 text-green-800 dark:border-green-700/70 dark:bg-green-900/40 dark:text-green-200'
@@ -1779,6 +1833,12 @@ const DelegationBubble: React.FC<{
     : isCancelled
     ? 'border-amber-300/70 bg-amber-100/70 text-amber-800 dark:border-amber-700/70 dark:bg-amber-900/40 dark:text-amber-200'
     : 'border-blue-300/70 bg-blue-100/70 text-blue-800 dark:border-blue-700/70 dark:bg-blue-900/40 dark:text-blue-200'
+
+  useEffect(() => {
+    if (isExpanded && isRunning && hasConversation) {
+      setIsConversationOpen(true)
+    }
+  }, [hasConversation, isExpanded, isRunning])
 
   return (
     <div ref={containerRef} className={cn("rounded-lg border overflow-hidden", statusColor)}>
@@ -1827,6 +1887,8 @@ const DelegationBubble: React.FC<{
                 )}
                 <span>{durationLabel}</span>
               </span>
+              <span>{sourceLabel}</span>
+              {trackingLabel && <span>{trackingLabel}</span>}
               {hasConversation && (
                 <span>{delegation.conversation!.length} messages</span>
               )}
@@ -1899,21 +1961,205 @@ const DelegationBubble: React.FC<{
             <span className={cn("text-[11px]", mutedTextColor)}>
               {statusLabel} · {durationLabel}
             </span>
-            {hasConversation && !isConversationOpen && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsConversationOpen(true)
-                }}
-                className="inline-flex h-8 items-center justify-center rounded-md border border-purple-200/80 px-3 text-[11px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
-              >
-                Open conversation
-              </button>
-            )}
+            <div className={cn("flex items-center gap-2", isCompact && "w-full flex-col items-stretch")}>
+              {hasConversation && !isConversationOpen && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsConversationOpen(true)
+                  }}
+                  className="inline-flex h-8 items-center justify-center rounded-md border border-purple-200/80 px-3 text-[11px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
+                >
+                  Open transcript
+                </button>
+              )}
+              {onOpenDetails && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenDetails(delegation.runId)
+                  }}
+                  className="inline-flex h-8 items-center justify-center rounded-md border border-border px-3 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Open details
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+const DelegationSummaryStrip: React.FC<{
+  entries: DelegationSummaryEntry[]
+  maxItems: number
+  onOpenDetails: (runId: string) => void
+}> = ({ entries, maxItems, onOpenDetails }) => {
+  if (entries.length === 0) {
+    return null
+  }
+
+  const visibleEntries = entries.slice(0, maxItems)
+  const activeCount = entries.filter((entry) => entry.isActive).length
+
+  return (
+    <div className="border-b border-border/30 bg-muted/5 px-2.5 py-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
+          <Bot className="h-3.5 w-3.5" />
+          Latest delegated activity
+        </span>
+        <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+          {entries.length}
+        </Badge>
+        {activeCount > 0 && (
+          <Badge variant="outline" className="h-5 border-blue-200 px-1.5 text-[10px] text-blue-700 dark:border-blue-800 dark:text-blue-300">
+            {activeCount} live
+          </Badge>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        {visibleEntries.map((entry) => (
+          <button
+            key={entry.delegation.runId}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenDetails(entry.delegation.runId)
+            }}
+            className="flex w-full items-start gap-2 rounded-md border border-border/60 bg-background/80 px-2.5 py-2 text-left transition-colors hover:bg-muted/40"
+          >
+            <div className="mt-0.5">
+              {entry.isActive ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+              ) : entry.delegation.status === "completed" ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : entry.delegation.status === "failed" ? (
+                <XCircle className="h-3.5 w-3.5 text-red-500" />
+              ) : (
+                <OctagonX className="h-3.5 w-3.5 text-amber-500" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate text-xs font-medium text-foreground">{entry.delegation.agentName}</span>
+                <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                  {entry.statusLabel}
+                </Badge>
+              </div>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                {entry.subtitle}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground/90">
+                <span>{entry.sourceLabel}</span>
+                {entry.trackingLabel && <span>{entry.trackingLabel}</span>}
+                {entry.messageCount > 0 && <span>{entry.messageCount} messages</span>}
+                {entry.isActive && <span className="text-blue-600 dark:text-blue-400">Live updates</span>}
+              </div>
+            </div>
+            <span className="pt-0.5 text-[10px] font-medium text-primary">Open</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const DelegationDetailsDialog: React.FC<{
+  delegation: ACPDelegationProgress | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}> = ({ delegation, open, onOpenChange }) => {
+  if (!delegation) {
+    return null
+  }
+
+  const hasConversation = (delegation.conversation?.length ?? 0) > 0
+  const trackingLabel = getDelegationTrackingLabel(delegation)
+  const sourceLabel = getDelegationSourceLabel(delegation)
+  const statusLabel = formatDelegationStatus(delegation.status)
+  const subtitle = getDelegationSubtitle(delegation, 220)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
+            <Bot className="h-4 w-4" />
+            <span>{delegation.agentName}</span>
+            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+              {statusLabel}
+            </Badge>
+          </DialogTitle>
+          <DialogDescription className="space-y-1 text-xs">
+            <span className="block">{subtitle}</span>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              <span>{sourceLabel}</span>
+              {trackingLabel && <span>{trackingLabel}</span>}
+              {hasConversation && <span>{delegation.conversation!.length} messages</span>}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 overflow-y-auto pr-1">
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Delegated task
+            </div>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground">
+              {delegation.task}
+            </p>
+          </div>
+
+          {delegation.progressMessage && (
+            <div className="rounded-md border border-border/60 bg-background p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Latest update
+              </div>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground/85">
+                {delegation.progressMessage}
+              </p>
+            </div>
+          )}
+
+          {delegation.resultSummary && (
+            <div className="rounded-md border border-green-200/80 bg-green-50/60 p-3 dark:border-green-900 dark:bg-green-950/20">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
+                Result
+              </div>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-green-900 dark:text-green-100">
+                {delegation.resultSummary}
+              </p>
+            </div>
+          )}
+
+          {delegation.error && (
+            <div className="rounded-md border border-red-200/80 bg-red-50/70 p-3 dark:border-red-900 dark:bg-red-950/20">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
+                Error
+              </div>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-red-900 dark:text-red-100">
+                {delegation.error}
+              </p>
+            </div>
+          )}
+
+          {hasConversation && (
+            <SubAgentConversationPanel
+              conversation={delegation.conversation!}
+              agentName={delegation.agentName}
+              isOpen
+              onToggle={() => undefined}
+              alwaysOpen
+              defaultShowAll
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -2354,6 +2600,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
   const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
+  const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
@@ -2893,14 +3140,26 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       })
     }
 
+    const latestDelegationsByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
     for (const step of progress.steps) {
-      if (step.delegation) {
-        items.push({
-          kind: "delegation",
-          id: `delegation-${step.delegation.runId}`,
-          data: step.delegation,
+      if (!step.delegation) continue
+
+      const sortTimestamp = step.timestamp ?? step.delegation.endTime ?? step.delegation.startTime
+      const existing = latestDelegationsByRunId.get(step.delegation.runId)
+      if (!existing || sortTimestamp >= existing.timestamp) {
+        latestDelegationsByRunId.set(step.delegation.runId, {
+          delegation: step.delegation,
+          timestamp: sortTimestamp,
         })
       }
+    }
+
+    for (const { delegation } of latestDelegationsByRunId.values()) {
+      items.push({
+        kind: "delegation",
+        id: `delegation-${delegation.runId}`,
+        data: delegation,
+      })
     }
 
     const timestampedItems = items.filter((item) => getItemTimestamp(item) !== null)
@@ -2916,6 +3175,49 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       : displayItems,
     [displayItems, isExpanded, isFocused, variant],
   )
+
+  const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
+    const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
+
+    for (const step of progress.steps) {
+      if (!step.delegation) continue
+
+      const timestamp = step.timestamp ?? getDelegationActivityTimestamp(step.delegation)
+      const existing = latestByRunId.get(step.delegation.runId)
+      if (!existing || timestamp >= existing.timestamp) {
+        latestByRunId.set(step.delegation.runId, {
+          delegation: step.delegation,
+          timestamp,
+        })
+      }
+    }
+
+    return Array.from(latestByRunId.values())
+      .map(({ delegation, timestamp }) => ({
+        delegation,
+        statusLabel: formatDelegationStatus(delegation.status),
+        subtitle: getDelegationSubtitle(delegation, 140),
+        sourceLabel: getDelegationSourceLabel(delegation),
+        trackingLabel: getDelegationTrackingLabel(delegation),
+        messageCount: delegation.conversation?.length ?? 0,
+        isActive: delegation.status === "pending" || delegation.status === "spawning" || delegation.status === "running",
+        activityTimestamp: timestamp,
+      }))
+      .sort((a, b) => b.activityTimestamp - a.activityTimestamp)
+  }, [progress.steps])
+
+  const selectedDelegation = useMemo(
+    () => delegationSummaryEntries.find((entry) => entry.delegation.runId === selectedDelegationRunId)?.delegation ?? null,
+    [delegationSummaryEntries, selectedDelegationRunId],
+  )
+
+  useEffect(() => {
+    if (selectedDelegationRunId && !selectedDelegation) {
+      setSelectedDelegationRunId(null)
+    }
+  }, [selectedDelegation, selectedDelegationRunId])
+
+  const delegationSummaryMaxItems = variant === "tile" && !isFocused && !isExpanded ? 1 : 3
 
   const lastAssistantDisplayIndex = useMemo(() => {
     for (let i = visibleDisplayItems.length - 1; i >= 0; i--) {
@@ -3634,11 +3936,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       )}
 
       {/* Message Stream - Left-aligned content (Chat Tab) */}
-      <div className={cn("relative flex-1 min-h-0", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
+        <DelegationSummaryStrip
+          entries={delegationSummaryEntries}
+          maxItems={delegationSummaryMaxItems}
+          onOpenDetails={setSelectedDelegationRunId}
+        />
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="h-full overflow-y-auto"
+          className="h-full min-h-0 overflow-y-auto"
         >
           {visibleDisplayItems.length > 0 ? (
             <div className="space-y-1 p-2">
@@ -3734,6 +4041,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       delegation={item.data}
                       isExpanded={delegationExpanded}
                       onToggleExpand={() => toggleItemExpansion(itemKey, false)}
+                      onOpenDetails={setSelectedDelegationRunId}
                     />
                   )
                 } else {
@@ -3768,6 +4076,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           />
         </div>
       )}
+
+      <DelegationDetailsDialog
+        delegation={selectedDelegation}
+        open={!!selectedDelegation}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedDelegationRunId(null)
+          }
+        }}
+      />
 
       {/* Summary View Tab */}
       {activeTab === "summary" && (progress.stepSummaries?.length ?? 0) > 0 && (
