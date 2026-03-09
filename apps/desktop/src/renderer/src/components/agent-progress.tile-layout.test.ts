@@ -174,6 +174,9 @@ describe("agent progress tile layout", () => {
       'className="flex min-w-0 flex-wrap items-start gap-2"'
     )
     expect(messageQueuePanelSource).toContain(
+      'className="mt-2 flex flex-wrap items-center gap-1.5"'
+    )
+    expect(messageQueuePanelSource).not.toContain(
       '"ml-auto flex shrink-0 flex-wrap items-center gap-1 self-start transition-opacity"'
     )
   })
