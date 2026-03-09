@@ -223,7 +223,7 @@ export function Component() {
 
   useEffect(() => {
     return () => {
-      for (const timeout of Object.values(langfuseSaveTimeoutsRef.current)) {
+      for (const timeout of Object.values(langfuseSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
       }
 

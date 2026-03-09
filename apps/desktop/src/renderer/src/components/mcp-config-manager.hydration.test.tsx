@@ -94,6 +94,8 @@ function createHookRuntime() {
     useRef,
     useEffect,
     useCallback,
+    memo: (component: any) => component,
+    forwardRef: (render: any) => (props: any) => render(props, null),
   }
   reactMock.default = reactMock
 
@@ -154,6 +156,7 @@ async function loadMCPConfigManager(runtime: ReturnType<typeof createHookRuntime
       Play: Icon,
       ExternalLink: Icon,
       FileText: Icon,
+      MoreHorizontal: Icon,
       ChevronDown: Icon,
       ChevronUp: Icon,
       ChevronRight: Icon,

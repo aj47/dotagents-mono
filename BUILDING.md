@@ -4,7 +4,8 @@ This guide covers building signed release versions of SpeakMCP for distribution.
 
 ## Prerequisites
 
-- **Node.js 18+** and **pnpm**
+- **Node.js 24.x** recommended via `.nvmrc` (**minimum supported:** `20.19.4`)
+- **pnpm 9**
 - **Rust toolchain** (for the keyboard/input binary)
 - **Xcode** (for macOS builds)
 - **Apple Developer Account** (for code signing)

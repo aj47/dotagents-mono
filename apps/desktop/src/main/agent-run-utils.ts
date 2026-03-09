@@ -96,7 +96,7 @@ export function buildProfileContext(
   if (profileName) parts.push(`[Acting as: ${profileName}]`)
   if (profile?.systemPrompt) parts.push(`System Prompt: ${profile.systemPrompt}`)
   if (profile?.guidelines) parts.push(`Guidelines: ${profile.guidelines}`)
-  if (profile?.disableDelegation) {
+  if (profile && "disableDelegation" in profile && profile.disableDelegation) {
     parts.push(
       "Delegation rule: this is already a delegated run. Execute the task directly and do not delegate to other agents or sub-sessions.",
     )

@@ -1059,7 +1059,10 @@ export const router = {
 
   clearInactiveSessions: t.procedure.action(async () => {
     // Clear completed sessions from the tracker
-    agentSessionTracker.clearCompletedSessions()
+    agentSessionTracker.clearCompletedSessions((session) => {
+      if (!session.conversationId) return true
+      return messageQueueService.getQueue(session.conversationId).length === 0
+    })
 
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {
@@ -4877,8 +4880,7 @@ export const router = {
   saveLoop: t.procedure
     .input<{ loop: LoopConfig }>()
     .action(async ({ input }) => {
-      loopService.saveLoop(input.loop)
-      return { success: true }
+      return { success: loopService.saveLoop(input.loop) }
     }),
 
   deleteLoop: t.procedure

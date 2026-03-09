@@ -167,7 +167,11 @@ export function SettingsLoops() {
     }
 
     try {
-      await tipcClient.saveLoop({ loop: loopData })
+      const saveResult = await tipcClient.saveLoop({ loop: loopData })
+      if (saveResult?.success === false) {
+        toast.error("Failed to save task")
+        return
+      }
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       setEditing(null)
       setIsCreating(false)
@@ -188,7 +192,11 @@ export function SettingsLoops() {
   const handleToggleEnabled = async (loop: LoopConfig) => {
     const updatedLoop = { ...loop, enabled: !loop.enabled }
     try {
-      await tipcClient.saveLoop({ loop: updatedLoop })
+      const saveResult = await tipcClient.saveLoop({ loop: updatedLoop })
+      if (saveResult?.success === false) {
+        toast.error("Failed to update task")
+        return
+      }
       queryClient.invalidateQueries({ queryKey: ["loops"] })
 
       if (updatedLoop.enabled) {

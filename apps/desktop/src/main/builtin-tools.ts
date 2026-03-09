@@ -1369,7 +1369,13 @@ const toolHandlers: Record<string, ToolHandler> = {
         lastRunAt: existing?.lastRunAt,
       }
 
-      loopService.saveLoop(task)
+      const saved = loopService.saveLoop(task)
+      if (!saved) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, error: "Failed to persist repeat task" }) }],
+          isError: true,
+        }
+      }
 
       // Start or stop scheduling based on enabled state
       if (task.enabled) {

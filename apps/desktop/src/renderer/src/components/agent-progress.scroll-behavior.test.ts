@@ -22,7 +22,7 @@ describe("agent progress scroll behavior", () => {
     expect(agentProgressSource).toContain("shouldAutoScrollRef.current = shouldAutoScroll")
     expect(agentProgressSource).toContain("return clearPendingInitialScrollAttempts")
     expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, progress?.sessionId])")
-    expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, displayItems.length > 0])")
+    expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, shouldAutoScrollContent, visibleDisplayItems.length > 0])")
   })
 
   it("pins ACP sub-agent conversation updates without smooth-scroll lag while messages stream in", () => {

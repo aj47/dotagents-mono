@@ -94,15 +94,20 @@ class LoopService {
   }
 
   /** Persist a single task to the global .agents/tasks/ layer. */
-  private saveTask(task: LoopConfig): void {
+  private saveTask(task: LoopConfig, loopsSnapshot: LoopConfig[] = this.loops): boolean {
+    let savedTaskFile = true
     try {
       const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
       writeTaskFile(globalLayer, task, { maxBackups: 10 })
     } catch (error) {
+      savedTaskFile = false
       logApp("[LoopService] Error saving task file:", error)
     }
     // Shadow: keep config.json in sync for backward compatibility
-    this.syncToConfigJson()
+    if (savedTaskFile) {
+      this.syncToConfigJson(loopsSnapshot)
+    }
+    return savedTaskFile
   }
 
   /** Remove a task's files from the global .agents/tasks/ layer. */
@@ -117,12 +122,14 @@ class LoopService {
   }
 
   /** Shadow-write all loops back to config.json for backward compatibility. */
-  private syncToConfigJson(): void {
+  private syncToConfigJson(loopsSnapshot: LoopConfig[] = this.loops): boolean {
     try {
       const config = configStore.get()
-      configStore.save({ ...config, loops: this.loops })
+      configStore.save({ ...config, loops: loopsSnapshot })
+      return true
     } catch {
       // best-effort
+      return false
     }
   }
 
@@ -141,14 +148,19 @@ class LoopService {
   }
 
   /** Save (create or update) a loop. */
-  saveLoop(loop: LoopConfig): void {
+  saveLoop(loop: LoopConfig): boolean {
     const idx = this.loops.findIndex((l) => l.id === loop.id)
-    if (idx >= 0) {
-      this.loops[idx] = loop
-    } else {
-      this.loops.push(loop)
+    const nextLoops = idx >= 0
+      ? this.loops.map((existingLoop, existingIdx) => existingIdx === idx ? loop : existingLoop)
+      : [...this.loops, loop]
+
+    const saved = this.saveTask(loop, nextLoops)
+    if (!saved) {
+      return false
     }
-    this.saveTask(loop)
+
+    this.loops = nextLoops
+    return true
   }
 
   /** Delete a loop. */

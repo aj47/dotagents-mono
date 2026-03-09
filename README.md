@@ -142,6 +142,7 @@ Skills you define for DotAgents work in Claude Code, Cursor, Codex, and any tool
 
 ```bash
 git clone https://github.com/aj47/dotagents-mono.git && cd dotagents-mono
+nvm use
 pnpm install && pnpm build-rs && pnpm dev
 ```
 
