@@ -24,3 +24,14 @@ test('desktop provider sections keep shorter orientation copy while surfacing co
   assert.match(settingsProvidersSource, /Not selected above\. You can still manage presets here\./)
   assert.match(settingsProvidersSource, /Use a separate model for UI and memory summaries\./)
 })
+
+test('desktop local provider model status rows keep labels compact because the row already says Model Status', () => {
+  assert.equal((settingsProvidersSource.match(/>\s*Ready\s*</g) ?? []).length, 3)
+  assert.equal((settingsProvidersSource.match(/>\s*Retry\s*</g) ?? []).length, 3)
+  assert.match(settingsProvidersSource, /Download \(~200MB\)/)
+  assert.match(settingsProvidersSource, /Download \(~24MB\)/)
+  assert.match(settingsProvidersSource, /Download \(~263MB\)/)
+  assert.doesNotMatch(settingsProvidersSource, /Model Ready/)
+  assert.doesNotMatch(settingsProvidersSource, /Retry Download/)
+  assert.doesNotMatch(settingsProvidersSource, /Download Model \(/)
+})

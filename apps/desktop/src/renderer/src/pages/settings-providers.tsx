@@ -157,7 +157,7 @@ function ParakeetModelDownload() {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+        Ready
       </span>
     )
   }
@@ -188,7 +188,7 @@ function ParakeetModelDownload() {
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
+          Retry
         </Button>
       </div>
     )
@@ -197,7 +197,7 @@ function ParakeetModelDownload() {
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
       <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~200MB)
+      Download (~200MB)
     </Button>
   )
 }
@@ -339,7 +339,7 @@ function KittenModelDownload() {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+        Ready
       </span>
     )
   }
@@ -370,7 +370,7 @@ function KittenModelDownload() {
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
+          Retry
         </Button>
       </div>
     )
@@ -379,7 +379,7 @@ function KittenModelDownload() {
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
       <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~24MB)
+      Download (~24MB)
     </Button>
   )
 }
@@ -565,7 +565,7 @@ function SupertonicModelDownload() {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Model Ready
+        Ready
       </span>
     )
   }
@@ -596,7 +596,7 @@ function SupertonicModelDownload() {
         <span className="text-xs text-destructive">{status.error}</span>
         <Button size="sm" variant="outline" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          Retry Download
+          Retry
         </Button>
       </div>
     )
@@ -605,7 +605,7 @@ function SupertonicModelDownload() {
   return (
     <Button size="sm" variant="outline" onClick={handleDownload}>
       <Download className="h-3.5 w-3.5 mr-1.5" />
-      Download Model (~263MB)
+      Download (~263MB)
     </Button>
   )
 }
