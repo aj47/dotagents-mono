@@ -25,3 +25,8 @@ test('keeps push notifications as a single labeled row instead of a duplicate se
 test('preserves breathing room before the push notifications row after removing the extra heading', () => {
   assert.match(settingsSource, /sectionLeadRow:\s*\{[\s\S]*?marginTop: spacing\.lg,/);
 });
+
+test('keeps extra bottom safe-area breathing room on the root settings scroll container', () => {
+  assert.match(settingsSource, /const settingsBottomPadding = Math\.max\(insets\.bottom \+ spacing\.lg, spacing\['3xl'\]\);/);
+  assert.match(settingsSource, /contentContainerStyle=\{\[styles\.container, \{ paddingBottom: settingsBottomPadding \}\]\}/);
+});

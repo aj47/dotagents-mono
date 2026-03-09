@@ -258,6 +258,7 @@ export default function SettingsScreen({ navigation }: any) {
   const inputTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const settingsBottomPadding = Math.max(insets.bottom + spacing.lg, spacing['3xl']);
 
   // Create settings API client when we have valid credentials
   const settingsClient = useMemo(() => {
@@ -976,7 +977,7 @@ export default function SettingsScreen({ navigation }: any) {
     <>
       <ScrollView
         style={{ backgroundColor: theme.colors.background }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}
+        contentContainerStyle={[styles.container, { paddingBottom: settingsBottomPadding }]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
