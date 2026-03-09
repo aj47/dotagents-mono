@@ -778,10 +778,7 @@ export default function SessionListScreen({ navigation }: Props) {
         accessibilityLabel={`${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
       >
         <View style={styles.sessionHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-            {isStub && (
-              <Text style={{ fontSize: 12, marginRight: 4 }}>💻</Text>
-            )}
+          <View style={styles.sessionTitleRow}>
             <Text style={styles.sessionTitle} numberOfLines={1}>
               {item.title}
             </Text>
@@ -1019,11 +1016,18 @@ function createStyles(theme: Theme, screenHeight: number) {
       justifyContent: 'space-between',
       marginBottom: 4,
     },
+    sessionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      minWidth: 0,
+      marginRight: 8,
+    },
     sessionTitle: {
       ...theme.typography.body,
       fontWeight: '600',
       flex: 1,
-      marginRight: 8,
+      minWidth: 0,
     },
     sessionDate: {
       ...theme.typography.caption,

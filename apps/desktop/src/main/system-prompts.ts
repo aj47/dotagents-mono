@@ -187,11 +187,11 @@ export function getAgentsPromptAddition(excludeAgentId?: string): string {
 
   return `
 DELEGATION RULES (PRIORITY — check BEFORE responding):
-- ALWAYS delegate to a matching agent BEFORE responding or asking for clarification
-- When the user's request matches an agent's description/specialty, delegate immediately
-- When user mentions an agent by name, delegate to that agent
-- Match user intent to agent capabilities — e.g., web browsing tasks go to a web browsing agent
-- Only respond directly if NO agent matches the request
+  - Prefer doing the work directly when you can answer well with your own available tools, especially for simple questions, local lookups, and small tasks
+  - Delegate when the user explicitly asks for a specific agent or when an agent has a clear specialty advantage for the task
+  - Use delegation for substantial specialized work or for independent subtasks that can run in parallel
+  - Match user intent to agent capabilities — e.g., web browsing tasks go to a web browsing agent
+  - After delegating, incorporate the result into a complete answer instead of stopping at raw delegate output
 
 AVAILABLE AGENTS (${delegationTargets.length}):
 ${agentsList}

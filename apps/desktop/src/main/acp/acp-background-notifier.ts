@@ -147,6 +147,7 @@ export class ACPBackgroundNotifier {
     const delegationProgress: ACPDelegationProgress = {
       runId: state.runId,
       agentName: state.agentName,
+      connectionType: state.connectionType,
       task: state.task,
       status: state.status,
       startTime: state.startTime,
@@ -154,6 +155,9 @@ export class ACPBackgroundNotifier {
       progressMessage: state.progress,
       resultSummary,
       error: state.status === 'failed' ? state.result?.error : undefined,
+      acpSessionId: state.acpSessionId,
+      subSessionId: state.subSessionId,
+      acpRunId: state.acpRunId,
     }
 
     // Map status to step status - completed is success, everything else (failed/cancelled) is error

@@ -186,7 +186,8 @@ export function RemoteServerSettingsGroups({
           title="Remote Server"
           endDescription={(
             <div className="break-words whitespace-normal">
-              Exposes your DotAgents agent over an OpenAI BaseURL-compatible /v1 HTTP endpoint so other clients (e.g., mobile or other apps) can connect to this desktop app and use the agent remotely. Recommended: use with the{" "}
+              Expose DotAgents as an OpenAI-compatible <span className="font-mono">/v1</span>{" "}
+              endpoint for the{" "}
               <a
                 href="https://github.com/aj47/DotAgentsMobile"
                 target="_blank"
@@ -194,7 +195,8 @@ export function RemoteServerSettingsGroups({
                 className="underline"
               >
                 DotAgents Mobile app
-              </a>.
+              </a>{" "}
+              and other clients.
             </div>
           )}
         >
@@ -438,18 +440,16 @@ export function RemoteServerSettingsGroups({
             title="Cloudflare Tunnel"
             endDescription={(
               <div className="break-words whitespace-normal">
-                Create a secure tunnel to expose your remote server to the internet.{" "}
-                <strong>Quick tunnels</strong> provide random URLs (no account needed).{" "}
-                <strong>Named tunnels</strong> provide{" "}
+                Optional internet access for the remote server. Quick tunnels use random
+                URLs; named tunnels keep a{" "}
                 <a
                   href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/"
                   target="_blank"
                   rel="noreferrer noopener"
                   className="underline"
                 >
-                  persistent URLs
-                </a>{" "}
-                (requires Cloudflare account).
+                  persistent URL
+                </a>.
               </div>
             )}
           >

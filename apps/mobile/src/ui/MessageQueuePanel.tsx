@@ -96,6 +96,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     },
     content: {
       flex: 1,
+      minWidth: 0,
     },
     messageText: {
       fontSize: 14,
@@ -113,6 +114,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     metaRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
       gap: 8,
       marginTop: 4,
     },
@@ -135,11 +137,36 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     },
     actions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 4,
+      gap: 8,
+      marginTop: 6,
     },
     actionButton: {
-      padding: 4,
+      alignSelf: 'flex-start',
+      minHeight: 28,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      justifyContent: 'center',
+    },
+    retryActionText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    editActionText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    removeActionText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
     },
     editContainer: {
       gap: 8,
@@ -252,27 +279,42 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               </TouchableOpacity>
             )}
           </View>
-        </View>
-        {!isProcessing && (
-          <View style={styles.actions}>
-            {isFailed && (
-              <TouchableOpacity style={styles.actionButton} onPress={onRetry}>
-                <Ionicons name="refresh" size={16} color={theme.colors.foreground} />
-              </TouchableOpacity>
-            )}
-            {!isAddedToHistory && (
+          {!isProcessing && (
+            <View style={styles.actions}>
+              {isFailed && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={onRetry}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry queued message"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.retryActionText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+              {!isAddedToHistory && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => setIsEditing(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit queued message"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.editActionText}>Edit</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => setIsEditing(true)}
+                onPress={onRemove}
+                accessibilityRole="button"
+                accessibilityLabel="Remove queued message"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="pencil" size={16} color={theme.colors.foreground} />
+                <Text style={styles.removeActionText}>Remove</Text>
               </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.actionButton} onPress={onRemove}>
-              <Ionicons name="close" size={16} color={theme.colors.foreground} />
-            </TouchableOpacity>
-          </View>
-        )}
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );

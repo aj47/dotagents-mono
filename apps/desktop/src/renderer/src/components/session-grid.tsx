@@ -18,7 +18,7 @@ interface SessionGridContextValue {
 const SessionGridContext = createContext<SessionGridContextValue>({
   containerWidth: 0,
   containerHeight: 0,
-  gap: 16,
+  gap: 12,
   resetKey: 0,
   layoutMode: "1x2",
 })
@@ -40,7 +40,7 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [containerHeight, setContainerHeight] = useState(0)
-  const [gap, setGap] = useState(16) // Default to gap-4 = 16px
+  const [gap, setGap] = useState(12) // Default to gap-3 = 12px
 
   const updateMeasurements = useCallback(() => {
     if (containerRef.current) {
@@ -72,7 +72,7 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       // Use a proper check that doesn't treat 0 as falsy (0 is a valid gap value)
       const parsedColumnGap = parseFloat(computedStyle.columnGap)
       const parsedGap = parseFloat(computedStyle.gap)
-      const columnGap = !Number.isNaN(parsedColumnGap) ? parsedColumnGap : (!Number.isNaN(parsedGap) ? parsedGap : 16)
+      const columnGap = !Number.isNaN(parsedColumnGap) ? parsedColumnGap : (!Number.isNaN(parsedGap) ? parsedGap : 12)
       setGap(columnGap)
     }
   }, [])
@@ -122,7 +122,7 @@ export function SessionGrid({ children, sessionCount, className, resetKey = 0, l
       <div
         ref={containerRef}
         className={cn(
-          "flex flex-wrap gap-4 p-4 content-start min-h-full w-full",
+          "flex min-h-full w-full flex-wrap content-start gap-3 p-3",
           className
         )}
       >

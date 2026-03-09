@@ -9,7 +9,7 @@ import {
 import { Label } from "@renderer/components/ui/label"
 import { Input } from "@renderer/components/ui/input"
 import { useAvailableModelsQuery, useConfigQuery } from "@renderer/lib/query-client"
-import { AlertCircle, RefreshCw, Search, Edit3 } from "lucide-react"
+import { AlertCircle, Search } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { logUI, logFocus, logStateChange, logRender } from "@renderer/lib/debug"
 import { DEFAULT_MODEL_PRESET_ID } from "@shared/index"
@@ -174,19 +174,18 @@ export function ModelSelector({
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">{label}</Label>
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <Label className="min-w-0 flex-1 text-sm font-medium">{label}</Label>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleToggleCustom}
               disabled={disabled}
-              className="h-6 px-2 text-xs flex-shrink-0"
-              title={useCustomInput ? "Switch to model list" : "Use custom model name"}
+              className="h-6 whitespace-nowrap px-2 text-[11px] font-medium"
               data-custom-model-toggle="true"
             >
-              <Edit3 className="h-3 w-3" />
+              {useCustomInput ? "List" : "Custom"}
             </Button>
             {!useCustomInput && (
               <Button
@@ -194,11 +193,9 @@ export function ModelSelector({
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isLoading || disabled}
-                className="h-6 px-2 text-xs flex-shrink-0"
+                className="h-6 whitespace-nowrap px-2 text-[11px] font-medium"
               >
-                <RefreshCw
-                  className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`}
-                />
+                {isLoading ? "Loading..." : "Refresh"}
               </Button>
             )}
           </div>
@@ -410,7 +407,7 @@ export function ProviderModelSelector({
           providerId={providerId}
           value={mcpModel}
           onValueChange={onMcpModelChange}
-          label={`${providerName} Model (Agent/MCP Tools)`}
+          label="Agent/MCP model"
           placeholder="Select model for tool calling"
           disabled={disabled}
         />
@@ -421,7 +418,7 @@ export function ProviderModelSelector({
           providerId={providerId}
           value={transcriptModel}
           onValueChange={onTranscriptModelChange}
-          label={`${providerName} Model (Transcript Processing)`}
+          label="Transcript model"
           placeholder="Select model for transcript processing"
           disabled={disabled}
         />

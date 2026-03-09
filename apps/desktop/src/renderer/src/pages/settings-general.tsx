@@ -7,12 +7,6 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@renderer/components/ui/tooltip"
 import { STT_PROVIDER_ID } from "@shared/index"
 import { SUPPORTED_LANGUAGES } from "@shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -33,7 +27,7 @@ import {
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { ExternalLink, AlertCircle, FolderOpen, FolderUp, FileText } from "lucide-react"
+import { ExternalLink, FolderOpen, FolderUp, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -401,6 +395,18 @@ export function Component() {
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const recordingShortcutMode = cfg?.customShortcutMode || "hold"
+  const effectiveRecordingShortcut = getEffectiveShortcut(shortcut, cfg?.customShortcut)
+  const customRecordingShortcutDisplay = effectiveRecordingShortcut
+    ? formatKeyComboForDisplay(effectiveRecordingShortcut)
+    : "your custom shortcut"
+  const recordingShortcutHelperText = shortcut === "hold-ctrl"
+    ? "Hold Ctrl to record, release it to finish, and press any other key to cancel."
+    : shortcut === "custom"
+      ? recordingShortcutMode === "toggle"
+        ? `Press ${customRecordingShortcutDisplay} to start and finish recording. Press Esc to cancel.`
+        : `Hold ${customRecordingShortcutDisplay} to record, release it to finish, and press any other key to cancel.`
+      : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."
 
 
   if (!configQuery.data) return null
@@ -640,15 +646,11 @@ export function Component() {
           collapsible
           defaultCollapsed
           title="Modular config (.agents)"
-          endDescription={
-            <div>
-              Workspace overlay is enabled when a <span className="font-mono">.agents</span> folder exists in your workspace
-              (or when <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set).
-            </div>
-          }
         >
-          <div className="px-3 py-2 text-sm text-muted-foreground">
-            Advanced configuration can be stored as files in <span className="font-mono">.agents</span>. Skills live in{" "}
+          <div className="px-3 py-2 text-sm leading-5 text-muted-foreground">
+            Advanced configuration can live in <span className="font-mono">.agents</span>. Workspace{" "}
+            <span className="font-mono">.agents</span> overrides the global layer when present (or when{" "}
+            <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set). Skills live in{" "}
             <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and memories in{" "}
             <span className="font-mono">memories/&lt;id&gt;.md</span>. Frontmatter uses simple{" "}
             <span className="font-mono">key: value</span> lines (not YAML).
@@ -676,11 +678,11 @@ export function Component() {
                 : ""}
             </div>
           </Control>
-          <Control label="Open" className="px-3">
+          <Control label="Open folders & files" className="px-3">
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={openGlobalAgentsFolder}>
                 <FolderOpen className="h-3 w-3" />
-                Open Global
+                Global Folder
               </Button>
               <Button
                 variant="outline"
@@ -690,19 +692,15 @@ export function Component() {
                 disabled={!agentsFoldersQuery.data?.workspace?.agentsDir}
               >
                 <FolderUp className="h-3 w-3" />
-                Open Workspace
+                Workspace Folder
               </Button>
-            </div>
-          </Control>
-          <Control label="Reveal files in Finder/Explorer" className="px-3">
-            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={openSystemPromptFile}>
                 <FileText className="h-3 w-3" />
-                Reveal System Prompt
+                System Prompt
               </Button>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={openAgentsGuidelinesFile}>
                 <FileText className="h-3 w-3" />
-                Reveal Guidelines
+                Guidelines
               </Button>
             </div>
           </Control>
@@ -713,24 +711,8 @@ export function Component() {
           defaultCollapsed
           title="Shortcuts"
           endDescription={
-            <div className="flex items-center gap-1">
-              <div>
-                {shortcut === "hold-ctrl"
-                  ? "Hold Ctrl key to record, release it to finish recording"
-                  : "Press Ctrl+/ to start and finish recording"}
-              </div>
-              <TooltipProvider disableHoverableContent delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger className="inline-flex items-center justify-center">
-                    <span className="i-mingcute-information-fill text-base"></span>
-                  </TooltipTrigger>
-                  <TooltipContent collisionPadding={5}>
-                    {shortcut === "hold-ctrl"
-                      ? "Press any key to cancel"
-                      : "Press Esc to cancel"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="leading-relaxed">
+              {recordingShortcutHelperText}
             </div>
           }
         >
@@ -1355,43 +1337,20 @@ export function Component() {
           title="Langfuse Observability"
           endDescription={(
             <div className="break-words whitespace-normal">
+              Optional tracing for LLM calls, agent sessions, and tools.{" "}
               <a
                 href="https://langfuse.com"
                 target="_blank"
                 rel="noreferrer noopener"
                 className="underline inline-flex items-center gap-1"
               >
-                Langfuse
+                Docs
                 <ExternalLink className="h-3 w-3" />
-              </a>{" "}
-              is an open-source LLM observability platform. Enable this to trace LLM calls, agent sessions, and tool executions for debugging and monitoring.
+              </a>
             </div>
           )}
         >
-          {/* Show warning if langfuse package is not installed */}
-          {!isLangfuseInstalled && (
-            <div className="mx-3 mb-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-600 dark:text-amber-400">
-                    Langfuse package not installed
-                  </p>
-                  <p className="text-muted-foreground mt-1">
-                    Langfuse is an optional dependency. To enable observability features, install it by running:
-                  </p>
-                  <code className="mt-2 block bg-muted px-2 py-1 rounded text-xs font-mono">
-                    pnpm add langfuse
-                  </code>
-                  <p className="text-muted-foreground mt-2 text-xs">
-                    After installing, restart the app to enable Langfuse integration.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Control label="Enable Langfuse Tracing" className="px-3">
+          <Control label="Enable tracing" className="px-3">
             <Switch
               checked={configQuery.data?.langfuseEnabled ?? false}
               disabled={!isLangfuseInstalled}
@@ -1400,6 +1359,12 @@ export function Component() {
               }}
             />
           </Control>
+
+          {!isLangfuseInstalled && (
+            <div className="mx-3 mb-3 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+              Install the optional <span className="font-mono">langfuse</span> package with <span className="font-mono">pnpm add langfuse</span>, then restart DotAgents to enable tracing.
+            </div>
+          )}
 
           {configQuery.data?.langfuseEnabled && (
             <>

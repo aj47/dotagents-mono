@@ -21,6 +21,13 @@ import {
   DialogTrigger,
 } from "@renderer/components/ui/dialog"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@renderer/components/ui/dropdown-menu"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -56,6 +63,7 @@ import {
   Power,
   PowerOff,
   Wrench,
+  MoreHorizontal,
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry } from "@shared/types"
@@ -1626,6 +1634,34 @@ export function MCPConfigManager({
     }
   }
 
+  const handleRevokeOAuth = async (serverName: string) => {
+    try {
+      await window.electronAPI.revokeOAuthTokens(serverName)
+      toast.success("OAuth authentication revoked")
+      refreshOAuthStatus(serverName)
+    } catch (error) {
+      toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  const handleInitiateOAuth = async (serverName: string) => {
+    try {
+      await window.electronAPI.initiateOAuthFlow(serverName)
+      toast.success("OAuth authentication started")
+      const checkCompletion = setInterval(async () => {
+        const statusResult = await window.electronAPI.getOAuthStatus(serverName)
+        if (statusResult.authenticated) {
+          clearInterval(checkCompletion)
+          refreshOAuthStatus(serverName)
+          toast.success("OAuth authentication completed")
+        }
+      }, 2000)
+      setTimeout(() => clearInterval(checkCompletion), 60000)
+    } catch (error) {
+      toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   const toggleLogs = (serverName: string) => {
     setExpandedLogs(prev => {
       const newSet = new Set(prev)
@@ -2211,106 +2247,73 @@ export function MCPConfigManager({
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >
-                          {!serverConfig.disabled && (
-                            <>
-                              {status?.runtimeEnabled === false ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleStartServer(name)}
-                                  title="Start server"
-                                >
-                                  <Play className="h-4 w-4" />
-                                </Button>
-                              ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                                aria-label={`Actions for ${name} server`}
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                                <span>Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {!serverConfig.disabled && (
                                 <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRestartServer(name)}
-                                    title="Restart server"
-                                  >
-                                    <RotateCcw className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleStopServer(name)}
-                                    title="Stop server"
-                                  >
-                                    <Square className="h-4 w-4" />
-                                  </Button>
+                                  {status?.runtimeEnabled === false ? (
+                                    <DropdownMenuItem onClick={() => handleStartServer(name)}>
+                                      <Play className="h-3.5 w-3.5" />
+                                      Start server
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleRestartServer(name)}>
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                        Restart server
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleStopServer(name)}>
+                                        <Square className="h-3.5 w-3.5" />
+                                        Stop server
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  <DropdownMenuSeparator />
                                 </>
                               )}
-                            </>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              setEditingServer({ name, config: serverConfig })
-                            }
-                            title="Edit server"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {/* OAuth authorization controls */}
-                          {serverConfig.transport === "streamableHttp" && serverConfig.url && (
-                            <>
-                              {oauthStatus[name]?.authenticated ? (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await window.electronAPI.revokeOAuthTokens(name)
-                                      toast.success("OAuth authentication revoked")
-                                      refreshOAuthStatus()
-                                    } catch (error) {
-                                      toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : String(error)}`)
-                                    }
-                                  }}
-                                  title="Revoke OAuth authentication"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              ) : oauthStatus[name]?.configured ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await window.electronAPI.initiateOAuthFlow(name)
-                                      toast.success("OAuth authentication started")
-                                      // Poll for completion
-                                      const checkCompletion = setInterval(async () => {
-                                        const statusResult = await window.electronAPI.getOAuthStatus(name)
-                                        if (statusResult.authenticated) {
-                                          clearInterval(checkCompletion)
-                                          refreshOAuthStatus()
-                                          toast.success("OAuth authentication completed")
-                                        }
-                                      }, 2000)
-                                      setTimeout(() => clearInterval(checkCompletion), 60000)
-                                    } catch (error) {
-                                      toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
-                                    }
-                                  }}
-                                  title="Start OAuth authentication"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              ) : null}
-                            </>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteServer(name)}
-                            title="Delete server"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                              <DropdownMenuItem onClick={() => setEditingServer({ name, config: serverConfig })}>
+                                <Edit className="h-3.5 w-3.5" />
+                                Edit server
+                              </DropdownMenuItem>
+                              {serverConfig.transport === "streamableHttp" && serverConfig.url && (
+                                <>
+                                  {oauthStatus[name]?.authenticated ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleRevokeOAuth(name)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <XCircle className="h-3.5 w-3.5" />
+                                      Revoke OAuth
+                                    </DropdownMenuItem>
+                                  ) : oauthStatus[name]?.configured ? (
+                                    <DropdownMenuItem onClick={() => handleInitiateOAuth(name)}>
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                      Start OAuth
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteServer(name)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete server
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
                     </div>

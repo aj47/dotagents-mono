@@ -161,18 +161,19 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
   const totalCount = conversationHistoryQuery.data?.length ?? 0
 
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-8 text-center">
-      <div className="rounded-full bg-muted p-4 mb-4">
-        <MessageCircle className="h-8 w-8 text-muted-foreground" />
+    <div className="flex w-full flex-col items-center px-5 py-6 text-center sm:px-6">
+      <div className="mb-3 rounded-full bg-muted/70 p-2.5">
+        <MessageCircle className="h-5 w-5 text-muted-foreground" />
       </div>
-      <h3 className="text-lg font-semibold mb-2">No Active Sessions</h3>
-      <p className="text-muted-foreground mb-6 max-w-md">
+      <h3 className="mb-1.5 text-lg font-semibold">No Active Sessions</h3>
+      <p className="mb-5 max-w-sm text-sm leading-relaxed text-muted-foreground">
         Start a new agent session using text or voice input. Your sessions will appear here as tiles.
       </p>
-      <div className="flex flex-col items-center gap-4 w-full max-w-lg">
+      <div className="flex w-full max-w-md flex-col items-center gap-3">
         <AgentSelector
           selectedAgentId={selectedAgentId}
           onSelectAgent={onSelectAgent}
+          compact
         />
         <div className="flex flex-wrap gap-2 items-center justify-center">
           <Button onClick={onTextClick} className="gap-2">
@@ -183,12 +184,10 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
             <Mic className="h-4 w-4" />
             Start with Voice
           </Button>
-          <PredefinedPromptsMenu
-            onSelectPrompt={onSelectPrompt}
-          />
+          <PredefinedPromptsMenu onSelectPrompt={onSelectPrompt} buttonSize="sm" />
         </div>
         {/* Keybind hints - visible on all screens, wraps on narrow */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Keyboard className="h-3.5 w-3.5 shrink-0" />
             <span>Text:</span>
@@ -213,7 +212,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onPastSessionCl
 
       {/* Recent past sessions */}
       {recentSessions.length > 0 && (
-        <div className="mt-8 w-full max-w-lg text-left">
+        <div className="mt-6 w-full max-w-md text-left">
           <div className="flex items-center justify-between mb-2 px-1">
             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />

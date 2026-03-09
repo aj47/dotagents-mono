@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
+const mockAgentProfileService = {
+  getByRole: vi.fn(() => []),
+  getCurrentProfile: vi.fn(() => undefined),
+}
+
 // Avoid pulling in real ACP/services (can have side effects / require Electron runtime)
 vi.mock("./acp/acp-smart-router", () => ({
   acpSmartRouter: {
@@ -21,15 +26,15 @@ vi.mock("./acp/internal-agent", () => ({
 }))
 
 vi.mock("./agent-profile-service", () => ({
-  agentProfileService: {
-    getByRole: () => [],
-    getCurrentProfile: () => undefined,
-  },
+  agentProfileService: mockAgentProfileService,
 }))
 
 describe("constructSystemPrompt", () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.clearAllMocks()
+    mockAgentProfileService.getByRole.mockReturnValue([])
+    mockAgentProfileService.getCurrentProfile.mockReturnValue(undefined)
   })
 
   it("injects skillsInstructions only once", async () => {
@@ -39,5 +44,26 @@ describe("constructSystemPrompt", () => {
     const prompt = constructSystemPrompt([], undefined, true, undefined, undefined, skills)
 
     expect(prompt.split(skills).length - 1).toBe(1)
+  })
+
+  it("prefers direct execution over mandatory delegation for simple tasks", async () => {
+    mockAgentProfileService.getByRole.mockReturnValue([
+      {
+        id: "augustus",
+        enabled: true,
+        displayName: "augustus",
+        description: "Augment Code's AI coding assistant with native ACP support",
+      },
+    ])
+
+    const { getAgentsPromptAddition } = await import("./system-prompts")
+
+    const prompt = getAgentsPromptAddition()
+
+    expect(prompt).toContain("Prefer doing the work directly")
+    expect(prompt).toContain("Delegate when the user explicitly asks for a specific agent")
+    expect(prompt).toContain("incorporate the result into a complete answer")
+    expect(prompt).not.toContain("ALWAYS delegate")
+    expect(prompt).not.toContain("Only respond directly if NO agent matches")
   })
 })

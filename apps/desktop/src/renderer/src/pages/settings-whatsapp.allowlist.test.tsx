@@ -101,6 +101,10 @@ function findInput(node: any) {
   return findNode(node, (candidate) => candidate.type === "Input")
 }
 
+function findControlGroup(node: any, title: string) {
+  return findNode(node, (candidate) => candidate.type === "ControlGroup" && candidate.props?.title === title)
+}
+
 function collectText(node: any, results: string[] = []): string[] {
   if (typeof node === "string") {
     results.push(node)
@@ -121,12 +125,21 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
+async function renderSettled(runtime: ReturnType<typeof createHookRuntime>, Component: (props: any) => any) {
+  let tree = runtime.render(Component, {} as any)
+  runtime.commitEffects()
+  await flushPromises()
+  tree = runtime.render(Component, {} as any)
+  return tree
+}
+
 async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
 
   const Null = () => null
   const mutate = vi.fn()
-  const whatsappGetStatus = vi.fn(async () => ({ available: true, connected: false }))
+  let currentStatus: any = { available: true, connected: false }
+  const whatsappGetStatus = vi.fn(async () => currentStatus)
   let currentConfig: any = {
     whatsappEnabled: true,
     whatsappAllowFrom: ["14155551234"],
@@ -213,6 +226,9 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
     getCurrentConfig() {
       return currentConfig
     },
+    setStatus(nextStatus: any) {
+      currentStatus = nextStatus
+    },
     whatsappGetStatus,
   }
 }
@@ -232,9 +248,7 @@ describe("desktop WhatsApp settings allowlist", () => {
     const runtime = createHookRuntime()
     const { Component } = await loadSettingsWhatsApp(runtime)
 
-    const tree = runtime.render(Component, {} as any)
-    runtime.commitEffects()
-    await flushPromises()
+    const tree = await renderSettled(runtime, Component)
 
     const input = findInput(tree)
     expect(input.props.placeholder).toBe("+14155551234, 98389177934034")
@@ -245,9 +259,7 @@ describe("desktop WhatsApp settings allowlist", () => {
     const runtime = createHookRuntime()
     const { Component, mutate, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
 
-    let tree = runtime.render(Component, {} as any)
-    runtime.commitEffects()
-    await flushPromises()
+    let tree = await renderSettled(runtime, Component)
 
     let input = findInput(tree)
     expect(input.props.value).toBe("14155551234")
@@ -276,9 +288,7 @@ describe("desktop WhatsApp settings allowlist", () => {
     const runtime = createHookRuntime()
     const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
 
-    let tree = runtime.render(Component, {} as any)
-    runtime.commitEffects()
-    await flushPromises()
+    let tree = await renderSettled(runtime, Component)
 
     let input = findInput(tree)
     input.props.onChange({ currentTarget: { value: "14155551234, 98389177934034" } })
@@ -312,9 +322,7 @@ describe("desktop WhatsApp settings allowlist", () => {
     const runtime = createHookRuntime()
     const { Component, mutate, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
 
-    const tree = runtime.render(Component, {} as any)
-    runtime.commitEffects()
-    await flushPromises()
+    const tree = await renderSettled(runtime, Component)
 
     const input = findInput(tree)
     input.props.onChange({ currentTarget: { value: "14155551234, +442071838750" } })
@@ -327,5 +335,78 @@ describe("desktop WhatsApp settings allowlist", () => {
         whatsappAllowFrom: ["14155551234", "+442071838750"],
       },
     })
+  })
+
+  it("renders only the concrete QR pairing helper inside the Connection state", async () => {
+    const runtime = createHookRuntime()
+    const { Component, setStatus } = await loadSettingsWhatsApp(runtime)
+
+    setStatus({
+      available: true,
+      connected: false,
+      hasQrCode: true,
+      qrCode: "qr-data",
+    })
+
+    const tree = await renderSettled(runtime, Component)
+    const connectionGroup = findControlGroup(tree, "Connection")
+    const connectionText = collectText(connectionGroup).join(" ")
+    const connectionEndDescriptionText = collectText(connectionGroup?.props?.endDescription).join(" ")
+
+    expect(connectionText).toContain("Connect with QR Code")
+    expect(connectionText).toContain("Open WhatsApp on your phone → Settings → Linked Devices → Scan this QR code")
+    expect(connectionGroup?.props?.endDescription).toBeUndefined()
+    expect(connectionEndDescriptionText).toBe("")
+    expect(connectionText).not.toContain("Connect your WhatsApp account by scanning the QR code")
+    expect(connectionEndDescriptionText).not.toContain("Connect your WhatsApp account by scanning the QR code")
+  })
+
+  it("renders allowlist guidance and empty-state warning as plain text in Settings", async () => {
+    const runtime = createHookRuntime()
+    const { Component, setConfig, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+
+    setConfig({
+      ...getCurrentConfig(),
+      whatsappAllowFrom: [],
+    })
+
+    const tree = await renderSettled(runtime, Component)
+    const settingsGroup = findControlGroup(tree, "Settings")
+    const settingsText = collectText(settingsGroup).join(" ")
+
+    expect(settingsText).toContain("What are LIDs and how do I find them?")
+    expect(settingsText).toContain("No allowlist set - all incoming messages will be accepted")
+    expect(settingsText).not.toMatch(/[ℹ️💡⚠️]/)
+  })
+
+  it("renders auto-reply success and prerequisite-warning copy as text-first state messages", async () => {
+    const runtime = createHookRuntime()
+    const { Component, setConfig, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+
+    setConfig({
+      ...getCurrentConfig(),
+      remoteServerEnabled: true,
+      remoteServerApiKey: "api-key",
+      whatsappAutoReply: true,
+    })
+
+    let tree = await renderSettled(runtime, Component)
+    let settingsText = collectText(findControlGroup(tree, "Settings")).join(" ")
+
+    expect(settingsText).toContain("Auto-reply enabled - incoming messages will be processed and replied to")
+    expect(settingsText).not.toMatch(/[✓⚠️]/)
+
+    setConfig({
+      ...getCurrentConfig(),
+      remoteServerEnabled: false,
+      remoteServerApiKey: "",
+      whatsappAutoReply: true,
+    })
+
+    tree = await renderSettled(runtime, Component)
+    settingsText = collectText(findControlGroup(tree, "Settings")).join(" ")
+
+    expect(settingsText).toContain("Auto-reply is enabled but Remote Server or API key is missing")
+    expect(settingsText).not.toMatch(/[✓⚠️]/)
   })
 })

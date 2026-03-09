@@ -142,6 +142,8 @@ export interface ACPSubAgentState {
   runId: string;
   /** Name of the sub-agent */
   agentName: string;
+  /** How this delegated run is connected/executed */
+  connectionType?: 'internal' | 'acp' | 'stdio' | 'remote';
   /** Parent session ID linking to the main DotAgents session */
   parentSessionId: string;
   /** Parent session run ID captured when delegation started */
@@ -160,6 +162,8 @@ export interface ACPSubAgentState {
   progress?: string;
   /** The ACP server's run ID for async runs */
   acpRunId?: string;
+  /** Local ACP session ID for stdio/acp-backed delegated sessions */
+  acpSessionId?: string;
   /** Base URL for the agent (needed for status checks) */
   baseUrl?: string;
   /** Whether this is an internal sub-agent (not external ACP) */
