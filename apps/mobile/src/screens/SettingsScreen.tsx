@@ -1082,9 +1082,7 @@ export default function SettingsScreen({ navigation }: any) {
         </Text>
 
         {/* Push Notifications Section */}
-        <Text style={styles.sectionTitle}>Notifications</Text>
-
-        <View style={styles.row}>
+        <View style={[styles.row, styles.sectionLeadRow]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>Push Notifications</Text>
             {!notificationsSupported && (
@@ -2711,6 +2709,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       justifyContent: 'space-between',
       gap: spacing.md,
       marginTop: spacing.sm,
+    },
+    sectionLeadRow: {
+      marginTop: spacing.lg,
     },
     themeSelector: {
       flexDirection: 'row',
