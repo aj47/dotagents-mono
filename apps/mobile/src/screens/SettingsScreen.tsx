@@ -2168,9 +2168,10 @@ export default function SettingsScreen({ navigation }: any) {
                           <TouchableOpacity
                             style={styles.agentDeleteButton}
                             onPress={() => handleAgentProfileDelete(profile)}
+                            accessibilityLabel={`Delete agent ${profile.displayName}`}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Text style={{ color: theme.colors.destructive, fontSize: 16 }}>🗑️</Text>
+                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -2220,7 +2221,7 @@ export default function SettingsScreen({ navigation }: any) {
                           </Text>
                         </View>
                       </TouchableOpacity>
-                      <View style={{ alignItems: 'center' }}>
+                      <View style={styles.loopActions}>
                         <Switch
                           value={loop.enabled}
                           onValueChange={() => handleLoopToggle(loop.id)}
@@ -2228,16 +2229,18 @@ export default function SettingsScreen({ navigation }: any) {
                           thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
                         />
                         <TouchableOpacity
-                          style={{ marginTop: 8, padding: 4 }}
+                          style={styles.loopActionButton}
                           onPress={() => handleLoopRun(loop.id)}
+                          accessibilityLabel={`Run loop ${loop.name}`}
                         >
-                          <Text style={{ color: theme.colors.primary, fontSize: 12 }}>▶ Run</Text>
+                          <Text style={styles.loopRunActionText}>Run</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={{ marginTop: 8, padding: 4 }}
+                          style={styles.loopActionButton}
                           onPress={() => handleLoopDelete(loop)}
+                          accessibilityLabel={`Delete loop ${loop.name}`}
                         >
-                          <Text style={{ color: theme.colors.destructive, fontSize: 12 }}>🗑 Delete</Text>
+                          <Text style={styles.loopDeleteActionText}>Delete</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -3008,6 +3011,30 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     agentDeleteButton: {
       padding: spacing.xs,
+    },
+    agentDeleteButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    loopActions: {
+      alignItems: 'center',
+      flexShrink: 0,
+    },
+    loopActionButton: {
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.xs,
+      paddingVertical: 4,
+    },
+    loopRunActionText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    loopDeleteActionText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '500',
     },
     createAgentButton: {
       marginTop: spacing.md,
